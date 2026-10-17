@@ -3,7 +3,10 @@ import json, sys, math
 from datetime import date, datetime, timedelta
 import calendar
 
-d = json.load(open(sys.argv[1])); s = d['s']; app_u = d['u']; app_x = d['x']; app_w = d['w']; app_d = d['d']
+d = json.load(open(sys.argv[1])); s = d['s'];
+CV = dict(cvRentGrowthStart='month1', cvOpexVariablePct=0.4, cvLtvBasis='value', cvHurdleBasis='deal')
+CV.update({k: s[k] for k in CV if s.get(k) not in (None, '')})   # absent = legacy, as the app resolves it
+app_u = d['u']; app_x = d['x']; app_w = d['w']; app_d = d['d']
 N = lambda k: float(s.get(k) or 0)
 results = []
 def chk(name, mine, app, tol=0.01):
@@ -28,7 +31,8 @@ acqFee = d['acqFee']
 basis = N('purchasePrice')*(1+N('closingCostsPct')+acqFee)
 value_app_method = noi/N('exitCap')
 r = N('acqRate')/12; n = int(N('acqAmort')*12)
-byLTV = N('acqLTV')*value_app_method; byLTC = N('acqLTC')*basis
+ltv_value = {'price': N('purchasePrice'), 'lesser': min(N('purchasePrice'), value_app_method), 'value': value_app_method}[CV['cvLtvBasis']]
+byLTV = N('acqLTV')*ltv_value; byLTC = N('acqLTC')*basis
 byDSCR = (noi/N('acqDSCR'))/(pmt(r,n,1)*12)
 loan = math.floor(min(byLTV,byLTC,byDSCR)/1000)*1000
 P = pmt(r,n,loan)
@@ -45,10 +49,11 @@ H = int(round(N('holdYears')))*12
 resOcc = 1-N('vacancy')
 k_ctrl = sum(N(k) for k in ['rm','payroll','turnover','utilities','contract','marketing','ga'])+N('gsf')*N('miscPerGSF')
 def month(m):
-    g = lambda k: (1+N(k))**(m/12)
+    ex = (math.ceil(m/12)-1) if CV['cvRentGrowthStart'] == 'year2' else m/12
+    g = lambda k: (1+N(k))**ex
     gprm = gpr/12*g('rentGrowth'); res = gprm*resOcc; badm = -res*N('badDebtPct')
     oth = other/12*g('otherGrowth'); e = res+badm+oth
-    ctrl = k_ctrl/12*g('opexGrowth')*(0.6+0.4*resOcc)
+    v = float(CV['cvOpexVariablePct']); ctrl = k_ctrl/12*g('opexGrowth')*((1-v)+v*resOcc)
     ins = N('insurance')/12*g('opexGrowth')
     tax = N('taxes')/12*(1+N('taxGrowth'))**(math.ceil(m/12)-1)
     nb = e-ctrl-ins-tax-e*N('mgmtPct')
@@ -85,7 +90,7 @@ for m,(e,nn) in enumerate(months, start=1):
     if m == H: cf += net - bal - gross*N('dispositionFeePct')
     lev.append(cf)
 chk('Levered IRR', xirr(lev,dts), app_x['irr'], 1e-6)
-chk('Levered multiple', sum(v for v in lev[1:] if v>0)/equity, app_x['moic'], 1e-6)
+chk('Levered multiple', sum(v for v in lev[1:] if v>0)/-sum(v for v in lev if v<0), app_x['moic'], 1e-6)
 
 # ---------- 5. Waterfall checks ----------
 w = app_w; tot_dist = sum(v for v in lev[1:] if v>0)
