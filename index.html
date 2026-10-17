@@ -1450,6 +1450,42 @@ const BK_BASE={
   // cached workbook engine baseline, used to preserve exact current workbook economics while editable drivers are introduced
   gpr:1086996,badDebtPct:0.005,misc:7620.5
 };
+/* UNDERWRITING CONVENTIONS (CV-2026.10). Each is a per-deal setting. A deal that does not carry
+   the field resolves to the LEGACY behaviour it was underwritten with, so no saved deal changes
+   unless someone changes its setting. New deals are stamped with the current standard by
+   bkCreateNewDeal(). This is the only place the fallbacks are defined.
+     cvRentGrowthStart  'year2'  Year 1 at underwritten rents/expenses, annual step growth from Year 2
+                        'month1' (legacy) continuous monthly compounding from month 1
+     cvOpexVariablePct  share of controllable opex that varies with occupancy (0 = all fixed);
+                        legacy 0.40 (the workbook's 0.6 fixed + 0.4 x occupancy split)
+     cvLtvBasis         'price' purchase price | 'value' (legacy) Year-1 NOI / exit cap | 'lesser'
+     cvHurdleBasis      'lp' hurdles tested on LP contributions and distributions
+                        'deal' (legacy) hurdles tested on total deal equity cash flows */
+var BK_CV_STANDARD = { cvRentGrowthStart:'year2', cvOpexVariablePct:0, cvLtvBasis:'price', cvHurdleBasis:'lp' };
+var BK_CV_LEGACY   = { cvRentGrowthStart:'month1', cvOpexVariablePct:0.4, cvLtvBasis:'value', cvHurdleBasis:'deal' };
+function bkConventions(s){
+  s = s || {};
+  var out = { legacyFields:[] };
+  Object.keys(BK_CV_LEGACY).forEach(function(k){
+    var v = s[k];
+    if(v === undefined || v === null || v === ''){ out[k] = BK_CV_LEGACY[k]; out.legacyFields.push(k); }
+    else out[k] = (k === 'cvOpexVariablePct') ? Math.max(0, Math.min(1, Number(v) || 0)) : String(v);
+  });
+  if(['year2','month1'].indexOf(out.cvRentGrowthStart) < 0) out.cvRentGrowthStart = BK_CV_LEGACY.cvRentGrowthStart;
+  if(['price','value','lesser'].indexOf(out.cvLtvBasis) < 0) out.cvLtvBasis = BK_CV_LEGACY.cvLtvBasis;
+  if(['lp','deal'].indexOf(out.cvHurdleBasis) < 0) out.cvHurdleBasis = BK_CV_LEGACY.cvHurdleBasis;
+  out.isLegacy = out.legacyFields.length === Object.keys(BK_CV_LEGACY).length;
+  out.isStandard = Object.keys(BK_CV_STANDARD).every(function(k){ return out[k] === BK_CV_STANDARD[k]; });
+  return out;
+}
+window.bkConventions = bkConventions; window.BK_CV_STANDARD = BK_CV_STANDARD; window.BK_CV_LEGACY = BK_CV_LEGACY;
+/* What the acquisition LTV test is measured against, in words, for labels. */
+window.bkLtvBasisLabel = function(s, short){
+  var b = bkConventions(s || bkLoad()).cvLtvBasis;
+  if(b === 'price')  return 'purchase price';
+  if(b === 'lesser') return short ? 'lesser of price / value' : 'lesser of purchase price and underwritten value';
+  return short ? 'underwritten value' : 'underwritten value (Year-1 NOI \u00f7 exit cap)';
+};
 function bkLoad(){try{const st=JSON.parse(localStorage.getItem(BK_STORE)||'{}');return Object.assign({},BK_BASE,(st&&st._template&&st._template.values)||{},st)}catch(e){return {...BK_BASE}}}
 // bkSave strips any field that is still exactly equal to its current BK_BASE default before
 // writing to storage. This matters because every bkEnsureVxx()/blur-handler save pattern in this
@@ -1466,7 +1502,16 @@ function bkLoad(){try{const st=JSON.parse(localStorage.getItem(BK_STORE)||'{}');
 // set -- with zero effect on any read path, since bkLoad() fills the same default back in either way.
 function bkSave(d){
   const out={};
-  for(const k in d){ if(!(k in BK_BASE) || d[k]!==BK_BASE[k]) out[k]=d[k]; }
+  /* A field is omitted only when it equals the default bkLoad() would restore for THIS deal: the
+     deal's own template value when it has one, otherwise BK_BASE. Comparing against BK_BASE alone
+     would drop, e.g., a 50% GP share typed onto a deal whose template default is 10%, and bkLoad()
+     would then bring back 10%. For deals whose template values equal BK_BASE this is unchanged. */
+  const tv=(d && d._template && d._template.values) || {};
+  for(const k in d){
+    const hasDef = Object.prototype.hasOwnProperty.call(tv,k) || (k in BK_BASE);
+    const def = Object.prototype.hasOwnProperty.call(tv,k) ? tv[k] : BK_BASE[k];
+    if(!hasDef || d[k]!==def) out[k]=d[k];
+  }
   localStorage.setItem(BK_STORE,JSON.stringify(out));
 }
 // V26 global numeric-display rule: a rendered calculation must never show NaN/Infinity/undefined,
@@ -2003,11 +2048,37 @@ function bkWaterfallV07(opts){
  const r1=mr(s.pref),r2=mr(s.hurdle2),r3=mr(s.hurdle3);
  let b1=0,b2=0,b3=0,cumCon=0,cumDist=0,cumProm=0;
  const rows=[];
+ /* CONVENTION cvHurdleBasis. 'lp': every hurdle account accrues on the LP's own contributions and is
+    reduced only by what the LP actually receives, so a tier opens only once the LP has reached that
+    IRR. 'deal' (legacy): accounts run on total equity and are reduced by total distributions. Tier
+    rates, splits and the catch-up definition are the deal's own terms in both modes. */
+ const lpMode=bkConventions(s).cvHurdleBasis==='lp', lpS=1-Number(s.gpShare||0);
  for(let i=0;i<n;i++){
    // SYS_CF rows 107-108: equity draw is always a contribution; only a shortfall in the
    // OTHER monthly components (NOI-after-debt-service, asset fee, sale) adds to it, and any
    // surplus in those is a distribution -- they are split, never netted then clamped.
    const con=(x.rows[i].wfContrib!=null?x.rows[i].wfContrib:Math.max(0,-x.rows[i].cf)), dist=(x.rows[i].wfDist!=null?x.rows[i].wfDist:Math.max(0,x.rows[i].cf));
+   if(lpMode){
+     const lc=con*lpS, gs=Number(s.gpShare||0);
+     let a1=b1+lc+(b1+lc)*r1, a2=b2+lc+(b2+lc)*r2, a3=b3+lc+(b3+lc)*r3;
+     // Tier 1: pari passu until the LP's preferred-return account is cleared
+     const t1=lpS>0?Math.min(dist,a1/lpS):dist, lp1=t1*lpS;
+     cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
+     const rem1=Math.max(0,dist-t1);
+     const catchup=Number(s.gpCatchup)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(1-Number(s.gpCatchupTarget)))):0;
+     // Tier 2 / 3: the deal's own split until the LP's own account for that hurdle is cleared
+     const need2=Math.max(0,a2-lp1), t2=Number(s.t2LP)>0?Math.min(Math.max(0,dist-t1-catchup),need2/Number(s.t2LP)):0, lp2=t2*Number(s.t2LP);
+     const need3=Math.max(0,a3-lp1-lp2), t3=Number(s.t3LP)>0?Math.min(Math.max(0,dist-t1-catchup-t2),need3/Number(s.t3LP)):0, lp3=t3*Number(s.t3LP);
+     const t4=Math.max(0,dist-t1-catchup-t2-t3), lp4=t4*Number(s.t4LP);
+     const lpRecv=lp1+lp2+lp3+lp4;
+     b1=Math.max(0,a1-lpRecv); b2=Math.max(0,a2-lpRecv); b3=Math.max(0,a3-lpRecv);
+     const lpCon=-con*lpS, gpCon=-con*gs;
+     const lpDist=lpRecv, gpDist=t1*gs+catchup+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
+     const promote=Math.max(0,gpDist-gs*(t1+catchup+t2+t3+t4));
+     cumProm+=promote; cumDist+=t1+catchup+t2+t3+t4;
+     rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
+     continue;
+   }
    const beg1=b1, acc1=(beg1+con)*r1, req1=beg1+con+acc1, t1=Math.min(dist,req1); b1=req1-t1;
    cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
    const rem1=Math.max(0,dist-t1);
@@ -2840,27 +2911,34 @@ window.bkAnnualCF = function(){
                        ? concessPct : (Number(s.concessionLeaseUpPct)||0);
   const stabMonths   = Math.max(0, Math.round(Number(s.leaseupMonths)||0));
 
+  // CONVENTIONS (see bkConventions). 'month1' keeps the original continuous m/12 exponent exactly;
+  // 'year2' holds Year 1 at the underwritten figures and steps growth once per operating year.
+  const _cv = bkConventions(s);
+  const gExp = _cv.cvRentGrowthStart === 'year2' ? function(m){ return Math.ceil(m/12) - 1; } : function(m){ return m/12; };
+  const opexVar = _cv.cvOpexVariablePct;
+
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
-    const resRev = (k_GPR/12) * resOcc * Math.pow(1+rentGrowth, m/12);
+    const resRev = (k_GPR/12) * resOcc * Math.pow(1+rentGrowth, gExp(m));
     const bad = -resRev*badDebtPct;
     // Applied to GROSS potential rent, exactly as the workbook does, using the same
     // expression the vacancy split below already uses so the parts still sum to the whole.
     // At the default of zero both terms are -0, and x + -0 === x for every x, so no existing
     // figure can move by a floating-point bit.
-    const _gprG   = (k_GPR/12) * Math.pow(1+rentGrowth, m/12);
+    const _gprG   = (k_GPR/12) * Math.pow(1+rentGrowth, gExp(m));
     const ltl     = -_gprG*ltlPct;
     const concess = -_gprG*(m<=stabMonths ? concessLUPct : concessPct);
     const netRes = resRev+bad+ltl+concess;
-    const comm = (k_RetailAnn/12) * commOcc * Math.pow(1+commGrowth, m/12);
-    const other = (k_OtherAnn/12) * Math.pow(1+otherGrowth, m/12);
+    const comm = (k_RetailAnn/12) * commOcc * Math.pow(1+commGrowth, gExp(m));
+    const other = (k_OtherAnn/12) * Math.pow(1+otherGrowth, gExp(m));
     const egi = netRes+comm+other;
-    const opexGF = Math.pow(1+opexGrowth, m/12);
+    const opexGF = Math.pow(1+opexGrowth, gExp(m));
     // V27 intentional divergence from Excel SYS_CF!G50 (see the block comment above this function):
     // revenue-weighted blend of residential/commercial occupancy, not residential occupancy alone.
     const revWeightTotal = k_GPR + k_RetailAnn;
     const blendedOcc = revWeightTotal>0 ? (k_GPR*resOcc + k_RetailAnn*commOcc)/revWeightTotal : 1;
-    const ctrlOpex = -(k_CtrlOpex/12) * opexGF * (0.6+0.4*blendedOcc);
+    // legacy split kept as the literal expression so legacy deals reproduce bit-for-bit
+    const ctrlOpex = -(k_CtrlOpex/12) * opexGF * (opexVar === 0.4 ? (0.6+0.4*blendedOcc) : ((1-opexVar) + opexVar*blendedOcc));
     const insurance = -(k_InsAnn/12) * opexGF;
     const taxes = -(k_TaxYr1/12) * Math.pow(1+taxGrowth, opYear-1);
     const mgmt = -egi*mgmtPct;
@@ -2878,7 +2956,7 @@ window.bkAnnualCF = function(){
     // and no existing figure can move by so much as a floating-point bit.
     const gprGross  = _gprG;
     const resVac    = resRev - gprGross;          // negative; resRev = gprGross * resOcc
-    const commGross = (k_RetailAnn/12) * Math.pow(1+commGrowth, m/12);
+    const commGross = (k_RetailAnn/12) * Math.pow(1+commGrowth, gExp(m));
     const commVac   = comm - commGross;           // negative; comm = commGross * commOcc
     return {egi, totalOpex, noiBeforeReserves, noi,
             gprGross, resVac, resRev, bad, ltl, concess, netRes,
@@ -6469,7 +6547,12 @@ try{implement(document);}catch(e){}
   window.bkDebtLifecycle=function(){return bkDebt().lifecycle;};
   window.bkDebt=function(){
     const s=bkEnsureV04(),op=bkCalc(),basis=Number(s.purchasePrice)*(1+Number(s.closingCostsPct)+bkAcqFeePct(s));
-    const stab=Number(s.exitCap)>0?op.noi/Number(s.exitCap):0,byLTV=Number(s.acqLTV)*stab,byLTC=Number(s.acqLTC)>0?Number(s.acqLTC)*basis:Infinity;
+    const stab=Number(s.exitCap)>0?op.noi/Number(s.exitCap):0;
+    /* CONVENTION cvLtvBasis: the value the acquisition LTV test is applied to. LTC, DSCR and debt
+       yield are unchanged and the loan is still the lowest of all constraints. */
+    const ltvBasis=bkConventions(s).cvLtvBasis, price=Number(s.purchasePrice)||0;
+    const ltvValue=ltvBasis==='price'?price:ltvBasis==='lesser'?(stab>0?Math.min(price,stab):price):stab;
+    const byLTV=Number(s.acqLTV)*ltvValue,byLTC=Number(s.acqLTC)>0?Number(s.acqLTC)*basis:Infinity;
     const coupon=bkDebtRateForMonth(s,1),amortMonths=Math.max(1,Math.round(Number(s.acqAmort)*12)),unitPmt=bkPmt(coupon/12,amortMonths,1);
     const byDSCR=(Number(s.acqDSCR)>0&&unitPmt>0)?(op.noi/Number(s.acqDSCR))/(unitPmt*12):Infinity;
     /* V29.11.0 - fourth ORIGINATION constraint. Uses op.noi, the SAME underwriting NOI the
@@ -6481,7 +6564,7 @@ try{implement(document);}catch(e){}
        via a falsy-OR and must never be used to mean no debt. */
     const debtOff=(s.debtEnabled===false);
     const raw=Math.max(0,Math.min(byLTV,byLTC,byDSCR,byDebtYield)),loan=debtOff?0:Math.floor(raw/1000)*1000,fee=debtOff?0:loan*Number(s.acqOrigFee);
-    const initialPmt=bkPmt(coupon/12,amortMonths,loan),dscr=initialPmt?op.noi/(initialPmt*12):0,ltv=stab?loan/stab:0,ltc=basis?loan/basis:0;
+    const initialPmt=bkPmt(coupon/12,amortMonths,loan),dscr=initialPmt?op.noi/(initialPmt*12):0,ltv=ltvValue?loan/ltvValue:0,ltc=basis?loan/basis:0;
     let binding=debtOff?'DEBT OFF':'LTV';const rounded=x=>Math.floor(x/1000)*1000;
     if(!debtOff){ if(rounded(byDebtYield)===loan)binding='DEBT YIELD';
       else if(rounded(byDSCR)===loan)binding='DSCR'; else if(rounded(byLTC)===loan)binding='LTC'; }
@@ -6491,7 +6574,7 @@ try{implement(document);}catch(e){}
     /* V32.3 (CV-D2): reported payment and going-in DSCR use the ACTUAL month-1 contractual payment (interest-only during an IO period). The amortizing figures stay available as pmtAmortizing / dscrAmortizing. Debt SIZING is unchanged (still sized on the amortizing constant). */
     const goingInPmt=(L.combined[0]&&L.combined[0].loan!=='NONE')?L.combined[0].payment:0,goingInDscr=goingInPmt?op.noi/(goingInPmt*12):0,pmtBasis=Math.round(Number(s.acqIO)*12)>0?'INTEREST-ONLY':'AMORTIZING';
     const equity=basis+fee-loan,maxCoupon=liveR.length?Math.max(...liveR.map(x=>x.annualRate)):coupon,minCoupon=liveR.length?Math.min(...liveR.map(x=>x.annualRate)):coupon;
-    return{s,op,basis,stab,byLTV,byLTC,byDSCR,byDebtYield,debtEnabled:!debtOff,loan,fee,pmt:debtOff?0:goingInPmt,dscr:debtOff?0:goingInDscr,pmtBasis,pmtAmortizing:debtOff?0:initialPmt,dscrAmortizing:debtOff?0:dscr,ltv:debtOff?0:ltv,ltc:debtOff?0:ltc,binding,months,annual,equity,debtAtSale:debtOff?0:L.payoffAtSale,coupon,rateType:isFloating(s)?'Floating':'Fixed',maxCoupon,minCoupon,lifecycle:L};
+    return{s,op,basis,stab,ltvBasis,ltvValue,byLTV,byLTC,byDSCR,byDebtYield,debtEnabled:!debtOff,loan,fee,pmt:debtOff?0:goingInPmt,dscr:debtOff?0:goingInDscr,pmtBasis,pmtAmortizing:debtOff?0:initialPmt,dscrAmortizing:debtOff?0:dscr,ltv:debtOff?0:ltv,ltc:debtOff?0:ltc,binding,months,annual,equity,debtAtSale:debtOff?0:L.payoffAtSale,coupon,rateType:isFloating(s)?'Floating':'Fixed',maxCoupon,minCoupon,lifecycle:L};
   };
 
   const _du=sheetDealUnderwrite;
@@ -7055,7 +7138,11 @@ window.bkProductionCounts = function(){
    (a) Property- and market-specific assumptions start BLANK and are required before the deal is ready.
    (b) Deal-STRUCTURE conventions (financing terms, fee rates, waterfall terms, scenario deltas) come from a NAMED template,
        stamped on the deal; every such field shows TEMPLATE until the user changes it. Choose template:'Blank' to zero them too. */
-window.BK_TEMPLATE_NAME = 'Institutional Standard v1';
+window.BK_TEMPLATE_NAME = 'Institutional Standard v2';
+/* v2 (CV-2026.10): template values that differ from the engine's BK_BASE defaults. They are stamped
+   onto NEW deals only. BK_BASE itself is NOT changed: bkSave() omits any field equal to its BK_BASE
+   default, so changing BK_BASE.gpShare would silently move every existing 50% deal to the new value. */
+window.BK_TEMPLATE_OVERRIDES = { gpShare: 0.10 };
 window.BK_TEMPLATE_KEYS = ['acqLTV','acqLTC','acqDSCR','acqRate','acqAmort','acqOrigFee','acqIO','debtTerm','permLTV','permDSCR','permRate','permAmort','permOrigFee','permIO','refiRate','refiLTV','refiDSCR','refiAmort','refiOrigFee','acqFeePct','acquisitionFeePct','assetMgmtPct','dispositionFeePct','saleCostPct','closingCostsPct','closingPct','gpShare','pref','hurdle2','hurdle3','t2LP','t3LP','t4LP','gpCatchup','gpCatchupTarget','upRentGrowthDelta','upExitCapDelta','upDebtRateDelta','downRentGrowthDelta','downExitCapDelta','downDebtRateDelta'];
 window.BK_MARKET_BLANK = ['gpr','misc','occupancy','residualLandValue','conRate','holdYears','exitCap','vacancy','commercialVacancy','badDebtPct','mgmtPct','miscPerGSF','rentGrowth','otherGrowth','opexGrowth','taxGrowth','commercialRentGrowth','refiCapRate','em1','em2','em3','capKeepCoE','capSellCoE','capRefiHeadroom','capRefiDebtYield','capSellNOIGrowth','debtIndexRate','debtSpread'];
 window.bkClearTemplateValues = function(){
@@ -7085,10 +7172,15 @@ window.bkCreateNewDeal = function(opts){
   if(tplName && tplName !== 'Blank'){
     var tv = {};
     window.BK_TEMPLATE_KEYS.forEach(function(k){ if(typeof BK_BASE[k] === 'number'){ tv[k] = BK_BASE[k]; blank[k] = BK_BASE[k]; } });
+    Object.keys(window.BK_TEMPLATE_OVERRIDES || {}).forEach(function(k){ tv[k] = window.BK_TEMPLATE_OVERRIDES[k]; blank[k] = window.BK_TEMPLATE_OVERRIDES[k]; });
     blank._template = { name: tplName, values: tv, appliedAt: new Date().toISOString() };
   } else {
     window.BK_TEMPLATE_KEYS.forEach(function(k){ if(typeof BK_BASE[k] === 'number') blank[k] = 0; });
   }
+  /* New deals carry the current underwriting conventions explicitly (methodology, not template
+     values, so they apply whichever template is chosen). A caller may still pass its own. */
+  Object.keys(BK_CV_STANDARD).forEach(function(k){ blank[k] = BK_CV_STANDARD[k]; });
+  blank._conventions = { version:'CV-2026.10', appliedAt:new Date().toISOString() };
   /* Any further field the caller supplies is honoured, so a creation wizard can
      provision a deal in one step instead of creating a blank and then editing
      it. Identity and economic fields are applied AFTER the zeroed template, so
@@ -9830,7 +9922,7 @@ function panel(){
 
   /* --- constraint panel --- */
   var rows = [
-    ['Maximum LTV',          d.byLTV,        'acqLTV '   + pct(s.acqLTV),        'LTV'],
+    ['Maximum LTV',          d.byLTV,        'acqLTV '   + pct(s.acqLTV) + ' \u00d7 ' + window.bkLtvBasisLabel(s, true), 'LTV'],
     ['Maximum LTC',          d.byLTC,        'acqLTC '   + pct(s.acqLTC),        'LTC'],
     ['Minimum DSCR',         d.byDSCR,       'acqDSCR '  + (Number(s.acqDSCR)||0).toFixed(2)+'x', 'DSCR'],
     ['Minimum Debt Yield',   d.byDebtYield,  Number(s.acqDebtYield)>0 ? 'acqDebtYield '+pct(s.acqDebtYield) : 'not applied', 'DEBT YIELD']
@@ -10836,7 +10928,7 @@ extend('Sources & Uses','w1SourcesUses', function(o){
 
   var caps = wrapTable('Capitalization Metrics',
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
-      '<tr>'+lbl('Loan to Value')+val(pct(d.ltv))+txt('Against stabilized value')+'</tr>'
+      '<tr>'+lbl('Loan to Value')+val(pct(d.ltv))+txt('Against '+window.bkLtvBasisLabel(d.s||bkLoad(), true))+'</tr>'
     + '<tr>'+lbl('Loan to Cost')+val(pct(d.ltc))+txt('Against acquisition basis')+'</tr>'
     + '<tr>'+lbl('Equity as % of Total Uses')+val(uses?pct(d.equity/uses):'-')+txt('Equity requirement &divide; total uses')+'</tr>'
     + '<tr>'+lbl('Peak Equity Requirement')+val(money(d.equity))+txt('Funded at close for an acquisition')+'</tr>'
@@ -15014,7 +15106,7 @@ extend('Deal Underwrite','clarityInputs', function(o){
     // a 1% acquisition fee - 65% of price x (1 + closing% + fee%) every time. Labelling
     // it "% of purchase price" would have been a new mislabel replacing the old one,
     // correct only on a deal with no acquisition costs.
-    var relabel = { acqLTV: 'Acq Loan - Max LTV (% of Underwritten Value)',
+    var relabel = { acqLTV: 'Acq Loan - Max LTV (% of ' + window.bkLtvBasisLabel(bkLoad(), true).replace(/^./, function(c){ return c.toUpperCase(); }) + ')',
                     acqLTC: 'Acq Loan - Max LTC (% of Total Cost Basis)',
                     conLTC: 'Construction Max LTC (% of Cost)',
                     conLTV: 'Construction Max LTSV (% of Stabilized Value)',
@@ -15029,8 +15121,9 @@ extend('Deal Underwrite','clarityInputs', function(o){
     try { c = bkCalc(); } catch(e){}
     var noi = c ? (Number(c.noi)||0) : 0;
     var cap = Number(s.exitCap)||0;
-    var uwValue = cap > 0 ? noi/cap : NaN;
     var price = Number(s.purchasePrice)||0;
+    var _lb = bkConventions(s).cvLtvBasis, _uv = cap > 0 ? noi/cap : NaN;
+    var uwValue = _lb === 'price' ? price : _lb === 'lesser' ? (isFinite(_uv) ? Math.min(price, _uv) : price) : _uv;
     // total cost basis = price plus closing costs plus the acquisition fee, which is
     // what the LTC constraint is measured against
     var basisCost = price * (1 + (Number(s.closingCostsPct)||0) + (Number(s.acqFeePct)||0));
@@ -15039,7 +15132,7 @@ extend('Deal Underwrite','clarityInputs', function(o){
       + '<caption>What Each Debt Constraint Is Measured Against</caption>'
       + '<thead><tr><th class="rowlabel-h">Constraint</th><th>Basis</th><th>Rate</th>'
       + '<th>Maximum Loan It Allows</th></tr></thead><tbody>'
-      + '<tr><td class="rowlabel" data-bk-align="text">Max LTV - underwritten VALUE</td>'
+      + '<tr><td class="rowlabel" data-bk-align="text">Max LTV - ' + window.bkLtvBasisLabel(s, true).toUpperCase() + '</td>'
       +   '<td class="v">'+(isFinite(uwValue)?money(uwValue):'-')+'</td>'
       +   '<td class="v" data-bk-align="num">'+pct(Number(s.acqLTV))+'</td>'
       +   '<td class="v">'+(isFinite(uwValue)?money(uwValue*(Number(s.acqLTV)||0)):'-')+'</td></tr>'
@@ -15052,8 +15145,10 @@ extend('Deal Underwrite','clarityInputs', function(o){
       +   '<td class="v" data-bk-align="num">'+(Number(s.acqDSCR)||0).toFixed(2)+'x</td>'
       +   '<td class="v">'+chip('','sized by coverage')+'</td></tr>'
       + '</tbody></table></div>'
-      + note('&#9432;','<b>Underwritten value is not the purchase price.</b> It is Year-1 NOI capitalised at the exit cap - '
-        + (isFinite(uwValue) ? (money(noi)+' &divide; '+pct(cap)+' = '+money(uwValue)) : 'NOI &divide; exit cap')
+      + (_lb === 'price' ? note('&#9432;','<b>LTV is measured against the purchase price</b> (this deal&rsquo;s LTV basis setting). '
+        + 'LTC is measured against the total cost basis and DSCR against Year-1 NOI; the loan is the lowest of them.') :
+        note('&#9432;','<b>Underwritten value is not the purchase price.</b> It is Year-1 NOI capitalised at the exit cap - '
+        + (isFinite(_uv) ? (money(noi)+' &divide; '+pct(cap)+' = '+money(_uv)) : 'NOI &divide; exit cap')
         + ' - which is how a lender sizes against value rather than against what you paid. '
         + (isFinite(uwValue) && price > 0 && Math.abs(uwValue-price) > price*0.005
             ? 'On this deal the two differ by ' + money(Math.abs(uwValue-price)) + ', so an LTV percentage and an LTC '
@@ -15066,7 +15161,7 @@ extend('Deal Underwrite','clarityInputs', function(o){
                                            : ', which equals the price on this deal because both are zero')
         + '), so 65% of basis is only 65% of price when there are no acquisition costs.'
         + (added ? ' <b>Bad debt / credit loss is now editable above</b>, next to vacancy. It defaults to 0.50% and it does '
-                 + 'affect NOI, so it was reducing revenue with no way to see or change it.' : ''));
+                 + 'affect NOI, so it was reducing revenue with no way to see or change it.' : '')));
   }
 });
 
@@ -18163,7 +18258,8 @@ function snapshotCard(){
     + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + pct(h.gpIRR))
     + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(h.binding) + '</span>' : ''))
     + row('Equity', money(h.equity)) + row('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
-    + row('Yield on Cost', pct(h.yoc)) + '</div>'
+    + row('Yield on Cost', pct(h.yoc))
+    + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '') + '</div>'
     + '<div class="bk-snap-foot">Live from the underwriting engine. <a data-goto-sheet2="Returns">Open Returns</a></div></div>';
 }
 function decorateSide(frame){
@@ -18377,6 +18473,120 @@ setInterval(function(){
 
 window.bkUxRefresh = refreshFlow;
 try { decorateRail(); } catch(e){}
+})();
+</script>
+<script id="bk-conventions-ui">
+/* ===========================================================================
+   UNDERWRITING CONVENTIONS - controls and disclosure (CV-2026.10)
+   ---------------------------------------------------------------------------
+   The four methodology settings resolved by bkConventions() are edited here,
+   on Deal Underwrite, with the GP / LP ownership split and its validation.
+   A deal that predates the settings shows LEGACY and keeps its original
+   methodology until someone applies the current standard to it on purpose.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof bkConventions !== 'function') return;
+function esc(v){ return (typeof bkEsc === 'function') ? bkEsc(v) : String(v == null ? '' : v); }
+function pct(v){ return isFinite(v) ? (v*100).toFixed(2) + '%' : '—'; }
+function chip(cls, t){ return '<span class="status-chip ' + (cls || '') + '">' + esc(t) + '</span>'; }
+function hasDeal(){ try { return typeof window.bkProductionCounts === 'function' ? !!window.bkProductionCounts().activeDeal : true; } catch(e){ return false; } }
+function rerender(){ try { if(currentSheet) showSheet(currentSheet); } catch(e){} }
+
+var DEF = [
+  { key:'cvRentGrowthStart', label:'Rent & Expense Growth Start',
+    opts:[['year2','Year 2'],['month1','Month 1']],
+    why:{ year2:'Year 1 equals the underwritten rents and expenses; growth steps once a year from Year 2.',
+          month1:'Every line compounds monthly from month 1, so Year 1 is above the underwritten figures. Use for explicit monthly escalations.' } },
+  { key:'cvOpexVariablePct', label:'Occupancy-Variable Share of Controllable Opex', num:true,
+    opts:[[0,'0% (all fixed)'],[0.1,'10%'],[0.2,'20%'],[0.25,'25%'],[0.3,'30%'],[0.4,'40% (workbook)'],[0.5,'50%'],[0.75,'75%'],[1,'100%']],
+    why:{ _:'Share of controllable expenses that falls with occupancy. Vacancy is always applied to rent; at 0% expenses are not reduced by vacancy.' } },
+  { key:'cvLtvBasis', label:'Acquisition LTV Basis',
+    opts:[['price','Purchase price'],['lesser','Lesser of price / value'],['value','Underwritten value']],
+    why:{ price:'Standard for an acquisition loan. LTC and DSCR still apply; the loan is the lowest constraint.',
+          lesser:'Lender-conservative: the lower of what you paid and what the income supports.',
+          value:'Year-1 NOI ÷ exit cap. For refinance or value-based lending; the exit cap then drives the loan size.' } },
+  { key:'cvHurdleBasis', label:'Waterfall Hurdles Measured On',
+    opts:[['lp','LP cash flows'],['deal','Total deal equity']],
+    why:{ lp:'Each tier opens only when the LP itself has reached that IRR. Splits and catch-up are the deal’s own terms.',
+          deal:'Tiers clear on total distributions (including GP catch-up and promote). Use only if the partnership agreement says so.' } }
+];
+
+function statusChip(s, k){
+  var v = s[k];
+  if(v === undefined || v === null || v === '') return chip('warn', 'LEGACY');
+  return (String(v) === String(window.BK_CV_STANDARD[k])) ? chip('pass', 'STANDARD') : chip('', 'CUSTOM');
+}
+function panel(){
+  var s = bkLoad(), cv = bkConventions(s);
+  var rows = DEF.map(function(d){
+    var cur = cv[d.key], opts = d.opts.slice();
+    if(d.num && !opts.some(function(o){ return Number(o[0]) === Number(cur); })) opts.push([cur, pct(cur)]);
+    var sel = '<select onchange="bkSetConvention(\'' + d.key + '\',this.value)">' + opts.map(function(o){
+      var on = d.num ? Number(o[0]) === Number(cur) : String(o[0]) === String(cur);
+      return '<option value="' + esc(o[0]) + '"' + (on ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+    var why = d.why[cur] || d.why._ || '';
+    return '<tr><td class="rowlabel">' + d.label + '</td><td class="v">' + sel + '</td><td data-bk-align="text">' + esc(why) + '</td><td>' + statusChip(s, d.key) + '</td></tr>';
+  }).join('');
+  var gp = Number(s.gpShare), ok = isFinite(gp) && gp >= 0 && gp <= 1;
+  rows += bkInput('GP Equity Share', 'gpShare', '% of equity - template default 10%', 'pct');
+  rows += '<tr><td class="rowlabel">LP Equity Share</td><td class="v">' + (ok ? pct(1 - gp) : '—') + '</td><td data-bk-align="text">100% less GP share</td><td>'
+       + (ok ? chip('pass', 'GP + LP = 100%') : chip('fail', 'GP MUST BE 0-100%')) + '</td></tr>';
+  var legacy = cv.legacyFields.length;
+  var banner = legacy
+    ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9888;</span><div><b>This deal keeps its original methodology.</b> It was created before the '
+      + 'CV-2026.10 conventions, so ' + legacy + ' setting' + (legacy > 1 ? 's are' : ' is') + ' marked LEGACY and calculated exactly as before. '
+      + 'Nothing changes unless you change it.<div style="margin-top:8px"><button type="button" class="status-chip pass" onclick="bkApplyStandardConventions()">'
+      + 'APPLY CURRENT STANDARD CONVENTIONS</button></div></div></div>'
+    : '';
+  return banner + '<div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
+    + '<th style="text-align:left">What it does</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+window.bkSetConvention = function(k, v){
+  var s = bkLoad();
+  s[k] = (k === 'cvOpexVariablePct') ? Math.max(0, Math.min(1, Number(v) || 0)) : String(v);
+  if(!s._conventions) s._conventions = { version:'custom', appliedAt:new Date().toISOString() };
+  bkSave(s); rerender();
+};
+window.bkApplyStandardConventions = function(){
+  var s = bkLoad();
+  Object.keys(window.BK_CV_STANDARD).forEach(function(k){ s[k] = window.BK_CV_STANDARD[k]; });
+  s._conventions = { version:'CV-2026.10', appliedAt:new Date().toISOString(), appliedTo:'existing deal' };
+  bkSave(s); rerender();     // one save = one undo step
+};
+
+function wrap(sheet, fn){
+  var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
+  var w = function(){
+    var o = prev.apply(this, arguments);
+    try { if(hasDeal() && o && typeof o === 'object' && !/no deal loaded|there is no active deal/i.test(String(o.main || ''))) fn(o); } catch(e){}
+    return o;
+  };
+  Object.keys(prev).forEach(function(k){ if(k.indexOf('__') === 0) w[k] = prev[k]; });
+  if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(sheet, w); else RENDERERS[sheet] = w;
+}
+wrap('Deal Underwrite', function(o){ o.main = panel() + '<div style="height:16px"></div>' + (o.main || ''); });
+function cvLabel(){ var cv = bkConventions(bkLoad()); return cv.isStandard ? 'Standard' : cv.isLegacy ? 'Legacy' : 'Custom'; }
+wrap('Property CF', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'Growth Start': bkConventions(bkLoad()).cvRentGrowthStart === 'year2' ? 'Year 2' : 'Month 1' }); });
+wrap('Debt', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'LTV Basis': window.bkLtvBasisLabel(bkLoad(), true).replace(/^./, function(c){ return c.toUpperCase(); }) }); });
+wrap('Equity Waterfall', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'Hurdles On': bkConventions(bkLoad()).cvHurdleBasis === 'lp' ? 'LP cash flows' : 'Deal equity' }); });
+wrap('Returns', function(o){ o.meta = Object.assign({}, o.meta || {}, { Conventions: cvLabel() }); });
+
+/* GP / LP ownership must total 100%: an out-of-range GP share is a FAIL control, which the readiness
+   state machine already turns into NOT DECISION-GRADE. */
+var prevCtl = window.bkModelControls;
+if(typeof prevCtl === 'function'){
+  window.bkModelControls = function(){
+    var out = prevCtl.apply(this, arguments);
+    try {
+      var s = bkLoad(), gp = Number(s.gpShare);
+      if(Array.isArray(out) && hasDeal() && !(isFinite(gp) && gp >= 0 && gp <= 1))
+        out.push({ level:'FAIL', area:'Equity', msg:'GP equity share must be between 0% and 100% so GP + LP ownership totals 100% (entered: ' + pct(gp) + ').' });
+    } catch(e){}
+    return out;
+  };
+}
+window.bkConventionsLabel = cvLabel;
 })();
 </script>
 </body>
