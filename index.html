@@ -1478,7 +1478,7 @@ function bkSave(d){
 // longer rendered as literal garbage text.
 function bkNormZero(n){ return n===0 ? 0 : n; } // collapses -0 to +0 without touching any other value
 function bkFmt(n){ n=Number(n); if(!isFinite(n)) return '-'; return bkNormZero(Math.round(n)+0).toLocaleString('en-US'); }
-function bkPct(n){ n=Number(n); if(!isFinite(n)) return '-'; return (bkNormZero(n+0)*100).toFixed(1)+'%'; }
+function bkPct(n){ n=Number(n); if(!isFinite(n)) return '-'; return (bkNormZero(n+0)*100).toFixed(2)+'%'; } // two decimals: a 6.75% coupon must never read 6.8% (or, once the table normalizer pads it, 6.80%)
 function bkEsc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function bkVal(key,fmt){const s=bkLoad(),v=s[key];
   if(fmt==='money'||fmt==='pct'||fmt==='num'){
@@ -6571,9 +6571,9 @@ try{implement(document);}catch(e){}
 
   function runCase(name){const s=bkLoad(),ov=scenarioOverrides(s,name);return bkRunScenario(ov);}
   function safeRun(ov){try{return bkRunScenario(ov)}catch(e){return{irr:NaN,moic:NaN}}}
-  RENDERERS['Sensitivity']=function(){const s=bkLoad(),baseCap=Number(s.exitCap)||.07,baseGrowth=Number(s.commercialRentGrowth)||.025,baseRate=(String(s.debtRateType||'Fixed')==='Floating'?Number(s.debtIndexRate||0):Number(s.acqRate||0));
+  RENDERERS['Sensitivity']=function(){const s=bkLoad(),baseCap=Number(s.exitCap)||.07,baseGrowth=(function(){/* residential deals grow on rentGrowth, all-commercial deals on commercialRentGrowth; a genuine 0% is a value, not a blank */let c={};try{c=bkCalc()}catch(e){}const k=(Number(c.gpr)>0||!(Number(c.commercial)+Number(c.recovery)>0))?'rentGrowth':'commercialRentGrowth';const v=Number(s[k]);return isFinite(v)?v:.025;})(),baseRate=(String(s.debtRateType||'Fixed')==='Floating'?Number(s.debtIndexRate||0):Number(s.acqRate||0));
     const cases=['Downside','Base','Upside'].map(n=>{const ov=scenarioOverrides(s,n),r=safeRun(ov);return{name:n,ov,r};});
-    const caseRows=cases.map(c=>`<tr class="${c.name===String(s.scenarioCase||'Base')?'grandtotal':''}"><td class="rowlabel">${c.name}</td><td>${bkPct(c.ov.exitCap===undefined?baseCap:c.ov.exitCap)}</td><td>${bkPct(c.ov.commercialRentGrowth===undefined?baseGrowth:c.ov.commercialRentGrowth)}</td><td>${bkPct(c.ov.acqRate===undefined&&c.ov.debtIndexRate===undefined?baseRate:(String(s.debtRateType||'Fixed')==='Floating'?c.ov.debtIndexRate:c.ov.acqRate))}</td><td>${isFinite(c.r.irr)?bkPct(c.r.irr):'n/a'}</td><td>${isFinite(c.r.moic)?c.r.moic.toFixed(2)+'x':'n/a'}</td></tr>`).join('');
+    const caseRows=cases.map(c=>`<tr class="${c.name===String(s.scenarioCase||'Base')?'grandtotal':''}"><td class="rowlabel">${c.name}</td><td>${bkPct(c.ov.exitCap===undefined?baseCap:c.ov.exitCap)}</td><td>${bkPct(baseGrowth+(c.name==='Upside'?Number(s.upRentGrowthDelta||0):c.name==='Downside'?Number(s.downRentGrowthDelta||0):0))}</td><td>${bkPct(c.ov.acqRate===undefined&&c.ov.debtIndexRate===undefined?baseRate:(String(s.debtRateType||'Fixed')==='Floating'?c.ov.debtIndexRate:c.ov.acqRate))}</td><td>${isFinite(c.r.irr)?bkPct(c.r.irr):'n/a'}</td><td>${isFinite(c.r.moic)?c.r.moic.toFixed(2)+'x':'n/a'}</td></tr>`).join('');
     const caps=[-.01,-.005,0,.005,.01].map(x=>baseCap+x),growths=[-.01,-.005,0,.005,.01].map(x=>baseGrowth+x);const grid=caps.map(cap=>growths.map(g=>safeRun({exitCap:cap,commercialRentGrowth:g,rentGrowth:g})));
     const gridHead=`<tr><th class="rowlabel-h">Exit Cap \\ Rent Growth</th>${growths.map(g=>`<th>${bkPct(g)}</th>`).join('')}</tr>`,gridRows=caps.map((cap,i)=>`<tr><td class="rowlabel">${bkPct(cap)}</td>${grid[i].map(r=>`<td>${isFinite(r.irr)?bkPct(r.irr):'n/a'}<br><span style="opacity:.65;font-size:.85em">${isFinite(r.moic)?r.moic.toFixed(2)+'x':''}</span></td>`).join('')}</tr>`).join('');
     const oneWay=(label,key,base,steps,extra={})=>`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>${label} - One-Way Sensitivity</caption><thead><tr><th class="rowlabel-h">Assumption</th>${steps.map(x=>`<th>${key==='purchasePrice'?'$'+bkFmt(x):bkPct(x)}</th>`).join('')}</tr></thead><tbody><tr><td class="rowlabel">Levered XIRR</td>${steps.map(x=>{const ov=Object.assign({},extra,{[key]:x});if(key==='commercialRentGrowth')ov.rentGrowth=x;const r=safeRun(ov);return`<td>${isFinite(r.irr)?bkPct(r.irr):'n/a'}</td>`}).join('')}</tr><tr><td class="rowlabel">Levered MOIC</td>${steps.map(x=>{const ov=Object.assign({},extra,{[key]:x});if(key==='commercialRentGrowth')ov.rentGrowth=x;const r=safeRun(ov);return`<td>${isFinite(r.moic)?r.moic.toFixed(2)+'x':'n/a'}</td>`}).join('')}</tr></tbody></table></div>`;
@@ -9120,7 +9120,13 @@ function engine(){
      class, so BOTH modes normalise into the same structure and the same
      engine. There is no second code path. */
   var lines;
-  if(detail){
+  if(!st.costSeg){
+    /* No cost segregation: the page states that the entire depreciable basis flows to the base
+       building class, so the engine must allocate it there too. Previously this fell through to
+       the (empty) detailed-component path and reported the full basis as OUT OF BALANCE. */
+    lines = B > 0 ? [{ label:st.baseLife+' Year Recovery', basis:B, life:Number(st.baseLife), bonus:false,
+                       convention:'Underwriting', method:'Straight-line', source:'Underwriting Assumption', status:'CALC' }] : [];
+  } else if(detail){
     lines = comps.map(function(c){
       return { label:c.component||c.description||'Component', basis:Number(c.basis)||0,
                life:Number(c.recovery)||0, bonus:bonusEligible(c, st),
@@ -9136,7 +9142,8 @@ function engine(){
   }
 
   var componentTotal = comps.reduce(function(a,c){ return a + (Number(c.basis)||0); }, 0);
-  var allocated = detail ? componentTotal : CLASSES.reduce(function(a,k){ return a + (bkt[k]||0); }, 0);
+  var allocated = !st.costSeg ? (B > 0 ? B : 0)
+                : detail ? componentTotal : CLASSES.reduce(function(a,k){ return a + (bkt[k]||0); }, 0);
   var variance = allocated - B;
   var tie = Math.abs(variance) < 0.01;
 
@@ -9590,6 +9597,7 @@ function canonical(){
        it is valid. An out-of-balance or invalid allocation must not silently
        feed a tax calculation. */
     if(!e || e.errors.length || e.allocated <= 0) return null;
+    if(!e.settings.costSeg && !(e.landValue > 0) && !(e.capex > 0)) return null;   /* nothing entered yet: a 0% land default is a blank, not an assumption */
     return e;
   } catch(err){ return null; }
 }
@@ -12059,9 +12067,11 @@ function totalBasis(s){
 /* =====================================================================
    RETURNS - VALUATION CONCLUSION: DIRECT CAP vs DCF
    ===================================================================== */
-extend('Returns','w3bValuation', function(o){
-  var s = bkLoad(), u;
-  try { u = bkAnnualCF(); } catch(e){ return; }
+/* ONE valuation calculator. Returns renders it in full and Home reads the same object, so the
+   two pages can never disagree (Home previously ran its own copy: NOI before reserves, a Year-10
+   basis on any hold, a DCF dated from today and with no sale proceeds). */
+window.bkValuationConclusion = function(){
+  var s = bkLoad(), u = bkAnnualCF();
   var basisYear = Math.max(1, Math.min(u.arr.length, Math.round(Number(s.capBasisYear)|| u.arr.length)));
   var basisNOI = u.arr[basisYear-1] ? u.arr[basisYear-1].after : NaN;
   var exitCap = Number(s.exitCap)||0;
@@ -12083,9 +12093,17 @@ extend('Returns','w3bValuation', function(o){
 
   var method = String(s.valuationMethod||'Direct Cap');
   var concluded = /dcf/i.test(method) ? dcf : directCap;
-  var units = Number(s.units)||0, gsf = Number(s.gsf)||0;
   var basis = totalBasis(s);
-  var impliedCap = concluded ? basisNOI/concluded : NaN;
+  return { s:s, u:u, basisYear:basisYear, basisNOI:basisNOI, exitCap:exitCap, directCap:directCap,
+           disc:disc, dcf:dcf, method:method, isDcf:/dcf/i.test(method), concluded:concluded, basis:basis,
+           impliedCap: concluded ? basisNOI/concluded : NaN };
+};
+extend('Returns','w3bValuation', function(o){
+  var v;
+  try { v = window.bkValuationConclusion(); } catch(e){ return; }
+  var s = v.s, u = v.u, basisYear = v.basisYear, basisNOI = v.basisNOI, exitCap = v.exitCap, directCap = v.directCap,
+      disc = v.disc, dcf = v.dcf, method = v.method, concluded = v.concluded, basis = v.basis, impliedCap = v.impliedCap;
+  var units = Number(s.units)||0, gsf = Number(s.gsf)||0;
 
   var body = ''
     + '<tr>'+lbl('Direct Cap Value')+val(money(directCap))
@@ -13133,20 +13151,20 @@ extend('Reverse Solve','fVerdict', function(o){
 
   var verdict, cls, why;
   if(!isFinite(yoc) || !isFinite(target)){
-    verdict = 'NOT ENOUGH INFORMATION'; cls = '';
+    verdict = 'INSUFFICIENT DATA'; cls = '';
     why = 'An exit cap rate and a cost basis are both needed before a yield-on-cost verdict means anything.';
   } else if(gap >= 0){
-    verdict = 'THE DEAL SUPPORTS THIS BASIS'; cls = 'pass';
+    verdict = 'SUPPORTS BASIS'; cls = 'pass';
     why = 'Yield on cost of ' + pct(yoc) + ' clears the ' + pct(target) + ' target by ' + (gap*10000).toFixed(0)
         + ' basis points. At today&rsquo;s NOI the basis could rise to about ' + money(noi/target)
         + ' before the deal stops clearing.';
   } else if(gap >= -0.005){
-    verdict = 'MARGINAL - WITHIN 50 BASIS POINTS'; cls = 'warn';
+    verdict = 'MARGINAL'; cls = 'warn';
     why = 'Yield on cost of ' + pct(yoc) + ' is ' + Math.abs(gap*10000).toFixed(0) + ' basis points short of the '
         + pct(target) + ' target. Closing the gap needs about ' + money(noiGap) + ' more NOI, or roughly '
         + money(basis - (target>0 ? noi/target : 0)) + ' less basis.';
   } else {
-    verdict = 'THE DEAL DOES NOT SUPPORT THIS BASIS'; cls = 'fail';
+    verdict = 'DOES NOT SUPPORT'; cls = 'fail';
     why = 'Yield on cost of ' + pct(yoc) + ' is ' + Math.abs(gap*10000).toFixed(0) + ' basis points below the '
         + pct(target) + ' target. That is about ' + money(noiGap) + ' of missing NOI, or about '
         + money(basis - (target>0 ? noi/target : 0)) + ' of basis that would have to come out.';
@@ -13172,35 +13190,18 @@ extend('Reverse Solve','fVerdict', function(o){
    E. HOME - the valuation conclusion readout (HM-04)
    ===================================================================== */
 extend('Home','fValuation', function(o){
-  var s = bkLoad(), c, u = null;
-  try { c = bkCalc(); } catch(e){ return; }
-  var method = String(s.valuationMethod||'Direct Cap');
-  var basisYear = Math.max(1, Math.round(Number(s.capBasisYear)||10));
-  var disc = Number(s.dcfDiscountRate)||0.07;
-  try { u = bkAnnualCF(); } catch(e){}
-
-  var directCap = NaN, dcf = NaN;
-  if(u && u.arr && u.arr.length){
-    var yr = Math.min(basisYear, u.arr.length);
-    var noiB = Number(u.arr[yr-1].noi)||0;
-    if(Number(s.exitCap)) directCap = noiB/Number(s.exitCap);
-    if(typeof bkXnpv==='function' && u.monthly && u.monthly.length){
-      try {
-        var vals = u.monthly.map(function(m){ return Number(m.noi)||0; });
-        var d0 = new Date(); var dts = vals.map(function(_,i){ var d = new Date(d0); d.setMonth(d.getMonth()+i); return d; });
-        dcf = bkXnpv(disc, vals, dts);
-      } catch(e){}
-    }
-  }
-  var concluded = (method === 'DCF') ? dcf : directCap;
+  var v;
+  try { v = window.bkValuationConclusion(); } catch(e){ return; }
+  var s = v.s, method = v.isDcf ? 'DCF' : 'Direct Cap', basisYear = v.basisYear, disc = v.disc,
+      directCap = v.directCap, dcf = v.dcf, concluded = v.concluded;
 
   o.main = (o.main||'') + wrapTable('Valuation Conclusion',
     '<tr><th class="rowlabel-h">Basis</th><th>Value</th><th style="text-align:left">Method</th><th>Status</th></tr>',
       '<tr>'+lbl('Direct Capitalisation')+val(isFinite(directCap)?money(directCap):'-')
-        + txt('Year '+intf(basisYear)+' NOI &divide; exit cap '+pct(Number(s.exitCap)))
+        + txt('Year '+intf(basisYear)+' NOI after reserves &divide; exit cap '+pct(Number(s.exitCap)))
         + '<td class="v">'+chip(method!=='DCF'?'pass':'', method!=='DCF'?'SELECTED':'')+'</td></tr>'
     + '<tr>'+lbl('Discounted Cash Flow')+val(isFinite(dcf)?money(dcf):'-')
-        + txt('Monthly NOI discounted at '+pct(disc)+' (XNPV, actual/365)')
+        + txt('Monthly NOI plus net sale, discounted at '+pct(disc)+' to closing (XNPV)')
         + '<td class="v">'+chip(method==='DCF'?'pass':'', method==='DCF'?'SELECTED':'')+'</td></tr>'
     + '<tr class="grandtotal">'+lbl('CONCLUDED VALUE')+val(isFinite(concluded)?money(concluded):'-')
         + txt('On the '+esc(method)+' basis')+'<td class="v">'+chip('pass','LIVE')+'</td></tr>')
@@ -17339,6 +17340,536 @@ try{
 })();
 
 }catch(e){ CR.errors.push("f17: "+e.message); }
+})();
+</script>
+<style id="bk-audit-display-fixes-css">
+/* KEY-METRIC ROWS. The navy fill means "closing total" - the last row(s) of a table. A highlighted
+   row anywhere else (directly under the navy header, or mid-statement) used to share that fill and
+   ran into the header or into a neighbouring total. Those rows now read as a key line instead:
+   a light navy tint, bold ink and a gold rule, distinct from both the header and the closing total. */
+:root{ --bk-key-fill:#E3E9F0; --bk-key-ink:#173049; --bk-key-rule:#C9A968; --bk-key-line:rgba(23,48,73,.18); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(237,234,226,.08); --bk-key-ink:#EDEAE2; --bk-key-line:rgba(237,234,226,.18); } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(237,234,226,.08); --bk-key-ink:#EDEAE2; --bk-key-line:rgba(237,234,226,.18); }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > td,
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > th {
+  background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; font-weight:700 !important; opacity:1 !important;
+  border-top:1px solid var(--bk-key-line) !important; border-bottom:1px solid var(--bk-key-line) !important; }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > :first-child {
+  box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip:not(.pass):not(.warn):not(.fail) {
+  background:#ECE9E1 !important; color:#3A3A36 !important; border-color:transparent !important; }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.pass { background:#E3F1E7 !important; color:#1F7A45 !important; border-color:transparent !important; }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.warn { background:#FBF0D9 !important; color:#8A6212 !important; border-color:transparent !important; }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.fail { background:#F8E1DC !important; color:#9B2C1F !important; border-color:transparent !important; }
+/* two closing totals in a row get a hairline between them instead of fusing into one block */
+html body #viewport table.fin tbody tr.grandtotal:not([data-bk-emph="key"]) + tr.grandtotal:not([data-bk-emph="key"]) > td { border-top:1px solid rgba(244,239,225,.22) !important; }
+</style>
+<script id="bk-audit-display-fixes">
+/* ===========================================================================
+   AUDIT DISPLAY FIXES (sample-deal audit)
+   ---------------------------------------------------------------------------
+   1. Returns: the meta strip still read "Excel IRR 13.0% / Excel MOIC 2.74x /
+      Verified" and the sidebar carried a "Workbook Tie-Out - Verified" card on
+      EVERY deal. Those were literals from one historical reference workbook (the
+      comparison column was already removed for the same reason). They now show
+      the active deal's own live figures.
+   2. Residual Land: "Workbook Stored Solve $5,288,519" was a literal from the
+      reference workbook shown on every deal. Removed.
+   3. Key-metric rows (see the CSS above) and plain-text status words in
+      Status / Lineage columns rendered as the same pill every other status uses.
+   No engine, input or calculated figure is changed by anything here.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined') return;
+function wrap(sheet, fn){
+  var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
+  var w = function(){
+    var o = prev.apply(this, arguments);
+    try {
+      if(typeof window.bkProductionCounts === 'function' && !window.bkProductionCounts().activeDeal) return o;
+      if(!o || typeof o !== 'object' || /no deal loaded|there is no active deal/i.test(String(o.main || ''))) return o;
+      fn(o);
+    } catch(e){}
+    return o;
+  };
+  Object.keys(prev).forEach(function(k){ if(k.indexOf('__') === 0) w[k] = prev[k]; });
+  if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(sheet, w); else RENDERERS[sheet] = w;
+}
+
+wrap('Returns', function(o){
+  var x = null; try { x = bkMonthlyReturns(); } catch(e){}
+  if(o.meta){
+    var m = {};
+    Object.keys(o.meta).forEach(function(k){
+      if(k === 'Excel IRR'){ m['Levered IRR'] = x && isFinite(x.irr) ? bkPct(x.irr) : '-'; return; }
+      if(k === 'Excel MOIC'){ m['Levered MOIC'] = x && isFinite(x.moic) ? x.moic.toFixed(2)+'x' : '-'; return; }
+      m[k] = (k === 'Status' && o.meta[k] === 'Verified') ? 'Live' : o.meta[k];
+    });
+    o.meta = m;
+  }
+  if(o.sidebar){
+    o.sidebar = String(o.sidebar)
+      .replace(/<div class="card"><div class="card-head">Workbook Tie-Out - Verified<\/div>[\s\S]*?<\/div><\/div><\/div>/, '')
+      .replace(/<span class="status-chip ok">Verified exact<\/span>/, '<span class="status-chip pass">Live</span>');
+  }
+  if(o.desc) o.desc = String(o.desc).replace(', verified against the workbook engine', ' from the live monthly engine');
+});
+
+wrap('Residual Land', function(o){
+  o.main = String(o.main || '').replace(/<tr><td class="rowlabel">Workbook Stored Solve<span class="bk-sub">Reference value from Residual Land C20<\/span><\/td><td>\$5,288,519<\/td>[\s\S]*?<\/tr>/, '');
+  if(o.meta && o.meta['Effective Land'] && String(o.meta['Effective Land']).charAt(0) !== '$') o.meta['Effective Land'] = '$' + o.meta['Effective Land'];
+});
+
+/* ---- display pass: key rows + status words as pills (idempotent; writes only on change) ---- */
+var STATUS_HEAD = /^(status|lineage|test|state|result|note)$/i;
+var STATUS_WORD = /^[A-Z][A-Z0-9 \/&+\-]{1,26}$/;
+function chipClass(w){
+  if(/^(PASS|OK|MET|TIE|TIES|LIVE|ON|SELECTED|CONCLUDED|ACTIVE|ENGINE|VERIFIED)$/.test(w)) return 'pass';
+  if(/^(WARN|REVIEW|STALE|WATCH|MARGINAL|RAMP|NOT MET|BINDING|NOT REACHABLE)$/.test(w)) return 'warn';
+  if(/^(FAIL|FAILED|BLOCKED|OUT|BREACH|OUT OF BALANCE)$/.test(w)) return 'fail';
+  return '';
+}
+function run(){
+  var vp = document.getElementById('viewport'); if(!vp) return;
+  vp.querySelectorAll('table.fin').forEach(function(tb){
+    // key vs closing totals, per tbody
+    tb.querySelectorAll('tbody').forEach(function(body){
+      var rows = [].slice.call(body.children).filter(function(r){ return r.tagName === 'TR'; });
+      var closing = true;
+      for(var i = rows.length - 1; i >= 0; i--){
+        var r = rows[i], tot = r.classList.contains('grandtotal') || r.classList.contains('total');
+        if(!tot){ closing = false; if(r.hasAttribute('data-bk-emph')) r.removeAttribute('data-bk-emph'); continue; }
+        if(closing){ if(r.hasAttribute('data-bk-emph')) r.removeAttribute('data-bk-emph'); }
+        else if(r.getAttribute('data-bk-emph') !== 'key') r.setAttribute('data-bk-emph', 'key');
+      }
+    });
+    // status words -> pills
+    var hr = tb.querySelector('thead tr:last-child'); if(!hr) return;
+    var cols = []; var ci = 0;
+    [].forEach.call(hr.children, function(th){ if(STATUS_HEAD.test((th.textContent || '').trim())) cols.push(ci); ci += Number(th.getAttribute('colspan') || 1); });
+    if(!cols.length) return;
+    tb.querySelectorAll('tbody tr').forEach(function(tr){
+      var i = 0;
+      [].forEach.call(tr.children, function(td){
+        var span = Number(td.getAttribute('colspan') || 1);
+        if(span === 1 && cols.indexOf(i) > -1 && !td.children.length){
+          var w = (td.textContent || '').trim();
+          if(STATUS_WORD.test(w)) td.innerHTML = '<span class="status-chip ' + chipClass(w) + '">' + w.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>';
+        }
+        i += span;
+      });
+    });
+  });
+}
+var q = false; function schedule(){ if(q) return; q = true; requestAnimationFrame(function(){ q = false; try { run(); } catch(e){} }); }
+if(typeof window.bkDisplayPass === 'function') window.bkDisplayPass(schedule);
+window.bkAuditDisplayRun = run;
+schedule();
+})();
+</script>
+<style id="bk-sensitivity-explorer-css">
+/* SENSITIVITY EXPLORER - charts + view toggles. Light/dark tokens follow the app's own scheme. */
+.bk-sx{ --sx-surface:var(--surface,#fff); --sx-ink:var(--ink-900,#1B1B18); --sx-ink2:var(--ink-500,#5F5B52); --sx-line:var(--line,#E2DCCD);
+  --sx-grid:rgba(23,48,73,.10); --sx-up:#2a78d6; --sx-dn:#e34948; --sx-mid:#f0efec;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948; --s9:#5F5B52; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#3987e5; --sx-dn:#e66767; --sx-mid:#383835;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#A8A398; } }
+:root[data-theme="dark"] .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#3987e5; --sx-dn:#e66767; --sx-mid:#383835;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#A8A398; }
+.bk-sx-card{ background:var(--sx-surface); border:1px solid var(--sx-line); border-radius:8px; padding:14px 16px 16px; margin-top:16px; box-shadow:var(--shadow-card,none); }
+.bk-sx-card:first-child{ margin-top:0; }
+.bk-sx-title{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--sx-ink2); margin:0 0 2px; }
+.bk-sx-sub{ font-size:12px; color:var(--sx-ink2); margin:0 0 10px; }
+.bk-sx-controls{ display:flex; flex-wrap:wrap; gap:10px 18px; align-items:flex-end; }
+.bk-sx-ctl{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+.bk-sx-ctl > span{ font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--sx-ink2); }
+.bk-sx-ctl select{ font:inherit; font-size:12px; height:28px; padding:0 8px; border:1px solid var(--sx-line); border-radius:6px; background:var(--sx-surface); color:var(--sx-ink); max-width:100%; }
+.bk-sx-seg{ display:inline-flex; border:1px solid var(--sx-line); border-radius:6px; overflow:hidden; }
+.bk-sx-seg button{ font:inherit; font-size:12px; height:28px; padding:0 12px; border:0; border-left:1px solid var(--sx-line); background:var(--sx-surface); color:var(--sx-ink); cursor:pointer; }
+.bk-sx-seg button:first-child{ border-left:0; }
+.bk-sx-seg button[aria-pressed="true"]{ background:var(--navy-900,#173049); color:#F4EFE1; font-weight:700; }
+.bk-sx-chips{ display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; }
+.bk-sx-chip{ font:inherit; font-size:11.5px; display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 10px; border-radius:13px; border:1px solid var(--sx-line); background:var(--sx-surface); color:var(--sx-ink2); cursor:pointer; }
+.bk-sx-chip i{ width:10px; height:10px; border-radius:50%; background:var(--c); opacity:.35; }
+.bk-sx-chip[aria-pressed="true"]{ color:var(--sx-ink); border-color:var(--c); }
+.bk-sx-chip[aria-pressed="true"] i{ opacity:1; }
+.bk-sx svg{ display:block; width:100%; height:auto; overflow:visible; font-family:inherit; }
+.bk-sx-svgwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+@media (max-width:760px){ .bk-sx-svgwrap svg{ min-width:640px; } }
+.bk-sx svg text{ fill:var(--sx-ink2); font-size:11px; }
+.bk-sx svg text.v{ fill:var(--sx-ink); font-weight:600; }
+.bk-sx svg text.lbl{ fill:var(--sx-ink); font-size:12px; }
+.bk-sx svg .grid{ stroke:var(--sx-grid); stroke-width:1; }
+.bk-sx svg .axis{ stroke:var(--sx-ink2); stroke-width:1; opacity:.6; }
+.bk-sx svg [data-tip]{ cursor:default; }
+.bk-sx svg rect.hit{ fill:transparent; }
+.bk-sx svg g.row:hover rect.bar{ opacity:.82; }
+.bk-sx-legend{ display:flex; flex-wrap:wrap; gap:6px 16px; font-size:11.5px; color:var(--sx-ink2); margin-top:6px; }
+.bk-sx-legend span{ display:inline-flex; align-items:center; gap:6px; }
+.bk-sx-legend i{ width:12px; height:10px; border-radius:2px; background:var(--c); }
+.bk-sx-two{ display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+.bk-sx-heat{ width:100%; border-collapse:separate; border-spacing:2px; font-size:12px; table-layout:fixed; }
+.bk-sx-heat th{ font-size:11px; font-weight:700; color:var(--sx-ink2); padding:4px; text-align:center; }
+.bk-sx-heat th.rh{ text-align:right; padding-right:8px; white-space:nowrap; }
+.bk-sx-heat td{ text-align:center; padding:8px 4px; border-radius:4px; color:var(--sx-ink); font-variant-numeric:tabular-nums; background:var(--sx-mid); }
+.bk-sx-heat td.dark{ color:#fff; }
+.bk-sx-heat td.base{ outline:2px solid var(--sx-ink); outline-offset:-2px; font-weight:700; }
+.bk-sx-heat .corner{ font-size:10px; text-align:right; }
+.bk-sx-scale{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--sx-ink2); margin-top:8px; }
+.bk-sx-scale b{ display:inline-block; width:140px; height:8px; border-radius:4px; background:linear-gradient(90deg,var(--sx-dn),var(--sx-mid),var(--sx-up)); }
+.bk-sx details{ margin-top:8px; font-size:12px; }
+.bk-sx details summary{ cursor:pointer; color:var(--sx-ink2); font-size:11.5px; }
+.bk-sx details table{ width:100%; border-collapse:collapse; margin-top:6px; font-size:11.5px; }
+.bk-sx details th, .bk-sx details td{ padding:4px 6px; border-bottom:1px solid var(--sx-line); text-align:right; font-variant-numeric:tabular-nums; }
+.bk-sx details th:first-child, .bk-sx details td:first-child{ text-align:left; }
+.bk-sx-be{ width:100%; border-collapse:collapse; font-size:12px; }
+.bk-sx-be th{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--sx-ink2); text-align:right; padding:6px 8px; border-bottom:1px solid var(--sx-line); }
+.bk-sx-be td{ padding:7px 8px; border-bottom:1px solid var(--sx-line); text-align:right; font-variant-numeric:tabular-nums; color:var(--sx-ink); }
+.bk-sx-be th:first-child, .bk-sx-be td:first-child{ text-align:left; }
+.bk-sx-be td.cushion-neg{ color:var(--sx-dn); font-weight:700; }
+.bk-sx-tip{ position:fixed; z-index:9999; pointer-events:none; background:#173049; color:#F4EFE1; font-size:11.5px; line-height:1.35; padding:6px 9px; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.25); max-width:260px; display:none; }
+</style>
+<script id="bk-sensitivity-explorer">
+/* ===========================================================================
+   SENSITIVITY EXPLORER - tornado, spider and heat-map views with toggles
+   ===========================================================================
+   Every figure is a live re-run of the canonical engine (bkMonthlyReturns and,
+   for partner metrics, bkWaterfallV07) on a scratch copy of the active deal -
+   the same isolation bkRunScenario() uses, so the saved deal is never written.
+
+   The toggles (output metric, step size, heat-map axes, drivers shown, break-
+   even target) are VIEW preferences, not deal assumptions: they live in this
+   browser's localStorage and are never synced or stamped on the deal.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof RENDERERS['Sensitivity'] !== 'function') return;
+
+var PREF_KEY = 'bkcapital.sensitivity.view.v01';
+var DEF = { metric:'levIRR', step:'std', gx:'exitCap', gy:'rentGrowth', hide:[], beTarget:'pref' };
+function prefs(){ var p = {}; try { p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}') || {}; } catch(e){} return Object.assign({}, DEF, p); }
+function savePrefs(p){ try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch(e){} }
+
+function N(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+function esc(v){ return (typeof bkEsc === 'function') ? bkEsc(v) : String(v == null ? '' : v); }
+function pct(v, dp){ return isFinite(v) ? (v*100).toFixed(dp == null ? 2 : dp) + '%' : 'n/a'; }
+function money(v){ if(!isFinite(v)) return 'n/a'; var a = Math.abs(v), s = a >= 1e6 ? '$'+(a/1e6).toFixed(2)+'M' : '$'+Math.round(a).toLocaleString('en-US'); return v < 0 ? '('+s+')' : s; }
+
+var METRICS = {
+  levIRR  : { label:'Levered IRR',          fmt:function(v){ return pct(v); },              rate:true },
+  levMOIC : { label:'Levered Equity Multiple', fmt:function(v){ return isFinite(v) ? v.toFixed(2)+'x' : 'n/a'; } },
+  unlevIRR: { label:'Unlevered IRR',        fmt:function(v){ return pct(v); },              rate:true },
+  unlevMOIC:{ label:'Unlevered Multiple',   fmt:function(v){ return isFinite(v) ? v.toFixed(2)+'x' : 'n/a'; } },
+  lpIRR   : { label:'LP IRR (after promote)', fmt:function(v){ return pct(v); },            rate:true, partner:true },
+  gpIRR   : { label:'GP IRR (co-invest + promote)', fmt:function(v){ return pct(v); },      rate:true, partner:true }
+};
+var STEPS = { narrow:{ label:'Narrow', k:0.5 }, std:{ label:'Standard', k:1 }, wide:{ label:'Wide', k:2 } };
+
+/* Each driver: a base step, how a signed delta becomes engine overrides, and how to print the shifted value. */
+function drivers(s){
+  var floating = String(s.debtRateType || 'Fixed') === 'Floating';
+  var rateKey = floating ? 'debtIndexRate' : 'acqRate';
+  var hasRR = Array.isArray(s.rentRoll) && s.rentRoll.length > 0;
+  var EXP = ['taxes','insurance','payroll','rm','turnover','utilities','contract','marketing','ga','miscPerGSF'];
+  function scaleRR(f){ return s.rentRoll.map(function(u){ return Object.assign({}, u, { inPlaceRent:N(u.inPlaceRent)*f, marketRent:N(u.marketRent)*f }); }); }
+  return [
+    { id:'exitCap',    label:'Exit Cap Rate',     step:0.005, kind:'pp',
+      ov:function(d){ return { exitCap: Math.max(0.0025, N(s.exitCap)+d) }; },        show:function(d){ return pct(Math.max(0.0025, N(s.exitCap)+d)); } },
+    { id:'rentGrowth', label:'Rent Growth',       step:0.01,  kind:'pp',
+      ov:function(d){ return { rentGrowth:N(s.rentGrowth)+d, commercialRentGrowth:N(s.commercialRentGrowth)+d }; },
+      show:function(d){ return pct(N(s.rentGrowth)+d); } },
+    { id:'rentLevel',  label:'Rent Level',        step:0.05,  kind:'rel',
+      ov:function(d){ var o = { avgRent:N(s.avgRent)*(1+d), commercialRent:N(s.commercialRent)*(1+d) }; if(hasRR) o.rentRoll = scaleRR(1+d); return o; },
+      show:function(d){ return (d >= 0 ? '+' : '\u2212') + Math.abs(d*100).toFixed(1) + '%'; } },
+    { id:'vacancy',    label:'Vacancy',           step:0.01,  kind:'pp',
+      ov:function(d){ return { vacancy:Math.min(0.95, Math.max(0, N(s.vacancy)+d)), commercialVacancy:Math.min(0.95, Math.max(0, N(s.commercialVacancy)+d)) }; },
+      show:function(d){ return pct(Math.min(0.95, Math.max(0, N(s.vacancy)+d))); } },
+    { id:'opexLevel',  label:'Operating Expenses', step:0.05, kind:'rel',
+      ov:function(d){ var o = {}; EXP.forEach(function(k){ o[k] = N(s[k])*(1+d); }); return o; },
+      show:function(d){ return (d >= 0 ? '+' : '\u2212') + Math.abs(d*100).toFixed(1) + '%'; } },
+    { id:'opexGrowth', label:'Opex Growth',       step:0.01,  kind:'pp',
+      ov:function(d){ return { opexGrowth:N(s.opexGrowth)+d }; },                       show:function(d){ return pct(N(s.opexGrowth)+d); } },
+    { id:'price',      label:'Purchase Price',    step:0.05,  kind:'rel',
+      ov:function(d){ return { purchasePrice:N(s.purchasePrice)*(1+d) }; },             show:function(d){ return money(N(s.purchasePrice)*(1+d)); } },
+    { id:'rate',       label:floating ? 'Debt Index Rate' : 'Debt Coupon', step:0.005, kind:'pp',
+      ov:function(d){ var o = {}; o[rateKey] = Math.max(0, N(s[rateKey])+d); return o; }, show:function(d){ return pct(Math.max(0, N(s[rateKey])+d)); } },
+    { id:'hold',       label:'Hold Period',       step:1,     kind:'yrs', integer:true,
+      ov:function(d){ return { holdYears: Math.max(1, Math.min(15, Math.round(N(s.holdYears)+d))) }; },
+      show:function(d){ return Math.max(1, Math.min(15, Math.round(N(s.holdYears)+d))) + ' yrs'; } }
+  ];
+}
+function stepOf(dv, p){ var k = STEPS[p.step] ? STEPS[p.step].k : 1; return dv.integer ? Math.max(1, Math.round(dv.step*k)) : dv.step*k; }
+function stepLabel(dv, p){ var st = stepOf(dv, p);
+  return dv.kind === 'pp' ? (st*100).toFixed(2).replace(/\.?0+$/,'') + ' pts' : dv.kind === 'rel' ? (st*100).toFixed(1).replace(/\.0$/,'') + '%' : st + ' yr' + (st === 1 ? '' : 's'); }
+
+/* One isolated engine run, memoised for the duration of a render. */
+function makeRunner(metric){
+  var cache = {};
+  return function(ov){
+    var key = JSON.stringify(ov);
+    if(Object.prototype.hasOwnProperty.call(cache, key)) return cache[key];
+    var real = bkLoad(), scen = Object.assign({}, real, ov);
+    var oL = window.bkLoad, oS = window.bkSave, v = NaN;
+    window.bkLoad = function(){ return scen; };
+    window.bkSave = function(d){ Object.assign(scen, d); };
+    try {
+      var x = bkMonthlyReturns();
+      if(metric === 'levIRR') v = x.irr;
+      else if(metric === 'levMOIC') v = x.moic;
+      else if(metric === 'unlevIRR' || metric === 'unlevMOIC'){ var u = x.u || bkAnnualCF(); v = metric === 'unlevIRR' ? u.irr : u.moic; }
+      else { var w = bkWaterfallV07(); v = metric === 'lpIRR' ? w.lpIRR : w.gpIRR; }
+    } catch(e){ v = NaN; }
+    finally { window.bkLoad = oL; window.bkSave = oS; }
+    v = Number(v); if(!isFinite(v)) v = NaN;
+    cache[key] = v; return v;
+  };
+}
+
+/* ---------------------------------------------------------------- charts */
+function niceTicks(lo, hi, n){
+  if(!(hi > lo)){ var pad = Math.abs(lo || 1)*0.1; lo -= pad; hi += pad; }
+  var span = hi - lo, raw = span / (n || 4), mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw/mag;
+  var step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+  var a = Math.floor(lo/step)*step, b = Math.ceil(hi/step)*step, t = [];
+  for(var v = a; v <= b + step*1e-9; v += step) t.push(+v.toFixed(12));
+  return t;
+}
+function tip(html){ return ' data-tip="' + esc(html) + '"'; }
+
+function tornado(rows, base, M){
+  // rows: [{label, lo, hi, loShow, hiShow}] sorted by swing
+  var W = 760, L = 150, R = 70, rowH = 30, top = 26, H = top + rows.length*rowH + 30;
+  var vals = [base]; rows.forEach(function(r){ if(isFinite(r.lo)) vals.push(r.lo); if(isFinite(r.hi)) vals.push(r.hi); });
+  var ticks = niceTicks(Math.min.apply(null, vals), Math.max.apply(null, vals), 5);
+  var x0 = ticks[0], x1 = ticks[ticks.length-1];
+  var X = function(v){ return L + (v - x0)/(x1 - x0) * (W - L - R); };
+  var g = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tornado chart of '+esc(M.label)+' by driver">';
+  ticks.forEach(function(t){ g += '<line class="grid" x1="'+X(t)+'" x2="'+X(t)+'" y1="'+(top-6)+'" y2="'+(H-24)+'"/>'
+    + '<text x="'+X(t)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(M.fmt(t))+'</text>'; });
+  rows.forEach(function(r, i){
+    var y = top + i*rowH, bh = 18, by = y + (rowH-bh)/2, cy = y + rowH/2 + 4;
+    g += '<g class="row"><text class="lbl" x="'+(L-10)+'" y="'+cy+'" text-anchor="end">'+esc(r.label)+'</text>';
+    [['lo', r.lo, r.loShow, '&minus;'], ['hi', r.hi, r.hiShow, '+']].forEach(function(e){
+      var v = e[1]; if(!isFinite(v)) return;
+      var a = Math.min(X(base), X(v)), w = Math.max(1, Math.abs(X(v) - X(base)));
+      var up = v >= base, col = up ? 'var(--sx-up)' : 'var(--sx-dn)';
+      var t = '<b>'+esc(r.label)+' '+e[3]+' one step</b><br>'+esc(e[2])+' &rarr; '+esc(M.fmt(v))+' ('+(v>=base?'+':'')+esc(M.rate ? ((v-base)*10000).toFixed(0)+' bps' : (v-base).toFixed(2)+'x')+')';
+      // rounded data-end, square at the base line
+      var r4 = Math.min(4, w/2), xEnd = up ? a + w : a;
+      g += '<path class="bar" fill="'+col+'" d="'+(up
+            ? 'M'+a+','+by+' h'+(w-r4)+' a'+r4+','+r4+' 0 0 1 '+r4+','+r4+' v'+(bh-2*r4)+' a'+r4+','+r4+' 0 0 1 -'+r4+','+r4+' h-'+(w-r4)+' z'
+            : 'M'+(a+w)+','+by+' h-'+(w-r4)+' a'+r4+','+r4+' 0 0 0 -'+r4+','+r4+' v'+(bh-2*r4)+' a'+r4+','+r4+' 0 0 0 '+r4+','+r4+' h'+(w-r4)+' z')+'"/>'
+        + '<rect class="hit" x="'+a+'" y="'+y+'" width="'+w+'" height="'+rowH+'"'+tip(t)+'/>'
+        + '<text class="v" x="'+(up ? xEnd+5 : xEnd-5)+'" y="'+cy+'" text-anchor="'+(up?'start':'end')+'">'+esc(M.fmt(v))+'</text>';
+    });
+    g += '</g>';
+  });
+  g += '<line class="axis" x1="'+X(base)+'" x2="'+X(base)+'" y1="'+(top-10)+'" y2="'+(H-24)+'" stroke-dasharray="3 3"/>'
+     + '<text x="'+X(base)+'" y="'+(top-12)+'" text-anchor="middle" class="v">Base '+esc(M.fmt(base))+'</text></svg>';
+  return g;
+}
+
+function spider(series, M, nSteps){
+  // series: [{label, color, pts:[{k, v, show}]}], k in -nSteps..nSteps
+  var W = 760, L = 58, R = 128, top = 14, H = 300, bottom = 34;
+  var vals = []; series.forEach(function(s){ s.pts.forEach(function(p){ if(isFinite(p.v)) vals.push(p.v); }); });
+  if(!vals.length) return '<p class="bk-sx-sub">No finite results to chart.</p>';
+  var ticks = niceTicks(Math.min.apply(null, vals), Math.max.apply(null, vals), 5);
+  var y0 = ticks[0], y1 = ticks[ticks.length-1];
+  var X = function(k){ return L + (k + nSteps)/(2*nSteps) * (W - L - R); };
+  var Y = function(v){ return top + (1 - (v - y0)/(y1 - y0)) * (H - top - bottom); };
+  var g = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Spider chart of '+esc(M.label)+' against steps from base">';
+  ticks.forEach(function(t){ g += '<line class="grid" x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(t)+'" y2="'+Y(t)+'"/>'
+    + '<text x="'+(L-8)+'" y="'+(Y(t)+4)+'" text-anchor="end">'+esc(M.fmt(t))+'</text>'; });
+  for(var k = -nSteps; k <= nSteps; k++){
+    g += '<text x="'+X(k)+'" y="'+(H-bottom+18)+'" text-anchor="middle">'+(k === 0 ? 'Base' : (k > 0 ? '+' : '&minus;')+Math.abs(k)+' step'+(Math.abs(k)>1?'s':''))+'</text>';
+  }
+  g += '<line class="axis" x1="'+X(0)+'" x2="'+X(0)+'" y1="'+top+'" y2="'+(H-bottom)+'" stroke-dasharray="3 3"/>';
+  // end labels: spread vertically so they never collide
+  var ends = [];
+  series.forEach(function(s){
+    var d = '', pts = s.pts.filter(function(p){ return isFinite(p.v); });
+    pts.forEach(function(p, i){ d += (i ? 'L' : 'M') + X(p.k).toFixed(1) + ',' + Y(p.v).toFixed(1); });
+    g += '<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    pts.forEach(function(p){
+      g += '<circle cx="'+X(p.k)+'" cy="'+Y(p.v)+'" r="4" fill="'+s.color+'" stroke="var(--sx-surface)" stroke-width="2"/>'
+         + '<circle cx="'+X(p.k)+'" cy="'+Y(p.v)+'" r="11" fill="transparent"'+tip('<b>'+esc(s.label)+'</b><br>'+esc(p.show)+' &rarr; '+esc(M.fmt(p.v)))+'/>';
+    });
+    var last = pts[pts.length-1]; if(last) ends.push({ y:Y(last.v), label:s.label, color:s.color });
+  });
+  ends.sort(function(a,b){ return a.y - b.y; });
+  for(var i = 1; i < ends.length; i++){ if(ends[i].y - ends[i-1].y < 13) ends[i].y = ends[i-1].y + 13; }
+  var over = ends.length ? ends[ends.length-1].y - (H - bottom) : 0;
+  if(over > 0) ends.forEach(function(e){ e.y -= over; });
+  ends.forEach(function(e){ g += '<text x="'+(W-R+8)+'" y="'+(e.y+4)+'" class="lbl" style="font-size:11px"><tspan fill="'+e.color+'">&#9632;</tspan> '+esc(e.label)+'</text>'; });
+  return g + '</svg>';
+}
+
+function mix(a, b, t){ // hex mix for heat cells; CSS vars can't be interpolated in JS, so the heat map uses the light-mode poles and a dark-safe text rule
+  function h(x){ return [parseInt(x.slice(1,3),16), parseInt(x.slice(3,5),16), parseInt(x.slice(5,7),16)]; }
+  var A = h(a), B = h(b), c = A.map(function(v,i){ return Math.round(v + (B[i]-v)*t); });
+  return { css:'rgb('+c.join(',')+')', lum:(0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2])/255 };
+}
+
+/* ---------------------------------------------------------------- view */
+function explorer(s){
+  var p = prefs();
+  if(!METRICS[p.metric]) p.metric = 'levIRR';
+  var M = METRICS[p.metric], run = makeRunner(p.metric);
+  var D = drivers(s), byId = {}; D.forEach(function(d){ byId[d.id] = d; });
+  if(!byId[p.gx]) p.gx = 'exitCap'; if(!byId[p.gy] || p.gy === p.gx) p.gy = p.gx === 'rentGrowth' ? 'exitCap' : 'rentGrowth';
+  var base = run({});
+  if(!isFinite(base)) return '<div class="bk-sx"><div class="bk-sx-card"><p class="bk-sx-title">Sensitivity Explorer</p><p class="bk-sx-sub">The engine does not produce a finite '+esc(M.label)+' for this deal yet, so there is nothing to flex.</p></div></div>';
+
+  var sel = function(id, cur, opts){ return '<select data-sx="'+id+'">' + opts.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('') + '</select>'; };
+  var dOpts = D.map(function(d){ return [d.id, d.label]; });
+  var controls = '<div class="bk-sx-card"><p class="bk-sx-title">Sensitivity Explorer</p>'
+    + '<p class="bk-sx-sub">Every point is a live re-run of the underwriting engine on a scratch copy of this deal. These are view settings for this browser - they never change the deal.</p>'
+    + '<div class="bk-sx-controls">'
+    + '<label class="bk-sx-ctl"><span>Output metric</span>' + sel('metric', p.metric, Object.keys(METRICS).map(function(k){ return [k, METRICS[k].label]; })) + '</label>'
+    + '<div class="bk-sx-ctl"><span>Step size</span><div class="bk-sx-seg">' + Object.keys(STEPS).map(function(k){
+        return '<button type="button" data-sx-step="'+k+'" aria-pressed="'+(p.step===k)+'">'+STEPS[k].label+'</button>'; }).join('') + '</div></div>'
+    + '<label class="bk-sx-ctl"><span>Heat map rows</span>' + sel('gy', p.gy, dOpts) + '</label>'
+    + '<label class="bk-sx-ctl"><span>Heat map columns</span>' + sel('gx', p.gx, dOpts) + '</label>'
+    + '<button type="button" class="status-chip" data-sx-reset="1">RESET VIEW</button>'
+    + '</div>'
+    + '<details><summary>Step sizes at this setting</summary><table><thead><tr><th>Driver</th><th>One step</th><th>Base value</th></tr></thead><tbody>'
+    + D.map(function(d){ return '<tr><td>'+esc(d.label)+'</td><td>'+esc(stepLabel(d, p))+'</td><td>'+esc(d.show(0))+'</td></tr>'; }).join('')
+    + '</tbody></table></details></div>';
+
+  // ---- tornado: one step each way, sorted by swing
+  var tRows = D.map(function(d){ var st = stepOf(d, p);
+    return { label:d.label, lo:run(d.ov(-st)), hi:run(d.ov(st)), loShow:d.show(-st), hiShow:d.show(st) }; });
+  tRows.forEach(function(r){ r.swing = Math.abs((isFinite(r.hi)?r.hi:base) - (isFinite(r.lo)?r.lo:base)); });
+  tRows.sort(function(a,b){ return b.swing - a.swing; });
+  var tornadoCard = '<div class="bk-sx-card"><p class="bk-sx-title">Tornado - which assumption moves '+esc(M.label)+' most</p>'
+    + '<p class="bk-sx-sub">Each driver moved one step down and one step up from base, everything else held. Longest bar first.</p>'
+    + '<div class="bk-sx-svgwrap">' + tornado(tRows, base, M) + '</div>'
+    + '<div class="bk-sx-legend"><span style="--c:var(--sx-up)"><i></i>Above base</span><span style="--c:var(--sx-dn)"><i></i>Below base</span></div>'
+    + '<details><summary>Table view</summary><table><thead><tr><th>Driver</th><th>Down one step</th><th>'+esc(M.label)+'</th><th>Up one step</th><th>'+esc(M.label)+'</th><th>Swing</th></tr></thead><tbody>'
+    + tRows.map(function(r){ return '<tr><td>'+esc(r.label)+'</td><td>'+esc(r.loShow)+'</td><td>'+esc(M.fmt(r.lo))+'</td><td>'+esc(r.hiShow)+'</td><td>'+esc(M.fmt(r.hi))+'</td><td>'+esc(M.rate ? (r.swing*10000).toFixed(0)+' bps' : r.swing.toFixed(2)+'x')+'</td></tr>'; }).join('')
+    + '</tbody></table></details></div>';
+
+  // ---- spider: +/-2 steps per visible driver; colour follows the driver, never its rank
+  var hide = Array.isArray(p.hide) ? p.hide : [];
+  var COLORS = D.map(function(_, i){ return 'var(--s'+(i+1)+')'; });
+  var series = [];
+  D.forEach(function(d, i){
+    if(hide.indexOf(d.id) > -1) return;
+    var st = stepOf(d, p), pts = [];
+    for(var k = -2; k <= 2; k++) pts.push({ k:k, v:k === 0 ? base : run(d.ov(k*st)), show:d.show(k*st) });
+    series.push({ label:d.label, color:COLORS[i], pts:pts });
+  });
+  var chips = D.map(function(d, i){ var on = hide.indexOf(d.id) < 0;
+    return '<button type="button" class="bk-sx-chip" data-sx-driver="'+d.id+'" aria-pressed="'+on+'" style="--c:'+COLORS[i]+'"><i></i>'+esc(d.label)+'</button>'; }).join('');
+  var spiderCard = '<div class="bk-sx-card"><p class="bk-sx-title">Spider - '+esc(M.label)+' as each driver moves &plusmn;2 steps</p>'
+    + '<p class="bk-sx-sub">Steeper line = more sensitive. Click a driver to show or hide it.</p>'
+    + '<div class="bk-sx-chips">'+chips+'</div>'
+    + (series.length ? '<div class="bk-sx-svgwrap">' + spider(series, M, 2) + '</div>' : '<p class="bk-sx-sub">All drivers are hidden - select one above.</p>')
+    + '<details><summary>Table view</summary><table><thead><tr><th>Driver</th><th>&minus;2</th><th>&minus;1</th><th>Base</th><th>+1</th><th>+2</th></tr></thead><tbody>'
+    + series.map(function(s){ return '<tr><td>'+esc(s.label)+'</td>'+s.pts.map(function(q){ return '<td>'+esc(M.fmt(q.v))+'</td>'; }).join('')+'</tr>'; }).join('')
+    + '</tbody></table></details></div>';
+
+  // ---- heat map: any two drivers, diverging around base
+  var gx = byId[p.gx], gy = byId[p.gy], sx = stepOf(gx, p), sy = stepOf(gy, p), ks = [-2,-1,0,1,2];
+  var cells = ks.map(function(ky){ return ks.map(function(kx){ return (kx === 0 && ky === 0) ? base : run(Object.assign({}, gy.ov(ky*sy), gx.ov(kx*sx))); }); });
+  var maxDev = 0; cells.forEach(function(r){ r.forEach(function(v){ if(isFinite(v)) maxDev = Math.max(maxDev, Math.abs(v-base)); }); });
+  var heat = '<table class="bk-sx-heat"><thead><tr><th class="corner">'+esc(gx.label)+' &rarr;<br>'+esc(gy.label)+' &darr;</th>'
+    + ks.map(function(kx){ return '<th>'+esc(gx.show(kx*sx))+'</th>'; }).join('') + '</tr></thead><tbody>'
+    + ks.map(function(ky, i){ return '<tr><th class="rh">'+esc(gy.show(ky*sy))+'</th>' + ks.map(function(kx, j){
+        var v = cells[i][j], t = maxDev > 0 && isFinite(v) ? Math.min(1, Math.abs(v-base)/maxDev) : 0;
+        var c = !isFinite(v) ? null : mix('#f0efec', v >= base ? '#2a78d6' : '#e34948', t*0.85);
+        var isBase = kx === 0 && ky === 0;
+        return '<td class="'+(isBase?'base ':'')+(c && c.lum < 0.55 ? 'dark' : '')+'"'+(c?' style="background:'+c.css+'"':'')
+          + tip('<b>'+esc(gy.label)+' '+esc(gy.show(ky*sy))+' &middot; '+esc(gx.label)+' '+esc(gx.show(kx*sx))+'</b><br>'+esc(M.label)+' '+esc(M.fmt(v))
+              + (isFinite(v) && !isBase ? ' ('+(v>=base?'+':'')+esc(M.rate ? ((v-base)*10000).toFixed(0)+' bps' : (v-base).toFixed(2)+'x')+' vs base)' : ''))
+          + '>'+esc(M.fmt(v))+'</td>'; }).join('') + '</tr>'; }).join('')
+    + '</tbody></table>';
+  var heatCard = '<div class="bk-sx-card"><p class="bk-sx-title">Heat map - '+esc(gy.label)+' &times; '+esc(gx.label)+' &rarr; '+esc(M.label)+'</p>'
+    + '<p class="bk-sx-sub">Pick any two drivers above. The outlined cell is base; blue is better than base, red is worse.</p>'
+    + heat + '<div class="bk-sx-scale">Worse <b></b> Better</div></div>';
+
+  // ---- break-evens: how far each driver can move before levered IRR falls to the chosen target
+  var target = p.beTarget === 'zero' ? 0 : p.beTarget === 'hurdle2' ? N(s.hurdle2) : N(s.pref);
+  var irrRun = p.metric === 'levIRR' ? run : makeRunner('levIRR');
+  var baseIrr = irrRun({});
+  var beRows = ['exitCap','rentGrowth','rentLevel','vacancy','opexLevel','price','rate'].map(function(id){
+    var d = byId[id]; var st = d.step;
+    // direction that hurts IRR
+    var dir = irrRun(d.ov(st)) < baseIrr ? 1 : -1;
+    var f = function(x){ return irrRun(d.ov(dir*x)) - target; };
+    if(!isFinite(baseIrr)) return { d:d, txt:'n/a' };
+    if(baseIrr < target) return { d:d, txt:'Already below target', neg:true };
+    var lo = 0, hi = st, n = 0;
+    while(f(hi) > 0 && n < 12){ lo = hi; hi *= 2; n++; }
+    if(f(hi) > 0) return { d:d, txt:'Not reached', far:true };
+    for(var it = 0; it < 28; it++){ var mid = (lo+hi)/2; if(f(mid) > 0) lo = mid; else hi = mid; }
+    var x = dir*hi;
+    return { d:d, at:d.show(x), move:(d.kind === 'pp' ? (x>=0?'+':'&minus;')+(Math.abs(x)*100).toFixed(2)+' pts' : (x>=0?'+':'&minus;')+(Math.abs(x)*100).toFixed(1)+'%') };
+  });
+  var beSel = '<select data-sx="beTarget">' + [['pref','Tier 1 preferred return ('+pct(N(s.pref))+')'],['hurdle2','Tier 2 hurdle ('+pct(N(s.hurdle2))+')'],['zero','0% (return of capital)']]
+    .map(function(o){ return '<option value="'+o[0]+'"'+(p.beTarget===o[0]?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('') + '</select>';
+  var beCard = '<div class="bk-sx-card"><p class="bk-sx-title">Break-even cushion - Levered IRR</p>'
+    + '<p class="bk-sx-sub">How far each assumption can move against the deal, alone, before levered IRR ('+esc(pct(baseIrr))+' today) falls to the target.</p>'
+    + '<div class="bk-sx-controls" style="margin-bottom:10px"><label class="bk-sx-ctl"><span>Target</span>'+beSel+'</label></div>'
+    + '<table class="bk-sx-be"><thead><tr><th>Driver</th><th>Base</th><th>Break-even value</th><th>Cushion</th></tr></thead><tbody>'
+    + beRows.map(function(r){ return '<tr><td>'+esc(r.d.label)+'</td><td>'+esc(r.d.show(0))+'</td>'
+        + (r.at ? '<td>'+esc(r.at)+'</td><td>'+r.move+'</td>' : '<td colspan="2" class="'+(r.neg?'cushion-neg':'')+'">'+esc(r.txt)+'</td>') + '</tr>'; }).join('')
+    + '</tbody></table></div>';
+
+  return '<div class="bk-sx">' + controls + tornadoCard + spiderCard + heatCard + beCard + '</div>';
+}
+
+/* ---------------------------------------------------------------- wiring */
+var prev = RENDERERS['Sensitivity'];
+var wrapped = function(){
+  var o = prev.apply(this, arguments);
+  try {
+    if(typeof window.bkProductionCounts === 'function' && !window.bkProductionCounts().activeDeal) return o;
+    if(/no deal loaded|there is no active deal/i.test(String(o && o.main || ''))) return o;
+    o.main = explorer(bkLoad())
+      + '<div class="bk-sx-card" style="background:transparent;border:0;box-shadow:none;padding:0 0 0;margin-top:22px"><p class="bk-sx-title">Detailed grids</p></div>'
+      + (o.main || '');
+  } catch(e){
+    o.main = '<div class="note-flag"><span>&#9888;</span><div>The sensitivity explorer could not render: '+esc(e.message)+'. The grids below are unaffected.</div></div>' + (o.main || '');
+  }
+  return o;
+};
+Object.keys(prev).forEach(function(k){ if(k.indexOf('__') === 0) wrapped[k] = prev[k]; });
+if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Sensitivity', wrapped); else RENDERERS['Sensitivity'] = wrapped;
+
+function rerender(){ if(typeof currentSheet !== 'undefined' && currentSheet === 'Sensitivity') showSheet('Sensitivity'); }
+document.addEventListener('change', function(e){
+  var t = e.target; if(!t || !t.matches || !t.matches('.bk-sx select[data-sx]')) return;
+  var p = prefs(); p[t.getAttribute('data-sx')] = t.value;
+  if(p.gx === p.gy){ var other = t.getAttribute('data-sx') === 'gx' ? 'gy' : 'gx'; p[other] = p.gx === 'exitCap' ? 'rentGrowth' : 'exitCap'; }
+  savePrefs(p); rerender();
+});
+document.addEventListener('click', function(e){
+  var b = e.target && e.target.closest && e.target.closest('.bk-sx [data-sx-step], .bk-sx [data-sx-driver], .bk-sx [data-sx-reset]');
+  if(!b) return;
+  var p = prefs();
+  if(b.hasAttribute('data-sx-step')) p.step = b.getAttribute('data-sx-step');
+  else if(b.hasAttribute('data-sx-reset')) p = Object.assign({}, DEF);
+  else { var id = b.getAttribute('data-sx-driver'), h = Array.isArray(p.hide) ? p.hide.slice() : [], i = h.indexOf(id);
+         if(i > -1) h.splice(i, 1); else h.push(id); p.hide = h; }
+  savePrefs(p); rerender();
+});
+/* one shared tooltip for every chart mark (hit targets are larger than the marks) */
+var tipEl = null;
+function tipNode(){ if(!tipEl){ tipEl = document.createElement('div'); tipEl.className = 'bk-sx-tip'; document.body.appendChild(tipEl); } return tipEl; }
+document.addEventListener('mousemove', function(e){
+  var t = e.target && e.target.closest && e.target.closest('.bk-sx [data-tip]');
+  var n = tipNode();
+  if(!t){ n.style.display = 'none'; return; }
+  n.innerHTML = t.getAttribute('data-tip');
+  n.style.display = 'block';
+  var x = e.clientX + 14, y = e.clientY + 14, r = n.getBoundingClientRect();
+  if(x + r.width > window.innerWidth - 8) x = e.clientX - r.width - 14;
+  if(y + r.height > window.innerHeight - 8) y = e.clientY - r.height - 14;
+  n.style.left = x + 'px'; n.style.top = y + 'px';
+});
 })();
 </script>
 </body>
