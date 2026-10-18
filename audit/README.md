@@ -66,3 +66,9 @@ pop-up lifecycle. `suite_test.py` checks the reconciliation gap against the inde
 after costs and prepayment, post-refinance coverage, and the equity cash flow rebuilt monthly with the new debt service and payoff
 (IRR, multiple, profit, cash returned before exit vs. holding the original loan), a verdict, and a reconciliation (closed-form existing
 balance, profit bridge). `refi_ref.py` re-derives all of it from `model.py`'s monthly cash flow; REF-1 uses custom inputs.
+
+## Input flow (`input_flow_test.js`)
+Leaving a cell re-renders the sheet so the value commits and derived rows refresh. A final `showSheet` wrapper keeps the page's scroll
+position, hands focus back to the cell you were heading for (including dropdowns), and coalesces a re-render requested from inside a
+blur (which used to throw). Arrow Down / Up commit the current input and move to the next / previous one; entering a new section
+brings it to the top of the view and focuses its first input. Selects keep their own arrow keys; Enter and Escape are unchanged.
