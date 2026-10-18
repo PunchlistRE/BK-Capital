@@ -15979,7 +15979,9 @@ go();
     var f=c.filter(function(x){return x.level==='FAIL';}).length, w=c.length-f;
     return '<div class="note-flag bk-controls-flag"><span>&#9888;</span><div><b>Model controls: '+(f?f+' FAIL':'')+(f&&w?', ':'')+(w?w+' WARN':'')+'.</b> '
       +(f?'Results that depend on a failed input are not reliable until it is corrected.':'Review before relying on the results.')
-      +'<ul>'+c.map(function(x){ return '<li><span class="bk-ctl-'+x.level+'">'+x.level+'</span> - '+bkEsc(x.area)+': '+bkEsc(x.msg)+'</li>'; }).join('')+'</ul></div></div>';
+      +'<ul>'+c.map(function(x){ var p=String(x.msg).split(' Why it matters: '), why=p.length>1?p.slice(1).join(' Why it matters: '):'';
+        return '<li><span class="bk-ctl-'+x.level+'">'+x.level+'</span> - '+bkEsc(x.area)+': '+bkEsc(p[0])
+          +(why?'<details style="margin-top:3px"><summary style="cursor:pointer;font-size:12px;opacity:.8">Why it matters</summary><div style="font-size:12.5px;margin-top:4px">'+bkEsc(why)+'</div></details>':'')+'</li>'; }).join('')+'</ul></div></div>';
   };
   ['Home','Deal Underwrite'].forEach(function(name){
     var prev=RENDERERS[name]; if(typeof prev!=='function') return;
