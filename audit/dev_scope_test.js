@@ -7,10 +7,7 @@
 //   node audit/dev_scope_test.js ref.html index.html
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const path = require('path');
-const A = require(path.join(__dirname, 'deal.js'));
-const DEV = Object.assign({}, A, { dealId: 'TEST-DEV', name: 'Audit Test Development', dealType: 'Development',
-  predevMonths: 6, constructionMonths: 18, leaseupMonths: 12, holdYears: 6, purchasePrice: 4000000, gpShare: 0.10,
-  devBudgetMode: 'SOURCE', sourceConstruction: 12000000, conLTC: 0.65, conRate: 0.075, conUtil: 0.6, exitCap: 0.055, rentGrowth: 0.03 });
+const DEV = require(path.join(__dirname, 'devdeal.js'));
 const STD = { cvRentGrowthStart: 'year2', cvOpexVariablePct: 0, cvLtvBasis: 'price', cvHurdleBasis: 'lp', cvBadDebtBasis: 'afterVacancy' };
 const ODD = { cvRentGrowthStart: 'year2', cvOpexVariablePct: 1, cvLtvBasis: 'lesser', cvHurdleBasis: 'lp', cvBadDebtBasis: 'gross' };
 const LEGACY = {};   // no fields at all: a deal saved before the conventions existed

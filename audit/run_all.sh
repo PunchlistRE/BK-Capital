@@ -10,6 +10,7 @@ REF=${1:-$T/ref.html}
 echo "== conventions vs independent model";  node audit/conventions_run.js index.html "$T/cv.json" >/dev/null; python3 audit/conventions_test.py "$T/cv.json" | tail -1
 python3 audit/conventions_test.py "$T/cv.json" >/dev/null
 echo "== development scope";                  node audit/dev_scope_test.js "$REF" index.html | tail -1
+echo "== development vs independent checks"; node audit/dev_run.js index.html "$T/dev.json" >/dev/null; python3 audit/dev_audit.py "$T/dev.json" | grep -E "checks|KNOWN"
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"
