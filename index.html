@@ -2009,7 +2009,12 @@ showSheet(currentSheet||'Returns');
 Object.assign(BK_BASE,{gpShare:.50,pref:.07,hurdle2:.10,hurdle3:.15,t2LP:.50,t3LP:.45,t4LP:.40,gpCatchup:1,gpCatchupTarget:.05,hurdleBasis:1,em1:1.97,em2:2.59,em3:4.05,assetMgmtPct:.01,dispositionFeePct:.005});
 function bkEnsureV06(){const s=bkLoad();let dirty=false;Object.keys(BK_BASE).forEach(k=>{if(s[k]===undefined){s[k]=BK_BASE[k];dirty=true;}});if(dirty)bkSave(s);return s;}
 const _dealV05=sheetDealUnderwrite;sheetDealUnderwrite=function(){const o=_dealV05();o.main+=`<div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>JV Structure & Sponsor Fees</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('GP / Sponsor Equity Share','gpShare','%','pct')}${bkInput('Tier 1 Preferred Return','pref','%','pct')}${bkInput('Second Hurdle (IRR)','hurdle2','%','pct')}${bkInput('Third Hurdle (IRR)','hurdle3','%','pct')}${bkInput('Tier 2 Split - LP','t2LP','%','pct')}${bkInput('Tier 3 Split - LP','t3LP','%','pct')}${bkInput('Tier 4 Split - LP (residual)','t4LP','%','pct')}${bkYesNo('GP Catch-Up','gpCatchup')}${bkInput('GP Catch-Up Target','gpCatchupTarget','%','pct')}${bkInput('Asset Management Fee','assetMgmtPct','% of EGI','pct')}${bkInput('Disposition Fee','dispositionFeePct','% of gross sale','pct')}</tbody></table></div>`;o.desc='All deal inputs - now including workbook JV structure and sponsor-fee assumptions.';return o;};
-function bkXirr(values,dates,guess=.1){const d0=dates[0],yr=365*86400000;function f(r){let v=0;for(let i=0;i<values.length;i++)v+=values[i]/Math.pow(1+r,(dates[i]-d0)/yr);return v}let lo=-.9999,hi=10,fl=f(lo),fh=f(hi);for(let k=0;k<20&&fl*fh>0;k++){hi*=2;fh=f(hi)}/* V29.7 defensive validation ONLY -- bounds, convergence, cash flows and date vectors are untouched. The pre-existing guard was `if(fl*fh>0) return NaN`, which silently fails to fire when fl/fh are NaN or Infinity, because NaN>0 is false. Bisection then ran against NaN comparisons (every `fl*fm<=0` test false), walked `lo` up to the upper seed and returned hi=10 -- reporting a fabricated "1000.0%" IRR. Non-finite endpoints mean the function could not be evaluated at all, so the honest answer is "no result". */if(!isFinite(fl)||!isFinite(fh)||fl*fh>0)return NaN;for(let k=0;k<150;k++){const m=(lo+hi)/2,fm=f(m);if(Math.abs(fm)<1e-8)return m;if(fl*fm<=0){hi=m;fh=fm}else{lo=m;fl=fm}}return(lo+hi)/2}
+/* Whole calendar days between two dates (actual/365 needs whole days). Differencing raw milliseconds is wrong in any
+   time zone with daylight saving: a day that is 23 or 25 hours long shifts every IRR by ~1e-7 and makes a result depend
+   on where the browser is running. Local calendar parts are re-read as UTC, so the count is exact in every zone. */
+function bkDays(a,b){a=new Date(a);b=new Date(b);return (Date.UTC(b.getFullYear(),b.getMonth(),b.getDate())-Date.UTC(a.getFullYear(),a.getMonth(),a.getDate()))/86400000}
+window.bkDays=bkDays;
+function bkXirr(values,dates,guess=.1){const d0=dates[0];function f(r){let v=0;for(let i=0;i<values.length;i++)v+=values[i]/Math.pow(1+r,bkDays(d0,dates[i])/365);return v}let lo=-.9999,hi=10,fl=f(lo),fh=f(hi);for(let k=0;k<20&&fl*fh>0;k++){hi*=2;fh=f(hi)}/* V29.7 defensive validation ONLY -- bounds, convergence, cash flows and date vectors are untouched. The pre-existing guard was `if(fl*fh>0) return NaN`, which silently fails to fire when fl/fh are NaN or Infinity, because NaN>0 is false. Bisection then ran against NaN comparisons (every `fl*fm<=0` test false), walked `lo` up to the upper seed and returned hi=10 -- reporting a fabricated "1000.0%" IRR. Non-finite endpoints mean the function could not be evaluated at all, so the honest answer is "no result". */if(!isFinite(fl)||!isFinite(fh)||fl*fh>0)return NaN;for(let k=0;k<150;k++){const m=(lo+hi)/2,fm=f(m);if(Math.abs(fm)<1e-8)return m;if(fl*fm<=0){hi=m;fh=fm}else{lo=m;fl=fm}}return(lo+hi)/2}
 /* V32.1 - CASH-FLOW DATING CONVENTION (institutional).
    Month 0 = the actual closing date: acquisition equity is its own flow on that date.
    Month m (closing month = month 1) operating cash flow, debt service, fees and the sale proceeds are dated the
@@ -2372,7 +2377,9 @@ function bkDevFundingV10(){
  const stabVal=Number(s.exitCap||0)>0?Number(bkCalc().noi||0)/Number(s.exitCap):0, rate=Math.max(0,Number(s.conRate||0)), feeFac=Math.max(0,Number(s.conOrigFee||0)+Number(s.conCapCost||0)+Number(s.guarantyFeePct||0));
  // Excel Debt!C23/C33: the facility's payoff/accrual-window endpoint is the REFINANCE month (~stabilization)
  // when the deal refinances, and only the sale/exit month when it never does -- not always the full hold period.
- const payoff=Number(s.refiAtStab||0)?x.stab:x.hold, accr=Math.max(3,Math.round((payoff-(x.preMo+1)+1)*.7)), intFac=Math.max(0,Number(s.conUtil||0))*rate*accr/12, U0=x.unlev+Number(s.lenderLegal||0), ltc=Number(s.conLTC||0), ltv=Number(s.conLTV||0);
+ /* interest is capitalised only through stabilisation (see the draw loop below), so the interest reserve that
+    sizes the commitment must stop there too, with or without a takeout; otherwise a no-takeout loan exceeds its LTC. */
+ const payoff=Number(s.refiAtStab||0)?x.stab:x.hold, accr=Math.max(3,Math.round((Math.min(payoff,x.stab)-(x.preMo+1)+1)*.7)), intFac=Math.max(0,Number(s.conUtil||0))*rate*accr/12, U0=x.unlev+Number(s.lenderLegal||0), ltc=Number(s.conLTC||0), ltv=Number(s.conLTV||0);
  const commitLTC=ltc>0&&ltc*(feeFac+intFac)<1?ltc*U0/(1-ltc*(feeFac+intFac)):0,commitLTV=ltv>0?ltv*stabVal:Number.POSITIVE_INFINITY,commit=(()=>{const a=ltc>0?(commitLTC||0):Number.POSITIVE_INFINITY,raw=Math.min(a,commitLTV);return isFinite(raw)?Math.max(0,Math.floor(raw/1000)*1000):0;})(),upfront=commit*feeFac+Number(s.lenderLegal||0),estInt=commit*intFac,eqTarget=commit>0?Math.max(0,x.unlev+upfront+estInt-commit):9.9e14;
  let bal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
  for(let mo=1;mo<=x.hold;mo++){
@@ -12082,9 +12089,9 @@ function extend(sheet, tag, fn){
 window.bkXnpv = function(rate, values, dates){
   if(!Array.isArray(values) || !Array.isArray(dates) || !values.length) return NaN;
   var r = Number(rate); if(!isFinite(r) || r <= -1) return NaN;
-  var t0 = dates[0].getTime(), DAY = 86400000, sum = 0;
+  var sum = 0;
   for(var i=0;i<values.length;i++){
-    var days = (dates[i].getTime() - t0) / DAY;
+    var days = bkDays(dates[0], dates[i]);
     sum += Number(values[i]) / Math.pow(1+r, days/365);
   }
   return sum;
