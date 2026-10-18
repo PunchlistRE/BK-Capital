@@ -456,21 +456,29 @@ bkBuildRail();
 
 function groupOf(sheet){ return GROUPS.find(g=>g.sheets.includes(sheet)); }
 
+/* Top navigation: the sheet groups are folded into a few tabs; each tab opens a dropdown of its sheets, grouped under the original group labels.
+   GROUPS (and the left rail built from it) are unchanged - this is only how the top bar presents them. */
+const NAV_TABS = [
+  {id:'overview', label:'Overview',          groups:['overview']},
+  {id:'underwrite', label:'Underwrite',      groups:['inputs','propops','dev']},
+  {id:'financing', label:'Debt & Returns',   groups:['debt','returns','tools']},
+  {id:'business', label:'Business',          groups:['biz']},
+  {id:'credit', label:'Credit & IC',         groups:['credit','qa']},
+  {id:'portfolio', label:'Portfolio & Data', groups:['portfolio','db','monthly']}
+];
 function buildChrome(sheet){
   const g = groupOf(sheet);
-  const primary = GROUPS.filter(gr=>!gr.hidden).map(gr=>{
-    const on = gr.id===g.id ? 'on':'';
-    return `<div class="grp-btn ${on}" data-goto-group="${gr.id}"><span class="sw" style="background:${gr.color}"></span>${gr.label}</div>`;
-  }).join('');
-  const secondary = g.sheets.map(s=>{
-    // Live status check against RENDERERS (matches bkRefreshRailStatus's fix for the left
-    // sidebar) -- DONE was a hardcoded 5-sheet snapshot from very early in the build and never
-    // reflected anything added since, so this top sub-tab strip was showing "queued" on sheets
-    // that had long since been rendered.
-    const done = !!RENDERERS[s];
-    const on = s===sheet?'on':'';
-    const stub = done?'':'stub';
-    return `<div class="sheet-btn ${on} ${stub}" data-goto-sheet="${s}">${s}</div>`;
+  let isDevDeal = false; try{ const d = bkLoad(); isDevDeal = !!d && d.dealType==='Development'; }catch(e){}
+  const primary = NAV_TABS.map(t=>{
+    const gs = t.groups.map(id=>GROUPS.find(x=>x.id===id)).filter(x=>x && !x.hidden && (x.id!=='dev' || isDevDeal || x.sheets.includes(sheet)));
+    const on = gs.some(x=>x.sheets.includes(sheet));
+    const count = gs.reduce((n,x)=>n+x.sheets.length,0);
+    const color = gs[0] ? gs[0].color : '#8B8378';
+    const cur = on && count>1 ? `<span class="cur">${sheet}</span>` : '';
+    if(count===1) return `<div class="grp-btn ${on?'on':''}" data-goto-sheet="${gs[0].sheets[0]}"><span class="sw" style="background:${color}"></span>${t.label}</div>`;
+    const pop = gs.map(x=>`<div class="lab"><span class="sw" style="background:${x.color}"></span>${x.label}</div>`
+      + x.sheets.map(s=>`<div class="it ${s===sheet?'on':''} ${RENDERERS[s]?'':'stub'}" data-goto-sheet="${s}">${s}</div>`).join('')).join('');
+    return `<div class="bk-more bk-nav"><div class="grp-btn ${on?'on':''}" data-bk-more="1" role="button" aria-haspopup="true"><span class="sw" style="background:${color}"></span>${t.label}${cur}<span class="car">&#9662;</span></div><div class="bk-more-pop bk-nav-pop">${pop}</div></div>`;
   }).join('');
   return `
   <div class="brand-bar">
@@ -487,7 +495,6 @@ function buildChrome(sheet){
       <div class="tabnav-primary">${primary}</div>
       <button type="button" class="nav-chev nav-chev-r" data-nav-scroll="1" aria-label="Scroll navigation right">&#9654;</button>
     </div>
-    <div class="tabnav-secondary">${secondary}</div>
   </div>`;
 }
 
@@ -18088,6 +18095,16 @@ html body #viewport table.fin tbody td.bk-changed::after{ content:''; position:a
 .bk-more-pop .sw{ width:8px; height:8px; border-radius:50%; }
 .bk-more-pop .lab{ padding:6px 10px 4px; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-500,#5F5B52); cursor:default; }
 .bk-more-pop .lab:hover{ background:transparent; }
+.bk-nav .grp-btn .cur{ font-weight:500; color:var(--gold-500,#C9A968); margin-left:2px; max-width:150px; overflow:hidden; text-overflow:ellipsis; }
+.bk-nav .grp-btn .cur::before{ content:"\00b7"; margin-right:6px; color:#9FB0BF; }
+.bk-nav .grp-btn .car{ font-size:9px; opacity:.7; margin-left:2px; }
+.bk-nav.open > .grp-btn{ color:#fff; background:rgba(255,255,255,.08); }
+.bk-nav-pop{ min-width:230px; max-height:min(70vh,560px); overflow-y:auto; left:0; right:auto; }
+.bk-nav-pop .lab{ display:flex; gap:8px; align-items:center; padding:10px 10px 4px; }
+.bk-nav-pop .lab:not(:first-child){ border-top:1px solid var(--line,#E2DCCD); margin-top:4px; }
+.bk-nav-pop .it{ padding:7px 10px 7px 26px; }
+.bk-nav-pop .it.on{ background:rgba(23,48,73,.09); font-weight:700; }
+.bk-nav-pop .it.stub{ font-style:italic; color:var(--ink-400,#8B8378); }
 </style>
 <script id="bk-ux-workflow">
 /* ===========================================================================
@@ -20321,6 +20338,33 @@ function render(){
 }
 var g = function(){ if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Market Benchmarks'); return render(); };
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Market Benchmarks', g); else RENDERERS['Market Benchmarks'] = g;
+})();
+</script>
+
+<script id="bk-v29190-nav">
+/* top-bar dropdowns: only one open at a time, hover-to-switch once one is open, arrow keys within a menu */
+(function(){
+'use strict';
+document.addEventListener('click', function(e){
+  var b = e.target.closest && e.target.closest('[data-bk-more]'); var mine = b && b.closest('.bk-more');
+  if(mine && mine.classList.contains('bk-nav') && e.isTrusted && mine.classList.contains('open') && Date.now() - (+mine.dataset.hov || 0) < 1200){ mine.dataset.hov = 0; e.stopPropagation(); return; }   /* the hover already opened it: do not toggle it shut */
+  document.querySelectorAll('.bk-nav.open').forEach(function(m){ if(m !== mine) m.classList.remove('open'); });
+}, true);
+document.addEventListener('mouseover', function(e){
+  var b = e.target.closest && e.target.closest('.bk-nav > [data-bk-more]'); if(!b) return;
+  var open = document.querySelector('.bk-nav.open'); if(open && open !== b.parentNode){ b.click(); b.parentNode.dataset.hov = Date.now(); }
+});
+document.addEventListener('keydown', function(e){
+  var open = document.querySelector('.bk-nav.open'); if(!open || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+  var items = [].slice.call(open.querySelectorAll('.it')), i = items.indexOf(document.activeElement) ; e.preventDefault();
+  i = e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1); items[i].focus();
+});
+function mark(){ document.querySelectorAll('.bk-nav-pop .it').forEach(function(x){ x.tabIndex = -1; x.setAttribute('role', 'menuitem'); });
+  document.querySelectorAll('.bk-nav > .grp-btn').forEach(function(x){ x.tabIndex = 0; });
+  document.querySelectorAll('.bk-nav.open').forEach(function(m){ var b = m.querySelector('.grp-btn'); if(b) b.setAttribute('aria-expanded', 'true'); }); }
+new MutationObserver(mark).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['class'] }); mark();
+document.addEventListener('keydown', function(e){ if((e.key === 'Enter' || e.key === ' ') && document.activeElement && document.activeElement.matches('.bk-nav .it')){ e.preventDefault(); document.activeElement.click(); }
+  if((e.key === 'Enter' || e.key === ' ') && document.activeElement && document.activeElement.matches('.bk-nav > .grp-btn')){ e.preventDefault(); document.activeElement.click(); } });
 })();
 </script>
 

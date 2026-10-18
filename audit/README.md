@@ -81,3 +81,6 @@ brings it to the top of the view and focuses its first input. Selects keep their
 
 ## Market Benchmarks
 `ui_test.js` checks the sheet reads the deal's own figures, that ranges are editable and reset, and that development deals are told it does not apply. The ranges themselves are published figures (sources and dates are on the sheet), not audited numbers, and nothing on the sheet feeds the engine.
+
+## Navigation
+`ui_test.js` checks the top bar: six tabs, no second row, the active tab names the current sheet, one dropdown open at a time, and every sheet in the navigation is reachable.
