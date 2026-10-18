@@ -4,19 +4,19 @@
 
 
 
-<title>BK Capital CRE - V32.1 Production</title>
-<meta name="description" content="BK Capital - Real Estate Investments">
+<title>Punchlist Capital CRE - V32.1 Production</title>
+<meta name="description" content="Punchlist Capital - Real Estate Investments">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="BK Capital">
-<meta property="og:title" content="BK Capital">
+<meta property="og:site_name" content="Punchlist Capital">
+<meta property="og:title" content="Punchlist Capital">
 <meta property="og:description" content="Real Estate Investments">
 <meta property="og:url" content="https://bk-capital-cre-v291012.vercel.app/">
 <meta property="og:image" content="https://bk-capital-cre-v291012.vercel.app/bk-capital-preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="BK Capital - Real Estate Investments">
+<meta property="og:image:alt" content="Punchlist Capital - Real Estate Investments">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="BK Capital">
+<meta name="twitter:title" content="Punchlist Capital">
 <meta name="twitter:description" content="Real Estate Investments">
 <meta name="twitter:image" content="https://bk-capital-cre-v291012.vercel.app/bk-capital-preview.png">
 
@@ -47,11 +47,11 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
 #bk-sync-status.bk-sync-err{color:#F0A08F;border-color:rgba(240,160,143,.5);}
 </style>
 </head><body>
-<div id="bk-auth-gate" role="dialog" aria-label="BK Capital sign in">
+<div id="bk-auth-gate" role="dialog" aria-label="Punchlist Capital sign in">
   <div class="bk-login-card">
-    <div class="bk-login-head"><div class="bk-login-glyph">BK</div><div><div class="bk-login-word">BK CAPITAL</div><div class="bk-login-sub">Real Estate Investments</div></div></div>
+    <div class="bk-login-head"><div class="bk-login-glyph">PC</div><div><div class="bk-login-word">PUNCHLIST CAPITAL</div><div class="bk-login-sub">Real Estate Investments</div></div></div>
     <div class="bk-login-body">
-      <h2>Sign In</h2><p>Authentication is required to access BK Capital underwriting and deal data.</p>
+      <h2>Sign In</h2><p>Authentication is required to access Punchlist Capital underwriting and deal data.</p>
       <form id="bk-production-login-form">
         <label for="bk-production-email">Email</label><input id="bk-production-email" type="email" autocomplete="username" required>
         <label for="bk-production-password">Password</label><input id="bk-production-password" type="password" autocomplete="current-password" required>
@@ -335,7 +335,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
   table.fin tr.input[data-bk-fmt="text"] td.v{text-align:left;}
   /* V29 alignment pass: the "Units" column (the 3rd cell of every input row -- rowlabel, value,
      unit, [status]) is a short descriptive label ("units","GSF","% of EGI","months", etc.), never
-     a number to be compared vertically, so per BK's stated preference it reads better left-aligned
+     a number to be compared vertically, so per the sponsor's stated preference it reads better left-aligned
      than right-aligned. Confirmed via audit_alignment_scan.py that every table.fin tr.input row
      across the app (bkInput()-generated and the few hand-written rollover/reverse-solve rows) uses
      this exact 3rd-column-is-units layout, so this single rule is safe app-wide. */
@@ -383,7 +383,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
 <div class="shell">
   <nav class="rail" id="rail">
     <div class="rail-head">
-      <div class="eyebrow">BK Capital · CRE Underwriting</div>
+      <div class="eyebrow">Punchlist Capital · CRE Underwriting</div>
       <h1>CRE Master</h1>
       <p>Institutional acquisition &amp; development underwriting. Select a sheet from the list.</p>
     </div>
@@ -401,7 +401,7 @@ const GROUPS = [
   {id:'propops', label:'Property Operations', color:'#1E3A55', sheets:['Operating Underwrite','Property CF']},
   {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Draws','Residual Land']},
   {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor','Refi / Recap']},
-  {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax']},
+  {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax','Probability-Weighted']},
   {id:'biz', label:'Operating Business', color:'#6B4E71', sheets:['Business Model','Business Valuation','Sell vs Hold']},
   {id:'credit', label:'Credit & IC', color:'#7A3E4D', sheets:['IC Memo','Debt Capacity','Credit Policy','Model Checks']},
   {id:'tools', label:'Tools', color:'#5B4B8A', sheets:['Sensitivity','Reverse Solve']},
@@ -483,8 +483,8 @@ function buildChrome(sheet){
   return `
   <div class="brand-bar">
     <div class="brand-mark">
-      <div class="glyph">BK</div>
-      <div><div class="word">BK CAPITAL</div><div class="sub">Real Estate Investments</div></div>
+      <div class="glyph">PC</div>
+      <div><div class="word">PUNCHLIST CAPITAL</div><div class="sub">Real Estate Investments</div></div>
     </div>
     <div class="brand-mid"><div class="l1">CRE UNDERWRITING MODEL</div><div class="l2">V32.1 &nbsp;|&nbsp; PRODUCTION</div></div>
     <div class="brand-tag">Build Wealth Through<br>Real Estate</div>
@@ -734,7 +734,7 @@ function sheetHome(){
   const main = `
     <div class="title-block" style="padding-left:0;padding-right:0;border:none;">
       <div class="crumbs">Overview &middot; Navigation</div>
-      <h2>BK Capital CRE - V32.1</h2>
+      <h2>Punchlist Capital CRE - V32.1</h2>
       <p class="desc">Institutional acquisition &amp; development underwriting engine, V32.1 Production. This tab orients every user: active deal status, certification, an eight-step workflow, the full 45-sheet map, cell-color and tab-color conventions, and the macro control center.</p>
     </div>
 
@@ -1442,7 +1442,7 @@ showSheet('Home');
 </script>
 
 <script id="bk-functional-v02">
-// BK Capital CRE App V0.2 - first workbook-grounded operating engine slice.
+// Punchlist Capital CRE App V0.2 - first workbook-grounded operating engine slice.
 // Visual master is intentionally untouched.
 const BK_STORE='bkcapital.cre.v02';
 const BK_BASE={
@@ -1948,7 +1948,7 @@ window.bkDeprovision = function(){ del(PROV_KEY); };
 
 
 <script id="bk-functional-v03">
-// BK Capital CRE App V0.3 - live unlevered annual property cash flow.
+// Punchlist Capital CRE App V0.3 - live unlevered annual property cash flow.
 // Styling remains inherited from the locked Claude visual master.
 BK_BASE.rentGrowth=0.03; BK_BASE.otherGrowth=0.025; BK_BASE.opexGrowth=0.03; BK_BASE.taxGrowth=0.03; BK_BASE.saleCostPct=0.02;
 function bkEnsureV03(){const s=bkLoad(); let dirty=false; ['rentGrowth','otherGrowth','opexGrowth','taxGrowth','saleCostPct'].forEach(k=>{if(s[k]===undefined){s[k]=BK_BASE[k];dirty=true;}}); if(dirty)bkSave(s); return s;}
@@ -1961,7 +1961,7 @@ bkEnsureV03(); showSheet(currentSheet||'Deal Underwrite');
 </script>
 
 <script id="bk-functional-v04">
-// BK Capital CRE App V0.4 - workbook-grounded acquisition debt sizing + amortization.
+// Punchlist Capital CRE App V0.4 - workbook-grounded acquisition debt sizing + amortization.
 // Claude visual master remains untouched.
 Object.assign(BK_BASE,{acqFeePct:0.01,acqLTV:0.65,acqLTC:0.60,acqDSCR:1.25,acqRate:0.0675,acqAmort:30,acqIO:0,acqOrigFee:0.01});
 function bkEnsureV04(){const s=bkLoad();let d=false;if(s.acqDebtYield===undefined){s.acqDebtYield=0;d=true;}if(s.debtEnabled===undefined){s.debtEnabled=true;d=true;}['acqFeePct','acqLTV','acqLTC','acqDSCR','acqRate','acqAmort','acqIO','acqOrigFee'].forEach(k=>{if(s[k]===undefined){s[k]=BK_BASE[k];d=true;}});if(d)bkSave(s);return s;}
@@ -1983,7 +1983,7 @@ bkEnsureV04();showSheet(currentSheet||'Debt');
 </script>
 
 <script id="bk-functional-v05">
-// BK Capital CRE App V0.5 - live levered cash flow + deal-level returns.
+// Punchlist Capital CRE App V0.5 - live levered cash flow + deal-level returns.
 // Visual system inherited unchanged from Claude master.
 function bkLeveredReturns(){
  const u=bkAnnualCF(),d=bkDebt(),n=u.arr.length,rows=[];
@@ -2013,7 +2013,7 @@ showSheet(currentSheet||'Returns');
 </script>
 
 <script id="bk-functional-v06">
-// BK Capital CRE App V0.6 - workbook-grounded monthly returns bridge + JV inputs.
+// Punchlist Capital CRE App V0.6 - workbook-grounded monthly returns bridge + JV inputs.
 // Visual system inherited unchanged from Claude master.
 Object.assign(BK_BASE,{gpShare:.50,pref:.07,hurdle2:.10,hurdle3:.15,t2LP:.50,t3LP:.45,t4LP:.40,gpCatchup:1,gpCatchupTarget:.05,hurdleBasis:1,em1:1.97,em2:2.59,em3:4.05,assetMgmtPct:.01,dispositionFeePct:.005});
 function bkEnsureV06(){const s=bkLoad();let dirty=false;Object.keys(BK_BASE).forEach(k=>{if(s[k]===undefined){s[k]=BK_BASE[k];dirty=true;}});if(dirty)bkSave(s);return s;}
@@ -2043,7 +2043,7 @@ RENDERERS['Returns']=sheetReturnsV06;RENDERERS['Equity Waterfall']=sheetEquityWa
 </script>
 
 <script>
-/* BK Capital V0.7 - monthly hurdle-account waterfall ported from CRE Master Waterfall (M) */
+/* Punchlist Capital V0.7 - monthly hurdle-account waterfall ported from CRE Master Waterfall (M) */
 // ARCHITECTURE EXTENSION (investor model). The signature gains ONE optional argument
 // and nothing else changes. Called with no argument - which is every pre-existing call
 // site - x and s resolve exactly as before and the function is byte-identical.
@@ -2124,7 +2124,7 @@ function sheetEquityWaterfallV07(){const w=bkWaterfallV07(),s=w.s,m=n=>n<0?'('+b
 RENDERERS['Equity Waterfall']=sheetEquityWaterfallV07;
 </script>
 <script id="bk-functional-v08">
-/* BK Capital V0.8 - Sponsor CF / sponsor economics port from CRE Master Sponsor CF. Visual master unchanged. */
+/* Punchlist Capital V0.8 - Sponsor CF / sponsor economics port from CRE Master Sponsor CF. Visual master unchanged. */
 BK_BASE.acquisitionFeePct = BK_BASE.acquisitionFeePct===undefined ? .01 : BK_BASE.acquisitionFeePct;
 function bkSponsorV08(){
  const w=bkWaterfallV07(), s=bkEnsureV06(), rows=[];
@@ -2157,7 +2157,7 @@ RENDERERS['Sponsor CF']=sheetSponsorCFV08; bkEnsureV06();
 </script>
 
 <script id="bk-functional-v09">
-/* BK Capital V0.9 - Development module shell ported from CRE Master V7.2 logic. Claude visual master unchanged. */
+/* Punchlist Capital V0.9 - Development module shell ported from CRE Master V7.2 logic. Claude visual master unchanged. */
 /* ---------------------------------------------------------------------------
    RC3 ITEM 4 - ORPHANED / NON-OPERATIVE ASSUMPTION REGISTER
    ---------------------------------------------------------------------------
@@ -2362,7 +2362,7 @@ function sheetResidualLandV09(){const x=bkDevV09(),s=x.s;const main=`<div class=
 function sheetDevDrawsV09(){const x=bkDevV09(), months=Math.max(1,x.conMo||1), draw=x.isDev?x.hard/months:0, rows=Array.from({length:Math.min(months,36)},(_,i)=>`<tr><td class="rowlabel">${i+1+x.preMo}</td><td>${bkFmt(draw)}</td><td>${bkFmt(draw)}</td><td>${bkFmt(draw*(i+1))}</td></tr>`).join('');const main=`<div class="tbl-wrap"><table class="fin"><caption>Development Draws - Monthly Schedule</caption><thead><tr><th class="rowlabel-h">Month</th><th>Hard Cost Draw</th><th>Total Funding Need</th><th>Cumulative</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel">N/A</td><td colspan="3">Acquisition deal - no development draws.</td></tr>'}</tbody></table></div><div class="note-flag"><span>&#9888;</span><div><b>Simplified draw schedule -</b> hard costs are spread evenly across the construction period. Curve-weighted (S-curve) draws, soft-cost slices, lease-up deficit and capitalised construction interest are not modelled on this page yet, so treat the monthly figures as indicative.</div></div>`;return{title:'Dev Draws',crumbs:'Development',desc:'Monthly development funding schedule.',meta:{Property:x.s.name,Months:x.conMo,Curve:'Initial / flat',Status:x.isDev?'Live / expanding':'Acquisition - N/A'},main,sidebar:sidebarShell(colorKeyCard())};}
 RENDERERS['Development']=sheetDevelopmentV09;RENDERERS['Dev Schedule']=sheetDevScheduleV09;RENDERERS['Dev Draws']=sheetDevDrawsV09;RENDERERS['Residual Land']=sheetResidualLandV09;
 
-/* BK Capital V1.0 - monthly development curves + construction facility funding. Claude visual master remains locked. */
+/* Punchlist Capital V1.0 - monthly development curves + construction facility funding. Claude visual master remains locked. */
 Object.assign(BK_BASE,{hardCurveMethod:'S-Curve',hardCurveSteepness:7,softPreMethod:'Straight-Line',softConMethod:'S-Curve',softConSteepness:5,softLeaseMethod:'Straight-Line',conLTC:0,conLTV:0,conOrigFee:0,conCapCost:0,conUtil:0,conRate:0.0363,lenderLegal:0,guarantyFeePct:0});
 /* leaseDeficit (manual input) removed in V2.5 -- Lease-Up Operating Deficit is now always computed from the
    real occupancy ramp (bkDevLeaseupRamp), matching Excel Development!C78. */
@@ -2414,7 +2414,7 @@ function sheetDevelopmentV10(){const o=sheetDevelopmentV09(),x=bkDevFundingV10()
 RENDERERS['Development']=sheetDevelopmentV10;RENDERERS['Dev Draws']=sheetDevDrawsV10;
 
 
-/* BK Capital V1.1 - development stabilization / permanent takeout bridge. Claude visual master remains locked. */
+/* Punchlist Capital V1.1 - development stabilization / permanent takeout bridge. Claude visual master remains locked. */
 Object.assign(BK_BASE,{permLTV:.65,permDSCR:1.25,permRate:.0675,permAmort:30,permIO:0,permOrigFee:.01,refiAtStab:1,stabilizedNOI:0,permDebtYield:0});
 function bkPmtV11(rate,n,pv){if(!n)return 0;if(!rate)return pv/n;return pv*rate/(1-Math.pow(1+rate,-n));}
 // V26 Excel parity #1: Excel (Debt!C39, d_FwdNOI) sizes the permanent loan off the actual forward
@@ -2476,7 +2476,7 @@ const _dsV11=RENDERERS['Debt Schedule'];RENDERERS['Debt Schedule']=function(){co
 
 
 <script id="bk-functional-v12">
-/* BK Capital V1.2 - development-to-returns bridge. Claude visual master remains locked. */
+/* Punchlist Capital V1.2 - development-to-returns bridge. Claude visual master remains locked. */
 const _bkMonthlyReturnsAcqV12 = bkMonthlyReturns;
 function bkDevMonthlyReturnsV12(){
  const x=bkDevTakeoutV11(), s=x.s, op=bkOperatingV02();
@@ -2533,7 +2533,7 @@ RENDERERS['Returns']=function(){const s=bkLoad();if(String(s.dealType||'').toLow
 
 
 <script>
-/* BK Capital V1.3 - live Excel/web certification dashboard. Visual master unchanged. */
+/* Punchlist Capital V1.3 - live Excel/web certification dashboard. Visual master unchanged. */
 (function(){
  const BASE={unlevIRR:.06716576516628264,unlevMOIC:1.7091370612195809,levIRR:.060999193787574776,levMOIC:1.7263549737865043,peakEq:5701460,grossSale:13254725.15451842,t12NOI:515307.92};
  function pctDiff(a,b){return b?Math.abs(a-b)/Math.abs(b):Math.abs(a-b)}
@@ -2579,7 +2579,7 @@ RENDERERS['Returns']=function(){const s=bkLoad();if(String(s.dealType||'').toLow
 </script>
 
 <script id="bk-functional-v13-rentroll-fix">
-// BK Capital CRE App V13 - deal-isolation fix + rent-roll revenue basis.
+// Punchlist Capital CRE App V13 - deal-isolation fix + rent-roll revenue basis.
 // Two Excel tie-out defects fixed here:
 //  1) bkCalc() was scaling GPR/vacancy/bad-debt/misc off the hardcoded ShorePointe demo
 //     deal's constants (BK_BASE.gpr/badDebtPct/misc) instead of the loaded deal's own
@@ -2850,7 +2850,7 @@ showSheet(currentSheet||'Deal Underwrite');
 </script>
 
 <script id="bk-functional-v14-monthly-engine">
-// BK Capital CRE App V14 - multi-year monthly engine, replacing the flat annual-growth
+// Punchlist Capital CRE App V14 - multi-year monthly engine, replacing the flat annual-growth
 // extrapolation bkAnnualCF() used before this patch.
 //
 // Verified against Excel directly for Havard Avenue (see Havard_MultiYear_Verification.md):
@@ -3062,7 +3062,7 @@ RENDERERS['Property CF'] = function(){
 </script>
 
 <script id="bk-functional-v15">
-/* BK Capital V1.5 - exact monthly levered equity cash flow (SYS_CF rows 87-104).
+/* Punchlist Capital V1.5 - exact monthly levered equity cash flow (SYS_CF rows 87-104).
    Reconciled against Havard Avenue: previous bkMonthlyReturns() (a) split annual NOI/EGI
    evenly across 12 months instead of using the true monthly-compounding figure, and
    (b) never applied the Disposition Fee at sale. Both are fixed here by reusing
@@ -3113,7 +3113,7 @@ window.bkAcquisitionMonthlyReturnsV15 = function(){
 </script>
 
 <script id="bk-functional-v16-rollover-structure">
-/* BK Capital V1.6 - Stage C data structure: lease start/end dates, global rollover
+/* Punchlist Capital V1.6 - Stage C data structure: lease start/end dates, global rollover
    assumptions (with per-unit override), and a read-only Rollover Schedule preview.
    STRUCTURE ONLY: nothing here changes bkAnnualCF's revenue calculation yet, so the
    verified Havard/Meridian NOI, IRR and MOIC figures are untouched. This just gives the
@@ -3263,7 +3263,7 @@ RENDERERS['Rent Roll'] = function(){
 </script>
 
 <script id="bk-functional-v17-covenant-sensitivity-reverse">
-/* BK Capital V1.7 - three sheets that were "Queued for a later batch" but need no new
+/* Punchlist Capital V1.7 - three sheets that were "Queued for a later batch" but need no new
    calc engine, only a new view over bkAnnualCF()/bkDebt()/bkMonthlyReturns(), which are
    already verified exact against Excel: Covenant Monitor, Sensitivity, Reverse Solve.
    Also fixes a real bug: the sidebar's Rendered/Queued status was computed once, at page
@@ -3427,7 +3427,7 @@ bkRefreshRailStatus();
 </script>
 
 <script id="bk-functional-v18-after-tax">
-/* BK Capital V1.8 - After-Tax engine. Reuses the verified pre-tax chain (bkAnnualCF/bkDebt/
+/* Punchlist Capital V1.8 - After-Tax engine. Reuses the verified pre-tax chain (bkAnnualCF/bkDebt/
    bkMonthlyReturns) unchanged; this only layers straight-line depreciation, ordinary income tax,
    and sale-year depreciation recapture + capital gains tax on top of the real monthly levered CF
    stream, property-level and pre-waterfall (same basis Returns/Debt/Covenant Monitor already show --
@@ -3569,7 +3569,7 @@ bkRefreshRailStatus();
 </script>
 
 <script id="bk-functional-v19-portfolio">
-/* BK Capital V1.9 - Portfolio. This app holds exactly one active deal at a time (a single
+/* Punchlist Capital V1.9 - Portfolio. This app holds exactly one active deal at a time (a single
    localStorage key), so a real multi-deal view needs its own separate store of deal snapshots
    rather than pretending the app is multi-deal underneath. bkLoad/bkSave are still the only way
    any calc function reads a deal, so per-deal metrics here are computed by swapping them to a
@@ -3691,7 +3691,7 @@ bkRefreshRailStatus();
 </script>
 
 <script id="bk-functional-v20-monthly-engine">
-/* BK Capital V2.0 - Monthly Engine group. Every sheet here reuses the already-verified engine
+/* Punchlist Capital V2.0 - Monthly Engine group. Every sheet here reuses the already-verified engine
    (bkMonthlyReturns/bkWaterfallV07/bkAnnualCF/bkDebt) at its native monthly grain -- no separate
    or approximated calculation anywhere in this block. */
 
@@ -3859,7 +3859,7 @@ bkRefreshRailStatus();
 </script>
 
 <script id="bk-functional-v21-portfolio-database">
-/* BK Capital V2.1 - Portfolio Database group. Reuses bkPortfolioLoad/bkPortfolioMetricsFor
+/* Punchlist Capital V2.1 - Portfolio Database group. Reuses bkPortfolioLoad/bkPortfolioMetricsFor
    (Portfolio) throughout -- every figure is either a stored field on a real saved deal snapshot,
    or live output from the same verified engine. Individual-investor pages (Investors, Investor
    Schedules, Liquidity) still aren't built: they need a real LP cap-table data model (names,
@@ -4050,7 +4050,7 @@ bkRefreshRailStatus();
      (bk-investor-architecture-model) is canonical; legacy lists are migrated by bk-v30-canonical-investors. -->
 
 <script id="bk-functional-v23-data-export">
-/* BK Capital V2.3 (frontend) -- Data Export. A real export center, not another calculation sheet:
+/* Punchlist Capital V2.3 (frontend) -- Data Export. A real export center, not another calculation sheet:
    every builder below reads directly from the same already-verified live engine functions the
    app's own sheets already call (bkLoad, bkAnnualCF, bkMonthlyReturns, bkDebt, bkWaterfallV07,
    bkSponsorV08, bkInvestorMetrics, bkDevV09, bkDevFundingV10). Nothing here computes a new number
@@ -4059,7 +4059,7 @@ bkRefreshRailStatus();
    multi-file download, staggered so the browser doesn't block them as a popup flood); there is no
    single-archive/zip packaging in this pass since the app has zero external dependencies and adding
    a zip library would be the first one. Polished LP-facing PDF exports and a true Excel round-trip
-   are explicitly out of scope here per BK's direction. */
+   are explicitly out of scope here per the sponsor's direction. */
 
 function bkCSVCell(v){
   if(v===null||v===undefined) return '';
@@ -4513,7 +4513,7 @@ if(typeof BK_EXPORT_REGISTRY !== 'undefined'){
 })();
 </script>
 <script id="bk-functional-v24-development-engine-fix">
-/* BK Capital V2.4 -- fixes two real, pre-existing defects in the Development engine, both
+/* Punchlist Capital V2.4 -- fixes two real, pre-existing defects in the Development engine, both
    discovered while building V23's Data Export and neither introduced by this app's work this
    session (both are present even in the original V5.4 upload this whole build started from).
    Acquisition deals (Havard, Meridian) are completely untouched by either fix -- both only ever
@@ -4568,17 +4568,17 @@ window.bkMonthlyReturns = function(){
 </script>
 
 <script id="bk-functional-v27-source-basis">
-/* BK Capital V2.7 -- Source/Basis tagging infrastructure (V27 point 5) + Yardi portfolio
+/* Punchlist Capital V2.7 -- Source/Basis tagging infrastructure (V27 point 5) + Yardi portfolio
    reference dataset (V27 points 3/4) + a new read-only "Source Data" sheet under the Inputs
    group that surfaces the Yardi workbook's real property/tenant/historical data next to the
    app's current active-deal assumptions, with variances explicitly flagged rather than silently
-   resolved. Per BK's instruction, no active-deal field is silently overwritten by this block --
+   resolved. Per the sponsor's instruction, no active-deal field is silently overwritten by this block --
    ingesting the Yardi workbook only ADDS a reference layer and a variance report; the app's
    existing baselines (including the previously-approved $0.25/GSF Miscellaneous Other Expenses
-   figure and Havard's current $914,092.20 rent-roll total) remain authoritative until BK says
+   figure and Havard's current $914,092.20 rent-roll total) remain authoritative until the sponsor says
    otherwise.
 
-   SOURCE LABELS -- the seven basis tags BK asked for verbatim: YARDI RENT ROLL, YARDI T12,
+   SOURCE LABELS -- the seven basis tags the sponsor asked for verbatim: YARDI RENT ROLL, YARDI T12,
    YARDI GL, ACQUISITION DD, USER INPUT, EXCEL MASTER, CALCULATED. bkSetSource/bkGetSource attach
    these to arbitrary field names on the active-deal state object under a `_src` map, which rides
    through bkLoad()/bkSave() automatically -- bkSave() only strips keys that are still exactly
@@ -4614,7 +4614,7 @@ function bkEnsureSourceTagsV27(){
     bkSetSource(s,'rentRoll','EXCEL MASTER','Havard commercial rent roll as originally entered from the CRE Master Excel workbook. The Yardi source workbook carries a different, higher total plus a separate Ancillary Income component -- see Source Data sheet variance report. Not auto-swapped.');
     bkSetSource(s,'taxes','EXCEL MASTER','Real estate taxes per CRE Master Excel workbook.');
     bkSetSource(s,'purchasePrice','ACQUISITION DD','Matches Cost Segregation purchase price in Yardi source ($10,200,000).');
-    bkSetSource(s,'miscPerGSF','USER INPUT','$0.25/GSF generic template default, kept as the approved baseline over Excel’s stale $10/GSF g_retail_opex named range per BK’s explicit V26 decision.');
+    bkSetSource(s,'miscPerGSF','USER INPUT','$0.25/GSF generic template default, kept as the approved baseline over Excel’s stale $10/GSF g_retail_opex named range per the sponsor’s explicit V26 decision.');
     bkSetSource(s,'rm','USER INPUT','App assumption ($11,900/yr). The 2025 Yardi GL actual (full itemized ledger) totals $164,058.39/yr -- see Source Data sheet variance report. Not auto-swapped.');
   }
   s._srcSeeded = true;
@@ -4623,7 +4623,7 @@ function bkEnsureSourceTagsV27(){
 bkEnsureSourceTagsV27();
 
 /* BK_SOURCE_DATA -- figures transcribed directly from
-   Yardi_Portfolio_Master_Source_Benchmark_FULL_DATA_v2_1.xlsx (BK's upload), read with openpyxl
+   Yardi_Portfolio_Master_Source_Benchmark_FULL_DATA_v2_1.xlsx (the sponsor's upload), read with openpyxl
    in data_only mode, so every number below is the workbook's own last-calculated value -- nothing
    here is re-derived, rounded, or estimated. This object feeds no calculation automatically; it
    is rendered read-only on the new Source Data sheet and cross-checked there against the active
@@ -4663,7 +4663,7 @@ const BK_SOURCE_DATA = {
     rentRollTotals: {sf:63447, monthlyRent:76862, ancillary:8100, annualRent:1019536, rentPSF:16.07},
     t12noi: 899039, expenseRatio:0.1182, capRate:0.07, vacancy:0, ownership:0.5, impliedValue:12843414,
     sellerPL: {
-      note: '200 Harvard Corp. Profit & Loss, seller-prepared, pre-BK-ownership (DD source pages 6-7). Includes several one-time/non-operating lines (Depreciation, Amortization, CT Income Tax, Synetra Loan interest, and a $442,289.60 2023 Professional Fees line that reads as a legal/transaction cost, not recurring opex) -- shown exactly as supplied, not reclassified or netted out.',
+      note: '200 Harvard Corp. Profit & Loss, seller-prepared, pre-acquisition ownership (DD source pages 6-7). Includes several one-time/non-operating lines (Depreciation, Amortization, CT Income Tax, Synetra Loan interest, and a $442,289.60 2023 Professional Fees line that reads as a legal/transaction cost, not recurring opex) -- shown exactly as supplied, not reclassified or netted out.',
       y2022: {totalIncome:1043341.37, totalExpense:634160.95, netIncome:369280.42},
       y2023: {totalIncome:1076712.65, totalExpense:1024138.07, netIncome:52574.58},
     },
@@ -4692,7 +4692,7 @@ const BK_SOURCE_DATA = {
     ],
     capexHistoryTotal: 1424952,
     costSegExtra: {
-      note: 'Confirmed against the dedicated Cost_Segregation_Harvard.xlsx workbook (BK’s separate upload) -- a standalone tax/fixed-asset source layer, deliberately NOT mixed into property NOI or operating cash flow anywhere in this app.',
+      note: 'Confirmed against the dedicated Cost_Segregation_Harvard.xlsx workbook (the sponsor’s separate upload) -- a standalone tax/fixed-asset source layer, deliberately NOT mixed into property NOI or operating cash flow anywhere in this app.',
       datePlacedInService: '2025-12-11',
       capitalImprovements: 0,
       streetAddress: '180-200 Harvard Avenue, Stamford, CT 06902',
@@ -4707,7 +4707,7 @@ const BK_SOURCE_DATA = {
       ],
     },
     lease: {
-      note: 'Tenant-level contractual lease abstracts (Hathaway property-management lease summaries + amendments, from Harvard_Summary.pdf) -- a SEPARATE source layer from the Yardi property-management setup. BK personally built the Yardi Harvard rent roll and reimbursement setup, so Yardi here is treated as a deliberate structured implementation of these lease economics, not generic third-party data -- but the two layers are still kept distinct and reconciled explicitly below, never merged. Contractual lease terms (base rent, escalation mechanics) are the forward-looking source of truth for projections; Yardi GL remains the historical-actuals source; any underwriting override of either must be explicit and source-labeled (V27 point 3).',
+      note: 'Tenant-level contractual lease abstracts (Hathaway property-management lease summaries + amendments, from Harvard_Summary.pdf) -- a SEPARATE source layer from the Yardi property-management setup. the sponsor personally built the Yardi Harvard rent roll and reimbursement setup, so Yardi here is treated as a deliberate structured implementation of these lease economics, not generic third-party data -- but the two layers are still kept distinct and reconciled explicitly below, never merged. Contractual lease terms (base rent, escalation mechanics) are the forward-looking source of truth for projections; Yardi GL remains the historical-actuals source; any underwriting override of either must be explicit and source-labeled (V27 point 3).',
       tenants: [
         {
           yardiTenant:'Integrity Automotive, LLC (#1)', unit:'180-1',
@@ -4880,7 +4880,7 @@ function sheetSourceDataV27(){
   const portfolioTable = `<div class="tbl-wrap"><table class="fin"><caption>Yardi Portfolio Reference - Property Summary (source: ${BK_SOURCE_DATA.asOf})</caption>
     <thead><tr><th class="rowlabel-h">Property</th><th>Type</th><th>Units</th><th>SF</th><th>Annual Rent</th><th>Rent/SF</th><th>T-12 NOI</th><th>Exp. Ratio</th><th>Cap Rate</th><th>Vacancy</th><th>Ownership</th><th>Implied Value</th></tr></thead>
     <tbody>${portRows}${targetRows}</tbody></table></div>
-    <div class="note-flag"><span>&#8505;</span><div><b>Read-only reference layer.</b> Transcribed from the Yardi portfolio workbook BK supplied. It does not feed any calculation automatically -- it exists so every assumption in this app can be checked against real portfolio data, with an explicit source/basis tag on every comparison (V27 point 5).</div></div>`;
+    <div class="note-flag"><span>&#8505;</span><div><b>Read-only reference layer.</b> Transcribed from the Yardi portfolio workbook the sponsor supplied. It does not feed any calculation automatically -- it exists so every assumption in this app can be checked against real portfolio data, with an explicit source/basis tag on every comparison (V27 point 5).</div></div>`;
 
   let harvardBlock;
   if(isHarvard){
@@ -4926,9 +4926,9 @@ function sheetSourceDataV27(){
         <tr><td class="rowlabel">Ancillary Income (annual)</td><td>$0 (not modeled)</td><td>$${bkFmt(hv.rentRollTotals.ancillary*12)}</td><td>-</td><td>-</td><td>YARDI RENT ROLL</td><td><span class="status-chip warn">NOT YET INGESTED</span></td></tr>
         <tr><td class="rowlabel">Year-1 NOI (after reserves)</td><td>${appNOIy1!=null?'$'+bkFmt(appNOIy1):'n/a'}</td><td>$${bkFmt(hv.t12noi)}</td><td>${appNOIy1!=null?(noiVarDollar<0?'($'+bkFmt(-noiVarDollar)+')':'$'+bkFmt(noiVarDollar)):'-'}</td><td>${appNOIy1!=null?bkPct(noiVarPct):'-'}</td><td>CALCULATED vs YARDI T12</td><td><span class="status-chip ${noiStatus}">${noiStatus==='pass'?'PASS':'REVIEW'}</span></td></tr>
         <tr><td class="rowlabel">Repairs &amp; Maintenance (annual)</td><td>$${bkFmt(Number(s.rm||0))}</td><td>$${bkFmt(hv.rm2025Total)}</td><td>${rmVarDollar<0?'($'+bkFmt(-rmVarDollar)+')':'$'+bkFmt(rmVarDollar)}</td><td>${bkPct(rmVarPct)}</td><td>USER INPUT vs YARDI GL (2025 actual)</td><td><span class="status-chip ${rmStatus}">${rmStatus==='pass'?'PASS':'REVIEW'}</span></td></tr>
-        <tr><td class="rowlabel">Miscellaneous Other Expenses ($/GSF)</td><td>$${Number(s.miscPerGSF||0).toFixed(2)}/GSF</td><td>$10.00/GSF (Excel named range g_retail_opex)</td><td>-</td><td>-</td><td>USER INPUT vs EXCEL MASTER</td><td><span class="status-chip warn">INTENTIONAL DIVERGENCE - kept per BK decision (V26)</span></td></tr>
+        <tr><td class="rowlabel">Miscellaneous Other Expenses ($/GSF)</td><td>$${Number(s.miscPerGSF||0).toFixed(2)}/GSF</td><td>$10.00/GSF (Excel named range g_retail_opex)</td><td>-</td><td>-</td><td>USER INPUT vs EXCEL MASTER</td><td><span class="status-chip warn">INTENTIONAL DIVERGENCE - kept per the sponsor decision (V26)</span></td></tr>
       </tbody></table></div>
-    <div class="note-flag"><span>&#9888;</span><div><b>No baseline changed as a result of this table.</b> Both the Commercial Base Rent and Repairs &amp; Maintenance rows show a material variance against real Yardi/GL source data. Per V27 point 5 ("prevent stale source data from silently overriding current underwriting assumptions"), this app does NOT auto-swap either figure - Havard's regression-locked baseline stays exactly as verified in V24-V26 until BK reviews this table and decides which figure should govern.</div></div>
+    <div class="note-flag"><span>&#9888;</span><div><b>No baseline changed as a result of this table.</b> Both the Commercial Base Rent and Repairs &amp; Maintenance rows show a material variance against real Yardi/GL source data. Per V27 point 5 ("prevent stale source data from silently overriding current underwriting assumptions"), this app does NOT auto-swap either figure - Havard's regression-locked baseline stays exactly as verified in V24-V26 until the sponsor reviews this table and decides which figure should govern.</div></div>
 
     <div class="tbl-wrap" style="margin-top:20px"><table class="fin"><caption>Harvard - NNN / Reimbursement GROSS vs. NET Reconciliation (Year-1 stabilized)</caption>
       <thead><tr><th class="rowlabel-h">Line</th><th>Amount</th><th>Basis / Note</th></tr></thead>
@@ -4940,22 +4940,22 @@ function sheetSourceDataV27(){
         <tr class="section"><td colspan="3">GROSS Presentation</td></tr>
         <tr><td class="rowlabel">Gross Expenses (full landlord-paid bundle)</td><td>$${bkFmt(nnn.grossExpenses)}</td><td>RE Taxes + Insurance + Utilities + R&amp;M + Contract + Payroll + Turnover + Marketing + GA + Mgmt Fee + Misc - unreduced</td></tr>
         <tr class="grandtotal"><td class="rowlabel">NOI - GROSS (Base Rent + Recoveries + Vac/Credit + Other - Gross Expenses)</td><td>$${bkFmt(nnn.noiGross)}</td><td>Matches the live engine's Year-1 NOI exactly</td></tr>
-        <tr class="section"><td colspan="3">NET Presentation (BK's requested restatement)</td></tr>
+        <tr class="section"><td colspan="3">NET Presentation (the sponsor's requested restatement)</td></tr>
         <tr><td class="rowlabel">Reimbursable Expenses (implied = Recoveries collected)</td><td>$${bkFmt(nnn.reimbursableExpenses)}</td><td>Not separately determinable line-by-line from source (see note below) - taken as what's actually billed</td></tr>
         <tr><td class="rowlabel">Net Landlord Expenses (Gross - Reimbursable)</td><td>$${bkFmt(nnn.netLandlordExpenses)}</td><td>Gross Expenses net of Recoveries</td></tr>
         <tr class="grandtotal"><td class="rowlabel">NOI - NET (Base Rent + Vac/Credit + Other - Net Landlord Expenses)</td><td>$${bkFmt(nnn.noiNet)}</td><td>${nnn.tie?'TIES EXACTLY to GROSS and to the live engine NOI':'DOES NOT TIE - investigate'}</td></tr>
       </tbody></table></div>
-    <div class="note-flag"><span>${nnn.tie?'&#10003;':'&#9888;'}</span><div><b>${nnn.tie?'No double-count found.':'DISCREPANCY FOUND - do not trust this NOI until resolved.'}</b> The live engine (<code>bkCalc</code>/<code>bkAnnualCF</code>) was inspected before any change was made, per BK's instruction. It already presents Havard on a GROSS NNN basis - Recoveries are added to revenue exactly once and are never separately subtracted from expenses - so there is no mechanical double-count today. RE Taxes ($145,000) in particular cannot be net of anything: a landlord always pays the full tax bill and bills tenants separately. The NET restatement above is proven algebraically to tie to the identical NOI (Net Landlord Expenses is defined as Gross Expenses minus Recoveries, so the Recoveries term cancels the same way in both formulations) - this is not assumed, it is confirmed numerically every time this sheet renders (currently: ${nnn.tie?'TIES':'DOES NOT TIE'}). <b>Two items remain flagged REVIEW, not resolved:</b> (1) Utilities ($106,951/yr) carries an Excel label of "net of RUBS" - a residential submetering concept that may not accurately describe an all-commercial deal like Havard; whether this figure is fully gross or already net of some billback is not determinable from the source documents supplied. (2) Ancillary Income ($97,200/yr, Yardi rent roll) has no source document defining whether it is a true NNN pass-through or genuine landlord income (parking, storage, late fees, etc.) - it is excluded from both the gross and net NOI above, exactly as it already was, rather than guessed into either bucket. Neither of these was resolved automatically; both require BK's decision.</div></div>
+    <div class="note-flag"><span>${nnn.tie?'&#10003;':'&#9888;'}</span><div><b>${nnn.tie?'No double-count found.':'DISCREPANCY FOUND - do not trust this NOI until resolved.'}</b> The live engine (<code>bkCalc</code>/<code>bkAnnualCF</code>) was inspected before any change was made, per the sponsor's instruction. It already presents Havard on a GROSS NNN basis - Recoveries are added to revenue exactly once and are never separately subtracted from expenses - so there is no mechanical double-count today. RE Taxes ($145,000) in particular cannot be net of anything: a landlord always pays the full tax bill and bills tenants separately. The NET restatement above is proven algebraically to tie to the identical NOI (Net Landlord Expenses is defined as Gross Expenses minus Recoveries, so the Recoveries term cancels the same way in both formulations) - this is not assumed, it is confirmed numerically every time this sheet renders (currently: ${nnn.tie?'TIES':'DOES NOT TIE'}). <b>Two items remain flagged REVIEW, not resolved:</b> (1) Utilities ($106,951/yr) carries an Excel label of "net of RUBS" - a residential submetering concept that may not accurately describe an all-commercial deal like Havard; whether this figure is fully gross or already net of some billback is not determinable from the source documents supplied. (2) Ancillary Income ($97,200/yr, Yardi rent roll) has no source document defining whether it is a true NNN pass-through or genuine landlord income (parking, storage, late fees, etc.) - it is excluded from both the gross and net NOI above, exactly as it already was, rather than guessed into either bucket. Neither of these was resolved automatically; both require the sponsor's decision.</div></div>
 
     <div class="tbl-wrap" style="margin-top:20px"><table class="fin"><caption>Harvard - Lease Source vs. Yardi Setup Reconciliation (LEASE SOURCE / YARDI SETUP / VARIANCE / STATUS)</caption>
       <thead><tr><th class="rowlabel-h">Tenant / Unit</th><th>Unit</th><th>LEASE SOURCE (base rent)</th><th>YARDI SETUP (base rent)</th><th>VARIANCE $ (%)</th><th>STATUS</th></tr></thead>
       <tbody>${leaseRows}</tbody></table></div>
     <div class="note-flag"><span>&#8505;</span><div>${hv.lease.note}</div></div>
-    <div class="note-flag"><span>&#9888;</span><div><b>Executed lease and Yardi are kept as two separate source layers, on purpose.</b> Every dollar variance above is within the range explained by each lease's own contractual escalation clause (3%/CPI, compounded over the 1-3 years between the last documented lease-abstract rent step and the Yardi setup date) - none is silently resolved into one number. The two non-dollar flags (a tenant-name difference on 180-1/180-2, and a one-year commencement slip on 180-2) are structural discrepancies, not rent variances, and are also left for BK's review rather than corrected here.</div></div>
+    <div class="note-flag"><span>&#9888;</span><div><b>Executed lease and Yardi are kept as two separate source layers, on purpose.</b> Every dollar variance above is within the range explained by each lease's own contractual escalation clause (3%/CPI, compounded over the 1-3 years between the last documented lease-abstract rent step and the Yardi setup date) - none is silently resolved into one number. The two non-dollar flags (a tenant-name difference on 180-1/180-2, and a one-year commencement slip on 180-2) are structural discrepancies, not rent variances, and are also left for the sponsor's review rather than corrected here.</div></div>
     <div class="body-grid source-lease-grid" style="margin-top:14px">${leaseDetailCards}</div>
 
     <div class="body-grid" style="margin-top:20px">
-      <div class="tbl-wrap"><table class="fin"><caption>Seller Historical P&amp;L (200 Harvard Corp., pre-BK ownership) ${bkSourceChip(s,'_sellerPL','ACQUISITION DD')}</caption>
+      <div class="tbl-wrap"><table class="fin"><caption>Seller Historical P&amp;L (200 Harvard Corp., pre-acquisition ownership) ${bkSourceChip(s,'_sellerPL','ACQUISITION DD')}</caption>
         <thead><tr><th class="rowlabel-h">Line</th><th>2022</th><th>2023</th></tr></thead>
         <tbody><tr><td class="rowlabel">Total Income</td><td>$${bkFmt(hv.sellerPL.y2022.totalIncome)}</td><td>$${bkFmt(hv.sellerPL.y2023.totalIncome)}</td></tr>
         <tr><td class="rowlabel">Total Expense</td><td>$${bkFmt(hv.sellerPL.y2022.totalExpense)}</td><td>$${bkFmt(hv.sellerPL.y2023.totalExpense)}</td></tr>
@@ -4985,7 +4985,7 @@ function sheetSourceDataV27(){
     <div class="note-flag"><span>&#8505;</span><div>${hv.depreciationAnnualSchedule.note}</div></div>
 
     <div class="note-flag"><span>&#9888;</span><div><b>Jan/Feb 2026 commercial reimbursement activity - not allocated.</b> ${hv.janFeb2026Reimbursement.note} (Jan 2026: $${bkFmt(hv.janFeb2026Reimbursement.jan2026Total)}; Feb 2026: $${bkFmt(hv.janFeb2026Reimbursement.feb2026Total)}.)</div></div>
-    <div class="note-flag"><span>&#8505;</span><div><b>Historical CapEx (seller-supplied, pre-BK ownership):</b> $${bkFmt(hv.capexHistoryTotal)} total across ${hv.capexHistory.length} projects, 2019-2024 (roof replacement, envelope/waterproofing, window replacement, tenant build-outs). Reference only - not applied to any app CapEx assumption.</div></div>
+    <div class="note-flag"><span>&#8505;</span><div><b>Historical CapEx (seller-supplied, pre-acquisition ownership):</b> $${bkFmt(hv.capexHistoryTotal)} total across ${hv.capexHistory.length} projects, 2019-2024 (roof replacement, envelope/waterproofing, window replacement, tenant build-outs). Reference only - not applied to any app CapEx assumption.</div></div>
 
     <div class="tbl-wrap" style="margin-top:20px"><table class="fin"><caption>Yardi Trailing-12 (Mar 2026) - Portfolio-Consolidated, NOT Harvard-Isolated ${bkSourceChip(s,'_t12Consolidated','YARDI T12')}</caption>
       <thead><tr><th class="rowlabel-h">Line</th><th>Trailing-12 Total</th></tr></thead>
@@ -5012,7 +5012,7 @@ function sheetSourceDataV27(){
   return {
     title: 'Source Data',
     crumbs: 'Inputs · Source Data',
-    desc: "Read-only Yardi portfolio + Havard Avenue acquisition due-diligence reference data, cross-checked against the active deal's current assumptions. Nothing here overwrites a live baseline automatically -- every material variance is flagged for BK's review (V27 point 5).",
+    desc: "Read-only Yardi portfolio + Havard Avenue acquisition due-diligence reference data, cross-checked against the active deal's current assumptions. Nothing here overwrites a live baseline automatically -- every material variance is flagged for the sponsor's review (V27 point 5).",
     meta: {Property: s.name||s.dealId, 'Yardi Source': 'Ingested', 'Deep Detail': isHarvard?'Havard (active)':'Not active', Status:'Reference'},
     main, sidebar,
   };
@@ -5054,11 +5054,11 @@ RENDERERS['QA'] = function(){
 showSheet(currentSheet||'Deal Underwrite');
 </script>
 
-<!-- BK Capital V29.1 - Deal Underwrite alignment-only patch. No calculation logic changed. -->
+<!-- Punchlist Capital V29.1 - Deal Underwrite alignment-only patch. No calculation logic changed. -->
 
-<!-- BK Capital V29.2 - Overview left alignment + compact Deal Underwrite rows. CSS only. -->
+<!-- Punchlist Capital V29.2 - Overview left alignment + compact Deal Underwrite rows. CSS only. -->
 
-<!-- BK Capital V29.3 - precise Deal Underwrite grid classification. Alignment only; no engine logic. -->
+<!-- Punchlist Capital V29.3 - precise Deal Underwrite grid classification. Alignment only; no engine logic. -->
 
 
 <style id="bk-v295-format-sweep">
@@ -5110,11 +5110,11 @@ table.fin tr.section td, table.fin tr.subtotal td, table.fin tr.grandtotal td{li
 }
 </style>
 
-<!-- BK Capital V29.6 - file-wide symbol + semantic alignment cleanup. Presentation only. -->
+<!-- Punchlist Capital V29.6 - file-wide symbol + semantic alignment cleanup. Presentation only. -->
 
 <script id="bk-v297-supabase-adapter">
 /* ===========================================================================
-   BK CAPITAL CRE - SUPABASE PERSISTENCE ADAPTER (V29.7)
+   PUNCHLIST CAPITAL CRE - SUPABASE PERSISTENCE ADAPTER (V29.7)
    ===========================================================================
    SUPABASE STORES STATE. V29.6/V29.7 CALCULATES RESULTS.
 
@@ -5721,7 +5721,7 @@ window.bkCloudPing = function(){
 };
 
 /* -------------------------------------------------------------------------
-   5. CLOUD SYNC SHEET  (reuses the existing BK Capital design system only)
+   5. CLOUD SYNC SHEET  (reuses the existing Punchlist Capital design system only)
    ------------------------------------------------------------------------- */
 var bkCloudMsg = null;
 function note(kind, text){ bkCloudMsg = { kind:kind, text:text }; if(typeof currentSheet!=='undefined') showSheet(currentSheet); }
@@ -7528,7 +7528,7 @@ function normName(v){
     .trim().replace(/\s+/g, ' ')
     /* Standard address formatting only: drop a TRAILING street-type word, which is
        a presentation difference between systems ("71 Haviland" vs "71 Haviland
-       Road"). Only trailing, so "Wall Street Manor" is untouched. This is on BK's
+       Road"). Only trailing, so "Wall Street Manor" is untouched. This is on the sponsor's
        allowed-normalisation list; it is NOT fuzzy matching and never resolves two
        different addresses onto each other. */
     .replace(/\s+(ROAD|RD|STREET|ST|AVENUE|AVE|DRIVE|DR|LANE|LN|COURT|CT|PLACE|PL|BOULEVARD|BLVD)$/,'')
@@ -8465,9 +8465,9 @@ window.bkSourceFindings = function(){
             + 'The per-unit-per-month figure for this property is $2,494.',
       effect :'The stored value appears to be dollars per square foot per year carrying a per-unit-'
             + 'per-month label.',
-      action :'NOT CHANGED. BK instructed that avgRent stay at 36.64 and that the Rent Roll is the '
+      action :'NOT CHANGED. the sponsor instructed that avgRent stay at 36.64 and that the Rent Roll is the '
             + 'authoritative basis. This finding is raised because it is new primary-source evidence '
-            + 'that contradicts the workbook label, and the decision is BK\'s, not the application\'s.' },
+            + 'that contradicts the workbook label, and the decision is the sponsor\'s, not the application\'s.' },
 
     { id:'OTHERINCOME-UNIT-CONFLICT',
       severity:'REVIEW',
@@ -8477,7 +8477,7 @@ window.bkSourceFindings = function(){
             + 'charges. The field name asserts it is per-unit.',
       effect :'If consumed as dollars per unit per year, the figure is overstated by roughly 38x '
             + 'relative to its source meaning.',
-      action :'NOT CHANGED, and flagged REVIEW. This is the figure BK specifically instructed must '
+      action :'NOT CHANGED, and flagged REVIEW. This is the figure the sponsor specifically instructed must '
             + 'not be guessed at; it is now traced to a primary document rather than inferred.' }
   ];
 };
@@ -8595,10 +8595,10 @@ reg('Source Lineage', sheetSourceLineage, 'qa');
 </script>
 
 
-<!-- BK Capital V29.10.10 - Deal Underwrite true shared-column alignment. Presentation only. -->
+<!-- Punchlist Capital V29.10.10 - Deal Underwrite true shared-column alignment. Presentation only. -->
 
 
-<!-- BK Capital V29.10.11 - canonical input-table geometry + unit-aware display formatting -->
+<!-- Punchlist Capital V29.10.11 - canonical input-table geometry + unit-aware display formatting -->
 
 <script id="bk-v291011-input-grid-format-js">
 (function(){
@@ -8688,7 +8688,7 @@ reg('Source Lineage', sheetSourceLineage, 'qa');
 </script>
 
 
-<!-- BK Capital V30.0 Production - OCD numeric formatting + compact controls -->
+<!-- Punchlist Capital V30.0 Production - OCD numeric formatting + compact controls -->
 
 <script id="bk-v291012-ocd-format-js">
 (function(){
@@ -15364,7 +15364,7 @@ Object.keys(RENDERERS).forEach(function(sheet){
 
 
 
-<!-- BK Capital V29.10.13 - final workbook-wide user-facing unit normalization (display only) -->
+<!-- Punchlist Capital V29.10.13 - final workbook-wide user-facing unit normalization (display only) -->
 <script id="bk-v30-edit-guard">
 /* V30 - single guard for every display-normalisation pass: never rewrite the
    text of a cell the user is actively typing into. Writing textContent/nodeValue
@@ -16766,8 +16766,8 @@ function explain(e, phase){
   var fileCtx = location.protocol === 'file:';
   if(e && e.kind === 'network'){
     return fileCtx
-      ? 'Could not reach the BK Capital sign-in service. This copy was opened as a local file (file://), and some browsers - Safari in particular - block network sign-in from local files. Open BK Capital from its web address (https) or a local web server and sign in there.'
-      : 'Could not reach the BK Capital sign-in service (Supabase). Check the internet connection; if it persists, a network filter or the service itself may be unavailable.';
+      ? 'Could not reach the Punchlist Capital sign-in service. This copy was opened as a local file (file://), and some browsers - Safari in particular - block network sign-in from local files. Open Punchlist Capital from its web address (https) or a local web server and sign in there.'
+      : 'Could not reach the Punchlist Capital sign-in service (Supabase). Check the internet connection; if it persists, a network filter or the service itself may be unavailable.';
   }
   if(e && e.kind === 'config') return 'This build has no valid Supabase project configured. The Project URL and publishable key must be set in the build.';
   if(st === 400 && /invalid_grant|invalid login credentials/i.test(code + ' ' + m)) return 'Email or password is incorrect.';
@@ -17727,6 +17727,7 @@ function stepLabel(dv, p){ var st = stepOf(dv, p);
   return dv.kind === 'pp' ? (st*100).toFixed(2).replace(/\.?0+$/,'') + ' pts' : dv.kind === 'rel' ? (st*100).toFixed(1).replace(/\.0$/,'') + '%' : st + ' yr' + (st === 1 ? '' : 's'); }
 
 /* One isolated engine run, memoised for the duration of a render. */
+window.bkSensDrivers = drivers;   /* shared with the Probability-Weighted Returns sheet */
 function makeRunner(metric){
   var cache = {};
   return function(ov){
@@ -20632,6 +20633,157 @@ function render(){
 }
 var g = function(){ return render(); };
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Import Deal', g); else RENDERERS['Import Deal'] = g;
+})();
+</script>
+
+<script id="bk-v29220-risk">
+/* V29.22.0 - PROBABILITY-WEIGHTED RETURNS. Two views of the same deal, both driven by the live engine on scratch copies (the saved deal is never touched):
+   1. Scenario-weighted: Downside / Base / Upside with your probabilities -> expected profit, expected return, probability of loss and of missing the hurdle.
+   2. Monte Carlo: the main drivers drawn from normal distributions around your assumptions (seeded, so a run is repeatable) -> distribution of IRR, multiple and profit. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof window.bkRunWith !== 'function' || typeof window.bkSensDrivers !== 'function') return;
+var MAXZ = 2.5, ORDER = ['exitCap', 'rentGrowth', 'rentLevel', 'vacancy', 'opexLevel', 'opexGrowth', 'rate'];
+var SD0 = { exitCap:0.005, rentGrowth:0.01, rentLevel:0.03, vacancy:0.015, opexLevel:0.03, opexGrowth:0.0075, rate:0.005 };
+var LABEL = { exitCap:'Exit cap rate', rentGrowth:'Rent growth', rentLevel:'Starting rent level', vacancy:'Vacancy', opexLevel:'Operating expense level', opexGrowth:'Opex growth', rate:'Debt coupon' };
+var UNIT = { exitCap:'pp', rentGrowth:'pp', rentLevel:'rel', vacancy:'pp', opexLevel:'rel', opexGrowth:'pp', rate:'pp' };
+var MC = { sig:'', runs:null, running:false, done:0, total:0 };
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function $(v){ var x = Number(v); if(!isFinite(x)) return 'n/a'; var b = Math.abs(x).toLocaleString('en-US', {maximumFractionDigits:0}); return x < 0 ? '($' + b + ')' : '$' + b; }
+function P(v, d){ return (v == null || !isFinite(v)) ? 'n/a' : (v * 100).toFixed(d == null ? 1 : d) + '%'; }
+function X(v){ return (v == null || !isFinite(v)) ? 'n/a' : v.toFixed(2) + 'x'; }
+function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#E2DCCD);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function chip(cls, t){ return '<span class="status-chip ' + (cls || '') + '">' + t + '</span>'; }
+function isAcq(s){ return !/develop/i.test(String(s.dealType || '')); }
+
+/* ---------------------------------------------------------------- inputs (stored on the deal) */
+function defaults(){ return { p:{ Downside:0.25, Base:0.5, Upside:0.25 }, n:500, seed:20260101, corr:-0.3, sd:Object.assign({}, SD0) }; }
+function risk(s){ var d = defaults(), r = (s && s._risk) || {}; return { p:Object.assign(d.p, r.p || {}), n:r.n || d.n, seed:r.seed != null ? r.seed : d.seed, corr:r.corr != null ? r.corr : d.corr, sd:Object.assign(d.sd, r.sd || {}) }; }
+window.bkRiskInputs = function(){ var s = bkLoad(); return s ? risk(s) : null; };
+window.bkRiskSet = function(path, v){ var s = bkLoad(); if(!s) return; var r = risk(s), k = path.split('.');
+  if(k[0] === 'p') r.p[k[1]] = v; else if(k[0] === 'sd') r.sd[k[1]] = v; else r[k[0]] = v;
+  s._risk = r; bkSave(s); MC.runs = null; MC.sig = ''; if(typeof showSheet === 'function') showSheet('Probability-Weighted'); };
+
+/* ---------------------------------------------------------------- the engine on a scratch copy */
+function metrics(ov){
+  return window.bkRunWith(ov || {}, function(){
+    var r = bkMonthlyReturns(), d = bkDebt(), cf = (r.xirrValues || r.values || r.rows.map(function(q){ return q.cf; })).map(function(v){ return Number(v) || 0; }), profit = cf.reduce(function(a, v){ return a + v; }, 0);
+    return { irr:r.irr, moic:r.moic, profit:profit, dscr:d && d.dscr ? d.dscr : null, loan:d ? d.loan : null, cf:cf, dates:r.xirrDates || r.dates };
+  });
+}
+function scenarioRun(s){
+  var r = risk(s), names = ['Downside', 'Base', 'Upside'], pol = bkPolicy ? bkPolicy() : {}, out = [];
+  names.forEach(function(n){ var ov = n === 'Base' ? {} : bkScenarioOverrides(s, n), m = metrics(ov); out.push(Object.assign({ name:n, p:r.p[n], ov:ov }, m)); });
+  var tot = out.reduce(function(a, x){ return a + x.p; }, 0), W = function(f){ return out.reduce(function(a, x){ return a + x.p * f(x); }, 0) / (tot || 1); };
+  var len = out[0].cf.length, wcf = []; for(var i = 0; i < len; i++) wcf.push(W(function(x){ return x.cf[i] || 0; }));
+  var eirr = null; try { eirr = bkXirr(wcf, out[0].dates); } catch(e){}
+  var hurdle = Number(pol.targetIRR) || 0.12;
+  return { cases:out, probTotal:tot, expProfit:W(function(x){ return x.profit; }), expMoic:W(function(x){ return x.moic; }), avgIRR:W(function(x){ return x.irr; }), irrOfExpectedCF:eirr, hurdle:hurdle,
+    pLoss:out.filter(function(x){ return x.profit < 0; }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1), pMiss:out.filter(function(x){ return !(x.irr >= hurdle); }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1),
+    pDscr:out.filter(function(x){ return x.dscr != null && x.dscr < (Number(pol.minDSCR) || 1.25); }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1), minDSCR:Number(pol.minDSCR) || 1.25 };
+}
+window.bkRiskScenarios = function(){ var s = bkLoad(); return s && isAcq(s) ? scenarioRun(s) : null; };
+
+/* ---------------------------------------------------------------- Monte Carlo */
+function rng(seed){ var a = seed >>> 0; return function(){ a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function normals(r, n){ var out = []; while(out.length < n){ var u = Math.max(1e-12, r()), v = r(), m = Math.sqrt(-2 * Math.log(u)); out.push(m * Math.cos(2 * Math.PI * v), m * Math.sin(2 * Math.PI * v)); } return out.slice(0, n); }
+var clampZ = function(z){ return Math.max(-MAXZ, Math.min(MAXZ, z)); };
+/* the deal's inputs for run k: one draw per driver, rent growth correlated with the exit cap */
+function draws(s, R, count){
+  var r = rng(R.seed), D = window.bkSensDrivers(s), by = {}; D.forEach(function(d){ by[d.id] = d; }), out = [];
+  var out = [];
+  for(var k = 0; k < count; k++){ var z = normals(r, ORDER.length), zs = {};
+    zs.exitCap = z[0]; zs.rentGrowth = R.corr * z[0] + Math.sqrt(Math.max(0, 1 - R.corr * R.corr)) * z[1];
+    ['rentLevel', 'vacancy', 'opexLevel', 'opexGrowth', 'rate'].forEach(function(id, i){ zs[id] = z[2 + i]; });
+    var ov = {}, shifts = {};
+    ORDER.forEach(function(id){ var d = by[id]; if(!d) return; var shift = clampZ(zs[id]) * (R.sd[id] || 0); shifts[id] = shift; Object.assign(ov, d.ov(shift)); });
+    out.push({ ov:ov, shifts:shifts }); }
+  return out;
+}
+window.bkRiskDraws = function(count){ var s = bkLoad(); return draws(s, risk(s), count || 10); };
+function pct(sorted, p){ var n = sorted.length; if(!n) return null; var i = (n - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); }
+function stats(arr){ var a = arr.filter(function(v){ return isFinite(v); }).sort(function(x, y){ return x - y; }), n = a.length; if(!n) return null;
+  var mean = a.reduce(function(t, v){ return t + v; }, 0) / n, sd = Math.sqrt(a.reduce(function(t, v){ return t + (v - mean) * (v - mean); }, 0) / Math.max(1, n - 1));
+  return { n:n, mean:mean, sd:sd, min:a[0], max:a[n - 1], p5:pct(a, 0.05), p10:pct(a, 0.10), p25:pct(a, 0.25), p50:pct(a, 0.50), p75:pct(a, 0.75), p90:pct(a, 0.90), p95:pct(a, 0.95), sorted:a }; }
+function summarise(runs, hurdle, minDSCR){
+  var n = runs.length, share = function(f){ return runs.filter(f).length / (n || 1); };
+  return { n:n, irr:stats(runs.map(function(x){ return x.irr; })), moic:stats(runs.map(function(x){ return x.moic; })), profit:stats(runs.map(function(x){ return x.profit; })), dscr:stats(runs.map(function(x){ return x.dscr; })),
+    pLoss:share(function(x){ return x.profit < 0; }), pMiss:share(function(x){ return !(x.irr >= hurdle); }), pDscr:share(function(x){ return x.dscr != null && x.dscr < minDSCR; }), pIrrDefined:share(function(x){ return isFinite(x.irr); }), hurdle:hurdle, minDSCR:minDSCR };
+}
+window.bkRiskSummarise = summarise;
+function sigOf(s){ var o = {}; Object.keys(s).forEach(function(k){ if(k.charAt(0) !== '_' && k !== 'seededAt') o[k] = s[k]; }); return JSON.stringify(o) + JSON.stringify(risk(s)); }
+window.bkRiskRunSync = function(n){ var s = bkLoad(), R = risk(s); n = n || R.n; var dr = draws(s, R, n), pol = bkPolicy(), runs = dr.map(function(d){ var m = metrics(d.ov); return { irr:m.irr, moic:m.moic, profit:m.profit, dscr:m.dscr, shifts:d.shifts }; });
+  return { runs:runs, summary:summarise(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25) }; };
+window.bkRiskRun = function(){
+  var s = bkLoad(); if(!s || !isAcq(s) || MC.running) return; var R = risk(s), pol = bkPolicy(), dr = draws(s, R, R.n), runs = [], i = 0, sig = sigOf(s);
+  MC = { sig:sig, runs:null, running:true, done:0, total:R.n };
+  function tick(){ var t0 = Date.now();
+    while(i < dr.length && Date.now() - t0 < 40){ var m = metrics(dr[i].ov); runs.push({ irr:m.irr, moic:m.moic, profit:m.profit, dscr:m.dscr, shifts:dr[i].shifts }); i++; }
+    MC.done = i; var el = document.getElementById('bkRiskProg'); if(el) el.textContent = 'Running: ' + i + ' of ' + dr.length + ' draws';
+    if(i < dr.length) setTimeout(tick, 0); else { MC.running = false; MC.runs = runs; MC.summary = summarise(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25); MC.R = R; if(typeof showSheet === 'function') showSheet('Probability-Weighted'); } }
+  var el0 = document.getElementById('bkRiskProg'); if(el0) el0.textContent = 'Running: 0 of ' + dr.length + ' draws'; setTimeout(tick, 0);
+};
+
+/* ---------------------------------------------------------------- view */
+function numIn(path, val, pct_, w){ var shown = pct_ ? (val * 100).toFixed(2).replace(/\.?0+$/, '') : String(val); return '<input type="text" value="' + shown + '" style="width:' + (w || 64) + 'px;text-align:right" onchange="bkRiskSet(\'' + path + '\',' + (pct_ ? '(parseFloat(this.value)||0)/100' : '(parseFloat(String(this.value).replace(/,/g,\'\'))||0)') + ')">' + (pct_ ? '<span style="font-size:11px"> %</span>' : ''); }
+function histogram(sm, kind){
+  var st = sm[kind]; if(!st) return ''; var a = st.sorted, lo = pct(a, 0.005), hi = pct(a, 0.995); if(!(hi > lo)){ lo -= 0.01; hi += 0.01; }
+  var B = 28, bins = new Array(B).fill(0), w = (hi - lo) / B; a.forEach(function(v){ var k = Math.min(B - 1, Math.max(0, Math.floor((v - lo) / w))); bins[k]++; });
+  var mx = Math.max.apply(null, bins), W = 760, H = 220, L = 40, Rm = 20, T = 14, Bm = 34, X_ = function(v){ return L + (v - lo) / (hi - lo) * (W - L - Rm); }, bh = H - T - Bm, g = '';
+  var thr = kind === 'irr' ? sm.hurdle : kind === 'moic' ? 1 : 0;
+  bins.forEach(function(c, i){ var x0 = lo + i * w, mid = x0 + w / 2, h = mx ? c / mx * bh : 0, col = mid < (kind === 'moic' ? 1 : 0) ? 'var(--sx-dn,#C0392B)' : (kind === 'irr' && mid < thr) ? '#D9A441' : 'var(--sx-up,#2E6EB8)';
+    g += '<rect x="' + (X_(x0) + 0.5) + '" y="' + (T + bh - h) + '" width="' + Math.max(1, X_(x0 + w) - X_(x0) - 1) + '" height="' + h + '" fill="' + col + '" opacity="0.9"><title>' + c + ' of ' + a.length + ' draws</title></rect>'; });
+  var fmt = kind === 'irr' ? function(v){ return P(v, 0); } : kind === 'moic' ? function(v){ return v.toFixed(2) + 'x'; } : function(v){ return (v < 0 ? '-' : '') + '$' + Math.abs(v / 1e6).toFixed(1) + 'M'; };
+  for(var t = 0; t <= 4; t++){ var v = lo + (hi - lo) * t / 4; g += '<text x="' + X_(v) + '" y="' + (H - 12) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">' + fmt(v) + '</text>'; }
+  [['p10', 'P10'], ['p50', 'P50'], ['p90', 'P90']].forEach(function(m){ var v = st[m[0]]; if(v >= lo && v <= hi) g += '<line x1="' + X_(v) + '" x2="' + X_(v) + '" y1="' + (T - 4) + '" y2="' + (T + bh) + '" stroke="currentColor" stroke-width="1.5" stroke-dasharray="' + (m[0] === 'p50' ? '0' : '4 3') + '"/><text x="' + X_(v) + '" y="' + (T - 6) + '" text-anchor="middle" font-size="10" fill="currentColor">' + m[1] + ' ' + fmt(v) + '</text>'; });
+  if(thr > lo && thr < hi) g += '<line x1="' + X_(thr) + '" x2="' + X_(thr) + '" y1="' + T + '" y2="' + (T + bh) + '" stroke="#C0392B" stroke-width="1.5"/><text x="' + (X_(thr) + 4) + '" y="' + (T + 12) + '" font-size="10" fill="#C0392B">' + (kind === 'irr' ? 'hurdle ' + P(thr, 0) : kind === 'moic' ? 'break-even' : 'loss') + '</text>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Distribution of ' + kind + ' across ' + a.length + ' draws" style="width:100%;max-width:' + W + 'px;height:auto;display:block">' + g + '</svg>';
+}
+function render(){
+  var s = bkLoad(), main = '', r = s ? risk(s) : null;
+  if(!s || !isAcq(s)) return { title:'Probability-Weighted Returns', crumbs:'Returns & Equity', desc:'Expected returns and the odds of missing the hurdle.', meta:{}, sidebar:'', main:box('Probability-weighted returns apply to acquisition deals. Open an acquisition deal to use this sheet.') };
+  var S_ = scenarioRun(s), ok = Math.abs(S_.probTotal - 1) < 1e-9;
+  var rows = S_.cases.map(function(c){ return '<tr><td class="rowlabel">' + c.name + '</td><td>' + numIn('p.' + c.name, c.p, true, 56) + '</td><td>' + P(c.irr) + '</td><td>' + X(c.moic) + '</td><td>' + $(c.profit) + '</td><td>' + (c.dscr != null ? X(c.dscr) : 'n/a') + '</td></tr>'; }).join('');
+  main += '<div class="tbl-wrap" style="margin-top:4px"><table class="fin"><caption>Scenario-Weighted Returns - Your Probabilities</caption><thead><tr><th class="rowlabel-h">Case</th><th>Probability</th><th>Levered IRR</th><th>Equity multiple</th><th>Equity profit</th><th>Year-1 DSCR</th></tr></thead><tbody>' + rows
+    + '<tr class="grandtotal"><td class="rowlabel">Probability-weighted</td><td>' + P(S_.probTotal, 0) + ' ' + (ok ? chip('pass', 'OK') : chip('fail', 'MUST BE 100%')) + '</td><td>' + P(S_.avgIRR) + '</td><td>' + X(S_.expMoic) + '</td><td>' + $(S_.expProfit) + '</td><td></td></tr></tbody></table></div>'
+    + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>What The Weighting Says</caption><thead><tr><th class="rowlabel-h">Measure</th><th>Result</th><th style="text-align:left">Meaning</th></tr></thead><tbody>'
+    + '<tr><td class="rowlabel">Expected equity profit</td><td><b>' + $(S_.expProfit) + '</b></td><td style="text-align:left">Probability-weighted profit across the three cases.</td></tr>'
+    + '<tr><td class="rowlabel">IRR of the expected cash flow</td><td><b>' + P(S_.irrOfExpectedCF) + '</b></td><td style="text-align:left">The return on the probability-weighted monthly equity cash flow. This is the honest expected return.</td></tr>'
+    + '<tr><td class="rowlabel">Weighted average of the three IRRs</td><td>' + P(S_.avgIRR) + '</td><td style="text-align:left">Not the same thing: an IRR is not a linear measure, so the average of the IRRs is not the return on the expected cash flow. Use the cash-flow figure above.</td></tr>'
+    + '<tr><td class="rowlabel">Probability of losing money</td><td>' + P(S_.pLoss, 0) + '</td><td style="text-align:left">Total probability of the cases with negative equity profit.</td></tr>'
+    + '<tr><td class="rowlabel">Probability of missing the ' + P(S_.hurdle, 1) + ' hurdle</td><td>' + P(S_.pMiss, 0) + '</td><td style="text-align:left">Hurdle is the target levered IRR on Credit Policy.</td></tr>'
+    + '<tr><td class="rowlabel">Probability Year-1 DSCR is below ' + X(S_.minDSCR) + '</td><td>' + P(S_.pDscr, 0) + '</td><td style="text-align:left">Policy minimum DSCR, with each case’s own rate and rent.</td></tr></tbody></table></div>'
+    + box('Three cases are coarse: the probability of loss can only move in steps of one case’s weight. The Monte Carlo below spreads the main drivers continuously for a smoother answer. Case definitions (exit-cap, rent-growth and rate shifts) are edited under Deal Underwrite, Underwriting Cases.');
+  /* Monte Carlo */
+  var drv = window.bkSensDrivers(s), by = {}; drv.forEach(function(d){ by[d.id] = d; });
+  var sdRows = ORDER.filter(function(id){ return by[id]; }).map(function(id){ var d = by[id], sd = r.sd[id], isRel = UNIT[id] === 'rel';
+    return '<tr><td class="rowlabel">' + LABEL[id] + '</td><td>' + d.show(0) + '</td><td>' + numIn('sd.' + id, sd, true, 56) + '</td><td>' + d.show(-2 * sd) + ' to ' + d.show(2 * sd) + '</td></tr>'; }).join('');
+  main += '<div class="tbl-wrap" style="margin-top:24px"><table class="fin"><caption>Monte Carlo - How Far Each Driver Can Move</caption><thead><tr><th class="rowlabel-h">Driver</th><th>Base</th><th>Std deviation</th><th>About 95% of draws fall in</th></tr></thead><tbody>' + sdRows
+    + '<tr><td class="rowlabel">Correlation: rent growth vs exit cap</td><td colspan="3" style="text-align:left">' + numIn('corr', r.corr, false, 56) + ' <span style="font-size:11px">(−1 to 1; a negative number means faster rent growth tends to come with a lower exit cap)</span></td></tr>'
+    + '<tr><td class="rowlabel">Number of draws</td><td colspan="3" style="text-align:left">' + numIn('n', r.n, false, 64) + '</td></tr>'
+    + '<tr><td class="rowlabel">Random seed</td><td colspan="3" style="text-align:left">' + numIn('seed', r.seed, false, 90) + '</td></tr></tbody></table></div>'
+    + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="status-chip pass" onclick="bkRiskRun()"' + (MC.running ? ' disabled' : '') + '>RUN ' + r.n + ' DRAWS</button><span id="bkRiskProg" style="font-size:12px">' + (MC.running ? 'Running: ' + MC.done + ' of ' + MC.total + ' draws' : '') + '</span></div>'
+    + '<div style="margin-top:6px;font-size:11px;opacity:.75;max-width:1000px">Correlation runs from \u22121 to 1: a negative number means faster rent growth tends to come with a lower exit cap. Each draw re-runs the full engine (about 10 ms). The same seed and inputs always give the same answer.</div>';
+  var sig = sigOf(s), stale = MC.runs && MC.sig !== sig;
+  if(MC.runs && !stale){
+    var sm = MC.summary, row = function(lab, st, f){ return '<tr><td class="rowlabel">' + lab + '</td><td>' + f(st.mean) + '</td><td>' + f(st.p50) + '</td><td>' + f(st.p10) + '</td><td>' + f(st.p90) + '</td><td>' + f(st.p5) + '</td><td>' + f(st.p95) + '</td><td>' + f(st.sd) + '</td></tr>'; };
+    main += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Monte Carlo Results - ' + sm.n + ' Draws, Seed ' + MC.R.seed + '</caption><thead><tr><th class="rowlabel-h">Measure</th><th>Mean</th><th>Median</th><th>P10 (bad)</th><th>P90 (good)</th><th>P5</th><th>P95</th><th>Std dev</th></tr></thead><tbody>'
+      + row('Levered IRR', sm.irr, function(v){ return P(v); }) + row('Equity multiple', sm.moic, X) + row('Equity profit', sm.profit, $) + (sm.dscr ? row('Year-1 DSCR', sm.dscr, X) : '') + '</tbody></table></div>'
+      + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Odds</caption><thead><tr><th class="rowlabel-h">Question</th><th>Probability</th></tr></thead><tbody>'
+      + '<tr><td class="rowlabel">Lose money (equity profit below zero)</td><td><b>' + P(sm.pLoss) + '</b></td></tr><tr><td class="rowlabel">Miss the ' + P(sm.hurdle, 1) + ' levered IRR hurdle</td><td><b>' + P(sm.pMiss) + '</b></td></tr>'
+      + '<tr><td class="rowlabel">Year-1 DSCR below the ' + X(sm.minDSCR) + ' policy minimum</td><td>' + P(sm.pDscr) + '</td></tr></tbody></table></div>'
+      + '<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin-bottom:6px">Levered IRR across ' + sm.n + ' draws</div>' + histogram(sm, 'irr') + '</div>'
+      + '<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin-bottom:6px">Equity profit across ' + sm.n + ' draws</div>' + histogram(sm, 'profit') + '</div>'
+      + box('Each draw moves the drivers above together and re-runs the full underwriting engine (debt resizes, taxes and the waterfall follow). Draws are limited to ±2.5 standard deviations. The spread comes only from the drivers you list: it says how sensitive this deal is to those assumptions, not how likely they are in your market. Change a standard deviation to your own view.');
+  } else if(stale) main += box('&#9888; The deal or these inputs have changed since the last run. Run the draws again.');
+  var hdr = { title:'Probability-Weighted Returns', crumbs:'Returns & Equity', desc:'Expected returns, odds of loss and of missing the hurdle - by scenario weights and by Monte Carlo.', meta:{ Property:s.name, 'Expected IRR (cash flow)':P(S_.irrOfExpectedCF), 'P(loss)':P(S_.pLoss, 0), Hurdle:P(S_.hurdle, 1) }, sidebar:'', main:main };
+  return hdr;
+}
+var g = function(){ if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Probability-Weighted'); return render(); };
+if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Probability-Weighted', g); else RENDERERS['Probability-Weighted'] = g;
+if(typeof window.bkAddConflictRule === 'function'){
+  window.bkAddConflictRule('risk.prob-not-100', 'ERROR', 'Risk', 'Probability-Weighted', function(s){ var r = risk(s), t = r.p.Downside + r.p.Base + r.p.Upside; if(isAcq(s) && s._risk && Math.abs(t - 1) > 1e-9) return { msg:'The scenario probabilities add up to ' + P(t, 1) + ', not 100%.', why:'Every probability-weighted figure (expected profit, expected IRR, the odds of loss) divides by the total, so probabilities that do not sum to 100% are silently rescaled. Make them sum to 100% so the weights mean what you typed.', fix:'Probability-Weighted', data:{ total:t } }; });
+}
 })();
 </script>
 

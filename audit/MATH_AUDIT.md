@@ -1,4 +1,4 @@
-# BK Capital CRE Model: Math Audit (sample test project)
+# Punchlist Capital CRE Model: Math Audit (sample test project)
 
 **Date:** 2026-10-17. **Build audited:** V32.1 (`index.html`).
 

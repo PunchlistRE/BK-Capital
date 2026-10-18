@@ -17,6 +17,7 @@ echo "== deal book vs independent models, T-12 tie-outs, golden results"; node a
 echo "== repeatability"; audit/repeat_test.sh index.html | tail -1
 echo "== input flow (scroll, focus, arrow keys)"; node audit/input_flow_test.js index.html | tail -1
 echo "== import (Yardi workbook / PDF extraction; needs BK_YARDI_XLSM, BK_SHOREPOINTE_PDF for the source-file checks)"; node audit/import_test.js index.html | tail -2
+echo "== probability-weighted returns vs independent model"; node audit/risk_run.js index.html "$T/risk.json" >/dev/null; python3 audit/risk_ref.py "$T/risk.json" | tail -3
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"
