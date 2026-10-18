@@ -93,6 +93,7 @@ def model(s, acq_fee=0.01):
     tgt = N('gpCatchupTarget')
     acct = [0.0, 0.0, 0.0]; cumCon = cumDist = cumProm = 0.0
     lp_cf, gp_cf, rows = [], [], []
+    lp_con = gp_con = 0.0
     for i, cf in enumerate(lev):
         con = (equity if i == 0 else 0.0) + max(0.0, -cf)      # a monthly shortfall is an equity call
         dist = max(0.0, cf)
@@ -125,9 +126,12 @@ def model(s, acq_fee=0.01):
         cumProm += max(0.0, gpd - gs * (t1 + cu + t2 + t3 + t4)); cumDist += t1 + cu + t2 + t3 + t4
         extra = con - (equity if i == 0 else 0.0)
         lp_cf.append(lpd - extra * ls); gp_cf.append(gpd - extra * gs)
+        lp_con += (equity if i == 0 else 0.0) * ls + extra * ls; gp_con += (equity if i == 0 else 0.0) * gs + extra * gs
         rows.append(dict(dist=dist, lp=lpd, gp=gpd, t2=t2, t3=t3, t4=t4))
     levv = [-equity] + lev
+    noi_year = [sum(x[1] for x in ms[12 * i:12 * i + 12]) for i in range(hy)]
     return dict(
+        basis=basis, annualDS=P * 12, coupon=N('acqRate'), amortYears=N('acqAmort'), noiYear=noi_year, lpContrib=lp_con, gpContrib=gp_con,
         loan=loan, equity=equity, ltvValue=ltv_value, y1NOI=sum(x[1] for x in ms[:12]), grossSale=gross_sale,
         unlevIRR=xirr(u, dts), unlevMOIC=sum(x for x in u if x > 0) / basis,
         levIRR=xirr(levv, dts), levMOIC=sum(x for x in levv if x > 0) / -sum(x for x in levv if x < 0),   # shortfall calls count as contributions

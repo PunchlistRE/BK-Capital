@@ -7,6 +7,7 @@ Run everything: `PLAYWRIGHT_MODULE=<path> CHROMIUM_PATH=<chrome> audit/run_all.s
 | `suite_run.js` + `suite_test.py` | The deal book (`deals/index.js`: 7 acquisition, 6 real, 3 development deals) is re-computed independently (`model.py`, `dev_audit.py`); real deals tie to their T-12 NOI and market cap; every figure equals the stored golden result. |
 | `macrs_tables_run.js` + `macrs_tables_test.py` | The app's and the independent MACRS percentages equal the IRS Pub. 946 tables (5/7/15-yr half-year, 5/7-yr mid-quarter Q1-Q4, 27.5/39-yr mid-month). |
 | `macrs_ref.py` | Independent tax chain (schedule, mid-quarter test, bonus, calendar-year taxes, sale-tax character split, after-tax IRR) used by `suite_test.py` for the TAX-* and HARVARD deals, including tie-outs to `Cost_Segregation_Harvard.xlsx`. |
+| `credit_ref.py` | Independent credit layer (debt capacity by constraint, stressed DSCR, break-even occupancy / rent / exit cap, upside-downside IRR, the weighted IC gate and verdict) built from the Capital Markets model's formulas; `suite_test.py` compares it with `bkDealGate()` for every acquisition deal. CRD-1 exercises policy edits, risk register, conditions and the override through save and reopen. |
 | `repeat_test.sh` | The same book gives byte-identical results in a different order, time zone, system date (incl. a leap day) and after save/reopen through the cloud mappers. |
 | `conventions_run.js` + `conventions_test.py` | Every underwriting-convention setting against the independent model (748 checks). |
 | `dev_scope_test.js` | Acquisition conventions never touch development deals. |
@@ -40,3 +41,13 @@ from `Cost_Segregation_Harvard.xlsx`; the HARVARD deal loads it with `bkDeprSeed
 $1,207,058.89, tax savings $446,611.79 at 37%, 89.3:1 payback, $108,010.91 a year on the 39-year class). One deliberate
 difference: the workbook shows no 39-year depreciation in 2025; the IRS mid-month rule gives half a month ($4,500) for a
 December 11 in-service date, and the engine follows the IRS.
+
+## Credit & IC (from the Capital Markets model)
+Rail group **Credit & IC**: `Credit Policy` (per-deal house limits, gate weights and severities; CMM defaults), `Debt Capacity`
+(largest supportable senior loan under LTV, LTC, DSCR at the coupon and at a stressed coupon, interest-only DSCR and debt yield,
+the binding constraint, headroom, overage vs the loan in force, leverage ladder, highest coupon holding the minimum DSCR) and
+`IC Memo` (policy test table, weighted score, hard/soft exceptions, verdict, break-even occupancy / NOI tolerance / break-even rent /
+exit-cap cushion / upside-downside IRR, risk register, conditions precedent, credit override that needs YES + reason + approver).
+It tests the deal the engines produced and never changes a return or a loan. Development deals are gated on the tests that apply
+to them. Break-evens are bisections against the live engine (`bkRunWith`). Not ported: lender eligibility, capital-stack
+structures, refinance timing, fund / portfolio impact (the app has no equivalent engine to hang them on yet).

@@ -17,6 +17,21 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "ACQ-1:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -108.22,
+  "hard": 4,
+  "irrDown": -0.007905139,
+  "irrUp": 0.094995758,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "ACQ-2": {
   "binding": "LTC",
   "equity": 8781780,
@@ -34,6 +49,21 @@
   "unlevIRR": 0.171112804,
   "unlevMOIC": 2.038055477,
   "y1NOI": 1270349.16
+ },
+ "ACQ-2:credit": {
+  "beOcc": 0.835939637,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": 235.38,
+  "hard": 1,
+  "irrDown": 0.211796437,
+  "irrUp": 0.317829432,
+  "noiTol3": 0.15054408,
+  "overage": 1705045.29,
+  "rentCushion": 0.003575799,
+  "score": 0.72,
+  "soft": 2,
+  "verdict": "DECLINE"
  },
  "ACQ-3": {
   "binding": "DSCR",
@@ -53,6 +83,21 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "ACQ-3:credit": {
+  "beOcc": 0.851234303,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 10071893.95,
+  "exitCushion": -128.41,
+  "hard": 4,
+  "irrDown": -0.010617298,
+  "irrUp": 0.082327161,
+  "noiTol3": 0.032757211,
+  "overage": 1796106.05,
+  "rentCushion": -0.016291688,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "ACQ-4": {
   "binding": "DSCR",
   "equity": 2012410,
@@ -70,6 +115,21 @@
   "unlevIRR": 0.069812847,
   "unlevMOIC": 1.498331224,
   "y1NOI": 230315.76
+ },
+ "ACQ-4:credit": {
+  "beOcc": 0.8625091,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 2043799.62,
+  "exitCushion": -117.64,
+  "hard": 4,
+  "irrDown": 0.032190855,
+  "irrUp": 0.09890712,
+  "noiTol3": 0.030266997,
+  "overage": 397200.38,
+  "rentCushion": -0.016712276,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
  },
  "ACQ-5": {
   "binding": "LTV",
@@ -89,6 +149,21 @@
   "unlevMOIC": 2.102367456,
   "y1NOI": 3250297.5
  },
+ "ACQ-5:credit": {
+  "beOcc": 0.872276988,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 28842823.42,
+  "exitCushion": 23.881477015,
+  "hard": 4,
+  "irrDown": 0.106025632,
+  "irrUp": 0.149235938,
+  "noiTol3": -0.024940567,
+  "overage": 7557176.58,
+  "rentCushion": -0.05048748,
+  "score": 0.3,
+  "soft": 3,
+  "verdict": "DECLINE"
+ },
  "ACQ-6": {
   "binding": "DSCR",
   "equity": 11427270,
@@ -107,6 +182,21 @@
   "unlevMOIC": 0.851571464,
   "y1NOI": 1270349.16
  },
+ "ACQ-6:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -300,
+  "hard": 4,
+  "irrDown": -0.459789867,
+  "irrUp": -0.178089679,
+  "noiTol3": -0.099044613,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "ACQ-7": {
   "binding": "DSCR",
   "equity": 11439150,
@@ -124,6 +214,54 @@
   "unlevIRR": 0.066438907,
   "unlevMOIC": 1.331053036,
   "y1NOI": 1307022.13
+ },
+ "ACQ-7:credit": {
+  "beOcc": 0.822529385,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11598387.07,
+  "exitCushion": -90.921266695,
+  "hard": 3,
+  "irrDown": 0.009530018,
+  "irrUp": 0.108331261,
+  "noiTol3": 0.060622831,
+  "overage": 1816612.93,
+  "rentCushion": 0.000854523,
+  "score": 0.34,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
+ "CRD-1": {
+  "binding": "DSCR",
+  "equity": 11427270,
+  "gpDist": 1390263.0,
+  "gpIRR": 0.041997229,
+  "grossSale": 25741690.16,
+  "levIRR": 0.041997229,
+  "levMOIC": 1.216618664,
+  "loan": 13427000,
+  "lpDist": 12512366.96,
+  "lpIRR": 0.041997229,
+  "ltvValue": 24000000,
+  "promote": 0,
+  "stmtNOI": 1270349.16,
+  "unlevIRR": 0.059611054,
+  "unlevMOIC": 1.293912853,
+  "y1NOI": 1270349.16
+ },
+ "CRD-1:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11213759.52,
+  "exitCushion": -108.22,
+  "hard": 3,
+  "irrDown": -0.007905139,
+  "irrUp": 0.094995758,
+  "noiTol3": 0.071403346,
+  "overage": 2213240.48,
+  "rentCushion": 0.007573351,
+  "score": 0.48,
+  "soft": 4,
+  "verdict": "DECLINE"
  },
  "DEV-1": {
   "actualCapInt": 2018892.6,
@@ -185,6 +323,21 @@
   "unlevMOIC": 1.843173102,
   "y1NOI": 899039.0
  },
+ "HARVARD:credit": {
+  "beOcc": 0.599361529,
+  "binding": "Loan-to-value",
+  "capacity": 6630000,
+  "exitCushion": 275.32,
+  "hard": 0,
+  "irrDown": 0.206229996,
+  "irrUp": 0.281711129,
+  "noiTol3": 0.357073606,
+  "overage": -327000,
+  "rentCushion": 0.389554925,
+  "score": 0.92,
+  "soft": 1,
+  "verdict": "APPROVE"
+ },
  "HARVARD:tax": {
   "accumDepr": 1738112.53,
   "atIRR": 0.204471638,
@@ -212,6 +365,21 @@
   "unlevMOIC": 1.384711554,
   "y1NOI": 683241.98
  },
+ "REAL-1:credit": {
+  "beOcc": 0.893304825,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 6063022.78,
+  "exitCushion": -63.387693909,
+  "hard": 3,
+  "irrDown": 0.023580708,
+  "irrUp": 0.129035233,
+  "noiTol3": 0.065027576,
+  "overage": 958977.22,
+  "rentCushion": 5.7449e-05,
+  "score": 0.24,
+  "soft": 6,
+  "verdict": "DECLINE"
+ },
  "REAL-2": {
   "binding": "DSCR",
   "equity": 2334426.96,
@@ -229,6 +397,21 @@
   "unlevIRR": 0.078297814,
   "unlevMOIC": 1.401835277,
   "y1NOI": 247108.67
+ },
+ "REAL-2:credit": {
+  "beOcc": 0.911246147,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 2192818.27,
+  "exitCushion": -56.587664905,
+  "hard": 3,
+  "irrDown": 0.029987498,
+  "irrUp": 0.133895306,
+  "noiTol3": 0.066545102,
+  "overage": 346181.73,
+  "rentCushion": 0.000161569,
+  "score": 0.34,
+  "soft": 5,
+  "verdict": "DECLINE"
  },
  "REAL-3": {
   "binding": "DSCR",
@@ -248,6 +431,21 @@
   "unlevMOIC": 1.394656255,
   "y1NOI": 445267.35
  },
+ "REAL-3:credit": {
+  "beOcc": 0.88092537,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 3951259.09,
+  "exitCushion": -57.847837982,
+  "hard": 3,
+  "irrDown": 0.029077021,
+  "irrUp": 0.132779971,
+  "noiTol3": 0.060101141,
+  "overage": 624740.91,
+  "rentCushion": 9.3036e-05,
+  "score": 0.34,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "REAL-4": {
   "binding": "DSCR",
   "equity": 2813510.03,
@@ -265,6 +463,21 @@
   "unlevIRR": 0.079738607,
   "unlevMOIC": 1.407840725,
   "y1NOI": 328916.55
+ },
+ "REAL-4:credit": {
+  "beOcc": 0.895911756,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 2918773.43,
+  "exitCushion": -52.37553369,
+  "hard": 3,
+  "irrDown": 0.033582289,
+  "irrUp": 0.13672685,
+  "noiTol3": 0.064265379,
+  "overage": 461226.57,
+  "rentCushion": 0.000122235,
+  "score": 0.34,
+  "soft": 5,
+  "verdict": "DECLINE"
  },
  "REAL-5": {
   "binding": "LTC",
@@ -284,6 +497,21 @@
   "unlevMOIC": 1.44343861,
   "y1NOI": 302606.24
  },
+ "REAL-5:credit": {
+  "beOcc": 0.878761654,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 2685298.3,
+  "exitCushion": -29.592764084,
+  "hard": 3,
+  "irrDown": 0.053097511,
+  "irrUp": 0.150856516,
+  "noiTol3": 0.098680951,
+  "overage": 306701.7,
+  "rentCushion": 0.020429638,
+  "score": 0.34,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "REAL-6": {
   "binding": "DSCR",
   "equity": 534897.99,
@@ -302,6 +530,21 @@
   "unlevMOIC": 1.434793257,
   "y1NOI": 76429.95
  },
+ "REAL-6:credit": {
+  "beOcc": 0.876234991,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 678231.93,
+  "exitCushion": -34.150956146,
+  "hard": 3,
+  "irrDown": 0.047007828,
+  "irrUp": 0.149110018,
+  "noiTol3": 0.065053674,
+  "overage": 106768.07,
+  "rentCushion": 0.000464569,
+  "score": 0.34,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "TAX-1": {
   "binding": "DSCR",
   "equity": 11427270,
@@ -319,6 +562,21 @@
   "unlevIRR": 0.059611054,
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
+ },
+ "TAX-1:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -108.22,
+  "hard": 4,
+  "irrDown": -0.007905139,
+  "irrUp": 0.094995758,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
  },
  "TAX-1:tax": {
   "accumDepr": 6428509.09,
@@ -347,6 +605,21 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "TAX-2:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -108.22,
+  "hard": 4,
+  "irrDown": -0.007905139,
+  "irrUp": 0.094995758,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "TAX-2:tax": {
   "accumDepr": 3432727.27,
   "atIRR": 0.030977452,
@@ -373,6 +646,21 @@
   "unlevIRR": 0.060109141,
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
+ },
+ "TAX-3:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -107.0,
+  "hard": 4,
+  "irrDown": -0.007964766,
+  "irrUp": 0.095741788,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
  },
  "TAX-3:tax": {
   "accumDepr": 6083637.79,
@@ -401,6 +689,21 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "TAX-4:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -106.52,
+  "hard": 4,
+  "irrDown": -0.007988109,
+  "irrUp": 0.096033501,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "TAX-4:tax": {
   "accumDepr": 5529420.03,
   "atIRR": 0.031307622,
@@ -428,6 +731,21 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "TAX-5:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -108.22,
+  "hard": 4,
+  "irrDown": -0.007905139,
+  "irrUp": 0.094995758,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
  "TAX-6": {
   "binding": "DSCR",
   "equity": 11427270,
@@ -445,6 +763,21 @@
   "unlevIRR": 0.059611054,
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
+ },
+ "TAX-6:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -108.22,
+  "hard": 4,
+  "irrDown": -0.007905139,
+  "irrUp": 0.094995758,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
  },
  "TAX-6:tax": {
   "accumDepr": 6428509.09,

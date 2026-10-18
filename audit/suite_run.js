@@ -12,6 +12,7 @@ if (flag('reverse')) BOOK = BOOK.slice().reverse();
 const collect = (kind, withTax) => {
   // calendar dates as the user sees them (local), never via UTC: a Date at local midnight shifts a day in UTC for zones east of Greenwich
   const ld = d => { d = new Date(d); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  if (withTax && typeof bkEnsureV18 === 'function') bkEnsureV18();   // the after-tax engine writes its tax-rate defaults on first use: do it before anything is captured
   const s = bkLoad(), r = {};
   if (kind === 'acq') {
     const u = bkAnnualCF(), d = bkDebt(), x = bkMonthlyReturns(), w = bkWaterfallV07();
@@ -28,6 +29,12 @@ const collect = (kind, withTax) => {
     Object.assign(r, { s, conv: bkConventions(s), stmtNOI: bkCalc().after, y1NOI: u.arr[0].after, loan: d.loan, equity: d.equity, ltvValue: d.ltvValue, binding: d.binding,
       grossSale: u.grossSale, levIRR: x.irr, levMOIC: x.moic, unlevIRR: u.irr, unlevMOIC: u.moic, lpIRR: w.lpIRR, gpIRR: w.gpIRR, lpDist: w.lp.dist, gpDist: w.gp.dist,
       promote: w.promote, recon: { maxMonthGap, conSum, lpgpCon, distSum, lpgpDist, posCF, equity: d.equity, splitErr, tiers } });
+    { const g = bkDealGate(), cp = g.capacity, rc = g.cushions;
+      r.credit = { status: g.status, verdict: g.verdict, score: g.score, hard: g.hard, soft: g.soft, passed: g.passed, applicable: g.applicable, overrideValid: g.overrideValid, action: g.action,
+        rows: g.rows.map(x => ({ id: x.id, value: x.value, threshold: x.threshold, result: x.result })), exceptions: g.exceptions.map(x => x.severity + ': ' + x.message),
+        capacity: cp && { capacity: cp.capacity, requested: cp.requested, overage: cp.overage, headroom: cp.headroom, binding: cp.binding.name, maxCoupon: cp.maxCoupon, rows: cp.rows.map(q => ({ name: q.name, max: q.max })),
+          box: cp.box, ladder: cp.ladder.map(q => ({ ltv: q.ltv, loan: q.loan, dscr: q.dscr, stabDscr: q.stabDscr })) },
+        cushions: rc, input: { policy: (s._policy || {}), ic: (s._ic || {}) } }; }
     if (withTax) {
       const x = bkAfterTaxV18(), dep = s._depr || {};
       r.tax = { src: x.deprSource, atIRR: x.atIRR, atMOIC: x.atMOIC, saleTax: x.saleTax, accumDepr: x.accumDepr, ordBase: x.ordinaryRecaptureBase || 0, unrecBase: x.recaptureBase, capBase: x.capGainBase,

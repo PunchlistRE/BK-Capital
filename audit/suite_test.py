@@ -8,7 +8,7 @@ Exit 1 on any failure."""
 import json, math, sys, os
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from model import model
-import dev_audit, macrs_ref as MR, re
+import dev_audit, macrs_ref as MR, credit_ref as CR, re
 from datetime import date
 
 data = json.load(open(sys.argv[1])); update = '--update-golden' in sys.argv
@@ -48,6 +48,29 @@ for d in data['deals']:
             close(f'{tag} tie-out: other income = Yardi other income lines', r['s']['otherIncomePerUnit'] * r['s']['units'], tg['otherIncome'], 0.5)
             stmt = tg['statementNetIncome'] + tg['mortgageInterest']
             close(f"{tag} tie-out: line-item NOI within 0.5% of the Yardi statement's NET INCOME + mortgage interest", abs(r['stmtNOI'] - stmt) / stmt, 0.0, 0.005)
+        if r.get('credit'):
+            cr = r['credit']; inp = cr['input']; gcfg = (inp['policy'] or {}).get('gates') or {}
+            ref = CR.check(r['s'], inp['policy'], inp['ic'], gcfg)
+            cp = cr['capacity']; cu = cr['cushions']
+            for row in cp['rows']: close(f"{tag} capacity: {row['name']}", row['max'], ref['caps'][row['name']], 0.5)
+            close(f'{tag} capacity: binding constraint', cp['binding'], ref['binding'], 0); close(f'{tag} capacity: maximum supportable debt', cp['capacity'], ref['capacity'], 0.5)
+            close(f'{tag} capacity: overage vs request', cp['overage'], ref['overage'], 0.5); close(f'{tag} capacity: headroom to next constraint', cp['headroom'], ref['headroom'], 0.5)
+            close(f'{tag} capacity: highest coupon holding min DSCR', cp['maxCoupon'], ref['maxCoupon'], 1e-9)
+            for k, kk in (('dscr', 'dscr'), ('debtYield', 'debtYield'), ('ltv', 'ltv'), ('ltc', 'ltc'), ('stressedDscr', 'stressedDscr')): close(f'{tag} credit box: {k}', cp['box'][k], ref[kk], 1e-9)
+            close(f'{tag} cushion: exit cap cushion (bps)', cu['exitCapCushionBps'] if cu['exitCapCushionBps'] != 'NaN' else float('nan'), ref['exitCapCushion'] if ref['exitCapCushion'] is not None else float('nan'), 1e-4)
+            close(f'{tag} cushion: downside IRR', cu['irrDownside'], ref['irrDown'], 1e-6); close(f'{tag} cushion: upside IRR', cu['irrUpside'], ref['irrUp'], 1e-6)
+            close(f'{tag} cushion: break-even occupancy', cu['breakEvenOccupancy'], ref['beOcc'], 1e-7)
+            close(f'{tag} cushion: NOI tolerance Y1', cu['noiTolerance1'], ref['noiTol1'], 1e-7); close(f'{tag} cushion: NOI tolerance stabilised', cu['noiTolerance3'], ref['noiTol3'], 1e-7)
+            close(f'{tag} cushion: break-even rent', cu['breakEvenRent'], ref['beRent'], 1e-3); close(f'{tag} cushion: rent cushion', cu['rentCushion'], ref['rentCush'], 1e-7)
+            for row in cr['rows']:
+                if row['id'] in ref['gate']: close(f"{tag} gate {row['id']}: result", row['result'], ref['gate'][row['id']], 0)
+            close(f'{tag} gate: weighted score', cr['score'], ref['score'], 1e-9); close(f'{tag} gate: hard exceptions', cr['hard'], ref['hard'], 0)
+            close(f'{tag} gate: soft exceptions', cr['soft'], ref['soft'], 0); close(f'{tag} gate: verdict', cr['verdict'], ref['verdict'], 0)
+            for row in cr['rows']:
+                if row['id'] in ref['gateValues'] and ref['gateValues'][row['id']] is not None and row['value'] != 'NaN' and row['value'] is not None:
+                    close(f"{tag} gate {row['id']}: underwritten value", row['value'], ref['gateValues'][row['id']], 1e-6 if row['id'] not in ('capacity','exitCush') else 0.5)
+            golden[tag + ':credit'] = dict(verdict=cr['verdict'], score=cr['score'], hard=cr['hard'], soft=cr['soft'], capacity=cp['capacity'], binding=cp['binding'], overage=cp['overage'],
+                                           exitCushion=cu['exitCapCushionBps'], beOcc=cu['breakEvenOccupancy'], noiTol3=cu['noiTolerance3'], rentCushion=cu['rentCushion'], irrDown=cu['irrDownside'], irrUp=cu['irrUpside'])
         if r.get('tax') and r['tax']['src'] == 'macrs-tax-grade':
             tx = r['tax']; i = tx['input']; st = i['settings']
             land = (i['price'] * float(st.get('landPct') or 0)) if st.get('landMethod', 'percent') == 'percent' else float(st.get('landDollar') or 0)

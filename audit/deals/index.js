@@ -28,6 +28,8 @@ module.exports = [
   dev('DEV-1', 'Ground-up 150 units, 65% LTC construction loan, permanent takeout at stabilisation', {}),
   dev('DEV-2', 'Same project, no refinance at stabilisation - construction loan held to sale', { refiAtStab: 0 }),
   ...REAL,
+  withTax('CRD-1', 'Credit layer: custom policy (min DSCR 1.20x, stress 200 bps), gate weights/severity edits, risk register, conditions, and a valid credit override - all must survive save and reopen', {},
+    "bkPolicySet('minDSCR',1.2); bkPolicySet('stressBps',200); bkPolicySet('maxLTV',0.7); bkPolicyGate('lpEM','severity','HARD'); bkPolicyGate('lpEM','weight',0.10); bkPolicyGate('goingIn','weight',0.08); bkICSet('thesis.0','Value-add multifamily'); bkICSet('risks.0.risk','Exit cap expansion'); bkICSet('risks.0.prob',4); bkICSet('risks.0.impact',4); bkICSet('risks.1.risk','Insurance escalation'); bkICSet('risks.1.prob',2); bkICSet('risks.1.impact',2); bkICSet('conditions.0','Third-party PCA'); bkICSet('override.on','YES'); bkICSet('override.reason','Committee accepted DSCR on stabilised basis'); bkICSet('override.approvedBy','CCO');"),
   withTax('TAX-1', 'Cost seg (bucket mode: 12% 5-yr, 7% 15-yr, 20% land) on the base deal, statutory bonus, MACRS', {}, SEG_BUCKETS + " bkDeprSet('costSegFee',15000);"),
   withTax('TAX-2', 'Same deal, cost seg off: straight-line 27.5-yr mid-month on price less land', {}, "bkDeprSet('landMethod','percent'); bkDeprSet('landPct',0.20);"),
   withTax('TAX-3', 'Cost seg with an ELECTED 60% bonus and a mid-year (June) closing - half-year convention, no mid-quarter', { closing: '6/15/2027' }, SEG_BUCKETS + " bkDeprSet('bonusMode','elect'); bkDeprSet('bonusPct',0.6);"),
