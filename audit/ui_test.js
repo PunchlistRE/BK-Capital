@@ -163,6 +163,12 @@ const B = require(path.join(__dirname, 'dealB.js'));
   check('results are marked stale once the deal changes', /changed since the last run/.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
   await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { dealType: 'Development', predevMonths: 6, constructionMonths: 18, leaseupMonths: 12 })); showSheet('Probability-Weighted'); }, B);
   check('Probability-Weighted says it applies to acquisition deals on a development deal', /acquisition deals/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
+  // 11. Every editable value is left-aligned, on the sheets that carry inputs
+  const algn = {};
+  for (const sh of ['Deal Underwrite', 'Probability-Weighted', 'Market Benchmarks', 'Refi / Recap', 'Credit Policy', 'Depreciation', 'Import Deal', 'Import Rent Roll']) {
+    await p.evaluate(d => bkCreateNewDeal(d), B); await p.evaluate(s => showSheet(s), sh); await p.waitForTimeout(350);
+    algn[sh] = await p.evaluate(() => [...document.querySelectorAll('#viewport input[type=text], #viewport td.input, #viewport td[contenteditable=true], #viewport select')].filter(e => ['right', 'end'].includes(getComputedStyle(e).textAlign)).length); }
+  check('no editable value is right-aligned', Object.values(algn).every(n => n === 0), JSON.stringify(algn));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

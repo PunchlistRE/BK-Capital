@@ -13362,7 +13362,7 @@ extend('Capital Allocation','fDecision', function(o){
     var shown = isPct ? (cur*100).toFixed(2) : Math.round(cur).toLocaleString('en-US');
     var unit = isPct ? '%' : '$';
     return '<tr>'+lbl(label)
-      + '<td class="v"><input type="text" inputmode="decimal" style="width:120px;text-align:right" value="'+shown+'"'
+      + '<td class="v"><input type="text" inputmode="decimal" style="width:120px;text-align:left" value="'+shown+'"'
       +   ' onchange="bkSetCapThreshold(\''+key+'\',this.value,'+(isPct?1:0)+')"></td>'
       + '<td class="unit-cell">'+unit+'</td>'+txt(why)+'</tr>';
   }
@@ -18115,6 +18115,18 @@ html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-chil
 td[data-bk-sfx]{ white-space:nowrap !important; }
 td[data-bk-sfx] input{ width:calc(100% - 26px) !important; min-width:0; display:inline-block; }
 #viewport button.status-chip, #viewport button.status-chip *{ white-space:nowrap; }
+/* every editable value reads left-aligned, wherever it sits (one late, high-specificity rule so no sheet drifts) */
+html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td[data-bk-kind^="input"],
+html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td[data-bk-kind^="input"] input,
+html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td[data-bk-kind^="input"] select,
+html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td[contenteditable="true"],
+html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td.input,
+html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td.input input,
+html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td.input select,
+html body #viewport#viewport input[type="text"],
+html body #viewport#viewport textarea,
+html body #viewport#viewport select,
+html body #viewport#viewport .bk-dep-v2 input.dep-money{ text-align:left !important; text-align-last:left !important; }
 .bk-nav-pop{ min-width:230px; max-height:min(70vh,560px); overflow-y:auto; left:0; right:auto; }
 .bk-nav-pop .lab{ display:flex; gap:8px; align-items:center; padding:10px 10px 4px; }
 .bk-nav-pop .lab:not(:first-child){ border-top:1px solid var(--line,#E2DCCD); margin-top:4px; }
@@ -18873,7 +18885,7 @@ function sel(key, opts, cur, conv){
     return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
 }
 function row(label, ctl, why, status){ return '<tr><td class="rowlabel">' + label + '</td><td class="v">' + ctl + '</td><td data-bk-align="text">' + why + '</td><td>' + (status || '') + '</td></tr>'; }
-function input(key, val, conv, w){ return '<input type="text" value="' + val + '" style="width:' + (w || 110) + 'px;text-align:right" onchange="bkDeprSet(\'' + key + '\',' + conv + ')">'; }
+function input(key, val, conv, w){ return '<input type="text" value="' + val + '" style="width:' + (w || 110) + 'px;text-align:left" onchange="bkDeprSet(\'' + key + '\',' + conv + ')">'; }
 
 function controls(){
   var r = raw(), macrs = r.depMethod === 'macrs', e = window.bkDepreciation();
@@ -19251,7 +19263,7 @@ function verdictChip(v){ return chip(v === 'APPROVE' ? 'pass' : v === 'CONDITION
 function fmt(v, t){ return t === 'pct' ? P(v) : t === 'x' ? X(v) : t === 'usd' ? $(v) : t === 'bps' ? B(v) : (v == null ? 'n/a' : String(Math.round(v))); }
 function table(caption, head, body, cls){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin' + (cls ? ' ' + cls : '') + '"><caption>' + caption + '</caption>' + (head ? '<thead><tr>' + head + '</tr></thead>' : '') + '<tbody>' + body + '</tbody></table></div>'; }
 function th(a){ return a.map(function(h, i){ return i === 0 ? '<th class="rowlabel-h">' + h + '</th>' : '<th>' + h + '</th>'; }).join(''); }
-function inp(js, val, w, align){ return '<input type="text" value="' + esc(val) + '" style="width:' + (w || 110) + 'px;text-align:' + (align || 'right') + '" onchange="' + js + '">'; }
+function inp(js, val, w, align){ return '<input type="text" value="' + esc(val) + '" style="width:' + (w || 110) + 'px;text-align:' + (align || 'left') + '" onchange="' + js + '">'; }
 function note(t, ok){ return '<div class="note-flag" style="margin-top:12px"><span>' + (ok === false ? '&#9888;' : '&#9432;') + '</span><div>' + t + '</div></div>'; }
 function side(rows, group){
   return (typeof sidebarShell === 'function') ? sidebarShell('<div class="card"><div class="card-head">' + group + '</div><div class="metric-list">' + rows.map(function(r){ return '<div class="metric-row"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>'; }).join('') + '</div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : '';
@@ -19926,7 +19938,7 @@ function $(v){ var x = Number(v); if(!isFinite(x)) return 'n/a'; var b = Math.ab
 function P(v, d){ return (v == null || !isFinite(v)) ? 'n/a' : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
 function X(v){ return (v == null || !isFinite(v)) ? 'n/a' : v.toFixed(2) + 'x'; }
 function chip(cls, t){ return '<span class="status-chip ' + cls + '">' + t + '</span>'; }
-function inp(key, val, w){ return '<input type="text" value="' + val + '" style="width:' + (w || 90) + 'px;text-align:right" onchange="bkRefiSet(\'' + key + '\',' + (key === 'year' || key === 'amort' ? 'parseFloat(this.value)||0' : '(parseFloat(this.value)||0)/100') + ')">'; }
+function inp(key, val, w){ return '<input type="text" value="' + val + '" style="width:' + (w || 90) + 'px;text-align:left" onchange="bkRefiSet(\'' + key + '\',' + (key === 'year' || key === 'amort' ? 'parseFloat(this.value)||0' : '(parseFloat(this.value)||0)/100') + ')">'; }
 var render = function(){
   if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Refi / Recap');
   var s = bkLoad(), R = refi();
@@ -20146,7 +20158,7 @@ function note(t, warn){ return '<div class="note-flag" style="margin-top:12px"><
 function ed(path, val, fmt, w){
   var shown = fmt === 'pct' ? (Number(val) * 100).toFixed(2).replace(/\.?0+$/, '') : fmt === 'usd' ? Number(val || 0).toLocaleString('en-US', {maximumFractionDigits:2}) : fmt === 'text' ? esc(val) : (val == null ? '' : val);
   var conv = fmt === 'pct' ? '(parseFloat(this.value)||0)/100' : fmt === 'text' ? 'this.value' : 'parseFloat(String(this.value).replace(/[$,]/g,\'\'))||0';
-  return '<input type="text" value="' + shown + '" style="width:' + (w || 84) + 'px;text-align:' + (fmt === 'text' ? 'left' : 'right') + '" onchange="bkBizSet(\'' + path + '\',' + conv + ')">' + (fmt === 'pct' ? '<span style="font-size:11px"> %</span>' : '');
+  return '<input type="text" value="' + shown + '" style="width:' + (w || 84) + 'px;text-align:left" onchange="bkBizSet(\'' + path + '\',' + conv + ')">' + (fmt === 'pct' ? '<span style="font-size:11px"> %</span>' : '');
 }
 function sel(path, opts, cur, num){ return '<select onchange="bkBizSet(\'' + path + '\',' + (num ? 'parseFloat(this.value)' : 'this.value') + ')">' + opts.map(function(o){ return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>'; }
 function side(rows, name){ return (typeof sidebarShell === 'function') ? sidebarShell('<div class="card"><div class="card-head">' + name + '</div><div class="metric-list">' + rows.map(function(r){ return '<div class="metric-row"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>'; }).join('') + '</div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : ''; }
@@ -20336,7 +20348,7 @@ function status(r, v){ if(v == null || !isFinite(v)) return { cls:'', t:'N/A', d
   var lo = r.low, hi = r.high; if(v < lo) return { cls:'warn', t:'BELOW RANGE', d:v - lo }; if(v > hi) return { cls:'warn', t:'ABOVE RANGE', d:v - hi }; return { cls:'pass', t:'IN RANGE', d:0 }; }
 window.bkMarketCompare = function(){ var d = window.bkMarketDeal(); if(!d || !d.applies) return d; return Object.assign({ applies:true }, { rows: rows().map(function(r){ var v = d[r.id], st = status(r, v); return { id:r.id, label:r.label, value:v, low:r.low, high:r.high, status:st.t, gap:st.d }; }) }); };
 function inp(id, side, r){ var v = r[side], shown = r.unit === 'pct' ? (v * 100).toFixed(2).replace(/\.?0+$/, '') : r.unit === 'usd' ? Number(v).toLocaleString('en-US') : String(v);
-  return '<input type="text" value="' + shown + '" style="width:72px!important;min-width:0;text-align:right" onchange="bkMarketSet(\'' + id + '\',\'' + side + '\',parseFloat(String(this.value).replace(/[$,]/g,\'\'))||0)">' + (r.unit === 'pct' ? '<span style="font-size:11px"> %</span>' : r.unit === 'bps' ? '<span style="font-size:11px"> bps</span>' : r.unit === 'x' ? '<span style="font-size:11px"> x</span>' : ''); }
+  return '<input type="text" value="' + shown + '" style="width:72px!important;min-width:0;text-align:left" onchange="bkMarketSet(\'' + id + '\',\'' + side + '\',parseFloat(String(this.value).replace(/[$,]/g,\'\'))||0)">' + (r.unit === 'pct' ? '<span style="font-size:11px"> %</span>' : r.unit === 'bps' ? '<span style="font-size:11px"> bps</span>' : r.unit === 'x' ? '<span style="font-size:11px"> x</span>' : ''); }
 function render(){
   var s = bkLoad(), d = window.bkMarketDeal();
   var main;
@@ -20661,7 +20673,7 @@ window.bkImportRun = async function(inp){
 window.bkImportSet = function(i, k, v){ var e = S.props[i]; if(!e) return; if(k === 'cap'){ e.cap = v; e.capSrc = 'edited'; } else e.units = v; showSheet('Import Deal'); };
 window.bkImportCreate = function(i){ var e = S.props[i]; if(!e || !(e.cap > 0) || !(e.units > 0)) return; var d = dealFor(e.p, e.cap, e.units);
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d); if(typeof showSheet === 'function') showSheet('Deal Underwrite'); };
-function numInput(i, k, val, pct){ var shown = pct ? (val * 100).toFixed(2).replace(/\.?0+$/, '') : String(val); return '<input type="text" value="' + shown + '" style="width:64px;text-align:right" onchange="bkImportSet(' + i + ',\'' + k + '\',' + (pct ? '(parseFloat(this.value)||0)/100' : '(parseFloat(this.value)||0)') + ')">' + (pct ? '<span style="font-size:11px"> %</span>' : ''); }
+function numInput(i, k, val, pct){ var shown = pct ? (val * 100).toFixed(2).replace(/\.?0+$/, '') : String(val); return '<input type="text" value="' + shown + '" style="width:64px;text-align:left" onchange="bkImportSet(' + i + ',\'' + k + '\',' + (pct ? '(parseFloat(this.value)||0)/100' : '(parseFloat(this.value)||0)') + ')">' + (pct ? '<span style="font-size:11px"> %</span>' : ''); }
 function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#E2DCCD);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 function render(){
   var body = box('<b>Upload a Yardi T-12.</b> The importer reads the line-item table (Section / Yardi Line Item / months / Reported Total) from a workbook, CSV or a PDF print of one, foots every section to the statement’s own printed totals, corrects a scanned line only when that makes a section foot, and builds the deal from the line items. Purchase price = line-item NOI / cap rate. You review every figure before a deal is created; nothing is written to an existing deal.'
@@ -20772,7 +20784,7 @@ window.bkRiskRun = function(){
 };
 
 /* ---------------------------------------------------------------- view */
-function numIn(path, val, pct_, w){ var shown = pct_ ? (val * 100).toFixed(2).replace(/\.?0+$/, '') : String(val); return '<input type="text" value="' + shown + '" style="width:' + (w || 64) + 'px;text-align:right" onchange="bkRiskSet(\'' + path + '\',' + (pct_ ? '(parseFloat(this.value)||0)/100' : '(parseFloat(String(this.value).replace(/,/g,\'\'))||0)') + ')">' + (pct_ ? '<span style="font-size:11px"> %</span>' : ''); }
+function numIn(path, val, pct_, w){ var shown = pct_ ? (val * 100).toFixed(2).replace(/\.?0+$/, '') : String(val); return '<input type="text" value="' + shown + '" style="width:' + (w || 64) + 'px;text-align:left" onchange="bkRiskSet(\'' + path + '\',' + (pct_ ? '(parseFloat(this.value)||0)/100' : '(parseFloat(String(this.value).replace(/,/g,\'\'))||0)') + ')">' + (pct_ ? '<span style="font-size:11px"> %</span>' : ''); }
 function histogram(sm, kind){
   var st = sm[kind]; if(!st) return ''; var a = st.sorted, lo = pct(a, 0.005), hi = pct(a, 0.995); if(!(hi > lo)){ lo -= 0.01; hi += 0.01; }
   var B = 28, bins = new Array(B).fill(0), w = (hi - lo) / B; a.forEach(function(v){ var k = Math.min(B - 1, Math.max(0, Math.floor((v - lo) / w))); bins[k]++; });
