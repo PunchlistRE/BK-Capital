@@ -84,3 +84,6 @@ brings it to the top of the view and focuses its first input. Selects keep their
 
 ## Navigation
 `ui_test.js` checks the top bar: six tabs, no second row, the active tab names the current sheet, one dropdown open at a time, and every sheet in the navigation is reachable.
+
+## Visual audit
+`visual_audit.js` opens every sheet on an acquisition, development or business-model sample deal at desktop and phone width, flags render errors, sideways scrolling, clipped text and placeholder values (undefined, NaN, [object), and saves a screenshot of each sheet for review. It is a manual tool and is not part of `run_all.sh`.
