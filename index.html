@@ -18102,6 +18102,10 @@ html body #viewport table.fin tbody td.bk-changed::after{ content:''; position:a
 .bk-nav .grp-btn .car{ font-size:9px; opacity:.7; margin-left:2px; }
 @media (max-width:640px){ .bk-nav .grp-btn .cur{ display:none; } }
 .bk-nav.open > .grp-btn{ color:#fff; background:rgba(255,255,255,.08); }
+html body #viewport table.fin.bk-grid4.bk-conv tr > :nth-child(1){ width:24% !important; }
+html body #viewport table.fin.bk-grid4.bk-conv tr > :nth-child(2){ width:22% !important; }
+html body #viewport table.fin.bk-grid4.bk-conv tr > :nth-child(3){ width:39% !important; text-align:left !important; }
+html body #viewport table.fin.bk-grid4.bk-conv tr > :nth-child(4){ width:15% !important; }
 .bk-nav-pop{ min-width:230px; max-height:min(70vh,560px); overflow-y:auto; left:0; right:auto; }
 .bk-nav-pop .lab{ display:flex; gap:8px; align-items:center; padding:10px 10px 4px; }
 .bk-nav-pop .lab:not(:first-child){ border-top:1px solid var(--line,#E2DCCD); margin-top:4px; }
@@ -20366,7 +20370,8 @@ document.addEventListener('keydown', function(e){
   var items = [].slice.call(open.querySelectorAll('.it')), i = items.indexOf(document.activeElement) ; e.preventDefault();
   i = e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1); items[i].focus();
 });
-function mark(){ document.querySelectorAll('.bk-nav-pop .it').forEach(function(x){ x.tabIndex = -1; x.setAttribute('role', 'menuitem'); });
+function tidy(){ var t = document.querySelector('#viewport table.fin.bk-grid4'); if(t && t.caption && /Underwriting Conventions/i.test(t.caption.textContent) && !t.classList.contains('bk-conv')) t.classList.add('bk-conv'); }
+function mark(){ tidy(); document.querySelectorAll('.bk-nav-pop .it').forEach(function(x){ x.tabIndex = -1; x.setAttribute('role', 'menuitem'); });
   document.querySelectorAll('.bk-nav > .grp-btn').forEach(function(x){ x.tabIndex = 0; });
   document.querySelectorAll('.bk-nav.open').forEach(function(m){ var b = m.querySelector('.grp-btn'); if(b) b.setAttribute('aria-expanded', 'true'); }); }
 new MutationObserver(mark).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['class'] }); mark();
