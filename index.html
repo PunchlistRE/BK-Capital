@@ -20831,6 +20831,9 @@ if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('P
 if(typeof window.bkAddConflictRule === 'function'){
   window.bkAddConflictRule('risk.prob-not-100', 'ERROR', 'Risk', 'Probability-Weighted', function(s){ var r = risk(s), t = r.p.Downside + r.p.Base + r.p.Upside; if(isAcq(s) && s._risk && Math.abs(t - 1) > 1e-9) return { msg:'The scenario probabilities add up to ' + P(t, 1) + ', not 100%.', why:'Every probability-weighted figure (expected profit, expected IRR, the odds of loss) divides by the total, so probabilities that do not sum to 100% are silently rescaled. Make them sum to 100% so the weights mean what you typed.', fix:'Probability-Weighted', data:{ total:t } }; });
 }
+})();
+</script>
+
 <script id="bk-v29210-import-rr">
 /* V29.21.0 - IMPORT RENT ROLL. Upload a unit-level rent roll (Excel, CSV or a text PDF), confirm how its columns map to the app's rent-roll fields,
    review every unit and the warnings, then replace or add to the active deal's Rent Roll. Nothing is written until you press the button. */
