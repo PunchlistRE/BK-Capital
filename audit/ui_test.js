@@ -126,6 +126,26 @@ const B = require(path.join(__dirname, 'dealB.js'));
   const ev1 = await p.evaluate(() => bkBizModel().dcf.ev);
   check('editing the exit multiple changes the business value', ev1 !== ev0, JSON.stringify({ ev0, ev1 }));
   check('Sell vs Hold lists the four choices', await p.evaluate(() => ['Hold both', 'Sell the business, keep the property', 'Sell the property, keep the business', 'Sell both'].every(t => document.querySelector('#viewport').innerText.includes(t))));
+  // 8. Market Benchmarks: compares the deal with published ranges, ranges are editable, development deals are told it does not apply
+  await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Market Benchmarks'); }, B); await p.waitForTimeout(200);
+  const mk1 = await p.evaluate(() => ({ rows: bkMarketCompare().rows, caps: [...document.querySelectorAll('#viewport caption')].map(c => c.textContent.trim().toUpperCase()), exit: bkLoad().exitCap }));
+  check('Market Benchmarks lists nine assumptions against their ranges and sources', mk1.rows.length === 9 && mk1.caps.includes('DEAL VS PUBLISHED MARKET RANGE') && mk1.caps.includes('SOURCES AND CAVEATS'), JSON.stringify(mk1.caps));
+  check("Market Benchmarks reads the deal's own exit cap", mk1.rows.find(r => r.id === 'exitCap').value === mk1.exit);
+  await p.evaluate(() => bkMarketSet('exitCap', 'high', 4)); await p.waitForTimeout(150);
+  check('editing a market range changes the position and persists', await p.evaluate(() => bkMarketCompare().rows.find(r => r.id === 'exitCap').status) === 'ABOVE RANGE');
+  await p.evaluate(() => bkMarketReset());
+  await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { dealType: 'Development', predevMonths: 6, constructionMonths: 18, leaseupMonths: 12 })); showSheet('Market Benchmarks'); }, B);
+  check('Market Benchmarks says it applies to stabilised multifamily acquisitions on a development deal', /development deal/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
+  // 9. Top navigation: six tabs, dropdowns of sheets, one open at a time, choosing a sheet opens it and closes the menu
+  await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Depreciation'); }, B); await p.waitForTimeout(200);
+  const nv = await p.evaluate(() => ({ tabs: [...document.querySelectorAll('.tabnav-primary > *')].length, secondary: document.querySelectorAll('.tabnav-secondary').length, cur: document.querySelector('.tabnav-primary .grp-btn.on').innerText }));
+  check('top bar has six tabs and no second row of sheet tabs', nv.tabs === 6 && nv.secondary === 0, JSON.stringify(nv));
+  check('the active tab names the current sheet', /Underwrite/.test(nv.cur) && /Depreciation/.test(nv.cur), nv.cur);
+  await p.click('.bk-nav:has-text("Underwrite") > .grp-btn'); await p.click('.bk-nav:has-text("Business") > .grp-btn');
+  check('only one dropdown is open at a time', await p.evaluate(() => document.querySelectorAll('.bk-nav.open').length) === 1);
+  await p.click('.bk-nav.open .it:has-text("Sell vs Hold")'); await p.waitForTimeout(300);
+  check('choosing a sheet from a dropdown opens it and closes the menu', await p.evaluate(() => currentSheet === 'Sell vs Hold' && document.querySelectorAll('.bk-nav.open').length === 0));
+  check('every sheet in the navigation is reachable from a dropdown or tab', await p.evaluate(() => { const all = new Set([...document.querySelectorAll('.tabnav-primary [data-goto-sheet]')].map(e => e.dataset.gotoSheet)); return GROUPS.filter(g => !g.hidden && g.id !== 'dev').flatMap(g => g.sheets).every(s => all.has(s)); }));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

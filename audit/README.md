@@ -78,3 +78,9 @@ brings it to the top of the view and focuses its first input. Selects keep their
 - It also implements the OpCo / PropCo comparison (`place()`): business value with market rent normalised, property value from the independent deal model's Year-1 NOI, and the four sale choices after tax.
 - Deals `BIZ-1` (workbook discounting) and `BIZ-2` (bear case, exit multiple discounted at end of year 5, appraised property) are in the deal book and are compared with the app figure by figure; golden results under `:biz`.
 - `conflicts_test.js` has a scenario for each `biz.*` rule.
+
+## Market Benchmarks
+`ui_test.js` checks the sheet reads the deal's own figures, that ranges are editable and reset, and that development deals are told it does not apply. The ranges themselves are published figures (sources and dates are on the sheet), not audited numbers, and nothing on the sheet feeds the engine.
+
+## Navigation
+`ui_test.js` checks the top bar: six tabs, no second row, the active tab names the current sheet, one dropdown open at a time, and every sheet in the navigation is reachable.
