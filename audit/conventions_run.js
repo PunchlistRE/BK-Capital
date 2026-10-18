@@ -6,8 +6,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const path = require('path'), fs = require('fs');
 const A = require(path.join(__dirname, 'deal.js')), B = require(path.join(__dirname, 'dealB.js'));
 
-const LEGACY = { cvRentGrowthStart: 'month1', cvOpexVariablePct: 0.4, cvLtvBasis: 'value', cvHurdleBasis: 'deal' };
-const STD = { cvRentGrowthStart: 'year2', cvOpexVariablePct: 0, cvLtvBasis: 'price', cvHurdleBasis: 'lp' };
+const LEGACY = { cvRentGrowthStart: 'month1', cvOpexVariablePct: 0.4, cvLtvBasis: 'value', cvHurdleBasis: 'deal', cvBadDebtBasis: 'legacy' };
+const STD = { cvRentGrowthStart: 'year2', cvOpexVariablePct: 0, cvLtvBasis: 'price', cvHurdleBasis: 'lp', cvBadDebtBasis: 'afterVacancy' };
 const LTV_BINDS = { acqDSCR: 1.0, acqLTC: 0.8 };   // loosen DSCR / LTC so the LTV constraint binds
 const SCEN = [];
 for (const [dn, deal, oldGp] of [['A', A, 0.5], ['B', B, B.gpShare]]) {
@@ -18,6 +18,16 @@ for (const [dn, deal, oldGp] of [['A', A, 0.5], ['B', B, B.gpShare]]) {
   add('opex 25% variable', Object.assign({}, LEGACY, { gpShare: oldGp, cvOpexVariablePct: 0.25 }));
   add('LTV on price', Object.assign({}, LEGACY, { gpShare: oldGp, cvLtvBasis: 'price' }));
   add('hurdles on LP cash', Object.assign({}, LEGACY, { gpShare: oldGp, cvHurdleBasis: 'lp' }));
+  add('bad debt: after vacancy', Object.assign({}, LEGACY, { gpShare: oldGp, cvBadDebtBasis: 'afterVacancy' }));
+  add('bad debt: gross', Object.assign({}, LEGACY, { gpShare: oldGp, cvBadDebtBasis: 'gross' }));
+  add('aligned: growth Y2 + bad debt after vacancy', Object.assign({}, LEGACY, { gpShare: oldGp, cvRentGrowthStart: 'year2', cvBadDebtBasis: 'afterVacancy' }));
+  add('aligned: growth Y2 + bad debt gross', Object.assign({}, LEGACY, { gpShare: oldGp, cvRentGrowthStart: 'year2', cvBadDebtBasis: 'gross' }));
+  // Year-1 statement NOI must equal the monthly cash flow's Year-1 NOI once growth timing and the
+  // occupancy-variable opex share are aligned, for either bad-debt basis (flagged in `reconcile`).
+  for (const bd of ['afterVacancy', 'gross']) {
+    add('reconciled: ' + bd, Object.assign({}, STD, { gpShare: oldGp, cvBadDebtBasis: bd }));
+    SCEN[SCEN.length - 1].reconcile = true;
+  }
   add('GP 10%', Object.assign({}, LEGACY, { gpShare: 0.10 }));
   add('all standard (after)', Object.assign({}, STD, { gpShare: 0.10 }));
   add('all standard, GP 50%', Object.assign({}, STD, { gpShare: 0.5 }));
@@ -49,14 +59,14 @@ for (const [dn, deal, oldGp] of [['A', A, 0.5], ['B', B, B.gpShare]]) {
       });
       const posCF = x.rows.reduce((z, q) => z + Math.max(0, q.wfDist != null ? q.wfDist : q.cf), 0);
       return {
-        s, conv: bkConventions(s),
+        s, conv: bkConventions(s), stmtNOI: bkCalc().after,
         y1NOI: u.arr[0].after, loan: d.loan, equity: d.equity, ltvValue: d.ltvValue, binding: d.binding, grossSale: u.grossSale,
         levIRR: x.irr, levMOIC: x.moic, unlevIRR: u.irr, unlevMOIC: u.moic,
         lpIRR: w.lpIRR, gpIRR: w.gpIRR, lpDist: w.lp.dist, gpDist: w.gp.dist, lpContrib: w.lp.contrib, gpContrib: w.gp.contrib, promote: w.promote,
         recon: { maxMonthGap, conSum, lpgpCon, distSum, lpgpDist, posCF, equity: d.equity, splitErr, tiers }
       };
     }, sc.opts);
-    out.push(Object.assign({ deal: sc.deal, name: sc.name }, r));
+    out.push(Object.assign({ deal: sc.deal, name: sc.name, reconcile: !!sc.reconcile }, r));
   }
   fs.writeFileSync(process.argv[3], JSON.stringify({ scenarios: out, pageErrors: errs }));
   await b.close();

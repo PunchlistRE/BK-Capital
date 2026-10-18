@@ -400,8 +400,9 @@ const GROUPS = [
   {id:'inputs', label:'Inputs', color:'#C9A968', sheets:['Deal Underwrite','Rent Roll','Source Ingestion','Depreciation']},
   {id:'propops', label:'Property Operations', color:'#1E3A55', sheets:['Operating Underwrite','Property CF']},
   {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Draws','Residual Land']},
-  {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor']},
+  {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor','Refi / Recap']},
   {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax']},
+  {id:'credit', label:'Credit & IC', color:'#7A3E4D', sheets:['IC Memo','Debt Capacity','Credit Policy','Model Checks']},
   {id:'tools', label:'Tools', color:'#5B4B8A', sheets:['Sensitivity','Reverse Solve']},
   {id:'portfolio', label:'Portfolio & Investors', color:'#5A6B7A', sheets:['Portfolio','Investors','Investor Schedules','Liquidity','Portfolio Dashboard','Data Export']},
   {id:'monthly', label:'Monthly Engine', color:'#47507A', sheets:['Waterfall (M)','Sponsor CF','Lease Cohort CF','Portfolio M','Deal Vectors (M)','Ledger (M)']},
@@ -1460,9 +1461,16 @@ const BK_BASE={
                         legacy 0.40 (the workbook's 0.6 fixed + 0.4 x occupancy split)
      cvLtvBasis         'price' purchase price | 'value' (legacy) Year-1 NOI / exit cap | 'lesser'
      cvHurdleBasis      'lp' hurdles tested on LP contributions and distributions
-                        'deal' (legacy) hurdles tested on total deal equity cash flows */
-var BK_CV_STANDARD = { cvRentGrowthStart:'year2', cvOpexVariablePct:0, cvLtvBasis:'price', cvHurdleBasis:'lp' };
-var BK_CV_LEGACY   = { cvRentGrowthStart:'month1', cvOpexVariablePct:0.4, cvLtvBasis:'value', cvHurdleBasis:'deal' };
+                        'deal' (legacy) hurdles tested on total deal equity cash flows
+     cvBadDebtBasis     'afterVacancy' bad debt is charged on rent after vacancy, in the Operating
+                        Underwrite statement and the monthly cash flow alike
+                        'gross' bad debt on gross potential rent, in both
+                        'legacy' original split: gross in the statement, after vacancy monthly
+   SCOPE: these conventions govern ACQUISITION deals. A Development deal keeps its own methodology
+   (construction-loan sizing, construction-period cash flows, annual growth), so bkConventions()
+   always resolves it to the legacy values and reports scope 'development'. */
+var BK_CV_STANDARD = { cvRentGrowthStart:'year2', cvOpexVariablePct:0, cvLtvBasis:'price', cvHurdleBasis:'lp', cvBadDebtBasis:'afterVacancy' };
+var BK_CV_LEGACY   = { cvRentGrowthStart:'month1', cvOpexVariablePct:0.4, cvLtvBasis:'value', cvHurdleBasis:'deal', cvBadDebtBasis:'legacy' };
 function bkConventions(s){
   s = s || {};
   var out = { legacyFields:[] };
@@ -1474,6 +1482,13 @@ function bkConventions(s){
   if(['year2','month1'].indexOf(out.cvRentGrowthStart) < 0) out.cvRentGrowthStart = BK_CV_LEGACY.cvRentGrowthStart;
   if(['price','value','lesser'].indexOf(out.cvLtvBasis) < 0) out.cvLtvBasis = BK_CV_LEGACY.cvLtvBasis;
   if(['lp','deal'].indexOf(out.cvHurdleBasis) < 0) out.cvHurdleBasis = BK_CV_LEGACY.cvHurdleBasis;
+  if(['afterVacancy','gross','legacy'].indexOf(out.cvBadDebtBasis) < 0) out.cvBadDebtBasis = BK_CV_LEGACY.cvBadDebtBasis;
+  out.isDevelopment = /develop/i.test(String(s.dealType || ''));
+  out.scope = out.isDevelopment ? 'development' : 'acquisition';
+  if(out.isDevelopment){
+    Object.keys(BK_CV_LEGACY).forEach(function(k){ out[k] = BK_CV_LEGACY[k]; });
+    out.legacyFields = Object.keys(BK_CV_LEGACY);
+  }
   out.isLegacy = out.legacyFields.length === Object.keys(BK_CV_LEGACY).length;
   out.isStandard = Object.keys(BK_CV_STANDARD).every(function(k){ return out[k] === BK_CV_STANDARD[k]; });
   return out;
@@ -1579,22 +1594,6 @@ function bkIOToggle(label,key,defaultYears){
   if(on) html+=bkInput(label+' Period',key,'years');
   return html;
 }
-function bkCalc(){const s=bkLoad();
-  const gpr=BK_BASE.gpr*(Number(s.avgRent)/BK_BASE.avgRent)*(Number(s.units)/BK_BASE.units);
-  const vacancy=-gpr*Number(s.vacancy), bad=-gpr*BK_BASE.badDebtPct;
-  const netRes=gpr+vacancy+bad;
-  const other=Number(s.otherIncomePerUnit)*Number(s.units);
-  const commercial=Number(s.commercialArea)*Number(s.commercialRent);
-  const recovery=Number(s.commercialArea)*Number(s.recovery);
-  const commercialVac=-(commercial+recovery)*Number(s.vacancy);
-  const netComm=commercial+recovery+commercialVac;
-  const egi=netRes+netComm+other;
-  const mgmt=egi*Number(s.mgmtPct);
-  const misc=BK_BASE.misc*(Number(s.gsf)/BK_BASE.gsf);
-  const total=Number(s.taxes)+Number(s.insurance)+Number(s.utilities)+Number(s.rm)+Number(s.contract)+Number(s.payroll)+Number(s.turnover)+Number(s.marketing)+Number(s.ga)+mgmt+misc;
-  const noi=egi-total, after=noi-Number(s.reserves), value=Number(s.exitCap)?noi/Number(s.exitCap):0;
-  return {gpr,vacancy,bad,netRes,commercial,recovery,commercialVac,netComm,other,egi,mgmt,misc,total,noi,after,value,expenseRatio:egi?total/egi:0,noiMargin:egi?after/egi:0,goingIn:Number(s.purchasePrice)?Number(s.t12noi)/Number(s.purchasePrice):0};
-}
 const _origDeal=sheetDealUnderwrite;
 sheetDealUnderwrite=function(){const s=bkLoad(); const main=`
 <div class="tbl-wrap"><table class="fin deal-underwrite-grid"><colgroup><col><col><col><col></colgroup><caption>Identity</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Data Type</th><th>Status</th></tr></thead><tbody>
@@ -1615,7 +1614,7 @@ return {title:'Deal Underwrite',crumbs:'Inputs',desc:'All deal inputs - the sing
 
 sheetOperatingUnderwrite=function(){const s=bkLoad(),c=bkCalc(); const money=n=>n<0?'($'+bkFmt(-n)+')':'$'+bkFmt(n); const main=`
 <div class="tbl-wrap"><table class="fin"><caption>Revenue - Year 1 Stabilized</caption><thead><tr><th class="rowlabel-h">Line Item</th><th>Annual ($)</th><th>% of GPR</th></tr></thead><tbody>
-<tr><td class="rowlabel">Gross Potential Rent - Residential</td><td>${money(c.gpr)}</td><td>100.0%</td></tr><tr><td class="rowlabel">Less: Vacancy - Residential</td><td>${money(c.vacancy)}</td><td>${bkPct(Number(s.vacancy))}</td></tr><tr><td class="rowlabel">Less: Bad Debt / Credit Loss</td><td>${money(c.bad)}</td><td>${bkPct(BK_BASE.badDebtPct)}</td></tr><tr class="subtotal"><td class="rowlabel">Net Residential Income</td><td>${money(c.netRes)}</td><td>-</td></tr><tr><td class="rowlabel">Commercial Base Rent</td><td>${money(c.commercial)}</td><td>-</td></tr><tr><td class="rowlabel">Expense Recoveries (NNN)</td><td>${money(c.recovery)}</td><td>-</td></tr><tr><td class="rowlabel">Other Income / Reimbursements</td><td>${money(c.other)}</td><td>-</td></tr><tr class="grandtotal"><td class="rowlabel">Effective Gross Income</td><td>${money(c.egi)}</td><td>100.0%</td></tr></tbody></table></div>
+<tr><td class="rowlabel">Gross Potential Rent - Residential</td><td>${money(c.gpr)}</td><td>100.0%</td></tr><tr><td class="rowlabel">Less: Vacancy - Residential</td><td>${money(c.vacancy)}</td><td>${bkPct(Number(s.vacancy))}</td></tr><tr><td class="rowlabel">Less: Bad Debt / Credit Loss</td><td>${money(c.bad)}</td><td>${bkPct(c.gpr?-c.bad/c.gpr:0)}</td></tr><tr class="subtotal"><td class="rowlabel">Net Residential Income</td><td>${money(c.netRes)}</td><td>-</td></tr><tr><td class="rowlabel">Commercial Base Rent</td><td>${money(c.commercial)}</td><td>-</td></tr><tr><td class="rowlabel">Expense Recoveries (NNN)</td><td>${money(c.recovery)}</td><td>-</td></tr><tr><td class="rowlabel">Other Income / Reimbursements</td><td>${money(c.other)}</td><td>-</td></tr><tr class="grandtotal"><td class="rowlabel">Effective Gross Income</td><td>${money(c.egi)}</td><td>100.0%</td></tr></tbody></table></div>
 <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Expenses</caption><thead><tr><th class="rowlabel-h">Line Item</th><th>Annual ($)</th><th style="text-align:left">Basis</th></tr></thead><tbody>
 <tr><td class="rowlabel">Real Estate Taxes</td><td>${money(Number(s.taxes))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Insurance</td><td>${money(Number(s.insurance))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Utilities</td><td>${money(Number(s.utilities))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Repairs & Maintenance</td><td>${money(Number(s.rm))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Contract Services</td><td>${money(Number(s.contract))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Payroll & Benefits</td><td>${money(Number(s.payroll))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Turnover & Make-Ready</td><td>${money(Number(s.turnover))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Marketing & Advertising</td><td>${money(Number(s.marketing))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">General & Administrative</td><td>${money(Number(s.ga))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Management Fee</td><td>${money(c.mgmt)}</td><td style="text-align:left">${bkPct(Number(s.mgmtPct))} of EGI</td></tr><tr><td class="rowlabel">Miscellaneous</td><td>${money(c.misc)}</td><td style="text-align:left">Engine</td></tr><tr class="grandtotal"><td class="rowlabel">Total Expenses</td><td>${money(c.total)}</td><td style="text-align:left">-</td></tr></tbody></table></div>
 <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><tbody><tr class="subtotal"><td class="rowlabel">Net Operating Income</td><td>${money(c.noi)}</td></tr><tr><td class="rowlabel">Less: Replacement Reserves</td><td>${money(-Number(s.reserves))}</td></tr><tr class="grandtotal"><td class="rowlabel">NOI After Reserves</td><td>${money(c.after)}</td></tr></tbody></table></div>
@@ -2011,7 +2010,12 @@ showSheet(currentSheet||'Returns');
 Object.assign(BK_BASE,{gpShare:.50,pref:.07,hurdle2:.10,hurdle3:.15,t2LP:.50,t3LP:.45,t4LP:.40,gpCatchup:1,gpCatchupTarget:.05,hurdleBasis:1,em1:1.97,em2:2.59,em3:4.05,assetMgmtPct:.01,dispositionFeePct:.005});
 function bkEnsureV06(){const s=bkLoad();let dirty=false;Object.keys(BK_BASE).forEach(k=>{if(s[k]===undefined){s[k]=BK_BASE[k];dirty=true;}});if(dirty)bkSave(s);return s;}
 const _dealV05=sheetDealUnderwrite;sheetDealUnderwrite=function(){const o=_dealV05();o.main+=`<div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>JV Structure & Sponsor Fees</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('GP / Sponsor Equity Share','gpShare','%','pct')}${bkInput('Tier 1 Preferred Return','pref','%','pct')}${bkInput('Second Hurdle (IRR)','hurdle2','%','pct')}${bkInput('Third Hurdle (IRR)','hurdle3','%','pct')}${bkInput('Tier 2 Split - LP','t2LP','%','pct')}${bkInput('Tier 3 Split - LP','t3LP','%','pct')}${bkInput('Tier 4 Split - LP (residual)','t4LP','%','pct')}${bkYesNo('GP Catch-Up','gpCatchup')}${bkInput('GP Catch-Up Target','gpCatchupTarget','%','pct')}${bkInput('Asset Management Fee','assetMgmtPct','% of EGI','pct')}${bkInput('Disposition Fee','dispositionFeePct','% of gross sale','pct')}</tbody></table></div>`;o.desc='All deal inputs - now including workbook JV structure and sponsor-fee assumptions.';return o;};
-function bkXirr(values,dates,guess=.1){const d0=dates[0],yr=365*86400000;function f(r){let v=0;for(let i=0;i<values.length;i++)v+=values[i]/Math.pow(1+r,(dates[i]-d0)/yr);return v}let lo=-.9999,hi=10,fl=f(lo),fh=f(hi);for(let k=0;k<20&&fl*fh>0;k++){hi*=2;fh=f(hi)}/* V29.7 defensive validation ONLY -- bounds, convergence, cash flows and date vectors are untouched. The pre-existing guard was `if(fl*fh>0) return NaN`, which silently fails to fire when fl/fh are NaN or Infinity, because NaN>0 is false. Bisection then ran against NaN comparisons (every `fl*fm<=0` test false), walked `lo` up to the upper seed and returned hi=10 -- reporting a fabricated "1000.0%" IRR. Non-finite endpoints mean the function could not be evaluated at all, so the honest answer is "no result". */if(!isFinite(fl)||!isFinite(fh)||fl*fh>0)return NaN;for(let k=0;k<150;k++){const m=(lo+hi)/2,fm=f(m);if(Math.abs(fm)<1e-8)return m;if(fl*fm<=0){hi=m;fh=fm}else{lo=m;fl=fm}}return(lo+hi)/2}
+/* Whole calendar days between two dates (actual/365 needs whole days). Differencing raw milliseconds is wrong in any
+   time zone with daylight saving: a day that is 23 or 25 hours long shifts every IRR by ~1e-7 and makes a result depend
+   on where the browser is running. Local calendar parts are re-read as UTC, so the count is exact in every zone. */
+function bkDays(a,b){a=new Date(a);b=new Date(b);return (Date.UTC(b.getFullYear(),b.getMonth(),b.getDate())-Date.UTC(a.getFullYear(),a.getMonth(),a.getDate()))/86400000}
+window.bkDays=bkDays;
+function bkXirr(values,dates,guess=.1){const d0=dates[0];function f(r){let v=0;for(let i=0;i<values.length;i++)v+=values[i]/Math.pow(1+r,bkDays(d0,dates[i])/365);return v}let lo=-.9999,hi=10,fl=f(lo),fh=f(hi);for(let k=0;k<20&&fl*fh>0;k++){hi*=2;fh=f(hi)}/* V29.7 defensive validation ONLY -- bounds, convergence, cash flows and date vectors are untouched. The pre-existing guard was `if(fl*fh>0) return NaN`, which silently fails to fire when fl/fh are NaN or Infinity, because NaN>0 is false. Bisection then ran against NaN comparisons (every `fl*fm<=0` test false), walked `lo` up to the upper seed and returned hi=10 -- reporting a fabricated "1000.0%" IRR. Non-finite endpoints mean the function could not be evaluated at all, so the honest answer is "no result". */if(!isFinite(fl)||!isFinite(fh)||fl*fh>0)return NaN;for(let k=0;k<150;k++){const m=(lo+hi)/2,fm=f(m);if(Math.abs(fm)<1e-8)return m;if(fl*fm<=0){hi=m;fh=fm}else{lo=m;fl=fm}}return(lo+hi)/2}
 /* V32.1 - CASH-FLOW DATING CONVENTION (institutional).
    Month 0 = the actual closing date: acquisition equity is its own flow on that date.
    Month m (closing month = month 1) operating cash flow, debt service, fees and the sale proceeds are dated the
@@ -2374,7 +2378,9 @@ function bkDevFundingV10(){
  const stabVal=Number(s.exitCap||0)>0?Number(bkCalc().noi||0)/Number(s.exitCap):0, rate=Math.max(0,Number(s.conRate||0)), feeFac=Math.max(0,Number(s.conOrigFee||0)+Number(s.conCapCost||0)+Number(s.guarantyFeePct||0));
  // Excel Debt!C23/C33: the facility's payoff/accrual-window endpoint is the REFINANCE month (~stabilization)
  // when the deal refinances, and only the sale/exit month when it never does -- not always the full hold period.
- const payoff=Number(s.refiAtStab||0)?x.stab:x.hold, accr=Math.max(3,Math.round((payoff-(x.preMo+1)+1)*.7)), intFac=Math.max(0,Number(s.conUtil||0))*rate*accr/12, U0=x.unlev+Number(s.lenderLegal||0), ltc=Number(s.conLTC||0), ltv=Number(s.conLTV||0);
+ /* interest is capitalised only through stabilisation (see the draw loop below), so the interest reserve that
+    sizes the commitment must stop there too, with or without a takeout; otherwise a no-takeout loan exceeds its LTC. */
+ const payoff=Number(s.refiAtStab||0)?x.stab:x.hold, accr=Math.max(3,Math.round((Math.min(payoff,x.stab)-(x.preMo+1)+1)*.7)), intFac=Math.max(0,Number(s.conUtil||0))*rate*accr/12, U0=x.unlev+Number(s.lenderLegal||0), ltc=Number(s.conLTC||0), ltv=Number(s.conLTV||0);
  const commitLTC=ltc>0&&ltc*(feeFac+intFac)<1?ltc*U0/(1-ltc*(feeFac+intFac)):0,commitLTV=ltv>0?ltv*stabVal:Number.POSITIVE_INFINITY,commit=(()=>{const a=ltc>0?(commitLTC||0):Number.POSITIVE_INFINITY,raw=Math.min(a,commitLTV);return isFinite(raw)?Math.max(0,Math.floor(raw/1000)*1000):0;})(),upfront=commit*feeFac+Number(s.lenderLegal||0),estInt=commit*intFac,eqTarget=commit>0?Math.max(0,x.unlev+upfront+estInt-commit):9.9e14;
  let bal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
  for(let mo=1;mo<=x.hold;mo++){
@@ -2469,6 +2475,10 @@ function bkDevMonthlyReturnsV12(){
  if(!x.isDev) return _bkMonthlyReturnsAcqV12();
  const months=Math.max(1,x.hold), start=bkParseDealDate(s.closing,'2027-01-01'), y1EGI=Number(bkCalc().egi||0);   // F11: Year-1 EGI (bkOperatingV02 returns no egi)
  const baseNOI=Math.max(0,Number(s.stabilizedNOI||0)||Number(op.noi||0));
+ /* Replacement reserves are a COST: they grow at the opex rate, like the acquisition engine, not at the NOI growth rate. op.noi is NOI AFTER reserves, so
+    NOI before reserves = baseNOI + reserves; each grows on its own rate. A user-entered stabilizedNOI cannot be split, so it keeps the single-rate path. */
+ const reserves0=Number(s.stabilizedNOI||0)?0:Math.max(0,Number(s.reserves||0)), opexGrowthDev=Number(s.opexGrowth||0);
+ const noiAtYear=yr=>(baseNOI+reserves0)*Math.pow(1+Number(s.noiGrowth||s.rentGrowth||0),yr-1)-reserves0*Math.pow(1+opexGrowthDev,yr-1);
  const noiGrowth=Number(s.noiGrowth||s.rentGrowth||0), exitCap=Math.max(.0001,Number(s.exitCap||.06)), saleCost=Number(s.saleCostPct||0);
  const rows=[],values=[],dates=[]; let permBal=x.permLoan||0;
  const permByMo={}; (x.permSchedule||[]).forEach(z=>permByMo[z.mo]=z);
@@ -2479,7 +2489,7 @@ function bkDevMonthlyReturnsV12(){
  const LCR=bkDevLifecycleV13(x);
  const rampByMo={}; (x.leaseupRamp||[]).forEach(z=>rampByMo[z.mo]=z);
  // F12: one monthly NOI curve (operating months step by operating year; lease-up months read the ramp). Exit value = NOI of months H+1..H+12 on this same curve.
- const curveNOI=k=>k>=x.stab?baseNOI*Math.pow(1+noiGrowth,Math.max(1,Math.ceil((k-x.stab+1)/12))-1)/12:Number((rampByMo[k]||{after:0}).after||0);
+ const curveNOI=k=>k>=x.stab?noiAtYear(Math.max(1,Math.ceil((k-x.stab+1)/12)))/12:Number((rampByMo[k]||{after:0}).after||0);
  for(let mo=1;mo<=months;mo++){
    const dt=bkMonthEnd(start,mo);   // V32.1: month-end
    const funding=x.months[mo-1]||{eq:0,overflow:0};
@@ -2487,7 +2497,7 @@ function bkDevMonthlyReturnsV12(){
    const isOperating=mo>=x.stab;
    const ramp=rampByMo[mo];
    const opYear=Math.max(1,Math.ceil((mo-x.stab+1)/12));
-   const annualNOI=isOperating?baseNOI*Math.pow(1+noiGrowth,opYear-1):0;
+   const annualNOI=isOperating?noiAtYear(opYear):0;
    const noi=isOperating?annualNOI/12:((ramp&&!LCR.deficitFunded)?ramp.after:0);
    const egiMo=isOperating?y1EGI/12:(ramp?ramp.egi:0);
    const assetFee=egiMo*Number(s.assetMgmtPct||0);
@@ -2685,7 +2695,9 @@ window.bkCalc = function(){
 
   const gpr = useRR ? (applyMarket?rrs.resMarket:rrs.resInPlace)*12 : Number(s.avgRent)*Number(s.units)*12;
   const vacancy = -gpr*Number(s.vacancy);
-  const bad = -gpr*Number(s.badDebtPct);
+  // CONVENTION cvBadDebtBasis: 'afterVacancy' charges bad debt on rent after vacancy, matching the
+  // monthly cash flow; 'gross' and the legacy statement charge it on gross potential rent.
+  const bad = bkConventions(s).cvBadDebtBasis==='afterVacancy' ? -(gpr+vacancy)*Number(s.badDebtPct) : -gpr*Number(s.badDebtPct);
   // FINAL WAVE - loss to lease and concessions. These are the workbook's own Operating
   // Underwrite revenue-build lines (C8 =-o_GPR*g_ltl, C9 =-o_GPR*g_concess): a percentage
   // of GROSS potential rent, on the same base the bad-debt line above already uses. Both
@@ -2920,7 +2932,9 @@ window.bkAnnualCF = function(){
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
     const resRev = (k_GPR/12) * resOcc * Math.pow(1+rentGrowth, gExp(m));
-    const bad = -resRev*badDebtPct;
+    // CONVENTION cvBadDebtBasis: 'gross' charges gross potential rent; 'afterVacancy' and the legacy
+    // monthly behaviour charge rent after vacancy (the legacy expression is kept literally).
+    const bad = _cv.cvBadDebtBasis==='gross' ? -((k_GPR/12) * Math.pow(1+rentGrowth, gExp(m)))*badDebtPct : -resRev*badDebtPct;
     // Applied to GROSS potential rent, exactly as the workbook does, using the same
     // expression the vacancy split below already uses so the parts still sum to the whole.
     // At the default of zero both terms are -0, and x + -0 === x for every x, so no existing
@@ -5137,7 +5151,7 @@ var BK_SUPABASE_URL      = 'https://klgamvfjhgpxwhnrztrx.supabase.co';
 var BK_SUPABASE_ANON_KEY = 'sb_publishable_Z5BCISii2xOw5XErlQ4JvA_pr39Nlrt';
 
 var BK_SUPABASE_CFG_STORE = 'bkcapital.supabase.cfg.v01';
-var BK_ENGINE_VERSION     = 'V30.0';
+var BK_ENGINE_VERSION     = 'V32.2';
 
 /* V30: the project URL and publishable key are fixed in the build. The former
    runtime override (localStorage 'bkcapital.supabase.cfg.v01', set from the Cloud
@@ -7181,6 +7195,8 @@ window.bkCreateNewDeal = function(opts){
      values, so they apply whichever template is chosen). A caller may still pass its own. */
   Object.keys(BK_CV_STANDARD).forEach(function(k){ blank[k] = BK_CV_STANDARD[k]; });
   blank._conventions = { version:'CV-2026.10', appliedAt:new Date().toISOString() };
+  /* depreciation: new deals use tax-grade MACRS; a saved deal with no depMethod keeps the V29.11 simplified schedule */
+  blank._depr = { settings:{ depMethod:'macrs', bonusMode:'statutory' }, components:[] };
   /* Any further field the caller supplies is honoured, so a creation wizard can
      provision a deal in one step instead of creating a blank and then editing
      it. Identity and economic fields are applied AFTER the zeroed template, so
@@ -9220,7 +9236,7 @@ function engine(){
                        convention:'Underwriting', method:'Straight-line', source:'Underwriting Assumption', status:'CALC' }] : [];
   } else if(detail){
     lines = comps.map(function(c){
-      return { label:c.component||c.description||'Component', basis:Number(c.basis)||0,
+      return { label:c.component||c.description||'Component', basis:Number(c.basis)||0, placed:c.placed||'',
                life:Number(c.recovery)||0, bonus:bonusEligible(c, st),
                convention:c.convention||'', method:c.method||'', source:c.source||'', status:c.status||'INPUT' };
     });
@@ -12080,9 +12096,9 @@ function extend(sheet, tag, fn){
 window.bkXnpv = function(rate, values, dates){
   if(!Array.isArray(values) || !Array.isArray(dates) || !values.length) return NaN;
   var r = Number(rate); if(!isFinite(r) || r <= -1) return NaN;
-  var t0 = dates[0].getTime(), DAY = 86400000, sum = 0;
+  var sum = 0;
   for(var i=0;i<values.length;i++){
-    var days = (dates[i].getTime() - t0) / DAY;
+    var days = bkDays(dates[0], dates[i]);
     sum += Number(values[i]) / Math.pow(1+r, days/365);
   }
   return sum;
@@ -12996,7 +13012,7 @@ extend('Operating Underwrite','fRevenueBuild', function(o){
     + '<tr>'+lbl('Gross Potential Rent - Residential')+val(money(gpr))
       + txt('Annualised, from the canonical revenue source')+'<td class="v">'+chip('','ENGINE')+'</td></tr>'
     + '<tr>'+lbl('Less: Vacancy')+val(money(c.vacancy))+txt('Gross potential rent &times; vacancy rate')+'<td></td></tr>'
-    + '<tr>'+lbl('Less: Bad Debt / Credit Loss')+val(money(c.bad))+txt('Gross potential rent &times; bad debt rate')+'<td></td></tr>'
+    + '<tr>'+lbl('Less: Bad Debt / Credit Loss')+val(money(c.bad))+txt(bkConventions(bkLoad()).cvBadDebtBasis==='afterVacancy' ? 'Bad debt rate &times; rent after vacancy' : 'Bad debt rate &times; gross potential rent')+'<td></td></tr>'
     + '<tr>'+lbl('Loss to Lease - underwriting deduction')
       + '<td class="v"><input type="number" step="0.01" style="width:100px" value="'+((Number(s.lossToLeasePct)||0)*100).toFixed(2)+'"'
       + ' onchange="bkSetLossToLease(this.value)"></td>'
@@ -15093,7 +15109,7 @@ extend('Deal Underwrite','clarityInputs', function(o){
         tr.setAttribute('data-bk-fmt', 'pct');
         tr.innerHTML = '<td class="rowlabel" data-bk-align="text">Bad Debt / Credit Loss</td>'
           + '<td class="v" data-bk-align="num">' + (v*100).toFixed(2) + '%</td>'
-          + '<td data-bk-align="text">% of gross potential rent</td>'
+          + '<td data-bk-align="text">' + (bkConventions(bkLoad()).cvBadDebtBasis === 'afterVacancy' ? '% of rent after vacancy' : '% of gross potential rent') + '</td>'
           + '<td data-bk-align="text"><span class="status-chip pass">OK</span></td>';
         vac.parentNode.insertBefore(tr, vac.nextSibling);
         added = true;
@@ -18475,6 +18491,1452 @@ window.bkUxRefresh = refreshFlow;
 try { decorateRail(); } catch(e){}
 })();
 </script>
+<script id="bk-v29120-macrs">
+/* ===========================================================================
+   V29.12.0 - TAX-GRADE DEPRECIATION (MACRS) AND COST SEGREGATION
+   ===========================================================================
+   The canonical depreciation engine (V29.11.0) held the cost-segregation inputs
+   (components, bonus, land) but recovered every class straight-line with no
+   MACRS tables, no half-year / mid-quarter / mid-month convention and no
+   disposal-year rule, and After-Tax taxed all recapture at one 25% rate.
+
+   This module makes it tax-grade, per deal, in the same layered style:
+
+   * bkMacrs.rates()      IRS GDS recovery percentages (200% / 150% declining
+                          balance switching to straight line, or straight line)
+                          under the half-year, mid-quarter (Q1-Q4) and mid-month
+                          conventions, generated from the Pub. 946 rules.
+   * mid-quarter test     per placed-in-service year: if more than 40% of the
+                          short-life basis is placed in service in Q4, every
+                          AUTO-convention short-life asset uses mid-quarter.
+   * bonus depreciation   statutory rate by placed-in-service date (100% for
+                          property acquired after 19 Jan 2025) or an elected %.
+   * disposal year        depreciation in the year of sale follows the convention
+                          (half-year / mid-quarter / mid-month) - no full year.
+   * calendar-year tax    taxable income is built from the MONTHLY NOI, reserves
+                          and interest, by calendar year, so a December closing
+                          really gets a stub year.
+   * sale-year tax        proceeds are allocated across short-life, real
+                          property and land/other; Sec. 1245 recapture is taxed
+                          as ordinary income, unrecaptured Sec. 1250 gain at the
+                          recapture rate (25% cap), the rest as capital gain;
+                          suspended passive losses release against the highest-
+                          taxed gain first.
+
+   PER-DEAL SWITCH, like the underwriting conventions: a deal whose depreciation
+   settings carry no depMethod keeps the V29.11 simplified schedule exactly; new
+   deals are stamped depMethod='macrs'. Nothing moves unless someone changes it.
+
+   NOT MODELLED (stated, not hidden): Sec. 179, state decoupling from bonus,
+   Sec. 1231 look-back, NIIT, AMT, passive-loss limits other than full
+   suspension, capitalised closing costs in the depreciable basis (the canonical
+   definition - price less land plus capex - is kept), and replacement-reserve
+   spend as capital (reserves are treated as deductible, as the legacy engine did).
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof window.bkDepreciation !== 'function' || typeof window.bkAfterTaxV18 !== 'function') return;
+var prevSchedule = window.bkDepreciationSchedule, prevAfterTax = window.bkAfterTaxV18;
+
+/* ------------------------------------------------------------- MACRS rates */
+function firstYearFraction(conv, q, m){
+  if(conv === 'MQ') return (4 - q + 0.5) / 4;          /* Q1 .875 Q2 .625 Q3 .375 Q4 .125 */
+  if(conv === 'MM') return (12 - m + 0.5) / 12;        /* month placed in service */
+  return 0.5;                                          /* half-year */
+}
+/* Fractions of depreciable basis, recovery year 1..N. Pub. 946: declining balance
+   at factor/life on the remaining basis, switching to straight line over the
+   remaining recovery period once that is larger; first year is rate x fraction. */
+function macrsRates(life, method, conv, q, m){
+  var fy = firstYearFraction(conv, q, m);
+  var factor = method === '200DB' ? 2 : method === '150DB' ? 1.5 : 0;
+  var out = [], rem = 1;
+  for(var t = 1; t <= Math.ceil(life) + 2 && rem > 1e-12; t++){
+    var dep;
+    if(t === 1){ dep = (factor ? factor : 1) / life * fy; }
+    else {
+      var remLife = life - fy - (t - 2);
+      var dbAmt = factor ? rem * factor / life : 0;
+      var slAmt = remLife > 0 ? rem / remLife : rem;
+      dep = Math.max(dbAmt, slAmt);
+    }
+    dep = Math.min(dep, rem); out.push(dep); rem -= dep;
+  }
+  return out;
+}
+/* depreciation in the year of disposal: the convention's partial year */
+function disposalFraction(conv, q, m){
+  if(conv === 'MQ') return (q - 0.5) / 4;
+  if(conv === 'MM') return (m - 0.5) / 12;
+  return 0.5;
+}
+window.bkMacrs = { rates:macrsRates, firstYearFraction:firstYearFraction, disposalFraction:disposalFraction };
+
+/* ----------------------------------------------------------------- helpers */
+function parseD(v){
+  if(v instanceof Date) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  v = String(v == null ? '' : v);
+  var a = /^(\d{4})-(\d{2})-(\d{2})/.exec(v); if(a) return new Date(+a[1], +a[2] - 1, +a[3]);
+  var b = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(v); if(b) return new Date(+b[3], +b[1] - 1, +b[2]);
+  return null;
+}
+function rawSettings(){ var s = bkLoad(); return (s._depr && s._depr.settings) || {}; }
+function method(){ return rawSettings().depMethod === 'macrs' ? 'macrs' : 'simplified'; }
+function defaultPlaced(){
+  var s = bkLoad(), raw = rawSettings();
+  var d = parseD(raw.placedInService) || parseD(raw.closeDate);
+  if(!d && typeof bkParseDealDate === 'function') d = parseD(bkParseDealDate(s.closing, '2027-01-01'));
+  return d || new Date();
+}
+/* Statutory bonus rate for property placed in service on d. Property acquired after
+   19 Jan 2025 is 100% (P.L. 119-21); earlier acquisitions follow the TCJA phase-down. */
+function statutoryBonus(d){
+  var y = d.getFullYear();
+  if(d >= new Date(2025, 0, 20)) return 1;
+  if(y <= 2017) return 0.5; if(y <= 2022) return 1; if(y === 2023) return 0.8;
+  if(y === 2024) return 0.6; if(y === 2025) return 0.4; if(y === 2026) return 0.2; return 0;
+}
+function classDefault(life){ return life <= 10 ? '200DB' : life < 27.5 ? '150DB' : 'SL'; }
+function normConv(c, life){
+  if(life >= 27.5) return 'MM';
+  c = String(c || '');
+  if(/quarter|^mq$/i.test(c)) return 'MQ';
+  if(/half|^hy$/i.test(c)) return 'HY';
+  if(/month|^mm$/i.test(c)) return 'MM';
+  return 'AUTO';
+}
+function normMethod(m, life){
+  if(life >= 27.5) return 'SL';
+  m = String(m || '');
+  if(/200/.test(m)) return '200DB'; if(/150/.test(m)) return '150DB';
+  if(/^sl$|straight/i.test(m)) return 'SL';
+  return classDefault(life);
+}
+
+/* ------------------------------------------------------------ the schedule */
+function buildSchedule(o){
+  o = o || {};
+  var e = window.bkDepreciation(), st = e.settings, raw = rawSettings();
+  var defP = defaultPlaced();
+  var srcLines = o.baseOnly
+    ? (e.depreciableBasis > 0 ? [{ label:e.baseLife + ' Year Recovery', basis:e.depreciableBasis, life:e.baseLife, bonus:false, convention:'MM', method:'SL' }] : [])
+    : e.lines;
+  var lines = srcLines.filter(function(l){ return l.basis > 0 && l.life > 0; }).map(function(l){
+    var life = Number(l.life);
+    return { label:l.label, basis:Number(l.basis), life:life, bonusEligible:!!l.bonus && life <= 20,
+             placed:parseD(l.placed) || defP, convRaw:normConv(l.convention, life), meth:normMethod(l.method, life) };
+  });
+  /* mid-quarter test, per placed-in-service year, on short-life basis (before bonus) */
+  var all = {}, q4 = {};
+  lines.forEach(function(l){
+    if(l.life >= 27.5) return;
+    var y = l.placed.getFullYear(); all[y] = (all[y] || 0) + l.basis;
+    if(l.placed.getMonth() >= 9) q4[y] = (q4[y] || 0) + l.basis;
+  });
+  var mq = {}; Object.keys(all).forEach(function(y){ mq[y] = all[y] > 0 && (q4[y] || 0) / all[y] > 0.4; });
+  var elect = raw.bonusMode === 'elect', electPct = Math.max(0, Math.min(1, Number(raw.bonusPct) || 0));
+  var saleDt = o.saleDate ? parseD(o.saleDate) : null;
+  var saleY = saleDt ? saleDt.getFullYear() : null;
+  var rowsBy = {}, minY = 9999, maxY = 0;
+  var out = lines.map(function(l){
+    var y0 = l.placed.getFullYear(), qn = Math.floor(l.placed.getMonth() / 3) + 1, mn = l.placed.getMonth() + 1;
+    var conv = l.convRaw === 'AUTO' ? (mq[y0] ? 'MQ' : 'HY') : l.convRaw;
+    var bRate = l.bonusEligible ? (elect ? electPct : statutoryBonus(l.placed)) : 0;
+    var bonus = l.basis * bRate, reg = l.basis - bonus;
+    var rates = macrsRates(l.life, l.meth, conv, qn, mn);
+    minY = Math.min(minY, y0);
+    var put = function(y, kind, amt){
+      if(!(amt > 0)) return;
+      var r = rowsBy[y] || (rowsBy[y] = { taxYear:y, regular:0, bonus:0, total:0, byClass:{} });
+      r[kind] += amt; r.total += amt; r.byClass[l.life] = (r.byClass[l.life] || 0) + amt; maxY = Math.max(maxY, y);
+    };
+    if(!(saleY !== null && y0 > saleY)) put(y0, 'bonus', bonus);
+    var taken = 0;
+    for(var t = 1; t <= rates.length; t++){
+      var y = y0 + t - 1, amt = reg * rates[t - 1];
+      if(saleY !== null){
+        if(y > saleY) break;
+        if(y === saleY) amt *= disposalFraction(conv, Math.floor(saleDt.getMonth() / 3) + 1, saleDt.getMonth() + 1);
+      }
+      put(y, 'regular', amt); taken += amt;
+    }
+    return { label:l.label, life:l.life, conv:conv, meth:l.meth, placed:l.placed, basis:l.basis, bonusRate:bRate, bonus:bonus, mq:conv === 'MQ' };
+  });
+  var totalBasis = out.reduce(function(a, l){ return a + l.basis; }, 0);
+  var startY = lines.length ? minY : defP.getFullYear();
+  var endY = Math.max(maxY, o.throughYear || 0, saleY || 0);
+  var rows = [], accum = 0;
+  for(var y = startY; y <= endY; y++){
+    var r = rowsBy[y] || { taxYear:y, regular:0, bonus:0, total:0, byClass:{} };
+    r.beginBasis = Math.max(0, totalBasis - accum); accum += r.total; r.accum = accum; r.remaining = Math.max(0, totalBasis - accum);
+    rows.push(r);
+  }
+  return { startYear:startY, totalBasis:totalBasis, rows:rows, lines:out, midQuarterYears:Object.keys(mq).filter(function(y){ return mq[y]; }).map(Number),
+           convention:'MACRS GDS (Pub. 946): half-year / mid-quarter / mid-month, bonus, disposal-year rule', isTaxGrade:true };
+}
+window.bkMacrsSchedule = buildSchedule;
+
+window.bkDepreciationSchedule = function(years){
+  if(method() !== 'macrs') return prevSchedule.apply(this, arguments);
+  var hold = Math.max(1, Math.round(Number((bkLoad() || {}).holdYears) || 10));
+  var n = Math.max(1, Number(years) || (hold + 1));
+  var sch = buildSchedule({}); var first = sch.startYear;
+  sch = buildSchedule({ throughYear:first + n - 1 });
+  sch.rows = sch.rows.slice(0, n);
+  return sch;
+};
+
+/* ----------------------------------------------------------------- after-tax */
+function afterTaxMacrs(base, opts){
+  opts = opts || {};
+  var s = base.s, u = base.u, d = base.d, r = base.r, e = window.bkDepreciation(), raw = rawSettings();
+  var mrows = r.rows, n = mrows.length, saleDt = mrows[n - 1].dt;
+  var sch = buildSchedule({ saleDate:saleDt, baseOnly:!!opts.baseOnly });
+  var fee = (!opts.baseOnly && e.settings.costSeg) ? (Number(raw.costSegFee) || 0) : 0;
+  var byY = {}, order = [], lastIdx = {};
+  for(var i = 0; i < n; i++){
+    var dt = mrows[i].dt, y = new Date(dt).getFullYear();
+    if(!byY[y]){ byY[y] = { noi:0, interest:0 }; order.push(y); }
+    byY[y].noi += Number(mrows[i].noi || 0) - Number(mrows[i].reserve || 0);
+    byY[y].interest += Number((d.months[i] || {}).interest || 0);
+    lastIdx[y] = i;
+  }
+  var schedBy = {}; sch.rows.forEach(function(x){ schedBy[x.taxYear] = x; });
+  var taxRate = Number(s.taxRate) || 0, rows = [], lossCF = 0, accum = 0, accumP = 0, accumR = 0, usable = raw.lossMode === 'usable';
+  order.forEach(function(y, idx){
+    var sr = schedBy[y] || { regular:0, bonus:0, total:0, byClass:{} };
+    var dP = 0, dR = 0; Object.keys(sr.byClass).forEach(function(k){ if(Number(k) < 27.5) dP += sr.byClass[k]; else dR += sr.byClass[k]; });
+    accum += sr.total; accumP += dP; accumR += dR;
+    var f = idx === 0 ? fee : 0;
+    var ti = byY[y].noi - byY[y].interest - sr.total - f, taxDue = 0;
+    if(usable){ taxDue = ti * taxRate; }                                  /* losses used against the investor's other income: a loss saves tax */
+    else if(ti > 0){ var off = Math.min(lossCF, ti); lossCF -= off; ti -= off; taxDue = ti * taxRate; }
+    else { lossCF += -ti; ti = 0; }                                       /* suspended (Sec. 469) until income or sale releases it */
+    rows.push({ y:idx + 1, taxYear:y, noi:byY[y].noi, interest:byY[y].interest, depr:sr.total, regularDepr:sr.regular, bonusDepr:sr.bonus,
+                personalDepr:dP, realDepr:dR, fee:f, accumDepr:accum, taxableIncome:ti, taxDue:taxDue, lossCF:lossCF, byClass:sr.byClass });
+  });
+  /* ---- sale: allocate proceeds, split recapture */
+  var Bp = 0, Br = 0; sch.lines.forEach(function(l){ if(l.life < 27.5) Bp += l.basis; else Br += l.basis; });
+  var totalBasis = base.totalBasis, Bo = Math.max(0, totalBasis - Bp - Br), W = Bp + Br + Bo || 1;
+  var net = u.netSale, Gp = net * Bp / W - (Bp - accumP), Gr = net * Br / W - (Br - accumR), Go = net * Bo / W - Bo;
+  /* Sec. 1245: gain on short-life property up to the depreciation taken is ordinary; Sec. 1250: gain on real property up to the
+     depreciation taken is 'unrecaptured'; everything else (and any class sold at a loss) nets into one capital pool. */
+  var ord = Math.max(0, Math.min(Gp, accumP)), unrec = Math.max(0, Math.min(Gr, accumR));
+  var cap = (Gp - ord) + (Gr - unrec) + Go;
+  if(cap < 0){ var a1 = Math.min(unrec, -cap); unrec -= a1; cap += a1; }
+  if(cap < 0){ var a2 = Math.min(ord, -cap); ord -= a2; cap += a2; }
+  cap = Math.max(0, cap);
+  var gainTotal = ord + unrec + cap;
+  var loss = Math.min(lossCF, gainTotal), left = loss;
+  var o1 = Math.min(left, ord); ord -= o1; left -= o1;
+  var o2 = Math.min(left, unrec); unrec -= o2; left -= o2;
+  var o3 = Math.min(left, cap); cap -= o3; left -= o3;
+  var unrecRate = Math.min(Number(s.depRecaptureRate) || 0, taxRate);
+  var ordTax = ord * taxRate, recTax = unrec * unrecRate, capTax = cap * (Number(s.capGainsRate) || 0);
+  var saleTax = ordTax + recTax + capTax;
+  var values = [], dates = [];
+  for(var k = 0; k < n; k++){
+    var row = mrows[k], cf = row.cf, yy = new Date(row.dt).getFullYear();
+    if(k === 0) cf -= fee;
+    if(lastIdx[yy] === k){ var rr = rows.filter(function(x){ return x.taxYear === yy; })[0]; if(rr) cf -= rr.taxDue; }
+    if(k === n - 1) cf -= saleTax;
+    values.push(cf); dates.push(row.dt);
+  }
+  var atIRR = bkXirrClose(values, dates, r.closeDt, -(Number(mrows[0] && mrows[0].eqDraw) || 0));
+  var inflows = values.reduce(function(a, v){ return a + Math.max(0, v); }, 0), outflows = values.reduce(function(a, v){ return a + Math.max(0, -v); }, 0);
+  var adjusted = totalBasis - accum;
+  return { s:s, u:u, d:d, r:r, rows:rows, totalBasis:totalBasis, landValue:e.landValue, landPct:e.landPct, deprBasis:e.depreciableBasis, allocatedBasis:e.allocated,
+    life:e.baseLife, annualDepr:null, bonusPct:e.bonusPct, bonusEligibleBasis:e.bonusEligibleBasis, bonusDeduction:sch.lines.reduce(function(a, l){ return a + l.bonus; }, 0),
+    accumDepr:accum, accumPersonal:accumP, accumReal:accumR, adjustedBasis:adjusted, totalGain:gainTotal, lossCFAtSale:lossCF, lossUsedAtSale:loss,
+    ordinaryRecaptureBase:ord, ordinaryRecaptureTax:ordTax, ordinaryRecaptureRate:taxRate,
+    recaptureBase:unrec, recaptureTax:recTax, capGainBase:cap, capGainTax:capTax, saleTax:saleTax,
+    classGain:{ personal:Gp, real:Gr, landOther:Go }, costSegFee:fee,
+    values:values, dates:dates, atIRR:atIRR, atMOIC:outflows ? inflows / outflows : 0, preTaxIRR:r.irr, preTaxMOIC:r.moic,
+    deprSource:'macrs-tax-grade', deprTie:e.tie, deprSchedule:sch };
+}
+window.bkAfterTaxV18 = function(){
+  var base = prevAfterTax();
+  if(method() !== 'macrs' || base.deprSource !== 'canonical-depreciation-engine') return base;
+  try { return afterTaxMacrs(base); } catch(err){ base.deprSource = 'macrs-failed:' + err.message; return base; }
+};
+
+/* what cost segregation adds versus straight-line on the same basis (same everything else) */
+window.bkCostSegBenefit = function(rate){
+  var base = prevAfterTax();
+  if(method() !== 'macrs' || base.deprSource !== 'canonical-depreciation-engine') return null;
+  var e = window.bkDepreciation(); if(!e.settings.costSeg) return null;
+  var withCS = afterTaxMacrs(base), without = afterTaxMacrs(base, { baseOnly:true });
+  var disc = rate === undefined ? (Number(rawSettings().pvRate) || 0.08) : Number(rate);
+  var tax = Number(base.s.taxRate) || 0, y0 = withCS.rows[0] ? withCS.rows[0].taxYear : 0, pv = 0, hold = 0;
+  var saved = withCS.rows.map(function(r, i){ var w = without.rows[i] || { depr:0 }; var sv = (r.depr - w.depr) * tax; hold += sv; pv += sv / Math.pow(1 + disc, i + 1); return { taxYear:r.taxYear, extraDepr:r.depr - w.depr, taxSaved:sv }; });
+  var extraSaleTax = withCS.saleTax - without.saleTax;
+  var accel = withCS.deprSchedule.lines.reduce(function(a, l){ return a + (l.life < 27.5 ? l.basis : 0); }, 0), usable = rawSettings().lossMode === 'usable';
+  return { withCS:withCS, without:without, rows:saved, yearOneDeduction:withCS.rows[0].depr, baselineYearOne:without.rows[0].depr,
+    yearOneTaxSavings:saved[0].taxSaved, holdTaxSavings:hold, pvTaxSavings:pv, discount:disc, extraSaleTax:extraSaleTax, netNominalBenefit:hold - extraSaleTax - withCS.costSegFee,
+    fee:withCS.costSegFee, paybackRatio:withCS.costSegFee > 0 ? saved[0].taxSaved / withCS.costSegFee : null,
+    acceleratedBasis:accel, workbookStyleSavings:accel * tax, workbookPayback:withCS.costSegFee > 0 ? accel * tax / withCS.costSegFee : null, lossMode:usable ? 'usable' : 'suspended', irrWith:withCS.atIRR, irrWithout:without.atIRR, firstYear:y0 };
+};
+
+/* ------------------------------------------------- itemised study import */
+var HARVARD_ASSETS = [["Site Clearing",2749,"SQ FT",79.427326,15,"MQ","150DB"],["Site Excavation/Fill/Preparation",66968,"SQ FT",156439.692998,15,"MQ","150DB"],["Asphaltic Concrete, Paving",64976.229999999996,"SQ FT",226462.726796,15,"MQ","150DB"],["Patio, Concrete",510,"SQ FT",3637.845947,15,"MQ","150DB"],["Steps, Concrete",55.47,"LFN",3118.233976,15,"MQ","150DB"],["Landing, Concrete",423,"SQ FT",10674.062868,15,"MQ","150DB"],["Concrete Ramp",410,"SQ FT",5997.617587,15,"MQ","150DB"],["Concrete Curb, no gutter",20.6,"LF",347.407355,15,"MQ","150DB"],["Asphalt Curb",583,"LF",3757.995675,15,"MQ","150DB"],["General Landscaping",1461,"SQ FT",2500.396041,15,"MQ","150DB"],["Garden Bed Edging, Stone",108,"LF",3325.666522,15,"MQ","150DB"],["Stone Mulching",1743,"SQ FT",2199.159761,15,"MQ","150DB"],["Shrubs and Hedges, Small",1,"EA",33.79133,15,"MQ","150DB"],["Trees",1,"EA",358.525389,15,"MQ","150DB"],["Parking Lot Striping, Per Car Space",58,"EA",851.341648,15,"MQ","150DB"],["Parking Lot Striping, Handicap Stall",2,"EA",53.716348,15,"MQ","150DB"],["Metal Guard Rail",140,"LF",5246.713017,15,"MQ","150DB"],["Bollard, Concrete",10,"EA",9331.653866,15,"MQ","150DB"],["Air Conditioning Compressor Pad",3,"EA",1723.919991,15,"MQ","150DB"],["Transformer Pad, Reinforced",2,"EA",4597.119977,15,"MQ","150DB"],["Chain Link 10', Fencing",215,"LF",10944.705814,15,"MQ","150DB"],["Metal, Fencing",220,"LF",4782.00415,15,"MQ","150DB"],["Chain Link Gate",117.60000000000001,"SQ FT",3133.546882,15,"MQ","150DB"],["Cobblestone, Wall",387,"SQ FT",14261.690276,15,"MQ","150DB"],["Metal Painted Sign on Pole",1,"EA",503.434606,15,"MQ","150DB"],["Storm Drain",481,"LF",43112.678087,15,"MQ","150DB"],["Catch Basin",10,"EA",39162.96502,15,"MQ","150DB"],["Exterior Metal Railing",486,"LF",46839.280929,15,"MQ","150DB"],["Flagpole",1,"EA",2000.059494,15,"MQ","150DB"],["Excavation/Fill/Site Preparation",42992,"SQ FT",83244.848415,39,"MM","SL"],["Concrete Slab",42992,"SQ FT",209678.556356,39,"MM","SL"],["Floor Construction, Subfloor",21927,"SQ FT",97787.974875,39,"MM","SL"],["Parking Structure, Elevated Flat Slab and Joists",10762,"SQ FT",208383.201209,39,"MM","SL"],["Exterior Wall Construction, Block, Concrete",25182.57,"SQ FT",896567.370925,39,"MM","SL"],["Exterior Wall Construction, Aluminum or Steel Frame",9726.8,"SQ FT",202616.051737,39,"MM","SL"],["Basement Wall Construction",1800,"SQ FT",29006.82768,39,"MM","SL"],["Exterior Wall Cover, Aluminum or Steel Siding",4390.799999999999,"SQ FT",66561.247927,39,"MM","SL"],["Exterior Wall Finish, Vinyl Siding",466.10000000000014,"SQ FT",3543.053458,39,"MM","SL"],["Exterior Wall Finish, Stucco",23810.76,"SQ FT",192151.50711,39,"MM","SL"],["Roof Structure, Open-Steel System",32527,"SQ FT",216270.706686,39,"MM","SL"],["Roof Cover, Aluminum or Steel, Corrugated, Crimped or Tile Panels",16507,"SQ FT",65780.452084,39,"MM","SL"],["Roof Cover, Built-up Composition",15764,"SQ FT",57994.892114,39,"MM","SL"],["Roof Insulation",32271,"SQ FT",84759.121621,39,"MM","SL"],["Interior Partitions, Gypsum Board Both Sides",1756,"SQ FT",15125.049395,39,"MM","SL"],["Interior Partitions, Gypsum Board One Side",3149.375,"SQ FT",20320.42192,39,"MM","SL"],["Interior, Concrete Block",10742,"SQ FT",118088.019717,39,"MM","SL"],["Toilet Partitions, Metal, Stainless Steel",20,"EA",34978.08678,39,"MM","SL"],["Restroom Privacy Screens, Stainless Steel",3,"EA",4197.370414,39,"MM","SL"],["Water Lateral",168,"LF",4218.357266,39,"MM","SL"],["Gas Lateral",168,"LF",2770.264473,39,"MM","SL"],["Underground, Electric Lateral",333,"LF",7945.397334,39,"MM","SL"],["Telephone Lateral",333,"LF",5574.257815,39,"MM","SL"],["Sewer Lateral",168,"LF",5792.371171,39,"MM","SL"],["Sewer Manhole",5,"EA",23266.673796,39,"MM","SL"],["Interior Stair Construction",11,"EA",34170.259538,39,"MM","SL"],["Exterior Metal, Hollow Core",84,"SQ FT",2938.15929,39,"MM","SL"],["Glass & Aluminum Door",63,"SQ FT",1945.87469,39,"MM","SL"],["Clear Glass, Single Swinging",229.05,"SQ FT",7074.644409,39,"MM","SL"],["Overhead Door, Roll Up",360,"SQ FT",13772.62167,39,"MM","SL"],["Overhead Door, 10' x 10'",1,"EA",2685.817378,39,"MM","SL"],["Glass Window",1799,"SQ FT",35343.199709,39,"MM","SL"],["Aluminum Trim, Storefront",939.0500000000002,"SQ FT",52788.491342,39,"MM","SL"],["Wood, Hollow Wood",2301,"SQ FT",57920.151438,39,"MM","SL"],["Metal, Hollow Core",224,"SQ FT",9374.127257,39,"MM","SL"],["French Door",147,"SQ FT",4361.330195,39,"MM","SL"],["Clear Glass",21,"SQ FT",648.624897,39,"MM","SL"],["Paint, Ceiling",1450,"SQ FT",1132.103255,39,"MM","SL"],["Acoustical Tiles, Ceiling Finish",37980,"SQ FT",312189.917938,39,"MM","SL"],["Gypsum Board, Ceiling Finish",330,"SQ FT",1422.233993,39,"MM","SL"],["Ceramic Wall Tile",112.5,"SQ FT",2513.854797,39,"MM","SL"],["Paint, Wall Finish",18864.65,"SQ FT",14728.780464,39,"MM","SL"],["Plywood Paneling",360,"SQ FT",1128.792829,39,"MM","SL"],["Interior Face Brick, Veneer",180,"SQ FT",7221.772548,39,"MM","SL"],["Ceramic Tile, Flooring",420,"SQ FT",9588.368039,39,"MM","SL"],["Terrazzo, Flooring",340,"SQ FT",15120.527228,39,"MM","SL"],["General Use, Fire Extinguisher, Dry Chemical 10 Pound",14,"EA",4004.990936,39,"MM","SL"],["Restroom Grab Bar",4,"EA",439.72452,39,"MM","SL"],["Bathroom Cabinets",18,"LF",3582.75546,39,"MM","SL"],["Bathroom Vanities",17,"LF",5195.91151,39,"MM","SL"],["Laminate, Countertop, Restroom",13,"LF",2630.851813,39,"MM","SL"],["Janitor, Service Sink",3,"EA",5143.652583,39,"MM","SL"],["Drinking Fountain",3,"EA",4253.585196,39,"MM","SL"],["Sump Pump",2,"EA",1757.232455,39,"MM","SL"],["Restroom Floor Drain",8,"EA",7133.031268,39,"MM","SL"],["Restroom Lavatory, Wall Sink",11,"EA",11955.010374,39,"MM","SL"],["Restroom Rough-in Only",24,"EA",18993.101122,39,"MM","SL"],["Restroom Vanity Mounted Sink",6,"EA",6495.930402,39,"MM","SL"],["Restroom Shower",1,"EA",1465.748398,39,"MM","SL"],["Restroom Urinal",6,"EA",12717.032979,39,"MM","SL"],["Restroom Water Closet",24,"EA",42223.547613,39,"MM","SL"],["Water Heater, 10 Gallon, Specialty Equipment",1,"EA ",149.340403,39,"MM","SL"],["Water Heater, 40 Gallon, Restroom",1,"EA",562.147823,39,"MM","SL"],["Water Heater, 50 Gallon, Restroom",2,"EA",1214.451429,39,"MM","SL"],["Space Heater Blower Type, Gas, Large",6,"EA",25821.323348,39,"MM","SL"],["General HVAC System, Zoned A.C.",33526,"SQ FT",415148.010066,39,"MM","SL"],["Hot Water, Baseboard or Convectors",5164,"SQ FT",63670.961147,39,"MM","SL"],["Restroom Vent Fan",13,"EA",3247.965201,39,"MM","SL"],["Restroom Fan Electric Hook-up",13,"EA",2460.33364,39,"MM","SL"],["Exit Sign",20,"EA",6337.6962,39,"MM","SL"],["General Recessed Incandescent Light",61,"EA",9144.271258,39,"MM","SL"],["General Fluorescent, Strip One Lamp",327,"EA",68627.006262,39,"MM","SL"],["General Fluorescent, Two Lamp",219,"EA",50885.620961,39,"MM","SL"],["General Convenience, 15 - 20 Amp Outlet",75,"EA",7952.049416,39,"MM","SL"],["Lighting Wiring, Romex, General",607,"EA",64358.58661,39,"MM","SL"],["Split Use, Breaker Panels, 60-200 AMPS CAP. General",4,"EA",2371.764386,39,"MM","SL"],["Split Use, Switchgear, 1600 AMP, General",5,"EA",76565.967415,39,"MM","SL"],["Fire Alarm System",1,"EA",41224.173705,39,"MM","SL"],["Chain Link, Interior Fencing",40,"LF",1661.459122,5,"MQ","200DB"],["Add for Electronic Garage Door Opener",1,"EA",704.558605,5,"MQ","200DB"],["Demountable Clear Glass",111,"SQ FT",9654.420408,5,"MQ","200DB"],["Demountable Interior Overhead Door, Roll Up",481.6,"SQ FT",18424.707211,5,"MQ","200DB"],["Crown Molding",26,"LF",114.003579,5,"MQ","200DB"],["Wallpaper",180,"SQ FT",554.277754,5,"MQ","200DB"],["Natural Wood Finish",237,"SQ FT",432.2542,5,"MQ","200DB"],["Slat Wall Panel",594,"SQ FT",38214.809025,5,"MQ","200DB"],["Wood, Baseboard",1738.5972222222222,"LF",2331.157506,5,"MQ","200DB"],["Carpet, Medium Grade",22067,"SQ FT",129700.288564,5,"MQ","200DB"],["Vinyl Composite Tile or Sheet",15703,"SQ FT",59830.20482,5,"MQ","200DB"],["Luxury Vinyl Plank",570,"SQ FT",8024.84756,5,"MQ","200DB"],["Demountable, Mirrors, up to 12 SQ FT",1,"EA",82.760652,5,"MQ","200DB"],["Demountable, Mirrors, over 12 SQ FT",12,"EA",1146.032029,5,"MQ","200DB"],["Locker, Box Type",15,"EA",1630.228687,5,"MQ","200DB"],["Wood, 12\" Shelving",47,"LF",976.792222,5,"MQ","200DB"],["Storage Rack",2160,"SQ FT",14044.701216,5,"MQ","200DB"],["Dock Bumpers, Horizontal",12,"LF",640.848519,5,"MQ","200DB"],["Dock Levelers, Mechanical",2,"EA",11367.878203,5,"MQ","200DB"],["Restroom Soap Dispenser, Surface Mounted",11,"EA",1332.91495,5,"MQ","200DB"],["Restroom Paper Towel Dispenser, Surface Mounted",17,"EA",2697.060334,5,"MQ","200DB"],["Horizontal Blinds",650,"SQ FT",11177.060248,5,"MQ","200DB"],["Shades",375,"SQ FT",880.698256,5,"MQ","200DB"],["Shades, Motorized Operation, Add",10,"EA",142.160938,5,"MQ","200DB"],["Base Cabinets",57,"LF",11345.392291,5,"MQ","200DB"],["Wall/Upper Cabinets",64.5,"LF",19713.899553,5,"MQ","200DB"],["Full Height Cabinets",1.5,"LF",250.468086,5,"MQ","200DB"],["Built-in Desk",88,"LF",14804.058824,5,"MQ","200DB"],["Laminate, Countertop",27.5,"LF",5565.26345,5,"MQ","200DB"],["Concrete/Synthetic Countertop",15,"LF",3860.08172,5,"MQ","200DB"],["Wood, Countertop",18,"LF",2276.698684,5,"MQ","200DB"],["Single Bowl, Kitchen Sink",4,"EA",4909.424323,5,"MQ","200DB"],["Single Bowl, Sink",1,"EA",1227.356081,5,"MQ","200DB"],["Clothes Washer, Plumbing Rough-in",3,"EA",442.222954,5,"MQ","200DB"],["Equipment, Floor Drain",3,"EA",2674.886726,5,"MQ","200DB"],["Equipment Rough-in Only",3,"EA",2374.13764,5,"MQ","200DB"],["Interior, Hose Bib",1,"EA",221.944289,5,"MQ","200DB"],["Water Heater, 10 Gallon, Restroom",1,"EA ",840.039766,5,"MQ","200DB"],["Water Heater, 40 Gallon, Specialty Equipment",1,"EA",99.937391,5,"MQ","200DB"],["Water Heater, 50 Gallon, Specialty Equipment",2,"EA",215.902476,5,"MQ","200DB"],["HVAC System, Mini Split Units",4,"EA",12991.860804,5,"MQ","200DB"],["Keypad, Access Control",2,"EA",524.671302,5,"MQ","200DB"],["Garbage Disposal Electric Hook-up",5,"EA",946.282169,5,"MQ","200DB"],["Microwave Electric Hook-up",7,"EA",1324.795037,5,"MQ","200DB"],["Refrigerator Electric Hook-up",6,"EA",1135.538603,5,"MQ","200DB"],["Clothes Dryer Electric Hook-up",3,"EA",567.769301,5,"MQ","200DB"],["Pass Through AC Wall/Split Electric Hook-up",4,"EA",424.109302,5,"MQ","200DB"],["Overhead Garage Door Operator Electric Hook-up",1,"EA",348.53165,5,"MQ","200DB"],["Specialty Equipment Electric Hook-up",23,"EA",3774.666481,5,"MQ","200DB"],["Motorized Shade Operator Electric Hook-up",10,"EA",1641.15934,5,"MQ","200DB"],["Television, 15 Amp Outlet",27,"EA",2862.73779,5,"MQ","200DB"],["Specialty Lighting, Incandescent Light",21,"EA",3935.034763,5,"MQ","200DB"],["Specialty Lighting, Fluorescent, Strip One Lamp",141,"EA",29591.461416,5,"MQ","200DB"],["Specialty Lighting, Fluorescent, Two Lamp",100,"EA",23235.443361,5,"MQ","200DB"],["High Bay Lights",30,"EA",12816.97037,5,"MQ","200DB"],["Exterior Wall-Pack, Metal Halide",13,"EA",7194.24292,5,"MQ","200DB"],["Special Use, 15 - 20 Amp Outlet",145,"EA",15373.962205,5,"MQ","200DB"],["Coaxial Cable Port",59,"EA",4168.872642,5,"MQ","200DB"],["Telephone/Data Port",5,"EA",284.196955,5,"MQ","200DB"],["Specialty Lighting Wiring, Romex, Specialty",305,"EA",32338.334293,5,"MQ","200DB"],["Split Use, Breaker Panels, 60-200 AMPS CAP. Specialty",4,"EA",1788.129506,5,"MQ","200DB"],["Split Use, Switchgear, 1600 AMP, Specialty",5,"EA",57724.901473,5,"MQ","200DB"]];
+window.bkDeprImportAssets = function(list, meta){
+  meta = meta || {};
+  var comps = list.map(function(a){
+    return { component:a[0], description:(a[1] != null ? a[1] + ' ' + (a[2] || '') : '').trim(), basis:Number(a[3]) || 0, recovery:Number(a[4]),
+             convention:a[5] || 'AUTO', method:a[6] || '', bonus:Number(a[4]) <= 20, source:meta.source || 'Imported study', status:'SOURCE', placed:meta.placed || '' };
+  });
+  return comps;
+};
+window.bkDeprSeedHarvard = function(){
+  var s = bkLoad(); if(!s) return false;
+  s._depr = s._depr || {};
+  s._depr.settings = Object.assign({}, window.bkDeprSettings(), {
+    landMethod:'dollar', landDollar:4780515.60, landSource:'Cost Seg Study', costSeg:true, detailMode:'detailed',
+    depMethod:'macrs', bonusMode:'statutory', closeDate:'2025-12-11', placedInService:'2025-12-11', baseLife:39, costSegFee:5000,
+    sourceDoc:'Cost_Segregation_Harvard.xlsx', seededAt:new Date().toISOString() });
+  s._depr.components = window.bkDeprImportAssets(HARVARD_ASSETS, { source:'Harvard Cost Seg Study', placed:'2025-12-11' });
+  bkSave(s);
+  if(typeof showSheet === 'function') showSheet('Depreciation');
+  return true;
+};
+window.bkDeprMacrsAfterTax = afterTaxMacrs;
+/* The Depreciation sheet's setters re-render synchronously, which throws when an input replaces itself from its own change handler.
+   Run the edit as before but let the re-render happen once the event has finished. */
+(function(){
+  var orig = window.bkDeprSet; if(typeof orig !== 'function' || orig.__deferred) return;
+  var wrapped = function(k, v){
+    var real = window.showSheet, ok;
+    window.showSheet = function(n){ setTimeout(function(){ real(n); }, 0); };
+    try { ok = orig.call(this, k, v); } finally { window.showSheet = real; }
+    return ok;
+  };
+  wrapped.__deferred = true; window.bkDeprSet = wrapped;
+})();
+})();
+</script>
+
+<script id="bk-v29120-macrs-ui">
+/* ===========================================================================
+   V29.12.0 - TAX-GRADE DEPRECIATION: CONTROLS AND DISCLOSURE
+   Wraps the Depreciation and After-Tax renderers (same pattern as the
+   underwriting-conventions panel). All numbers come from bkMacrsSchedule(),
+   bkAfterTaxV18() and bkCostSegBenefit(); nothing is calculated here.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof window.bkMacrs !== 'function' && typeof window.bkMacrs !== 'object') return;
+function n0(v){ var x = Number(v) || 0, a = Math.abs(x); var b = a.toLocaleString('en-US', {maximumFractionDigits:0}); return x < 0 ? '($' + b + ')' : '$' + b; }
+function pc(v, d){ return isFinite(v) ? (v * 100).toFixed(d == null ? 2 : d) + '%' : '-'; }
+function chip(cls, t){ return '<span class="status-chip ' + (cls || '') + '">' + t + '</span>'; }
+function hasDeal(){ try { return typeof window.bkHasActiveDeal === 'function' ? !!window.bkHasActiveDeal() : true; } catch(e){ return false; } }
+function raw(){ var s = bkLoad(); return (s._depr && s._depr.settings) || {}; }
+function sel(key, opts, cur, conv){
+  return '<select onchange="bkDeprSet(\'' + key + '\',' + (conv || 'this.value') + ')">' + opts.map(function(o){
+    return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+}
+function row(label, ctl, why, status){ return '<tr><td class="rowlabel">' + label + '</td><td class="v">' + ctl + '</td><td data-bk-align="text">' + why + '</td><td>' + (status || '') + '</td></tr>'; }
+function input(key, val, conv, w){ return '<input type="text" value="' + val + '" style="width:' + (w || 110) + 'px;text-align:right" onchange="bkDeprSet(\'' + key + '\',' + conv + ')">'; }
+
+function controls(){
+  var r = raw(), macrs = r.depMethod === 'macrs', e = window.bkDepreciation();
+  var legacy = !macrs
+    ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9888;</span><div><b>This deal uses the simplified straight-line schedule.</b> It was set up before tax-grade depreciation, so it recovers every class straight-line with no MACRS tables or conventions and keeps its numbers until you change it.'
+      + '<div style="margin-top:8px"><button type="button" class="status-chip pass" onclick="bkDeprSet(\'depMethod\',\'macrs\')">SWITCH TO TAX-GRADE MACRS</button></div></div></div>'
+    : '';
+  var elect = r.bonusMode === 'elect';
+  var rows = row('Depreciation Method', sel('depMethod', [['macrs', 'Tax-grade MACRS (Pub. 946)'], ['simplified', 'Simplified straight-line (legacy)']], macrs ? 'macrs' : 'simplified'),
+      'MACRS applies the IRS recovery tables with half-year, mid-quarter and mid-month conventions, the disposal-year rule and class-by-class recapture.', macrs ? chip('pass', 'TAX-GRADE') : chip('warn', 'LEGACY'));
+  if(macrs){
+    rows += row('Placed in Service', input('placedInService', r.placedInService || r.closeDate || '', 'this.value.trim()', 120), 'YYYY-MM-DD. Defaults to the closing date. Drives the first-year convention (month or quarter).', chip('', 'INPUT'))
+      + row('Bonus Depreciation', sel('bonusMode', [['statutory', 'Statutory rate for the in-service date'], ['elect', 'Elect a rate']], elect ? 'elect' : 'statutory'),
+            'Statutory: 100% for property acquired after 19 Jan 2025 (P.L. 119-21), the TCJA phase-down before that. Applies to recovery periods of 20 years or less only.', chip('', 'INPUT'))
+      + (elect ? row('Elected Bonus %', input('bonusPct', ((Number(r.bonusPct) || 0) * 100).toFixed(0), '(parseFloat(this.value)||0)/100', 70), 'Percent of eligible basis expensed in the first year.', chip('', 'INPUT')) : '')
+      + row('Cost Segregation Fee', input('costSegFee', (Number(r.costSegFee) || 0).toLocaleString('en-US'), 'parseFloat(this.value.replace(/[$,]/g,\'\'))||0'), 'Paid at closing and deducted in the first tax year. Used for the payback ratio.', chip('', 'INPUT'))
+      + row('Tax Losses', sel('lossMode', [['suspend', 'Suspended until income or sale (passive)'], ['usable', 'Usable against other income']], r.lossMode === 'usable' ? 'usable' : 'suspend'),
+            'Suspended is conservative and matches the legacy engine: a cost-seg loss only pays off at sale. Usable assumes the investor can absorb the loss (real estate professional, or passive income elsewhere) and saves tax at the tax rate each year.', chip('', 'INPUT'))
+      + row('PV Discount Rate', input('pvRate', (((Number(r.pvRate) || 0.08) * 100)).toFixed(1), '(parseFloat(this.value)||8)/100', 70), 'Used only to present the present value of cost-seg tax savings.', chip('', 'INPUT'));
+  }
+  return legacy + '<div class="tbl-wrap"><table class="fin"><caption>Tax-Grade Depreciation Settings</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th><th style="text-align:left">What it does</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+function scheduleByClass(x){
+  var sch = x.deprSchedule; if(!sch) return '';
+  var rows = sch.rows.slice(0, 11), classes = [5, 7, 15, 27.5, 39].filter(function(c){ return rows.some(function(r){ return r.byClass[c]; }); });
+  var head = rows.map(function(r){ return '<th>' + r.taxYear + '</th>'; }).join('');
+  var body = classes.map(function(c){ return '<tr><td class="rowlabel">' + c + '-Year Property</td>' + rows.map(function(r){ return '<td>' + n0(r.byClass[c] || 0) + '</td>'; }).join('') + '</tr>'; }).join('')
+    + '<tr><td class="rowlabel">of which Bonus</td>' + rows.map(function(r){ return '<td>' + n0(r.bonus) + '</td>'; }).join('') + '</tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">Total Depreciation</td>' + rows.map(function(r){ return '<td>' + n0(r.total) + '</td>'; }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">Accumulated</td>' + rows.map(function(r){ return '<td>' + n0(r.accum) + '</td>'; }).join('') + '</tr>';
+  var mq = sch.midQuarterYears.length ? 'Mid-quarter convention applies to short-life property placed in service in ' + sch.midQuarterYears.join(', ') + ' (more than 40% of that year’s short-life basis was placed in service in the fourth quarter).'
+          : 'Half-year convention applies to short-life property (the mid-quarter test is not triggered).';
+  var lines = sch.lines.slice().sort(function(a, b){ return a.life - b.life; }), by = {};
+  lines.forEach(function(l){ var k = l.life + '|' + l.conv + '|' + l.meth + '|' + l.bonusRate; by[k] = by[k] || { life:l.life, conv:l.conv, meth:l.meth, bonusRate:l.bonusRate, basis:0, n:0 }; by[k].basis += l.basis; by[k].n++; });
+  var cls = Object.keys(by).map(function(k){ var g = by[k]; return '<tr><td class="rowlabel">' + g.life + '-Year' + (g.n > 1 ? ' (' + g.n + ' assets)' : '') + '</td><td>' + n0(g.basis) + '</td><td>' + ({HY:'Half-year', MQ:'Mid-quarter', MM:'Mid-month'})[g.conv] + '</td><td>' + ({'200DB':'200% DB', '150DB':'150% DB', SL:'Straight line'})[g.meth] + '</td><td>' + pc(g.bonusRate, 0) + '</td></tr>'; }).join('');
+  return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Recovery Classes - Convention, Method and Bonus Applied</caption><thead><tr><th class="rowlabel-h">Class</th><th>Basis</th><th>Convention</th><th>Method</th><th>Bonus</th></tr></thead><tbody>' + cls + '</tbody></table></div>'
+    + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>MACRS Depreciation by Recovery Class (calendar tax years, through the year of sale)</caption><thead><tr><th class="rowlabel-h">Class</th>' + head + '</tr></thead><tbody>' + body + '</tbody></table></div>'
+    + '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div><b>Tax-grade schedule.</b> ' + mq + ' Real property uses the mid-month convention. The year of sale takes only the convention’s partial year. '
+    + 'Dollar amounts come straight from the IRS recovery percentages; the independent audit checks them against Pub. 946 Appendix A.</div></div>';
+}
+
+function benefit(){
+  var b; try { b = window.bkCostSegBenefit(); } catch(e){ b = null; }
+  if(!b) return '';
+  var rows = [
+    ['Year-1 depreciation with cost segregation', n0(b.yearOneDeduction), 'Bonus plus first-year regular depreciation'],
+    ['Year-1 depreciation, straight-line only', n0(b.baselineYearOne), 'Same basis over ' + (window.bkDepreciation().baseLife) + ' years, mid-month'],
+    ['Year-1 tax savings (incremental)', n0(b.yearOneTaxSavings), 'Extra depreciation × tax rate, if the loss can be used'],
+    ['Workbook-style savings (accelerated basis × rate)', n0(b.workbookStyleSavings), 'Basis in 5/7/15-year classes × tax rate, as in the cost seg study'],
+    ['Payback ratio on the study fee', b.workbookPayback == null ? '-' : b.workbookPayback.toFixed(1) + ' : 1', 'Savings ÷ fee of ' + n0(b.fee)],
+    ['Tax savings over the hold (nominal)', n0(b.holdTaxSavings), 'Incremental depreciation × rate, every year'],
+    ['Present value of those savings @ ' + pc(b.discount, 1), n0(b.pvTaxSavings), ''],
+    ['Extra tax at sale (more recapture)', n0(-b.extraSaleTax), 'Short-life depreciation recaptures as ordinary income'],
+    ['Net nominal benefit', n0(b.netNominalBenefit), 'Savings less extra sale tax less fee'],
+    ['After-tax IRR with / without cost seg', pc(b.irrWith) + ' / ' + pc(b.irrWithout), 'Under the “' + (b.lossMode === 'usable' ? 'losses usable' : 'losses suspended') + '” setting; the realised benefit depends on it']
+  ].map(function(r, i){ return '<tr' + (i === 8 ? ' class="grandtotal"' : '') + '><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td><td data-bk-align="text">' + r[2] + '</td></tr>'; }).join('');
+  return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>What Cost Segregation Adds - Versus Straight-Line on the Same Basis</caption><tbody>' + rows + '</tbody></table></div>';
+}
+
+function wrap(sheet, fn){
+  var prev = RENDERERS[sheet]; if(typeof prev !== 'function' || prev.__bkMacrsUi) return;
+  var w = function(){
+    var o = prev.apply(this, arguments);
+    try { if(hasDeal() && o && typeof o === 'object' && !/no deal loaded|there is no active deal/i.test(String(o.main || ''))) fn(o); } catch(e){ if(window.console) console.warn('macrs ui', e); }
+    return o;
+  };
+  w.__bkMacrsUi = true;
+  Object.keys(prev).forEach(function(k){ if(k.indexOf('__') === 0) w[k] = prev[k]; });
+  if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(sheet, w); else RENDERERS[sheet] = w;
+}
+wrap('Depreciation', function(o){
+  var macrs = raw().depMethod === 'macrs', x = null;
+  if(macrs){ try { x = window.bkAfterTaxV18(); } catch(e){} if(x && x.deprSource !== 'macrs-tax-grade') x = null; }
+  /* the simplified-schedule disclaimer no longer applies to a tax-grade deal */
+  if(macrs) o.main = o.main.replace(/<div class="note-flag"[^>]*><span>&#9432;<\/span><div>\s*<b>Simplified underwriting convention\.<\/b>[\s\S]*?<\/div><\/div>/, '');
+  o.main = controls() + '<div style="height:16px"></div>' + o.main + (x ? scheduleByClass(x) + benefit() : '');
+  if(o.meta) o.meta = Object.assign({}, o.meta, { Method: macrs ? 'Tax-grade MACRS' : 'Simplified' });
+});
+wrap('After-Tax', function(o){
+  var x; try { x = window.bkAfterTaxV18(); } catch(e){ return; }
+  if(!x || x.deprSource !== 'macrs-tax-grade') return;
+  var cg = x.classGain || {};
+  o.main += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Sale Tax by Character - Tax-Grade Depreciation</caption><thead><tr><th class="rowlabel-h">Component</th><th>Gain</th><th>Rate</th><th>Tax</th></tr></thead><tbody>'
+    + '<tr><td class="rowlabel">Short-life gain, Sec. 1245 recapture (ordinary)</td><td>' + n0(x.ordinaryRecaptureBase) + '</td><td>' + pc(x.ordinaryRecaptureRate) + '</td><td>' + n0(x.ordinaryRecaptureTax) + '</td></tr>'
+    + '<tr><td class="rowlabel">Real-property gain, unrecaptured Sec. 1250</td><td>' + n0(x.recaptureBase) + '</td><td>' + pc(Number(x.s.depRecaptureRate)) + '</td><td>' + n0(x.recaptureTax) + '</td></tr>'
+    + '<tr><td class="rowlabel">Remaining capital gain</td><td>' + n0(x.capGainBase) + '</td><td>' + pc(Number(x.s.capGainsRate)) + '</td><td>' + n0(x.capGainTax) + '</td></tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">Total sale-year tax</td><td>' + n0(x.totalGain) + '</td><td></td><td>' + n0(x.saleTax) + '</td></tr></tbody></table></div>'
+    + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Sale Proceeds Allocated by Class (pro rata to original basis)</caption><tbody>'
+    + '<tr><td class="rowlabel">Short-life property: gain over adjusted basis</td><td class="v">' + n0(cg.personal) + '</td></tr>'
+    + '<tr><td class="rowlabel">Real property: gain over adjusted basis</td><td class="v">' + n0(cg.real) + '</td></tr>'
+    + '<tr><td class="rowlabel">Land and other non-depreciable basis: gain</td><td class="v">' + n0(cg.landOther) + '</td></tr>'
+    + '<tr><td class="rowlabel">Accumulated depreciation: short-life / real</td><td class="v">' + n0(x.accumPersonal) + ' / ' + n0(x.accumReal) + '</td></tr></tbody></table></div>'
+    + '<div class="note-flag"><span>&#10003;</span><div><b>Tax-grade depreciation -</b> taxable income is built by calendar year from the monthly NOI, reserves and interest; depreciation follows MACRS with the in-service convention and the disposal-year rule; recapture is split by character. Not modelled: Sec. 179, NIIT, AMT, state decoupling from bonus.</div></div>';
+});
+})();
+</script>
+
+<script id="bk-v29130-credit-ic">
+/* ===========================================================================
+   V29.13.0 - CREDIT POLICY, DEBT CAPACITY AND THE IC DEAL GATE
+   ===========================================================================
+   Ported from the Capital Markets model (CMM v3): the decision layer that sits
+   on top of the underwriting engines. Nothing here changes a return or a loan;
+   it TESTS the deal the engines already produced against house credit policy.
+
+   * bkPolicy()          house thresholds, per deal (s._policy), CMM defaults.
+   * bkDebtCapacity()    the largest senior loan the property supports under
+                         each constraint - LTV, LTC, DSCR at the coupon, DSCR at
+                         a STRESSED coupon, interest-only DSCR, debt yield on
+                         underwriting and stabilised NOI - the binding one,
+                         headroom to the next, overage versus the loan the
+                         engine sized, a leverage ladder, and the highest coupon
+                         at which DSCR still holds the minimum.
+   * bkRiskCushions()    break-even economic occupancy, NOI decline tolerance to
+                         minimum DSCR, break-even rent, exit-cap cushion to the
+                         target IRR, upside / downside IRR. Each break-even is a
+                         bisection against the REAL engine (bkRunWith), not a
+                         linear approximation.
+   * bkDealGate()        15-gate-style policy table: direction, HARD / SOFT
+                         severity, weight; weighted score; exception counts;
+                         verdict (APPROVE / CONDITIONAL / DECLINE); ranked
+                         exceptions; recommended action; credit-override
+                         governance (needs YES + reason + approver).
+
+   Acquisition deals get the full set. Development deals are gated on the tests
+   that apply to them (returns, LP returns, construction leverage); the rest are
+   reported as not applicable rather than forced onto a different methodology.
+   Not ported (needs modules the app lacks): lender eligibility screening,
+   capital-stack structures, refinance timing, fund and portfolio impact.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof bkDebt !== 'function' || typeof bkAnnualCF !== 'function') return;
+
+var POLICY_DEFAULTS = {
+  targetIRR:0.12, targetEM:2.25, targetLpIRR:0.12, targetLpEM:2.0, minDSCR:1.25, minDebtYield:0.085, maxLTV:0.65, maxLTC:0.70,
+  stressBps:150, minGoingInCap:0.05, minDevSpreadBps:150, maxBreakEvenOcc:0.75, minNOITolerance:0.15, minRentCushion:0.10,
+  maxHighRisks:2, maxDebtOverage:0, advanceScore:0.85, conditionalScore:0.65, exitCapStressBps:75
+};
+/* id, label, how the value is read, threshold key, direction, severity, weight. Weights sum to 100%. */
+var GATES = [
+  ['grossIRR',  'Gross levered IRR (property)',               'targetIRR',      '>=', 'HARD', 0.00, 'pct'],
+  ['lpIRR',     'Net LP IRR (after promote)',                  'targetLpIRR',    '>=', 'HARD', 0.18, 'pct'],
+  ['lpEM',      'Net LP equity multiple',                      'targetLpEM',     '>=', 'SOFT', 0.08, 'x'],
+  ['dscr',      'Year-1 DSCR (senior)',                        'minDSCR',        '>=', 'HARD', 0.12, 'x'],
+  ['debtYield', 'Year-1 debt yield (senior)',                  'minDebtYield',   '>=', 'HARD', 0.08, 'pct'],
+  ['ltv',       'Senior LTV',                                  'maxLTV',         '<=', 'HARD', 0.04, 'pct'],
+  ['capacity',  'Requested debt vs. house capacity',           'capacity',       '<=', 'HARD', 0.16, 'usd'],
+  ['goingIn',   'Going-in cap rate (Year-1 NOI / price)',      'minGoingInCap',  '>=', 'SOFT', 0.10, 'pct'],
+  ['beOcc',     'Break-even economic occupancy',               'maxBreakEvenOcc','<=', 'SOFT', 0.08, 'pct'],
+  ['exitCush',  'Exit cap cushion to target IRR (bps)',        'zero',           '>=', 'SOFT', 0.04, 'bps'],
+  ['noiTol',    'Stabilized NOI decline tolerance',            'minNOITolerance','>=', 'SOFT', 0.08, 'pct'],
+  ['rentCush',  'Rent cushion vs. break-even',                 'minRentCushion', '>=', 'SOFT', 0.04, 'pct'],
+  ['risks',     'High or critical risks',                      'maxHighRisks',   '<=', 'SOFT', 0.00, 'n'],
+  ['devSpread', 'Development spread (bps, development only)',  'minDevSpreadBps','>=', 'HARD', 0.00, 'bps']
+];
+
+/* ------------------------------------------------------------------ state */
+function raw(){ var s = bkLoad(); return (s && s._policy) || {}; }
+function policy(){
+  var r = raw(), out = Object.assign({}, POLICY_DEFAULTS);
+  Object.keys(POLICY_DEFAULTS).forEach(function(k){ if(r[k] !== undefined && r[k] !== null && r[k] !== '' && isFinite(Number(r[k]))) out[k] = Number(r[k]); });
+  return out;
+}
+function gateCfg(id){
+  var g = GATES.filter(function(x){ return x[0] === id; })[0], o = (raw().gates || {})[id] || {};
+  return { weight: (o.weight !== undefined && isFinite(Number(o.weight))) ? Number(o.weight) : g[5], severity: (o.severity === 'HARD' || o.severity === 'SOFT') ? o.severity : g[4] };
+}
+function ic(){ var s = bkLoad(); return (s && s._ic) || {}; }
+function commit(mut){
+  var s = bkLoad(); if(!s) return false;
+  mut(s); bkSave(s); return true;
+}
+window.bkPolicy = policy;
+/* Re-render AFTER the event finishes: replacing an input from inside its own change/blur handler throws a DOM error. */
+function later(name){ setTimeout(function(){ if(typeof showSheet === 'function') showSheet(name); }, 0); }
+window.bkPolicySet = function(k, v){ commit(function(s){ s._policy = s._policy || {}; s._policy[k] = Number(v); }); later('Credit Policy'); };
+window.bkPolicyGate = function(id, field, v){ commit(function(s){ s._policy = s._policy || {}; s._policy.gates = s._policy.gates || {}; s._policy.gates[id] = s._policy.gates[id] || {}; s._policy.gates[id][field] = field === 'weight' ? Number(v) : String(v); }); later('Credit Policy'); };
+window.bkPolicyReset = function(){ commit(function(s){ delete s._policy; }); later('Credit Policy'); };
+window.bkICSet = function(path, v){
+  commit(function(s){
+    s._ic = s._ic || {}; var p = path.split('.'), o = s._ic;
+    for(var i = 0; i < p.length - 1; i++){ var k = /^\d+$/.test(p[i + 1]) ? [] : {}; o[p[i]] = o[p[i]] || k; o = o[p[i]]; }
+    o[p[p.length - 1]] = v;
+  });
+  later('IC Memo');
+};
+
+/* ------------------------------------------- run the engine with overrides */
+/* Same technique as bkRunScenario: bkLoad / bkSave are swapped for a scratch copy so nothing touches the saved deal. */
+window.bkRunWith = function(overrides, fn){
+  var real = bkLoad(), scratch = Object.assign({}, real, overrides), L = window.bkLoad, S = window.bkSave;
+  window.bkLoad = function(){ return scratch; }; window.bkSave = function(d){ Object.assign(scratch, d); };
+  try { return fn(); } finally { window.bkLoad = L; window.bkSave = S; }
+};
+function bisect(f, lo, hi, target, increasing){
+  var flo = f(lo) - target, fhi = f(hi) - target;
+  if(!isFinite(flo) || !isFinite(fhi) || flo * fhi > 0) return null;
+  for(var i = 0; i < 80; i++){ var m = (lo + hi) / 2, fm = f(m) - target; if(!isFinite(fm)) return null; if(flo * fm <= 0){ hi = m; fhi = fm; } else { lo = m; flo = fm; } }
+  return (lo + hi) / 2;
+}
+function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
+
+/* -------------------------------------------------------------- debt capacity */
+function pvAnnuity(rate, years, annualPayment){ var i = rate / 12, n = years * 12; return i > 0 ? annualPayment / 12 * (1 - Math.pow(1 + i, -n)) / i : annualPayment * years; }
+function annualDS(rate, years, loan){ return loan > 0 ? bkPmt(rate / 12, Math.round(years * 12), 1) * loan * 12 : 0; }
+function debtCapacity(){
+  var s = bkLoad(), p = policy(), u = bkAnnualCF(), d = bkDebt();
+  if(isDev(s) || !(d.loan > 0)) return null;
+  var noi = u.arr[0].after, stab = (u.arr[Math.min(2, u.arr.length - 1)] || u.arr[0]).after;
+  var coupon = d.coupon, years = Number(s.acqAmort) || 30, stressed = coupon + p.stressBps / 10000;
+  var value = d.ltvValue, cost = d.basis, req = d.loan;
+  var rows = [
+    ['Loan-to-value',                         'Value x maximum LTV',                     value * p.maxLTV],
+    ['Loan-to-cost',                          'Cost basis x maximum LTC',                cost * p.maxLTC],
+    ['DSCR, actual rate, amortizing',         'NOI / minimum DSCR, capitalised',         pvAnnuity(coupon, years, noi / p.minDSCR)],
+    ['DSCR, stressed rate, amortizing',       'NOI / minimum DSCR at coupon + stress',   pvAnnuity(stressed, years, noi / p.minDSCR)],
+    ['DSCR, interest-only, actual rate',      'NOI / minimum DSCR / coupon',             coupon > 0 ? noi / p.minDSCR / coupon : Infinity],
+    ['Debt yield, underwriting NOI',          'NOI / minimum debt yield',                noi / p.minDebtYield],
+    ['Debt yield, stabilised NOI',            'Year-3 NOI / minimum debt yield',         stab / p.minDebtYield]
+  ].map(function(r){ return { name:r[0], basis:r[1], max:r[2], ltv:value > 0 ? r[2] / value : 0, vsRequest:r[2] - req }; });
+  var min = Math.min.apply(null, rows.map(function(r){ return r.max; }));
+  var binding = rows.filter(function(r){ return r.max === min; })[0];
+  var next = Math.min.apply(null, rows.filter(function(r){ return r !== binding; }).map(function(r){ return r.max; }));
+  var dsReq = annualDS(coupon, years, req);
+  var ladder = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8].map(function(l){
+    var loan = value * l, ds = annualDS(coupon, years, loan);
+    return { ltv:l, loan:loan, ltc:cost > 0 ? loan / cost : 0, ds:ds, dscr:ds > 0 ? noi / ds : Infinity, stabDscr:ds > 0 ? stab / ds : Infinity };
+  });
+  var maxCoupon = bisect(function(r){ var ds = annualDS(r, years, req); return ds > 0 ? noi / ds : 1e9; }, 0.0001, 0.40, p.minDSCR);
+  var actualDS = (d.annual[0] || {}).payment || dsReq;
+  return { policy:p, noi:noi, stabNoi:stab, coupon:coupon, stressedRate:stressed, years:years, value:value, cost:cost, requested:req,
+    rows:rows, binding:binding, capacity:min, headroom:next - min, overage:req - min,
+    box:{ ltv:req / value, ltc:req / cost, dscr:actualDS > 0 ? noi / actualDS : Infinity, debtYield:noi / req,
+          stressedDscr:annualDS(stressed, years, req) > 0 ? noi / annualDS(stressed, years, req) : Infinity, actualDS:actualDS },
+    ladder:ladder, maxCoupon:maxCoupon, couponCushionBps:maxCoupon == null ? null : (maxCoupon - coupon) * 10000 };
+}
+window.bkDebtCapacity = debtCapacity;
+
+/* ------------------------------------------------------------- risk cushions */
+function riskCushions(){
+  var s = bkLoad(), p = policy();
+  if(isDev(s)) return null;
+  var u = bkAnnualCF(), d = bkDebt(); if(!(d.loan > 0)) return null;
+  var noi1 = u.arr[0].after, ds1 = (d.annual[0] || {}).payment, ds3 = (d.annual[Math.min(2, u.arr.length - 1)] || {}).payment;
+  var out = { y1NOI:noi1, ds1:ds1 };
+  var irrAt = function(cap){ return bkRunWith({ exitCap:cap }, function(){ return bkMonthlyReturns().irr; }); };
+  var baseCap = Number(s.exitCap), baseIRR = bkMonthlyReturns().irr;
+  /* Scan a grid of exit caps for the one where IRR crosses the target (the IRR solver can fail at the extremes, so a two-point bracket is not safe),
+     then bisect inside that cell. If the target is never crossed, the cushion is reported as a bound. */
+  var lo = Math.max(0.01, baseCap - 0.03), hi = baseCap + 0.06, N = 36, pts = [];
+  for(var gi = 0; gi <= N; gi++){ var cx = lo + (hi - lo) * gi / N, iv = irrAt(cx); if(isFinite(iv)) pts.push([cx, iv]); }
+  var be = null;
+  for(var gj = 0; gj < pts.length - 1 && be == null; gj++){
+    if((pts[gj][1] - p.targetIRR) * (pts[gj + 1][1] - p.targetIRR) <= 0) be = bisect(irrAt, pts[gj][0], pts[gj + 1][0], p.targetIRR);
+  }
+  out.exitCapBreakeven = be; out.exitCapCushionBps = be == null ? null : (be - baseCap) * 10000; out.exitCapBound = null;
+  if(be == null && pts.length){
+    if(pts.every(function(q){ return q[1] < p.targetIRR; })){ out.exitCapCushionBps = (pts[0][0] - baseCap) * 10000; out.exitCapBound = 'at most'; }
+    else if(pts.every(function(q){ return q[1] > p.targetIRR; })){ out.exitCapCushionBps = (pts[pts.length - 1][0] - baseCap) * 10000; out.exitCapBound = 'at least'; }
+  }
+  var dn = baseCap + p.exitCapStressBps / 10000, up = Math.max(0.01, baseCap - p.exitCapStressBps / 10000);
+  out.irrBase = baseIRR; out.irrDownside = irrAt(dn); out.irrUpside = irrAt(up); out.stressBps = p.exitCapStressBps;
+  var noiAtVac = function(v){ return bkRunWith({ vacancy:v }, function(){ return bkAnnualCF().arr[0].after; }); };
+  var beVac = bisect(noiAtVac, 0, 0.95, ds1);                          /* NOI = debt service, loan held fixed */
+  out.breakEvenOccupancy = beVac == null ? null : 1 - beVac;
+  out.occupancyCushionBps = beVac == null ? null : (Number(s.vacancy) - beVac) * 10000;
+  out.noiTolerance1 = noi1 > 0 ? (noi1 - p.minDSCR * ds1) / noi1 : 0;
+  var noi3 = (u.arr[Math.min(2, u.arr.length - 1)] || u.arr[0]).after;
+  out.noiTolerance3 = noi3 > 0 ? (noi3 - p.minDSCR * ds3) / noi3 : 0;
+  var noiAtRent = function(r){ return bkRunWith({ avgRent:r }, function(){ return bkAnnualCF().arr[0].after; }); };
+  var rent0 = Number(s.avgRent), responsive = Math.abs(noiAtRent(rent0 * 1.01) - noiAtRent(rent0)) > 1e-6;
+  var beRent = responsive ? bisect(noiAtRent, rent0 * 0.2, rent0 * 1.5, p.minDSCR * ds1) : null;
+  out.breakEvenRent = beRent; out.rentCushion = beRent ? rent0 / beRent - 1 : null;
+  return out;
+}
+window.bkRiskCushions = riskCushions;
+
+/* ----------------------------------------------------------------- risk register */
+function sevOf(score){ return score >= 20 ? 'Critical' : score >= 12 ? 'High' : score >= 6 ? 'Moderate' : 'Low'; }
+function riskRegister(){
+  var r = (ic().risks || []).filter(function(x){ return x && (x.risk || '').trim(); }).map(function(x){
+    var sc = (Number(x.prob) || 0) * (Number(x.impact) || 0); return Object.assign({}, x, { score:sc, severity:sevOf(sc) }); });
+  return { rows:r, high:r.filter(function(x){ return x.severity === 'High' || x.severity === 'Critical'; }).length };
+}
+window.bkRiskRegister = riskRegister;
+
+/* ------------------------------------------------------------------ the gate */
+function fmtVal(v, t){
+  if(v == null || !isFinite(v)) return 'n/a';
+  return t === 'pct' ? (v * 100).toFixed(2) + '%' : t === 'x' ? v.toFixed(2) + 'x' : t === 'usd' ? '$' + (v / 1e6).toFixed(2) + 'M' : t === 'bps' ? v.toFixed(0) + ' bps' : String(Math.round(v));
+}
+function dealGate(){
+  var s = bkLoad(), p = policy(), dev = isDev(s), cap = null, rc = null, d = null, rr = riskRegister();
+  var ret = bkMonthlyReturns(), w = null; try { w = bkWaterfallV07(); } catch(e){}
+  if(!dev){ cap = debtCapacity(); rc = riskCushions(); }
+  d = bkDebt();
+  var ov = ic().override || {}, overrideValid = ov.on === 'YES' && String(ov.reason || '').trim() !== '' && String(ov.approvedBy || '').trim() !== '';
+  var val = {}, thr = {}, na = {};
+  val.grossIRR = ret.irr; val.lpIRR = w ? w.lpIRR : null; val.lpEM = (w && w.lp && w.lp.contrib > 0) ? w.lp.dist / w.lp.contrib : null;
+  thr.grossIRR = p.targetIRR; thr.lpIRR = p.targetLpIRR; thr.lpEM = p.targetLpEM;
+  if(dev){
+    var f = bkDevFundingV10(), cost = f.levered || 0;
+    val.ltv = null; val.dscr = null; val.debtYield = null; val.capacity = null; val.goingIn = null; val.beOcc = null; val.exitCush = null; val.noiTol = null; val.rentCush = null;
+    ['dscr','debtYield','ltv','capacity','goingIn','beOcc','exitCush','noiTol','rentCush'].forEach(function(k){ na[k] = 'acquisition deals only'; });
+    var yoc = cost > 0 ? (bkDevTakeoutV11().noi / cost) : null;
+    val.devSpread = yoc == null ? null : (yoc - Number(s.exitCap)) * 10000;
+  } else {
+    val.dscr = cap ? cap.box.dscr : null; val.debtYield = cap ? cap.box.debtYield : null; val.ltv = cap ? cap.box.ltv : null;
+    val.capacity = cap ? cap.requested : null; thr.capacity = cap ? cap.capacity + p.maxDebtOverage + (overrideValid ? 9e99 : 0) : null;
+    val.goingIn = Number(s.purchasePrice) > 0 ? bkAnnualCF().arr[0].after / Number(s.purchasePrice) : null;
+    val.beOcc = rc ? rc.breakEvenOccupancy : null; val.exitCush = rc ? rc.exitCapCushionBps : null;
+    val.noiTol = rc ? rc.noiTolerance3 : null; val.rentCush = rc ? rc.rentCushion : null;
+    na.devSpread = 'development deals only';
+  }
+  val.risks = rr.high; thr.risks = p.maxHighRisks;
+  thr.dscr = p.minDSCR; thr.debtYield = p.minDebtYield; thr.ltv = p.maxLTV; thr.goingIn = p.minGoingInCap; thr.beOcc = p.maxBreakEvenOcc;
+  thr.exitCush = 0; thr.noiTol = p.minNOITolerance; thr.rentCush = p.minRentCushion; thr.devSpread = p.minDevSpreadBps;
+  var rows = GATES.map(function(g){
+    var id = g[0], c = gateCfg(id), v = val[id], t = thr[id], applicable = !na[id] && v != null && isFinite(v) && t != null;
+    var pass = applicable ? (g[3] === '>=' ? v >= t - 1e-12 : v <= t + 1e-12) : null;
+    return { id:id, label:g[1], type:g[6], value:v, threshold:t, dir:g[3], severity:c.severity, weight:c.weight, applicable:applicable, pass:pass,
+             result:!applicable ? 'N/A' : pass ? 'PASS' : 'FAIL', note:na[id] || (v == null ? 'not available' : '') };
+  });
+  var live = rows.filter(function(r){ return r.applicable; });
+  var wTotal = rows.reduce(function(a, r){ return a + r.weight; }, 0);
+  var wLive = live.reduce(function(a, r){ return a + r.weight; }, 0);
+  /* Weights of gates that do not apply (e.g. the debt gates on a development deal) are dropped and the rest re-based, so the score stays 0-100%. */
+  var score = wLive > 0 ? live.reduce(function(a, r){ return a + (r.pass ? r.weight : 0); }, 0) / wLive : 0;
+  var hard = live.filter(function(r){ return !r.pass && r.severity === 'HARD'; }).length, soft = live.filter(function(r){ return !r.pass && r.severity === 'SOFT'; }).length;
+  var overage = cap ? cap.overage : 0;
+  var verdict;
+  if(!overrideValid && overage > p.maxDebtOverage) verdict = 'DECLINE';
+  else if(hard === 0 && score >= p.advanceScore) verdict = 'APPROVE';
+  else if(score >= p.conditionalScore || (hard === 0 && soft <= 2)) verdict = 'CONDITIONAL';
+  else verdict = 'DECLINE';
+  var exceptions = live.filter(function(r){ return !r.pass; }).sort(function(a, b){ return (a.severity === b.severity ? 0 : a.severity === 'HARD' ? -1 : 1) || (b.weight - a.weight); }).map(function(r){
+    var gap = r.dir === '>=' ? r.threshold - r.value : r.value - r.threshold, msg;
+    if(r.id === 'capacity') msg = 'Debt: ' + fmtVal(r.value - r.threshold, 'usd') + ' above capacity (' + fmtVal(r.value, 'usd') + ' vs ' + fmtVal(cap.capacity, 'usd') + ')';
+    else if(r.type === 'pct') msg = r.label.replace(/ \(.*/, '') + ': ' + (Math.abs(gap) * 10000).toFixed(0) + ' bps ' + (r.dir === '>=' ? 'below' : 'above') + ' policy (' + fmtVal(r.value, 'pct') + ' vs ' + fmtVal(r.threshold, 'pct') + ')';
+    else msg = r.label.replace(/ \(.*/, '') + ': ' + fmtVal(r.value, r.type) + ' vs ' + fmtVal(r.threshold, r.type) + ' required';
+    return { severity:r.severity, id:r.id, message:msg };
+  });
+  var action = verdict === 'APPROVE' ? 'Proceed to close on the selected structure; satisfy the conditions precedent.'
+    : (overage > p.maxDebtOverage && !overrideValid) ? 'Resize senior debt to <= ' + fmtVal(cap.capacity, 'usd') + ', renegotiate price / economics, or record a documented credit override.'
+    : hard > 0 ? 'Resolve the hard exceptions before returning to committee.' : 'Resolve or accept the soft exceptions; conditional approval is available at the committee’s discretion.';
+  var status = verdict + ' — ' + (hard + soft === 0 ? 'NO MATERIAL EXCEPTIONS' : hard + ' HARD / ' + soft + ' SOFT EXCEPTION' + (hard + soft > 1 ? 'S' : ''));
+  return { policy:p, rows:rows, score:score, weightTotal:wTotal, weightsOk:Math.abs(wTotal - 1) < 1e-9, passed:live.filter(function(r){ return r.pass; }).length, applicable:live.length,
+    hard:hard, soft:soft, overage:overage, overrideValid:overrideValid, override:ov, verdict:verdict, status:status, action:action, exceptions:exceptions,
+    capacity:cap, cushions:rc, ret:ret, waterfall:w, register:rr, development:dev };
+}
+window.bkDealGate = dealGate;
+window.BK_GATES = GATES; window.BK_POLICY_DEFAULTS = POLICY_DEFAULTS;
+})();
+</script>
+
+<script id="bk-v29130-credit-ic-ui">
+/* ===========================================================================
+   V29.13.0 - CREDIT & IC SHEETS: Credit Policy, Debt Capacity, IC Memo
+   Presentation only. Every figure comes from bkPolicy(), bkDebtCapacity(),
+   bkRiskCushions() and bkDealGate(); nothing is calculated here.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof window.bkDealGate !== 'function') return;
+function $(v, d){ var x = Number(v); if(!isFinite(x)) return 'n/a'; var a = Math.abs(x), b = a.toLocaleString('en-US', {maximumFractionDigits:d || 0}); return x < 0 ? '($' + b + ')' : '$' + b; }
+function P(v, d){ return (v == null || !isFinite(v)) ? 'n/a' : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
+function X(v){ return (v == null || !isFinite(v)) ? 'n/a' : v.toFixed(2) + 'x'; }
+function B(v){ return (v == null || !isFinite(v)) ? 'n/a' : Math.round(v).toLocaleString('en-US') + ' bps'; }
+function esc(v){ return (typeof bkEsc === 'function') ? bkEsc(v) : String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function chip(cls, t){ return '<span class="status-chip ' + (cls || '') + '">' + t + '</span>'; }
+function res(r){ return r === 'PASS' ? chip('pass', 'PASS') : r === 'FAIL' ? chip('fail', 'FAIL') : chip('', 'N/A'); }
+function verdictChip(v){ return chip(v === 'APPROVE' ? 'pass' : v === 'CONDITIONAL' ? 'warn' : 'fail', v); }
+function fmt(v, t){ return t === 'pct' ? P(v) : t === 'x' ? X(v) : t === 'usd' ? $(v) : t === 'bps' ? B(v) : (v == null ? 'n/a' : String(Math.round(v))); }
+function table(caption, head, body, cls){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin' + (cls ? ' ' + cls : '') + '"><caption>' + caption + '</caption>' + (head ? '<thead><tr>' + head + '</tr></thead>' : '') + '<tbody>' + body + '</tbody></table></div>'; }
+function th(a){ return a.map(function(h, i){ return i === 0 ? '<th class="rowlabel-h">' + h + '</th>' : '<th>' + h + '</th>'; }).join(''); }
+function inp(js, val, w, align){ return '<input type="text" value="' + esc(val) + '" style="width:' + (w || 110) + 'px;text-align:' + (align || 'right') + '" onchange="' + js + '">'; }
+function note(t, ok){ return '<div class="note-flag" style="margin-top:12px"><span>' + (ok === false ? '&#9888;' : '&#9432;') + '</span><div>' + t + '</div></div>'; }
+function side(rows, group){
+  return (typeof sidebarShell === 'function') ? sidebarShell('<div class="card"><div class="card-head">' + group + '</div><div class="metric-list">' + rows.map(function(r){ return '<div class="metric-row"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>'; }).join('') + '</div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : '';
+}
+function gated(name, fn){
+  return function(){
+    if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState(name);
+    return fn.apply(this, arguments);
+  };
+}
+function register(name, fn){ var g = gated(name, fn); if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(name, g); else RENDERERS[name] = g; }
+
+/* ---------------------------------------------------------- Credit Policy */
+var POLICY_ROWS = [
+  ['targetIRR', 'Target gross levered IRR', 'pct'], ['targetEM', 'Target gross equity multiple', 'x'], ['targetLpIRR', 'Target net LP IRR', 'pct'], ['targetLpEM', 'Target net LP equity multiple', 'x'],
+  ['minDSCR', 'Minimum DSCR', 'x'], ['minDebtYield', 'Minimum debt yield', 'pct'], ['maxLTV', 'Maximum senior LTV', 'pct'], ['maxLTC', 'Maximum senior LTC', 'pct'],
+  ['stressBps', 'Stressed underwriting rate premium (bps)', 'n'], ['minGoingInCap', 'Minimum going-in cap rate', 'pct'], ['minDevSpreadBps', 'Minimum development spread (bps)', 'n'],
+  ['maxBreakEvenOcc', 'Maximum break-even economic occupancy', 'pct'], ['minNOITolerance', 'Minimum stabilised NOI decline tolerance', 'pct'], ['minRentCushion', 'Minimum rent cushion vs. break-even', 'pct'],
+  ['maxHighRisks', 'Maximum high or critical risks', 'n'], ['maxDebtOverage', 'Maximum debt overage vs. supportable debt ($)', 'usd'],
+  ['advanceScore', 'Gate score to APPROVE', 'pct'], ['conditionalScore', 'Gate score for CONDITIONAL', 'pct'], ['exitCapStressBps', 'Exit-cap stress for upside / downside IRR (bps)', 'n']
+];
+register('Credit Policy', function(){
+  var p = window.bkPolicy(), D = window.BK_POLICY_DEFAULTS, custom = (bkLoad()._policy || {});
+  var rows = POLICY_ROWS.map(function(r){
+    var k = r[0], t = r[2], pct = t === 'pct';
+    var val = pct ? (p[k] * 100).toFixed(2) : t === 'x' ? p[k].toFixed(2) : String(p[k]);
+    var conv = pct ? '(parseFloat(this.value)||0)/100' : 'parseFloat(this.value.replace(/[$,]/g,\'\'))||0';
+    var isCustom = Math.abs(p[k] - D[k]) > 1e-12;
+    return '<tr><td class="rowlabel">' + r[1] + '</td><td class="v">' + inp('bkPolicySet(\'' + k + '\',' + conv + ')', val, 90) + (pct ? ' %' : '') + '</td><td data-bk-align="text">Default ' + fmt(D[k], t) + '</td><td>' + (isCustom ? chip('', 'CUSTOM') : chip('pass', 'DEFAULT')) + '</td></tr>';
+  }).join('');
+  var gw = 0;
+  var gates = window.BK_GATES.map(function(g){
+    var c = {weight:0, severity:g[4]}, o = (custom.gates || {})[g[0]] || {};
+    c.weight = (o.weight !== undefined && isFinite(Number(o.weight))) ? Number(o.weight) : g[5]; c.severity = (o.severity === 'HARD' || o.severity === 'SOFT') ? o.severity : g[4]; gw += c.weight;
+    return '<tr><td class="rowlabel">' + g[1] + '</td><td>' + g[3].replace('>=', '≥').replace('<=', '≤') + '</td>'
+      + '<td class="v"><select onchange="bkPolicyGate(\'' + g[0] + '\',\'severity\',this.value)"><option' + (c.severity === 'HARD' ? ' selected' : '') + '>HARD</option><option' + (c.severity === 'SOFT' ? ' selected' : '') + '>SOFT</option></select></td>'
+      + '<td class="v">' + inp('bkPolicyGate(\'' + g[0] + '\',\'weight\',(parseFloat(this.value)||0)/100)', (c.weight * 100).toFixed(1), 70) + ' %</td></tr>';
+  }).join('');
+  var wOk = Math.abs(gw - 1) < 1e-9;
+  return { title:'Credit Policy', crumbs:'Credit & IC', desc:'House underwriting policy for this deal: the limits and weights the IC gate tests against.',
+    meta:{ Property:bkLoad().name, Source:'CMM v3 house policy defaults', Weights: wOk ? 'Sum to 100%' : 'DO NOT SUM TO 100%' },
+    main: table('House Underwriting Policy', th(['Policy', 'Value', 'Default', 'Status']), rows)
+      + table('Gate Weights and Severity', th(['Gate', 'Test', 'Severity', 'Weight']), gates + '<tr class="grandtotal"><td class="rowlabel">Total weight (must be 100%)</td><td></td><td></td><td class="v">' + (gw * 100).toFixed(1) + '% ' + (wOk ? chip('pass', 'OK') : chip('fail', 'FIX')) + '</td></tr>')
+      + note('A HARD failure blocks APPROVE whatever the score. Gates that do not apply to a deal (the debt tests on a development deal, for example) are dropped and the remaining weights re-based. These limits test the deal; they never change a return or a loan.')
+      + '<div style="margin-top:14px"><button type="button" class="status-chip" onclick="if(confirm(\'Reset this deal\\u2019s credit policy to the house defaults?\'))bkPolicyReset()">RESET TO HOUSE DEFAULTS</button></div>',
+    sidebar: side([['Gate weights', wOk ? 'Sum to 100%' : 'Not 100%'], ['Min DSCR', X(p.minDSCR)], ['Max LTV', P(p.maxLTV, 0)], ['Stress premium', p.stressBps + ' bps']], 'Policy') };
+});
+
+/* ----------------------------------------------------------- Debt Capacity */
+register('Debt Capacity', function(){
+  var s = bkLoad(), c = window.bkDebtCapacity();
+  if(!c) return { title:'Debt Capacity', crumbs:'Credit & IC', desc:'What the property supports against house credit policy.', meta:{Property:s.name}, main:note('Debt capacity applies to acquisition deals with a sized senior loan. This deal is a development deal or has no loan.'), sidebar:'' };
+  var p = c.policy, b = c.box;
+  var box = [
+    ['Loan-to-value (senior)', P(b.ltv), P(p.maxLTV), '≤', b.ltv <= p.maxLTV], ['Loan-to-cost (senior)', P(b.ltc), P(p.maxLTC), '≤', b.ltc <= p.maxLTC],
+    ['DSCR, first operating year', X(b.dscr), X(p.minDSCR), '≥', b.dscr >= p.minDSCR], ['Debt yield', P(b.debtYield), P(p.minDebtYield), '≥', b.debtYield >= p.minDebtYield],
+    ['Stressed DSCR (coupon + ' + p.stressBps + ' bps, amortizing)', X(b.stressedDscr), X(p.minDSCR), '≥', b.stressedDscr >= p.minDSCR],
+    ['Senior loan vs. house capacity', $(c.requested), $(c.capacity + p.maxDebtOverage), '≤', c.overage <= p.maxDebtOverage]
+  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[3] + ' ' + r[2] + '</td><td>' + res(r[4] ? 'PASS' : 'FAIL') + '</td></tr>'; }).join('');
+  var bridge = '<tr class="subtotal"><td class="rowlabel">Senior loan requested (sized by the engine)</td><td>Underwriting terms</td><td>' + $(c.requested) + '</td><td>' + P(c.requested / c.value) + '</td><td></td><td></td></tr>'
+    + c.rows.map(function(r){ var bind = r === c.binding; return '<tr' + (bind ? ' class="grandtotal"' : '') + '><td class="rowlabel">' + r.name + '</td><td data-bk-align="text">' + r.basis + '</td><td>' + $(r.max) + '</td><td>' + P(r.ltv) + '</td><td>' + $(r.vsRequest) + '</td><td>' + (bind ? chip('fail', 'BINDING') : '') + '</td></tr>'; }).join('')
+    + '<tr class="grandtotal"><td class="rowlabel">Maximum supportable senior debt</td><td data-bk-align="text">Lowest of the constraints</td><td>' + $(c.capacity) + '</td><td>' + P(c.capacity / c.value) + '</td><td>' + $(c.capacity - c.requested) + '</td><td>' + (c.overage > p.maxDebtOverage ? chip('fail', 'EXCEEDS CAPACITY') : chip('pass', 'WITHIN CAPACITY')) + '</td></tr>';
+  var ladder = c.ladder.map(function(r){ return '<tr><td class="rowlabel">' + P(r.ltv, 0) + '</td><td>' + $(r.loan) + '</td><td>' + P(r.ltc) + '</td><td>' + $(r.ds) + '</td><td>' + X(r.dscr) + '</td><td>' + X(r.stabDscr) + '</td><td>' + (r.dscr >= p.minDSCR ? chip('pass', 'OK') : chip('fail', 'BELOW MIN')) + '</td></tr>'; }).join('');
+  var rate = table('Interest Rate Headroom', null,
+      '<tr><td class="rowlabel">All-in coupon in force</td><td class="v">' + P(c.coupon) + '</td></tr><tr><td class="rowlabel">Stressed underwriting rate</td><td class="v">' + P(c.stressedRate) + '</td></tr>'
+    + '<tr><td class="rowlabel">Highest coupon at which Year-1 DSCR holds the minimum</td><td class="v">' + P(c.maxCoupon) + '</td></tr><tr class="grandtotal"><td class="rowlabel">Cushion to that coupon</td><td class="v">' + B(c.couponCushionBps) + '</td></tr>');
+  return { title:'Debt Capacity', crumbs:'Credit & IC', desc:'The largest senior loan the property supports under each house constraint, and how the loan in force compares.',
+    meta:{ Property:s.name, Binding:c.binding.name, Capacity:$(c.capacity), Request:$(c.requested) },
+    main: table('Credit Box - Loan in Force vs. House Policy', th(['Metric', 'Underwritten', 'House limit', 'Status']), box)
+      + table('Sizing Bridge - Requested Debt to Constraint Capacity', th(['Constraint', 'Basis', 'Maximum loan', 'Implied LTV', 'vs. requested', 'Binding']), bridge)
+      + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Binding Capacity</caption><tbody>'
+      + '<tr><td class="rowlabel">Binding constraint</td><td class="v">' + c.binding.name + '</td></tr><tr><td class="rowlabel">Headroom to the next-tightest constraint</td><td class="v">' + $(c.headroom) + '</td></tr>'
+      + '<tr class="grandtotal"><td class="rowlabel">Debt overage / (unused capacity) vs. request</td><td class="v">' + $(c.overage) + '</td></tr></tbody></table></div>'
+      + table('Proceeds Ladder - Tested Leverage Range', th(['Target LTV', 'Loan', 'LTC', 'Annual debt service', 'DSCR', 'Stabilised DSCR', 'vs. minimum']), ladder) + rate
+      + note('Capacity uses <b>house policy</b> limits (Credit Policy), which can be tighter than the loan terms the deal was underwritten with. The stressed-rate test sizes the loan as if the coupon were ' + p.stressBps + ' bps higher, so the loan still works if rates move. Year-3 NOI is the stabilised NOI.'),
+    sidebar: side([['Supportable debt', $(c.capacity)], ['Requested', $(c.requested)], ['Overage', $(c.overage)], ['Binding', c.binding.name]], 'Debt Capacity') };
+});
+
+/* ---------------------------------------------------------------- IC Memo */
+function listEditor(list, label, placeholder){
+  var items = (ic().list || []);
+}
+function ic(){ return bkLoad()._ic || {}; }
+register('IC Memo', function(){
+  var s = bkLoad(), g = window.bkDealGate(), I = ic(), c = g.cushions, cap = g.capacity, ret = g.ret, w = g.waterfall;
+  var banner = '<div class="note-flag" style="margin-top:0;border-left:4px solid ' + (g.verdict === 'APPROVE' ? '#3F6B4A' : g.verdict === 'CONDITIONAL' ? '#B8860B' : '#A93B2C') + '"><span>' + (g.verdict === 'APPROVE' ? '&#10003;' : '&#9888;') + '</span><div><b>' + esc(g.status) + '</b><br>' + esc(g.action) + '</div></div>';
+  var thesis = (I.thesis || []).concat(['', '', '']).slice(0, Math.max(3, (I.thesis || []).length + 1));
+  var thesisHtml = thesis.map(function(t, i){ return '<tr><td class="rowlabel">' + (i + 1) + '</td><td data-bk-align="text" colspan="3"><input type="text" style="width:100%" value="' + esc(t) + '" placeholder="Thesis point" onchange="bkICSet(\'thesis.' + i + '\',this.value)"></td></tr>'; }).join('');
+  var dealRows = [
+    ['Asset', esc(s.name) + ' · ' + esc(s.propertyType) + ' · ' + esc(s.location || '')], ['Deal type', esc(s.dealType)], ['Price / basis', $(s.purchasePrice) + (cap ? ' / ' + $(cap.cost) : '')],
+    ['Year-1 NOI after reserves / going-in yield', cap ? $(cap.noi) + ' · ' + P(cap.noi / s.purchasePrice) : 'n/a'], ['Hold / exit cap', (Number(s.holdYears) || '') + ' years · ' + P(Number(s.exitCap))]
+  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td data-bk-align="text">' + r[1] + '</td></tr>'; }).join('');
+  var retRows = [
+    ['Unlevered IRR / multiple', ret.u ? P(ret.u.irr) + ' / ' + X(ret.u.moic) : 'n/a'], ['Gross levered IRR / multiple', P(ret.irr) + ' / ' + X(ret.moic)],
+    ['Net LP IRR / multiple', w ? P(w.lpIRR) + ' / ' + X(w.lp && w.lp.contrib > 0 ? w.lp.dist / w.lp.contrib : null) : 'n/a'], ['GP IRR / promote', w ? P(w.gpIRR) + ' / ' + $(w.promote) : 'n/a'],
+    ['Upside / downside IRR (exit cap ±' + (c ? c.stressBps : 75) + ' bps)', c ? P(c.irrUpside, 1) + ' / ' + P(c.irrDownside, 1) : 'n/a']
+  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>'; }).join('');
+  var fin = cap ? [
+    ['Requested / supportable', $(cap.requested) + ' / ' + $(cap.capacity)], ['Binding constraint', cap.binding.name], ['Year-1 DSCR / debt yield / LTV', X(cap.box.dscr) + ' / ' + P(cap.box.debtYield) + ' / ' + P(cap.box.ltv)],
+    ['Stressed DSCR (+' + cap.policy.stressBps + ' bps)', X(cap.box.stressedDscr)], ['Highest coupon holding minimum DSCR', P(cap.maxCoupon) + ' (' + B(cap.couponCushionBps) + ' cushion)']
+  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>'; }).join('') : '<tr><td class="rowlabel">Financing</td><td class="v">n/a for this deal</td></tr>';
+  var cush = c ? [
+    ['Year-1 break-even economic occupancy', P(c.breakEvenOccupancy), 'Occupancy at which NOI covers debt service'], ['Occupancy cushion', B(c.occupancyCushionBps), 'Underwritten occupancy over break-even'],
+    ['Year-1 / stabilised NOI decline tolerance', P(c.noiTolerance1, 1) + ' / ' + P(c.noiTolerance3, 1), 'NOI fall before DSCR reaches the minimum'], ['Break-even rent (per unit per month)', c.breakEvenRent ? $(c.breakEvenRent) : 'n/a', 'Rent at which DSCR equals the minimum'],
+    ['Rent cushion vs. break-even', P(c.rentCushion, 1), 'Underwritten rent over break-even rent'],
+    ['Break-even exit cap at target IRR', c.exitCapBreakeven == null ? (c.exitCapBound ? c.exitCapBound + ' ' + P(Number(s.exitCap) + c.exitCapCushionBps / 10000) : 'n/a') : P(c.exitCapBreakeven), 'Exit cap at which levered IRR equals the target'],
+    ['Exit cap cushion', (c.exitCapBound ? c.exitCapBound + ' ' : '') + B(c.exitCapCushionBps), 'Positive: room for the cap rate to widen']
+  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td><td data-bk-align="text">' + r[2] + '</td></tr>'; }).join('') : '<tr><td class="rowlabel" colspan="3">Break-even and stress cushions apply to acquisition deals.</td></tr>';
+  var gateRows = g.rows.map(function(r){
+    return '<tr><td class="rowlabel">' + r.label + '</td><td>' + (r.applicable ? fmt(r.value, r.type) : '—') + '</td><td>' + (r.threshold != null && isFinite(r.threshold) && r.threshold < 1e90 ? fmt(r.threshold, r.type) : '—') + '</td><td>' + r.dir.replace('>=', '≥').replace('<=', '≤') + '</td><td>' + res(r.result) + '</td><td>' + chip(r.severity === 'HARD' ? 'fail' : '', r.severity) + '</td><td>' + (r.weight * 100).toFixed(0) + '%</td><td>' + (r.applicable && r.pass ? (r.weight * 100).toFixed(0) + '%' : r.applicable ? '0%' : '—') + '</td></tr>';
+  }).join('') + '<tr class="grandtotal"><td class="rowlabel">Weighted gate score</td><td colspan="5"></td><td>' + (g.weightsOk ? '100%' : (g.weightTotal * 100).toFixed(0) + '%') + '</td><td>' + (g.score * 100).toFixed(0) + '%</td></tr>';
+  var exc = g.exceptions.length ? g.exceptions.map(function(e, i){ return '<tr><td class="rowlabel">' + (i + 1) + '</td><td data-bk-align="text">' + esc(e.message) + '</td><td>' + chip(e.severity === 'HARD' ? 'fail' : '', e.severity) + '</td></tr>'; }).join('') : '<tr><td class="rowlabel"></td><td data-bk-align="text">No exceptions.</td><td></td></tr>';
+  var reg = (I.risks || []).concat([{}]);
+  var regRows = reg.map(function(r, i){
+    var sc = (Number(r.prob) || 0) * (Number(r.impact) || 0), has = (r.risk || '').trim();
+    return '<tr><td class="rowlabel"><input type="text" style="width:100%" value="' + esc(r.risk || '') + '" placeholder="Risk" onchange="bkICSet(\'risks.' + i + '.risk\',this.value)"></td><td>' + inp('bkICSet(\'risks.' + i + '.category\',this.value)', r.category || '', 90, 'left') + '</td>'
+      + '<td>' + inp('bkICSet(\'risks.' + i + '.prob\',parseFloat(this.value)||0)', r.prob == null ? '' : r.prob, 40) + '</td><td>' + inp('bkICSet(\'risks.' + i + '.impact\',parseFloat(this.value)||0)', r.impact == null ? '' : r.impact, 40) + '</td>'
+      + '<td>' + (has ? sc : '') + '</td><td>' + (has ? chip(sc >= 12 ? 'fail' : sc >= 6 ? 'warn' : '', (sc >= 20 ? 'Critical' : sc >= 12 ? 'High' : sc >= 6 ? 'Moderate' : 'Low')) : '') + '</td><td data-bk-align="text">' + inp('bkICSet(\'risks.' + i + '.mitigant\',this.value)', r.mitigant || '', 260, 'left') + '</td></tr>';
+  }).join('');
+  var cps = (I.conditions || []).concat(['']);
+  var cpRows = cps.map(function(t, i){ return '<tr><td class="rowlabel">' + (i + 1) + '</td><td data-bk-align="text"><input type="text" style="width:100%" value="' + esc(t) + '" placeholder="Condition precedent" onchange="bkICSet(\'conditions.' + i + '\',this.value)"></td></tr>'; }).join('');
+  var ov = g.override;
+  var ovRows = '<tr><td class="rowlabel">Credit override</td><td class="v"><select onchange="bkICSet(\'override.on\',this.value)"><option' + (ov.on === 'YES' ? '' : ' selected') + '>NO</option><option' + (ov.on === 'YES' ? ' selected' : '') + '>YES</option></select></td></tr>'
+    + '<tr><td class="rowlabel">Reason</td><td data-bk-align="text">' + inp('bkICSet(\'override.reason\',this.value)', ov.reason || '', 380, 'left') + '</td></tr>'
+    + '<tr><td class="rowlabel">Approved by</td><td data-bk-align="text">' + inp('bkICSet(\'override.approvedBy\',this.value)', ov.approvedBy || '', 220, 'left') + '</td></tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">Override in effect</td><td class="v">' + (g.overrideValid ? chip('warn', 'YES — lifts the debt-capacity limit') : chip('', 'NO') + (ov.on === 'YES' ? ' needs a reason and an approver' : '')) + '</td></tr>';
+  var sign = '<tr><td class="rowlabel">Prepared by</td><td data-bk-align="text">' + inp('bkICSet(\'preparedBy\',this.value)', I.preparedBy || '', 220, 'left') + '</td></tr><tr><td class="rowlabel">Reviewed by</td><td data-bk-align="text">' + inp('bkICSet(\'reviewedBy\',this.value)', I.reviewedBy || '', 220, 'left') + '</td></tr>';
+  return { title:'IC Memo', crumbs:'Credit & IC', desc:'Investment committee summary: the deal gate against house policy, cushions, exceptions, risks and conditions.',
+    meta:{ Property:s.name, Verdict:g.verdict, Score:(g.score * 100).toFixed(0) + '%', Exceptions:g.hard + ' hard / ' + g.soft + ' soft' },
+    main: banner
+      + table('Investment Thesis', null, thesisHtml)
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows) + table('Returns', null, retRows) + table('Financing', null, fin) + '</div>'
+      + table('Policy Test Table - Every Gate in One Place', th(['Gate', 'Underwritten', 'Threshold', 'Test', 'Result', 'Severity', 'Weight', 'Score']), gateRows)
+      + table('Ranked Exceptions', th(['#', 'Exception', 'Severity']), exc)
+      + table('Break-Even and Stress Cushions', th(['Metric', 'Value', 'Meaning']), cush)
+      + table('Risk Register (probability × impact, 1–5 each)', th(['Risk', 'Category', 'Prob.', 'Impact', 'Score', 'Severity', 'Mitigant']), regRows)
+      + table('Conditions Precedent', null, cpRows) + table('Credit Override Governance', null, ovRows) + table('Sign-off', null, sign)
+      + note('The gate tests the deal the engines produced against the house policy on <b>Credit Policy</b>. Verdict: DECLINE if the loan exceeds capacity with no valid override; APPROVE with no hard exceptions and a score at or above ' + (g.policy.advanceScore * 100).toFixed(0) + '%; CONDITIONAL at or above ' + (g.policy.conditionalScore * 100).toFixed(0) + '% (or no hard exceptions and at most two soft); otherwise DECLINE. Break-evens are bisections against the live engine.'),
+    sidebar: side([['Verdict', verdictChip(g.verdict)], ['Gate score', (g.score * 100).toFixed(0) + '%'], ['Gates passed', g.passed + ' of ' + g.applicable], ['Hard / soft', g.hard + ' / ' + g.soft], ['High risks', String(g.register.high)]], 'IC Gate') };
+});
+})();
+</script>
+
+<script id="bk-v29140-conflicts">
+/* ===========================================================================
+   V29.14.0 - CONFLICTING-INPUT CHECKS
+   ===========================================================================
+   The existing model controls catch out-of-range numbers (vacancy of 150%, a
+   hold of zero). This layer catches combinations that are each valid on their
+   own but contradict one another - or that quietly create an accounting, tax or
+   credit discrepancy - and says WHY, in plain terms, with the deal's own
+   numbers.
+
+   Severity
+     ERROR  the inputs contradict each other or are impossible; results are
+            wrong. Counts as a FAIL control (deal is not decision-grade).
+     WARN   legal and calculable, but likely to mislead or to disagree with
+            another figure, a lender, a tax return or a JV agreement.
+     INFO   a stated assumption worth knowing; never blocks anything.
+
+   bkConflicts()     every rule that fires, with message, why, where to fix it.
+   bkAckConflict()   acknowledge a WARN / INFO for this deal (kept on the deal).
+   toast             when an edit CREATES a new ERROR / WARN, a card explains it
+                     at once. Turned off under automation unless
+                     window.BK_CONFLICT_TOASTS === true.
+   Rules read the deal and the engines; they never change a number.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof bkSave !== 'function') return;
+
+var num = function(x){ var v = Number(x); return isFinite(v) ? v : NaN; };
+var $ = function(v){ var x = Math.abs(Number(v) || 0).toLocaleString('en-US', {maximumFractionDigits:0}); return (v < 0 ? '-$' : '$') + x; };
+var pc = function(v, d){ return isFinite(v) ? (v * 100).toFixed(d == null ? 1 : d) + '%' : 'n/a'; };
+function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
+function dep(s){ return (s._depr && s._depr.settings) || {}; }
+function comps(s){ return (s._depr && Array.isArray(s._depr.components)) ? s._depr.components : []; }
+function parseD(v){
+  if(v instanceof Date) return v; v = String(v == null ? '' : v);
+  var a = /^(\d{4})-(\d{2})-(\d{2})/.exec(v); if(a) return new Date(+a[1], +a[2] - 1, +a[3]);
+  var b = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(v); if(b) return new Date(+b[3], +b[1] - 1, +b[2]); return null;
+}
+function safe(f, dflt){ try { return f(); } catch(e){ return dflt; } }
+
+var RULES = [];
+function rule(id, level, area, sheet, fn){ RULES.push({ id:id, level:level, area:area, sheet:sheet, fn:fn }); }
+
+/* ===================================================== TAX / DEPRECIATION */
+rule('dep.simplified-costseg', 'WARN', 'Depreciation', 'Depreciation', function(s){
+  var d = dep(s); if(d.costSeg && d.depMethod !== 'macrs')
+    return { msg:'Cost segregation is on, but this deal still uses the simplified straight-line schedule.',
+      why:'The simplified schedule recovers every class straight-line and ignores MACRS declining-balance tables, the half-year / mid-quarter / mid-month conventions and the disposal-year rule. A cost-seg study is built on those rules, so Year-1 deductions, tax savings and sale-year recapture will not match the study or the tax return. Switch the deal to tax-grade MACRS.' };
+});
+rule('dep.bonus-on-real-property', 'WARN', 'Depreciation', 'Depreciation', function(s){
+  var bad = comps(s).filter(function(c){ return c.bonus === true && num(c.recovery) > 20; });
+  if(bad.length) return { msg:bad.length + ' component' + (bad.length > 1 ? 's are' : ' is') + ' flagged for bonus depreciation but recover over more than 20 years (27.5 / 39-year real property).',
+    why:'Bonus depreciation is only available for property with a recovery period of 20 years or less. The engine ignores the flag, so the figure you expect to deduct up front is not deducted - the schedule will look lower than the flag suggests.' };
+});
+rule('dep.land-zero', 'WARN', 'Depreciation', 'Depreciation', function(s){
+  var d = dep(s), hasDep = comps(s).length > 0 || d.costSeg;
+  if(!hasDep) return;
+  var pp = num(s.purchasePrice), land = d.landMethod === 'percent' ? pp * (num(d.landPct) || 0) : (num(d.landDollar) || 0);
+  if(pp > 0 && !(land > 0)) return { msg:'Depreciation is configured but the land value is zero - the whole purchase price would be depreciated.',
+    why:'Land is never depreciable. Depreciating it overstates every year’s deduction and tax saving, and understates the taxable gain at sale because the adjusted basis falls too far. Typical allocations are 10-40% of price, set by the assessor’s land-to-total ratio or an appraisal.' };
+});
+rule('dep.land-extreme', 'WARN', 'Depreciation', 'Depreciation', function(s){
+  var d = dep(s); if(!(comps(s).length > 0 || d.costSeg) && !(num(d.landPct) > 0 || num(d.landDollar) > 0)) return;
+  var pp = num(s.purchasePrice); if(!(pp > 0)) return;
+  var pct = d.landMethod === 'percent' ? num(d.landPct) : (num(d.landDollar) || 0) / pp;
+  if(pct > 0.6) return { msg:'Land is ' + pc(pct, 0) + ' of the purchase price - unusually high for an improved property.',
+    why:'A high land share leaves little depreciable basis, so the tax shield is small. If the figure is a typo (for example 46.9 entered for 46.9%), the depreciation and after-tax returns are badly understated; if it is right, the property is largely a land play.' };
+});
+rule('dep.placed-vs-closing', 'WARN', 'Depreciation', 'Depreciation', function(s){
+  var d = dep(s), p = parseD(d.placedInService || d.closeDate), c = parseD(s.closing); if(!p || !c) return;
+  var days = (p - c) / 86400000;
+  if(days < -1) return { msg:'Placed-in-service date (' + (d.placedInService || d.closeDate) + ') is before the closing date (' + s.closing + ').',
+    why:'Depreciation starts when the property is placed in service by its owner. A date before closing puts deductions in a tax year (or on an owner) that does not hold the asset, shifts the mid-quarter / mid-month convention, and the first-year amount will not agree with the return.' };
+  if(days > 366) return { msg:'Placed-in-service date is more than a year after closing.',
+    why:'A stabilised acquisition is normally in service at closing. A long gap is only right for property under construction or renovation; otherwise the first year of depreciation is deferred and early taxable income is overstated.' };
+});
+rule('dep.placed-after-sale', 'ERROR', 'Depreciation', 'Depreciation', function(s){
+  var d = dep(s), p = parseD(d.placedInService || d.closeDate), c = parseD(s.closing), h = num(s.holdYears); if(!p || !c || !(h > 0)) return;
+  var sale = new Date(c.getFullYear() + Math.round(h), c.getMonth(), c.getDate());
+  if(p > sale) return { msg:'Placed-in-service date is after the planned sale date.', why:'The property would be sold before it is ever depreciated. The depreciation schedule is empty or wrong and the whole gain at sale is mischaracterised.' };
+});
+rule('dep.bonus-elect-above-statutory', 'WARN', 'Depreciation', 'Depreciation', function(s){
+  var d = dep(s); if(d.bonusMode !== 'elect') return;
+  var p = parseD(d.placedInService || d.closeDate) || parseD(s.closing); if(!p) return;
+  var y = p.getFullYear(), stat = p >= new Date(2025, 0, 20) ? 1 : y <= 2017 ? 0.5 : y <= 2022 ? 1 : y === 2023 ? 0.8 : y === 2024 ? 0.6 : y === 2025 ? 0.4 : y === 2026 ? 0.2 : 0;
+  var el = num(d.bonusPct) || 0;
+  if(el > stat + 1e-9) return { msg:'Elected bonus of ' + pc(el, 0) + ' is above the statutory rate of ' + pc(stat, 0) + ' for property placed in service ' + (d.placedInService || d.closeDate || s.closing) + '.',
+    why:'The law sets the maximum bonus rate by placed-in-service date (and acquisition date). Claiming more than that overstates the first-year deduction and tax saving; a return would not support it.' };
+  if(el < stat - 1e-9) return { level:'INFO', msg:'Bonus is elected at ' + pc(el, 0) + ', below the statutory ' + pc(stat, 0) + '.',
+    why:'Electing out of (or below) bonus is allowed by class and defers deductions. Make sure it is intentional: the first-year tax saving, and the recapture at sale, are both smaller than at the statutory rate.' };
+});
+rule('dep.explicit-hy-with-q4', 'WARN', 'Depreciation', 'Depreciation', function(s){
+  var cs = comps(s).filter(function(c){ return num(c.recovery) > 0 && num(c.recovery) < 27.5; });
+  if(!cs.length) return;
+  var d = dep(s), dflt = parseD(d.placedInService || d.closeDate) || parseD(s.closing); if(!dflt) return;
+  var tot = 0, q4 = 0, hy = false;
+  cs.forEach(function(c){ var p = parseD(c.placed) || dflt, b = num(c.basis) || 0; tot += b; if(p.getMonth() >= 9) q4 += b; if(/half|^hy$/i.test(String(c.convention || ''))) hy = true; });
+  if(hy && tot > 0 && q4 / tot > 0.4) return { msg:'Short-life assets are set to the half-year convention, but ' + pc(q4 / tot, 0) + ' of their basis is placed in service in the fourth quarter.',
+    why:'The IRS requires the mid-quarter convention when more than 40% of short-life basis is placed in service in the last quarter. Half-year gives a larger first-year deduction than the law allows; the return would be corrected and the schedule here would overstate Year 1. Use AUTO (the engine applies the test).' };
+});
+rule('dep.mid-month-on-short-life', 'WARN', 'Depreciation', 'Depreciation', function(s){
+  var bad = comps(s).filter(function(c){ return num(c.recovery) > 0 && num(c.recovery) < 27.5 && /month|^mm$/i.test(String(c.convention || '')); });
+  if(bad.length) return { msg:bad.length + ' short-life component' + (bad.length > 1 ? 's use' : ' uses') + ' the mid-month convention.',
+    why:'Mid-month applies only to residential rental (27.5-year) and nonresidential real property (39-year). Personal property (5-, 7-, 15-year) must use half-year or mid-quarter, so the first-year amount here does not match what can be claimed.' };
+});
+rule('tax.rate-order', 'WARN', 'Tax', 'After-Tax', function(s){
+  var t = num(s.taxRate), cg = num(s.capGainsRate), rc = num(s.depRecaptureRate);
+  if(isFinite(t) && isFinite(rc) && rc > t + 1e-9) return { msg:'Depreciation recapture rate (' + pc(rc) + ') is higher than the ordinary tax rate (' + pc(t) + ').',
+    why:'Unrecaptured Section 1250 gain is taxed at the lesser of the ordinary rate and 25%. A recapture rate above the ordinary rate cannot occur, so sale-year tax is overstated.' };
+  if(isFinite(t) && isFinite(cg) && cg > t + 1e-9) return { msg:'Capital-gains rate (' + pc(cg) + ') is higher than the ordinary tax rate (' + pc(t) + ').',
+    why:'Long-term capital gains are taxed at or below the ordinary rate. The inputs contradict each other, so the after-tax return is understated.' };
+});
+rule('tax.rate-percent-typo', 'ERROR', 'Tax', 'After-Tax', function(s){
+  var bad = ['taxRate', 'capGainsRate', 'depRecaptureRate'].filter(function(k){ return num(s[k]) > 1; });
+  if(bad.length) return { msg:'Tax rate input(s) above 100%: ' + bad.map(function(k){ return k + ' = ' + s[k]; }).join(', ') + '.',
+    why:'Rates are stored as decimals (0.37 = 37%). An entry such as 37 is read as 3,700% and wipes out after-tax cash flow.' };
+});
+rule('tax.losses-usable', 'INFO', 'Tax', 'Depreciation', function(s){
+  if(dep(s).lossMode === 'usable') return { msg:'Tax losses are treated as usable against the investor’s other income.',
+    why:'That is true for a real estate professional or an investor with passive income elsewhere, and false for most others. If it is not true for the investor, tax savings from depreciation (especially cost segregation) are overstated until the property has income or is sold. This is a property-level view, not an investor tax return.' };
+});
+rule('tax.costseg-payback', 'WARN', 'Tax', 'Depreciation', function(s){
+  var d = dep(s); if(!d.costSeg || d.depMethod !== 'macrs' || !(num(d.costSegFee) > 0) || typeof window.bkCostSegBenefit !== 'function') return;
+  var b = safe(function(){ return window.bkCostSegBenefit(); }, null); if(!b) return;
+  if(b.netNominalBenefit < 0) return { msg:'Cost segregation costs more than it saves over the hold: net nominal benefit ' + $(b.netNominalBenefit) + ' after the ' + $(b.fee) + ' fee and the extra tax at sale.',
+    why:'Accelerated depreciation is recaptured when the property is sold, so the gain from timing can be smaller than the study fee plus the extra recapture tax. On this deal the study does not pay for itself within the modelled hold.' };
+});
+
+/* ==================================== ACCOUNTING / STATEMENT CONSISTENCY */
+rule('acct.statement-vs-cashflow', 'WARN', 'Reconciliation', 'Deal Underwrite', function(s){
+  if(isDev(s)) return;
+  var c = safe(function(){ return bkCalc(); }, null), u = safe(function(){ return bkAnnualCF(); }, null); if(!c || !u || !u.arr || !u.arr[0]) return;
+  var stmt = c.after, cf = u.arr[0].after, gap = cf - stmt;
+  if(!(Math.abs(stmt) > 0) || Math.abs(gap) / Math.abs(stmt) < 0.005) return;
+  var cv = typeof bkConventions === 'function' ? bkConventions(s) : {}, why = [];
+  if(cv.cvRentGrowthStart === 'month1') why.push('growth compounds from month 1, so Year 1 of the cash flow is above the underwritten rents and expenses');
+  if(cv.cvOpexVariablePct > 0) why.push(pc(cv.cvOpexVariablePct, 0) + ' of controllable expenses are treated as varying with occupancy in the cash flow but fixed in the statement');
+  if(cv.cvBadDebtBasis === 'legacy') why.push('bad debt is charged on gross rent in the statement but on rent after vacancy in the cash flow');
+  return { msg:'Year-1 NOI in the Operating Underwrite (' + $(stmt) + ') does not equal Year-1 NOI in the monthly cash flow (' + $(cf) + '): a gap of ' + $(gap) + ' (' + pc(gap / stmt, 1) + ').',
+    why:'The loan is sized, and DSCR and going-in yield are quoted, off one NOI; returns, the sale price and the waterfall run off the other. Reasons here: ' + (why.length ? why.join('; ') + '.' : 'rent-roll or lease timing differences between the statement and the monthly build.') + ' The two should agree in Year 1 unless you intend a difference - otherwise lenders, investors and your own return summary will quote different NOIs.',
+    data:{ statement:stmt, cashflow:cf, gap:gap } };
+});
+rule('acct.ltv-on-value', 'WARN', 'Debt', 'Deal Underwrite', function(s){
+  if(isDev(s)) return; var cv = typeof bkConventions === 'function' ? bkConventions(s) : {};
+  if(cv.cvLtvBasis === 'value' && !cv.legacyFields.length) return { msg:'Acquisition LTV is measured on underwritten value (Year-1 NOI ÷ exit cap).',
+    why:'The loan then depends on your exit cap: tightening the exit cap increases the loan you "qualify" for. Lenders size on appraised value or price, not on your sale assumption, so the loan and equity cheque can be overstated and the debt quote circular. Price or the lesser of price and value is the usual basis.' };
+});
+rule('acct.legacy-methodology', 'INFO', 'Reconciliation', 'Deal Underwrite', function(s){
+  if(isDev(s)) return; var cv = typeof bkConventions === 'function' ? bkConventions(s) : null;
+  if(cv && cv.legacyFields.length && !cv.isLegacy) return { msg:'Some underwriting conventions are at legacy values and others at the current standard (' + cv.legacyFields.join(', ') + ' are legacy).',
+    why:'Mixing methodologies makes results hard to compare with other deals and with the independent audit. Move all five to the standard, or all to legacy, unless you have a specific reason.' };
+});
+rule('acct.hurdle-on-deal-equity', 'WARN', 'Waterfall', 'Equity Waterfall', function(s){
+  if(typeof bkConventions !== 'function') return; var cv = bkConventions(s); if(isDev(s) || cv.cvHurdleBasis !== 'deal' || cv.legacyFields.indexOf('cvHurdleBasis') >= 0) return;
+  return { msg:'Waterfall hurdles are tested on total deal equity cash flows rather than the LP’s own.',
+    why:'Most JV agreements measure the preferred return and IRR hurdles on the LP’s contributions and distributions. Testing on total equity (including the GP’s catch-up and promote) can move promote tiers earlier than the LP has actually earned its return, so the GP promote is overstated relative to the agreement.' };
+});
+rule('acct.occupancy-vs-vacancy', 'WARN', 'Revenue', 'Deal Underwrite', function(s){
+  var o = num(s.occupancy), v = num(s.vacancy); if(!isFinite(o) || !isFinite(v) || o <= 0) return;
+  if(Math.abs(o - (1 - v)) > 0.01) return { msg:'Occupancy (' + pc(o) + ') and vacancy (' + pc(v) + ') do not add to 100%.',
+    why:'Only vacancy drives the engine; the occupancy field is carried for display. Two inputs for the same thing that disagree mean someone reading the sheet sees a different occupancy from the one that produced the numbers.' };
+});
+rule('acct.rentroll-vs-flat', 'WARN', 'Revenue', 'Rent Roll', function(s){
+  var rr = Array.isArray(s.rentRoll) ? s.rentRoll : []; if(!rr.length || !(num(s.avgRent) > 0) || !(num(s.units) > 0) || typeof bkRentRollStats !== 'function') return;
+  var st = safe(function(){ return bkRentRollStats(rr); }, null); if(!st) return;
+  var rrG = (/market/i.test(String(s.rentAppliedBasis || '')) ? st.resMarket : st.resInPlace) * 12, flat = num(s.avgRent) * num(s.units) * 12;
+  if(rrG > 0 && Math.abs(flat - rrG) / rrG > 0.02) return { msg:'A rent roll is loaded (' + $(rrG) + ' a year) and it differs from the flat rent inputs (' + $(flat) + ') by ' + pc((flat - rrG) / rrG) + '.',
+    why:'When a rent roll exists it silently overrides the flat Average Rent and Units inputs. Anything still reading the flat inputs - a quick check, an offering memo, the break-even rent - will disagree with the model’s revenue.' };
+});
+rule('acct.reserves-zero', 'WARN', 'Operations', 'Deal Underwrite', function(s){
+  if(isDev(s) || !(num(s.units) > 0) || /office|retail|industrial|land/i.test(String(s.propertyType || ''))) return;
+  if(!(num(s.reserves) > 0)) return { msg:'Replacement reserves are zero on a residential property.',
+    why:'NOI after reserves is what lenders size on and what buyers capitalise. Typical underwriting uses $250-$350 per unit a year. Zero reserves overstates NOI, the loan, the exit value and every return.' };
+});
+rule('acct.mgmt-zero', 'WARN', 'Operations', 'Deal Underwrite', function(s){
+  if(isDev(s)) return; if(num(s.mgmtPct) === 0 && num(s.units) > 0) return { msg:'Management fee is zero.',
+    why:'Even when the sponsor self-manages, lenders and buyers impute a fee (typically 2-4% of EGI). Excluding it overstates NOI and the exit value by roughly the fee divided by the cap rate.' };
+});
+rule('acct.exit-below-going-in', 'WARN', 'Exit', 'Deal Underwrite', function(s){
+  if(isDev(s)) return; var u = safe(function(){ return bkAnnualCF(); }, null), pp = num(s.purchasePrice), cap = num(s.exitCap); if(!u || !(pp > 0) || !(cap > 0)) return;
+  var gi = u.arr[0].after / pp;
+  if(cap < gi - 0.0005) return { msg:'Exit cap (' + pc(cap, 2) + ') is below the going-in yield (' + pc(gi, 2) + ').',
+    why:'That assumes the market prices the property more richly when you sell than when you buy (cap-rate compression). Institutional underwriting normally holds the exit cap at or above going-in, adding 25-50 bps for age. Part of the return then comes from the assumption, not from operations.' };
+});
+rule('acct.units-vs-gsf', 'WARN', 'Property', 'Deal Underwrite', function(s){
+  var u = num(s.units), g = num(s.gsf); if(!(u > 0) || !(g > 0) || /office|retail|industrial|land/i.test(String(s.propertyType || ''))) return;
+  var a = g / u; if(a < 300 || a > 3000) return { msg:'Average unit size of ' + Math.round(a).toLocaleString('en-US') + ' SF (GSF ÷ units) is outside a plausible 300-3,000 SF.',
+    why:'Units or gross SF is probably wrong. Per-unit and per-SF metrics, the reserve and miscellaneous expense lines scaled by GSF, and the break-even rent per unit will all be off.' };
+});
+rule('acct.noi-not-positive', 'WARN', 'Operations', 'Operating Underwrite', function(s){
+  if(isDev(s)) return; var c = safe(function(){ return bkCalc(); }, null);
+  if(c && !(c.after > 0)) return { msg:'Year-1 NOI after reserves is ' + $(c.after) + '.', why:'With no positive NOI there is no loan, no valuation and no meaningful return. Check expenses, rent and units for an entry error before reading any result.' };
+});
+rule('acct.expense-ratio', 'WARN', 'Operations', 'Operating Underwrite', function(s){
+  if(isDev(s)) return; var c = safe(function(){ return bkCalc(); }, null); if(!c || !(c.egi > 0)) return;
+  var r = c.total / c.egi;
+  if(r < 0.2 || r > 0.75) return { msg:'Operating expense ratio is ' + pc(r, 0) + ' of EGI.', why:'Multifamily typically runs 35-55% (higher with heavy taxes). A ratio this far outside suggests missing or duplicated expense lines, which flows straight into NOI, loan size and value.' };
+});
+
+/* ============================================================ DEBT */
+rule('debt.loan-above-cost', 'ERROR', 'Debt', 'Debt', function(s){
+  if(isDev(s) || s.debtEnabled === false) return; var d = safe(function(){ return bkDebt(); }, null); if(!d || !(d.loan > 0) || !(d.basis > 0)) return;
+  if(d.loan > d.basis * 1.0001) return { msg:'The sized loan (' + $(d.loan) + ') exceeds total acquisition cost (' + $(d.basis) + ').', why:'Lending more than 100% of cost returns cash to the buyer at closing; equity would be negative. One of price, LTV, LTC or the value basis is wrong.' };
+});
+rule('debt.term-before-hold', 'WARN', 'Debt', 'Debt', function(s){
+  if(isDev(s) || s.debtEnabled === false) return; var t = num(s.debtTerm), h = num(s.holdYears);
+  if(t > 0 && h > t && !num(s.refiAtMaturity)) return { msg:'Loan term is ' + t + ' years but the hold is ' + h + ' years, with no refinance at maturity.',
+    why:'The balance falls due before the planned sale. The engine repays it from equity at maturity as a balloon; a real refinance would carry new fees, a new rate and its own DSCR test, none of which are modelled unless you turn on refinance at maturity.' };
+});
+rule('debt.floating-unhedged', 'WARN', 'Debt', 'Debt', function(s){
+  if(isDev(s) || s.debtEnabled === false) return;
+  if(/float/i.test(String(s.debtRateType || '')) && !(num(s.rateCapStrike) > 0)) return { msg:'Debt is floating-rate with no interest rate cap.',
+    why:'A floating loan without a cap has unbounded rate risk, and most lenders require a cap. The cap cost is also missing from sources and uses, which understates the equity cheque.' };
+});
+rule('debt.floating-zero-index', 'ERROR', 'Debt', 'Debt', function(s){
+  if(isDev(s) || s.debtEnabled === false) return;
+  if(/float/i.test(String(s.debtRateType || '')) && !(num(s.debtIndexRate) > 0) && !(num(s.debtSpread) > 0)) return { msg:'Floating-rate debt has a zero index and a zero spread.',
+    why:'The coupon would be 0% (or silently fall back to the fixed-rate input). Debt service, DSCR and returns are all wrong until an index rate and spread are entered.' };
+});
+rule('debt.io-longer-than-term', 'WARN', 'Debt', 'Debt', function(s){
+  if(isDev(s) || s.debtEnabled === false) return; var io = num(s.acqIO), t = num(s.debtTerm);
+  if(io > 0 && t > 0 && io > t + 1e-9) return { msg:'Interest-only period (' + io + ' years) is longer than the loan term (' + t + ' years).', why:'The interest-only period is entered in years. If it exceeds the term the loan never amortises, the balloon equals the full loan, and the amortisation and DSCR you see are not what a lender would underwrite.' };
+});
+rule('debt.dscr-below-one', 'WARN', 'Debt', 'Covenant Monitor', function(s){
+  if(isDev(s) || s.debtEnabled === false) return; var u = safe(function(){ return bkAnnualCF(); }, null), d = safe(function(){ return bkDebt(); }, null);
+  if(!u || !d || !d.annual || !d.annual[0] || !(d.annual[0].payment > 0)) return; var x = u.arr[0].after / d.annual[0].payment;
+  if(x < 1) return { msg:'Year-1 DSCR is ' + x.toFixed(2) + 'x - NOI does not cover debt service.', why:'The property does not pay its own debt. Equity funds the shortfall every period (an equity call in the waterfall), and any lender covenant would be in default from day one.' };
+});
+rule('debt.sizing-looser-than-policy', 'WARN', 'Debt', 'Debt Capacity', function(s){
+  if(isDev(s) || s.debtEnabled === false || typeof window.bkDebtCapacity !== 'function') return; var c = safe(function(){ return window.bkDebtCapacity(); }, null);
+  if(c && c.overage > (c.policy.maxDebtOverage || 0)) return { msg:'The loan the engine sized (' + $(c.requested) + ') is ' + $(c.overage) + ' above what house credit policy supports (' + $(c.capacity) + ', binding: ' + c.binding.name + ').',
+    why:'Deal loan terms (LTV / DSCR at the actual coupon) are looser than the house policy tests (including a stressed coupon). The returns assume debt the credit committee would not approve; see Debt Capacity and the IC gate.' };
+});
+
+/* ====================================================== REFINANCE */
+rule('refi.year-out-of-range', 'ERROR', 'Refinance', 'Refi / Recap', function(s){
+  if(!s._refi || isDev(s) || typeof window.bkRefiInputs !== 'function') return; var i = window.bkRefiInputs(), h = Math.round(num(s.holdYears) || 0);
+  if(h >= 2 && (i.year < 1 || i.year > h - 1)) return { msg:'Refinance year ' + i.year + ' is outside the hold (valid: 1 to ' + (h - 1) + ').', why:'A refinance at or after the sale date repays a loan that is repaid anyway, and one before closing does not exist. The cash-out, new debt service and exit payoff in the refinance analysis are meaningless until the year is inside the hold.' };
+});
+rule('refi.post-dscr-below-policy', 'WARN', 'Refinance', 'Refi / Recap', function(s){
+  if(!s._refi || isDev(s) || typeof window.bkRefi !== 'function' || typeof window.bkPolicy !== 'function') return; var R = safe(function(){ return window.bkRefi(); }, null), p = window.bkPolicy();
+  if(R && R.selected && R.selected.postDSCR < p.minDSCR - 1e-9) return { msg:'The refinanced loan covers debt service ' + R.selected.postDSCR.toFixed(2) + 'x, below the house policy minimum of ' + p.minDSCR.toFixed(2) + 'x.', why:'The refinance is sized to its own DSCR input (' + R.inputs.minDSCR.toFixed(2) + 'x), which is looser than house credit policy. The cash-out shown is more than the credit committee would approve, so the recap return is overstated relative to what could actually be financed.' };
+});
+rule('refi.cash-out-negative', 'WARN', 'Refinance', 'Refi / Recap', function(s){
+  if(!s._refi || isDev(s) || typeof window.bkRefi !== 'function') return; var R = safe(function(){ return window.bkRefi(); }, null);
+  if(R && R.selected && R.selected.netCashOut < 0) return { msg:'The refinance in year ' + R.selected.year + ' needs ' + $(-R.selected.netCashOut) + ' of new equity: the new loan does not repay the existing one plus costs.', why:'A "refinance" that requires equity is a paydown, not a cash-out. The return impact treats it as an equity contribution, which lowers IRR; check the appraisal cap, coupon and constraints before presenting it as a recap.' };
+});
+
+/* ========================================================= WATERFALL */
+rule('wf.promote-decreasing', 'WARN', 'Waterfall', 'Equity Waterfall', function(s){
+  var a = num(s.t2LP), b = num(s.t3LP), c = num(s.t4LP);
+  if(isFinite(a) && isFinite(b) && isFinite(c) && (b > a + 1e-9 || c > b + 1e-9)) return { msg:'LP share of distributions rises at higher tiers (' + pc(a, 0) + ' → ' + pc(b, 0) + ' → ' + pc(c, 0) + ').',
+    why:'A promote normally gives the GP a larger share as returns rise, so the LP share falls tier by tier. A rising LP share means the GP is paid less for outperformance, which is almost certainly a transposed entry and changes the promote materially.' };
+});
+rule('wf.gp-share-extreme', 'WARN', 'Waterfall', 'Equity Waterfall', function(s){
+  var g = num(s.gpShare); if(g >= 0.5 && g <= 1) return { msg:'GP co-investment is ' + pc(g, 0) + ' of equity.', why:'GP co-invest is usually 5-20%. At this level the LP is the minority owner; check that GP and LP were not swapped, since it changes both contributions and the promote base.' };
+});
+
+/* =================================================== DEVELOPMENT */
+rule('dev.no-construction', 'ERROR', 'Development', 'Development', function(s){
+  if(isDev(s) && !(num(s.constructionMonths) > 0)) return { msg:'Development deal with a construction period of zero months.', why:'There is nothing to build: no costs are drawn on a schedule, no construction interest accrues, and lease-up starts at closing. Set the construction months, or change the deal type to Acquisition.' };
+});
+rule('dev.con-loan-zero-rate', 'ERROR', 'Development', 'Development', function(s){
+  if(isDev(s) && num(s.conLTC) > 0 && !(num(s.conRate) > 0)) return { msg:'A construction loan is sized (' + pc(num(s.conLTC), 0) + ' LTC) with a 0% interest rate.', why:'Capitalised construction interest, which is a major cost line, would be zero. Total cost, the loan commitment and the equity requirement are all understated.' };
+});
+rule('dev.no-leaseup', 'WARN', 'Development', 'Development', function(s){
+  if(isDev(s) && num(s.constructionMonths) > 0 && !(num(s.leaseupMonths) > 0)) return { msg:'No lease-up period after construction.', why:'The building is assumed fully income-producing the day it is completed. New buildings take months to fill; this overstates early NOI, skips the lease-up operating deficit and moves stabilisation (and the refinance) too early.' };
+});
+rule('dev.takeout-shortfall', 'WARN', 'Development', 'Debt', function(s){
+  if(!isDev(s) || !num(s.refiAtStab) || typeof bkDevTakeoutV11 !== 'function') return; var t = safe(function(){ return bkDevTakeoutV11(); }, null);
+  if(t && t.refiShortfall > 1) return { msg:'The permanent loan is ' + $(t.refiShortfall) + ' short of repaying the construction loan at takeout.', why:'Equity must be added at conversion to retire the construction loan. The returns include that late equity call, but the sources and uses at closing will not show it - an investor may be surprised by a second capital call.' };
+});
+rule('dev.conventions-ignored', 'INFO', 'Development', 'Deal Underwrite', function(s){
+  if(isDev(s) && typeof bkConventions === 'function' && Object.keys(window.BK_CV_STANDARD || {}).some(function(k){ return s[k] !== undefined && s[k] !== null && s[k] !== '' && String(s[k]) !== String(window.BK_CV_STANDARD[k]); }))
+    return { msg:'Acquisition underwriting conventions are set on a development deal.', why:'They do not apply: development deals use their own methodology (construction-loan sizing, construction-period cash flows, annual growth). The settings are stored but have no effect, so they should not be quoted as part of the deal’s methodology.' };
+});
+
+/* ================================================ POLICY / IC */
+rule('pol.thresholds-inverted', 'ERROR', 'Credit Policy', 'Credit Policy', function(s){
+  if(typeof window.bkPolicy !== 'function') return; var p = window.bkPolicy();
+  if(p.advanceScore < p.conditionalScore) return { msg:'The gate score to APPROVE (' + pc(p.advanceScore, 0) + ') is below the score for CONDITIONAL (' + pc(p.conditionalScore, 0) + ').', why:'A deal could never be conditional-but-not-approved; the verdict logic is contradictory until the thresholds are in order.' };
+});
+rule('pol.dscr-below-one', 'ERROR', 'Credit Policy', 'Credit Policy', function(s){
+  if(typeof window.bkPolicy !== 'function') return; var p = window.bkPolicy();
+  if(p.minDSCR < 1) return { msg:'Policy minimum DSCR is ' + p.minDSCR.toFixed(2) + 'x, below 1.00x.', why:'A minimum below 1.0x approves loans whose income does not cover payments, so the debt-capacity limit stops constraining anything.' };
+});
+rule('pol.weights', 'WARN', 'Credit Policy', 'Credit Policy', function(s){
+  var g = (s._policy && s._policy.gates) || null; if(!g || !window.BK_GATES) return;
+  var w = window.BK_GATES.reduce(function(a, x){ var o = g[x[0]] || {}; return a + ((o.weight !== undefined && isFinite(Number(o.weight))) ? Number(o.weight) : x[5]); }, 0);
+  if(Math.abs(w - 1) > 1e-9) return { msg:'IC gate weights total ' + pc(w, 1) + ', not 100%.', why:'The weighted gate score is a share of the weights that pass. If they do not total 100% the score is mis-scaled and the APPROVE / CONDITIONAL thresholds mean something different from what the policy intended.' };
+});
+rule('pol.override-incomplete', 'WARN', 'Credit Policy', 'IC Memo', function(s){
+  var o = (s._ic && s._ic.override) || {}; if(o.on === 'YES' && (!String(o.reason || '').trim() || !String(o.approvedBy || '').trim()))
+    return { msg:'A credit override is switched on without ' + (!String(o.reason || '').trim() ? 'a reason' : 'an approver') + '.', why:'An override only takes effect with YES, a documented reason and a named approver. As entered it does nothing, so the debt-capacity exception still blocks the deal - but anyone reading the switch alone would assume it was waived.' };
+});
+rule('pol.override-unneeded', 'INFO', 'Credit Policy', 'IC Memo', function(s){
+  var o = (s._ic && s._ic.override) || {}; if(o.on !== 'YES' || !String(o.reason || '').trim() || !String(o.approvedBy || '').trim() || typeof window.bkDebtCapacity !== 'function') return;
+  var c = safe(function(){ return window.bkDebtCapacity(); }, null); if(c && c.overage <= (c.policy.maxDebtOverage || 0)) return { msg:'A credit override is recorded, but the loan is within house capacity.', why:'The override has no effect on this deal. Remove it so an old waiver does not carry over if the structure changes later.' };
+});
+
+/* ==================================================== evaluation */
+var LEVEL_ORDER = { ERROR:0, WARN:1, INFO:2 };
+function conflicts(){
+  var s = bkLoad(); if(!s || (typeof bkIsProvisioned === 'function' && !bkIsProvisioned())) return [];
+  var ack = s._ack || {}, out = [];
+  RULES.forEach(function(r){
+    var res; try { res = r.fn(s); } catch(e){ res = null; }
+    if(res) out.push({ id:r.id, level:res.level || r.level, area:r.area, sheet:r.sheet, message:res.msg, why:res.why, data:res.data || null, acknowledged:!!ack[r.id] });
+  });
+  out.sort(function(a, b){ return (LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) || a.area.localeCompare(b.area); });
+  return out;
+}
+window.bkConflicts = conflicts;
+window.BK_CONFLICT_RULES = RULES.map(function(r){ return { id:r.id, level:r.level, area:r.area }; });
+window.bkAckConflict = function(id, on){
+  var s = bkLoad(); if(!s) return; s._ack = s._ack || {};
+  if(on === false) delete s._ack[id]; else s._ack[id] = { at:new Date().toISOString() };
+  bkSave(s); setTimeout(function(){ if(typeof showSheet === 'function' && typeof currentSheet !== 'undefined') showSheet(currentSheet); }, 0);
+  if(on !== false) queue = queue.filter(function(q){ return q.id !== id; });        /* the card goes at once, not at the next re-check */
+  renderToast();
+};
+
+/* ---- feed the existing readiness controls: ERROR blocks decision-grade, WARN is listed */
+var prevCtl = window.bkModelControls;
+if(typeof prevCtl === 'function' && !prevCtl.__bkConflicts){
+  var wrapped = function(){
+    var out = prevCtl.apply(this, arguments);
+    try {
+      if(Array.isArray(out)) conflicts().forEach(function(c){
+        if(c.level === 'INFO') return;
+        out.push({ level:c.level === 'ERROR' ? 'FAIL' : 'WARN', area:c.area, msg:c.message + ' Why it matters: ' + c.why, conflictId:c.id });
+      });
+    } catch(e){}
+    return out;
+  };
+  wrapped.__bkConflicts = true; window.bkModelControls = wrapped;
+}
+
+/* ---- pop-up when an edit creates a new conflict */
+var seen = null, seenKey = null, queue = [], timer = null;
+function dealKey(){ var s = bkLoad(); return s ? String(s.dealId || '') + '|' + String((s._provenance && s._provenance.createdAt) || '') : ''; }
+function enabled(){ return window.BK_CONFLICT_TOASTS === true || (window.BK_CONFLICT_TOASTS !== false && !navigator.webdriver); }
+function check(){
+  timer = null; var key = dealKey(); if(!key) return;
+  var now = conflicts().filter(function(c){ return c.level !== 'INFO'; }), ids = {};
+  now.forEach(function(c){ ids[c.id] = c; });
+  if(seen === null || key !== seenKey){ seen = {}; Object.keys(ids).forEach(function(k){ seen[k] = true; }); seenKey = key; queue = []; renderToast(); return; }   /* a new deal: baseline, no pop-up */
+  var fresh = now.filter(function(c){ return !seen[c.id] && !c.acknowledged; });
+  Object.keys(seen).forEach(function(k){ if(!ids[k]) delete seen[k]; });          /* resolved conflicts can warn again later */
+  now.forEach(function(c){ seen[c.id] = true; });
+  fresh.forEach(function(c){ if(!queue.some(function(q){ return q.id === c.id; })) queue.push(c); });
+  queue = queue.filter(function(q){ return ids[q.id] && !ids[q.id].acknowledged; });
+  renderToast();
+}
+function renderToast(){
+  if(!enabled() || typeof document === 'undefined') return;
+  var el = document.getElementById('bk-conflict-toast');
+  if(!queue.length){ if(el) el.remove(); return; }
+  if(!el){
+    el = document.createElement('div'); el.id = 'bk-conflict-toast';
+    el.style.cssText = 'position:fixed;right:18px;bottom:18px;width:400px;max-width:calc(100vw - 36px);z-index:99999;font:13px/1.45 system-ui,sans-serif;display:flex;flex-direction:column;gap:10px';
+    document.body.appendChild(el);
+  }
+  var esc = function(v){ return String(v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  el.innerHTML = queue.slice(0, 3).map(function(c){
+    var col = c.level === 'ERROR' ? '#A93B2C' : '#B8860B';
+    return '<div class="bk-conflict-card" data-id="' + c.id + '" style="background:#fff;border:1px solid #d9d4c8;border-left:5px solid ' + col + ';border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:12px 14px;color:#222">'
+      + '<div style="font-weight:700;color:' + col + ';margin-bottom:4px">' + (c.level === 'ERROR' ? 'Conflict: results will be wrong' : 'Check this selection') + ' · ' + esc(c.area) + '</div>'
+      + '<div style="margin-bottom:6px">' + esc(c.message) + '</div>'
+      + '<div style="font-size:12px;color:#444;background:#f7f5ef;border-radius:4px;padding:7px 9px"><b>Why it matters.</b> ' + esc(c.why) + '</div>'
+      + '<div style="display:flex;gap:8px;margin-top:9px;justify-content:flex-end">'
+      + '<button type="button" onclick="bkConflictDismiss(\'' + c.id + '\')" style="cursor:pointer;border:1px solid #bbb;background:#fff;border-radius:4px;padding:4px 10px">Dismiss</button>'
+      + (c.level === 'ERROR' ? '' : '<button type="button" onclick="bkAckConflict(\'' + c.id + '\')" style="cursor:pointer;border:1px solid #bbb;background:#fff;border-radius:4px;padding:4px 10px">Acknowledge</button>')
+      + '<button type="button" onclick="bkConflictDismiss(\'' + c.id + '\');showSheet(\'Model Checks\')" style="cursor:pointer;border:0;background:#1E3A55;color:#fff;border-radius:4px;padding:4px 10px">All checks</button></div></div>';
+  }).join('') + (queue.length > 3 ? '<div style="text-align:right;font-size:12px"><a href="#" onclick="showSheet(\'Model Checks\');return false" style="color:#1E3A55">+' + (queue.length - 3) + ' more on Model Checks</a></div>' : '');
+}
+window.bkConflictDismiss = function(id){ queue = queue.filter(function(q){ return q.id !== id; }); renderToast(); };
+var origSave = window.bkSave;
+if(!origSave.__bkConflicts){
+  var hooked = function(d){
+    var r = origSave.apply(this, arguments);
+    if(window.bkSave === hooked){ if(timer) clearTimeout(timer); timer = setTimeout(check, 350); }    /* not inside a scenario run, which swaps bkSave */
+    return r;
+  };
+  hooked.__bkConflicts = true; window.bkSave = hooked;
+  try { bkSave = hooked; } catch(e){}
+}
+window.bkConflictsCheckNow = check;
+})();
+</script>
+
+<script id="bk-v29140-conflicts-ui">
+/* V29.14.0 - MODEL CHECKS sheet: every conflicting-input rule that fires, with why and where to fix it. Presentation only. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof window.bkConflicts !== 'function') return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function chip(cls, t){ return '<span class="status-chip ' + cls + '">' + t + '</span>'; }
+var render = function(){
+  if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Model Checks');
+  var s = bkLoad(), list = window.bkConflicts(), n = { ERROR:0, WARN:0, INFO:0 };
+  list.forEach(function(c){ if(!c.acknowledged || c.level === 'ERROR') n[c.level]++; });
+  var rows = list.map(function(c){
+    var cls = c.level === 'ERROR' ? 'fail' : c.level === 'WARN' ? 'warn' : '';
+    var act = (c.level !== 'ERROR')
+      ? (c.acknowledged ? '<button type="button" class="status-chip" onclick="bkAckConflict(\'' + c.id + '\',false)">UNDO ACK</button>' : '<button type="button" class="status-chip" onclick="bkAckConflict(\'' + c.id + '\')">ACKNOWLEDGE</button>') : '';
+    return '<tr' + (c.acknowledged ? ' style="opacity:.6"' : '') + '><td class="rowlabel" style="vertical-align:top">' + chip(cls, c.level) + '<div style="margin-top:4px;font-size:11px">' + esc(c.area) + '</div></td>'
+      + '<td data-bk-align="text" style="vertical-align:top"><b>' + esc(c.message) + '</b><div style="margin-top:6px;font-size:12px;color:#555"><b>Why it matters.</b> ' + esc(c.why) + '</div></td>'
+      + '<td style="vertical-align:top"><a href="#" onclick="showSheet(\'' + c.sheet + '\');return false">' + esc(c.sheet) + '</a></td><td style="vertical-align:top">' + act + (c.acknowledged ? '<div style="font-size:11px">acknowledged</div>' : '') + '</td></tr>';
+  }).join('') || '<tr><td class="rowlabel" colspan="4">No conflicting inputs found.</td></tr>';
+  var main = '<div class="tbl-wrap"><table class="fin"><caption>Conflicting Inputs and Their Consequences</caption><thead><tr><th class="rowlabel-h">Severity</th><th style="text-align:left">Finding and why it matters</th><th>Fix on</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div><b>How to read this.</b> <b>ERROR</b>: the inputs contradict each other or are impossible, so results are wrong; the deal is not decision-grade until fixed. <b>WARN</b>: calculable, but likely to disagree with a lender, a tax return, a JV agreement or another figure in the model - acknowledge it once you have decided it is intended. <b>INFO</b>: an assumption worth stating. These checks compare inputs and engine outputs; they never change a number. A card appears whenever an edit creates a new ERROR or WARN.</div></div>';
+  var side = (typeof sidebarShell === 'function') ? sidebarShell('<div class="card"><div class="card-head">Model Checks</div><div class="metric-list"><div class="metric-row"><span class="k">Errors</span><span class="v">' + n.ERROR + '</span></div><div class="metric-row"><span class="k">Warnings</span><span class="v">' + n.WARN + '</span></div><div class="metric-row"><span class="k">Notes</span><span class="v">' + n.INFO + '</span></div><div class="metric-row"><span class="k">Rules</span><span class="v">' + window.BK_CONFLICT_RULES.length + '</span></div></div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : '';
+  return { title:'Model Checks', crumbs:'Credit & IC', desc:'Combinations of inputs that contradict each other or quietly create an accounting, tax or credit discrepancy.',
+    meta:{ Property:s.name, Errors:n.ERROR, Warnings:n.WARN }, main:main, sidebar:side };
+};
+if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Model Checks', render); else RENDERERS['Model Checks'] = render;
+})();
+</script>
+
+<script id="bk-v29150-refi">
+/* ===========================================================================
+   V29.15.0 - REFINANCE / RECAPITALISATION (ported from the Capital Markets model, 24_REFI RECAP)
+   ===========================================================================
+   For a chosen refinance year, and for every possible year:
+     position      trailing NOI, value at the appraisal cap, the existing balance
+     new loan      the lowest of LTV, DSCR and debt-yield capacity; the binding one
+     cash-out      new loan - existing balance - refinance costs - prepayment
+     afterwards    post-refinance DSCR, debt yield, LTV, balance and penalty at exit
+     impact        the equity cash flow rebuilt MONTHLY with the cash-out, the new
+                   debt service and the new payoff, giving IRR, multiple, profit and
+                   cash returned before exit versus holding the original loan
+     verdict       REFINANCE / TRADE-OFF / DO NOT REFINANCE
+     reconcile     existing balance re-derived in closed form; profit bridge; net
+                   cash-out tie
+   It reads the engine's own monthly levered cash flow and debt schedule; it does not
+   change a return. Acquisition deals with a sized, fixed-rate senior loan only.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof bkMonthlyReturns !== 'function') return;
+var num = function(x){ var v = Number(x); return isFinite(v) ? v : NaN; };
+function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
+function raw(){ var s = bkLoad(); return (s && s._refi) || {}; }
+function inputs(s){
+  var r = raw(), p = (typeof window.bkPolicy === 'function') ? window.bkPolicy() : { minDebtYield:0.085, minDSCR:1.25 };
+  var hold = Math.max(1, Math.round(num(s.holdYears) || 10));
+  var pick = function(k, dflt){ var v = num(r[k]); return (r[k] !== undefined && r[k] !== '' && isFinite(v)) ? v : dflt; };
+  return { year:Math.round(pick('year', Math.min(5, Math.max(1, hold - 1)))), appraisalCap:pick('appraisalCap', num(s.exitCap)), maxLTV:pick('maxLTV', num(s.refiLTV) || 0.65),
+    minDSCR:pick('minDSCR', num(s.refiDSCR) || p.minDSCR), minDebtYield:pick('minDebtYield', p.minDebtYield), rate:pick('rate', num(s.refiRate) || 0.065), amort:pick('amort', num(s.refiAmort) || 30),
+    costsPct:pick('costsPct', num(s.refiOrigFee) || 0.01), prepayPct:pick('prepayPct', 0.01), exitPenaltyPct:pick('exitPenaltyPct', 0.01), hold:hold };
+}
+window.bkRefiInputs = function(){ return inputs(bkLoad()); };
+window.bkRefiSet = function(k, v){
+  var s = bkLoad(); if(!s) return; s._refi = s._refi || {}; s._refi[k] = Number(v); bkSave(s);
+  setTimeout(function(){ if(typeof showSheet === 'function') showSheet('Refi / Recap'); }, 0);
+};
+window.bkRefiReset = function(){ var s = bkLoad(); if(!s) return; delete s._refi; bkSave(s); setTimeout(function(){ if(typeof showSheet === 'function') showSheet('Refi / Recap'); }, 0); };
+
+function pvAnn(rate, years, annual){ var i = rate / 12, n = Math.round(years * 12); return i > 0 ? annual / 12 * (1 - Math.pow(1 + i, -n)) / i : annual * years; }
+function pmtM(rate, years, loan){ var i = rate / 12, n = Math.round(years * 12); return i > 0 ? loan * i / (1 - Math.pow(1 + i, -n)) : loan / n; }
+function balAfter(loan, rate, years, k){ var i = rate / 12, p = pmtM(rate, years, loan), g = Math.pow(1 + i, k); return i > 0 ? loan * g - p * (g - 1) / i : loan - p * k; }
+
+function metricsOf(values, dates, closeDt, eq0){
+  var irr = bkXirrClose(values, dates, closeDt, -eq0), pos = 0, neg = 0, sum = 0;
+  values.forEach(function(v){ if(v > 0) pos += v; else neg += -v; sum += v; });
+  return { irr:irr, moic:neg ? pos / neg : 0, profit:sum };
+}
+function refiAt(y, inp, ctx){
+  var u = ctx.u, d = ctx.d, r = ctx.r, n = ctx.n, rows = r.rows, last = rows.length - 1;
+  var noi = u.arr[y - 1].after, bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
+  var cLTV = value * inp.maxLTV, cDSCR = pvAnn(inp.rate, inp.amort, noi / inp.minDSCR), cDY = noi / inp.minDebtYield;
+  var loan = Math.min(cLTV, cDSCR, cDY), binding = loan === cLTV ? 'LTV' : loan === cDSCR ? 'DSCR' : 'Debt yield';
+  var costs = loan * inp.costsPct, prepay = bal * inp.prepayPct, gross = loan - bal, net = gross - costs - prepay;
+  var pm = pmtM(inp.rate, inp.amort, loan), ds = pm * 12, kExit = (n - y) * 12, balExit = balAfter(loan, inp.rate, inp.amort, kExit), pen = balExit * inp.exitPenaltyPct;
+  var mr = y * 12, vals = rows.map(function(q){ return q.cf; }), dsDelta = 0, oldPayoff = rows[last].payoff || 0;
+  vals[mr - 1] += net;
+  for(var i = mr; i <= last; i++){ var dd = (rows[i].ds || 0) - pm; vals[i] += dd; dsDelta += dd; }
+  var payoffDelta = oldPayoff - balExit - pen; vals[last] += payoffDelta;
+  var m = metricsOf(vals, ctx.dates, r.closeDt, ctx.eq0);
+  var before = vals.slice(0, last).reduce(function(a, v){ return a + v; }, 0) + ctx.eq0;
+  return { year:y, noi:noi, value:value, existingBalance:bal, existingLTV:value > 0 ? bal / value : 0, capLTV:cLTV, capDSCR:cDSCR, capDY:cDY, newLoan:loan, binding:binding,
+    costs:costs, prepay:prepay, grossCashOut:gross, netCashOut:net, newDS:ds, postDSCR:ds > 0 ? noi / ds : Infinity, postDY:loan > 0 ? noi / loan : 0, postLTV:value > 0 ? loan / value : 0,
+    newBalanceAtExit:balExit, exitPenalty:pen, dsDelta:dsDelta, payoffDelta:payoffDelta, irr:m.irr, moic:m.moic, profit:m.profit, cashBeforeExit:before, payoffAtExit:balExit + pen };
+}
+function refi(){
+  var s = bkLoad(); if(!s || isDev(s)) return null;
+  var d = bkDebt(); if(!(d.loan > 0) || s.debtEnabled === false) return null;
+  var u = bkAnnualCF(), r = bkMonthlyReturns(), n = u.arr.length; if(n < 2) return null;
+  var inp = inputs(s), eq0 = Number(r.rows[0].eqDraw) || 0, dates = r.rows.map(function(q){ return q.dt; });
+  var ctx = { u:u, d:d, r:r, n:n, eq0:eq0, dates:dates };
+  var baseVals = r.rows.map(function(q){ return q.cf; }), base = metricsOf(baseVals, dates, r.closeDt, eq0);
+  base.cashBeforeExit = baseVals.slice(0, baseVals.length - 1).reduce(function(a, v){ return a + v; }, 0) + eq0; base.payoffAtExit = r.rows[r.rows.length - 1].payoff || 0;
+  var valid = inp.year >= 1 && inp.year <= n - 1;
+  var sel = valid ? refiAt(inp.year, inp, ctx) : null;
+  var timing = []; for(var y = 2; y <= n - 1; y++) timing.push(refiAt(y, inp, ctx));
+  var peak = timing.length ? timing.reduce(function(a, b){ return b.netCashOut > a.netCashOut ? b : a; }) : null;
+  var verdict = null;
+  if(sel){
+    var dIRR = sel.irr - base.irr, dProfit = sel.profit - base.profit, dMoic = sel.moic - base.moic;
+    verdict = sel.postDSCR < inp.minDSCR ? 'DO NOT REFINANCE — post-refinance DSCR breaches the minimum'
+      : (dIRR > 0 && dProfit > 0) ? 'REFINANCE — accretive to both IRR and total profit; clears minimum DSCR'
+      : dIRR > 0 ? 'TRADE-OFF — refinance lifts IRR by ' + Math.round(dIRR * 10000) + ' bps but reduces total profit by $' + Math.round(-dProfit).toLocaleString('en-US') + ' and the multiple by ' + (-dMoic).toFixed(2) + 'x; clears minimum DSCR'
+      : 'DO NOT REFINANCE — dilutive to IRR';
+  }
+  /* reconciliation: independent re-derivation of the existing balance, and the profit bridge */
+  var rec = { balanceClosedForm:null, balanceEngine:null, balanceDiff:null, bridgeDiff:null, netTieDiff:null, ok:null };
+  if(sel){
+    var fixed = !/float/i.test(String(s.debtRateType || '')) && !num(s.refiAtMaturity);
+    if(fixed){
+      var k = sel.year * 12, io = Math.round((num(s.acqIO) || 0) * 12), i = d.coupon / 12, am = Math.round((num(s.acqAmort) || 30) * 12), L = d.loan, cf;
+      if(k <= io) cf = L; else { var kk = k - io, g = Math.pow(1 + i, kk), p = i > 0 ? L * i / (1 - Math.pow(1 + i, -am)) : L / am; cf = i > 0 ? L * g - p * (g - 1) / i : L - p * kk; }
+      rec.balanceClosedForm = cf; rec.balanceEngine = sel.existingBalance; rec.balanceDiff = sel.existingBalance - cf;
+    }
+    rec.bridgeDiff = (sel.profit - base.profit) - (sel.netCashOut + sel.dsDelta + sel.payoffDelta);
+    rec.netTieDiff = sel.netCashOut - (sel.grossCashOut - sel.costs - sel.prepay);
+    rec.ok = (rec.balanceDiff == null || Math.abs(rec.balanceDiff) < 1) && Math.abs(rec.bridgeDiff) < 1 && Math.abs(rec.netTieDiff) < 1;
+  }
+  return { inputs:inp, valid:valid, base:base, selected:sel, timing:timing, peak:peak, verdict:verdict, recon:rec, holdYears:n, commonEquity:eq0 };
+}
+window.bkRefi = refi;
+
+/* ------------------------------------------------------------------ sheet */
+function $(v){ var x = Number(v); if(!isFinite(x)) return 'n/a'; var b = Math.abs(x).toLocaleString('en-US', {maximumFractionDigits:0}); return x < 0 ? '($' + b + ')' : '$' + b; }
+function P(v, d){ return (v == null || !isFinite(v)) ? 'n/a' : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
+function X(v){ return (v == null || !isFinite(v)) ? 'n/a' : v.toFixed(2) + 'x'; }
+function chip(cls, t){ return '<span class="status-chip ' + cls + '">' + t + '</span>'; }
+function inp(key, val, w){ return '<input type="text" value="' + val + '" style="width:' + (w || 90) + 'px;text-align:right" onchange="bkRefiSet(\'' + key + '\',' + (key === 'year' || key === 'amort' ? 'parseFloat(this.value)||0' : '(parseFloat(this.value)||0)/100') + ')">'; }
+var render = function(){
+  if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Refi / Recap');
+  var s = bkLoad(), R = refi();
+  if(!R) return { title:'Refi / Recap', crumbs:'Debt', desc:'Cash-out refinance sizing, timing and return impact.', meta:{ Property:s.name },
+    main:'<div class="note-flag"><span>&#9432;</span><div>Refinance analysis applies to acquisition deals with a sized senior loan. This deal is a development deal, has no loan, or is too short to refinance.</div></div>', sidebar:'' };
+  var I = R.inputs, S = R.selected, B = R.base;
+  var t = function(cap, head, body, extra){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>' + cap + '</caption>' + (head ? '<thead><tr>' + head + '</tr></thead>' : '') + '<tbody>' + body + '</tbody></table></div>' + (extra || ''); };
+  var row = function(a, b, c){ return '<tr><td class="rowlabel">' + a + '</td><td class="v">' + b + '</td>' + (c !== undefined ? '<td data-bk-align="text">' + c + '</td>' : '') + '</tr>'; };
+  var inRows = [['Refinance year (end of year)', inp('year', I.year, 60), 'Between 1 and ' + (R.holdYears - 1)], ['Appraisal cap rate', inp('appraisalCap', (I.appraisalCap * 100).toFixed(2)) + ' %', 'Value = trailing NOI / cap'],
+    ['Maximum new loan LTV', inp('maxLTV', (I.maxLTV * 100).toFixed(1)) + ' %', ''], ['Minimum DSCR', X(I.minDSCR), 'Deal refinance DSCR (Inputs); edit under Credit Policy for the house minimum'],
+    ['Minimum debt yield', inp('minDebtYield', (I.minDebtYield * 100).toFixed(2)) + ' %', 'Defaults to the house policy'], ['New loan coupon', inp('rate', (I.rate * 100).toFixed(2)) + ' %', ''],
+    ['New loan amortisation (years)', inp('amort', I.amort, 60), ''], ['Refinance costs', inp('costsPct', (I.costsPct * 100).toFixed(2)) + ' %', 'Of the new loan'],
+    ['Prepayment / defeasance on existing loan', inp('prepayPct', (I.prepayPct * 100).toFixed(2)) + ' %', 'Of the existing balance'], ['Exit prepayment on new loan', inp('exitPenaltyPct', (I.exitPenaltyPct * 100).toFixed(2)) + ' %', 'Of the balance at sale']]
+    .map(function(r){ return row(r[0], r[1], r[2]); }).join('');
+  var main = t('Refinance Assumptions', '<th class="rowlabel-h">Assumption</th><th>Value</th><th style="text-align:left">Note</th>', inRows);
+  if(!S) main += '<div class="note-flag"><span>&#9888;</span><div>The refinance year must be between 1 and ' + (R.holdYears - 1) + ' (the year of sale cannot be refinanced).</div></div>';
+  else {
+    var vc = /^REFINANCE/.test(R.verdict) ? 'pass' : /^TRADE/.test(R.verdict) ? 'warn' : 'fail';
+    main += '<div class="note-flag" style="margin-top:12px"><span>' + (vc === 'pass' ? '&#10003;' : '&#9888;') + '</span><div><b>' + R.verdict.replace(/&/g, '&amp;') + '</b></div></div>'
+      + t('1. Position at Refinance', null, row('Refinance year', S.year) + row('Trailing NOI after reserves', $(S.noi)) + row('Existing senior balance', $(S.existingBalance)) + row('Value at appraisal cap', $(S.value)) + row('Existing LTV', P(S.existingLTV)))
+      + t('2. New Loan Sizing and Cash-Out', null, row('LTV constraint', $(S.capLTV)) + row('DSCR constraint', $(S.capDSCR)) + row('Debt-yield constraint', $(S.capDY))
+        + '<tr class="grandtotal"><td class="rowlabel">New loan amount</td><td class="v">' + $(S.newLoan) + '</td><td data-bk-align="text">Binding: ' + S.binding + '</td></tr>'
+        + row('Refinance costs', $(-S.costs)) + row('Prepayment on existing loan', $(-S.prepay)) + row('Gross cash-out', $(S.grossCashOut))
+        + '<tr class="grandtotal"><td class="rowlabel">Net cash-out to equity</td><td class="v">' + $(S.netCashOut) + '</td><td data-bk-align="text">' + P(S.netCashOut / R.commonEquity) + ' of common equity</td></tr>'
+        + row('New annual debt service', $(S.newDS)) + row('Post-refinance DSCR', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row('Post-refinance debt yield', P(S.postDY)) + row('Post-refinance LTV', P(S.postLTV))
+        + row('New loan balance at exit', $(S.newBalanceAtExit)) + row('Exit prepayment on new loan', $(S.exitPenalty)));
+  }
+  var trows = R.timing.map(function(x){ var sel = S && x.year === S.year, peak = R.peak && x.year === R.peak.year;
+    return '<tr' + (sel ? ' class="subtotal"' : '') + '><td class="rowlabel">' + x.year + (peak ? ' (peak)' : '') + '</td><td>' + $(x.noi) + '</td><td>' + $(x.value) + '</td><td>' + $(x.existingBalance) + '</td><td>' + $(x.newLoan) + '</td><td>' + $(x.netCashOut) + '</td><td>' + X(x.postDSCR) + '</td><td>' + x.binding + '</td><td>' + P(x.irr) + '</td><td>' + ((x.irr - B.irr) * 10000 >= 0 ? '+' : '') + Math.round((x.irr - B.irr) * 10000) + ' bps</td></tr>'; }).join('');
+  main += t('3. Refinance Timing - Every Possible Year', '<th class="rowlabel-h">Year</th><th>NOI</th><th>Value</th><th>Existing balance</th><th>Maximum new loan</th><th>Net cash-out</th><th>Post-refi DSCR</th><th>Binding</th><th>Equity IRR</th><th>vs. hold</th>', trows,
+    R.peak ? '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div>Peak net cash-out: <b>' + $(R.peak.netCashOut) + '</b> in year ' + R.peak.year + '. The most cash-out is not always the best year: refinancing earlier raises IRR; later raises the amount.</div></div>' : '');
+  if(S){
+    var f = function(a, b, fm){ return '<tr><td class="rowlabel">' + a + '</td><td>' + fm(b) + '</td><td>' + fm(a === '' ? 0 : 0) + '</td></tr>'; };
+    var cmp = [['Common equity IRR', P(B.irr), P(S.irr), ((S.irr - B.irr) * 10000 >= 0 ? '+' : '') + Math.round((S.irr - B.irr) * 10000) + ' bps'], ['Equity multiple', X(B.moic), X(S.moic), (S.moic - B.moic >= 0 ? '+' : '') + (S.moic - B.moic).toFixed(2) + 'x'],
+      ['Net profit', $(B.profit), $(S.profit), $(S.profit - B.profit)], ['Cash returned before exit', $(B.cashBeforeExit), $(S.cashBeforeExit), $(S.cashBeforeExit - B.cashBeforeExit)], ['Loan payoff at exit (incl. penalty)', $(B.payoffAtExit), $(S.payoffAtExit), $(S.payoffAtExit - B.payoffAtExit)]]
+      .map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td></tr>'; }).join('');
+    main += t('4. Return Impact - Refinance Case vs. Holding the Original Loan (monthly cash flow)', '<th class="rowlabel-h">Metric</th><th>Hold original loan</th><th>Refinance case</th><th>Delta</th>', cmp);
+    var rc = R.recon;
+    main += t('5. Reconciliation', null, row('Existing balance, engine', $(rc.balanceEngine == null ? S.existingBalance : rc.balanceEngine)) + row('Existing balance, closed form', rc.balanceClosedForm == null ? 'n/a (floating rate or refinance at maturity)' : $(rc.balanceClosedForm))
+      + row('Difference (must be zero)', rc.balanceDiff == null ? 'n/a' : $(rc.balanceDiff)) + row('Profit bridge: cash-out + debt-service change + payoff change vs. actual (must be zero)', $(rc.bridgeDiff)) + row('Net cash-out ties to gross less costs (must be zero)', $(rc.netTieDiff))
+      + '<tr class="grandtotal"><td class="rowlabel">Overall</td><td class="v">' + (rc.ok ? chip('pass', 'PASS') : chip('fail', 'CHECK')) + '</td></tr>');
+  }
+  main += '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div>This is a property-level, pre-tax view of the equity cash flow rebuilt monthly: the cash-out arrives at the end of the refinance year, debt service changes from the next month, and the payoff at sale is the new loan’s balance plus its prepayment penalty. It does not re-run the JV waterfall, and the refinance is not part of the base case unless you add it there.</div></div>';
+  return { title:'Refi / Recap', crumbs:'Debt', desc:'Cash-out refinance sizing, timing and return impact against holding the original loan.',
+    meta:{ Property:s.name, Year:I.year, 'Net cash-out':S ? $(S.netCashOut) : 'n/a' }, main:main,
+    sidebar:(typeof sidebarShell === 'function' && S) ? sidebarShell('<div class="card"><div class="card-head">Refinance</div><div class="metric-list"><div class="metric-row"><span class="k">Net cash-out</span><span class="v">' + $(S.netCashOut) + '</span></div><div class="metric-row"><span class="k">New loan</span><span class="v">' + $(S.newLoan) + '</span></div><div class="metric-row"><span class="k">Post-refi DSCR</span><span class="v">' + X(S.postDSCR) + '</span></div><div class="metric-row"><span class="k">IRR vs. hold</span><span class="v">' + Math.round((S.irr - B.irr) * 10000) + ' bps</span></div></div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : '' };
+};
+if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Refi / Recap', render); else if(typeof RENDERERS !== 'undefined') RENDERERS['Refi / Recap'] = render;
+})();
+</script>
+
 <script id="bk-conventions-ui">
 /* ===========================================================================
    UNDERWRITING CONVENTIONS - controls and disclosure (CV-2026.10)
@@ -18509,7 +19971,12 @@ var DEF = [
   { key:'cvHurdleBasis', label:'Waterfall Hurdles Measured On',
     opts:[['lp','LP cash flows'],['deal','Total deal equity']],
     why:{ lp:'Each tier opens only when the LP itself has reached that IRR. Splits and catch-up are the deal’s own terms.',
-          deal:'Tiers clear on total distributions (including GP catch-up and promote). Use only if the partnership agreement says so.' } }
+          deal:'Tiers clear on total distributions (including GP catch-up and promote). Use only if the partnership agreement says so.' } },
+  { key:'cvBadDebtBasis', label:'Bad Debt Basis',
+    opts:[['afterVacancy','Rent after vacancy'],['gross','Gross potential rent'],['legacy','Legacy (statement gross, monthly after vacancy)']],
+    why:{ afterVacancy:'Standard. Vacancy is deducted first, then bad debt on the rent actually billed. Operating Underwrite, monthly cash flow, valuation, sale and sensitivities all use it.',
+          gross:'Bad debt on gross potential rent everywhere. Use only if the underwriting policy specifies a gross basis.',
+          legacy:'Original behaviour: Operating Underwrite charges gross rent while the monthly cash flow charges rent after vacancy, so Year-1 NOI differs between them.' } }
 ];
 
 function statusChip(s, k){
@@ -18517,8 +19984,28 @@ function statusChip(s, k){
   if(v === undefined || v === null || v === '') return chip('warn', 'LEGACY');
   return (String(v) === String(window.BK_CV_STANDARD[k])) ? chip('pass', 'STANDARD') : chip('', 'CUSTOM');
 }
+function gpBody(s){
+  var gp = Number(s.gpShare), ok = isFinite(gp) && gp >= 0 && gp <= 1;
+  return bkInput('GP Equity Share', 'gpShare', '% of equity - template default 10%', 'pct')
+       + '<tr><td class="rowlabel">LP Equity Share</td><td class="v">' + (ok ? pct(1 - gp) : '—') + '</td><td data-bk-align="text">100% less GP share</td><td>'
+       + (ok ? chip('pass', 'GP + LP = 100%') : chip('fail', 'GP MUST BE 0-100%')) + '</td></tr>';
+}
+function gpRows(s){
+  return '<div class="tbl-wrap"><table class="fin"><caption>Ownership</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th><th style="text-align:left">Note</th><th>Status</th></tr></thead><tbody>' + gpBody(s) + '</tbody></table></div>';
+}
+function devPanel(){
+  var rows = DEF.map(function(d){
+    return '<tr><td class="rowlabel">' + d.label + '</td><td class="v">Not applicable</td><td data-bk-align="text">Development underwriting uses its own methodology.</td><td>' + chip('', 'DEV METHOD') + '</td></tr>';
+  }).join('');
+  return '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div><b>Development deal: acquisition conventions do not apply.</b> '
+    + 'Construction-loan sizing, construction-period cash flows, lease-up and annual growth follow the development methodology and are not affected by these settings. '
+    + 'Configurable conventions for development deals would be a separate extension.</div></div>'
+    + '<div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions - Acquisition Deals Only</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
+    + '<th style="text-align:left">Applies to this deal</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
 function panel(){
   var s = bkLoad(), cv = bkConventions(s);
+  if(cv.isDevelopment) return devPanel() + '<div style="height:16px"></div>' + gpRows(s);
   var rows = DEF.map(function(d){
     var cur = cv[d.key], opts = d.opts.slice();
     if(d.num && !opts.some(function(o){ return Number(o[0]) === Number(cur); })) opts.push([cur, pct(cur)]);
@@ -18528,10 +20015,7 @@ function panel(){
     var why = d.why[cur] || d.why._ || '';
     return '<tr><td class="rowlabel">' + d.label + '</td><td class="v">' + sel + '</td><td data-bk-align="text">' + esc(why) + '</td><td>' + statusChip(s, d.key) + '</td></tr>';
   }).join('');
-  var gp = Number(s.gpShare), ok = isFinite(gp) && gp >= 0 && gp <= 1;
-  rows += bkInput('GP Equity Share', 'gpShare', '% of equity - template default 10%', 'pct');
-  rows += '<tr><td class="rowlabel">LP Equity Share</td><td class="v">' + (ok ? pct(1 - gp) : '—') + '</td><td data-bk-align="text">100% less GP share</td><td>'
-       + (ok ? chip('pass', 'GP + LP = 100%') : chip('fail', 'GP MUST BE 0-100%')) + '</td></tr>';
+  rows += gpBody(s);
   var legacy = cv.legacyFields.length;
   var banner = legacy
     ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9888;</span><div><b>This deal keeps its original methodology.</b> It was created before the '
@@ -18566,10 +20050,10 @@ function wrap(sheet, fn){
   if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(sheet, w); else RENDERERS[sheet] = w;
 }
 wrap('Deal Underwrite', function(o){ o.main = panel() + '<div style="height:16px"></div>' + (o.main || ''); });
-function cvLabel(){ var cv = bkConventions(bkLoad()); return cv.isStandard ? 'Standard' : cv.isLegacy ? 'Legacy' : 'Custom'; }
-wrap('Property CF', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'Growth Start': bkConventions(bkLoad()).cvRentGrowthStart === 'year2' ? 'Year 2' : 'Month 1' }); });
-wrap('Debt', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'LTV Basis': window.bkLtvBasisLabel(bkLoad(), true).replace(/^./, function(c){ return c.toUpperCase(); }) }); });
-wrap('Equity Waterfall', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'Hurdles On': bkConventions(bkLoad()).cvHurdleBasis === 'lp' ? 'LP cash flows' : 'Deal equity' }); });
+function cvLabel(){ var cv = bkConventions(bkLoad()); return cv.isDevelopment ? 'Development method' : cv.isStandard ? 'Standard' : cv.isLegacy ? 'Legacy' : 'Custom'; }
+wrap('Property CF', function(o){ if(bkConventions(bkLoad()).isDevelopment) return; o.meta = Object.assign({}, o.meta || {}, { 'Growth Start': bkConventions(bkLoad()).cvRentGrowthStart === 'year2' ? 'Year 2' : 'Month 1' }); });
+wrap('Debt', function(o){ if(bkConventions(bkLoad()).isDevelopment) return; o.meta = Object.assign({}, o.meta || {}, { 'LTV Basis': window.bkLtvBasisLabel(bkLoad(), true).replace(/^./, function(c){ return c.toUpperCase(); }) }); });
+wrap('Equity Waterfall', function(o){ if(bkConventions(bkLoad()).isDevelopment) return; o.meta = Object.assign({}, o.meta || {}, { 'Hurdles On': bkConventions(bkLoad()).cvHurdleBasis === 'lp' ? 'LP cash flows' : 'Deal equity' }); });
 wrap('Returns', function(o){ o.meta = Object.assign({}, o.meta || {}, { Conventions: cvLabel() }); });
 
 /* GP / LP ownership must total 100%: an out-of-range GP share is a FAIL control, which the readiness

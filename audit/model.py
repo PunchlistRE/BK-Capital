@@ -7,11 +7,13 @@ Conventions (deal fields; absent = legacy, exactly as the app resolves them):
   cvOpexVariablePct  0.4 (legacy) | any share 0..1
   cvLtvBasis         'value' (legacy, Year-1 NOI / exit cap) | 'price' | 'lesser'
   cvHurdleBasis      'deal' (legacy) | 'lp'
+  cvBadDebtBasis     'legacy' (statement on gross rent, monthly after vacancy) | 'afterVacancy' | 'gross'
+Development deals are out of scope: the app resolves them to the legacy conventions.
 """
 import math, calendar
 from datetime import date
 
-LEGACY = dict(cvRentGrowthStart='month1', cvOpexVariablePct=0.4, cvLtvBasis='value', cvHurdleBasis='deal')
+LEGACY = dict(cvRentGrowthStart='month1', cvOpexVariablePct=0.4, cvLtvBasis='value', cvHurdleBasis='deal', cvBadDebtBasis='legacy')
 
 
 def conv(s):
@@ -38,7 +40,8 @@ def model(s, acq_fee=0.01):
     other = N('otherIncomePerUnit') * N('units')
     occ = 1 - min(1, max(0, N('vacancy'))) if N('units') > 0 else 0
     # Year-1 underwriting statement (sizes the loan)
-    egi1 = gpr * (1 - N('vacancy') - N('badDebtPct') - N('lossToLeasePct') - N('concessionPct')) + other
+    bad_base1 = gpr * (1 - N('vacancy')) if c['cvBadDebtBasis'] == 'afterVacancy' else gpr
+    egi1 = gpr * (1 - N('vacancy') - N('lossToLeasePct') - N('concessionPct')) - bad_base1 * N('badDebtPct') + other
     fixed = sum(N(k) for k in ['taxes', 'insurance', 'utilities', 'rm', 'contract', 'payroll', 'turnover', 'marketing', 'ga']) + N('gsf') * N('miscPerGSF')
     noi1 = egi1 - fixed - egi1 * N('mgmtPct')
     price = N('purchasePrice')
@@ -60,7 +63,7 @@ def model(s, acq_fee=0.01):
     def month(m):
         g = lambda k: (1 + N(k)) ** expo(m)
         gross = gpr / 12 * g('rentGrowth'); res = gross * occ
-        e = res - res * N('badDebtPct') - gross * N('lossToLeasePct') - gross * N('concessionPct') + other / 12 * g('otherGrowth')
+        e = res - (gross if c['cvBadDebtBasis'] == 'gross' else res) * N('badDebtPct') - gross * N('lossToLeasePct') - gross * N('concessionPct') + other / 12 * g('otherGrowth')
         ctrl = ctrl_y1 / 12 * g('opexGrowth') * ((1 - v) + v * occ)
         nb = e - ctrl - N('insurance') / 12 * g('opexGrowth') - N('taxes') / 12 * (1 + N('taxGrowth')) ** (math.ceil(m / 12) - 1) - e * N('mgmtPct')
         return e, nb - N('reserves') / 12 * g('opexGrowth')
@@ -70,10 +73,11 @@ def model(s, acq_fee=0.01):
     net = gross_sale * (1 - N('saleCostPct'))
     bal = loan
     for _ in range(H): bal -= (P - bal * r)
-    close = date(2027, 1, 1)
+    cm, cd, cy = (s.get('closing') or '1/1/2027').split('/')[:3]
+    close = date(int(cy), int(cm), int(cd))
 
-    def me(m):
-        y = close.year + (m - 1) // 12; mo = (m - 1) % 12 + 1
+    def me(m):                                   # month-end of the m-th month, counting the closing month as month 1
+        k = close.month - 1 + (m - 1); y = close.year + k // 12; mo = k % 12 + 1
         return date(y, mo, calendar.monthrange(y, mo)[1])
 
     dts = [close] + [me(m) for m in range(1, H + 1)]
@@ -89,6 +93,7 @@ def model(s, acq_fee=0.01):
     tgt = N('gpCatchupTarget')
     acct = [0.0, 0.0, 0.0]; cumCon = cumDist = cumProm = 0.0
     lp_cf, gp_cf, rows = [], [], []
+    lp_con = gp_con = 0.0
     for i, cf in enumerate(lev):
         con = (equity if i == 0 else 0.0) + max(0.0, -cf)      # a monthly shortfall is an equity call
         dist = max(0.0, cf)
@@ -121,9 +126,14 @@ def model(s, acq_fee=0.01):
         cumProm += max(0.0, gpd - gs * (t1 + cu + t2 + t3 + t4)); cumDist += t1 + cu + t2 + t3 + t4
         extra = con - (equity if i == 0 else 0.0)
         lp_cf.append(lpd - extra * ls); gp_cf.append(gpd - extra * gs)
+        lp_con += (equity if i == 0 else 0.0) * ls + extra * ls; gp_con += (equity if i == 0 else 0.0) * gs + extra * gs
         rows.append(dict(dist=dist, lp=lpd, gp=gpd, t2=t2, t3=t3, t4=t4))
     levv = [-equity] + lev
+    noi_year = [sum(x[1] for x in ms[12 * i:12 * i + 12]) for i in range(hy)]
     return dict(
+        levCF=lev, levDates=dts, equityAtClose=equity, monthlyPmt=P, monthlyRate=r, amortMonths=n, holdMonths=H, exitBalance=bal,
+        stmtNOI=noi1 - N('reserves'),
+        basis=basis, annualDS=P * 12, coupon=N('acqRate'), amortYears=N('acqAmort'), noiYear=noi_year, lpContrib=lp_con, gpContrib=gp_con,
         loan=loan, equity=equity, ltvValue=ltv_value, y1NOI=sum(x[1] for x in ms[:12]), grossSale=gross_sale,
         unlevIRR=xirr(u, dts), unlevMOIC=sum(x for x in u if x > 0) / basis,
         levIRR=xirr(levv, dts), levMOIC=sum(x for x in levv if x > 0) / -sum(x for x in levv if x < 0),   # shortfall calls count as contributions

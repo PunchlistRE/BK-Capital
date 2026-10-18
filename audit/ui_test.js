@@ -49,11 +49,11 @@ const B = require(path.join(__dirname, 'dealB.js'));
   // 1. new deal: standard conventions
   await p.evaluate(d => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); }, B);
   let s = await verify('standard deal');
-  check('standard deal: every setting marked STANDARD', s.panel.slice(0, 4).every(r => r.status === 'STANDARD'));
+  check('standard deal: every setting marked STANDARD', s.panel.slice(0, 5).every(r => r.status === 'STANDARD'));
   check('standard deal: no legacy banner', !s.banner);
   // 2. change each setting through the panel's own controls; engine and labels must follow
   await p.evaluate(() => showSheet('Deal Underwrite'));
-  for (const [label, val] of [['Rent & Expense Growth', 'month1'], ['Occupancy-Variable', '0.25'], ['Acquisition LTV Basis', 'lesser'], ['Waterfall Hurdles', 'deal']]) {
+  for (const [label, val] of [['Rent & Expense Growth', 'month1'], ['Occupancy-Variable', '0.25'], ['Acquisition LTV Basis', 'lesser'], ['Waterfall Hurdles', 'deal'], ['Bad Debt Basis', 'gross']]) {
     const before = await p.evaluate(() => bkMonthlyReturns().irr);
     await p.evaluate(([l, v]) => { const r = [...document.querySelectorAll('#viewport tr')].find(t => (t.cells[0]?.textContent || '').trim().indexOf(l) === 0); const sel = r.querySelector('select'); sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); }, [label, val]);
     await p.waitForTimeout(150);
@@ -61,17 +61,17 @@ const B = require(path.join(__dirname, 'dealB.js'));
     console.log(`      set ${label} -> ${val}: levered IRR ${(before * 100).toFixed(2)}% -> ${(after.irr * 100).toFixed(2)}%, LP IRR ${(after.lp * 100).toFixed(2)}%`);
   }
   s = await verify('custom deal');
-  check('custom deal: changed settings marked CUSTOM', s.panel.slice(0, 4).every(r => r.status === 'CUSTOM'));
+  check('custom deal: changed settings marked CUSTOM', s.panel.slice(0, 5).every(r => r.status === 'CUSTOM'));
   // 3. legacy deal: banner, LEGACY chips, apply-standard, undo
   await p.evaluate(d => { bkCreateNewDeal(d); const st = JSON.parse(localStorage.getItem('bkcapital.cre.v02'));
-    ['cvRentGrowthStart', 'cvOpexVariablePct', 'cvLtvBasis', 'cvHurdleBasis', '_conventions'].forEach(k => delete st[k]);
+    ['cvRentGrowthStart', 'cvOpexVariablePct', 'cvLtvBasis', 'cvHurdleBasis', 'cvBadDebtBasis', '_conventions'].forEach(k => delete st[k]);
     localStorage.setItem('bkcapital.cre.v02', JSON.stringify(st)); }, B);
   s = await verify('legacy deal');
-  check('legacy deal: settings marked LEGACY and banner shown', s.panel.slice(0, 4).every(r => r.status === 'LEGACY') && s.banner);
+  check('legacy deal: settings marked LEGACY and banner shown', s.panel.slice(0, 5).every(r => r.status === 'LEGACY') && s.banner);
   await p.evaluate(() => showSheet('Deal Underwrite'));
   await p.click('#viewport button[onclick="bkApplyStandardConventions()"]'); await p.waitForTimeout(150);
   s = await verify('legacy deal after Apply');
-  check('Apply standard: all four now STANDARD', s.panel.slice(0, 4).every(r => r.status === 'STANDARD') && !s.banner);
+  check('Apply standard: all five now STANDARD', s.panel.slice(0, 5).every(r => r.status === 'STANDARD') && !s.banner);
   await p.evaluate(() => window.bkUndo()); await p.waitForTimeout(150);
   s = await state();
   check('Undo restores the legacy methodology', s.cv.isLegacy, JSON.stringify(s.cv.legacyFields));
@@ -85,6 +85,36 @@ const B = require(path.join(__dirname, 'dealB.js'));
   await p.evaluate(() => { const st = bkLoad(); st.gpShare = 0.1; bkSave(st); });
   const rd2 = await p.evaluate(() => bkDealReadiness().state);
   check('GP 10%: readiness restored', rd2 !== 'NOT DECISION-GRADE', rd2);
+  // 5. Credit & IC sheets: render, edit through the real inputs, and drive the gate
+  await p.evaluate(d => { bkCreateNewDeal(d); }, B);
+  const cap = await p.evaluate(() => { const o = {}; ['IC Memo', 'Debt Capacity', 'Credit Policy'].forEach(n => { showSheet(n); o[n] = [...document.querySelectorAll('#viewport caption')].map(c => c.textContent.trim().toUpperCase()); }); return o; });
+  check('IC Memo shows the policy test table, exceptions, cushions, risk register and override', ['POLICY TEST TABLE', 'RANKED EXCEPTIONS', 'BREAK-EVEN AND STRESS CUSHIONS', 'RISK REGISTER', 'CREDIT OVERRIDE'].every(k => cap['IC Memo'].some(c => c.includes(k))), cap['IC Memo'].join(' | '));
+  check('Debt Capacity shows the credit box, sizing bridge and proceeds ladder', ['CREDIT BOX', 'SIZING BRIDGE', 'PROCEEDS LADDER'].every(k => cap['Debt Capacity'].some(c => c.includes(k))), cap['Debt Capacity'].join(' | '));
+  await p.evaluate(() => showSheet('Credit Policy'));
+  const before = await p.evaluate(() => bkDealGate().capacity.capacity);
+  const inp = p.locator('#viewport tr', { hasText: 'Minimum DSCR' }).first().locator('input');
+  await inp.fill('1.10'); await inp.dispatchEvent('change'); await p.waitForTimeout(250);
+  const after = await p.evaluate(() => ({ cap: bkDealGate().capacity.capacity, dscr: bkPolicy().minDSCR }));
+  check('editing Minimum DSCR on Credit Policy changes the policy and the supportable debt', after.dscr === 1.1 && after.cap > before, JSON.stringify({ before, after }));
+  await p.evaluate(() => { bkICSet('override.on', 'YES'); bkICSet('override.reason', 'test'); bkICSet('override.approvedBy', ''); });
+  const ov1 = await p.evaluate(() => bkDealGate().overrideValid);
+  await p.evaluate(() => bkICSet('override.approvedBy', 'CCO'));
+  const ov2 = await p.evaluate(() => bkDealGate().overrideValid);
+  check('a credit override is only valid with YES + reason + approver', ov1 === false && ov2 === true, JSON.stringify({ ov1, ov2 }));
+  await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { dealType: 'Development', predevMonths: 6, constructionMonths: 18, leaseupMonths: 12 })); showSheet('Debt Capacity'); }, B);
+  check('Debt Capacity says acquisition-only on a development deal', /acquisition deals/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
+  // 6. Refi / Recap: renders every section, editing the year re-sizes the loan, and a development deal says it does not apply
+  await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { holdYears: 10, rentGrowth: 0.05, exitCap: 0.055 })); showSheet('Refi / Recap'); }, B);
+  const rcaps = await p.evaluate(() => [...document.querySelectorAll('#viewport caption')].map(c => c.textContent.trim().toUpperCase()));
+  check('Refi / Recap shows assumptions, position, sizing, timing, return impact and reconciliation', ['REFINANCE ASSUMPTIONS', 'POSITION AT REFINANCE', 'NEW LOAN SIZING', 'REFINANCE TIMING', 'RETURN IMPACT', 'RECONCILIATION'].every(k => rcaps.some(c => c.includes(k))), rcaps.join(' | '));
+  const y0 = await p.evaluate(() => bkRefi().selected.netCashOut);
+  const yin = p.locator('#viewport tr', { hasText: 'Refinance year (end of year)' }).first().locator('input');
+  await yin.fill('8'); await yin.dispatchEvent('change'); await p.waitForTimeout(250);
+  const y1 = await p.evaluate(() => ({ y: bkRefi().selected.year, net: bkRefi().selected.netCashOut }));
+  check('editing the refinance year on the sheet re-sizes the refinance', y1.y === 8 && y1.net !== y0, JSON.stringify({ y0, y1 }));
+  check('the refinance reconciliation passes', await p.evaluate(() => bkRefi().recon.ok === true));
+  await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { dealType: 'Development', predevMonths: 6, constructionMonths: 18, leaseupMonths: 12 })); showSheet('Refi / Recap'); }, B);
+  check('Refi / Recap says it applies to acquisition deals on a development deal', /acquisition deals/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

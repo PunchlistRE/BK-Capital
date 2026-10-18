@@ -57,14 +57,14 @@ const CASES = [
   const lg = await s3.p.evaluate((deal) => {
     bkCreateNewDeal(deal);
     const st = JSON.parse(localStorage.getItem('bkcapital.cre.v02'));
-    ['cvRentGrowthStart','cvOpexVariablePct','cvLtvBasis','cvHurdleBasis','_conventions','gpShare'].forEach(k => delete st[k]);
+    ['cvRentGrowthStart','cvOpexVariablePct','cvLtvBasis','cvHurdleBasis','cvBadDebtBasis','_conventions','gpShare'].forEach(k => delete st[k]);
     st._template = Object.assign({}, st._template, { name: 'Institutional Standard v1' }); st._template.values.gpShare = 0.5;
     const restored = bkMap.reconstructState(bkMap.stateToDealRow(st), { input_data: bkMap.stateToInputData(st), source_data: {} }, []);
     window.bkProvision('cloud-load', restored);
     const cv = bkConventions(bkLoad());
-    return { gp: bkLoad().gpShare, legacy: cv.isLegacy, conv: [cv.cvRentGrowthStart, cv.cvOpexVariablePct, cv.cvLtvBasis, cv.cvHurdleBasis].join('/') };
+    return { gp: bkLoad().gpShare, legacy: cv.isLegacy, conv: [cv.cvRentGrowthStart, cv.cvOpexVariablePct, cv.cvLtvBasis, cv.cvHurdleBasis, cv.cvBadDebtBasis].join('/') };
   }, A);
-  const lok = lg.gp === 0.5 && lg.legacy && lg.conv === 'month1/0.4/value/deal';
+  const lok = lg.gp === 0.5 && lg.legacy && lg.conv === 'month1/0.4/value/deal/legacy';
   if (!lok) fails++;
   console.log(`${lok ? 'PASS' : 'FAIL'}  legacy deal reopened: GP ${lg.gp}, conventions ${lg.conv} (legacy=${lg.legacy})`);
   await s3.ctx.close(); await b.close();
