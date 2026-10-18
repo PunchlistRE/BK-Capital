@@ -5,6 +5,7 @@
 
 
 <title>Punchlist Capital CRE - V32.1 Production</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' gradientUnits='userSpaceOnUse' x1='0' y1='6' x2='0' y2='94'%3E%3Cstop offset='0' stop-color='%233563E9'/%3E%3Cstop offset='1' stop-color='%234FA8DE'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url%28%23g%29' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 52 L49 8 L92 52'/%3E%3Cpath d='M27 29 V18'/%3E%3Cpath d='M17 52 V90 C32 88 42 83 50 77 C58 83 68 88 83 90 V52'/%3E%3Cpath d='M50 77 C37 68 28 60 28 52 C28 44 35 41 41 42 C45 43 48 45 50 48 C52 45 55 43 59 42 C65 41 72 44 72 52 C72 60 63 68 50 77 Z'/%3E%3C/g%3E%3C/svg%3E">
 <meta name="description" content="Punchlist Capital - Real Estate Investments">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Punchlist Capital">
@@ -49,7 +50,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
 </head><body>
 <div id="bk-auth-gate" role="dialog" aria-label="Punchlist Capital sign in">
   <div class="bk-login-card">
-    <div class="bk-login-head"><div class="bk-login-glyph">PC</div><div><div class="bk-login-word">PUNCHLIST CAPITAL</div><div class="bk-login-sub">Real Estate Investments</div></div></div>
+    <div class="bk-login-head"><div class="bk-login-glyph"><svg class="pl-logo" viewBox="0 0 100 100" role="img" aria-label="Punchlist" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="plgb" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="94"><stop offset="0" stop-color="#3563E9"/><stop offset="1" stop-color="#4FA8DE"/></linearGradient></defs><g fill="none" stroke="url(#plgb)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 52 L49 8 L92 52"/><path d="M27 29 V18"/><rect x="46" y="28" width="7" height="8" rx="2.2" fill="url(#plgb)" stroke="none"/><path d="M17 52 V90 C32 88 42 83 50 77 C58 83 68 88 83 90 V52"/><path d="M50 77 C37 68 28 60 28 52 C28 44 35 41 41 42 C45 43 48 45 50 48 C52 45 55 43 59 42 C65 41 72 44 72 52 C72 60 63 68 50 77 Z"/></g></svg></div><div><div class="bk-login-word">PUNCHLIST CAPITAL</div><div class="bk-login-sub">Real Estate Investments</div></div></div>
     <div class="bk-login-body">
       <h2>Sign In</h2><p>Authentication is required to access Punchlist Capital underwriting and deal data.</p>
       <form id="bk-production-login-form">
@@ -201,6 +202,10 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
     display:flex;align-items:center;justify-content:center;
     font-family:'Source Serif 4','Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,'Times New Roman',serif; font-weight:700; font-size:15px; color:var(--gold-500);
   }
+.brand-mark .glyph{ border:0 !important; width:40px !important; height:40px !important; }
+.brand-mark .glyph .pl-logo{ width:40px; height:40px; display:block; }
+#bk-auth-gate .bk-login-glyph{ border:0 !important; width:52px !important; height:52px !important; }
+#bk-auth-gate .bk-login-glyph .pl-logo{ width:52px; height:52px; display:block; }
   .brand-mark .word{font-family:'Source Serif 4','Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,'Times New Roman',serif; font-weight:600; font-size:19px; letter-spacing:.03em;}
   .brand-mark .sub{font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:#B9C3CE; margin-top:1px;}
   .brand-mid{text-align:center; font-size:11px; color:#CBD5DF;}
@@ -483,7 +488,7 @@ function buildChrome(sheet){
   return `
   <div class="brand-bar">
     <div class="brand-mark">
-      <div class="glyph">PC</div>
+      <div class="glyph"><svg class="pl-logo" viewBox="0 0 100 100" role="img" aria-label="Punchlist" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="plga" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="94"><stop offset="0" stop-color="#3563E9"/><stop offset="1" stop-color="#4FA8DE"/></linearGradient></defs><g fill="none" stroke="url(#plga)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 52 L49 8 L92 52"/><path d="M27 29 V18"/><rect x="46" y="28" width="7" height="8" rx="2.2" fill="url(#plga)" stroke="none"/><path d="M17 52 V90 C32 88 42 83 50 77 C58 83 68 88 83 90 V52"/><path d="M50 77 C37 68 28 60 28 52 C28 44 35 41 41 42 C45 43 48 45 50 48 C52 45 55 43 59 42 C65 41 72 44 72 52 C72 60 63 68 50 77 Z"/></g></svg></div>
       <div><div class="word">PUNCHLIST CAPITAL</div><div class="sub">Real Estate Investments</div></div>
     </div>
     <div class="brand-mid"><div class="l1">CRE UNDERWRITING MODEL</div><div class="l2">V32.1 &nbsp;|&nbsp; PRODUCTION</div></div>
