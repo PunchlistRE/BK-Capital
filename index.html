@@ -1593,22 +1593,6 @@ function bkIOToggle(label,key,defaultYears){
   if(on) html+=bkInput(label+' Period',key,'years');
   return html;
 }
-function bkCalc(){const s=bkLoad();
-  const gpr=BK_BASE.gpr*(Number(s.avgRent)/BK_BASE.avgRent)*(Number(s.units)/BK_BASE.units);
-  const vacancy=-gpr*Number(s.vacancy), bad=-gpr*BK_BASE.badDebtPct;
-  const netRes=gpr+vacancy+bad;
-  const other=Number(s.otherIncomePerUnit)*Number(s.units);
-  const commercial=Number(s.commercialArea)*Number(s.commercialRent);
-  const recovery=Number(s.commercialArea)*Number(s.recovery);
-  const commercialVac=-(commercial+recovery)*Number(s.vacancy);
-  const netComm=commercial+recovery+commercialVac;
-  const egi=netRes+netComm+other;
-  const mgmt=egi*Number(s.mgmtPct);
-  const misc=BK_BASE.misc*(Number(s.gsf)/BK_BASE.gsf);
-  const total=Number(s.taxes)+Number(s.insurance)+Number(s.utilities)+Number(s.rm)+Number(s.contract)+Number(s.payroll)+Number(s.turnover)+Number(s.marketing)+Number(s.ga)+mgmt+misc;
-  const noi=egi-total, after=noi-Number(s.reserves), value=Number(s.exitCap)?noi/Number(s.exitCap):0;
-  return {gpr,vacancy,bad,netRes,commercial,recovery,commercialVac,netComm,other,egi,mgmt,misc,total,noi,after,value,expenseRatio:egi?total/egi:0,noiMargin:egi?after/egi:0,goingIn:Number(s.purchasePrice)?Number(s.t12noi)/Number(s.purchasePrice):0};
-}
 const _origDeal=sheetDealUnderwrite;
 sheetDealUnderwrite=function(){const s=bkLoad(); const main=`
 <div class="tbl-wrap"><table class="fin deal-underwrite-grid"><colgroup><col><col><col><col></colgroup><caption>Identity</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Data Type</th><th>Status</th></tr></thead><tbody>
@@ -5155,7 +5139,7 @@ var BK_SUPABASE_URL      = 'https://klgamvfjhgpxwhnrztrx.supabase.co';
 var BK_SUPABASE_ANON_KEY = 'sb_publishable_Z5BCISii2xOw5XErlQ4JvA_pr39Nlrt';
 
 var BK_SUPABASE_CFG_STORE = 'bkcapital.supabase.cfg.v01';
-var BK_ENGINE_VERSION     = 'V30.0';
+var BK_ENGINE_VERSION     = 'V32.2';
 
 /* V30: the project URL and publishable key are fixed in the build. The former
    runtime override (localStorage 'bkcapital.supabase.cfg.v01', set from the Cloud
