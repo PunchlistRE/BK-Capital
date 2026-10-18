@@ -18098,6 +18098,7 @@ html body #viewport table.fin tbody td.bk-changed::after{ content:''; position:a
 .bk-nav .grp-btn .cur{ font-weight:500; color:var(--gold-500,#C9A968); margin-left:2px; max-width:150px; overflow:hidden; text-overflow:ellipsis; }
 .bk-nav .grp-btn .cur::before{ content:"\00b7"; margin-right:6px; color:#9FB0BF; }
 .bk-nav .grp-btn .car{ font-size:9px; opacity:.7; margin-left:2px; }
+@media (max-width:640px){ .bk-nav .grp-btn .cur{ display:none; } }
 .bk-nav.open > .grp-btn{ color:#fff; background:rgba(255,255,255,.08); }
 .bk-nav-pop{ min-width:230px; max-height:min(70vh,560px); overflow-y:auto; left:0; right:auto; }
 .bk-nav-pop .lab{ display:flex; gap:8px; align-items:center; padding:10px 10px 4px; }
@@ -18293,7 +18294,11 @@ function snapshotCard(){
     + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(h.binding) + '</span>' : ''))
     + row('Equity', money(h.equity)) + row('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
-    + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '') + '</div>'
+    + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '')
+    + (function(){ var m = null; try { m = window.bkMarketCompare && window.bkMarketCompare(); } catch(e){}
+        if(!m || !m.rows) return ''; var out = m.rows.filter(function(x){ return x.status === 'ABOVE RANGE' || x.status === 'BELOW RANGE'; }).length;
+        return '<div class="metric-row"><span class="k">Vs market</span><span class="v"><a data-goto-sheet2="Market Benchmarks" style="cursor:pointer">' + (out ? out + ' of ' + m.rows.length + ' outside range' : 'all in range') + '</a></span></div>'; })()
+    + '</div>'
     + '<div class="bk-snap-foot">Live from the underwriting engine. <a data-goto-sheet2="Returns">Open Returns</a></div></div>';
 }
 function decorateSide(frame){
