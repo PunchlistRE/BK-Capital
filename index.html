@@ -2359,7 +2359,7 @@ function sheetDevelopmentV09(){
  const main=`<div class="tbl-wrap"><table class="fin"><caption>Development - Cost Basis Summary</caption><thead><tr><th class="rowlabel-h">Cost Concept</th><th>Total</th><th>$ / GSF</th><th>Lineage</th></tr></thead><tbody><tr><td class="rowlabel">Land / Purchase Price</td><td>${m(x.land)}</td><td>${psf(x.land)}</td><td>SOURCE</td></tr><tr><td class="rowlabel">Closing / Diligence Costs</td><td>${m(x.close)}</td><td>${psf(x.close)}</td><td>UNDERWRITING</td></tr><tr><td class="rowlabel">Acquisition Fee</td><td>${m(x.acq)}</td><td>${psf(x.acq)}</td><td>UNDERWRITING</td></tr><tr><td class="rowlabel">Predevelopment Carry</td><td>${m(x.pre)}</td><td>${psf(x.pre)}</td><td>UNDERWRITING</td></tr><tr><td class="rowlabel">Hard Costs (itemized below)</td><td>${m(x.hard)}</td><td>${psf(x.hard)}</td><td>CALCULATED</td></tr><tr><td class="rowlabel">Soft Costs (itemized below)</td><td>${m(x.soft)}</td><td>${psf(x.soft)}</td><td>CALCULATED</td></tr><tr><td class="rowlabel">Lease-Up Operating Deficit</td><td>${m(x.leaseDef)}</td><td>${psf(x.leaseDef)}</td><td>CALCULATED</td></tr><tr class="grandtotal"><td class="rowlabel">UNLEVERED ALL-IN COST</td><td>${m(x.unlev)}</td><td>${psf(x.unlev)}</td><td>CALCULATED</td></tr></tbody></table></div>${ladderHtml}<div class="note-flag"><span>&#10003;</span><div><b>Development engine -</b> the workbook's actual 14-trade hard-cost ladder (with General Conditions -> Contractor Fee -> Risk/Bonds -> Contingency cascading exactly as Development!F39-F44) and 16-line soft-cost ladder (each on its own basis, Development!F48-F63) are now itemized in-browser instead of a blended $/GSF proxy. Acquisition deals correctly suppress development-only costs.</div></div>`;return{title:'Development',crumbs:'Development',desc:'Budget, itemized cost ladder and development capitalization.',meta:{Property:x.s.name,'Deal Type':x.s.dealType||'Acquisition',Mode:x.isDev?x.s.devBudgetMode:'N/A',Status:x.isDev?'Live - itemized ladder':'Acquisition - N/A'},main,sidebar:sidebarShell(`<div class="card"><div class="card-head">Cost Ladder</div><div class="metric-list"><div class="metric-row"><span class="k">Land</span><span class="v">${m(x.land)}</span></div><div class="metric-row"><span class="k">Hard Costs</span><span class="v">${m(x.hard)}</span></div><div class="metric-row"><span class="k">Soft Costs</span><span class="v">${m(x.soft)}</span></div><div class="metric-row"><span class="k">Unlevered All-In</span><span class="v">${m(x.unlev)}</span></div></div></div>${colorKeyCard()}`)};}
 function sheetDevScheduleV09(){const x=bkDevV09();const rows=x.phases.map(p=>`<tr><td class="rowlabel">${p[0]}</td><td>${p[1]}</td><td>${p[2]}</td><td>${p[3]||'-'}</td></tr>`).join('');const main=`<div class="tbl-wrap"><table class="fin"><caption>Development Schedule & Milestone Timeline</caption><thead><tr><th class="rowlabel-h">Phase</th><th>Start Mo</th><th>End Mo</th><th>Months</th></tr></thead><tbody>${rows}<tr class="grandtotal"><td class="rowlabel">TOTAL HOLD PERIOD</td><td colspan="2">${x.hold} months</td><td>${Number(x.s.holdYears||0).toFixed(1)} yrs</td></tr></tbody></table></div>`;return{title:'Dev Schedule',crumbs:'Development',desc:'Pre-development, construction, CO, lease-up, stabilization and exit timeline.',meta:{Property:x.s.name,'Pre-Dev':x.preMo+' mo','Construction':x.conMo+' mo','Lease-Up':x.luMo+' mo',Status:x.isDev?'Live':'Acquisition - N/A'},main,sidebar:sidebarShell(`<div class="card"><div class="card-head">Milestones</div><div class="metric-list"><div class="metric-row"><span class="k">CO Month</span><span class="v">${x.co||'-'}</span></div><div class="metric-row"><span class="k">Stabilization</span><span class="v">${x.stab}</span></div><div class="metric-row"><span class="k">Exit</span><span class="v">${x.hold}</span></div></div></div>${colorKeyCard()}`)};}
 function sheetResidualLandV09(){const x=bkDevV09(),s=x.s;const main=`<div class="tbl-wrap"><table class="fin"><caption>Residual Land Value</caption><thead><tr><th class="rowlabel-h">Item</th><th>Value</th><th style="text-align:left">Units</th><th style="text-align:left">Note</th></tr></thead><tbody>${bkYesNo('Use Residual Land Value','landOverrideOn','')}${bkInput('Residual Land Value - solved','residualLandValue','$')}<tr><td class="rowlabel">Effective Land / Purchase Price<span class="bk-sub">Used by development cost ladder</span></td><td>$${bkFmt(x.land)}</td><td data-bk-align="text">$</td><td><span class="status-chip">CALC</span></td></tr><tr><td class="rowlabel">Workbook Stored Solve<span class="bk-sub">Reference value from Residual Land C20</span></td><td>$5,288,519</td><td data-bk-align="text">$</td><td><span class="status-chip">STORED</span></td></tr></tbody></table></div><div class="note-flag"><span>&#9888;</span><div>The workbook's stored residual-land value is mapped. Browser Goal Seek / target-metric solving is not yet certified and will be added with Reverse Solve.</div></div>`;return{title:'Residual Land',crumbs:'Development',desc:'Residual land override and effective land basis.',meta:{Property:s.name,Override:Number(s.landOverrideOn)?'On':'Off','Effective Land':bkFmt(x.land),Status:'Mapped'},main,sidebar:sidebarShell(colorKeyCard())};}
-function sheetDevDrawsV09(){const x=bkDevV09(), months=Math.max(1,x.conMo||1), draw=x.isDev?x.hard/months:0, rows=Array.from({length:Math.min(months,36)},(_,i)=>`<tr><td class="rowlabel">${i+1+x.preMo}</td><td>${bkFmt(draw)}</td><td>${bkFmt(draw)}</td><td>${bkFmt(draw*(i+1))}</td></tr>`).join('');const main=`<div class="tbl-wrap"><table class="fin"><caption>Development Draws - Initial Browser Port</caption><thead><tr><th class="rowlabel-h">Month</th><th>Hard Cost Draw</th><th>Total Funding Need</th><th>Cumulative</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel">N/A</td><td colspan="3">Acquisition deal - no development draws.</td></tr>'}</tbody></table></div><div class="note-flag"><span>&#9888;</span><div><b>Development draw engine in progress -</b> this pass establishes the live schedule and cost basis. The Excel model's SYS_Curves S-curve weighting, soft-cost slices, lease-up deficit and capitalized construction interest are the next items to port before this page is certified.</div></div>`;return{title:'Dev Draws',crumbs:'Development',desc:'Monthly development funding schedule.',meta:{Property:x.s.name,Months:x.conMo,Curve:'Initial / flat',Status:x.isDev?'Live / expanding':'Acquisition - N/A'},main,sidebar:sidebarShell(colorKeyCard())};}
+function sheetDevDrawsV09(){const x=bkDevV09(), months=Math.max(1,x.conMo||1), draw=x.isDev?x.hard/months:0, rows=Array.from({length:Math.min(months,36)},(_,i)=>`<tr><td class="rowlabel">${i+1+x.preMo}</td><td>${bkFmt(draw)}</td><td>${bkFmt(draw)}</td><td>${bkFmt(draw*(i+1))}</td></tr>`).join('');const main=`<div class="tbl-wrap"><table class="fin"><caption>Development Draws - Monthly Schedule</caption><thead><tr><th class="rowlabel-h">Month</th><th>Hard Cost Draw</th><th>Total Funding Need</th><th>Cumulative</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel">N/A</td><td colspan="3">Acquisition deal - no development draws.</td></tr>'}</tbody></table></div><div class="note-flag"><span>&#9888;</span><div><b>Simplified draw schedule -</b> hard costs are spread evenly across the construction period. Curve-weighted (S-curve) draws, soft-cost slices, lease-up deficit and capitalised construction interest are not modelled on this page yet, so treat the monthly figures as indicative.</div></div>`;return{title:'Dev Draws',crumbs:'Development',desc:'Monthly development funding schedule.',meta:{Property:x.s.name,Months:x.conMo,Curve:'Initial / flat',Status:x.isDev?'Live / expanding':'Acquisition - N/A'},main,sidebar:sidebarShell(colorKeyCard())};}
 RENDERERS['Development']=sheetDevelopmentV09;RENDERERS['Dev Schedule']=sheetDevScheduleV09;RENDERERS['Dev Draws']=sheetDevDrawsV09;RENDERERS['Residual Land']=sheetResidualLandV09;
 
 /* BK Capital V1.0 - monthly development curves + construction facility funding. Claude visual master remains locked. */
@@ -3257,7 +3257,7 @@ RENDERERS['Rent Roll'] = function(){
     </tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Lease Dates &amp; Per-Unit Override</caption><thead><tr><th class="rowlabel-h">Unit / Tenant</th><th>Lease Start</th><th>Lease End</th><th>Status</th><th>Rollover Override (JSON, blank = use global)</th><th>Recovery Gate</th><th>Recovery Override (force active)</th></tr></thead><tbody>${leaseRows}</tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Rollover Schedule Preview - effective assumptions per unit, read-only</caption><thead><tr><th class="rowlabel-h">Unit</th><th>SF</th><th>Rolls</th><th>Renewal Prob.</th><th>Downtime</th><th>TI New/Renew</th><th>LC New/Renew</th><th>Source</th></tr></thead><tbody>${schedule || '<tr><td colspan="8" class="rowlabel">No occupied unit has a Lease End date set yet.</td></tr>'}${vacantAtAcq}</tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Rollover data structure -</b> lease start/end dates, global rollover assumptions, and per-unit JSON overrides are now captured and previewed here. This is the data layer only: <code>bkAnnualCF()</code>'s revenue calculation is untouched, so Havard and Meridian's verified NOI/IRR/MOIC figures still tie to Excel exactly. Wiring this schedule into a monthly rollover cash flow engine is the next step, not yet done.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Rollover data structure -</b> lease start/end dates, global rollover assumptions, and per-unit JSON overrides are now captured and previewed here. This is the data layer only: the revenue calculation is untouched, so NOI, IRR and MOIC are unchanged by what is entered here. The schedule is not yet wired into the monthly cash flow.</div></div>`;
   return o;
 };
 </script>
@@ -3359,7 +3359,7 @@ RENDERERS['Sensitivity'] = function(){
     return `<td class="${isBase?'grandtotal':''}">${isFinite(c.irr)?bkPct(c.irr):'n/a'}<br><span style="opacity:.65;font-size:.85em">${isFinite(c.moic)?c.moic.toFixed(2)+'x':''}</span></td>`;
   }).join('')}</tr>`).join('');
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Levered IRR / MOIC Sensitivity - Exit Cap Rate × Market Rent Growth (live re-run of the verified engine per cell)</caption><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live sensitivity -</b> every cell is a real call into <code>bkMonthlyReturns()</code> with Exit Cap and Rent Growth swapped for that scenario's values, on a scratch copy of the deal (the saved deal and every other sheet are untouched). Not a lookup table or a linear approximation.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live sensitivity -</b> every cell re-runs the full monthly engine with Exit Cap and Rent Growth swapped for that scenario's values, on a scratch copy of the deal (the saved deal and every other sheet are untouched). It is not a lookup table or a linear approximation.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Base Case</div><div class="metric-list">
     <div class="metric-row"><span class="k">Exit Cap</span><span class="v">${bkPct(baseCap)}</span></div>
     <div class="metric-row"><span class="k">Rent Growth</span><span class="v">${bkPct(baseGrowth)}</span></div>
@@ -3415,7 +3415,7 @@ RENDERERS['Reverse Solve'] = function(){
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Reverse Solve Input</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th></th></tr></thead><tbody>
     <tr class="input"><td class="rowlabel">Target Levered IRR</td><td class="v" contenteditable="true" spellcheck="false" onblur="bkSetReverseSolveTarget(this)">${hasTarget?(targetIRR*100).toFixed(2)+'%':''}</td><td>%</td><td>${targetChip}</td></tr>
     </tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live reverse solve -</b> bisection search over Purchase Price, re-running the real <code>bkMonthlyReturns()</code>/<code>bkDebt()</code> chain (debt resizes with basis at each trial price, same as it would live on Deal Underwrite) until Levered IRR matches the target to within 0.01 bps. Not a closed-form estimate. ${hasTarget?'':'No target has been entered yet -- enter one below to run the solve.'}</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live reverse solve -</b> bisection search over Purchase Price, re-running the full monthly return and debt calculation (debt resizes with basis at each trial price, same as it would live on Deal Underwrite) until Levered IRR matches the target to within 0.01 bps. Not a closed-form estimate. ${hasTarget?'':'No target has been entered yet -- enter one below to run the solve.'}</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Result</div><div class="metric-list">
     <div class="metric-row"><span class="k">Solved Price</span><span class="v">${result.solved?money(result.price):(hasTarget?'n/a':'-')}</span></div>
     <div class="metric-row"><span class="k">Target IRR</span><span class="v">${targetCell}</span></div>
@@ -3701,7 +3701,7 @@ RENDERERS['Waterfall (M)'] = function(){
   const w = bkWaterfallV07(), s = w.s, m = n=>n<0?'('+bkFmt(-n)+')':bkFmt(n);
   const rr = w.rows.map(r=>`<tr><td class="rowlabel">${r.m}</td><td>${r.dt.toISOString().slice(0,7)}</td><td>${m(r.con)}</td><td>${m(r.dist)}</td><td>${m(r.t1)}</td><td>${m(r.catchup)}</td><td>${m(r.t2)}</td><td>${m(r.t3)}</td><td>${m(r.t4)}</td><td>${m(r.promote)}</td><td>${m(r.lpCF)}</td><td>${m(r.gpCF)}</td></tr>`).join('');
   const main = `<div class="tbl-wrap" style="max-height:640px;overflow:auto"><table class="fin"><caption>Waterfall (M) - Full Monthly Hurdle-Account Detail, All ${w.rows.length} Months</caption><thead><tr><th class="rowlabel-h">Mo</th><th>Date</th><th>Contribution</th><th>Available</th><th>Tier 1</th><th>Catch-Up</th><th>Tier 2</th><th>Tier 3</th><th>Tier 4</th><th>Promote</th><th>LP CF</th><th>GP CF</th></tr></thead><tbody>${rr}</tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> every row is <code>bkWaterfallV07()</code>'s real per-month output, the exact same engine Equity Waterfall summarizes to its last 18 active months. This is the full, unabridged monthly detail.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> every row is the waterfall engine's real per-month output, the same engine Equity Waterfall summarises to its last 18 active months. This is the full, unabridged monthly detail.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Totals</div><div class="metric-list">
     <div class="metric-row"><span class="k">LP XIRR</span><span class="v">${isFinite(w.lpIRR)?bkPct(w.lpIRR):'-'}</span></div>
     <div class="metric-row"><span class="k">GP XIRR</span><span class="v">${isFinite(w.gpIRR)?bkPct(w.gpIRR):'-'}</span></div>
@@ -3769,7 +3769,7 @@ RENDERERS['Lease Cohort CF'] = function(){
     <tr><td class="rowlabel">Blended TI/LC (rollover months only)</td>${shown.map(r=>`<td>${money(-r.oneTime)}</td>`).join('')}</tr>
     <tr class="grandtotal"><td class="rowlabel">Net Cohort Cash Flow</td>${shown.map(r=>`<td>${money(r.net)}</td>`).join('')}</tr>
     </tbody></table></div>
-    <div class="note-flag"><span>&#9888;</span><div><b>Projection, not yet wired into NOI -</b> this blends each lease's renewal-probability-weighted outcome (renew at market with a lighter TI/LC vs. downtime + re-lease with fuller TI/LC) using each unit's own lease dates and the global/per-unit rollover assumptions from Rent Roll. <code>bkAnnualCF()</code>'s actual NOI still uses flat rent-roll growth, unchanged and still Excel-verified -- this page is a supplemental view of rollover risk, not yet integrated into the core engine or into IRR/MOIC. A vacant-at-acquisition unit (no lease dates) uses the global downtime months as a generic lease-up period from month 1, since this app has no separate lease-up-timing field yet.</div></div>`;
+    <div class="note-flag"><span>&#9888;</span><div><b>Projection - not part of the core NOI or IRR -</b> this blends each lease's renewal-probability-weighted outcome (renew at market with a lighter TI/LC, or downtime and re-lease with fuller TI/LC) using each unit's lease dates and the rollover assumptions on Rent Roll. The operating statement and returns still use flat rent-roll growth; this page is a supplemental view of rollover risk. A unit that is vacant at acquisition uses the global downtime months as a lease-up period from month 1.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Cohort Summary</div><div class="metric-list">
     <div class="metric-row"><span class="k">Units Tracked</span><span class="v">${x.rr.length}</span></div>
     <div class="metric-row"><span class="k">Year 1 Blended Rent</span><span class="v">${x.annual[0]?money(x.annual[0].rent):'-'}</span></div>
@@ -3804,7 +3804,7 @@ RENDERERS['Portfolio M'] = function(){
     <tr><td class="rowlabel">Combined Debt Service</td>${years.map(y=>`<td>${money(-byYear[y].ds)}</td>`).join('')}</tr>
     <tr class="grandtotal"><td class="rowlabel">Combined Net Equity Cash Flow</td>${years.map(y=>`<td>${money(byYear[y].cf)}</td>`).join('')}</tr>
     </tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> each deal's real monthly <code>bkMonthlyReturns()</code> output (via the same safe scratch-copy swap Portfolio uses) is bucketed by actual calendar year and summed -- deals with different closing dates line up on the calendar, not on deal-relative month number.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> each deal's real monthly return output is bucketed by actual calendar year and summed -- deals with different closing dates line up on the calendar, not on deal-relative month number.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Portfolio M Summary</div><div class="metric-list">
     <div class="metric-row"><span class="k">Deals Included</span><span class="v">${perDeal.length}</span></div>
     <div class="metric-row"><span class="k">Calendar Years Shown</span><span class="v">${years.length}</span></div>
@@ -3819,7 +3819,7 @@ RENDERERS['Deal Vectors (M)'] = function(){
   const shown = r.rows; // WAVE 2C: display cap lifted from 24 to the full monthly vector
   const rows = shown.map((row,i)=>{ const dr = d.months[i]||{interest:0,principal:0,balance:0}; return `<tr><td class="rowlabel">${row.m}</td><td>${row.dt.toISOString().slice(0,7)}</td><td>${money(row.egi)}</td><td>${money(row.noi)}</td><td>${money(dr.interest)}</td><td>${money(dr.principal)}</td><td>${money(dr.balance)}</td><td>${money(row.ds)}</td><td>${money(row.assetFee)}</td><td>${money(row.cf)}</td></tr>`; }).join('');
   const main = `<div class="tbl-wrap" style="max-height:640px;overflow:auto"><table class="fin"><caption>Deal Vectors (M) - Raw Monthly Engine Output, All ${r.rows.length} Months</caption><thead><tr><th class="rowlabel-h">Mo</th><th>Date</th><th>EGI</th><th>NOI</th><th>Interest</th><th>Principal</th><th>Loan Balance</th><th>Debt Service</th><th>Asset Fee</th><th>Net Equity CF</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> a direct, unaggregated dump of <code>bkAnnualCF().monthly</code>, <code>bkDebt().months</code> and <code>bkMonthlyReturns().rows</code> for the active deal -- the exact per-month vectors every annual-summarized sheet in this app derives from. Useful for exporting or spot-checking a specific month.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> the unaggregated monthly operating, debt and equity cash-flow vectors for the active deal - the figures every annual summary in the app is built from. Useful for exporting or spot-checking a specific month.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Vector Lengths</div><div class="metric-list">
     <div class="metric-row"><span class="k">Months</span><span class="v">${r.rows.length}</span></div>
     <div class="metric-row"><span class="k">Hold</span><span class="v">${s.holdYears} yrs</span></div>
@@ -3929,7 +3929,7 @@ RENDERERS['Equity Partners'] = function(){
     return `<tr><td class="rowlabel">${bkEsc(snap.name||'-')}</td><td>${money(m.equity)}</td><td>${bkPct(lpShare)}</td><td>${money(lpEq)}</td><td>${bkPct(gpShare)}</td><td>${money(gpEq)}</td><td>${bkPct(Number(snap.pref)||0)}</td></tr>`;
   }).join('');
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Equity Partners - GP / LP Capital Structure by Deal</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Total Equity</th><th>LP %</th><th>LP Equity</th><th>GP %</th><th>GP Equity</th><th>Pref</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="7">No deals saved yet.</td></tr>'}</tbody></table></div>
-    <div class="note-flag"><span>&#9888;</span><div><b>Deal-level capital structure only -</b> GP/LP split, equity $, and preferred return are real fields already stored on each deal. This app has no individual investor/LP identity or commitment data model yet (names, per-investor allocations), so this page stops at the deal-level split rather than inventing investor names -- that's a real data-model decision for BK to make before Investors/Investor Schedules/Liquidity can be built for real.</div></div>`;
+    <div class="note-flag"><span>&#9888;</span><div><b>Deal-level capital structure only -</b> the GP/LP split, equity and preferred return come from each deal. Individual investors and their commitments live on the Investors page, so this page stops at the deal-level split.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Structure</div><div class="metric-list"><div class="metric-row"><span class="k">Deals</span><span class="v">${saved.length}</span></div></div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
   return {title:'Equity Partners', crumbs:'Portfolio Database', desc:'GP/LP equity split and preferred return by deal.', meta:{Deals:saved.length,Currency:'USD'}, main, sidebar};
 };
@@ -3963,7 +3963,7 @@ RENDERERS['Capital Calls'] = function(){
   const rows = calls.map(c=>`<tr><td class="rowlabel">${bkEsc(c.name||'-')}</td><td>${bkEsc(c.closing||'-')}</td><td>${c.ok?money(c.equity):'engine error'}</td></tr>`).join('');
   const total = calls.reduce((z,c)=>z+(c.ok?c.equity:0),0);
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Capital Calls - Equity Funding Schedule by Deal Closing</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Closing / Call Date</th><th>Equity Called</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="3">No deals saved yet.</td></tr>'}<tr class="grandtotal"><td class="rowlabel">Total Called</td><td></td><td>${money(total)}</td></tr></tbody></table></div>
-    <div class="note-flag"><span>&#9888;</span><div><b>Reflects the engine's actual funding assumption -</b> every deal in this app draws 100% of its equity in month 1 (<code>bkMonthlyReturns</code>'s <code>equityDraw</code>), so each deal is one call, at closing, for its full equity amount. There's no phased/multi-tranche call mechanic (that exists for development draws, not acquisition equity) -- this shows what the engine actually models, not an invented call schedule.</div></div>`;
+    <div class="note-flag"><span>&#9888;</span><div><b>One call, at closing -</b> each deal draws all of its equity in month 1, so there is a single call per deal for its full equity amount. Phased or multi-tranche equity calls are not modelled for acquisitions (development draws are separate).</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Calls</div><div class="metric-list"><div class="metric-row"><span class="k">Deals</span><span class="v">${calls.length}</span></div><div class="metric-row"><span class="k">Total Called</span><span class="v">${money(total)}</span></div></div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
   return {title:'Capital Calls', crumbs:'Portfolio Database', desc:'Equity funding schedule across the portfolio, one call per deal at closing.', meta:{Deals:calls.length,'Total Called':money(total),Currency:'USD'}, main, sidebar};
 };
@@ -4013,7 +4013,7 @@ RENDERERS['Benchmarks'] = function(){
     return `<tr><td class="rowlabel">${bkEsc(snap.name||'-')}</td><td>${bkPct(goingInCap)}</td><td>${m.moic.toFixed(2)}x</td><td>${bkPct(m.irr)}</td><td>${targetIRR!=null?bkPct(targetIRR):'-'}</td><td>${targetIRR!=null?(irrPass?'<span class="status-chip pass">PASS</span>':'<span class="status-chip fail">BELOW</span>'):'-'}</td></tr>`;
   }).join('');
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Benchmarks - Actual vs. Each Deal's Own Underwriting Target</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Going-In Cap Rate</th><th>MOIC</th><th>Levered IRR</th><th>Target IRR</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="6">No deals saved yet.</td></tr>'}</tbody></table></div>
-    <div class="note-flag"><span>&#9888;</span><div><b>Internal benchmarks only -</b> this compares each deal's live engine output against targets already stored on that deal (Reverse Solve's target IRR, when set). This app has no real external market-data source (NCREIF, market cap-rate comps, etc.) wired in, so no external index or market benchmark is shown -- fabricating one would be worse than not having this page. If BK wants real market comps here, that needs an actual data feed or a manually-entered comp set.</div></div>`;
+    <div class="note-flag"><span>&#9888;</span><div><b>Against each deal's own targets -</b> this compares each deal's live results with the targets stored on that deal (such as the target IRR from Reverse Solve). For published market ranges - cap rates, expenses and debt terms - see Market Benchmarks under Underwrite.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Benchmarks</div><div class="metric-list"><div class="metric-row"><span class="k">Deals</span><span class="v">${saved.length}</span></div></div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
   return {title:'Benchmarks', crumbs:'Portfolio Database', desc:"Each deal's live metrics against its own stored underwriting targets (no external market data source).", meta:{Deals:saved.length,Currency:'USD'}, main, sidebar};
 };
@@ -4037,7 +4037,7 @@ RENDERERS['Sources & Uses'] = function(){
     <tr><td class="rowlabel">Sponsor / LP Equity</td><td class="v">${money(d.equity)}</td></tr>
     <tr class="grandtotal"><td class="rowlabel">TOTAL SOURCES</td><td class="v">${money(d.loan+d.equity)}</td></tr>
     </tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> Uses/Sources reuse the exact figures <code>bkDebt()</code>${isDev?'/<code>bkDevV09()</code>':''} already compute and this app already ties out elsewhere (Debt, Deal Underwrite); this page lays them out in standard Sources &amp; Uses form. Total Uses and Total Sources tie by construction, since equity is defined as basis + fee - loan.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> Uses and Sources reuse the figures already calculated on Debt and Deal Underwrite${isDev?' and the development budget':''}; this page lays them out in standard Sources &amp; Uses form. Total Uses and Total Sources tie by construction, since equity is defined as basis + fee - loan.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">S&amp;U Check</div><div class="metric-list"><div class="metric-row"><span class="k">Total Uses</span><span class="v">${money(totalUses)}</span></div><div class="metric-row"><span class="k">Total Sources</span><span class="v">${money(d.loan+d.equity)}</span></div><div class="metric-row"><span class="k">Loan / Equity</span><span class="v">${money(d.loan)} / ${money(d.equity)}</span></div></div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
   return {title:'Sources & Uses', crumbs:'Portfolio Database', desc:'Standard Sources & Uses table for the active deal.', meta:{Property:s.name,'Total Uses':money(totalUses),Currency:'USD'}, main, sidebar};
 };
@@ -4257,14 +4257,14 @@ function bkExportDevDraws(){
 const BK_EXPORT_REGISTRY = [
   {key:'assumptions', label:'Assumptions', desc:'All scalar deal inputs from Deal Underwrite and related sheets.', builder:bkExportAssumptions},
   {key:'rentroll', label:'Rent Roll', desc:'Unit-level rent roll as entered on the Rent Roll sheet.', builder:bkExportRentRoll},
-  {key:'annualcf', label:'Annual Property CF', desc:'Annual unlevered NOI / sale from bkAnnualCF() (Property CF sheet).', builder:bkExportAnnualCF},
-  {key:'monthlycf', label:'Monthly Property CF', desc:'Monthly dated levered cash flow from bkMonthlyReturns() (Returns sheet).', builder:bkExportMonthlyCF},
-  {key:'debt', label:'Debt Schedule', desc:'Full monthly amortization from bkDebt() (Debt Schedule sheet).', builder:bkExportDebtSchedule},
-  {key:'waterfall', label:'Waterfall / LP-GP CF', desc:'Monthly hurdle waterfall from bkWaterfallV07() (Equity Waterfall / Waterfall (M) sheets).', builder:bkExportWaterfall},
-  {key:'sponsor', label:'Sponsor CF', desc:'GP fees, co-invest and promote from bkSponsorV08() (Sponsor CF sheet).', builder:bkExportSponsorCF},
+  {key:'annualcf', label:'Annual Property CF', desc:'Annual unlevered NOI and sale proceeds (Property CF sheet).', builder:bkExportAnnualCF},
+  {key:'monthlycf', label:'Monthly Property CF', desc:'Monthly dated levered cash flow (Returns sheet).', builder:bkExportMonthlyCF},
+  {key:'debt', label:'Debt Schedule', desc:'Full monthly loan amortisation (Debt Schedule sheet).', builder:bkExportDebtSchedule},
+  {key:'waterfall', label:'Waterfall / LP-GP CF', desc:'Monthly hurdle waterfall (Equity Waterfall and Waterfall (M) sheets).', builder:bkExportWaterfall},
+  {key:'sponsor', label:'Sponsor CF', desc:'GP fees, co-investment and promote (Sponsor CF sheet).', builder:bkExportSponsorCF},
   {key:'investors', label:'Investor Schedules', desc:'Per-investor monthly cash flow and summary (Investor Registry x deal commitments).', builder:function(){ return window.bkExportInvestorSchedules(); }},
-  {key:'devschedule', label:'Development Schedule', desc:'Phase timeline from bkDevV09() (Dev Schedule sheet). Development deals only.', builder:bkExportDevSchedule},
-  {key:'devdraws', label:'Development Draws', desc:'Monthly funding/draw schedule from bkDevFundingV10() (Dev Draws sheet). Development deals only.', builder:bkExportDevDraws},
+  {key:'devschedule', label:'Development Schedule', desc:'Phase timeline (Dev Schedule sheet). Development deals only.', builder:bkExportDevSchedule},
+  {key:'devdraws', label:'Development Draws', desc:'Monthly funding and draw schedule (Dev Draws sheet). Development deals only.', builder:bkExportDevDraws},
 ];
 function bkExportSafeBuild(reg){
   // V30: with no provisioned deal every dataset is unavailable - never export the engine template.
@@ -13210,8 +13210,8 @@ extend('Debt Schedule','fTotalDebt', function(o){
 
   o.main = (o.main||'') + recon
     + wrapTable('Total Debt - all facilities, monthly, all '+n+' periods', head, body)
-    + note('&#9432;','Every column is read from the facility&rsquo;s own canonical schedule - <code>bkDebt()</code>, '
-      + '<code>bkDevFundingV10()</code> and <code>bkDevTakeoutV11()</code> - and the total is their sum. Nothing is re-amortised '
+    + note('&#9432;','Every column is read from the facility&rsquo;s own canonical schedule - the acquisition debt schedule, '
+      + 'the construction funding schedule and the permanent takeout - and the total is their sum. Nothing is re-amortised '
       + 'here. A facility that does not apply to this deal shows NOT APPLICABLE rather than a row of zeros pretending to be a schedule. '
       + 'Capitalised construction interest is shown in its own column because it is not cash debt service and must not be added to it.');
 });
@@ -14641,7 +14641,7 @@ extend('Portfolio Dashboard','fbExposure', function(o){
     + group(function(s){ return s.propertyType; }, 'Exposure by Property Type', 'Not stated')
     + group(function(s){ return s.dealType; },     'Exposure by Deal Type',     'Not stated')
     + group(function(s){ return s.state || s.marketState; }, 'Exposure by State', 'Not stated')
-    + note('&#9432;','Equity is each deal&rsquo;s own sized equity from <code>bkDebt()</code>, grouped by the attribute stored on '
+    + note('&#9432;','Equity is each deal&rsquo;s own sized equity from the debt calculation, grouped by the attribute stored on '
       + 'that deal. A deal that has not had the attribute filled in is grouped under &ldquo;Not stated&rdquo; rather than being '
       + 'dropped, so the percentages always account for the whole portfolio.');
 });
@@ -17766,7 +17766,7 @@ function tornado(rows, base, M){
   var vals = [base]; rows.forEach(function(r){ if(isFinite(r.lo)) vals.push(r.lo); if(isFinite(r.hi)) vals.push(r.hi); });
   var ticks = niceTicks(Math.min.apply(null, vals), Math.max.apply(null, vals), 5);
   var x0 = ticks[0], x1 = ticks[ticks.length-1];
-  var X = function(v){ return L + (v - x0)/(x1 - x0) * (W - L - R); };
+  var X = function(v){ return L + 50 + (v - x0)/(x1 - x0) * (W - L - 50 - R); };   /* 50px of room left of the axis for the low-end value labels */
   var g = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tornado chart of '+esc(M.label)+' by driver">';
   ticks.forEach(function(t){ g += '<line class="grid" x1="'+X(t)+'" x2="'+X(t)+'" y1="'+(top-6)+'" y2="'+(H-24)+'"/>'
     + '<text x="'+X(t)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(M.fmt(t))+'</text>'; });
@@ -18102,10 +18102,18 @@ html body #viewport table.fin tbody td.bk-changed::after{ content:''; position:a
 .bk-nav .grp-btn .car{ font-size:9px; opacity:.7; margin-left:2px; }
 @media (max-width:640px){ .bk-nav .grp-btn .cur{ display:none; } }
 .bk-nav.open > .grp-btn{ color:#fff; background:rgba(255,255,255,.08); }
-html body #viewport table.fin.bk-grid4.bk-conv tr > :nth-child(1){ width:24% !important; }
-html body #viewport table.fin.bk-grid4.bk-conv tr > :nth-child(2){ width:22% !important; }
-html body #viewport table.fin.bk-grid4.bk-conv tr > :nth-child(3){ width:39% !important; text-align:left !important; }
-html body #viewport table.fin.bk-grid4.bk-conv tr > :nth-child(4){ width:15% !important; }
+html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(1){ width:24% !important; }
+html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(2){ width:22% !important; }
+html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(3){ width:39% !important; text-align:left !important; }
+html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(4){ width:15% !important; }
+html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(1){ width:11% !important; }
+html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(2){ width:56% !important; text-align:left !important; }
+html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(3){ width:17% !important; }
+html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(4){ width:16% !important; }
+@media (max-width:640px){ #viewport table.fin[data-bk-findings] button{ white-space:normal !important; padding:6px 8px; } }
+td[data-bk-sfx]{ white-space:nowrap !important; }
+td[data-bk-sfx] input{ width:calc(100% - 26px) !important; min-width:0; display:inline-block; }
+#viewport button.status-chip, #viewport button.status-chip *{ white-space:nowrap; }
 .bk-nav-pop{ min-width:230px; max-height:min(70vh,560px); overflow-y:auto; left:0; right:auto; }
 .bk-nav-pop .lab{ display:flex; gap:8px; align-items:center; padding:10px 10px 4px; }
 .bk-nav-pop .lab:not(:first-child){ border-top:1px solid var(--line,#E2DCCD); margin-top:4px; }
@@ -20370,7 +20378,18 @@ document.addEventListener('keydown', function(e){
   var items = [].slice.call(open.querySelectorAll('.it')), i = items.indexOf(document.activeElement) ; e.preventDefault();
   i = e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1); items[i].focus();
 });
-function tidy(){ var t = document.querySelector('#viewport table.fin.bk-grid4'); if(t && t.caption && /Underwriting Conventions/i.test(t.caption.textContent) && !t.classList.contains('bk-conv')) t.classList.add('bk-conv'); }
+function tidy(){
+  document.querySelectorAll('#viewport table.fin').forEach(function(t){ var c = t.caption ? t.caption.textContent : '';
+    if(/Underwriting Conventions|Tax-Grade Depreciation Settings/i.test(c) && !t.classList.contains('bk-conv')) t.classList.add('bk-conv');   /* guard: classList.add on an existing class still fires the class observer */
+    if(/Conflicting Inputs/i.test(c) && !t.hasAttribute('data-bk-findings')) t.setAttribute('data-bk-findings','1'); });
+  /* an input followed by a unit (%, x, bps) must not wrap the unit onto its own line */
+  document.querySelectorAll('#viewport td[data-bk-kind="input-text"]').forEach(function(td){ var i = td.querySelector('input'); if(!i || td.hasAttribute('data-bk-sfx')) return;
+    var tail = ''; for(var n = i.nextSibling; n; n = n.nextSibling) tail += n.textContent; if(/^\s*(%|x|bps)\s*$/.test(tail)) td.setAttribute('data-bk-sfx','1'); });
+  var cs = null; try { cs = currentSheet; } catch(e){}
+  var f = document.querySelector('#viewport .sheet-frame');
+  if(f && cs === 'Investor Schedules' && !f.querySelector('table') && !f.querySelector('.bk-empty-note')){ var m = f.querySelector('.note-flag'); if(m){ var d = document.createElement('div'); d.className = 'note-flag bk-empty-note'; d.style.marginTop = '12px';
+    d.innerHTML = '<span>&#9432;</span><div>No investors have commitments on this deal yet. Add investors on the <a data-goto-sheet2="Investors" style="cursor:pointer">Investors</a> page and each one\u2019s cash-flow schedule appears here.</div>'; m.parentNode.insertBefore(d, m.nextSibling); } }
+}
 function mark(){ tidy(); document.querySelectorAll('.bk-nav-pop .it').forEach(function(x){ x.tabIndex = -1; x.setAttribute('role', 'menuitem'); });
   document.querySelectorAll('.bk-nav > .grp-btn').forEach(function(x){ x.tabIndex = 0; });
   document.querySelectorAll('.bk-nav.open').forEach(function(m){ var b = m.querySelector('.grp-btn'); if(b) b.setAttribute('aria-expanded', 'true'); }); }
