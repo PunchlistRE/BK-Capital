@@ -163,12 +163,12 @@ const B = require(path.join(__dirname, 'dealB.js'));
   check('results are marked stale once the deal changes', /changed since the last run/.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
   await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { dealType: 'Development', predevMonths: 6, constructionMonths: 18, leaseupMonths: 12 })); showSheet('Probability-Weighted'); }, B);
   check('Probability-Weighted says it applies to acquisition deals on a development deal', /acquisition deals/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
-  // 11. Every editable value is left-aligned, on the sheets that carry inputs
+  // 11. Every editable value is right-aligned, on the sheets that carry inputs
   const algn = {};
   for (const sh of ['Deal Underwrite', 'Probability-Weighted', 'Market Benchmarks', 'Refi / Recap', 'Credit Policy', 'Depreciation', 'Import Deal', 'Import Rent Roll']) {
     await p.evaluate(d => bkCreateNewDeal(d), B); await p.evaluate(s => showSheet(s), sh); await p.waitForTimeout(350);
-    algn[sh] = await p.evaluate(() => [...document.querySelectorAll('#viewport input[type=text], #viewport td.input, #viewport td[contenteditable=true], #viewport select')].filter(e => ['right', 'end'].includes(getComputedStyle(e).textAlign)).length); }
-  check('no editable value is right-aligned', Object.values(algn).every(n => n === 0), JSON.stringify(algn));
+    algn[sh] = await p.evaluate(() => [...document.querySelectorAll('#viewport input[type=text], #viewport td.input, #viewport td[contenteditable=true], #viewport select')].filter(e => !['right', 'end'].includes(getComputedStyle(e).textAlign)).length); }
+  check('every editable value is right-aligned', Object.values(algn).every(n => n === 0), JSON.stringify(algn));
   // 12. Home: front door with no deal, dashboard with one, next step, checklist, command palette, folding rail
   await p.evaluate(() => { localStorage.removeItem('bkcapital.cre.v02'); }); await p.reload(); await p.waitForTimeout(900);
   await p.evaluate(() => { document.documentElement.classList.add('bk-auth-ok'); showSheet('Home'); }); await p.waitForTimeout(400);
@@ -188,6 +188,25 @@ const B = require(path.join(__dirname, 'dealB.js'));
   const rail = await p.evaluate(() => [...document.querySelectorAll('#rail-groups .rail-group')].filter(g => !g.classList.contains('bk-adv') && !g.classList.contains('pl-collapsed')).length);
   check('the left rail keeps only the working group open', rail === 1, String(rail));
   await p.keyboard.press('Escape');
+  // 13. New deal and Clear inputs on Overview
+  await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(400);
+  check('Overview offers New deal and Clear inputs', await p.evaluate(() => [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|')) === '+ New deal|Clear inputs');
+  await p.click('.pl-toolbar button:has-text("New deal")'); await p.waitForTimeout(250);
+  check('New deal asks for a name and type and offers to save the current deal', await p.evaluate(() => { const m = document.getElementById('pl-modal'); return m.classList.contains('open') && !!m.querySelector('#pl-nm') && !!m.querySelector('#pl-ty') && !!m.querySelector('#pl-save1'); }));
+  await p.fill('#pl-nm', 'Test Heights'); await p.selectOption('#pl-ty', 'Development');
+  const portBefore = await p.evaluate(() => bkPortfolioLoad().length);
+  await p.click('#pl-modal button:has-text("Create blank deal")'); await p.waitForTimeout(500);
+  const nd = await p.evaluate(() => ({ n: bkLoad().name, t: bkLoad().dealType, price: bkLoad().purchasePrice, port: bkPortfolioLoad().length, sheet: currentSheet, open: document.getElementById('pl-modal').classList.contains('open') }));
+  check('Create blank deal opens an empty deal with that name and type, and saved the previous one', nd.n === 'Test Heights' && nd.t === 'Development' && !(nd.price > 0) && nd.port === portBefore + 1 && !nd.open, JSON.stringify(nd));
+  await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(300);
+  await p.click('.pl-toolbar button:has-text("Clear inputs")'); await p.waitForTimeout(250);
+  check('Clear inputs says what it will do before it does it', await p.evaluate(() => /Clear all inputs/.test(document.getElementById('pl-modal').innerText) && /kept/.test(document.getElementById('pl-modal').innerText)));
+  await p.click('#pl-modal button:has-text("Cancel")'); await p.waitForTimeout(150);
+  check('Cancel leaves the deal untouched', await p.evaluate(() => bkLoad().purchasePrice > 0 && !document.getElementById('pl-modal').classList.contains('open')));
+  const nm0 = await p.evaluate(() => bkLoad().name);
+  await p.click('.pl-toolbar button:has-text("Clear inputs")'); await p.waitForTimeout(200); await p.click('#pl-modal button.danger'); await p.waitForTimeout(500);
+  const cl = await p.evaluate(() => { const s = bkLoad(); return { name: s.name, price: s.purchasePrice, units: s.units, taxes: s.taxes, rr: (s.rentRoll || []).length, type: s.dealType }; });
+  check('Clear inputs blanks the numbers and keeps the deal identity', cl.name === nm0 && cl.price === 0 && cl.taxes === 0 && cl.rr === 0 && cl.type === 'Acquisition', JSON.stringify(cl));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();
