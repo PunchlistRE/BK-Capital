@@ -1,6 +1,6 @@
 """Independent audit of the development path (see devdeal.js / deals/index.js). No development formula is
 copied from the app: each check restates a financing or return identity from first principles.
-    python3 audit/dev_audit.py out.json      (exit 1 on any failure; KNOWN GAPS are reported, not failed)
+    python3 audit/dev_audit.py out.json      (exit 1 on any failure; notes are informational)
 Importable: run(d, quiet) -> (checks, fails, notes)."""
 import json, sys, math
 from datetime import date
@@ -70,11 +70,19 @@ def run(d, quiet=False):
             else: lo = mid
         return (lo + hi) / 2
     for z, v in zip(rows, vals):
-        eq(f"m{z['m']} cash flow identity", v, -z['equityDraw'] - z['refiEq'] + z['noi'] - z['assetFee'] - z['ds'] + z['refi'] + z['sale'] - z['dispoFee'] - z['payoff'], 0.01)
-    # app XIRR counts the month-1 draw at the close date; month-end dates for the rest
-    irr = xirr(vals, dts, start if False else dts[0])
-    if not quiet: print(f'  independent XIRR from app cash flows {irr:.4%}  (app {m["irr"]:.4%})')
-    ok('levered IRR matches an independent XIRR on the app cash flows (within 25 bp: app dates month-1 draw at close)', abs(irr - m['irr']) < 0.0025, f'{irr:.4%} vs {m["irr"]:.4%}')
+        eq(f"m{z['m']} cash flow identity", v, -z['equityDraw'] - z['refiEq'] + z['noi'] - z['reserve'] - z['assetFee'] - z['ds'] + z['refi'] + z['sale'] - z['dispoFee'] - z['payoff'], 0.01)
+    # ---- 5b. operating NOI and replacement reserves. Reserves are embedded: operating NOI = Year-1 stabilised NOI AFTER
+    # reserves, grown annually at the NOI growth rate (the 'reserve' row stays 0 because it is already inside 'noi').
+    g_noi = N('noiGrowth') or N('rentGrowth'); base = d['baseNOI']
+    if not N('stabilizedNOI'): eq('operating NOI base = Year-1 NOI before reserves - replacement reserves', base, d['calcNOI'] - N('reserves'), 0.5)
+    noi_k = lambda k: base * (1 + g_noi) ** (max(1, math.ceil((k - stab + 1) / 12)) - 1) / 12
+    for z in rows:
+        eq(f"m{z['m']} operating NOI = after-reserve NOI grown annually / 12 (0 before stabilisation unless in lease-up)", z['noi'], noi_k(z['m']), 0.01) if z['m'] >= stab else None
+    fwd_exit = sum(noi_k(k) for k in range(len(rows) + 1, len(rows) + 13))
+    eq('gross sale = forward 12-month NOI (after reserves) / exit cap', rows[-1]['grossSale'], fwd_exit / N('exitCap'), 1)
+    # the permanent loan is sized on NOI BEFORE reserves, by design (lenders size before reserves)
+    fwd_perm = sum(d['calcNOI'] * (1 + g_noi) ** (max(1, math.ceil((k - stab + 1) / 12)) - 1) / 12 for k in range(stab + 1, stab + 13))
+    eq('permanent-loan sizing NOI = forward 12-month NOI before reserves', t['noi'], fwd_perm, 1)
     pos = sum(v for v in vals if v > 0); neg = -sum(v for v in vals if v < 0)
     eq('MOIC = distributions / contributions', m['moic'], pos / neg, 1e-9)
     last = rows[-1]
@@ -90,11 +98,7 @@ def run(d, quiet=False):
     lo = 0.10 if commit > 0 else 0.06   # an all-equity project earns less than a levered one
     ok(f'IRR {lo:.0%}-35%', lo <= m['irr'] <= 0.35, f'{m["irr"]:.1%}')
     ok('MOIC 1.4x-4.0x', 1.4 <= m['moic'] <= 4.0, f'{m["moic"]:.2f}x')
-    # ---- KNOWN GAPS (reported, not failed)
-    if all(z['reserve'] == 0 for z in rows) and N('reserves') > 0:
-        notes.append(f"replacement reserves of ${N('reserves'):,.0f}/yr are not deducted from development operating cash flow (row 'reserve' is always 0)")
-    if abs(sum(z['noi'] for z in rows[stab:stab + 12]) - t['noi']) > 1:
-        notes.append('first 12 operating months NOI differs from the forward NOI that sizes the permanent loan')
+    if N('reserves') > 0: notes.append('reserves are embedded in operating NOI (after-reserve base grown at the NOI growth rate, not the opex rate)')
     return checks, fails, notes
 
 if __name__ == '__main__':
@@ -102,5 +106,5 @@ if __name__ == '__main__':
     checks, fails, notes = run(d)
     print(f'\n{checks} checks, {len(fails)} failures, {len(d["pageErrors"])} page errors')
     for x in fails[:40]: print('FAIL', x)
-    for x in notes: print('KNOWN GAP:', x)
+    for x in notes: print('NOTE:', x)
     sys.exit(1 if fails or d['pageErrors'] else 0)

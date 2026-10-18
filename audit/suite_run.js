@@ -31,7 +31,7 @@ const collect = (kind) => {
   } else {
     const dv = bkDevV09(), f = bkDevFundingV10(), t = bkDevTakeoutV11(), m = bkDevMonthlyReturnsV12(), c = bkCalc();
     const pick = (x, ks) => Object.fromEntries(ks.map(k => [k, x[k]]));
-    Object.assign(r, { s, calcNOI: c.noi,
+    Object.assign(r, { s, calcNOI: c.noi, baseNOI: Math.max(0, Number(s.stabilizedNOI || 0) || Number(bkOperatingV02().noi || 0)),
       dv: pick(dv, ['hard', 'soft', 'unlev', 'land', 'close', 'acq', 'pre', 'leaseDef', 'preMo', 'conMo', 'luMo', 'co', 'stab', 'hold']),
       f: Object.assign(pick(f, ['commit', 'upfrontFees', 'actualCapInt', 'overflowTotal', 'equityTotal', 'levered', 'rate', 'stabVal']), { months: f.months }),
       t: pick(t, ['noi', 'stabVal', 'ltvCap', 'dscrLoan', 'dyLoan', 'permLoan', 'permFee', 'conPayoff', 'refiProceeds', 'refiShortfall', 'bindingTest', 'permDebtAtSale']),
