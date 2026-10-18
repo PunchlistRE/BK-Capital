@@ -51,3 +51,12 @@ exit-cap cushion / upside-downside IRR, risk register, conditions precedent, cre
 It tests the deal the engines produced and never changes a return or a loan. Development deals are gated on the tests that apply
 to them. Break-evens are bisections against the live engine (`bkRunWith`). Not ported: lender eligibility, capital-stack
 structures, refinance timing, fund / portfolio impact (the app has no equivalent engine to hang them on yet).
+
+## Conflicting-input checks (Model Checks)
+`bkConflicts()` runs ~45 cross-field rules (tax / depreciation, statement-vs-cash-flow reconciliation, debt, waterfall, development,
+credit policy). Each returns a plain-English message with the deal's own numbers and a *why it matters* note on the accounting, tax
+or credit consequence. ERROR (inputs contradict, results wrong) feeds `bkModelControls` as FAIL and blocks decision-grade; WARN is
+listed; INFO states an assumption. WARN / INFO can be acknowledged per deal. When an edit CREATES a new ERROR / WARN a card
+explains it at once (off under automation unless `window.BK_CONFLICT_TOASTS === true`). `conflicts_test.js`: every rule has a
+scenario that fires it, clears it when fixed, and checks the explanation; plus readiness integration, acknowledgement and the
+pop-up lifecycle. `suite_test.py` checks the reconciliation gap against the independent model and pins each deal's rule IDs.

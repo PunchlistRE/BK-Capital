@@ -17,6 +17,9 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "ACQ-1:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy"
+ },
  "ACQ-1:credit": {
   "beOcc": 0.851255797,
   "binding": "DSCR, stressed rate, amortizing",
@@ -49,6 +52,9 @@
   "unlevIRR": 0.171112804,
   "unlevMOIC": 2.038055477,
   "y1NOI": 1270349.16
+ },
+ "ACQ-2:conflicts": {
+  "ids": "WARN:acct.exit-below-going-in WARN:debt.sizing-looser-than-policy"
  },
  "ACQ-2:credit": {
   "beOcc": 0.835939637,
@@ -83,6 +89,9 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "ACQ-3:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy"
+ },
  "ACQ-3:credit": {
   "beOcc": 0.851234303,
   "binding": "DSCR, stressed rate, amortizing",
@@ -115,6 +124,9 @@
   "unlevIRR": 0.069812847,
   "unlevMOIC": 1.498331224,
   "y1NOI": 230315.76
+ },
+ "ACQ-4:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy"
  },
  "ACQ-4:credit": {
   "beOcc": 0.8625091,
@@ -149,6 +161,9 @@
   "unlevMOIC": 2.102367456,
   "y1NOI": 3250297.5
  },
+ "ACQ-5:conflicts": {
+  "ids": "WARN:acct.exit-below-going-in WARN:acct.statement-vs-cashflow WARN:debt.sizing-looser-than-policy"
+ },
  "ACQ-5:credit": {
   "beOcc": 0.872276988,
   "binding": "DSCR, stressed rate, amortizing",
@@ -181,6 +196,9 @@
   "unlevIRR": -0.031432767,
   "unlevMOIC": 0.851571464,
   "y1NOI": 1270349.16
+ },
+ "ACQ-6:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy"
  },
  "ACQ-6:credit": {
   "beOcc": 0.851255797,
@@ -215,6 +233,9 @@
   "unlevMOIC": 1.331053036,
   "y1NOI": 1307022.13
  },
+ "ACQ-7:conflicts": {
+  "ids": "WARN:acct.hurdle-on-deal-equity WARN:acct.ltv-on-value WARN:acct.statement-vs-cashflow WARN:debt.sizing-looser-than-policy WARN:wf.gp-share-extreme"
+ },
  "ACQ-7:credit": {
   "beOcc": 0.822529385,
   "binding": "DSCR, stressed rate, amortizing",
@@ -247,6 +268,9 @@
   "unlevIRR": 0.059611054,
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
+ },
+ "CRD-1:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy"
  },
  "CRD-1:credit": {
   "beOcc": 0.851255797,
@@ -323,6 +347,9 @@
   "unlevMOIC": 1.843173102,
   "y1NOI": 899039.0
  },
+ "HARVARD:conflicts": {
+  "ids": "INFO:tax.losses-usable WARN:acct.exit-below-going-in WARN:acct.expense-ratio WARN:acct.mgmt-zero WARN:acct.occupancy-vs-vacancy WARN:tax.costseg-payback"
+ },
  "HARVARD:credit": {
   "beOcc": 0.599361529,
   "binding": "Loan-to-value",
@@ -365,6 +392,9 @@
   "unlevMOIC": 1.384711554,
   "y1NOI": 683241.98
  },
+ "REAL-1:conflicts": {
+  "ids": "WARN:acct.reserves-zero WARN:debt.sizing-looser-than-policy"
+ },
  "REAL-1:credit": {
   "beOcc": 0.893304825,
   "binding": "DSCR, stressed rate, amortizing",
@@ -397,6 +427,9 @@
   "unlevIRR": 0.078297814,
   "unlevMOIC": 1.401835277,
   "y1NOI": 247108.67
+ },
+ "REAL-2:conflicts": {
+  "ids": "WARN:acct.reserves-zero WARN:debt.sizing-looser-than-policy"
  },
  "REAL-2:credit": {
   "beOcc": 0.911246147,
@@ -431,6 +464,9 @@
   "unlevMOIC": 1.394656255,
   "y1NOI": 445267.35
  },
+ "REAL-3:conflicts": {
+  "ids": "WARN:acct.reserves-zero WARN:debt.sizing-looser-than-policy"
+ },
  "REAL-3:credit": {
   "beOcc": 0.88092537,
   "binding": "DSCR, stressed rate, amortizing",
@@ -463,6 +499,9 @@
   "unlevIRR": 0.079738607,
   "unlevMOIC": 1.407840725,
   "y1NOI": 328916.55
+ },
+ "REAL-4:conflicts": {
+  "ids": "WARN:acct.reserves-zero WARN:debt.sizing-looser-than-policy"
  },
  "REAL-4:credit": {
   "beOcc": 0.895911756,
@@ -497,6 +536,9 @@
   "unlevMOIC": 1.44343861,
   "y1NOI": 302606.24
  },
+ "REAL-5:conflicts": {
+  "ids": "WARN:acct.reserves-zero WARN:debt.sizing-looser-than-policy"
+ },
  "REAL-5:credit": {
   "beOcc": 0.878761654,
   "binding": "DSCR, stressed rate, amortizing",
@@ -530,6 +572,9 @@
   "unlevMOIC": 1.434793257,
   "y1NOI": 76429.95
  },
+ "REAL-6:conflicts": {
+  "ids": "WARN:acct.reserves-zero WARN:debt.sizing-looser-than-policy"
+ },
  "REAL-6:credit": {
   "beOcc": 0.876234991,
   "binding": "DSCR, stressed rate, amortizing",
@@ -562,6 +607,9 @@
   "unlevIRR": 0.059611054,
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
+ },
+ "TAX-1:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy"
  },
  "TAX-1:credit": {
   "beOcc": 0.851255797,
@@ -605,6 +653,9 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "TAX-2:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy"
+ },
  "TAX-2:credit": {
   "beOcc": 0.851255797,
   "binding": "DSCR, stressed rate, amortizing",
@@ -646,6 +697,9 @@
   "unlevIRR": 0.060109141,
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
+ },
+ "TAX-3:conflicts": {
+  "ids": "INFO:dep.bonus-elect-above-statutory WARN:debt.sizing-looser-than-policy"
  },
  "TAX-3:credit": {
   "beOcc": 0.851255797,
@@ -689,6 +743,9 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "TAX-4:conflicts": {
+  "ids": "INFO:dep.bonus-elect-above-statutory WARN:debt.sizing-looser-than-policy"
+ },
  "TAX-4:credit": {
   "beOcc": 0.851255797,
   "binding": "DSCR, stressed rate, amortizing",
@@ -731,6 +788,9 @@
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
  },
+ "TAX-5:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy WARN:dep.simplified-costseg"
+ },
  "TAX-5:credit": {
   "beOcc": 0.851255797,
   "binding": "DSCR, stressed rate, amortizing",
@@ -763,6 +823,9 @@
   "unlevIRR": 0.059611054,
   "unlevMOIC": 1.293912853,
   "y1NOI": 1270349.16
+ },
+ "TAX-6:conflicts": {
+  "ids": "INFO:tax.losses-usable WARN:debt.sizing-looser-than-policy WARN:tax.costseg-payback"
  },
  "TAX-6:credit": {
   "beOcc": 0.851255797,

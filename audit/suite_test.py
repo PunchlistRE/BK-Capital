@@ -71,6 +71,12 @@ for d in data['deals']:
                     close(f"{tag} gate {row['id']}: underwritten value", row['value'], ref['gateValues'][row['id']], 1e-6 if row['id'] not in ('capacity','exitCush') else 0.5)
             golden[tag + ':credit'] = dict(verdict=cr['verdict'], score=cr['score'], hard=cr['hard'], soft=cr['soft'], capacity=cp['capacity'], binding=cp['binding'], overage=cp['overage'],
                                            exitCushion=cu['exitCapCushionBps'], beOcc=cu['breakEvenOccupancy'], noiTol3=cu['noiTolerance3'], rentCushion=cu['rentCushion'], irrDown=cu['irrDownside'], irrUp=cu['irrUpside'])
+        if r.get('conflicts') is not None:
+            m_ = model(r['s']); gap_ref = m_['y1NOI'] - m_['stmtNOI']; hit = [c for c in r['conflicts'] if c['id'] == 'acct.statement-vs-cashflow']
+            should = abs(gap_ref) / abs(m_['stmtNOI']) >= 0.005
+            close(f'{tag} conflicts: statement-vs-cashflow fires exactly when the independent gap is >= 0.5%', len(hit), 1 if should else 0, 0)
+            if hit: close(f'{tag} conflicts: statement-vs-cashflow gap', hit[0]['data']['gap'], gap_ref, 0.01)
+            golden[tag + ':conflicts'] = {'ids': ' '.join(sorted(c['level'] + ':' + c['id'] for c in r['conflicts']))}
         if r.get('tax') and r['tax']['src'] == 'macrs-tax-grade':
             tx = r['tax']; i = tx['input']; st = i['settings']
             land = (i['price'] * float(st.get('landPct') or 0)) if st.get('landMethod', 'percent') == 'percent' else float(st.get('landDollar') or 0)

@@ -35,6 +35,7 @@ const collect = (kind, withTax) => {
         capacity: cp && { capacity: cp.capacity, requested: cp.requested, overage: cp.overage, headroom: cp.headroom, binding: cp.binding.name, maxCoupon: cp.maxCoupon, rows: cp.rows.map(q => ({ name: q.name, max: q.max })),
           box: cp.box, ladder: cp.ladder.map(q => ({ ltv: q.ltv, loan: q.loan, dscr: q.dscr, stabDscr: q.stabDscr })) },
         cushions: rc, input: { policy: (s._policy || {}), ic: (s._ic || {}) } }; }
+    r.conflicts = bkConflicts().map(c => ({ id: c.id, level: c.level, data: c.data }));
     if (withTax) {
       const x = bkAfterTaxV18(), dep = s._depr || {};
       r.tax = { src: x.deprSource, atIRR: x.atIRR, atMOIC: x.atMOIC, saleTax: x.saleTax, accumDepr: x.accumDepr, ordBase: x.ordinaryRecaptureBase || 0, unrecBase: x.recaptureBase, capBase: x.capGainBase,
