@@ -63,6 +63,7 @@ const T = [
   ['biz.exit-multiple-range', 'WARN', BIZ + "bkBizSet('dcf.cases.base.mult',12);", 'BIZ', "bkBizSeedPunchlist()"],
   ['biz.rent-below-market', 'WARN', BIZ + "bkBizSet('place.marketRent',24000);", 'BIZ', "bkBizSet('place.marketRent',9000)"],
   ['biz.rent-coverage-thin', 'WARN', BIZ + "bkBizSet('place.marketRent',24000);", 'BIZ', "bkBizSet('place.marketRent',9000)"],
+  ['risk.prob-not-100', 'ERROR', "bkRiskSet('p.Base',0.6);", 'A', "bkRiskSet('p.Base',0.5)"],
   ['pol.thresholds-inverted', 'ERROR', "bkPolicySet('advanceScore',0.5); bkPolicySet('conditionalScore',0.7);", 'A', "bkPolicyReset()"],
   ['pol.dscr-below-one', 'ERROR', "bkPolicySet('minDSCR',0.9);", 'A', "bkPolicyReset()"],
   ['pol.weights', 'WARN', "bkPolicyGate('lpIRR','weight',0.5);", 'A', "bkPolicyReset()"],
