@@ -13,6 +13,10 @@ const dev = (id, purpose, ov) => ({ id, kind: 'dev', purpose, deal: Object.assig
 const REAL = require(path.join(__dirname, '..', 'real', 'real_deals.json')).map(r => ({ id: r.id, kind: 'acq', real: r,
   purpose: 'Real property ' + r.property + ': T-12 NOI $' + Math.round(r.targets.t12noi).toLocaleString('en-US') + ' at ' + (r.targets.capRate * 100).toFixed(2) + '% cap',
   deal: Object.assign({}, A, STD, { gpShare: 0.10, location: '', parking: 0, siteArea: 0 }, r.deal) }));
+const HARV = require(path.join(__dirname, '..', 'real', 'harvard_assets.json'));
+// Cost segregation scenarios. `setup` runs inside the app after the deal is created, through the app's own actions.
+const SEG_BUCKETS = "bkDeprSet('landMethod','percent'); bkDeprSet('landPct',0.20); bkDeprSet('costSeg',true); bkDeprSet('detailMode','buckets'); bkDeprBucketSet(5, 0.12*0.80*bkLoad().purchasePrice); bkDeprBucketSet(15, 0.07*0.80*bkLoad().purchasePrice);";
+const withTax = (id, purpose, ov, setup) => Object.assign(acq(id, purpose, ov), { setup });
 module.exports = [
   acq('ACQ-1', 'Base case: 120-unit garden, standard conventions, GP 10% (promote tiers unpaid)', {}),
   acq('ACQ-2', 'Upside: 6% rent growth, 5.0% exit cap - pushes cash through every waterfall tier', { rentGrowth: 0.06, exitCap: 0.05, purchasePrice: 21000000 }),
@@ -24,5 +28,14 @@ module.exports = [
   dev('DEV-1', 'Ground-up 150 units, 65% LTC construction loan, permanent takeout at stabilisation', {}),
   dev('DEV-2', 'Same project, no refinance at stabilisation - construction loan held to sale', { refiAtStab: 0 }),
   ...REAL,
+  withTax('TAX-1', 'Cost seg (bucket mode: 12% 5-yr, 7% 15-yr, 20% land) on the base deal, statutory bonus, MACRS', {}, SEG_BUCKETS + " bkDeprSet('costSegFee',15000);"),
+  withTax('TAX-2', 'Same deal, cost seg off: straight-line 27.5-yr mid-month on price less land', {}, "bkDeprSet('landMethod','percent'); bkDeprSet('landPct',0.20);"),
+  withTax('TAX-3', 'Cost seg with an ELECTED 60% bonus and a mid-year (June) closing - half-year convention, no mid-quarter', { closing: '6/15/2027' }, SEG_BUCKETS + " bkDeprSet('bonusMode','elect'); bkDeprSet('bonusPct',0.6);"),
+  withTax('TAX-4', 'Cost seg, all short-life assets placed in service in Q4 (October closing): mid-quarter convention applies', { closing: '10/20/2027' }, SEG_BUCKETS + " bkDeprSet('bonusMode','elect'); bkDeprSet('bonusPct',0);"),
+  withTax('TAX-5', 'Legacy deal (no depMethod): depreciation configured under the V29.11 simplified schedule keeps its numbers', {}, "bkDeprSet('landMethod','percent'); bkDeprSet('landPct',0.20); bkDeprSet('costSeg',true); bkDeprSet('detailMode','buckets'); bkDeprBucketSet(5, 0.12*0.80*bkLoad().purchasePrice); bkDeprSet('bonusPct',1); bkDeprSet('bonusYear',2027); (function(){var s=bkLoad(); delete s._depr.settings.depMethod; delete s._depr.settings.bonusMode; bkSave(s);})();"),
+  withTax('TAX-6', 'Same as TAX-1 but losses usable against the investor\'s other income (real estate professional / passive income): the cost seg tax saving is realised each year', {}, SEG_BUCKETS + " bkDeprSet('lossMode','usable'); bkDeprSet('costSegFee',15000);"),
+  Object.assign(acq('HARVARD', '180-200 Harvard Ave: itemised 169-asset cost seg study (Dec 2025 in service, 100% bonus, mid-quarter); price $10.2M, T-12 NOI $899,039', {
+    name: '180-200 Harvard Avenue', propertyType: 'Industrial', units: 5, gsf: 63447, purchasePrice: 10200000, closing: '12/11/2025', holdYears: 5, t12noi: 899039, avgRent: 1019536 / 5 / 12, otherIncomePerUnit: 0, vacancy: 0, badDebtPct: 0,
+    mgmtPct: 0, taxes: 0, insurance: 0, utilities: 0, rm: 0, contract: 0, payroll: 0, turnover: 0, marketing: 0, ga: 1019536 - 899039, reserves: 0, exitCap: 0.07, taxRate: 0.37 }), { setup: "bkDeprSeedHarvard(); bkDeprSet('lossMode','usable');" }),
   dev('DEV-3', 'Same project, all equity (no construction loan), 20-month construction', { conLTC: 0, constructionMonths: 20, holdYears: 7 })
 ];

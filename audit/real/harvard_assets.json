@@ -1,0 +1,1700 @@
+{
+"source": "Cost_Segregation_Harvard.xlsx, Fixed Asset Schedule",
+"property": "180-200 Harvard Avenue, Stamford, CT 06902",
+"placedInService": "2025-12-11",
+"purchasePrice": 10200000,
+"landValue": 4780515.6,
+"costSegFee": 5000,
+"assets": [
+{
+"d": "Site Clearing",
+"q": 2749,
+"u": "SQ FT",
+"rc": 63.5817,
+"b": 79.427326,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Site Excavation/Fill/Preparation",
+"q": 66968,
+"u": "SQ FT",
+"rc": 125230.16,
+"b": 156439.692998,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Asphaltic Concrete, Paving",
+"q": 64976.229999999996,
+"u": "SQ FT",
+"rc": 181283.6817,
+"b": 226462.726796,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Patio, Concrete",
+"q": 510,
+"u": "SQ FT",
+"rc": 2912.1,
+"b": 3637.845947,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Steps, Concrete",
+"q": 55.47,
+"u": "LFN",
+"rc": 2496.15,
+"b": 3118.233976,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Landing, Concrete",
+"q": 423,
+"u": "SQ FT",
+"rc": 8544.6,
+"b": 10674.062868,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Concrete Ramp",
+"q": 410,
+"u": "SQ FT",
+"rc": 4801.1,
+"b": 5997.617587,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Concrete Curb, no gutter",
+"q": 20.6,
+"u": "LF",
+"rc": 278.1,
+"b": 347.407355,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Asphalt Curb",
+"q": 583,
+"u": "LF",
+"rc": 3008.28,
+"b": 3757.995675,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "General Landscaping",
+"q": 1461,
+"u": "SQ FT",
+"rc": 2001.57,
+"b": 2500.396041,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Garden Bed Edging, Stone",
+"q": 108,
+"u": "LF",
+"rc": 2662.2,
+"b": 3325.666522,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Stone Mulching",
+"q": 1743,
+"u": "SQ FT",
+"rc": 1760.43,
+"b": 2199.159761,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Shrubs and Hedges, Small",
+"q": 1,
+"u": "EA",
+"rc": 27.05,
+"b": 33.79133,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Trees",
+"q": 1,
+"u": "EA",
+"rc": 287,
+"b": 358.525389,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Parking Lot Striping, Per Car Space",
+"q": 58,
+"u": "EA",
+"rc": 681.5,
+"b": 851.341648,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Parking Lot Striping, Handicap Stall",
+"q": 2,
+"u": "EA",
+"rc": 43,
+"b": 53.716348,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Metal Guard Rail",
+"q": 140,
+"u": "LF",
+"rc": 4200,
+"b": 5246.713017,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Bollard, Concrete",
+"q": 10,
+"u": "EA",
+"rc": 7470,
+"b": 9331.653866,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Air Conditioning Compressor Pad",
+"q": 3,
+"u": "EA",
+"rc": 1380,
+"b": 1723.919991,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Transformer Pad, Reinforced",
+"q": 2,
+"u": "EA",
+"rc": 3680,
+"b": 4597.119977,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Chain Link 10', Fencing",
+"q": 215,
+"u": "LF",
+"rc": 8761.25,
+"b": 10944.705814,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Metal, Fencing",
+"q": 220,
+"u": "LF",
+"rc": 3828.0,
+"b": 4782.00415,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Chain Link Gate",
+"q": 117.60000000000001,
+"u": "SQ FT",
+"rc": 2508.408,
+"b": 3133.546882,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Cobblestone, Wall",
+"q": 387,
+"u": "SQ FT",
+"rc": 11416.5,
+"b": 14261.690276,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Metal Painted Sign on Pole",
+"q": 1,
+"u": "EA",
+"rc": 403,
+"b": 503.434606,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Storm Drain",
+"q": 481,
+"u": "LF",
+"rc": 34511.75,
+"b": 43112.678087,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Catch Basin",
+"q": 10,
+"u": "EA",
+"rc": 31350,
+"b": 39162.96502,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Exterior Metal Railing",
+"q": 486,
+"u": "LF",
+"rc": 37494.9,
+"b": 46839.280929,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Flagpole",
+"q": 1,
+"u": "EA",
+"rc": 1601.05,
+"b": 2000.059494,
+"l": 15,
+"c": "MQ",
+"m": "150DB"
+},
+{
+"d": "Excavation/Fill/Site Preparation",
+"q": 42992,
+"u": "SQ FT",
+"rc": 66637.6,
+"b": 83244.848415,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Concrete Slab",
+"q": 42992,
+"u": "SQ FT",
+"rc": 167847.9333,
+"b": 209678.556356,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Floor Construction, Subfloor",
+"q": 21927,
+"u": "SQ FT",
+"rc": 78279.39,
+"b": 97787.974875,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Parking Structure, Elevated Flat Slab and Joists",
+"q": 10762,
+"u": "SQ FT",
+"rc": 166811,
+"b": 208383.201209,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Exterior Wall Construction, Block, Concrete",
+"q": 25182.57,
+"u": "SQ FT",
+"rc": 717703.245,
+"b": 896567.370925,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Exterior Wall Construction, Aluminum or Steel Frame",
+"q": 9726.8,
+"u": "SQ FT",
+"rc": 162194.39,
+"b": 202616.051737,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Basement Wall Construction",
+"q": 1800,
+"u": "SQ FT",
+"rc": 23220,
+"b": 29006.82768,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Exterior Wall Cover, Aluminum or Steel Siding",
+"q": 4390.799999999999,
+"u": "SQ FT",
+"rc": 53282.358,
+"b": 66561.247927,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Exterior Wall Finish, Vinyl Siding",
+"q": 466.10000000000014,
+"u": "SQ FT",
+"rc": 2836.2185,
+"b": 3543.053458,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Exterior Wall Finish, Stucco",
+"q": 23810.76,
+"u": "SQ FT",
+"rc": 153817.5096,
+"b": 192151.50711,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Roof Structure, Open-Steel System",
+"q": 32527,
+"u": "SQ FT",
+"rc": 173124.9575,
+"b": 216270.706686,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Roof Cover, Aluminum or Steel, Corrugated, Crimped or Tile Panels",
+"q": 16507,
+"u": "SQ FT",
+"rc": 52657.33,
+"b": 65780.452084,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Roof Cover, Built-up Composition",
+"q": 15764,
+"u": "SQ FT",
+"rc": 46424.98,
+"b": 57994.892114,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Roof Insulation",
+"q": 32271,
+"u": "SQ FT",
+"rc": 67849.7775,
+"b": 84759.121621,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Interior Partitions, Gypsum Board Both Sides",
+"q": 1756,
+"u": "SQ FT",
+"rc": 12107.62,
+"b": 15125.049395,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Interior Partitions, Gypsum Board One Side",
+"q": 3149.375,
+"u": "SQ FT",
+"rc": 16266.5219,
+"b": 20320.42192,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Interior, Concrete Block",
+"q": 10742,
+"u": "SQ FT",
+"rc": 94529.6,
+"b": 118088.019717,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Toilet Partitions, Metal, Stainless Steel",
+"q": 20,
+"u": "EA",
+"rc": 28000,
+"b": 34978.08678,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Privacy Screens, Stainless Steel",
+"q": 3,
+"u": "EA",
+"rc": 3360,
+"b": 4197.370414,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Water Lateral",
+"q": 168,
+"u": "LF",
+"rc": 3376.8,
+"b": 4218.357266,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Gas Lateral",
+"q": 168,
+"u": "LF",
+"rc": 2217.6,
+"b": 2770.264473,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Underground, Electric Lateral",
+"q": 333,
+"u": "LF",
+"rc": 6360.3,
+"b": 7945.397334,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Telephone Lateral",
+"q": 333,
+"u": "LF",
+"rc": 4462.2,
+"b": 5574.257815,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Sewer Lateral",
+"q": 168,
+"u": "LF",
+"rc": 4636.8,
+"b": 5792.371171,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Sewer Manhole",
+"q": 5,
+"u": "EA",
+"rc": 18625,
+"b": 23266.673796,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Interior Stair Construction",
+"q": 11,
+"u": "EA",
+"rc": 27353.3333,
+"b": 34170.259538,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Exterior Metal, Hollow Core",
+"q": 84,
+"u": "SQ FT",
+"rc": 2352,
+"b": 2938.15929,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Glass & Aluminum Door",
+"q": 63,
+"u": "SQ FT",
+"rc": 1557.675,
+"b": 1945.87469,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Clear Glass, Single Swinging",
+"q": 229.05,
+"u": "SQ FT",
+"rc": 5663.2613,
+"b": 7074.644409,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Overhead Door, Roll Up",
+"q": 360,
+"u": "SQ FT",
+"rc": 11025,
+"b": 13772.62167,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Overhead Door, 10' x 10'",
+"q": 1,
+"u": "EA",
+"rc": 2150,
+"b": 2685.817378,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Glass Window",
+"q": 1799,
+"u": "SQ FT",
+"rc": 28292.2733,
+"b": 35343.199709,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Aluminum Trim, Storefront",
+"q": 939.0500000000002,
+"u": "SQ FT",
+"rc": 42257.25,
+"b": 52788.491342,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Wood, Hollow Wood",
+"q": 2301,
+"u": "SQ FT",
+"rc": 46365.15,
+"b": 57920.151438,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Metal, Hollow Core",
+"q": 224,
+"u": "SQ FT",
+"rc": 7504,
+"b": 9374.127257,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "French Door",
+"q": 147,
+"u": "SQ FT",
+"rc": 3491.25,
+"b": 4361.330195,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Clear Glass",
+"q": 21,
+"u": "SQ FT",
+"rc": 519.225,
+"b": 648.624897,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Paint, Ceiling",
+"q": 1450,
+"u": "SQ FT",
+"rc": 906.25,
+"b": 1132.103255,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Acoustical Tiles, Ceiling Finish",
+"q": 37980,
+"u": "SQ FT",
+"rc": 249908.4,
+"b": 312189.917938,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Gypsum Board, Ceiling Finish",
+"q": 330,
+"u": "SQ FT",
+"rc": 1138.5,
+"b": 1422.233993,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Ceramic Wall Tile",
+"q": 112.5,
+"u": "SQ FT",
+"rc": 2012.3438,
+"b": 2513.854797,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Paint, Wall Finish",
+"q": 18864.65,
+"u": "SQ FT",
+"rc": 11790.4062,
+"b": 14728.780464,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Plywood Paneling",
+"q": 360,
+"u": "SQ FT",
+"rc": 903.6,
+"b": 1128.792829,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Interior Face Brick, Veneer",
+"q": 180,
+"u": "SQ FT",
+"rc": 5781.0375,
+"b": 7221.772548,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Ceramic Tile, Flooring",
+"q": 420,
+"u": "SQ FT",
+"rc": 7675.5,
+"b": 9588.368039,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Terrazzo, Flooring",
+"q": 340,
+"u": "SQ FT",
+"rc": 12104.0,
+"b": 15120.527228,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "General Use, Fire Extinguisher, Dry Chemical 10 Pound",
+"q": 14,
+"u": "EA",
+"rc": 3206,
+"b": 4004.990936,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Grab Bar",
+"q": 4,
+"u": "EA",
+"rc": 352,
+"b": 439.72452,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Bathroom Cabinets",
+"q": 18,
+"u": "LF",
+"rc": 2868,
+"b": 3582.75546,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Bathroom Vanities",
+"q": 17,
+"u": "LF",
+"rc": 4159.3333,
+"b": 5195.91151,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Laminate, Countertop, Restroom",
+"q": 13,
+"u": "LF",
+"rc": 2106,
+"b": 2630.851813,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Janitor, Service Sink",
+"q": 3,
+"u": "EA",
+"rc": 4117.5,
+"b": 5143.652583,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Drinking Fountain",
+"q": 3,
+"u": "EA",
+"rc": 3405,
+"b": 4253.585196,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Sump Pump",
+"q": 2,
+"u": "EA",
+"rc": 1406.6667,
+"b": 1757.232455,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Floor Drain",
+"q": 8,
+"u": "EA",
+"rc": 5710,
+"b": 7133.031268,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Lavatory, Wall Sink",
+"q": 11,
+"u": "EA",
+"rc": 9570,
+"b": 11955.010374,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Rough-in Only",
+"q": 24,
+"u": "EA",
+"rc": 15204,
+"b": 18993.101122,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Vanity Mounted Sink",
+"q": 6,
+"u": "EA",
+"rc": 5200,
+"b": 6495.930402,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Shower",
+"q": 1,
+"u": "EA",
+"rc": 1173.3333,
+"b": 1465.748398,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Urinal",
+"q": 6,
+"u": "EA",
+"rc": 10180,
+"b": 12717.032979,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Water Closet",
+"q": 24,
+"u": "EA",
+"rc": 33800,
+"b": 42223.547613,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Water Heater, 10 Gallon, Specialty Equipment",
+"q": 1,
+"u": "EA ",
+"rc": 119.5472,
+"b": 149.340403,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Water Heater, 40 Gallon, Restroom",
+"q": 1,
+"u": "EA",
+"rc": 450,
+"b": 562.147823,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Water Heater, 50 Gallon, Restroom",
+"q": 2,
+"u": "EA",
+"rc": 972.1698,
+"b": 1214.451429,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Space Heater Blower Type, Gas, Large",
+"q": 6,
+"u": "EA",
+"rc": 20670,
+"b": 25821.323348,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "General HVAC System, Zoned A.C.",
+"q": 33526,
+"u": "SQ FT",
+"rc": 332326.475,
+"b": 415148.010066,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Hot Water, Baseboard or Convectors",
+"q": 5164,
+"u": "SQ FT",
+"rc": 50968.68,
+"b": 63670.961147,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Vent Fan",
+"q": 13,
+"u": "EA",
+"rc": 2600,
+"b": 3247.965201,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Restroom Fan Electric Hook-up",
+"q": 13,
+"u": "EA",
+"rc": 1969.5,
+"b": 2460.33364,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Exit Sign",
+"q": 20,
+"u": "EA",
+"rc": 5073.3333,
+"b": 6337.6962,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "General Recessed Incandescent Light",
+"q": 61,
+"u": "EA",
+"rc": 7320,
+"b": 9144.271258,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "General Fluorescent, Strip One Lamp",
+"q": 327,
+"u": "EA",
+"rc": 54936,
+"b": 68627.006262,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "General Fluorescent, Two Lamp",
+"q": 219,
+"u": "EA",
+"rc": 40734,
+"b": 50885.620961,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "General Convenience, 15 - 20 Amp Outlet",
+"q": 75,
+"u": "EA",
+"rc": 6365.625,
+"b": 7952.049416,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Lighting Wiring, Romex, General",
+"q": 607,
+"u": "EA",
+"rc": 51519.125,
+"b": 64358.58661,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Split Use, Breaker Panels, 60-200 AMPS CAP. General",
+"q": 4,
+"u": "EA",
+"rc": 1898.6002,
+"b": 2371.764386,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Split Use, Switchgear, 1600 AMP, General",
+"q": 5,
+"u": "EA",
+"rc": 61291.1478,
+"b": 76565.967415,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Fire Alarm System",
+"q": 1,
+"u": "EA",
+"rc": 33000,
+"b": 41224.173705,
+"l": 39,
+"c": "MM",
+"m": "SL"
+},
+{
+"d": "Chain Link, Interior Fencing",
+"q": 40,
+"u": "LF",
+"rc": 1330,
+"b": 1661.459122,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Add for Electronic Garage Door Opener",
+"q": 1,
+"u": "EA",
+"rc": 564,
+"b": 704.558605,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Demountable Clear Glass",
+"q": 111,
+"u": "SQ FT",
+"rc": 7728.375,
+"b": 9654.420408,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Demountable Interior Overhead Door, Roll Up",
+"q": 481.6,
+"u": "SQ FT",
+"rc": 14749,
+"b": 18424.707211,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Crown Molding",
+"q": 26,
+"u": "LF",
+"rc": 91.26,
+"b": 114.003579,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Wallpaper",
+"q": 180,
+"u": "SQ FT",
+"rc": 443.7,
+"b": 554.277754,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Natural Wood Finish",
+"q": 237,
+"u": "SQ FT",
+"rc": 346.02,
+"b": 432.2542,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Slat Wall Panel",
+"q": 594,
+"u": "SQ FT",
+"rc": 30591,
+"b": 38214.809025,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Wood, Baseboard",
+"q": 1738.5972222222222,
+"u": "LF",
+"rc": 1866.0944,
+"b": 2331.157506,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Carpet, Medium Grade",
+"q": 22067,
+"u": "SQ FT",
+"rc": 103825.235,
+"b": 129700.288564,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Vinyl Composite Tile or Sheet",
+"q": 15703,
+"u": "SQ FT",
+"rc": 47894.15,
+"b": 59830.20482,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Luxury Vinyl Plank",
+"q": 570,
+"u": "SQ FT",
+"rc": 6423.9,
+"b": 8024.84756,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Demountable, Mirrors, up to 12 SQ FT",
+"q": 1,
+"u": "EA",
+"rc": 66.25,
+"b": 82.760652,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Demountable, Mirrors, over 12 SQ FT",
+"q": 12,
+"u": "EA",
+"rc": 917.4,
+"b": 1146.032029,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Locker, Box Type",
+"q": 15,
+"u": "EA",
+"rc": 1305,
+"b": 1630.228687,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Wood, 12\" Shelving",
+"q": 47,
+"u": "LF",
+"rc": 781.9233,
+"b": 976.792222,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Storage Rack",
+"q": 2160,
+"u": "SQ FT",
+"rc": 11242.8,
+"b": 14044.701216,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Dock Bumpers, Horizontal",
+"q": 12,
+"u": "LF",
+"rc": 513,
+"b": 640.848519,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Dock Levelers, Mechanical",
+"q": 2,
+"u": "EA",
+"rc": 9100,
+"b": 11367.878203,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Restroom Soap Dispenser, Surface Mounted",
+"q": 11,
+"u": "EA",
+"rc": 1067,
+"b": 1332.91495,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Restroom Paper Towel Dispenser, Surface Mounted",
+"q": 17,
+"u": "EA",
+"rc": 2159,
+"b": 2697.060334,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Horizontal Blinds",
+"q": 650,
+"u": "SQ FT",
+"rc": 8947.25,
+"b": 11177.060248,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Shades",
+"q": 375,
+"u": "SQ FT",
+"rc": 705,
+"b": 880.698256,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Shades, Motorized Operation, Add",
+"q": 10,
+"u": "EA",
+"rc": 113.8,
+"b": 142.160938,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Base Cabinets",
+"q": 57,
+"u": "LF",
+"rc": 9082,
+"b": 11345.392291,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Wall/Upper Cabinets",
+"q": 64.5,
+"u": "LF",
+"rc": 15781,
+"b": 19713.899553,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Full Height Cabinets",
+"q": 1.5,
+"u": "LF",
+"rc": 200.5,
+"b": 250.468086,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Built-in Desk",
+"q": 88,
+"u": "LF",
+"rc": 11850.6667,
+"b": 14804.058824,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Laminate, Countertop",
+"q": 27.5,
+"u": "LF",
+"rc": 4455,
+"b": 5565.26345,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Concrete/Synthetic Countertop",
+"q": 15,
+"u": "LF",
+"rc": 3090,
+"b": 3860.08172,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Wood, Countertop",
+"q": 18,
+"u": "LF",
+"rc": 1822.5,
+"b": 2276.698684,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Single Bowl, Kitchen Sink",
+"q": 4,
+"u": "EA",
+"rc": 3930,
+"b": 4909.424323,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Single Bowl, Sink",
+"q": 1,
+"u": "EA",
+"rc": 982.5,
+"b": 1227.356081,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Clothes Washer, Plumbing Rough-in",
+"q": 3,
+"u": "EA",
+"rc": 354,
+"b": 442.222954,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Equipment, Floor Drain",
+"q": 3,
+"u": "EA",
+"rc": 2141.25,
+"b": 2674.886726,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Equipment Rough-in Only",
+"q": 3,
+"u": "EA",
+"rc": 1900.5,
+"b": 2374.13764,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Interior, Hose Bib",
+"q": 1,
+"u": "EA",
+"rc": 177.6667,
+"b": 221.944289,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Water Heater, 10 Gallon, Restroom",
+"q": 1,
+"u": "EA ",
+"rc": 672.4528,
+"b": 840.039766,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Water Heater, 40 Gallon, Specialty Equipment",
+"q": 1,
+"u": "EA",
+"rc": 80,
+"b": 99.937391,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Water Heater, 50 Gallon, Specialty Equipment",
+"q": 2,
+"u": "EA",
+"rc": 172.8302,
+"b": 215.902476,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "HVAC System, Mini Split Units",
+"q": 4,
+"u": "EA",
+"rc": 10400,
+"b": 12991.860804,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Keypad, Access Control",
+"q": 2,
+"u": "EA",
+"rc": 420,
+"b": 524.671302,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Garbage Disposal Electric Hook-up",
+"q": 5,
+"u": "EA",
+"rc": 757.5,
+"b": 946.282169,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Microwave Electric Hook-up",
+"q": 7,
+"u": "EA",
+"rc": 1060.5,
+"b": 1324.795037,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Refrigerator Electric Hook-up",
+"q": 6,
+"u": "EA",
+"rc": 909,
+"b": 1135.538603,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Clothes Dryer Electric Hook-up",
+"q": 3,
+"u": "EA",
+"rc": 454.5,
+"b": 567.769301,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Pass Through AC Wall/Split Electric Hook-up",
+"q": 4,
+"u": "EA",
+"rc": 339.5,
+"b": 424.109302,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Overhead Garage Door Operator Electric Hook-up",
+"q": 1,
+"u": "EA",
+"rc": 279,
+"b": 348.53165,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Specialty Equipment Electric Hook-up",
+"q": 23,
+"u": "EA",
+"rc": 3021.625,
+"b": 3774.666481,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Motorized Shade Operator Electric Hook-up",
+"q": 10,
+"u": "EA",
+"rc": 1313.75,
+"b": 1641.15934,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Television, 15 Amp Outlet",
+"q": 27,
+"u": "EA",
+"rc": 2291.625,
+"b": 2862.73779,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Specialty Lighting, Incandescent Light",
+"q": 21,
+"u": "EA",
+"rc": 3150,
+"b": 3935.034763,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Specialty Lighting, Fluorescent, Strip One Lamp",
+"q": 141,
+"u": "EA",
+"rc": 23688,
+"b": 29591.461416,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Specialty Lighting, Fluorescent, Two Lamp",
+"q": 100,
+"u": "EA",
+"rc": 18600,
+"b": 23235.443361,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "High Bay Lights",
+"q": 30,
+"u": "EA",
+"rc": 10260,
+"b": 12816.97037,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Exterior Wall-Pack, Metal Halide",
+"q": 13,
+"u": "EA",
+"rc": 5759,
+"b": 7194.24292,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Special Use, 15 - 20 Amp Outlet",
+"q": 145,
+"u": "EA",
+"rc": 12306.875,
+"b": 15373.962205,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Coaxial Cable Port",
+"q": 59,
+"u": "EA",
+"rc": 3337.1875,
+"b": 4168.872642,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Telephone/Data Port",
+"q": 5,
+"u": "EA",
+"rc": 227.5,
+"b": 284.196955,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Specialty Lighting Wiring, Romex, Specialty",
+"q": 305,
+"u": "EA",
+"rc": 25886.875,
+"b": 32338.334293,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Split Use, Breaker Panels, 60-200 AMPS CAP. Specialty",
+"q": 4,
+"u": "EA",
+"rc": 1431.3998,
+"b": 1788.129506,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+},
+{
+"d": "Split Use, Switchgear, 1600 AMP, Specialty",
+"q": 5,
+"u": "EA",
+"rc": 46208.8522,
+"b": 57724.901473,
+"l": 5,
+"c": "MQ",
+"m": "200DB"
+}
+]
+}

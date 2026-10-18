@@ -9,7 +9,7 @@ const argv = process.argv.slice(2), flag = n => argv.indexOf('--' + n) >= 0, opt
 let BOOK = require(path.join(__dirname, 'deals', 'index.js'));
 if (flag('reverse')) BOOK = BOOK.slice().reverse();
 
-const collect = (kind) => {
+const collect = (kind, withTax) => {
   // calendar dates as the user sees them (local), never via UTC: a Date at local midnight shifts a day in UTC for zones east of Greenwich
   const ld = d => { d = new Date(d); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const s = bkLoad(), r = {};
@@ -28,6 +28,15 @@ const collect = (kind) => {
     Object.assign(r, { s, conv: bkConventions(s), stmtNOI: bkCalc().after, y1NOI: u.arr[0].after, loan: d.loan, equity: d.equity, ltvValue: d.ltvValue, binding: d.binding,
       grossSale: u.grossSale, levIRR: x.irr, levMOIC: x.moic, unlevIRR: u.irr, unlevMOIC: u.moic, lpIRR: w.lpIRR, gpIRR: w.gpIRR, lpDist: w.lp.dist, gpDist: w.gp.dist,
       promote: w.promote, recon: { maxMonthGap, conSum, lpgpCon, distSum, lpgpDist, posCF, equity: d.equity, splitErr, tiers } });
+    if (withTax) {
+      const x = bkAfterTaxV18(), dep = s._depr || {};
+      r.tax = { src: x.deprSource, atIRR: x.atIRR, atMOIC: x.atMOIC, saleTax: x.saleTax, accumDepr: x.accumDepr, ordBase: x.ordinaryRecaptureBase || 0, unrecBase: x.recaptureBase, capBase: x.capGainBase,
+        rows: x.rows.map(q => ({ taxYear: q.taxYear, noi: q.noi, interest: q.interest, depr: q.depr, taxable: q.taxableIncome, tax: q.taxDue })),
+        input: { settings: dep.settings, components: dep.components, price: Number(s.purchasePrice), ptype: s.propertyType, close: String(s.closing), taxRate: x.s.taxRate, capGainsRate: x.s.capGainsRate, depRecaptureRate: x.s.depRecaptureRate,
+          netSale: x.u.netSale, totalBasis: x.totalBasis, eq0: Number(x.r.rows[0].eqDraw) || 0, closeDt: ld(x.r.closeDt), fee: x.costSegFee || 0,
+          months: x.r.rows.map((q, i) => ({ date: ld(q.dt), noi: Number(q.noi || 0) - Number(q.reserve || 0), interest: Number((x.d.months[i] || {}).interest || 0), cf: q.cf })) } };
+      if (x.deprSource === 'macrs-tax-grade' && bkDepreciation().settings.costSeg) { const bn = bkCostSegBenefit(); r.tax.benefit = { y1: bn.yearOneDeduction, base1: bn.baselineYearOne, y1save: bn.yearOneTaxSavings, hold: bn.holdTaxSavings, extraSale: bn.extraSaleTax, accel: bn.acceleratedBasis, wbSavings: bn.workbookStyleSavings, wbPayback: bn.workbookPayback, fee: bn.fee, pv: bn.pvTaxSavings, irrWith: bn.irrWith, irrWithout: bn.irrWithout }; }
+    }
   } else {
     const dv = bkDevV09(), f = bkDevFundingV10(), t = bkDevTakeoutV11(), m = bkDevMonthlyReturnsV12(), c = bkCalc();
     const pick = (x, ks) => Object.fromEntries(ks.map(k => [k, x[k]]));
@@ -37,9 +46,9 @@ const collect = (kind) => {
       t: pick(t, ['noi', 'stabVal', 'ltvCap', 'dscrLoan', 'dyLoan', 'permLoan', 'permFee', 'conPayoff', 'refiProceeds', 'refiShortfall', 'bindingTest', 'permDebtAtSale']),
       m: { irr: m.irr, moic: m.moic, rows: m.rows.map(q => Object.assign({}, q, { dt: ld(q.dt) })), values: m.values, dates: m.dates.map(ld) } });
   }
-  // underscore keys are provenance stamps (timestamps, who created it), not economics: excluded so runs are comparable
+  // underscore keys and seededAt are provenance stamps (timestamps, who created it), not economics: excluded so runs are comparable
   const canon = v => Array.isArray(v) ? v.map(canon) : (v && typeof v === 'object') ? Object.fromEntries(Object.keys(v).sort().map(k => [k, canon(v[k])])) : v;
-  return canon(JSON.parse(JSON.stringify(r, (k, v) => k.charAt(0) === '_' ? undefined : (typeof v === 'number' && !isFinite(v)) ? 'NaN' : v)));
+  return canon(JSON.parse(JSON.stringify(r, (k, v) => (k.charAt(0) === '_' || k === 'seededAt') ? undefined : (typeof v === 'number' && !isFinite(v)) ? 'NaN' : v)));
 };
 
 (async () => {
@@ -52,15 +61,15 @@ const collect = (kind) => {
     if (opt('date')) await p.clock.install({ time: new Date(opt('date') + 'T12:00:00Z') });
     await p.route(/supabase\.co|vercel\.app|fonts\.g/, r => r.abort());
     await p.goto('file://' + path.resolve(argv[0])); await p.waitForTimeout(800);
-    const res = await p.evaluate(([deal, src]) => { bkCreateNewDeal(deal); return (0, eval)('(' + src + ')')(deal.dealType === 'Development' ? 'dev' : 'acq'); }, [item.deal, collect.toString()]);
+    const res = await p.evaluate(([deal, src, setup]) => { bkCreateNewDeal(deal); if (setup) (0, eval)(setup); return (0, eval)('(' + src + ')')(deal.dealType === 'Development' ? 'dev' : 'acq', !!setup); }, [item.deal, collect.toString(), item.setup || null]);
     const rec = { id: item.id, kind: item.kind, purpose: item.purpose, res };
     if (flag('roundtrip')) {
-      const again = await p.evaluate((src) => {
+      const again = await p.evaluate(([src, setup]) => {
         const st = JSON.parse(localStorage.getItem('bkcapital.cre.v02'));
         const restored = bkMap.reconstructState(bkMap.stateToDealRow(st), { input_data: bkMap.stateToInputData(st), source_data: {} }, []);
         window.bkProvision('cloud-load', restored);
-        return (0, eval)('(' + src + ')')(bkLoad().dealType === 'Development' ? 'dev' : 'acq');
-      }, collect.toString());
+        return (0, eval)('(' + src + ')')(bkLoad().dealType === 'Development' ? 'dev' : 'acq', !!setup);
+      }, [collect.toString(), item.setup || null]);
       rec.roundTripIdentical = JSON.stringify(again) === JSON.stringify(res);
       if (!rec.roundTripIdentical) {
         const diff = [], walk = (a, b, pth) => { if (a && b && typeof a === 'object' && typeof b === 'object') { for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) walk(a[k], b[k], pth + '.' + k); } else if (a !== b) diff.push(pth + ': ' + a + ' -> ' + b); };

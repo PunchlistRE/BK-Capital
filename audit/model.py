@@ -73,10 +73,11 @@ def model(s, acq_fee=0.01):
     net = gross_sale * (1 - N('saleCostPct'))
     bal = loan
     for _ in range(H): bal -= (P - bal * r)
-    close = date(2027, 1, 1)
+    cm, cd, cy = (s.get('closing') or '1/1/2027').split('/')[:3]
+    close = date(int(cy), int(cm), int(cd))
 
-    def me(m):
-        y = close.year + (m - 1) // 12; mo = (m - 1) % 12 + 1
+    def me(m):                                   # month-end of the m-th month, counting the closing month as month 1
+        k = close.month - 1 + (m - 1); y = close.year + k // 12; mo = k % 12 + 1
         return date(y, mo, calendar.monthrange(y, mo)[1])
 
     dts = [close] + [me(m) for m in range(1, H + 1)]
