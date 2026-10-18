@@ -66,3 +66,15 @@ pop-up lifecycle. `suite_test.py` checks the reconciliation gap against the inde
 after costs and prepayment, post-refinance coverage, and the equity cash flow rebuilt monthly with the new debt service and payoff
 (IRR, multiple, profit, cash returned before exit vs. holding the original loan), a verdict, and a reconciliation (closed-form existing
 balance, profit bridge). `refi_ref.py` re-derives all of it from `model.py`'s monthly cash flow; REF-1 uses custom inputs.
+
+## Input flow (`input_flow_test.js`)
+Leaving a cell re-renders the sheet so the value commits and derived rows refresh. A final `showSheet` wrapper keeps the page's scroll
+position, hands focus back to the cell you were heading for (including dropdowns), and coalesces a re-render requested from inside a
+blur (which used to throw). Arrow Down / Up commit the current input and move to the next / previous one; entering a new section
+brings it to the top of the view and focuses its first input. Selects keep their own arrow keys; Enter and Escape are unchanged.
+
+## Operating Business (from the Punchlist model)
+- `biz_ref.py` is an independent implementation of Punchlist_Business_Model_with_Valuation.xlsx (revenue build, P&L, break-even, build-up discount rate, three-case DCF, sensitivities, 10-year valuation). Run alone it ties to the workbook's own outputs (`real/punchlist_inputs.json`, `real/punchlist_expected.json`).
+- It also implements the OpCo / PropCo comparison (`place()`): business value with market rent normalised, property value from the independent deal model's Year-1 NOI, and the four sale choices after tax.
+- Deals `BIZ-1` (workbook discounting) and `BIZ-2` (bear case, exit multiple discounted at end of year 5, appraised property) are in the deal book and are compared with the app figure by figure; golden results under `:biz`.
+- `conflicts_test.js` has a scenario for each `biz.*` rule.

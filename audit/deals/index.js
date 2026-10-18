@@ -41,5 +41,9 @@ module.exports = [
   Object.assign(acq('HARVARD', '180-200 Harvard Ave: itemised 169-asset cost seg study (Dec 2025 in service, 100% bonus, mid-quarter); price $10.2M, T-12 NOI $899,039', {
     name: '180-200 Harvard Avenue', propertyType: 'Industrial', units: 5, gsf: 63447, purchasePrice: 10200000, closing: '12/11/2025', holdYears: 5, t12noi: 899039, avgRent: 1019536 / 5 / 12, otherIncomePerUnit: 0, vacancy: 0, badDebtPct: 0,
     mgmtPct: 0, taxes: 0, insurance: 0, utilities: 0, rm: 0, contract: 0, payroll: 0, turnover: 0, marketing: 0, ga: 1019536 - 899039, reserves: 0, exitCap: 0.07, taxRate: 0.37 }), { setup: "bkDeprSeedHarvard(); bkDeprSet('lossMode','usable');" }),
+  withTax('BIZ-1', 'Operating business (Punchlist seed, base DCF at the workbook discounting) beside a $22.5M-class property: market rent $24,000, rent normalisation, four sale choices', { gpShare: 0.10 },
+    "bkBizSeedPunchlist(); bkBizSet('place.marketRent',24000); bkBizSet('place.rentIncludedInNOI',0); bkBizSet('place.bizBasis',150000); bkBizSet('place.bundlePct',0.03);"),
+  withTax('BIZ-2', 'Same business, BEAR case, exit multiple discounted at end of year 5 (standard convention), appraised property $18M, 12% broker', { gpShare: 0.10 },
+    "bkBizSeedPunchlist(); bkBizSet('dcf.case',1); bkBizSet('dcf.tvDiscount','standard'); bkBizSet('place.marketRent',30000); bkBizSet('place.propertyValue',18000000); bkBizSet('place.brokerPct',0.12); bkBizSet('place.propTaxRate',0.30);"),
   dev('DEV-3', 'Same project, all equity (no construction loan), 20-month construction', { conLTC: 0, constructionMonths: 20, holdYears: 7 })
 ];

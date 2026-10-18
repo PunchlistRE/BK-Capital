@@ -402,6 +402,7 @@ const GROUPS = [
   {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Draws','Residual Land']},
   {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor','Refi / Recap']},
   {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax']},
+  {id:'biz', label:'Operating Business', color:'#6B4E71', sheets:['Business Model','Business Valuation','Sell vs Hold']},
   {id:'credit', label:'Credit & IC', color:'#7A3E4D', sheets:['IC Memo','Debt Capacity','Credit Policy','Model Checks']},
   {id:'tools', label:'Tools', color:'#5B4B8A', sheets:['Sensitivity','Reverse Solve']},
   {id:'portfolio', label:'Portfolio & Investors', color:'#5A6B7A', sheets:['Portfolio','Investors','Investor Schedules','Liquidity','Portfolio Dashboard','Data Export']},
@@ -19672,6 +19673,9 @@ function conflicts(){
 }
 window.bkConflicts = conflicts;
 window.BK_CONFLICT_RULES = RULES.map(function(r){ return { id:r.id, level:r.level, area:r.area }; });
+/* other modules (the operating-business model) register their own rules */
+window.bkAddConflictRule = function(id, level, area, sheet, fn){ rule(id, level, area, sheet, fn); window.BK_CONFLICT_RULES = RULES.map(function(r){ return { id:r.id, level:r.level, area:r.area }; }); };
+window.bkConflictHelpers = { $:$, pc:pc, safe:safe };
 window.bkAckConflict = function(id, on){
   var s = bkLoad(); if(!s) return; s._ack = s._ack || {};
   if(on === false) delete s._ack[id]; else s._ack[id] = { at:new Date().toISOString() };
@@ -19937,6 +19941,314 @@ if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('R
 })();
 </script>
 
+<script id="bk-v29170-business">
+/* ===========================================================================
+   V29.17.0 - OPERATING BUSINESS (OpCo) MODEL, ported from the Punchlist business model
+   ===========================================================================
+   For an owner whose business runs in, or alongside, a property: a driver-based operating model
+   (tiered pricing -> revenue per job -> P&L -> break-even), a discount-rate build-up, a three-case DCF
+   (bear / base / bull; owner compensation normalised out; capex and working capital; mid-year
+   discounting; perpetuity, exit-multiple or averaged terminal value), three sensitivity grids, market-
+   multiple and 10-year scenario valuation - and the OpCo / PropCo question: sell the business, sell the
+   place of business, sell both, or hold both.
+
+   Stored per deal in s._biz, loaded only by an explicit action (bkBizSeedPunchlist / bkBizStartBlank),
+   never as a default. Nothing here touches the real-estate engines.
+
+   Convention switch (dcf.tvDiscount):
+     'workbook'  the terminal value, whichever method, is discounted with the final mid-year factor, as
+                 the source workbook does (default, so the numbers tie).
+     'standard'  perpetuity TV at the final mid-year factor, exit-multiple TV at the END of year 5: a
+                 multiple is a value at year-end, so the workbook overstates it by (1 + rate)^0.5.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof bkSave !== 'function') return;
+var num = function(x){ var v = Number(x); return isFinite(v) ? v : 0; };
+var SEED = {"name":"Punchlist Real Estate, LLC","modelStart":"2026-07-01","tiers":[{"name":"<$5k","mix":0.5,"avgValue":2500,"coordPct":0.1,"fee":149},{"name":"$5k\u2013$25k","mix":0.3,"avgValue":12500,"coordPct":0.1,"fee":249},{"name":"$25k\u2013$50k","mix":0.1,"avgValue":35000,"coordPct":0.1,"fee":349},{"name":"$50k\u2013$150k","mix":0.08,"avgValue":85000,"coordPct":0.075,"fee":349},{"name":"$150k+","mix":0.02,"avgValue":250000,"coordPct":0.05,"fee":349}],"relaunchJobs":[2,3,3,5,5,6],"growth":{"jobs":[0.2,0.175,0.15,0.125,0.1],"value":[0.03,0.03,0.03,0.03,0.03],"opex":[0.03,0.03,0.03,0.03,0.03]},"opex":[{"name":"Advertising / Marketing","annual":1000,"cls":"Fixed","note":"Current conservative run-rate"},{"name":"Admin / Software / QuickBooks","annual":3000,"cls":"Fixed","note":"Business management subscriptions/admin"},{"name":"Payroll","annual":6000,"cls":"Fixed","note":"$500/month starting payroll"},{"name":"Professional Fees / Licenses","annual":2500,"cls":"Fixed","note":"Includes RE license / professional fees"},{"name":"Legal","annual":750,"cls":"Fixed","note":null},{"name":"Rent","annual":9000,"cls":"Fixed","note":"$750/month"},{"name":"Transportation","annual":5000,"cls":"Semi-variable","note":null},{"name":"Web Services","annual":850,"cls":"Fixed","note":null},{"name":"FF&E","annual":1000,"cls":"CapEx / cash","note":"Shown separately from EBITDA"},{"name":"Insurance","annual":250,"cls":"Fixed","note":null},{"name":"Miscellaneous","annual":500,"cls":"Editable","note":"Placeholder \u2014 intentionally $0"}],"dcf":{"case":2,"netDebt":0,"ownerCompEsc":0.03,"tvMethod":3,"cases":{"bear":{"rev":[0.85,0.8,0.75,0.7,0.7],"comp":75000,"capex":[0.015,0.015,0.015,0.015,0.015],"nwc":[0.03,0.03,0.03,0.03,0.03],"rate":0.263,"g":0.02,"mult":3},"base":{"rev":[1,1,1,1,1],"comp":65000,"capex":[0.01,0.01,0.01,0.01,0.01],"nwc":[0.02,0.02,0.02,0.02,0.02],"rate":null,"g":0.03,"mult":4},"bull":{"rev":[1.15,1.25,1.35,1.45,1.55],"comp":55000,"capex":[0.008,0.008,0.008,0.008,0.008],"nwc":[0.01,0.01,0.01,0.01,0.01],"rate":0.183,"g":0.035,"mult":5}}},"rate":{"rf":0.048,"erp":0.055,"size":0.06,"specific":0.06,"debt":0,"costDebt":0,"debtWeight":0},"valuation":{"current":{"low":50000,"base":75000,"high":125000},"scenarios":[{"name":"Owner-Operated","revenue":750000,"margin":0.3,"mult":3},{"name":"Small Regional Company","revenue":2000000,"margin":0.25,"mult":4},{"name":"Successful Punchlist","revenue":5000000,"margin":0.25,"mult":5},{"name":"Strong Regional Platform","revenue":10000000,"margin":0.25,"mult":6},{"name":"Exceptional Platform","revenue":20000000,"margin":0.25,"mult":7.5}],"ext":{"growth":[0.25,0.25,0.25,0.2,0.2],"margin":[0.3,0.28,0.27,0.26,0.25],"mult":[3,3.5,4,4.5,5,5,5,5,5,5]}}};
+var clone = function(o){ return JSON.parse(JSON.stringify(o)); };
+function biz(s){ s = s || bkLoad(); return (s && s._biz && s._biz.enabled) ? s._biz : null; }
+
+/* ------------------------------------------------------------------ actions */
+function later(){ setTimeout(function(){ if(typeof showSheet === 'function' && typeof currentSheet !== 'undefined') showSheet(currentSheet); }, 0); }
+window.bkBizSeedPunchlist = function(){ var s = bkLoad(); if(!s) return false; var b = clone(SEED); b.enabled = true; b.dcf.tvDiscount = 'workbook'; b.dcf.convention = 'mid'; b.place = b.place || {}; s._biz = b; bkSave(s); later(); return true; };
+window.bkBizStartBlank = function(){
+  var s = bkLoad(); if(!s) return false; var b = clone(SEED); b.enabled = true; b.name = 'Operating business'; b.relaunchJobs = [0, 0, 0, 0, 0, 0];
+  b.tiers.forEach(function(t){ t.mix = 0; t.avgValue = 0; t.coordPct = 0; t.fee = 0; });
+  b.opex.forEach(function(o){ o.annual = 0; });
+  ['bear', 'base', 'bull'].forEach(function(k){ b.dcf.cases[k].comp = 0; });
+  b.valuation.current = { low:0, base:0, high:0 }; b.dcf.tvDiscount = 'workbook'; b.dcf.convention = 'mid'; s._biz = b; bkSave(s); later(); return true;
+};
+window.bkBizClear = function(){ var s = bkLoad(); if(!s) return; delete s._biz; bkSave(s); later(); };
+/* path like 'tiers.0.mix' or 'dcf.cases.bear.rev.2' */
+window.bkBizSet = function(path, v){
+  var s = bkLoad(); if(!s || !s._biz) return; var p = path.split('.'), o = s._biz;
+  for(var i = 0; i < p.length - 1; i++){ if(o[p[i]] == null) o[p[i]] = /^\d+$/.test(p[i + 1]) ? [] : {}; o = o[p[i]]; }
+  o[p[p.length - 1]] = v; bkSave(s); later();
+};
+
+/* -------------------------------------------------------------------- engine */
+function tiersEcon(b){
+  var rows = b.tiers.map(function(t){ var coord = num(t.avgValue) * num(t.coordPct); return { name:t.name, mix:num(t.mix), coord:coord, revPerJob:coord + num(t.fee), effFee:num(t.avgValue) > 0 ? (coord + num(t.fee)) / num(t.avgValue) : 0 }; });
+  return { rows:rows, mixTotal:rows.reduce(function(a, r){ return a + r.mix; }, 0), wValue:b.tiers.reduce(function(a, t){ return a + num(t.mix) * num(t.avgValue); }, 0), wRevJob:rows.reduce(function(a, r){ return a + r.mix * r.revPerJob; }, 0) };
+}
+function pnl(b){
+  var te = tiersEcon(b), g = b.growth;
+  var run = b.opex.filter(function(o){ return !/^capex/i.test(o.cls || ''); }).reduce(function(a, o){ return a + num(o.annual); }, 0);
+  var ffe = b.opex.filter(function(o){ return /^capex/i.test(o.cls || ''); }).reduce(function(a, o){ return a + num(o.annual); }, 0);
+  var h2 = b.relaunchJobs.reduce(function(a, x){ return a + num(x); }, 0);
+  var years = [{ label:'H2 2025', jobs:h2, value:te.wValue, revJob:te.wRevJob, opex:run / 2, ffe:ffe / 2 }];
+  var jobs = h2 * 2, value = te.wValue, rj = te.wRevJob, ox = 1;
+  for(var k = 0; k < 5; k++){ jobs *= 1 + num(g.jobs[k]); value *= 1 + num(g.value[k]); rj *= 1 + num(g.value[k]); ox *= 1 + num(g.opex[k]); years.push({ label:String(2026 + k), jobs:jobs, value:value, revJob:rj, opex:run * ox, ffe:ffe * ox }); }
+  years.forEach(function(y){ y.gpv = y.jobs * y.value; y.revenue = y.jobs * y.revJob; y.ebitda = y.revenue - y.opex; y.margin = y.revenue ? y.ebitda / y.revenue : 0; y.cashBT = y.ebitda - y.ffe; });
+  var be = te.wRevJob > 0 ? run / te.wRevJob : 0;
+  return { tiers:te, years:years, runRate:run, ffe:ffe, breakEven:{ jobsYear:be, jobsMonth:be / 12, gpv:be * te.wValue } };
+}
+function ke(r){ return num(r.rf) + num(r.erp) + num(r.size) + num(r.specific); }
+function wacc(r){ var dw = num(r.debtWeight); return ke(r) * (1 - dw) + num(r.costDebt) * dw; }
+var CASES = ['bear', 'base', 'bull'];
+function dcf(b, P, o){
+  o = o || {}; var d = b.dcf, cs = o.case || CASES[(num(d.case) || 2) - 1], c = d.cases[cs];
+  var rate = o.rate != null ? o.rate : (cs === 'base' ? wacc(b.rate) : num(c.rate)), g = o.g != null ? o.g : num(c.g), mult = o.mult != null ? o.mult : num(c.mult), comp0 = o.comp != null ? o.comp : num(c.comp);
+  var method = o.tv != null ? o.tv : (num(d.tvMethod) || 3), tvd = o.tvDiscount || d.tvDiscount || 'workbook', conv = o.convention || d.convention || 'mid';
+  var prev = P.years[0].revenue * 2, rows = [];
+  for(var k = 0; k < 5; k++){
+    var y = P.years[k + 1], rev = y.revenue * num(c.rev[k]), opex = y.opex, sde = rev - opex, owner = comp0 * Math.pow(1 + num(d.ownerCompEsc), k), ebitda = sde - owner;
+    var capex = rev * num(c.capex[k]), nwc = (rev - prev) * num(c.nwc[k]), fcf = ebitda - capex - nwc, t = conv === 'mid' ? k + 0.5 : k + 1;
+    rows.push({ year:2026 + k, revenue:rev, opex:opex, sde:sde, owner:owner, ebitda:ebitda, capex:capex, nwc:nwc, fcf:fcf, t:t, df:1 / Math.pow(1 + rate, t) }); prev = rev;
+  }
+  rows.forEach(function(r){ r.pv = r.fcf * r.df; });
+  var last = rows[4], termFcf = last.fcf * (1 + g), tvPerp = rate > g ? termFcf / (rate - g) : NaN, tvMult = last.ebitda * mult;
+  var sel = method === 1 ? tvPerp : method === 2 ? tvMult : (tvPerp + tvMult) / 2, dfN = last.df, dfEnd = 1 / Math.pow(1 + rate, 5), pvTV;
+  if(tvd === 'workbook') pvTV = sel * dfN; else pvTV = method === 1 ? tvPerp * dfN : method === 2 ? tvMult * dfEnd : (tvPerp * dfN + tvMult * dfEnd) / 2;
+  var sumPV = rows.reduce(function(a, r){ return a + r.pv; }, 0), ev = sumPV + pvTV, nd = num(d.netDebt);
+  return { case:cs, rate:rate, g:g, mult:mult, comp:comp0, method:method, tvDiscount:tvd, convention:conv, rows:rows, termFcf:termFcf, tvPerp:tvPerp, tvMult:tvMult, tvSel:sel, pvTV:pvTV, sumPV:sumPV, ev:ev, equity:ev - nd,
+    eqPerp:sumPV + tvPerp * dfN - nd, eqMult:sumPV + tvMult * dfN - nd, tvShare:ev ? pvTV / ev : 0, evEbitda2030:last.ebitda ? ev / last.ebitda : 0, evEbitda2026:rows[0].ebitda ? ev / rows[0].ebitda : 0, gOk:rate > g };
+}
+function sens(b, P){
+  var d = b.dcf, cs = CASES[(num(d.case) || 2) - 1], base = dcf(b, P), c = d.cases[cs];
+  var rates = [-0.04, -0.02, 0, 0.02, 0.04].map(function(x){ return base.rate + x; }), gs = [-0.01, -0.005, 0, 0.005, 0.01].map(function(x){ return base.g + x; });
+  var mults = [-2, -1, 0, 1, 2].map(function(x){ return base.mult + x; }), comps = [-20000, -10000, 0, 10000, 20000].map(function(x){ return num(c.comp) + x; });
+  return { rates:rates, gs:gs, mults:mults, comps:comps,
+    s1:rates.map(function(r){ return gs.map(function(g){ return dcf(b, P, { rate:r, g:g }).eqPerp; }); }),
+    s2:rates.map(function(r){ return mults.map(function(m){ return dcf(b, P, { rate:r, mult:m }).eqMult; }); }),
+    s3:comps.map(function(cm){ return rates.map(function(r){ return dcf(b, P, { rate:r, comp:cm }).eqPerp; }); }) };
+}
+function valuation(b, P){
+  var v = b.valuation, ext = v.ext, ys = P.years.slice(1), rev = ys.map(function(y){ return y.revenue; }), marg = ys.map(function(y){ return y.margin; });
+  for(var k = 0; k < 5; k++) rev.push(rev[rev.length - 1] * (1 + num(ext.growth[k])));
+  marg = marg.concat(ext.margin.map(num)); var ebitda = rev.map(function(r, i){ return r * marg[i]; }), ev = ebitda.map(function(e, i){ return e * num(ext.mult[i]); });
+  return { rev:rev, margin:marg, ebitda:ebitda, ev:ev, scenarios:v.scenarios.map(function(s){ var e = num(s.revenue) * num(s.margin); return { name:s.name, revenue:num(s.revenue), margin:num(s.margin), mult:num(s.mult), ebitda:e, ev:e * num(s.mult) }; }) };
+}
+function model(b){
+  var P = pnl(b), out = { pnl:P, ke:ke(b.rate), wacc:wacc(b.rate), dcf:dcf(b, P), cases:{}, sens:sens(b, P), valuation:valuation(b, P) };
+  CASES.forEach(function(c){ out.cases[c] = dcf(b, P, { case:c }); });
+  var std = dcf(b, P, { tvDiscount:'standard' }); out.standardEV = std.ev; out.tvDiscountEffect = out.dcf.ev - std.ev;
+  return out;
+}
+window.bkBizModel = function(){ var b = biz(); return b ? model(clone(b)) : null; };
+window.bkBizInputs = function(){ var b = biz(); return b ? clone(b) : null; };
+window.bkBizModelOf = function(b){ return model(clone(b)); };
+
+/* ------------------------------------------------- OpCo / PropCo: sell what? */
+function placeOf(s){
+  var b = biz(s), pl = (b && b.place) || {}, d = {};
+  var idx = b ? b.opex.findIndex(function(o){ return /rent/i.test(o.name || ''); }) : -1;
+  d.marketRent = num(pl.marketRent); d.rentPaid = pl.rentPaid != null && pl.rentPaid !== '' ? num(pl.rentPaid) : (idx >= 0 ? num(b.opex[idx].annual) : 0);
+  d.rentIncludedInNOI = num(pl.rentIncludedInNOI); d.propertyValue = num(pl.propertyValue); d.brokerPct = pl.brokerPct != null && pl.brokerPct !== '' ? num(pl.brokerPct) : 0.10;
+  d.bizTaxRate = pl.bizTaxRate != null && pl.bizTaxRate !== '' ? num(pl.bizTaxRate) : 0.20; d.propTaxRate = pl.propTaxRate != null && pl.propTaxRate !== '' ? num(pl.propTaxRate) : 0.25;
+  d.bizBasis = num(pl.bizBasis); d.propBasis = pl.propBasis != null && pl.propBasis !== '' ? num(pl.propBasis) : num(s.purchasePrice); d.bundlePct = num(pl.bundlePct); d.rentIdx = idx;
+  return d;
+}
+function place(){
+  var s = bkLoad(), b = biz(s); if(!s || !b) return null;
+  var pl = placeOf(s), P = pnl(clone(b)), asIs = dcf(clone(b), P);
+  /* The business as a stand-alone buyer would value it: market rent in its costs instead of whatever it pays today. */
+  var norm = clone(b);
+  if(pl.rentIdx >= 0) norm.opex[pl.rentIdx].annual = pl.marketRent; else if(pl.marketRent > 0) norm.opex.push({ name:'Rent (market, normalised)', annual:pl.marketRent, cls:'Fixed' });
+  var Pn = pnl(norm), normDcf = dcf(norm, Pn), c = b.dcf.cases[CASES[(num(b.dcf.case) || 2) - 1]];
+  /* The property: Year-1 NOI after reserves over the cap rate (or an appraised value you enter), plus the rent it does not yet earn from this tenant, capitalised. */
+  var noi = 0, cap = num(s.exitCap); try { noi = bkAnnualCF().arr[0].after; } catch(e){}
+  var uplift = pl.marketRent - pl.rentIncludedInNOI, propBase = pl.propertyValue > 0 ? pl.propertyValue : (cap > 0 ? noi / cap : 0);
+  var propValue = propBase + (cap > 0 ? uplift / cap : 0), propNOI = noi + uplift, saleCost = num(s.saleCostPct) || 0.02;
+  /* Rent coverage: what the business earns before rent and after paying its owner, divided by the rent. Buyers of a sale-leaseback look for 2x or more. */
+  var y1 = Pn.years[1], ebitdar = y1.revenue - (y1.opex - pl.marketRent) - num(c.comp), coverage = pl.marketRent > 0 ? ebitdar / pl.marketRent : null;
+  var bizEV = normDcf.ev, bizNet = bizEV * (1 - pl.brokerPct), bizTax = Math.max(0, bizNet - pl.bizBasis) * pl.bizTaxRate;
+  var propNet = propValue * (1 - saleCost), propTax = Math.max(0, propNet - pl.propBasis) * pl.propTaxRate;
+  var bizB = bizEV * (1 + pl.bundlePct) * (1 - pl.brokerPct), propB = propValue * (1 + pl.bundlePct) * (1 - saleCost);
+  var bothTax = Math.max(0, bizB - pl.bizBasis) * pl.bizTaxRate + Math.max(0, propB - pl.propBasis) * pl.propTaxRate;
+  var sc = function(name, cash, tax, retained, desc){ return { name:name, cashPre:cash, tax:tax, cashAfter:cash - tax, retained:retained, total:cash + retained, totalAfterTax:cash - tax + retained, desc:desc }; };
+  var scenarios = [
+    sc('Hold both', 0, 0, bizEV + propValue, 'Keep the business and the property; the business pays market rent to the property.'),
+    sc('Sell the business, keep the property', bizNet, bizTax, propValue, 'A buyer takes the business and leases the place of business from you at market rent.'),
+    sc('Sell the property, keep the business', propNet, propTax, bizEV, 'Sale-leaseback: the property is sold and the business pays market rent to the new owner.'),
+    sc('Sell both', bizB + propB, bothTax, 0, 'Both assets sold together' + (pl.bundlePct ? ' at a ' + (pl.bundlePct * 100).toFixed(1) + '% bundle premium / (discount)' : '') + '.')
+  ];
+  return { inputs:pl, asIs:asIs, normalised:normDcf, normPnl:Pn, bizEV:bizEV, asIsEV:asIs.ev, rentNormalisation:normDcf.ev - asIs.ev, propNOI:propNOI, propBase:propBase, propValue:propValue, cap:cap, ebitdar:ebitdar,
+    rentCoverage:coverage, scenarios:scenarios, bizShare:(bizEV + propValue) > 0 ? bizEV / (bizEV + propValue) : 0, uplift:uplift, bizNet:bizNet, bizTax:bizTax, propNet:propNet, propTax:propTax, saleCost:saleCost };
+}
+window.bkBizPlace = place;
+})();
+</script>
+
+<script id="bk-v29170-business-ui">
+/* V29.17.0 - OPERATING BUSINESS sheets and Model Checks rules. Presentation and rules only; the numbers come from bkBizModel() / bkBizPlace(). */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof window.bkBizModel !== 'function') return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function $(v){ var x = Number(v); if(!isFinite(x)) return 'n/a'; var b = Math.abs(x).toLocaleString('en-US', {maximumFractionDigits:0}); return x < 0 ? '($' + b + ')' : '$' + b; }
+function P(v, d){ return (v == null || !isFinite(v)) ? 'n/a' : (v * 100).toFixed(d == null ? 1 : d) + '%'; }
+function X(v){ return (v == null || !isFinite(v)) ? 'n/a' : v.toFixed(2) + 'x'; }
+function N(v, d){ return isFinite(v) ? Number(v).toLocaleString('en-US', {maximumFractionDigits:d == null ? 1 : d}) : 'n/a'; }
+function chip(cls, t){ return '<span class="status-chip ' + (cls || '') + '">' + t + '</span>'; }
+function tbl(cap, head, body, extra){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>' + cap + '</caption>' + (head ? '<thead><tr>' + head + '</tr></thead>' : '') + '<tbody>' + body + '</tbody></table></div>' + (extra || ''); }
+function th(a){ return a.map(function(h, i){ return i === 0 ? '<th class="rowlabel-h">' + h + '</th>' : '<th>' + h + '</th>'; }).join(''); }
+function note(t, warn){ return '<div class="note-flag" style="margin-top:12px"><span>' + (warn ? '&#9888;' : '&#9432;') + '</span><div>' + t + '</div></div>'; }
+/* editable cell: fmt 'pct' (shown and entered as %), 'usd', 'num', 'text' */
+function ed(path, val, fmt, w){
+  var shown = fmt === 'pct' ? (Number(val) * 100).toFixed(2).replace(/\.?0+$/, '') : fmt === 'usd' ? Number(val || 0).toLocaleString('en-US', {maximumFractionDigits:2}) : fmt === 'text' ? esc(val) : (val == null ? '' : val);
+  var conv = fmt === 'pct' ? '(parseFloat(this.value)||0)/100' : fmt === 'text' ? 'this.value' : 'parseFloat(String(this.value).replace(/[$,]/g,\'\'))||0';
+  return '<input type="text" value="' + shown + '" style="width:' + (w || 84) + 'px;text-align:' + (fmt === 'text' ? 'left' : 'right') + '" onchange="bkBizSet(\'' + path + '\',' + conv + ')">' + (fmt === 'pct' ? '<span style="font-size:11px"> %</span>' : '');
+}
+function sel(path, opts, cur, num){ return '<select onchange="bkBizSet(\'' + path + '\',' + (num ? 'parseFloat(this.value)' : 'this.value') + ')">' + opts.map(function(o){ return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>'; }
+function side(rows, name){ return (typeof sidebarShell === 'function') ? sidebarShell('<div class="card"><div class="card-head">' + name + '</div><div class="metric-list">' + rows.map(function(r){ return '<div class="metric-row"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>'; }).join('') + '</div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : ''; }
+function register(name, fn){
+  var g = function(){ if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState(name); return fn.apply(this, arguments); };
+  if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(name, g); else RENDERERS[name] = g;
+}
+function intro(name, desc){
+  return { title:name, crumbs:'Operating Business', desc:desc, meta:{ Property:bkLoad().name, Business:'not loaded' }, sidebar:'',
+    main:'<div class="note-flag"><span>&#9432;</span><div><b>No operating business on this deal.</b> Add the business that runs in, or alongside, this property to value it, to see what the owner’s business is worth with and without the real estate, and to compare selling the business, selling the place of business, selling both, or holding both.'
+      + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="status-chip pass" onclick="bkBizSeedPunchlist()">LOAD THE PUNCHLIST REAL ESTATE MODEL</button><button type="button" class="status-chip" onclick="bkBizStartBlank()">START A BLANK BUSINESS</button></div></div></div>' };
+}
+
+/* ------------------------------------------------------ Business Model */
+register('Business Model', function(){
+  var b = window.bkBizInputs(), s = bkLoad(); if(!b) return intro('Business Model', 'Driver-based operating model: pricing, revenue build, expenses, P&L and break-even.');
+  var M = window.bkBizModel(), te = M.pnl.tiers, Y = M.pnl.years;
+  var tiers = b.tiers.map(function(t, i){ var r = te.rows[i];
+    return '<tr><td class="rowlabel">' + ed('tiers.' + i + '.name', t.name, 'text', 90) + '</td><td>' + ed('tiers.' + i + '.mix', t.mix, 'pct', 60) + '</td><td>' + ed('tiers.' + i + '.avgValue', t.avgValue, 'usd', 90) + '</td><td>' + ed('tiers.' + i + '.coordPct', t.coordPct, 'pct', 60) + '</td><td>' + ed('tiers.' + i + '.fee', t.fee, 'usd', 70) + '</td><td>' + $(r.coord) + '</td><td>' + $(r.revPerJob) + '</td><td>' + P(r.effFee) + '</td></tr>'; }).join('')
+    + '<tr class="grandtotal"><td class="rowlabel">Weighted</td><td>' + P(te.mixTotal, 0) + ' ' + (Math.abs(te.mixTotal - 1) < 1e-9 ? chip('pass', 'OK') : chip('fail', 'MUST BE 100%')) + '</td><td>' + $(te.wValue) + '</td><td></td><td></td><td></td><td>' + $(te.wRevJob) + '</td><td>' + P(te.wValue ? te.wRevJob / te.wValue : 0) + '</td></tr>';
+  var months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], jobs = '<tr><td class="rowlabel">Jobs per month</td>' + b.relaunchJobs.map(function(j, i){ return '<td>' + ed('relaunchJobs.' + i, j, 'num', 50) + '</td>'; }).join('') + '<td>' + N(Y[0].jobs, 0) + '</td></tr>';
+  var yrs = [2026, 2027, 2028, 2029, 2030], gr = [['jobs', 'Jobs growth'], ['value', 'Average project value growth'], ['opex', 'Fixed opex growth']].map(function(r){ return '<tr><td class="rowlabel">' + r[1] + '</td>' + b.growth[r[0]].map(function(v, i){ return '<td>' + ed('growth.' + r[0] + '.' + i, v, 'pct', 56) + '</td>'; }).join('') + '</tr>'; }).join('');
+  var tot = b.opex.reduce(function(a, o){ return a + (Number(o.annual) || 0); }, 0);
+  var ox = b.opex.map(function(o, i){ return '<tr><td class="rowlabel">' + ed('opex.' + i + '.name', o.name, 'text', 220) + '</td><td>' + ed('opex.' + i + '.annual', o.annual, 'usd', 90) + '</td><td>' + $((Number(o.annual) || 0) / 12) + '</td><td>' + sel('opex.' + i + '.cls', [['Fixed', 'Fixed'], ['Semi-variable', 'Semi-variable'], ['CapEx / cash', 'CapEx / cash (below EBITDA)'], ['Editable', 'Editable']], o.cls) + '</td></tr>'; }).join('')
+    + '<tr class="grandtotal"><td class="rowlabel">Total</td><td>' + $(tot) + '</td><td>' + $(tot / 12) + '</td><td></td></tr>';
+  var cols = Y.map(function(y){ return '<th>' + y.label + '</th>'; }).join('');
+  var row = function(label, f, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + label + '</td>' + Y.map(function(y){ return '<td>' + f(y) + '</td>'; }).join('') + '</tr>'; };
+  var pnl = row('Jobs', function(y){ return N(y.jobs, 1); }) + row('Average project value', function(y){ return $(y.value); }) + row('Gross project value coordinated', function(y){ return $(y.gpv); }) + row('Punchlist revenue per job', function(y){ return $(y.revJob); })
+    + row('Total revenue', function(y){ return $(y.revenue); }, 'subtotal') + row('Operating expenses', function(y){ return $(-y.opex); }) + row('Owner-benefit earnings (before owner pay)', function(y){ return $(y.ebitda); }, 'grandtotal')
+    + row('Margin', function(y){ return P(y.margin); }) + row('FF&E / capital spend', function(y){ return $(-y.ffe); }) + row('Cash earnings before tax', function(y){ return $(y.cashBT); }, 'grandtotal');
+  var be = M.pnl.breakEven;
+  return { title:'Business Model', crumbs:'Operating Business', desc:'Driver-based operating model: pricing, revenue build, expenses, P&L and break-even.',
+    meta:{ Property:s.name, Business:b.name, '2026 revenue':$(Y[1].revenue), 'Break-even jobs / mo':N(be.jobsMonth, 2) },
+    main: tbl('Pricing and Revenue Drivers - by Project Size Tier', th(['Tier', 'Job mix', 'Avg project value', 'Coordination %', 'Engagement fee', 'Coordination rev / job', 'Total rev / job', 'Effective fee %']), tiers)
+      + tbl('Relaunch Volume - Jul to Dec 2025', th(['Month'].concat(months).concat(['H2 total'])), jobs)
+      + tbl('Annual Growth Assumptions', th(['Driver'].concat(yrs.map(String))), gr)
+      + tbl('Day-1 Operating Expense Run-Rate', th(['Expense', 'Annual', 'Monthly', 'Classification']), ox, '<div style="margin-top:10px;display:flex;gap:8px"><button type="button" class="status-chip" onclick="bkBizSet(\'opex.' + b.opex.length + '\',{name:\'New expense\',annual:0,cls:\'Fixed\'})">+ ADD EXPENSE</button><button type="button" class="status-chip" onclick="if(confirm(\'Remove the operating business from this deal?\'))bkBizClear()">REMOVE BUSINESS</button></div>')
+      + tbl('Profit and Loss', th(['$ unless noted'].concat(Y.map(function(y){ return y.label; }))), pnl)
+      + tbl('Break-Even', null, '<tr><td class="rowlabel">Day-1 annual operating expense (excl. FF&E)</td><td class="v">' + $(M.pnl.runRate) + '</td></tr><tr><td class="rowlabel">Weighted revenue per job</td><td class="v">' + $(te.wRevJob) + '</td></tr><tr class="grandtotal"><td class="rowlabel">Break-even jobs per year / per month</td><td class="v">' + N(be.jobsYear, 1) + ' / ' + N(be.jobsMonth, 2) + '</td></tr><tr><td class="rowlabel">Break-even gross project value per year</td><td class="v">' + $(be.gpv) + '</td></tr>')
+      + note('<b>Read the margin carefully.</b> The P&amp;L earnings line is before any pay to the owner, so it is owner-benefit earnings (SDE), not EBITDA. A buyer deducts a market salary for whoever runs the business; the DCF on <b>Business Valuation</b> does that (owner compensation) to reach normalised EBITDA.'),
+    sidebar: side([['2026 revenue', $(Y[1].revenue)], ['2026 earnings (pre owner pay)', $(Y[1].ebitda)], ['Break-even jobs / month', N(be.jobsMonth, 2)], ['Enterprise value (DCF)', $(M.dcf.ev)]], 'Business') };
+});
+
+/* ----------------------------------------------------- Business Valuation */
+register('Business Valuation', function(){
+  var b = window.bkBizInputs(), s = bkLoad(); if(!b) return intro('Business Valuation', 'Discount rate, three-case DCF, sensitivities and market-multiple valuation.');
+  var M = window.bkBizModel(), D = M.dcf, d = b.dcf, r = b.rate, V = M.valuation, c = d.cases;
+  var years = D.rows.map(function(x){ return x.year; });
+  var rate = tbl('Discount Rate Build-Up (cost of equity by build-up, not CAPM)', th(['Component', 'Rate']),
+    [['rf', 'Risk-free rate (10-year Treasury)'], ['erp', 'Equity risk premium'], ['size', 'Size premium (micro-cap)'], ['specific', 'Company-specific risk premium']].map(function(x){ return '<tr><td class="rowlabel">' + x[1] + '</td><td class="v">' + ed('rate.' + x[0], r[x[0]], 'pct', 70) + '</td></tr>'; }).join('')
+    + '<tr class="subtotal"><td class="rowlabel">Cost of equity</td><td class="v">' + P(M.ke) + '</td></tr><tr><td class="rowlabel">Debt weight of capital</td><td class="v">' + ed('rate.debtWeight', r.debtWeight || 0, 'pct', 70) + '</td></tr><tr><td class="rowlabel">Pre-tax cost of debt</td><td class="v">' + ed('rate.costDebt', r.costDebt || 0, 'pct', 70) + '</td></tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">Selected discount rate (WACC, pre-tax)</td><td class="v">' + P(M.wacc) + '</td></tr>',
+    note('Build-up rates for owner-operated micro businesses typically fall between 18% and 30%. Lower the company-specific premium as the business adds management depth, recurring revenue and operating history. A pass-through entity discounts pre-tax cash flow, so no tax shield is applied.'));
+  var settings = tbl('DCF Settings', null,
+      '<tr><td class="rowlabel">Selected case</td><td class="v">' + sel('dcf.case', [[1, 'Bear'], [2, 'Base'], [3, 'Bull']], d.case, true) + '</td></tr>'
+    + '<tr><td class="rowlabel">Terminal value method</td><td class="v">' + sel('dcf.tvMethod', [[1, 'Perpetuity growth'], [2, 'Exit multiple'], [3, 'Average of both']], d.tvMethod, true) + '</td></tr>'
+    + '<tr><td class="rowlabel">Discount convention</td><td class="v">' + sel('dcf.convention', [['mid', 'Mid-year'], ['end', 'End of year']], d.convention || 'mid') + '</td></tr>'
+    + '<tr><td class="rowlabel">Terminal value discounting</td><td class="v">' + sel('dcf.tvDiscount', [['workbook', 'Workbook: final mid-year factor for every method'], ['standard', 'Standard: exit multiple at end of year 5']], d.tvDiscount || 'workbook') + '</td></tr>'
+    + '<tr><td class="rowlabel">Net debt</td><td class="v">' + ed('dcf.netDebt', d.netDebt, 'usd', 90) + '</td></tr><tr><td class="rowlabel">Owner compensation escalation</td><td class="v">' + ed('dcf.ownerCompEsc', d.ownerCompEsc, 'pct', 60) + '</td></tr>');
+  var caseRows = ['bear', 'base', 'bull'].map(function(k, ci){
+    var x = c[k], yrs5 = function(key, f){ return x[key].map(function(v, i){ return '<td>' + ed('dcf.cases.' + k + '.' + key + '.' + i, v, f, 52) + '</td>'; }).join(''); };
+    return '<tr class="subtotal"><td class="rowlabel" colspan="6">' + k.toUpperCase() + ' CASE' + (k === 'base' ? ' (discount rate links to the build-up above)' : '') + '</td></tr>'
+      + '<tr><td class="rowlabel">Revenue vs. P&amp;L model</td>' + yrs5('rev', 'pct') + '</tr><tr><td class="rowlabel">CapEx (% of revenue)</td>' + yrs5('capex', 'pct') + '</tr><tr><td class="rowlabel">&Delta; NWC (% of &Delta; revenue)</td>' + yrs5('nwc', 'pct') + '</tr>'
+      + '<tr><td class="rowlabel">Owner / manager comp, year 1 &middot; discount rate &middot; terminal growth &middot; exit multiple</td><td>' + ed('dcf.cases.' + k + '.comp', x.comp, 'usd', 80) + '</td><td>' + (k === 'base' ? P(M.wacc) : ed('dcf.cases.' + k + '.rate', x.rate, 'pct', 56)) + '</td><td>' + ed('dcf.cases.' + k + '.g', x.g, 'pct', 56) + '</td><td>' + ed('dcf.cases.' + k + '.mult', x.mult, 'num', 50) + '</td><td></td></tr>';
+  }).join('');
+  var cases = tbl('Case Assumptions', th(['Assumption'].concat(years.map(String))), caseRows);
+  var r5 = function(label, f, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + label + '</td>' + D.rows.map(function(x){ return '<td>' + f(x) + '</td>'; }).join('') + '</tr>'; };
+  var proj = r5('Revenue', function(x){ return $(x.revenue); }) + r5('Operating expenses', function(x){ return $(-x.opex); }) + r5('Owner-benefit earnings (SDE)', function(x){ return $(x.sde); }, 'subtotal') + r5('Less: owner / manager compensation', function(x){ return $(-x.owner); })
+    + r5('Normalised EBITDA', function(x){ return $(x.ebitda); }, 'grandtotal') + r5('Less: CapEx', function(x){ return $(-x.capex); }) + r5('Less: &Delta; net working capital', function(x){ return $(-x.nwc); }) + r5('Unlevered free cash flow (pre-tax)', function(x){ return $(x.fcf); }, 'grandtotal')
+    + r5('Discount period (years)', function(x){ return x.t.toFixed(1); }) + r5('Discount factor', function(x){ return x.df.toFixed(4); }) + r5('PV of free cash flow', function(x){ return $(x.pv); });
+  var sum = tbl('Terminal Value and Valuation Summary', null,
+      '<tr><td class="rowlabel">Terminal free cash flow (2031)</td><td class="v">' + $(D.termFcf) + '</td></tr><tr><td class="rowlabel">Terminal value, perpetuity growth</td><td class="v">' + $(D.tvPerp) + '</td></tr><tr><td class="rowlabel">Terminal value, exit multiple (' + X(D.mult) + ' × 2030 EBITDA)</td><td class="v">' + $(D.tvMult) + '</td></tr>'
+    + '<tr><td class="rowlabel">Terminal value, selected</td><td class="v">' + $(D.tvSel) + '</td></tr><tr><td class="rowlabel">PV of terminal value</td><td class="v">' + $(D.pvTV) + '</td></tr><tr><td class="rowlabel">Sum of PV of free cash flows</td><td class="v">' + $(D.sumPV) + '</td></tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">Enterprise value</td><td class="v">' + $(D.ev) + '</td></tr><tr><td class="rowlabel">Less: net debt</td><td class="v">' + $(-d.netDebt) + '</td></tr><tr class="grandtotal"><td class="rowlabel">Equity value</td><td class="v">' + $(D.equity) + '</td></tr>'
+    + '<tr><td class="rowlabel">Terminal value as % of enterprise value</td><td class="v">' + P(D.tvShare) + '</td></tr><tr><td class="rowlabel">Implied EV / 2030 normalised EBITDA</td><td class="v">' + X(D.evEbitda2030) + '</td></tr><tr><td class="rowlabel">Check: terminal growth below discount rate</td><td class="v">' + (D.gOk ? chip('pass', 'OK') : chip('fail', 'ERROR')) + '</td></tr>'
+    + '<tr><td class="rowlabel">Enterprise value on the standard terminal-value convention</td><td class="v">' + $(M.standardEV) + '</td></tr><tr><td class="rowlabel">Difference from the convention in force</td><td class="v">' + $(M.tvDiscountEffect) + '</td></tr>');
+  var allc = tbl('All Three Cases', th(['Case', 'Discount rate', 'Terminal growth', 'Exit multiple', 'Enterprise value', 'Equity value']), ['bear', 'base', 'bull'].map(function(k){ var x = M.cases[k]; return '<tr' + (x.case === D.case ? ' class="subtotal"' : '') + '><td class="rowlabel">' + k + '</td><td>' + P(x.rate) + '</td><td>' + P(x.g) + '</td><td>' + X(x.mult) + '</td><td>' + $(x.ev) + '</td><td>' + $(x.equity) + '</td></tr>'; }).join(''));
+  var S = M.sens, grid = function(cap, rowLab, colLab, rows, cols, data, rf, cf){ return tbl(cap, '<th class="rowlabel-h">' + rowLab + ' \\ ' + colLab + '</th>' + cols.map(function(x){ return '<th>' + cf(x) + '</th>'; }).join(''), rows.map(function(rv, i){ return '<tr><td class="rowlabel">' + rf(rv) + '</td>' + data[i].map(function(v, j){ return '<td' + (i === 2 && j === 2 ? ' class="v"' : '') + '>' + $(v) + '</td>'; }).join('') + '</tr>'; }).join('')); };
+  var sensH = grid('Sensitivity 1 - Equity Value: Discount Rate vs. Terminal Growth (perpetuity terminal value)', 'Discount rate', 'Terminal g', S.rates, S.gs, S.s1, function(x){ return P(x); }, function(x){ return P(x); })
+    + grid('Sensitivity 2 - Equity Value: Discount Rate vs. Exit Multiple (exit-multiple terminal value)', 'Discount rate', 'Exit multiple', S.rates, S.mults, S.s2, function(x){ return P(x); }, function(x){ return X(x); })
+    + grid('Sensitivity 3 - Equity Value: Owner Compensation vs. Discount Rate (perpetuity terminal value)', 'Owner comp', 'Discount rate', S.comps, S.rates, S.s3, function(x){ return $(x); }, function(x){ return P(x); });
+  var cur = b.valuation.current, mtm = tbl('Current Valuation - Mark to Market', th(['Metric', 'Low', 'Base', 'High']), '<tr><td class="rowlabel">Estimated enterprise value</td><td>' + ed('valuation.current.low', cur.low, 'usd', 90) + '</td><td>' + ed('valuation.current.base', cur.base, 'usd', 90) + '</td><td>' + ed('valuation.current.high', cur.high, 'usd', 90) + '</td></tr><tr><td class="rowlabel">DCF enterprise value (selected case)</td><td></td><td>' + $(D.ev) + '</td><td></td></tr>');
+  var sc = tbl('Ten-Year Outcome Scenarios', th(['Scenario', 'Revenue', 'EBITDA margin', 'EBITDA', 'Exit multiple', 'Enterprise value']), b.valuation.scenarios.map(function(x, i){ var o = V.scenarios[i]; return '<tr><td class="rowlabel">' + ed('valuation.scenarios.' + i + '.name', x.name, 'text', 170) + '</td><td>' + ed('valuation.scenarios.' + i + '.revenue', x.revenue, 'usd', 90) + '</td><td>' + ed('valuation.scenarios.' + i + '.margin', x.margin, 'pct', 56) + '</td><td>' + $(o.ebitda) + '</td><td>' + ed('valuation.scenarios.' + i + '.mult', x.mult, 'num', 50) + '</td><td>' + $(o.ev) + '</td></tr>'; }).join(''));
+  var yrs10 = V.rev.map(function(_, i){ return 2026 + i; }), ex = b.valuation.ext;
+  var build = tbl('Illustrative Base-Case 10-Year Valuation Build', th(['Metric'].concat(yrs10.map(String))), '<tr><td class="rowlabel">Revenue</td>' + V.rev.map(function(x){ return '<td>' + $(x) + '</td>'; }).join('') + '</tr><tr><td class="rowlabel">Revenue growth (2031+)</td><td colspan="5"></td>' + ex.growth.map(function(x, i){ return '<td>' + ed('valuation.ext.growth.' + i, x, 'pct', 50) + '</td>'; }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">EBITDA margin</td>' + V.margin.map(function(x, i){ return i < 5 ? '<td>' + P(x) + '</td>' : '<td>' + ed('valuation.ext.margin.' + (i - 5), ex.margin[i - 5], 'pct', 50) + '</td>'; }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">EBITDA</td>' + V.ebitda.map(function(x){ return '<td>' + $(x) + '</td>'; }).join('') + '</tr><tr><td class="rowlabel">Valuation multiple</td>' + ex.mult.map(function(x, i){ return '<td>' + ed('valuation.ext.mult.' + i, x, 'num', 44) + '</td>'; }).join('') + '</tr><tr class="grandtotal"><td class="rowlabel">Enterprise value</td>' + V.ev.map(function(x){ return '<td>' + $(x) + '</td>'; }).join('') + '</tr>',
+    note('The first five years of this build apply the multiple to the P&amp;L earnings line, which is <b>before owner pay</b> (margins of 70-80%), while the later years use a 25-30% EBITDA margin. The two are not on the same basis, so the build overstates the early years relative to the DCF above.', true));
+  return { title:'Business Valuation', crumbs:'Operating Business', desc:'Discount rate, three-case DCF, sensitivities and market-multiple valuation of the operating business.',
+    meta:{ Property:s.name, Case:D.case, 'Enterprise value':$(D.ev), 'Discount rate':P(D.rate) },
+    main: rate + settings + cases + tbl('Cash Flow Projection', th(['$'].concat(years.map(function(y){ return y + 'E'; }))), proj) + sum + allc + sensH + mtm + sc + build,
+    sidebar: side([['Enterprise value', $(D.ev)], ['Equity value', $(D.equity)], ['Discount rate', P(D.rate)], ['TV % of EV', P(D.tvShare, 0)], ['Standard-convention EV', $(M.standardEV)]], 'DCF') };
+});
+
+/* ------------------------------------------------------------ Sell vs Hold */
+register('Sell vs Hold', function(){
+  var b = window.bkBizInputs(), s = bkLoad(); if(!b) return intro('Sell vs Hold', 'Sell the business, the place of business, both, or hold both.');
+  var R = window.bkBizPlace(), p = R.inputs, pl = b.place || {};
+  var inp = function(k, v, fmt, w){ return ed('place.' + k, v, fmt, w); };
+  var inputs = tbl('Inputs', th(['Assumption', 'Value', 'Note']),
+      [['Market rent for the space the business uses (annual)', inp('marketRent', p.marketRent, 'usd', 100), 'What a third-party tenant would pay. Replaces what the business pays today when valuing it stand-alone.'],
+       ['Rent the business pays today (annual)', inp('rentPaid', p.rentPaid, 'usd', 100), 'Defaults to the Rent line in the expense run-rate. Informational: the business value uses market rent.'],
+       ['Rent from this business already in the property’s NOI', inp('rentIncludedInNOI', p.rentIncludedInNOI, 'usd', 100), 'Zero if the business occupies the space without paying the property; the shortfall to market rent is added to property NOI.'],
+       ['Appraised property value (optional)', inp('propertyValue', p.propertyValue, 'usd', 110), 'Leave 0 to use Year-1 NOI after reserves ÷ exit cap.'],
+       ['Business broker / transaction cost', inp('brokerPct', p.brokerPct, 'pct', 60), 'Of the business sale price.'], ['Tax on business sale', inp('bizTaxRate', p.bizTaxRate, 'pct', 60), 'Effective rate on gain over basis (goodwill is mostly capital gain).'],
+       ['Business tax basis', inp('bizBasis', p.bizBasis, 'usd', 90), ''], ['Tax on property sale', inp('propTaxRate', p.propTaxRate, 'pct', 60), 'Indicative blended rate; the After-Tax sheet has the full calculation.'],
+       ['Property tax basis', inp('propBasis', p.propBasis, 'usd', 110), 'Defaults to the purchase price.'], ['Bundle premium / (discount) if both are sold together', inp('bundlePct', p.bundlePct, 'pct', 60), 'A single buyer of both may pay more (or less) than the sum.']]
+      .map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td><td data-bk-align="text">' + r[2] + '</td></tr>'; }).join(''));
+  var base = tbl('Valuation Building Blocks', null,
+      '<tr><td class="rowlabel">Business, as it runs today (DCF)</td><td class="v">' + $(R.asIsEV) + '</td></tr><tr><td class="rowlabel">Business with market rent in its costs (what a stand-alone buyer pays)</td><td class="v">' + $(R.bizEV) + '</td></tr>'
+    + '<tr class="subtotal"><td class="rowlabel">Effect of normalising rent</td><td class="v">' + $(R.rentNormalisation) + '</td></tr><tr><td class="rowlabel">Property value (Year-1 NOI + rent uplift, capitalised)</td><td class="v">' + $(R.propValue) + '</td></tr>'
+    + '<tr><td class="rowlabel">Business share of combined value</td><td class="v">' + P(R.bizShare, 0) + '</td></tr><tr class="grandtotal"><td class="rowlabel">Rent coverage (earnings before rent and after owner pay ÷ market rent)</td><td class="v">' + (R.rentCoverage == null ? 'n/a' : X(R.rentCoverage)) + ' ' + (R.rentCoverage == null ? '' : R.rentCoverage >= 2 ? chip('pass', 'STRONG') : R.rentCoverage >= 1.5 ? chip('warn', 'ADEQUATE') : chip('fail', 'THIN')) + '</td></tr>');
+  var best = R.scenarios.reduce(function(a, x){ return x.totalAfterTax > a.totalAfterTax ? x : a; });
+  var cmp = tbl('The Four Choices', th(['Choice', 'Cash today (pre-tax)', 'Tax', 'Cash today (after tax)', 'Value you keep', 'Total (after tax)', '']), R.scenarios.map(function(x){ return '<tr' + (x === best ? ' class="grandtotal"' : '') + '><td class="rowlabel">' + x.name + '<div style="font-size:11px;color:#666;font-weight:400">' + x.desc + '</div></td><td>' + $(x.cashPre) + '</td><td>' + $(-x.tax) + '</td><td>' + $(x.cashAfter) + '</td><td>' + $(x.retained) + '</td><td>' + $(x.totalAfterTax) + '</td><td>' + (x === best ? chip('pass', 'HIGHEST') : '') + '</td></tr>'; }).join(''));
+  return { title:'Sell vs Hold', crumbs:'Operating Business', desc:'The business and its place of business: sell either, sell both, or hold both.',
+    meta:{ Property:s.name, Business:b.name, 'Business value':$(R.bizEV), 'Property value':$(R.propValue) },
+    main: inputs + base + cmp + note('Value you keep is what you still own after the sale, valued the same way (not cash). The highest total after tax ignores liquidity, risk and the owner’s own situation: selling only the property or only the business leaves you with one concentrated, illiquid asset, and a sale-leaseback ties the business to a lease. The business is valued with <b>market</b> rent in its costs in every choice, so the property and the business are never double-counted.'),
+    sidebar: side([['Business', $(R.bizEV)], ['Property', $(R.propValue)], ['Rent coverage', R.rentCoverage == null ? 'n/a' : X(R.rentCoverage)], ['Highest after tax', best.name]], 'Sell vs Hold') };
+});
+
+/* ----------------------------------------------------------- Model Checks rules */
+if(typeof window.bkAddConflictRule === 'function'){
+  var H = window.bkConflictHelpers, safe = H.safe;
+  var on = function(){ return window.bkBizModel ? window.bkBizModel() : null; };
+  window.bkAddConflictRule('biz.mix-not-100', 'ERROR', 'Business', 'Business Model', function(s){ var M = on(); if(M && Math.abs(M.pnl.tiers.mixTotal - 1) > 1e-9) return { msg:'Job mix across the size tiers totals ' + P(M.pnl.tiers.mixTotal, 1) + ', not 100%.', why:'Weighted revenue per job and average project value are mix-weighted sums. A mix that does not total 100% scales every revenue figure, break-even and valuation by the same wrong factor.' }; });
+  window.bkAddConflictRule('biz.terminal-growth-ge-rate', 'ERROR', 'Business', 'Business Valuation', function(s){ var M = on(); if(M && !M.dcf.gOk) return { msg:'Terminal growth (' + P(M.dcf.g) + ') is not below the discount rate (' + P(M.dcf.rate) + ').', why:'A perpetuity grows into infinity or goes negative when growth meets or exceeds the discount rate; the Gordon formula is undefined. The perpetuity terminal value, and any average that includes it, is meaningless.' }; });
+  window.bkAddConflictRule('biz.tv-discount-workbook', 'WARN', 'Business', 'Business Valuation', function(s){ var M = on(); if(M && M.dcf.tvDiscount === 'workbook' && M.dcf.method !== 1 && Math.abs(M.tvDiscountEffect) > 1) return { msg:'The exit-multiple terminal value is discounted with the final mid-year factor, which overstates enterprise value by ' + $(M.tvDiscountEffect) + ' (' + P(M.tvDiscountEffect / M.standardEV, 1) + ') versus the standard convention.', why:'An exit multiple prices the business at the END of year 5, so it should be discounted five full years; only a perpetuity built on mid-year cash flows is discounted at 4.5 years. Using 4.5 years for the multiple pulls value forward by half a year of the discount rate. The source workbook does this, so it is the default (the numbers tie); switch to Standard on Business Valuation for the conventional treatment.' }; });
+  window.bkAddConflictRule('biz.tv-share-high', 'WARN', 'Business', 'Business Valuation', function(s){ var M = on(); if(M && M.dcf.tvShare > 0.75) return { msg:'The terminal value is ' + P(M.dcf.tvShare, 0) + ' of enterprise value.', why:'When most of the value sits beyond the forecast, the answer is driven by the exit multiple or terminal growth, not by the cash flows you modelled. Small changes in those two inputs move the value a lot; see the sensitivity tables.' }; });
+  window.bkAddConflictRule('biz.sde-labelled-ebitda', 'WARN', 'Business', 'Business Model', function(s){ var M = on(), y = M && M.pnl.years[1]; if(y && y.margin > 0.6 && num(M.dcf.rows[0].owner) > 0) return { msg:'The P&L earnings line shows a ' + P(y.margin, 0) + ' margin because it is before any pay to the owner, yet the valuation build multiplies it as if it were EBITDA.', why:'Owner-benefit earnings (SDE) and EBITDA are different bases: EBITDA charges a market salary for whoever runs the business. Market multiples differ for each (SDE roughly 2-4x, EBITDA higher for larger businesses), so applying an EBITDA multiple to SDE overstates value, and the 10-year build mixes both bases. The DCF handles it correctly by deducting owner compensation.' }; });
+  function num(x){ var v = Number(x); return isFinite(v) ? v : 0; }
+  window.bkAddConflictRule('biz.owner-comp-zero', 'WARN', 'Business', 'Business Valuation', function(s){ var M = on(), b = window.bkBizInputs(); if(M && b && num(b.dcf.cases[['bear', 'base', 'bull'][(num(b.dcf.case) || 2) - 1]].comp) === 0 && M.pnl.years[1].revenue > 0) return { msg:'Owner compensation is zero in the selected case.', why:'A buyer must hire someone to do what the owner does. With no salary deducted, normalised EBITDA equals owner-benefit earnings and enterprise value is overstated by roughly the salary times the multiple.' }; });
+  window.bkAddConflictRule('biz.discount-rate-low', 'WARN', 'Business', 'Business Valuation', function(s){ var M = on(); if(M && M.pnl.years[1].revenue < 5e6 && M.wacc > 0 && M.wacc < 0.15) return { msg:'The discount rate of ' + P(M.wacc) + ' is below the 18-30% range typical for an owner-operated business of this size.', why:'Small, founder-dependent businesses carry size, concentration and key-person risk that public-company rates do not. A low rate inflates every present value, and especially the terminal value.' }; });
+  window.bkAddConflictRule('biz.exit-multiple-range', 'WARN', 'Business', 'Business Valuation', function(s){ var M = on(); if(M && (M.dcf.mult < 2 || M.dcf.mult > 8)) return { msg:'Exit multiple of ' + M.dcf.mult.toFixed(1) + 'x is outside the 2-8x range of market references for small service businesses.', why:'Reference multiples run about 2-4x for owner-operated businesses and 4-8x as EBITDA grows past $1M. A multiple outside that band needs a specific reason, because it drives half or more of the value.' }; });
+  window.bkAddConflictRule('biz.rent-below-market', 'WARN', 'Business', 'Sell vs Hold', function(s){ var M = on(); if(!M) return; var R = safe(function(){ return window.bkBizPlace(); }, null); if(R && R.inputs.marketRent > 0 && R.inputs.rentPaid < R.inputs.marketRent * 0.9) return { msg:'The business pays ' + $(R.inputs.rentPaid) + ' a year in rent against a market rent of ' + $(R.inputs.marketRent) + '.', why:'A below-market rent flatters the business’s earnings. A stand-alone buyer, or a buyer of only the property, will price the business with market rent in its costs, lowering its value by ' + $(-R.rentNormalisation) + ' versus the figure that ignores it. The Sell vs Hold analysis values the business at market rent so the property and the business are not double-counted.' }; });
+  window.bkAddConflictRule('biz.rent-coverage-thin', 'WARN', 'Business', 'Sell vs Hold', function(s){ var R = on() && safe(function(){ return window.bkBizPlace(); }, null); if(R && R.rentCoverage != null && R.rentCoverage < 1.5) return { msg:'Rent coverage is ' + R.rentCoverage.toFixed(2) + 'x: the business earns only that multiple of the market rent before rent, after paying its owner.', why:'A buyer of the property in a sale-leaseback (or a lender) looks for roughly 2x or more. Thin coverage means the rent is a large share of what the business earns, so a downturn in the business threatens the property’s income and lowers what a buyer will pay for it.' }; });
+}
+})();
+</script>
+
 <script id="bk-conventions-ui">
 /* ===========================================================================
    UNDERWRITING CONVENTIONS - controls and disclosure (CV-2026.10)
@@ -20073,5 +20385,116 @@ if(typeof prevCtl === 'function'){
 window.bkConventionsLabel = cvLabel;
 })();
 </script>
+<script id="bk-v29160-input-flow">
+/* ===========================================================================
+   V29.16.0 - INPUT FLOW: keep scroll and focus, and move between inputs with the arrow keys
+   ===========================================================================
+   PROBLEM (reproduced): leaving a cell re-renders the whole sheet (showSheet(currentSheet)) so the
+   value commits and every derived row refreshes. Clicking from one cell to another therefore threw the
+   page back to the top and dropped focus, every time.
+
+   FIX, as a final wrapper around showSheet so it covers every sheet:
+   * re-rendering the SAME sheet restores the scroll position of the page and of every scroll container
+   * the cell you were heading for is re-focused after the re-render (found by position and row label)
+   * Arrow Down / Arrow Up commit the current input and move to the next / previous one. Entering a new
+     section scrolls that section to the top of the view and focuses its first input, so the next section
+     "pops up". Selects keep their own arrow-key behaviour; Enter and Escape are unchanged.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof showSheet !== 'function') return;
+var HEADER = 92;                       /* px kept clear above a section brought to the top */
+var SEL = '#viewport tr.input td.v, #viewport td.v[contenteditable="true"], #viewport input[type="text"]';
+
+function scrollers(){ var out = [], v = document.getElementById('viewport'); for(var e = v; e; e = e.parentElement) out.push(e); out.push(document.scrollingElement || document.documentElement); return out; }
+function snap(){ return { x:window.scrollX, y:window.scrollY, els:scrollers().map(function(e){ return [e, e.scrollTop, e.scrollLeft]; }) }; }
+function restore(s){ s.els.forEach(function(a){ a[0].scrollTop = a[1]; a[0].scrollLeft = a[2]; }); window.scrollTo(s.x, s.y); }
+
+function visible(el){ return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length); }
+function editables(){
+  var seen = [], out = [];
+  [].slice.call(document.querySelectorAll(SEL)).forEach(function(el){
+    if(seen.indexOf(el) >= 0 || !visible(el)) return; seen.push(el);
+    if(el.tagName === 'INPUT' || el.isContentEditable || el.getAttribute('contenteditable') === 'true' || el.matches('tr.input td.v')) out.push(el);
+  });
+  return out;
+}
+function labelOf(el){ var tr = el.closest('tr'); var l = tr && (tr.querySelector('.rowlabel') || tr.cells[0]); return (l ? l.textContent : '').trim() + '|' + (el.cellIndex != null ? el.cellIndex : ''); }
+function sectionOf(el){ return el.closest('.tbl-wrap') || el.closest('table'); }
+/* every control that can hold focus, including dropdowns (used only to hand focus back after a re-render) */
+function focusables(){ return [].slice.call(document.querySelectorAll(SEL + ', #viewport select')).filter(visible); }
+
+function bringIntoView(el, newSection){
+  var sec = sectionOf(el);
+  if(newSection && sec){ var top = sec.getBoundingClientRect().top + window.scrollY - HEADER; window.scrollTo(window.scrollX, Math.max(0, top)); return; }
+  var r = el.getBoundingClientRect(), h = window.innerHeight;
+  if(r.top < HEADER || r.bottom > h - 24) window.scrollTo(window.scrollX, Math.max(0, r.top + window.scrollY - h / 2));
+}
+function focusEl(el){
+  try { el.focus({ preventScroll:true }); } catch(e){ el.focus(); }
+  if(el.tagName === 'INPUT') { try { el.select(); } catch(e){} }
+}
+/* after a re-render: put focus back on the cell the user was heading for */
+function applyPending(){
+  var p = window.__bkPending; if(!p) return; window.__bkPending = null;
+  var list = p.all ? focusables() : editables(), el = list[p.ord];
+  if(!el || labelOf(el) !== p.label) el = list.filter(function(x){ return labelOf(x) === p.label; })[0] || el;
+  if(!el) return;
+  focusEl(el); bringIntoView(el, p.newSection);
+}
+
+var prev = window.showSheet, busy = false, again = null;
+var wrapped = function(sheet){
+  /* Re-entrancy: replacing the viewport removes a focused cell, the browser blurs it DURING the replacement, and the cell's blur handler calls
+     showSheet again - a nested innerHTML write that throws. The nested request is coalesced and re-run once the outer render has finished
+     (its value was already committed by the handler, so the final render shows it). */
+  if(busy){ again = sheet; return; }
+  var same = (typeof currentSheet !== 'undefined') && sheet === currentSheet;
+  var s = same ? snap() : null, r;
+  busy = true; try { r = prev.apply(this, arguments); } finally { busy = false; }
+  if(s){ restore(s); requestAnimationFrame(function(){ restore(s); }); setTimeout(function(){ restore(s); applyPending(); }, 25); }
+  else if(window.__bkPending){ setTimeout(applyPending, 25); }
+  if(again !== null){ var nxt = again; again = null; setTimeout(function(){ wrapped(nxt); }, 0); }
+  return r;
+};
+window.showSheet = wrapped; try { showSheet = wrapped; } catch(e){}
+
+/* clicking from one cell to another: remember the target so the re-render hands focus back to it */
+document.addEventListener('mousedown', function(e){
+  var t = e.target && e.target.closest ? e.target.closest(SEL) : null; if(!t) return;
+  var a = document.activeElement; if(!a || a === t || !a.closest || !a.closest('#viewport')) return;
+  var list = editables(), i = list.indexOf(t); if(i < 0) return;
+  window.__bkPending = { ord:i, label:labelOf(t), newSection:false };
+  setTimeout(function(){ if(window.__bkPending && window.__bkPending.ord === i) applyPending(); }, 120);     /* nothing re-rendered: the click already focused it */
+}, true);
+
+/* a dropdown change re-renders the sheet, which replaces the dropdown: hand focus back so it can be changed again */
+document.addEventListener('change', function(e){
+  var t = e.target; if(!t || t.tagName !== 'SELECT' || !t.closest || !t.closest('#viewport')) return;
+  var list = focusables(), i = list.indexOf(t); if(i < 0) return;
+  window.__bkPending = { ord:i, label:labelOf(t), newSection:false, all:true };
+  setTimeout(function(){ if(window.__bkPending && window.__bkPending.ord === i && window.__bkPending.all) applyPending(); }, 150);
+}, true);
+
+/* Arrow Down / Up move between inputs; a new section is brought to the top */
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  if(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  var t = e.target; if(!t || !t.closest || !t.closest('#viewport') || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA') return;
+  var isCell = t.tagName === 'TD' && (t.isContentEditable || t.matches('tr.input td.v')), isInput = t.tagName === 'INPUT' && (t.type === 'text' || !t.type);
+  if(!isCell && !isInput) return;
+  var list = editables(), i = list.indexOf(t); if(i < 0) return;
+  var j = i + (e.key === 'ArrowDown' ? 1 : -1); if(j < 0 || j >= list.length) return;
+  e.preventDefault();
+  var nxt = list[j];
+  window.__bkPending = { ord:j, label:labelOf(nxt), newSection:sectionOf(nxt) !== sectionOf(t) };
+  t.blur();                                                           /* commits the value; the cell's own handler may re-render the sheet */
+  setTimeout(function(){ if(window.__bkPending && window.__bkPending.ord === j) applyPending(); }, 80);   /* no re-render happened: move now */
+}, true);
+
+window.bkInputFlow = { editables:editables, snap:snap, restore:restore };
+})();
+</script>
+
 </body>
 </html>

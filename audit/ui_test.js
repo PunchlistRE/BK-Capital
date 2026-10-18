@@ -115,6 +115,17 @@ const B = require(path.join(__dirname, 'dealB.js'));
   check('the refinance reconciliation passes', await p.evaluate(() => bkRefi().recon.ok === true));
   await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { dealType: 'Development', predevMonths: 6, constructionMonths: 18, leaseupMonths: 12 })); showSheet('Refi / Recap'); }, B);
   check('Refi / Recap says it applies to acquisition deals on a development deal', /acquisition deals/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
+  // 7. Operating Business: empty state, seeding, editing a driver on the sheet flows through, sell-vs-hold renders
+  await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Business Model'); }, B);
+  check('Business Model shows an empty state before a business is added', /add (an )?operating business|no operating business/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
+  await p.evaluate(() => { bkBizSeedPunchlist(); showSheet('Business Valuation'); }); await p.waitForTimeout(250);
+  const ev0 = await p.evaluate(() => bkBizModel().dcf.ev);
+  const bcaps = await p.evaluate(() => [...document.querySelectorAll('#viewport caption')].length);
+  check('Business Valuation renders its tables once seeded', bcaps >= 8, String(bcaps));
+  await p.evaluate(() => { bkBizSet('dcf.cases.base.mult', 6); showSheet('Sell vs Hold'); }); await p.waitForTimeout(250);
+  const ev1 = await p.evaluate(() => bkBizModel().dcf.ev);
+  check('editing the exit multiple changes the business value', ev1 !== ev0, JSON.stringify({ ev0, ev1 }));
+  check('Sell vs Hold lists the four choices', await p.evaluate(() => ['Hold both', 'Sell the business, keep the property', 'Sell the property, keep the business', 'Sell both'].every(t => document.querySelector('#viewport').innerText.includes(t))));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

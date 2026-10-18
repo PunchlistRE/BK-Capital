@@ -15,6 +15,7 @@ echo "== MACRS tables vs IRS Pub. 946"; node audit/macrs_tables_run.js index.htm
 echo "== conflicting-input rules"; node audit/conflicts_test.js index.html | tail -1
 echo "== deal book vs independent models, T-12 tie-outs, golden results"; node audit/suite_run.js index.html "$T/suite.json" >/dev/null; python3 audit/suite_test.py "$T/suite.json" | tail -1; python3 audit/suite_test.py "$T/suite.json" >/dev/null
 echo "== repeatability"; audit/repeat_test.sh index.html | tail -1
+echo "== input flow (scroll, focus, arrow keys)"; node audit/input_flow_test.js index.html | tail -1
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"
