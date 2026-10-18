@@ -7,11 +7,13 @@ Conventions (deal fields; absent = legacy, exactly as the app resolves them):
   cvOpexVariablePct  0.4 (legacy) | any share 0..1
   cvLtvBasis         'value' (legacy, Year-1 NOI / exit cap) | 'price' | 'lesser'
   cvHurdleBasis      'deal' (legacy) | 'lp'
+  cvBadDebtBasis     'legacy' (statement on gross rent, monthly after vacancy) | 'afterVacancy' | 'gross'
+Development deals are out of scope: the app resolves them to the legacy conventions.
 """
 import math, calendar
 from datetime import date
 
-LEGACY = dict(cvRentGrowthStart='month1', cvOpexVariablePct=0.4, cvLtvBasis='value', cvHurdleBasis='deal')
+LEGACY = dict(cvRentGrowthStart='month1', cvOpexVariablePct=0.4, cvLtvBasis='value', cvHurdleBasis='deal', cvBadDebtBasis='legacy')
 
 
 def conv(s):
@@ -38,7 +40,8 @@ def model(s, acq_fee=0.01):
     other = N('otherIncomePerUnit') * N('units')
     occ = 1 - min(1, max(0, N('vacancy'))) if N('units') > 0 else 0
     # Year-1 underwriting statement (sizes the loan)
-    egi1 = gpr * (1 - N('vacancy') - N('badDebtPct') - N('lossToLeasePct') - N('concessionPct')) + other
+    bad_base1 = gpr * (1 - N('vacancy')) if c['cvBadDebtBasis'] == 'afterVacancy' else gpr
+    egi1 = gpr * (1 - N('vacancy') - N('lossToLeasePct') - N('concessionPct')) - bad_base1 * N('badDebtPct') + other
     fixed = sum(N(k) for k in ['taxes', 'insurance', 'utilities', 'rm', 'contract', 'payroll', 'turnover', 'marketing', 'ga']) + N('gsf') * N('miscPerGSF')
     noi1 = egi1 - fixed - egi1 * N('mgmtPct')
     price = N('purchasePrice')
@@ -60,7 +63,7 @@ def model(s, acq_fee=0.01):
     def month(m):
         g = lambda k: (1 + N(k)) ** expo(m)
         gross = gpr / 12 * g('rentGrowth'); res = gross * occ
-        e = res - res * N('badDebtPct') - gross * N('lossToLeasePct') - gross * N('concessionPct') + other / 12 * g('otherGrowth')
+        e = res - (gross if c['cvBadDebtBasis'] == 'gross' else res) * N('badDebtPct') - gross * N('lossToLeasePct') - gross * N('concessionPct') + other / 12 * g('otherGrowth')
         ctrl = ctrl_y1 / 12 * g('opexGrowth') * ((1 - v) + v * occ)
         nb = e - ctrl - N('insurance') / 12 * g('opexGrowth') - N('taxes') / 12 * (1 + N('taxGrowth')) ** (math.ceil(m / 12) - 1) - e * N('mgmtPct')
         return e, nb - N('reserves') / 12 * g('opexGrowth')

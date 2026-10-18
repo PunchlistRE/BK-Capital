@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 import calendar
 
 d = json.load(open(sys.argv[1])); s = d['s'];
-CV = dict(cvRentGrowthStart='month1', cvOpexVariablePct=0.4, cvLtvBasis='value', cvHurdleBasis='deal')
+CV = dict(cvRentGrowthStart='month1', cvOpexVariablePct=0.4, cvLtvBasis='value', cvHurdleBasis='deal', cvBadDebtBasis='legacy')
 CV.update({k: s[k] for k in CV if s.get(k) not in (None, '')})   # absent = legacy, as the app resolves it
 app_u = d['u']; app_x = d['x']; app_w = d['w']; app_d = d['d']
 N = lambda k: float(s.get(k) or 0)
@@ -15,7 +15,7 @@ def chk(name, mine, app, tol=0.01):
 
 # ---------- 1. Year-1 operating statement (textbook) ----------
 gpr = N('avgRent')*N('units')*12
-vac = -gpr*N('vacancy'); bad = -gpr*N('badDebtPct')
+vac = -gpr*N('vacancy'); bad = -(gpr+vac if CV['cvBadDebtBasis'] == 'afterVacancy' else gpr)*N('badDebtPct')
 other = N('otherIncomePerUnit')*N('units')
 egi = gpr+vac+bad+other
 mgmt = egi*N('mgmtPct')
@@ -51,7 +51,7 @@ k_ctrl = sum(N(k) for k in ['rm','payroll','turnover','utilities','contract','ma
 def month(m):
     ex = (math.ceil(m/12)-1) if CV['cvRentGrowthStart'] == 'year2' else m/12
     g = lambda k: (1+N(k))**ex
-    gprm = gpr/12*g('rentGrowth'); res = gprm*resOcc; badm = -res*N('badDebtPct')
+    gprm = gpr/12*g('rentGrowth'); res = gprm*resOcc; badm = -(gprm if CV['cvBadDebtBasis'] == 'gross' else res)*N('badDebtPct')
     oth = other/12*g('otherGrowth'); e = res+badm+oth
     v = float(CV['cvOpexVariablePct']); ctrl = k_ctrl/12*g('opexGrowth')*((1-v)+v*resOcc)
     ins = N('insurance')/12*g('opexGrowth')

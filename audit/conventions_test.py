@@ -31,6 +31,9 @@ for sc in data['scenarios']:
                    ('levIRR', 1e-6), ('levMOIC', 1e-9), ('unlevIRR', 1e-6), ('unlevMOIC', 1e-9),
                    ('lpIRR', 1e-6), ('gpIRR', 1e-6), ('lpDist', 0.05), ('gpDist', 0.05)]:
         close(f'{tag} {k}', sc[k], m[k], tol)
+    if sc.get('reconcile'):
+        # bad debt basis alignment: statement NOI = monthly Year-1 NOI, and the two bases really differ
+        close(f'{tag} reconcile: statement NOI = monthly Year-1 NOI', sc['stmtNOI'], sc['y1NOI'], 0.01)
     rc = sc['recon']
     # waterfall reconciles to total deal cash, every month and in total
     close(f'{tag} recon: worst month |LP+GP-dist|', rc['maxMonthGap'], 0.0, 1e-6)
@@ -68,3 +71,4 @@ for sc in data['scenarios']:
 print(f"\n{checks} checks, {len(fails)} failures, {len(data['pageErrors'])} page errors")
 for f in fails: print('FAIL', f)
 sys.exit(1 if fails or data['pageErrors'] else 0)
+

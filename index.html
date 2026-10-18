@@ -1460,9 +1460,16 @@ const BK_BASE={
                         legacy 0.40 (the workbook's 0.6 fixed + 0.4 x occupancy split)
      cvLtvBasis         'price' purchase price | 'value' (legacy) Year-1 NOI / exit cap | 'lesser'
      cvHurdleBasis      'lp' hurdles tested on LP contributions and distributions
-                        'deal' (legacy) hurdles tested on total deal equity cash flows */
-var BK_CV_STANDARD = { cvRentGrowthStart:'year2', cvOpexVariablePct:0, cvLtvBasis:'price', cvHurdleBasis:'lp' };
-var BK_CV_LEGACY   = { cvRentGrowthStart:'month1', cvOpexVariablePct:0.4, cvLtvBasis:'value', cvHurdleBasis:'deal' };
+                        'deal' (legacy) hurdles tested on total deal equity cash flows
+     cvBadDebtBasis     'afterVacancy' bad debt is charged on rent after vacancy, in the Operating
+                        Underwrite statement and the monthly cash flow alike
+                        'gross' bad debt on gross potential rent, in both
+                        'legacy' original split: gross in the statement, after vacancy monthly
+   SCOPE: these conventions govern ACQUISITION deals. A Development deal keeps its own methodology
+   (construction-loan sizing, construction-period cash flows, annual growth), so bkConventions()
+   always resolves it to the legacy values and reports scope 'development'. */
+var BK_CV_STANDARD = { cvRentGrowthStart:'year2', cvOpexVariablePct:0, cvLtvBasis:'price', cvHurdleBasis:'lp', cvBadDebtBasis:'afterVacancy' };
+var BK_CV_LEGACY   = { cvRentGrowthStart:'month1', cvOpexVariablePct:0.4, cvLtvBasis:'value', cvHurdleBasis:'deal', cvBadDebtBasis:'legacy' };
 function bkConventions(s){
   s = s || {};
   var out = { legacyFields:[] };
@@ -1474,6 +1481,13 @@ function bkConventions(s){
   if(['year2','month1'].indexOf(out.cvRentGrowthStart) < 0) out.cvRentGrowthStart = BK_CV_LEGACY.cvRentGrowthStart;
   if(['price','value','lesser'].indexOf(out.cvLtvBasis) < 0) out.cvLtvBasis = BK_CV_LEGACY.cvLtvBasis;
   if(['lp','deal'].indexOf(out.cvHurdleBasis) < 0) out.cvHurdleBasis = BK_CV_LEGACY.cvHurdleBasis;
+  if(['afterVacancy','gross','legacy'].indexOf(out.cvBadDebtBasis) < 0) out.cvBadDebtBasis = BK_CV_LEGACY.cvBadDebtBasis;
+  out.isDevelopment = /develop/i.test(String(s.dealType || ''));
+  out.scope = out.isDevelopment ? 'development' : 'acquisition';
+  if(out.isDevelopment){
+    Object.keys(BK_CV_LEGACY).forEach(function(k){ out[k] = BK_CV_LEGACY[k]; });
+    out.legacyFields = Object.keys(BK_CV_LEGACY);
+  }
   out.isLegacy = out.legacyFields.length === Object.keys(BK_CV_LEGACY).length;
   out.isStandard = Object.keys(BK_CV_STANDARD).every(function(k){ return out[k] === BK_CV_STANDARD[k]; });
   return out;
@@ -1615,7 +1629,7 @@ return {title:'Deal Underwrite',crumbs:'Inputs',desc:'All deal inputs - the sing
 
 sheetOperatingUnderwrite=function(){const s=bkLoad(),c=bkCalc(); const money=n=>n<0?'($'+bkFmt(-n)+')':'$'+bkFmt(n); const main=`
 <div class="tbl-wrap"><table class="fin"><caption>Revenue - Year 1 Stabilized</caption><thead><tr><th class="rowlabel-h">Line Item</th><th>Annual ($)</th><th>% of GPR</th></tr></thead><tbody>
-<tr><td class="rowlabel">Gross Potential Rent - Residential</td><td>${money(c.gpr)}</td><td>100.0%</td></tr><tr><td class="rowlabel">Less: Vacancy - Residential</td><td>${money(c.vacancy)}</td><td>${bkPct(Number(s.vacancy))}</td></tr><tr><td class="rowlabel">Less: Bad Debt / Credit Loss</td><td>${money(c.bad)}</td><td>${bkPct(BK_BASE.badDebtPct)}</td></tr><tr class="subtotal"><td class="rowlabel">Net Residential Income</td><td>${money(c.netRes)}</td><td>-</td></tr><tr><td class="rowlabel">Commercial Base Rent</td><td>${money(c.commercial)}</td><td>-</td></tr><tr><td class="rowlabel">Expense Recoveries (NNN)</td><td>${money(c.recovery)}</td><td>-</td></tr><tr><td class="rowlabel">Other Income / Reimbursements</td><td>${money(c.other)}</td><td>-</td></tr><tr class="grandtotal"><td class="rowlabel">Effective Gross Income</td><td>${money(c.egi)}</td><td>100.0%</td></tr></tbody></table></div>
+<tr><td class="rowlabel">Gross Potential Rent - Residential</td><td>${money(c.gpr)}</td><td>100.0%</td></tr><tr><td class="rowlabel">Less: Vacancy - Residential</td><td>${money(c.vacancy)}</td><td>${bkPct(Number(s.vacancy))}</td></tr><tr><td class="rowlabel">Less: Bad Debt / Credit Loss</td><td>${money(c.bad)}</td><td>${bkPct(c.gpr?-c.bad/c.gpr:0)}</td></tr><tr class="subtotal"><td class="rowlabel">Net Residential Income</td><td>${money(c.netRes)}</td><td>-</td></tr><tr><td class="rowlabel">Commercial Base Rent</td><td>${money(c.commercial)}</td><td>-</td></tr><tr><td class="rowlabel">Expense Recoveries (NNN)</td><td>${money(c.recovery)}</td><td>-</td></tr><tr><td class="rowlabel">Other Income / Reimbursements</td><td>${money(c.other)}</td><td>-</td></tr><tr class="grandtotal"><td class="rowlabel">Effective Gross Income</td><td>${money(c.egi)}</td><td>100.0%</td></tr></tbody></table></div>
 <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Expenses</caption><thead><tr><th class="rowlabel-h">Line Item</th><th>Annual ($)</th><th style="text-align:left">Basis</th></tr></thead><tbody>
 <tr><td class="rowlabel">Real Estate Taxes</td><td>${money(Number(s.taxes))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Insurance</td><td>${money(Number(s.insurance))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Utilities</td><td>${money(Number(s.utilities))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Repairs & Maintenance</td><td>${money(Number(s.rm))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Contract Services</td><td>${money(Number(s.contract))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Payroll & Benefits</td><td>${money(Number(s.payroll))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Turnover & Make-Ready</td><td>${money(Number(s.turnover))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Marketing & Advertising</td><td>${money(Number(s.marketing))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">General & Administrative</td><td>${money(Number(s.ga))}</td><td style="text-align:left">Workbook input</td></tr><tr><td class="rowlabel">Management Fee</td><td>${money(c.mgmt)}</td><td style="text-align:left">${bkPct(Number(s.mgmtPct))} of EGI</td></tr><tr><td class="rowlabel">Miscellaneous</td><td>${money(c.misc)}</td><td style="text-align:left">Engine</td></tr><tr class="grandtotal"><td class="rowlabel">Total Expenses</td><td>${money(c.total)}</td><td style="text-align:left">-</td></tr></tbody></table></div>
 <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><tbody><tr class="subtotal"><td class="rowlabel">Net Operating Income</td><td>${money(c.noi)}</td></tr><tr><td class="rowlabel">Less: Replacement Reserves</td><td>${money(-Number(s.reserves))}</td></tr><tr class="grandtotal"><td class="rowlabel">NOI After Reserves</td><td>${money(c.after)}</td></tr></tbody></table></div>
@@ -2685,7 +2699,9 @@ window.bkCalc = function(){
 
   const gpr = useRR ? (applyMarket?rrs.resMarket:rrs.resInPlace)*12 : Number(s.avgRent)*Number(s.units)*12;
   const vacancy = -gpr*Number(s.vacancy);
-  const bad = -gpr*Number(s.badDebtPct);
+  // CONVENTION cvBadDebtBasis: 'afterVacancy' charges bad debt on rent after vacancy, matching the
+  // monthly cash flow; 'gross' and the legacy statement charge it on gross potential rent.
+  const bad = bkConventions(s).cvBadDebtBasis==='afterVacancy' ? -(gpr+vacancy)*Number(s.badDebtPct) : -gpr*Number(s.badDebtPct);
   // FINAL WAVE - loss to lease and concessions. These are the workbook's own Operating
   // Underwrite revenue-build lines (C8 =-o_GPR*g_ltl, C9 =-o_GPR*g_concess): a percentage
   // of GROSS potential rent, on the same base the bad-debt line above already uses. Both
@@ -2920,7 +2936,9 @@ window.bkAnnualCF = function(){
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
     const resRev = (k_GPR/12) * resOcc * Math.pow(1+rentGrowth, gExp(m));
-    const bad = -resRev*badDebtPct;
+    // CONVENTION cvBadDebtBasis: 'gross' charges gross potential rent; 'afterVacancy' and the legacy
+    // monthly behaviour charge rent after vacancy (the legacy expression is kept literally).
+    const bad = _cv.cvBadDebtBasis==='gross' ? -((k_GPR/12) * Math.pow(1+rentGrowth, gExp(m)))*badDebtPct : -resRev*badDebtPct;
     // Applied to GROSS potential rent, exactly as the workbook does, using the same
     // expression the vacancy split below already uses so the parts still sum to the whole.
     // At the default of zero both terms are -0, and x + -0 === x for every x, so no existing
@@ -12996,7 +13014,7 @@ extend('Operating Underwrite','fRevenueBuild', function(o){
     + '<tr>'+lbl('Gross Potential Rent - Residential')+val(money(gpr))
       + txt('Annualised, from the canonical revenue source')+'<td class="v">'+chip('','ENGINE')+'</td></tr>'
     + '<tr>'+lbl('Less: Vacancy')+val(money(c.vacancy))+txt('Gross potential rent &times; vacancy rate')+'<td></td></tr>'
-    + '<tr>'+lbl('Less: Bad Debt / Credit Loss')+val(money(c.bad))+txt('Gross potential rent &times; bad debt rate')+'<td></td></tr>'
+    + '<tr>'+lbl('Less: Bad Debt / Credit Loss')+val(money(c.bad))+txt(bkConventions(bkLoad()).cvBadDebtBasis==='afterVacancy' ? 'Bad debt rate &times; rent after vacancy' : 'Bad debt rate &times; gross potential rent')+'<td></td></tr>'
     + '<tr>'+lbl('Loss to Lease - underwriting deduction')
       + '<td class="v"><input type="number" step="0.01" style="width:100px" value="'+((Number(s.lossToLeasePct)||0)*100).toFixed(2)+'"'
       + ' onchange="bkSetLossToLease(this.value)"></td>'
@@ -15093,7 +15111,7 @@ extend('Deal Underwrite','clarityInputs', function(o){
         tr.setAttribute('data-bk-fmt', 'pct');
         tr.innerHTML = '<td class="rowlabel" data-bk-align="text">Bad Debt / Credit Loss</td>'
           + '<td class="v" data-bk-align="num">' + (v*100).toFixed(2) + '%</td>'
-          + '<td data-bk-align="text">% of gross potential rent</td>'
+          + '<td data-bk-align="text">' + (bkConventions(bkLoad()).cvBadDebtBasis === 'afterVacancy' ? '% of rent after vacancy' : '% of gross potential rent') + '</td>'
           + '<td data-bk-align="text"><span class="status-chip pass">OK</span></td>';
         vac.parentNode.insertBefore(tr, vac.nextSibling);
         added = true;
@@ -18509,7 +18527,12 @@ var DEF = [
   { key:'cvHurdleBasis', label:'Waterfall Hurdles Measured On',
     opts:[['lp','LP cash flows'],['deal','Total deal equity']],
     why:{ lp:'Each tier opens only when the LP itself has reached that IRR. Splits and catch-up are the deal’s own terms.',
-          deal:'Tiers clear on total distributions (including GP catch-up and promote). Use only if the partnership agreement says so.' } }
+          deal:'Tiers clear on total distributions (including GP catch-up and promote). Use only if the partnership agreement says so.' } },
+  { key:'cvBadDebtBasis', label:'Bad Debt Basis',
+    opts:[['afterVacancy','Rent after vacancy'],['gross','Gross potential rent'],['legacy','Legacy (statement gross, monthly after vacancy)']],
+    why:{ afterVacancy:'Standard. Vacancy is deducted first, then bad debt on the rent actually billed. Operating Underwrite, monthly cash flow, valuation, sale and sensitivities all use it.',
+          gross:'Bad debt on gross potential rent everywhere. Use only if the underwriting policy specifies a gross basis.',
+          legacy:'Original behaviour: Operating Underwrite charges gross rent while the monthly cash flow charges rent after vacancy, so Year-1 NOI differs between them.' } }
 ];
 
 function statusChip(s, k){
@@ -18517,8 +18540,28 @@ function statusChip(s, k){
   if(v === undefined || v === null || v === '') return chip('warn', 'LEGACY');
   return (String(v) === String(window.BK_CV_STANDARD[k])) ? chip('pass', 'STANDARD') : chip('', 'CUSTOM');
 }
+function gpBody(s){
+  var gp = Number(s.gpShare), ok = isFinite(gp) && gp >= 0 && gp <= 1;
+  return bkInput('GP Equity Share', 'gpShare', '% of equity - template default 10%', 'pct')
+       + '<tr><td class="rowlabel">LP Equity Share</td><td class="v">' + (ok ? pct(1 - gp) : '—') + '</td><td data-bk-align="text">100% less GP share</td><td>'
+       + (ok ? chip('pass', 'GP + LP = 100%') : chip('fail', 'GP MUST BE 0-100%')) + '</td></tr>';
+}
+function gpRows(s){
+  return '<div class="tbl-wrap"><table class="fin"><caption>Ownership</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th><th style="text-align:left">Note</th><th>Status</th></tr></thead><tbody>' + gpBody(s) + '</tbody></table></div>';
+}
+function devPanel(){
+  var rows = DEF.map(function(d){
+    return '<tr><td class="rowlabel">' + d.label + '</td><td class="v">Not applicable</td><td data-bk-align="text">Development underwriting uses its own methodology.</td><td>' + chip('', 'DEV METHOD') + '</td></tr>';
+  }).join('');
+  return '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div><b>Development deal: acquisition conventions do not apply.</b> '
+    + 'Construction-loan sizing, construction-period cash flows, lease-up and annual growth follow the development methodology and are not affected by these settings. '
+    + 'Configurable conventions for development deals would be a separate extension.</div></div>'
+    + '<div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions - Acquisition Deals Only</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
+    + '<th style="text-align:left">Applies to this deal</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
 function panel(){
   var s = bkLoad(), cv = bkConventions(s);
+  if(cv.isDevelopment) return devPanel() + '<div style="height:16px"></div>' + gpRows(s);
   var rows = DEF.map(function(d){
     var cur = cv[d.key], opts = d.opts.slice();
     if(d.num && !opts.some(function(o){ return Number(o[0]) === Number(cur); })) opts.push([cur, pct(cur)]);
@@ -18528,10 +18571,7 @@ function panel(){
     var why = d.why[cur] || d.why._ || '';
     return '<tr><td class="rowlabel">' + d.label + '</td><td class="v">' + sel + '</td><td data-bk-align="text">' + esc(why) + '</td><td>' + statusChip(s, d.key) + '</td></tr>';
   }).join('');
-  var gp = Number(s.gpShare), ok = isFinite(gp) && gp >= 0 && gp <= 1;
-  rows += bkInput('GP Equity Share', 'gpShare', '% of equity - template default 10%', 'pct');
-  rows += '<tr><td class="rowlabel">LP Equity Share</td><td class="v">' + (ok ? pct(1 - gp) : '—') + '</td><td data-bk-align="text">100% less GP share</td><td>'
-       + (ok ? chip('pass', 'GP + LP = 100%') : chip('fail', 'GP MUST BE 0-100%')) + '</td></tr>';
+  rows += gpBody(s);
   var legacy = cv.legacyFields.length;
   var banner = legacy
     ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9888;</span><div><b>This deal keeps its original methodology.</b> It was created before the '
@@ -18566,10 +18606,10 @@ function wrap(sheet, fn){
   if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(sheet, w); else RENDERERS[sheet] = w;
 }
 wrap('Deal Underwrite', function(o){ o.main = panel() + '<div style="height:16px"></div>' + (o.main || ''); });
-function cvLabel(){ var cv = bkConventions(bkLoad()); return cv.isStandard ? 'Standard' : cv.isLegacy ? 'Legacy' : 'Custom'; }
-wrap('Property CF', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'Growth Start': bkConventions(bkLoad()).cvRentGrowthStart === 'year2' ? 'Year 2' : 'Month 1' }); });
-wrap('Debt', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'LTV Basis': window.bkLtvBasisLabel(bkLoad(), true).replace(/^./, function(c){ return c.toUpperCase(); }) }); });
-wrap('Equity Waterfall', function(o){ o.meta = Object.assign({}, o.meta || {}, { 'Hurdles On': bkConventions(bkLoad()).cvHurdleBasis === 'lp' ? 'LP cash flows' : 'Deal equity' }); });
+function cvLabel(){ var cv = bkConventions(bkLoad()); return cv.isDevelopment ? 'Development method' : cv.isStandard ? 'Standard' : cv.isLegacy ? 'Legacy' : 'Custom'; }
+wrap('Property CF', function(o){ if(bkConventions(bkLoad()).isDevelopment) return; o.meta = Object.assign({}, o.meta || {}, { 'Growth Start': bkConventions(bkLoad()).cvRentGrowthStart === 'year2' ? 'Year 2' : 'Month 1' }); });
+wrap('Debt', function(o){ if(bkConventions(bkLoad()).isDevelopment) return; o.meta = Object.assign({}, o.meta || {}, { 'LTV Basis': window.bkLtvBasisLabel(bkLoad(), true).replace(/^./, function(c){ return c.toUpperCase(); }) }); });
+wrap('Equity Waterfall', function(o){ if(bkConventions(bkLoad()).isDevelopment) return; o.meta = Object.assign({}, o.meta || {}, { 'Hurdles On': bkConventions(bkLoad()).cvHurdleBasis === 'lp' ? 'LP cash flows' : 'Deal equity' }); });
 wrap('Returns', function(o){ o.meta = Object.assign({}, o.meta || {}, { Conventions: cvLabel() }); });
 
 /* GP / LP ownership must total 100%: an out-of-range GP share is a FAIL control, which the readiness

@@ -49,11 +49,11 @@ const B = require(path.join(__dirname, 'dealB.js'));
   // 1. new deal: standard conventions
   await p.evaluate(d => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); }, B);
   let s = await verify('standard deal');
-  check('standard deal: every setting marked STANDARD', s.panel.slice(0, 4).every(r => r.status === 'STANDARD'));
+  check('standard deal: every setting marked STANDARD', s.panel.slice(0, 5).every(r => r.status === 'STANDARD'));
   check('standard deal: no legacy banner', !s.banner);
   // 2. change each setting through the panel's own controls; engine and labels must follow
   await p.evaluate(() => showSheet('Deal Underwrite'));
-  for (const [label, val] of [['Rent & Expense Growth', 'month1'], ['Occupancy-Variable', '0.25'], ['Acquisition LTV Basis', 'lesser'], ['Waterfall Hurdles', 'deal']]) {
+  for (const [label, val] of [['Rent & Expense Growth', 'month1'], ['Occupancy-Variable', '0.25'], ['Acquisition LTV Basis', 'lesser'], ['Waterfall Hurdles', 'deal'], ['Bad Debt Basis', 'gross']]) {
     const before = await p.evaluate(() => bkMonthlyReturns().irr);
     await p.evaluate(([l, v]) => { const r = [...document.querySelectorAll('#viewport tr')].find(t => (t.cells[0]?.textContent || '').trim().indexOf(l) === 0); const sel = r.querySelector('select'); sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); }, [label, val]);
     await p.waitForTimeout(150);
@@ -61,17 +61,17 @@ const B = require(path.join(__dirname, 'dealB.js'));
     console.log(`      set ${label} -> ${val}: levered IRR ${(before * 100).toFixed(2)}% -> ${(after.irr * 100).toFixed(2)}%, LP IRR ${(after.lp * 100).toFixed(2)}%`);
   }
   s = await verify('custom deal');
-  check('custom deal: changed settings marked CUSTOM', s.panel.slice(0, 4).every(r => r.status === 'CUSTOM'));
+  check('custom deal: changed settings marked CUSTOM', s.panel.slice(0, 5).every(r => r.status === 'CUSTOM'));
   // 3. legacy deal: banner, LEGACY chips, apply-standard, undo
   await p.evaluate(d => { bkCreateNewDeal(d); const st = JSON.parse(localStorage.getItem('bkcapital.cre.v02'));
-    ['cvRentGrowthStart', 'cvOpexVariablePct', 'cvLtvBasis', 'cvHurdleBasis', '_conventions'].forEach(k => delete st[k]);
+    ['cvRentGrowthStart', 'cvOpexVariablePct', 'cvLtvBasis', 'cvHurdleBasis', 'cvBadDebtBasis', '_conventions'].forEach(k => delete st[k]);
     localStorage.setItem('bkcapital.cre.v02', JSON.stringify(st)); }, B);
   s = await verify('legacy deal');
-  check('legacy deal: settings marked LEGACY and banner shown', s.panel.slice(0, 4).every(r => r.status === 'LEGACY') && s.banner);
+  check('legacy deal: settings marked LEGACY and banner shown', s.panel.slice(0, 5).every(r => r.status === 'LEGACY') && s.banner);
   await p.evaluate(() => showSheet('Deal Underwrite'));
   await p.click('#viewport button[onclick="bkApplyStandardConventions()"]'); await p.waitForTimeout(150);
   s = await verify('legacy deal after Apply');
-  check('Apply standard: all four now STANDARD', s.panel.slice(0, 4).every(r => r.status === 'STANDARD') && !s.banner);
+  check('Apply standard: all five now STANDARD', s.panel.slice(0, 5).every(r => r.status === 'STANDARD') && !s.banner);
   await p.evaluate(() => window.bkUndo()); await p.waitForTimeout(150);
   s = await state();
   check('Undo restores the legacy methodology', s.cv.isLegacy, JSON.stringify(s.cv.legacyFields));
