@@ -1,0 +1,305 @@
+{
+ "name": "Punchlist Real Estate, LLC",
+ "modelStart": "2026-07-01",
+ "tiers": [
+  {
+   "name": "<$5k",
+   "mix": 0.5,
+   "avgValue": 2500,
+   "coordPct": 0.1,
+   "fee": 149
+  },
+  {
+   "name": "$5k\u2013$25k",
+   "mix": 0.3,
+   "avgValue": 12500,
+   "coordPct": 0.1,
+   "fee": 249
+  },
+  {
+   "name": "$25k\u2013$50k",
+   "mix": 0.1,
+   "avgValue": 35000,
+   "coordPct": 0.1,
+   "fee": 349
+  },
+  {
+   "name": "$50k\u2013$150k",
+   "mix": 0.08,
+   "avgValue": 85000,
+   "coordPct": 0.075,
+   "fee": 349
+  },
+  {
+   "name": "$150k+",
+   "mix": 0.02,
+   "avgValue": 250000,
+   "coordPct": 0.05,
+   "fee": 349
+  }
+ ],
+ "relaunchJobs": [
+  2,
+  3,
+  3,
+  5,
+  5,
+  6
+ ],
+ "growth": {
+  "jobs": [
+   0.2,
+   0.175,
+   0.15,
+   0.125,
+   0.1
+  ],
+  "value": [
+   0.03,
+   0.03,
+   0.03,
+   0.03,
+   0.03
+  ],
+  "opex": [
+   0.03,
+   0.03,
+   0.03,
+   0.03,
+   0.03
+  ]
+ },
+ "opex": [
+  {
+   "name": "Advertising / Marketing",
+   "annual": 1000,
+   "cls": "Fixed",
+   "note": "Current conservative run-rate"
+  },
+  {
+   "name": "Admin / Software / QuickBooks",
+   "annual": 3000,
+   "cls": "Fixed",
+   "note": "Business management subscriptions/admin"
+  },
+  {
+   "name": "Payroll",
+   "annual": 6000,
+   "cls": "Fixed",
+   "note": "$500/month starting payroll"
+  },
+  {
+   "name": "Professional Fees / Licenses",
+   "annual": 2500,
+   "cls": "Fixed",
+   "note": "Includes RE license / professional fees"
+  },
+  {
+   "name": "Legal",
+   "annual": 750,
+   "cls": "Fixed",
+   "note": null
+  },
+  {
+   "name": "Rent",
+   "annual": 9000,
+   "cls": "Fixed",
+   "note": "$750/month"
+  },
+  {
+   "name": "Transportation",
+   "annual": 5000,
+   "cls": "Semi-variable",
+   "note": null
+  },
+  {
+   "name": "Web Services",
+   "annual": 850,
+   "cls": "Fixed",
+   "note": null
+  },
+  {
+   "name": "FF&E",
+   "annual": 1000,
+   "cls": "CapEx / cash",
+   "note": "Shown separately from EBITDA"
+  },
+  {
+   "name": "Insurance",
+   "annual": 250,
+   "cls": "Fixed",
+   "note": null
+  },
+  {
+   "name": "Miscellaneous",
+   "annual": 500,
+   "cls": "Editable",
+   "note": "Placeholder \u2014 intentionally $0"
+  }
+ ],
+ "dcf": {
+  "case": 2,
+  "netDebt": 0,
+  "ownerCompEsc": 0.03,
+  "tvMethod": 3,
+  "cases": {
+   "bear": {
+    "rev": [
+     0.85,
+     0.8,
+     0.75,
+     0.7,
+     0.7
+    ],
+    "comp": 75000,
+    "capex": [
+     0.015,
+     0.015,
+     0.015,
+     0.015,
+     0.015
+    ],
+    "nwc": [
+     0.03,
+     0.03,
+     0.03,
+     0.03,
+     0.03
+    ],
+    "rate": 0.263,
+    "g": 0.02,
+    "mult": 3
+   },
+   "base": {
+    "rev": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "comp": 65000,
+    "capex": [
+     0.01,
+     0.01,
+     0.01,
+     0.01,
+     0.01
+    ],
+    "nwc": [
+     0.02,
+     0.02,
+     0.02,
+     0.02,
+     0.02
+    ],
+    "rate": 0.223,
+    "g": 0.03,
+    "mult": 4
+   },
+   "bull": {
+    "rev": [
+     1.15,
+     1.25,
+     1.35,
+     1.45,
+     1.55
+    ],
+    "comp": 55000,
+    "capex": [
+     0.008,
+     0.008,
+     0.008,
+     0.008,
+     0.008
+    ],
+    "nwc": [
+     0.01,
+     0.01,
+     0.01,
+     0.01,
+     0.01
+    ],
+    "rate": 0.183,
+    "g": 0.035,
+    "mult": 5
+   }
+  }
+ },
+ "rate": {
+  "rf": 0.048,
+  "erp": 0.055,
+  "size": 0.06,
+  "specific": 0.06,
+  "debt": 0,
+  "costDebt": 0,
+  "debtWeight": 0
+ },
+ "valuation": {
+  "current": {
+   "low": 50000,
+   "base": 75000,
+   "high": 125000
+  },
+  "scenarios": [
+   {
+    "name": "Owner-Operated",
+    "revenue": 750000,
+    "margin": 0.3,
+    "mult": 3
+   },
+   {
+    "name": "Small Regional Company",
+    "revenue": 2000000,
+    "margin": 0.25,
+    "mult": 4
+   },
+   {
+    "name": "Successful Punchlist",
+    "revenue": 5000000,
+    "margin": 0.25,
+    "mult": 5
+   },
+   {
+    "name": "Strong Regional Platform",
+    "revenue": 10000000,
+    "margin": 0.25,
+    "mult": 6
+   },
+   {
+    "name": "Exceptional Platform",
+    "revenue": 20000000,
+    "margin": 0.25,
+    "mult": 7.5
+   }
+  ],
+  "ext": {
+   "growth": [
+    0.25,
+    0.25,
+    0.25,
+    0.2,
+    0.2
+   ],
+   "margin": [
+    0.3,
+    0.28,
+    0.27,
+    0.26,
+    0.25
+   ],
+   "mult": [
+    3,
+    3.5,
+    4,
+    4.5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5
+   ]
+  }
+ }
+}

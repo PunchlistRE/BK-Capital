@@ -314,6 +314,116 @@
   "peak": 4,
   "year": 4
  },
+ "BIZ-1": {
+  "binding": "DSCR",
+  "equity": 11427270,
+  "gpDist": 1390263.0,
+  "gpIRR": 0.041997229,
+  "grossSale": 25741690.16,
+  "levIRR": 0.041997229,
+  "levMOIC": 1.216618664,
+  "loan": 13427000,
+  "lpDist": 12512366.96,
+  "lpIRR": 0.041997229,
+  "ltvValue": 24000000,
+  "promote": 0,
+  "stmtNOI": 1270349.16,
+  "unlevIRR": 0.059611054,
+  "unlevMOIC": 1.293912853,
+  "y1NOI": 1270349.16
+ },
+ "BIZ-1:biz": {
+  "bizEV": 239725.63,
+  "coverage": 0.931058833,
+  "ev": 323556.64,
+  "hold": 22750145.81,
+  "propValue": 22510420.17,
+  "sellBiz": 22713022.63,
+  "sellBoth": 22929798.65,
+  "sellProp": 22299937.4
+ },
+ "BIZ-1:conflicts": {
+  "ids": "WARN:biz.rent-below-market WARN:biz.rent-coverage-thin WARN:biz.sde-labelled-ebitda WARN:biz.tv-discount-workbook WARN:debt.sizing-looser-than-policy"
+ },
+ "BIZ-1:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -108.22,
+  "hard": 4,
+  "irrDown": -0.007905139,
+  "irrUp": 0.094995758,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
+ "BIZ-1:refi": {
+  "baseIrr": 0.041997229,
+  "binding": "DSCR",
+  "irr": 0.034758308,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
+ },
+ "BIZ-2": {
+  "binding": "DSCR",
+  "equity": 11427270,
+  "gpDist": 1390263.0,
+  "gpIRR": 0.041997229,
+  "grossSale": 25741690.16,
+  "levIRR": 0.041997229,
+  "levMOIC": 1.216618664,
+  "loan": 13427000,
+  "lpDist": 12512366.96,
+  "lpIRR": 0.041997229,
+  "ltvValue": 24000000,
+  "promote": 0,
+  "stmtNOI": 1270349.16,
+  "unlevIRR": 0.059611054,
+  "unlevMOIC": 1.293912853,
+  "y1NOI": 1270349.16
+ },
+ "BIZ-2:biz": {
+  "bizEV": -69525.73,
+  "coverage": 0.405513733,
+  "ev": 26399.12,
+  "hold": 18452213.4,
+  "propValue": 18521739.13,
+  "sellBiz": 18460556.49,
+  "sellBoth": 18090121.7,
+  "sellProp": 18081778.61
+ },
+ "BIZ-2:conflicts": {
+  "ids": "WARN:biz.rent-below-market WARN:biz.rent-coverage-thin WARN:biz.sde-labelled-ebitda WARN:biz.tv-share-high WARN:debt.sizing-looser-than-policy"
+ },
+ "BIZ-2:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": -108.22,
+  "hard": 4,
+  "irrDown": -0.007905139,
+  "irrUp": 0.094995758,
+  "noiTol3": 0.032711818,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.22,
+  "soft": 5,
+  "verdict": "DECLINE"
+ },
+ "BIZ-2:refi": {
+  "baseIrr": 0.041997229,
+  "binding": "DSCR",
+  "irr": 0.034758308,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
+ },
  "CRD-1": {
   "binding": "DSCR",
   "equity": 11427270,

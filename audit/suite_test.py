@@ -8,7 +8,7 @@ Exit 1 on any failure."""
 import json, math, sys, os
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from model import model
-import dev_audit, macrs_ref as MR, credit_ref as CR, refi_ref as RR, re
+import biz_ref as BR, dev_audit, macrs_ref as MR, credit_ref as CR, refi_ref as RR, re
 from datetime import date
 
 data = json.load(open(sys.argv[1])); update = '--update-golden' in sys.argv
@@ -71,6 +71,20 @@ for d in data['deals']:
                     close(f"{tag} gate {row['id']}: underwritten value", row['value'], ref['gateValues'][row['id']], 1e-6 if row['id'] not in ('capacity','exitCush') else 0.5)
             golden[tag + ':credit'] = dict(verdict=cr['verdict'], score=cr['score'], hard=cr['hard'], soft=cr['soft'], capacity=cp['capacity'], binding=cp['binding'], overage=cp['overage'],
                                            exitCushion=cu['exitCapCushionBps'], beOcc=cu['breakEvenOccupancy'], noiTol3=cu['noiTolerance3'], rentCushion=cu['rentCushion'], irrDown=cu['irrDownside'], irrUp=cu['irrUpside'])
+        if r.get('biz'):
+            bz = r['biz']; bi = bz['inputs']; M = BR.model(bi, tv_discount=bi['dcf'].get('tvDiscount', 'workbook')); Pl = BR.place(bi, r['s'], m['y1NOI'])
+            close(f'{tag} biz Y1 NOI after reserves (app vs independent deal model)', bz['y1after'], m['y1NOI'], 0.01)
+            for k, a, x in (('EV', bz['ev'], M['dcf']['ev']), ('equity', bz['equity'], M['dcf']['equity']), ('WACC', bz['wacc'], M['wacc']), ('cost of equity', bz['ke'], M['ke']), ('break-even jobs', bz['breakEvenJobs'], M['pnl']['breakEven']['jobsYear'])):
+                close(f'{tag} biz {k}', a, x, 1e-6 * max(1, abs(x)))
+            for c, a in bz['cases'].items(): close(f'{tag} biz {c} case EV', a, BR.model(bi, tv_discount=bi['dcf'].get('tvDiscount', 'workbook'))['cases'][c]['ev'], 0.01)
+            for i, y in enumerate(M['pnl']['years']): close(f'{tag} biz revenue {y["label"]}', bz['revenue'][i], y['revenue'], 0.01); close(f'{tag} biz EBITDA {y["label"]}', bz['ebitda'][i], y['ebitda'], 0.01)
+            for i in range(5):
+                for j in range(5): close(f'{tag} biz sensitivity [{i}][{j}]', bz['s1'][i][j], M['sens']['s1'][i][j], 0.01)
+            for k in ('bizEV', 'asIsEV', 'rentNormalisation', 'propValue', 'ebitdar'): close(f'{tag} biz place {k}', bz['place'][k], Pl[k], 0.01)
+            close(f'{tag} biz rent coverage', bz['place']['rentCoverage'], Pl['rentCoverage'], 1e-9)
+            for a, x in zip(bz['scenarios'], Pl['scenarios']):
+                close(f"{tag} biz scenario {x['name']}", a['name'], x['name'], 0); close(f"{tag} biz {x['name']} total after tax", a['totalAfterTax'], x['totalAfterTax'], 0.05); close(f"{tag} biz {x['name']} tax", a['tax'], x['tax'], 0.05)
+            golden[tag + ':biz'] = dict(ev=bz['ev'], bizEV=bz['place']['bizEV'], propValue=bz['place']['propValue'], coverage=bz['place']['rentCoverage'], hold=bz['scenarios'][0]['totalAfterTax'], sellBiz=bz['scenarios'][1]['totalAfterTax'], sellProp=bz['scenarios'][2]['totalAfterTax'], sellBoth=bz['scenarios'][3]['totalAfterTax'])
         if r.get('refi'):
             rf = r['refi']; ri = rf['inputs']; ref = RR.check(r['s'], ri); S = rf['selected']; RS = ref['selected']
             for k, kk in (('irr', 'irr'), ('moic', 'moic')): close(f'{tag} refi base {k}', rf['base'][k], ref['base'][kk], 1e-7)

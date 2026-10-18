@@ -8,6 +8,7 @@ const set = (o) => `{const s=bkLoad(); Object.assign(s, ${JSON.stringify(o)}); b
 const SEG = "bkDeprSet('costSeg',true); bkDeprSet('landMethod','percent'); bkDeprSet('landPct',0.2); bkDeprSet('detailMode','buckets'); bkDeprBucketSet(5, 1000000);";
 const comp = (extra) => `bkDeprSet('costSeg',true); bkDeprSet('landMethod','percent'); bkDeprSet('landPct',0.2); bkDeprSet('detailMode','detailed'); {const s=bkLoad(); s._depr.components=[Object.assign({component:'x',basis:1000000,recovery:5,bonus:true,convention:'AUTO',method:''},${JSON.stringify(extra)})]; bkSave(s);}`;
 // [rule id, expected level (null = any), setup, base deal ('A' | 'DEV'), optional fix that must clear it]
+const BIZ = "bkBizSeedPunchlist(); ";
 const T = [
   ['dep.simplified-costseg', 'WARN', SEG + "{const s=bkLoad(); s._depr.settings.depMethod='simplified'; bkSave(s);}", 'A', "bkDeprSet('depMethod','macrs')"],
   ['dep.bonus-on-real-property', 'WARN', comp({ recovery: 27.5 }), 'A', null],
@@ -52,6 +53,16 @@ const T = [
   ['dev.no-leaseup', 'WARN', set({ leaseupMonths: 0 }), 'DEV', set({ leaseupMonths: 14 })],
   ['dev.takeout-shortfall', 'WARN', set({ permLTV: 0.2 }), 'DEV', set({ permLTV: 0.9, permDSCR: 1.0 })],   // the base development deal also fires: its DSCR-bound takeout is $225,620 short of the construction payoff
   ['dev.conventions-ignored', 'INFO', set({ cvRentGrowthStart: 'month1' }), 'DEV', null],
+  ['biz.mix-not-100', 'ERROR', BIZ + "bkBizSet('tiers.0.mix',0.9);", 'BIZ', "bkBizSeedPunchlist()"],
+  ['biz.terminal-growth-ge-rate', 'ERROR', BIZ + "bkBizSet('dcf.cases.base.g',0.5);", 'BIZ', "bkBizSeedPunchlist()"],
+  ['biz.tv-discount-workbook', 'WARN', BIZ, 'BIZ', "bkBizSet('dcf.tvDiscount','standard')"],
+  ['biz.tv-share-high', 'WARN', BIZ + "bkBizSet('rate.specific',-0.06); bkBizSet('dcf.cases.base.mult',7.9);", 'BIZ', "bkBizSeedPunchlist()"],
+  ['biz.sde-labelled-ebitda', 'WARN', BIZ, 'BIZ', null],
+  ['biz.owner-comp-zero', 'WARN', BIZ + "bkBizSet('dcf.cases.base.comp',0);", 'BIZ', "bkBizSet('dcf.cases.base.comp',150000)"],
+  ['biz.discount-rate-low', 'WARN', BIZ + "bkBizSet('rate.specific',-0.1);", 'BIZ', "bkBizSeedPunchlist()"],
+  ['biz.exit-multiple-range', 'WARN', BIZ + "bkBizSet('dcf.cases.base.mult',12);", 'BIZ', "bkBizSeedPunchlist()"],
+  ['biz.rent-below-market', 'WARN', BIZ + "bkBizSet('place.marketRent',24000);", 'BIZ', "bkBizSet('place.marketRent',9000)"],
+  ['biz.rent-coverage-thin', 'WARN', BIZ + "bkBizSet('place.marketRent',24000);", 'BIZ', "bkBizSet('place.marketRent',9000)"],
   ['pol.thresholds-inverted', 'ERROR', "bkPolicySet('advanceScore',0.5); bkPolicySet('conditionalScore',0.7);", 'A', "bkPolicyReset()"],
   ['pol.dscr-below-one', 'ERROR', "bkPolicySet('minDSCR',0.9);", 'A', "bkPolicyReset()"],
   ['pol.weights', 'WARN', "bkPolicyGate('lpIRR','weight',0.5);", 'A', "bkPolicyReset()"],
@@ -67,7 +78,7 @@ const T = [
   await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(800);
   const check = (name, ok, detail) => { checks++; if (!ok) fails++; if (!ok) console.log('FAIL ' + name + (detail ? '  ' + detail : '')); };
   const run = (code) => p.evaluate(c => (0, eval)(c), code);
-  const mk = (kind) => p.evaluate(([k, a, d]) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(k === 'DEV' ? d : a); }, [kind, A, DEV]);
+  const mk = (kind) => p.evaluate(([k, a, d]) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(k === 'DEV' ? d : a); }, [kind === 'BIZ' ? 'A' : kind, A, DEV]);
   // every rule in the catalogue is covered by a scenario
   const rules = await p.evaluate(() => window.BK_CONFLICT_RULES.map(r => r.id));
   rules.filter(id => !T.some(t => t[0] === id)).forEach(id => check('rule ' + id + ' has a test scenario', false));

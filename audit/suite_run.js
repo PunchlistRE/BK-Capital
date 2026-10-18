@@ -36,6 +36,10 @@ const collect = (kind, withTax) => {
           box: cp.box, ladder: cp.ladder.map(q => ({ ltv: q.ltv, loan: q.loan, dscr: q.dscr, stabDscr: q.stabDscr })) },
         cushions: rc, input: { policy: (s._policy || {}), ic: (s._ic || {}) } }; }
     { const R = bkRefi(); if (R) r.refi = { inputs: R.inputs, base: R.base, selected: R.selected, timing: R.timing.map(x => ({ year: x.year, noi: x.noi, newLoan: x.newLoan, netCashOut: x.netCashOut, postDSCR: x.postDSCR, binding: x.binding, irr: x.irr })), verdict: R.verdict, peak: R.peak && R.peak.year, recon: R.recon }; }
+    { const B = bkBizInputs(); if (B) { const M = bkBizModel(), Pl = bkBizPlace(), pk = (o, ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
+      r.biz = { inputs: B, y1after: u.arr[0].after, ev: M.dcf.ev, equity: M.dcf.equity, cases: Object.fromEntries(Object.keys(M.cases).map(c => [c, M.cases[c].ev])), wacc: M.wacc, ke: M.ke,
+        revenue: M.pnl.years.map(y => y.revenue), ebitda: M.pnl.years.map(y => y.ebitda), breakEvenJobs: M.pnl.breakEven.jobsYear, s1: M.sens.s1, valEV: M.valuation.ev,
+        place: pk(Pl, ['bizEV', 'asIsEV', 'rentNormalisation', 'propValue', 'rentCoverage', 'ebitdar']), scenarios: Pl.scenarios.map(q => pk(q, ['name', 'cashPre', 'tax', 'totalAfterTax'])) }; } }
     r.conflicts = bkConflicts().map(c => ({ id: c.id, level: c.level, data: c.data }));
     if (withTax) {
       const x = bkAfterTaxV18(), dep = s._depr || {};
