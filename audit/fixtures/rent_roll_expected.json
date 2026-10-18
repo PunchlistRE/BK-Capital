@@ -1,0 +1,278 @@
+{
+ "units": [
+  {
+   "unitId": "101",
+   "sf": 900,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2450,
+   "marketRent": 2450,
+   "leaseStart": "2024-03-15",
+   "leaseEnd": "2025-03-15"
+  },
+  {
+   "unitId": "102",
+   "sf": 660,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1950,
+   "marketRent": 1950,
+   "leaseStart": "2025-06-03",
+   "leaseEnd": "2026-06-03"
+  },
+  {
+   "unitId": "103",
+   "sf": 900,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2280,
+   "marketRent": 2400,
+   "leaseStart": "2025-03-04",
+   "leaseEnd": "2026-03-04"
+  },
+  {
+   "unitId": "104",
+   "sf": 650,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1650,
+   "marketRent": 1850,
+   "leaseStart": "2025-03-10",
+   "leaseEnd": "2026-03-10"
+  },
+  {
+   "unitId": "105",
+   "sf": 675,
+   "tenantType": "Residential",
+   "status": "Vacant",
+   "inPlaceRent": 0,
+   "marketRent": 1850,
+   "leaseStart": "",
+   "leaseEnd": ""
+  },
+  {
+   "unitId": "106",
+   "sf": 675,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1830,
+   "marketRent": 1950,
+   "leaseStart": "2024-02-20",
+   "leaseEnd": "2025-02-19"
+  },
+  {
+   "unitId": "107",
+   "sf": 900,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2460,
+   "marketRent": 2500,
+   "leaseStart": "2024-10-23",
+   "leaseEnd": "2025-10-23"
+  },
+  {
+   "unitId": "108",
+   "sf": 480,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1600,
+   "marketRent": 1600,
+   "leaseStart": "2025-08-07",
+   "leaseEnd": "2026-08-07"
+  },
+  {
+   "unitId": "109",
+   "sf": 925,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2460,
+   "marketRent": 2500,
+   "leaseStart": "2024-04-15",
+   "leaseEnd": "2025-04-15"
+  },
+  {
+   "unitId": "110",
+   "sf": 910,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2200,
+   "marketRent": 2400,
+   "leaseStart": "2024-03-05",
+   "leaseEnd": "2025-03-05"
+  },
+  {
+   "unitId": "111",
+   "sf": 675,
+   "tenantType": "Residential",
+   "status": "Vacant",
+   "inPlaceRent": 0,
+   "marketRent": 1850,
+   "leaseStart": "",
+   "leaseEnd": ""
+  },
+  {
+   "unitId": "112",
+   "sf": 490,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1350,
+   "marketRent": 1550,
+   "leaseStart": "2025-04-09",
+   "leaseEnd": "2026-04-09"
+  },
+  {
+   "unitId": "113",
+   "sf": 910,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2360,
+   "marketRent": 2400,
+   "leaseStart": "2024-09-06",
+   "leaseEnd": "2025-09-06"
+  },
+  {
+   "unitId": "114",
+   "sf": 675,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1700,
+   "marketRent": 1900,
+   "leaseStart": "2025-05-21",
+   "leaseEnd": "2026-05-21"
+  },
+  {
+   "unitId": "115",
+   "sf": 925,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2375,
+   "marketRent": 2450,
+   "leaseStart": "2024-03-15",
+   "leaseEnd": "2025-03-15"
+  },
+  {
+   "unitId": "116",
+   "sf": 675,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1860,
+   "marketRent": 1900,
+   "leaseStart": "2024-12-16",
+   "leaseEnd": "2025-12-16"
+  },
+  {
+   "unitId": "117",
+   "sf": 910,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2450,
+   "marketRent": 2450,
+   "leaseStart": "2024-03-20",
+   "leaseEnd": "2025-03-20"
+  },
+  {
+   "unitId": "118",
+   "sf": 910,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2425,
+   "marketRent": 2500,
+   "leaseStart": "2025-05-23",
+   "leaseEnd": "2026-05-23"
+  },
+  {
+   "unitId": "119",
+   "sf": 480,
+   "tenantType": "Residential",
+   "status": "Vacant",
+   "inPlaceRent": 0,
+   "marketRent": 1500,
+   "leaseStart": "",
+   "leaseEnd": ""
+  },
+  {
+   "unitId": "120",
+   "sf": 505,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1600,
+   "marketRent": 1600,
+   "leaseStart": "2024-03-03",
+   "leaseEnd": "2025-03-03"
+  },
+  {
+   "unitId": "121",
+   "sf": 925,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2380,
+   "marketRent": 2500,
+   "leaseStart": "2024-10-18",
+   "leaseEnd": "2025-10-18"
+  },
+  {
+   "unitId": "122",
+   "sf": 505,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1550,
+   "marketRent": 1550,
+   "leaseStart": "2025-04-17",
+   "leaseEnd": "2026-04-17"
+  },
+  {
+   "unitId": "123",
+   "sf": 900,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 2500,
+   "marketRent": 2500,
+   "leaseStart": "2025-05-20",
+   "leaseEnd": "2026-05-20"
+  },
+  {
+   "unitId": "124",
+   "sf": 650,
+   "tenantType": "Residential",
+   "status": "Occupied",
+   "inPlaceRent": 1860,
+   "marketRent": 1900,
+   "leaseStart": "2024-09-10",
+   "leaseEnd": "2025-09-10"
+  },
+  {
+   "unitId": "Retail A",
+   "sf": 2400,
+   "tenantType": "Commercial",
+   "status": "Occupied",
+   "inPlaceRent": 6800,
+   "marketRent": 7200,
+   "leaseStart": "2023-03-01",
+   "leaseEnd": "2028-02-28"
+  },
+  {
+   "unitId": "Retail B",
+   "sf": 1800,
+   "tenantType": "Commercial",
+   "status": "Vacant",
+   "inPlaceRent": 0,
+   "marketRent": 5400,
+   "leaseStart": "",
+   "leaseEnd": ""
+  }
+ ],
+ "totals": {
+  "sf": 22010,
+  "market": 62600,
+  "rent": 50090
+ },
+ "stats": {
+  "resUnits": 24,
+  "commSuites": 2,
+  "resSF": 17810,
+  "resInPlace": 48490,
+  "resMarket": 50000,
+  "commInPlace": 12200,
+  "commMarket": 12600
+ }
+}
