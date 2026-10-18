@@ -87,3 +87,7 @@ brings it to the top of the view and focuses its first input. Selects keep their
 
 ## Visual audit
 `visual_audit.js` opens every sheet on an acquisition, development or business-model sample deal at desktop and phone width, flags render errors, sideways scrolling, clipped text and placeholder values (undefined, NaN, [object), and saves a screenshot of each sheet for review. It is a manual tool and is not part of `run_all.sh`.
+
+## Import Deal (`import_test.js`)
+The Import Deal sheet extracts a Yardi T-12 from a workbook, CSV or a PDF print of one, foots each section to the statement's printed total, and builds a multifamily deal (NOI from the line items; price = NOI / cap rate). The test compares all six residential properties in the Yardi workbook with the independent build (`real/build_real_deals.py` -> `real/real_deals.json`): NOI, price, every expense group, per-unit income and the number of extraction notes; it also runs the ShorePointe PDF through the same extractor and checks it reaches the same NOI. The source files are the user's own data and are not in the repo: set `BK_YARDI_XLSM` and `BK_SHOREPOINTE_PDF` to run those checks, otherwise only the synthetic CSV checks run.
+PDF reading is limited to PDFs whose text is stored as ordinary text; a scanned PDF, or one whose fonts use a custom encoding, is refused with a message rather than guessed at.
