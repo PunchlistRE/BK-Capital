@@ -43,7 +43,10 @@ for d in data['deals']:
             rd = next(x for x in t if x['id'] == tag); tg = rd['targets']
             close(f'{tag} tie-out: Year-1 statement NOI = T-12 NOI', r['stmtNOI'], tg['t12noi'], 1.0)
             close(f'{tag} tie-out: price = T-12 NOI / market cap', r['s']['purchasePrice'], tg['t12noi'] / tg['capRate'], 1.0)
-            close(f'{tag} tie-out: gross rent = summary annual rent', r['s']['avgRent'] * r['s']['units'] * 12, tg['annualRent'], 0.5)
+            close(f'{tag} tie-out: gross rent = Yardi residential rent lines', r['s']['avgRent'] * r['s']['units'] * 12, tg['annualRent'], 0.5)
+            close(f'{tag} tie-out: other income = Yardi other income lines', r['s']['otherIncomePerUnit'] * r['s']['units'], tg['otherIncome'], 0.5)
+            stmt = tg['statementNetIncome'] + tg['mortgageInterest']
+            close(f"{tag} tie-out: line-item NOI within 0.5% of the Yardi statement's NET INCOME + mortgage interest", abs(r['stmtNOI'] - stmt) / stmt, 0.0, 0.005)
         golden[tag] = {k: (nan(r[k]) if isinstance(r[k], str) and r[k] == 'NaN' else r[k]) for k in ['y1NOI', 'stmtNOI', 'loan', 'equity', 'ltvValue', 'binding', 'grossSale', 'levIRR', 'levMOIC', 'unlevIRR', 'unlevMOIC', 'lpIRR', 'gpIRR', 'lpDist', 'gpDist', 'promote']}
     else:
         c, f, notes = dev_audit.run(r, quiet=True); checks += c; fails += [f'{tag} {x}' for x in f]

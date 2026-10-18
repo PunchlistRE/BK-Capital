@@ -20,9 +20,13 @@ suite. If the change is intended (a fix or a deliberate methodology change), rev
 `python3 audit/suite_test.py <suite.json> --update-golden` and commit the new file with the change that caused it.
 
 ## Real deals
-`real/build_real_deals.py <workbook.xlsm> real/real_deals.json` builds app inputs from the Yardi benchmark workbook:
-**price = T-12 NOI / market cap rate; Year-1 statement NOI = T-12 NOI.** Expense lines come from the T-12 line items, grouped into
-the app's categories and scaled uniformly so the statement ties; every scaling and mismatch is listed in `flags`.
-Rent is the summary's annual rent, other income is zero, bad debt zero; financing, growth and JV terms are the app's standard
-assumptions (the workbook has none). The workbook's own line-item NET INCOME is 31-43% above its summary T-12 NOI for every
-residential property, so the line items cannot be used as an NOI source without reconciliation.
+`real/build_real_deals.py <workbook.xlsm> real/real_deals.json` builds app inputs from the Yardi T-12 **line items** (the source of truth):
+**NOI = income lines - operating expense lines; price = NOI / the Property Summary's market cap rate.** Debt service and owner
+distributions are not operating expenses. The Property Summary's own NOI is not used (it differs from the line items by 30-60%).
+
+The workbook is OCR of scanned Yardi statements, so each section's lines are checked against that section's printed total. A line
+is corrected (months sum, moved decimal point, flipped sign) **only if that closes the section's gap**; otherwise the lines are kept
+and the mismatch is flagged. The result is then tied to the statement's own NET INCOME (+ mortgage interest): all six residential
+properties agree within 0.1%. Items Yardi reports that are non-recurring or non-operating (bank interest, settlements, insurance
+claims, partnership tax filings) are left in as reported and listed in each deal's `flags` for the underwriter to decide.
+Financing, growth and JV terms are the app's standard assumptions (the workbook has none). Rent is collected rent, so vacancy and bad debt are zero.
