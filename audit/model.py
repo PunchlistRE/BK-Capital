@@ -131,6 +131,7 @@ def model(s, acq_fee=0.01):
     levv = [-equity] + lev
     noi_year = [sum(x[1] for x in ms[12 * i:12 * i + 12]) for i in range(hy)]
     return dict(
+        levCF=lev, levDates=dts, equityAtClose=equity, monthlyPmt=P, monthlyRate=r, amortMonths=n, holdMonths=H, exitBalance=bal,
         stmtNOI=noi1 - N('reserves'),
         basis=basis, annualDS=P * 12, coupon=N('acqRate'), amortYears=N('acqAmort'), noiYear=noi_year, lpContrib=lp_con, gpContrib=gp_con,
         loan=loan, equity=equity, ltvValue=ltv_value, y1NOI=sum(x[1] for x in ms[:12]), grossSale=gross_sale,

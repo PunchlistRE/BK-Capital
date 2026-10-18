@@ -103,6 +103,18 @@ const B = require(path.join(__dirname, 'dealB.js'));
   check('a credit override is only valid with YES + reason + approver', ov1 === false && ov2 === true, JSON.stringify({ ov1, ov2 }));
   await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { dealType: 'Development', predevMonths: 6, constructionMonths: 18, leaseupMonths: 12 })); showSheet('Debt Capacity'); }, B);
   check('Debt Capacity says acquisition-only on a development deal', /acquisition deals/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
+  // 6. Refi / Recap: renders every section, editing the year re-sizes the loan, and a development deal says it does not apply
+  await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { holdYears: 10, rentGrowth: 0.05, exitCap: 0.055 })); showSheet('Refi / Recap'); }, B);
+  const rcaps = await p.evaluate(() => [...document.querySelectorAll('#viewport caption')].map(c => c.textContent.trim().toUpperCase()));
+  check('Refi / Recap shows assumptions, position, sizing, timing, return impact and reconciliation', ['REFINANCE ASSUMPTIONS', 'POSITION AT REFINANCE', 'NEW LOAN SIZING', 'REFINANCE TIMING', 'RETURN IMPACT', 'RECONCILIATION'].every(k => rcaps.some(c => c.includes(k))), rcaps.join(' | '));
+  const y0 = await p.evaluate(() => bkRefi().selected.netCashOut);
+  const yin = p.locator('#viewport tr', { hasText: 'Refinance year (end of year)' }).first().locator('input');
+  await yin.fill('8'); await yin.dispatchEvent('change'); await p.waitForTimeout(250);
+  const y1 = await p.evaluate(() => ({ y: bkRefi().selected.year, net: bkRefi().selected.netCashOut }));
+  check('editing the refinance year on the sheet re-sizes the refinance', y1.y === 8 && y1.net !== y0, JSON.stringify({ y0, y1 }));
+  check('the refinance reconciliation passes', await p.evaluate(() => bkRefi().recon.ok === true));
+  await p.evaluate(d => { bkCreateNewDeal(Object.assign({}, d, { dealType: 'Development', predevMonths: 6, constructionMonths: 18, leaseupMonths: 12 })); showSheet('Refi / Recap'); }, B);
+  check('Refi / Recap says it applies to acquisition deals on a development deal', /acquisition deals/i.test(await p.evaluate(() => document.querySelector('#viewport').innerText)));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

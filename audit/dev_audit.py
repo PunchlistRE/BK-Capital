@@ -71,13 +71,15 @@ def run(d, quiet=False):
         return (lo + hi) / 2
     for z, v in zip(rows, vals):
         eq(f"m{z['m']} cash flow identity", v, -z['equityDraw'] - z['refiEq'] + z['noi'] - z['reserve'] - z['assetFee'] - z['ds'] + z['refi'] + z['sale'] - z['dispoFee'] - z['payoff'], 0.01)
-    # ---- 5b. operating NOI and replacement reserves. Reserves are embedded: operating NOI = Year-1 stabilised NOI AFTER
-    # reserves, grown annually at the NOI growth rate (the 'reserve' row stays 0 because it is already inside 'noi').
+    # ---- 5b. operating NOI and replacement reserves. Reserves are embedded in operating NOI (the 'reserve' row stays 0): NOI before
+    # reserves grows at the NOI growth rate and the reserves grow at the opex rate, like the acquisition engine.
     g_noi = N('noiGrowth') or N('rentGrowth'); base = d['baseNOI']
     if not N('stabilizedNOI'): eq('operating NOI base = Year-1 NOI before reserves - replacement reserves', base, d['calcNOI'] - N('reserves'), 0.5)
-    noi_k = lambda k: base * (1 + g_noi) ** (max(1, math.ceil((k - stab + 1) / 12)) - 1) / 12
+    # reserves are a cost: they grow at the opex rate; NOI before reserves grows at the NOI rate (a user-entered stabilised NOI cannot be split)
+    res0 = 0.0 if N('stabilizedNOI') else N('reserves'); g_op = N('opexGrowth')
+    noi_k = lambda k: ((base + res0) * (1 + g_noi) ** (max(1, math.ceil((k - stab + 1) / 12)) - 1) - res0 * (1 + g_op) ** (max(1, math.ceil((k - stab + 1) / 12)) - 1)) / 12
     for z in rows:
-        eq(f"m{z['m']} operating NOI = after-reserve NOI grown annually / 12 (0 before stabilisation unless in lease-up)", z['noi'], noi_k(z['m']), 0.01) if z['m'] >= stab else None
+        eq(f"m{z['m']} operating NOI = NOI before reserves (NOI growth) less reserves (opex growth), / 12 (0 before stabilisation unless in lease-up)", z['noi'], noi_k(z['m']), 0.01) if z['m'] >= stab else None
     fwd_exit = sum(noi_k(k) for k in range(len(rows) + 1, len(rows) + 13))
     eq('gross sale = forward 12-month NOI (after reserves) / exit cap', rows[-1]['grossSale'], fwd_exit / N('exitCap'), 1)
     # the permanent loan is sized on NOI BEFORE reserves, by design (lenders size before reserves)
@@ -98,7 +100,7 @@ def run(d, quiet=False):
     lo = 0.10 if commit > 0 else 0.06   # an all-equity project earns less than a levered one
     ok(f'IRR {lo:.0%}-35%', lo <= m['irr'] <= 0.35, f'{m["irr"]:.1%}')
     ok('MOIC 1.4x-4.0x', 1.4 <= m['moic'] <= 4.0, f'{m["moic"]:.2f}x')
-    if N('reserves') > 0: notes.append('reserves are embedded in operating NOI (after-reserve base grown at the NOI growth rate, not the opex rate)')
+    if N('reserves') > 0: notes.append('reserves are embedded in operating NOI and grow at the opex rate (NOI before reserves grows at the NOI rate)')
     return checks, fails, notes
 
 if __name__ == '__main__':

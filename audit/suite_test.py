@@ -8,7 +8,7 @@ Exit 1 on any failure."""
 import json, math, sys, os
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from model import model
-import dev_audit, macrs_ref as MR, credit_ref as CR, re
+import dev_audit, macrs_ref as MR, credit_ref as CR, refi_ref as RR, re
 from datetime import date
 
 data = json.load(open(sys.argv[1])); update = '--update-golden' in sys.argv
@@ -71,6 +71,21 @@ for d in data['deals']:
                     close(f"{tag} gate {row['id']}: underwritten value", row['value'], ref['gateValues'][row['id']], 1e-6 if row['id'] not in ('capacity','exitCush') else 0.5)
             golden[tag + ':credit'] = dict(verdict=cr['verdict'], score=cr['score'], hard=cr['hard'], soft=cr['soft'], capacity=cp['capacity'], binding=cp['binding'], overage=cp['overage'],
                                            exitCushion=cu['exitCapCushionBps'], beOcc=cu['breakEvenOccupancy'], noiTol3=cu['noiTolerance3'], rentCushion=cu['rentCushion'], irrDown=cu['irrDownside'], irrUp=cu['irrUpside'])
+        if r.get('refi'):
+            rf = r['refi']; ri = rf['inputs']; ref = RR.check(r['s'], ri); S = rf['selected']; RS = ref['selected']
+            for k, kk in (('irr', 'irr'), ('moic', 'moic')): close(f'{tag} refi base {k}', rf['base'][k], ref['base'][kk], 1e-7)
+            close(f'{tag} refi base profit', rf['base']['profit'], ref['base']['profit'], 0.01)
+            if S:
+                for k, tol in (('noi', 0.01), ('value', 0.5), ('existingBalance', 0.5), ('newLoan', 0.5), ('costs', 0.5), ('prepay', 0.5), ('netCashOut', 0.5), ('postDSCR', 1e-9), ('postDY', 1e-9), ('postLTV', 1e-9),
+                               ('newBalanceAtExit', 0.5), ('exitPenalty', 0.5), ('irr', 1e-7), ('moic', 1e-9), ('profit', 0.5), ('cashBeforeExit', 0.5), ('payoffAtExit', 0.5)):
+                    close(f'{tag} refi {k}', S[k], RS[k], tol)
+                close(f'{tag} refi binding constraint', S['binding'], RS['binding'], 0)
+                close(f'{tag} refi verdict class', (S and rf['verdict'].split(' —')[0].split(' ')[0]), RS and ref['verdict'].split(' ')[0], 0)
+                close(f'{tag} refi reconciliation passes', 1 if rf['recon']['ok'] else 0, 1, 0)
+            for a_, b_ in zip(rf['timing'], ref['timing']):
+                close(f"{tag} refi timing y{a_['year']} net cash-out", a_['netCashOut'], b_['netCashOut'], 0.5); close(f"{tag} refi timing y{a_['year']} IRR", a_['irr'], b_['irr'], 1e-7)
+            peak_ref = max(ref['timing'], key=lambda x: x['netCashOut']); close(f'{tag} refi timing: peak year', rf['peak'], ref['timing'].index(peak_ref) + 2, 0)
+            golden[tag + ':refi'] = dict(year=ri['year'], netCashOut=S['netCashOut'] if S else None, newLoan=S['newLoan'] if S else None, binding=S['binding'] if S else None, irr=S['irr'] if S else None, baseIrr=rf['base']['irr'], peak=rf['peak'])
         if r.get('conflicts') is not None:
             m_ = model(r['s']); gap_ref = m_['y1NOI'] - m_['stmtNOI']; hit = [c for c in r['conflicts'] if c['id'] == 'acct.statement-vs-cashflow']
             should = abs(gap_ref) / abs(m_['stmtNOI']) >= 0.005

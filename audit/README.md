@@ -60,3 +60,9 @@ listed; INFO states an assumption. WARN / INFO can be acknowledged per deal. Whe
 explains it at once (off under automation unless `window.BK_CONFLICT_TOASTS === true`). `conflicts_test.js`: every rule has a
 scenario that fires it, clears it when fixed, and checks the explanation; plus readiness integration, acknowledgement and the
 pop-up lifecycle. `suite_test.py` checks the reconciliation gap against the independent model and pins each deal's rule IDs.
+
+## Refi / Recap (from the Capital Markets model)
+`Debt > Refi / Recap`: for the chosen year and for every possible year, the new loan (lowest of LTV, DSCR, debt yield), net cash-out
+after costs and prepayment, post-refinance coverage, and the equity cash flow rebuilt monthly with the new debt service and payoff
+(IRR, multiple, profit, cash returned before exit vs. holding the original loan), a verdict, and a reconciliation (closed-form existing
+balance, profit bridge). `refi_ref.py` re-derives all of it from `model.py`'s monthly cash flow; REF-1 uses custom inputs.

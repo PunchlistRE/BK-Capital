@@ -35,6 +35,15 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "ACQ-1:refi": {
+  "baseIrr": 0.041997229,
+  "binding": "DSCR",
+  "irr": 0.034758308,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
+ },
  "ACQ-2": {
   "binding": "LTC",
   "equity": 8781780,
@@ -70,6 +79,15 @@
   "score": 0.72,
   "soft": 2,
   "verdict": "DECLINE"
+ },
+ "ACQ-2:refi": {
+  "baseIrr": 0.261396381,
+  "binding": "DSCR",
+  "irr": 0.264981132,
+  "netCashOut": 4276170.85,
+  "newLoan": 16933384.46,
+  "peak": 4,
+  "year": 4
  },
  "ACQ-3": {
   "binding": "DSCR",
@@ -107,6 +125,15 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "ACQ-3:refi": {
+  "baseIrr": 0.034025001,
+  "binding": "DSCR",
+  "irr": 0.028869659,
+  "netCashOut": 3005930.77,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
+ },
  "ACQ-4": {
   "binding": "DSCR",
   "equity": 2012410,
@@ -142,6 +169,15 @@
   "score": 0.22,
   "soft": 5,
   "verdict": "DECLINE"
+ },
+ "ACQ-4:refi": {
+  "baseIrr": 0.064415111,
+  "binding": "DSCR",
+  "irr": 0.060287296,
+  "netCashOut": 404523.34,
+  "newLoan": 2746408.56,
+  "peak": 6,
+  "year": 5
  },
  "ACQ-5": {
   "binding": "LTV",
@@ -179,6 +215,15 @@
   "soft": 3,
   "verdict": "DECLINE"
  },
+ "ACQ-5:refi": {
+  "baseIrr": 0.126760664,
+  "binding": "DSCR",
+  "irr": 0.12835977,
+  "netCashOut": 3838624.27,
+  "newLoan": 38738474.87,
+  "peak": 9,
+  "year": 5
+ },
  "ACQ-6": {
   "binding": "DSCR",
   "equity": 11427270,
@@ -214,6 +259,15 @@
   "score": 0.22,
   "soft": 5,
   "verdict": "DECLINE"
+ },
+ "ACQ-6:refi": {
+  "baseIrr": -0.268648099,
+  "binding": "LTV",
+  "irr": -0.23862658,
+  "netCashOut": -2617208.53,
+  "newLoan": 10215686.77,
+  "peak": 2,
+  "year": 5
  },
  "ACQ-7": {
   "binding": "DSCR",
@@ -251,6 +305,15 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "ACQ-7:refi": {
+  "baseIrr": 0.056274997,
+  "binding": "DSCR",
+  "irr": 0.049505219,
+  "netCashOut": 2049094.9,
+  "newLoan": 15108556.72,
+  "peak": 4,
+  "year": 4
+ },
  "CRD-1": {
   "binding": "DSCR",
   "equity": 11427270,
@@ -286,6 +349,15 @@
   "score": 0.48,
   "soft": 4,
   "verdict": "DECLINE"
+ },
+ "CRD-1:refi": {
+  "baseIrr": 0.041997229,
+  "binding": "DSCR",
+  "irr": 0.034758308,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
  },
  "DEV-1": {
   "actualCapInt": 2018892.6,
@@ -329,6 +401,20 @@
   "unlev": 31480000.0,
   "upfrontFees": 0
  },
+ "DEV-4": {
+  "actualCapInt": 2018892.6,
+  "bindingTest": "DSCR",
+  "commit": 21770000,
+  "equityTotal": 12611378.46,
+  "hard": 20299756.03,
+  "irr": 0.105790611,
+  "moic": 1.725623008,
+  "noi": 2117279.0,
+  "permLoan": 21762000,
+  "soft": 5200243.97,
+  "unlev": 31480000.0,
+  "upfrontFees": 217700
+ },
  "HARVARD": {
   "binding": "LTC",
   "equity": 4266030,
@@ -364,6 +450,15 @@
   "score": 0.92,
   "soft": 1,
   "verdict": "APPROVE"
+ },
+ "HARVARD:refi": {
+  "baseIrr": 0.242368312,
+  "binding": "LTV",
+  "irr": 0.249257107,
+  "netCashOut": 2966137.11,
+  "newLoan": 9122324.62,
+  "peak": 4,
+  "year": 4
  },
  "HARVARD:tax": {
   "accumDepr": 1738112.53,
@@ -410,6 +505,15 @@
   "soft": 6,
   "verdict": "DECLINE"
  },
+ "REAL-1:refi": {
+  "baseIrr": 0.073629173,
+  "binding": "DSCR",
+  "irr": 0.068799612,
+  "netCashOut": 1132712.6,
+  "newLoan": 7969215.64,
+  "peak": 4,
+  "year": 4
+ },
  "REAL-2": {
   "binding": "DSCR",
   "equity": 2334426.96,
@@ -445,6 +549,15 @@
   "score": 0.34,
   "soft": 5,
   "verdict": "DECLINE"
+ },
+ "REAL-2:refi": {
+  "baseIrr": 0.07958458,
+  "binding": "DSCR",
+  "irr": 0.07449765,
+  "netCashOut": 416102.6,
+  "newLoan": 2888097.05,
+  "peak": 4,
+  "year": 4
  },
  "REAL-3": {
   "binding": "DSCR",
@@ -482,6 +595,15 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "REAL-3:refi": {
+  "baseIrr": 0.078924929,
+  "binding": "DSCR",
+  "irr": 0.073244283,
+  "netCashOut": 697960.16,
+  "newLoan": 5152672.1,
+  "peak": 4,
+  "year": 4
+ },
  "REAL-4": {
   "binding": "DSCR",
   "equity": 2813510.03,
@@ -517,6 +639,15 @@
   "score": 0.34,
   "soft": 5,
   "verdict": "DECLINE"
+ },
+ "REAL-4:refi": {
+  "baseIrr": 0.08311448,
+  "binding": "DSCR",
+  "irr": 0.077634893,
+  "netCashOut": 540389.95,
+  "newLoan": 3831053.21,
+  "peak": 4,
+  "year": 4
  },
  "REAL-5": {
   "binding": "LTC",
@@ -554,6 +685,15 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "REAL-5:refi": {
+  "baseIrr": 0.100581274,
+  "binding": "LTV",
+  "irr": 0.094722828,
+  "netCashOut": 556019.82,
+  "newLoan": 3469722.77,
+  "peak": 4,
+  "year": 4
+ },
  "REAL-6": {
   "binding": "DSCR",
   "equity": 534897.99,
@@ -590,6 +730,60 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "REAL-6:refi": {
+  "baseIrr": 0.096544915,
+  "binding": "DSCR",
+  "irr": 0.090530331,
+  "netCashOut": 126387.11,
+  "newLoan": 890647.7,
+  "peak": 4,
+  "year": 4
+ },
+ "REF-1": {
+  "binding": "DSCR",
+  "equity": 11427270,
+  "gpDist": 10394014.16,
+  "gpIRR": 0.259941291,
+  "grossSale": 42579149.99,
+  "levIRR": 0.135170409,
+  "levMOIC": 3.182328459,
+  "loan": 13427000,
+  "lpDist": 25971312.37,
+  "lpIRR": 0.108622321,
+  "ltvValue": 24000000,
+  "promote": 6757481.51,
+  "stmtNOI": 1270349.16,
+  "unlevIRR": 0.109812959,
+  "unlevMOIC": 2.377627597,
+  "y1NOI": 1270349.16
+ },
+ "REF-1:conflicts": {
+  "ids": "WARN:debt.sizing-looser-than-policy"
+ },
+ "REF-1:credit": {
+  "beOcc": 0.851255797,
+  "binding": "DSCR, stressed rate, amortizing",
+  "capacity": 11272954.71,
+  "exitCushion": 66.815473487,
+  "hard": 3,
+  "irrDown": 0.118241756,
+  "irrUp": 0.154318724,
+  "noiTol3": 0.093255025,
+  "overage": 2154045.29,
+  "rentCushion": -0.016319055,
+  "score": 0.34,
+  "soft": 3,
+  "verdict": "DECLINE"
+ },
+ "REF-1:refi": {
+  "baseIrr": 0.135170409,
+  "binding": "LTV",
+  "irr": 0.143648384,
+  "netCashOut": 3509417.2,
+  "newLoan": 16724505.35,
+  "peak": 9,
+  "year": 4
+ },
  "TAX-1": {
   "binding": "DSCR",
   "equity": 11427270,
@@ -625,6 +819,15 @@
   "score": 0.22,
   "soft": 5,
   "verdict": "DECLINE"
+ },
+ "TAX-1:refi": {
+  "baseIrr": 0.041997229,
+  "binding": "DSCR",
+  "irr": 0.034758308,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
  },
  "TAX-1:tax": {
   "accumDepr": 6428509.09,
@@ -671,6 +874,15 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "TAX-2:refi": {
+  "baseIrr": 0.041997229,
+  "binding": "DSCR",
+  "irr": 0.034758308,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
+ },
  "TAX-2:tax": {
   "accumDepr": 3432727.27,
   "atIRR": 0.030977452,
@@ -715,6 +927,15 @@
   "score": 0.22,
   "soft": 5,
   "verdict": "DECLINE"
+ },
+ "TAX-3:refi": {
+  "baseIrr": 0.042320364,
+  "binding": "DSCR",
+  "irr": 0.035034702,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
  },
  "TAX-3:tax": {
   "accumDepr": 6083637.79,
@@ -761,6 +982,15 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "TAX-4:refi": {
+  "baseIrr": 0.042446782,
+  "binding": "DSCR",
+  "irr": 0.035141844,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
+ },
  "TAX-4:tax": {
   "accumDepr": 5529420.03,
   "atIRR": 0.031307622,
@@ -806,6 +1036,15 @@
   "soft": 5,
   "verdict": "DECLINE"
  },
+ "TAX-5:refi": {
+  "baseIrr": 0.041997229,
+  "binding": "DSCR",
+  "irr": 0.034758308,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
+ },
  "TAX-6": {
   "binding": "DSCR",
   "equity": 11427270,
@@ -841,6 +1080,15 @@
   "score": 0.22,
   "soft": 5,
   "verdict": "DECLINE"
+ },
+ "TAX-6:refi": {
+  "baseIrr": 0.041997229,
+  "binding": "DSCR",
+  "irr": 0.034758308,
+  "netCashOut": 1619475.96,
+  "newLoan": 14686261.65,
+  "peak": 4,
+  "year": 4
  },
  "TAX-6:tax": {
   "accumDepr": 6428509.09,

@@ -35,6 +35,7 @@ const collect = (kind, withTax) => {
         capacity: cp && { capacity: cp.capacity, requested: cp.requested, overage: cp.overage, headroom: cp.headroom, binding: cp.binding.name, maxCoupon: cp.maxCoupon, rows: cp.rows.map(q => ({ name: q.name, max: q.max })),
           box: cp.box, ladder: cp.ladder.map(q => ({ ltv: q.ltv, loan: q.loan, dscr: q.dscr, stabDscr: q.stabDscr })) },
         cushions: rc, input: { policy: (s._policy || {}), ic: (s._ic || {}) } }; }
+    { const R = bkRefi(); if (R) r.refi = { inputs: R.inputs, base: R.base, selected: R.selected, timing: R.timing.map(x => ({ year: x.year, noi: x.noi, newLoan: x.newLoan, netCashOut: x.netCashOut, postDSCR: x.postDSCR, binding: x.binding, irr: x.irr })), verdict: R.verdict, peak: R.peak && R.peak.year, recon: R.recon }; }
     r.conflicts = bkConflicts().map(c => ({ id: c.id, level: c.level, data: c.data }));
     if (withTax) {
       const x = bkAfterTaxV18(), dep = s._depr || {};
