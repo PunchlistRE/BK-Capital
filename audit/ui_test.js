@@ -169,6 +169,25 @@ const B = require(path.join(__dirname, 'dealB.js'));
     await p.evaluate(d => bkCreateNewDeal(d), B); await p.evaluate(s => showSheet(s), sh); await p.waitForTimeout(350);
     algn[sh] = await p.evaluate(() => [...document.querySelectorAll('#viewport input[type=text], #viewport td.input, #viewport td[contenteditable=true], #viewport select')].filter(e => ['right', 'end'].includes(getComputedStyle(e).textAlign)).length); }
   check('no editable value is right-aligned', Object.values(algn).every(n => n === 0), JSON.stringify(algn));
+  // 12. Home: front door with no deal, dashboard with one, next step, checklist, command palette, folding rail
+  await p.evaluate(() => { localStorage.removeItem('bkcapital.cre.v02'); }); await p.reload(); await p.waitForTimeout(900);
+  await p.evaluate(() => { document.documentElement.classList.add('bk-auth-ok'); showSheet('Home'); }); await p.waitForTimeout(400);
+  check('Home with no deal is a front door with the ways in', await p.evaluate(() => { const t = document.querySelector('#viewport').innerText; return /Underwrite a deal/.test(t) && /Import a T-12/.test(t) && /Import a rent roll/.test(t) && /Start a blank deal/.test(t); }));
+  await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(500);
+  const hm = await p.evaluate(() => ({ kpis: document.querySelectorAll('.pl-kpi').length, next: (document.querySelector('.pl-next .m') || {}).textContent, rows: document.querySelectorAll('.pl-row').length, name: (document.querySelector('.pl-hero h2') || {}).textContent, detail: !!document.querySelector('details.pl-detail'), obj: /\[object Object\]/.test(document.querySelector('#viewport').innerText) }));
+  check('Home with a deal shows the name, six KPI tiles, a next step and the review checklist', hm.kpis === 6 && !!hm.next && hm.rows >= 6 && !!hm.name && hm.detail && !hm.obj, JSON.stringify(hm));
+  await p.click('.pl-row:has-text("Model checks")'); await p.waitForTimeout(400);
+  check('a checklist row opens its sheet', await p.evaluate(() => currentSheet) === 'Model Checks');
+  await p.keyboard.press('Control+k'); await p.waitForTimeout(150);
+  check('Ctrl+K opens the command palette', await p.evaluate(() => document.getElementById('pl-palette').classList.contains('open')));
+  await p.keyboard.type('refi'); await p.waitForTimeout(150);
+  const first = await p.evaluate(() => (document.querySelector('#pl-palette .it span:nth-child(2)') || document.querySelector('#pl-palette .it')).textContent);
+  check('the palette filters as you type', /Refi/i.test(first), first);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+  check('Enter opens the chosen sheet and closes the palette', await p.evaluate(() => currentSheet === 'Refi / Recap' && !document.getElementById('pl-palette').classList.contains('open')));
+  const rail = await p.evaluate(() => [...document.querySelectorAll('#rail-groups .rail-group')].filter(g => !g.classList.contains('bk-adv') && !g.classList.contains('pl-collapsed')).length);
+  check('the left rail keeps only the working group open', rail === 1, String(rail));
+  await p.keyboard.press('Escape');
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();
