@@ -282,6 +282,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
   .meta-strip .v{font-size:13px; font-weight:600; color:var(--ink-900); font-variant-numeric:tabular-nums;}
 
   .body-grid{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:0; align-items:start;}
+  .body-grid:has(.pl-home){grid-template-columns:minmax(0,1fr);}
   .main-col{padding:20px 28px 40px; min-width:0;}
   .side-col{
     padding:20px 20px 40px; border-left:1px solid var(--line);
@@ -492,7 +493,7 @@ function buildChrome(sheet){
       <div><div class="word">PUNCHLIST CAPITAL</div><div class="sub">Real Estate Investments</div></div>
     </div>
     <div class="brand-mid"><div class="l1">CRE UNDERWRITING MODEL</div><div class="l2">V32.1 &nbsp;|&nbsp; PRODUCTION</div></div>
-    <div class="brand-tag">Build Wealth Through<br>Real Estate</div>
+    <div class="pl-searchwrap"><button type="button" class="pl-search" data-pl-palette="1" aria-label="Search sheets and actions"><span>Search</span><kbd class="pl-kbd">Ctrl K</kbd></button></div>
   </div>
   <div class="tabnav">
     <div class="tabnav-primary-wrap">
@@ -18120,7 +18121,7 @@ html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-chil
 td[data-bk-sfx]{ white-space:nowrap !important; }
 td[data-bk-sfx] input{ width:calc(100% - 26px) !important; min-width:0; display:inline-block; }
 #viewport button.status-chip, #viewport button.status-chip *{ white-space:nowrap; }
-/* every editable value reads left-aligned, wherever it sits (one late, high-specificity rule so no sheet drifts) */
+/* every editable value reads right-aligned, wherever it sits (one late, high-specificity rule so no sheet drifts) */
 html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td[data-bk-kind^="input"],
 html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td[data-bk-kind^="input"] input,
 html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td[data-bk-kind^="input"] select,
@@ -18131,7 +18132,7 @@ html body #viewport table.fin.fin.fin.fin.fin.fin.fin.fin tbody tr td.input sele
 html body #viewport#viewport input[type="text"],
 html body #viewport#viewport textarea,
 html body #viewport#viewport select,
-html body #viewport#viewport .bk-dep-v2 input.dep-money{ text-align:left !important; text-align-last:left !important; }
+html body #viewport#viewport .bk-dep-v2 input.dep-money{ text-align:right !important; text-align-last:right !important; }
 .bk-nav-pop{ min-width:230px; max-height:min(70vh,560px); overflow-y:auto; left:0; right:auto; }
 .bk-nav-pop .lab{ display:flex; gap:8px; align-items:center; padding:10px 10px 4px; }
 .bk-nav-pop .lab:not(:first-child){ border-top:1px solid var(--line,#E2DCCD); margin-top:4px; }
@@ -18183,6 +18184,7 @@ function inCase(fn){
   window.bkLoad = function(){ return scratch; }; window.bkSave = function(d){ Object.assign(scratch, d); return d; };
   try { return fn(scratch, c); } finally { window.bkLoad = oL; window.bkSave = oS; }
 }
+window.bkHeadline = function(){ return headline(); };
 function headline(){
   return inCase(function(s, c){
     var x = bkMonthlyReturns(), d = bkDebt(), w = null, calc = bkCalc();
@@ -21005,6 +21007,269 @@ function render(){
 }
 var g = function(){ if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Import Rent Roll'); return render(); };
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Import Rent Roll', g); else RENDERERS['Import Rent Roll'] = g;
+})();
+</script>
+
+<script id="bk-v29230-home">
+/* V29.23.0 - HOME. The front door and the deal dashboard: what this deal is, how it looks against policy, what to do next. Presentation only: every figure comes from the
+   live engine, gate and checks already in the app. The earlier certification and module tables are kept, under "Certification and module detail". */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof RENDERERS['Home'] !== 'function') return;
+var prev = RENDERERS['Home'];
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function P(v, d){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(d == null ? 1 : d) + '%'; }
+function X(v){ return (v == null || !isFinite(v)) ? '—' : v.toFixed(2) + 'x'; }
+function M(v){ if(v == null || !isFinite(v)) return '—'; var a = Math.abs(v), t = a >= 1e6 ? '$' + (a / 1e6).toFixed(2) + 'M' : '$' + Math.round(a).toLocaleString('en-US'); return v < 0 ? '(' + t + ')' : t; }
+function isDev(s){ return /develop|redevelop/i.test(String((s || {}).dealType || '')); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+var CSS = '.pl-home{max-width:1040px}.pl-hero{margin:4px 0 18px}.pl-hero h2{font:700 30px/1.15 "Source Serif 4",Georgia,serif;margin:0 0 6px;color:var(--ink-900,#1B1B18)}'
+ + '.pl-sub{color:var(--ink-500,#5F5B52);font-size:13.5px;line-height:1.5;margin:0}.pl-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}'
+ + '.pl-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}@media (max-width:560px){.pl-kpis{grid-template-columns:repeat(2,1fr)}}.title-block:has(h2:empty){display:none}.pl-kpi{background:var(--surface,#fff);border:1px solid var(--line,#E2DCCD);border-radius:10px;padding:14px 14px 12px;cursor:pointer;text-align:left;font:inherit;color:inherit;transition:box-shadow .15s,border-color .15s}'
+ + '.pl-kpi:hover{box-shadow:0 4px 14px rgba(16,25,34,.10);border-color:#C9A968}.pl-kpi .k{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-500,#5F5B52);font-weight:700}.pl-kpi .v{font:700 26px/1.2 "Source Serif 4",Georgia,serif;margin:6px 0 2px}.pl-kpi .s{font-size:11.5px;color:var(--ink-500,#5F5B52)}'
+ + '.pl-kpi.pass .v{color:#2E6E4A}.pl-kpi.warn .v{color:#A66A12}.pl-kpi.fail .v{color:#B23A2C}'
+ + '.pl-next{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:linear-gradient(135deg,#17304A,#1E3A55);color:#fff;border-radius:12px;padding:18px 20px;margin:6px 0 18px;border-left:5px solid #C9A968}'
+ + '.pl-next .t{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#C9A968;font-weight:700}.pl-next .m{font:600 18px/1.35 "Source Serif 4",Georgia,serif;margin:4px 0 2px}.pl-next .d{font-size:12.5px;color:#C7D2DD;max-width:620px}'
+ + '.pl-btn{background:#C9A968;color:#17304A;border:0;border-radius:999px;padding:10px 18px;font:700 12px/1 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap}.pl-btn:hover{background:#D8BB7C}.pl-btn.ghost{background:transparent;color:inherit;border:1px solid currentColor}'
+ + '.pl-h{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500,#5F5B52);font-weight:700;margin:22px 0 8px}'
+ + '.pl-check{background:var(--surface,#fff);border:1px solid var(--line,#E2DCCD);border-radius:10px;overflow:hidden}.pl-row{display:grid;grid-template-columns:22px minmax(130px,1fr) minmax(0,2fr) auto;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--line,#E2DCCD);cursor:pointer;font-size:13px}'
+ + '.pl-row:first-child{border-top:0}.pl-row:hover{background:rgba(201,169,104,.10)}.pl-row .dot{width:10px;height:10px;border-radius:50%;background:#8B8378}.pl-row.pass .dot{background:#2E8B57}.pl-row.warn .dot{background:#D9A441}.pl-row.fail .dot{background:#C0392B}.pl-row .l{font-weight:600}.pl-row .r{color:var(--ink-500,#5F5B52)}.pl-row .go{color:#1E5FA8;font-size:12px;white-space:nowrap}'
+ + '.pl-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.pl-act{background:var(--surface,#fff);border:1px solid var(--line,#E2DCCD);border-radius:10px;padding:14px;cursor:pointer;text-align:left;font:inherit;color:inherit;transition:box-shadow .15s,border-color .15s}'
+ + '.pl-act:hover{box-shadow:0 4px 14px rgba(16,25,34,.10);border-color:#C9A968}.pl-act b{display:block;font-size:14px;margin-bottom:3px}.pl-act span{font-size:12px;color:var(--ink-500,#5F5B52);line-height:1.4}.pl-act.primary{border-color:#C9A968;background:linear-gradient(180deg,#FBF6EA,#fff)}'
+ + '.pl-deals{background:var(--surface,#fff);border:1px solid var(--line,#E2DCCD);border-radius:10px;overflow:hidden}.pl-deal{display:grid;grid-template-columns:minmax(120px,2fr) repeat(3,minmax(70px,1fr)) auto;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line,#E2DCCD);font-size:13px}.pl-deal:first-child{border-top:0}.pl-deal small{display:block;color:var(--ink-500,#5F5B52);font-size:11px}'
+ + '.pl-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:6px}.pl-step{padding:12px 14px;border-left:3px solid #C9A968;background:rgba(201,169,104,.08);border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.45}.pl-step b{display:block;font-size:13px;margin-bottom:2px}'
+ + '.pl-detail{margin-top:26px}.pl-detail>summary{cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500,#5F5B52);padding:10px 0}'
+ + '@media (max-width:640px){.pl-row{grid-template-columns:18px 1fr auto}.pl-row .r{grid-column:2 / 4;grid-row:2}.pl-deal{grid-template-columns:1fr auto}.pl-deal>div:nth-child(n+2):not(:last-child){display:none}.pl-hero h2{font-size:24px}}';
+if(!document.getElementById('pl-home-css')){ var st = document.createElement('style'); st.id = 'pl-home-css'; st.textContent = CSS; document.head.appendChild(st); }
+
+window.bkGo = function(sheet){ if(typeof showSheet === 'function') showSheet(sheet); try { window.scrollTo(0, 0); } catch(e){} };
+function go(sheet){ return 'onclick="bkGo(\'' + sheet.replace(/'/g, "\\'") + '\')"'; }
+function savedDeals(){ var cur = safe(function(){ return bkLoad(); }, {}), ck = String(cur.dealId || cur.name || ''); return safe(function(){ return bkPortfolioLoad(); }, []).map(function(d){ var key = String(d.dealId || d.name || 'untitled'); var m = safe(function(){ return bkPortfolioMetricsFor(d); }, {}); return { key:key, d:d, m:m, active:key === ck }; }); }
+window.bkHomeOpen = function(i){ var L = savedDeals(); if(L[i] && typeof bkPortfolioLoadActive === 'function') bkPortfolioLoadActive(L[i].key); };
+
+function dealsBlock(L, cur){
+  if(!L.length) return '';
+  return '<div class="pl-h">Saved deals</div><div class="pl-deals">' + L.slice(0, 8).map(function(x, i){ var d = x.d, m = x.m || {};
+    return '<div class="pl-deal"><div><b>' + esc(d.name || d.dealId || 'Untitled') + '</b><small>' + esc([d.dealType, d.propertyType, d.location].filter(Boolean).join(' · ')) + '</small></div><div>' + M(d.purchasePrice) + '<small>price</small></div><div>' + P(m.irr) + '<small>levered IRR</small></div><div>' + X(m.moic) + '<small>multiple</small></div>'
+      + '<div>' + (x.active ? '<span class="status-chip pass">OPEN</span>' : '<button type="button" class="status-chip" onclick="bkHomeOpen(' + i + ')">OPEN</button>') + '</div></div>'; }).join('') + '</div>';
+}
+function frontDoor(L){
+  var steps = [['1  Bring the deal in', 'Upload a Yardi T-12 or a rent roll, or type the deal in.'], ['2  Check the model', 'Contradictions, market ranges and credit policy are checked as you go.'], ['3  Stress it', 'Downside cases, break-evens and probability-weighted returns.'], ['4  Take it to committee', 'IC memo with the decision, the cushions and the risks.']];
+  return '<div class="pl-home"><div class="pl-hero"><h2>Underwrite a deal</h2><p class="pl-sub">Start from a rent roll or T-12, or from a blank deal. Nothing is calculated from placeholder numbers: figures appear once the required inputs are in.</p></div>'
+    + '<div class="pl-acts"><button type="button" class="pl-act primary" ' + go('Import Deal') + '><b>Import a T-12</b><span>Upload a Yardi workbook, CSV or PDF. Line items are footed to the statement and the price is set from the cap rate.</span></button>'
+    + '<button type="button" class="pl-act" ' + go('Import Rent Roll') + '><b>Import a rent roll</b><span>Map the columns, review every unit, and apply it to the active deal.</span></button>'
+    + '<button type="button" class="pl-act" onclick="bkCreateNewDeal()"><b>Start a blank deal</b><span>Enter the property, income, expenses and debt yourself.</span></button>'
+    + '<button type="button" class="pl-act" ' + go('Source Ingestion') + '><b>Review a source package</b><span>Stage a workbook, reconcile it, and approve each figure before it reaches a deal.</span></button></div>'
+    + dealsBlock(L) + '<div class="pl-h">How it works</div><div class="pl-steps">' + steps.map(function(t){ return '<div class="pl-step"><b>' + t[0] + '</b>' + t[1] + '</div>'; }).join('') + '</div></div>';
+}
+function build(s, oldMain){
+  var dev = isDev(s), h = safe(function(){ return window.bkHeadline(); }, null), pol = safe(function(){ return bkPolicy(); }, {}), ready = safe(function(){ return bkDealReadiness(); }, null);
+  var gate = dev ? null : safe(function(){ return bkDealGate(); }, null), ctl = safe(function(){ return bkModelControls(); }, []), mk = dev ? null : safe(function(){ return bkMarketCompare(); }, null);
+  var fails = ctl.filter(function(c){ return c.level === 'FAIL'; }), warns = ctl.filter(function(c){ return c.level !== 'FAIL'; });
+  var hurdle = Number(pol.targetIRR) || 0.12, mind = Number(pol.minDSCR) || 1.25, em = Number(pol.targetEM) || 2.0, can = ready && ready.canCalculate;
+  var irrOk = h && isFinite(h.levIRR) ? (h.levIRR >= hurdle ? 'pass' : (h.levIRR >= hurdle - 0.03 ? 'warn' : 'fail')) : '';
+  var dscrOk = h && isFinite(h.dscr) && h.dscr ? (h.dscr >= mind ? 'pass' : 'fail') : '';
+  var price = Number(s.purchasePrice) || 0, loan = h ? Number(h.loan) || 0 : 0;
+  var kpis = can && h ? [
+    ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns'], ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns'],
+    [dev ? 'Yield on cost' : 'Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite'], ['Year-1 DSCR', X(h.dscr), 'policy min ' + X(mind), dscrOk, 'Debt'],
+    ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt'], ['Equity', M(h.equity), price ? 'price ' + M(price) : '', '', 'Sources & Uses']] : [];
+  var next;
+  if(!can){ var miss = (ready && ready.missing || []).slice(0, 4).map(function(m){ return m.label; }); next = ['Finish the required inputs', (ready ? ready.missing.length : 'Some') + ' still missing' + (miss.length ? ': ' + miss.join(', ') + (ready.missing.length > 4 ? '…' : '') : '') + '. Results stay hidden until they are in.', 'Deal Underwrite', 'Go to Deal Underwrite']; }
+  else if(fails.length) next = ['Fix ' + fails.length + ' model error' + (fails.length === 1 ? '' : 's'), esc(fails[0].area + ': ' + String(fails[0].msg).split(' Why it matters')[0]), 'Model Checks', 'Open Model Checks'];
+  else if(gate && gate.verdict === 'DECLINE') next = ['Credit gate says decline', 'The deal fails ' + gate.hard + ' hard and ' + gate.soft + ' soft policy tests. Resize the debt, change the price, or record a documented override.', 'Debt Capacity', 'Open Debt Capacity'];
+  else if(warns.length) next = ['Review ' + warns.length + ' warning' + (warns.length === 1 ? '' : 's'), esc(warns[0].area + ': ' + String(warns[0].msg).split(' Why it matters')[0]), 'Model Checks', 'Open Model Checks'];
+  else next = ['Ready for committee', 'Inputs are complete and no checks are open. Stress the deal, then open the IC memo.', 'IC Memo', 'Open the IC memo'];
+  var rows = [];
+  rows.push([can ? 'pass' : 'fail', 'Required inputs', can ? 'All ' + (Array.isArray(ready.met) ? ready.met.length + ' ' : '') + 'required inputs entered' : (ready ? ready.missing.length : '?') + ' missing', 'Deal Underwrite']);
+  if(can && h){
+    rows.push([irrOk || '', 'Returns vs hurdle', 'Levered IRR ' + P(h.levIRR) + ' against a ' + P(hurdle) + ' target; ' + X(h.levMOIC) + ' multiple', 'Returns']);
+    if(!dev){ var cap = gate && gate.capacity; rows.push([cap ? (cap.overage > 0 ? 'warn' : 'pass') : '', 'Debt against policy', cap ? (cap.overage > 0 ? 'Loan is ' + M(cap.overage) + ' above what policy supports (' + M(cap.capacity) + ', binding on ' + esc(cap.binding && cap.binding.name || 'policy') + ')' : 'Loan is within policy capacity (' + M(cap.capacity) + ')') : 'DSCR ' + X(h.dscr), 'Debt Capacity']); }
+    if(gate) rows.push([gate.verdict === 'APPROVE' ? 'pass' : gate.verdict === 'DECLINE' ? 'fail' : 'warn', 'Credit decision', esc(String(gate.status || gate.verdict).replace(/\s+—\s+/, ': ')), 'IC Memo']);
+    if(!dev){ var rk = safe(function(){ return bkRiskScenarios(); }, null); if(rk) rows.push([rk.pLoss > 0.2 ? 'warn' : 'pass', 'Downside odds', 'Scenario-weighted: ' + P(rk.pLoss, 0) + ' chance of losing money, ' + P(rk.pMiss, 0) + ' chance of missing the hurdle; expected IRR ' + P(rk.irrOfExpectedCF), 'Probability-Weighted']); }
+  }
+  rows.push([fails.length ? 'fail' : (warns.length ? 'warn' : 'pass'), 'Model checks', fails.length || warns.length ? fails.length + ' error' + (fails.length === 1 ? '' : 's') + ', ' + warns.length + ' warning' + (warns.length === 1 ? '' : 's') : 'No contradictions found', 'Model Checks']);
+  if(mk && mk.rows){ var out = mk.rows.filter(function(r){ return r.status === 'ABOVE RANGE' || r.status === 'BELOW RANGE'; }); rows.push([out.length ? 'warn' : 'pass', 'Against the market', out.length ? out.length + ' of ' + mk.rows.length + ' assumptions outside published ranges' : 'All ' + mk.rows.length + ' assumptions inside published ranges', 'Market Benchmarks']); }
+  if(ready && ready.sourceExceptions) rows.push(['warn', 'Sources', (ready.sourceExceptions.length != null ? ready.sourceExceptions.length : ready.sourceExceptions) + ' source finding(s) to review', 'Source Lineage']);
+  var L = savedDeals(), inList = L.some(function(x){ return x.active; });
+  var acts = [['Import a T-12', 'Replace the income and expenses from a Yardi statement.', 'Import Deal'], ['Import a rent roll', 'Load units, rents and lease dates.', 'Import Rent Roll'], ['Stress the deal', 'Tornado, heat map and break-evens.', 'Sensitivity'], ['Probability-weighted returns', 'Odds of loss and of missing the hurdle.', 'Probability-Weighted'], [dev ? 'Development budget' : 'Debt capacity', dev ? 'Cost ladder and funding.' : 'How much debt policy supports.', dev ? 'Development' : 'Debt Capacity'], ['IC memo', 'The decision, the cushions and the risks.', 'IC Memo']];
+  var tag = function(l, c){ return '<span class="status-chip ' + (c || '') + '">' + l + '</span>'; };
+  var rd = ready ? String(ready.state || '') : '';
+  return '<div class="pl-home"><div class="pl-hero"><h2>' + esc(s.name || 'Untitled deal') + '</h2><p class="pl-sub">' + esc([s.dealType, s.propertyType, s.location, s.units ? s.units + (dev ? ' units planned' : ' units') : '', s.closing ? (dev ? 'start ' : 'closing ') + s.closing : ''].filter(Boolean).join(' · ')) + '</p>'
+    + '<div class="pl-chips">' + tag(esc(rd || 'DRAFT'), /READY/.test(rd) ? 'pass' : 'warn') + tag(esc(String(s.scenarioCase || 'Base')) + ' CASE', '') + (price ? tag('Price ' + M(price), '') : '') + '</div></div>'
+    + (kpis.length ? '<div class="pl-kpis">' + kpis.map(function(k){ return '<button type="button" class="pl-kpi ' + k[3] + '" ' + go(k[4]) + '><div class="k">' + k[0] + '</div><div class="v">' + k[1] + '</div><div class="s">' + esc(k[2]) + '</div></button>'; }).join('') + '</div>' : '')
+    + '<div class="pl-next"><div><div class="t">Next step</div><div class="m">' + next[0] + '</div><div class="d">' + next[1] + '</div></div><button type="button" class="pl-btn" ' + go(next[2]) + '>' + esc(next[3]) + ' &rarr;</button></div>'
+    + '<div class="pl-h">Review checklist</div><div class="pl-check">' + rows.map(function(r){ return '<div class="pl-row ' + r[0] + '" role="button" tabindex="0" ' + go(r[3]) + '><span class="dot"></span><span class="l">' + r[1] + '</span><span class="r">' + r[2] + '</span><span class="go">Open &rarr;</span></div>'; }).join('') + '</div>'
+    + '<div class="pl-h">Go to</div><div class="pl-acts">' + acts.map(function(a){ return '<button type="button" class="pl-act" ' + go(a[2]) + '><b>' + a[0] + '</b><span>' + a[1] + '</span></button>'; }).join('') + '</div>'
+    + dealsBlock(L) + (inList ? '' : '<div style="margin-top:12px"><button type="button" class="status-chip" onclick="bkPortfolioAddCurrent()">SAVE THIS DEAL TO THE PORTFOLIO</button></div>')
+    + '<details class="pl-detail"><summary>Certification and module detail</summary>' + oldMain + '</details></div>';
+}
+RENDERERS['Home'] = function(){
+  var o = prev.apply(this, arguments); if(!o || typeof o !== 'object') return o;
+  var active = typeof window.bkHasActiveDeal === 'function' ? window.bkHasActiveDeal() : true, s = safe(function(){ return bkLoad(); }, null);
+  if(!active || !s){ return Object.assign({}, o, { title:'', crumbs:'', desc:'', meta:{}, sidebar:'', main:frontDoor(savedDeals()) }); }
+  return Object.assign({}, o, { title:'', crumbs:'', desc:'', meta:{}, sidebar:'', main:build(s, String(o.main || '')) });
+};
+if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
+document.addEventListener('keydown', function(e){ var r = e.target && e.target.closest && e.target.closest('.pl-row'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); r.click(); } });
+})();
+</script>
+
+<script id="bk-v29230-nav2">
+/* V29.23.0 - FLOW: a command palette (Ctrl/Cmd+K, or the Search button in the header) that jumps to any sheet or action, remembers recent sheets, and a left rail whose groups fold
+   away so only the group you are working in is open. Navigation only; nothing here touches the numbers. */
+(function(){
+'use strict';
+if(typeof GROUPS === 'undefined' || typeof showSheet !== 'function') return;
+var RKEY = 'pl.recent.v1', OKEY = 'pl.rail.open.v1';
+function store(k, v){ try { if(v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); } catch(e){} return null; }
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+var mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+var CSS = '.pl-searchwrap{display:flex;justify-content:flex-end;min-width:150px}.pl-search{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#DDE5EC;border-radius:999px;padding:7px 12px 7px 14px;font:600 11.5px Inter,system-ui,sans-serif;letter-spacing:.04em;cursor:pointer}'
+ + '.pl-search:hover{background:rgba(255,255,255,.16);color:#fff}.pl-kbd{font:600 10px Inter,system-ui,sans-serif;border:1px solid rgba(255,255,255,.3);border-radius:4px;padding:1px 5px;color:#C9A968}'
+ + '#pl-palette{position:fixed;inset:0;z-index:2000;background:rgba(10,16,22,.55);display:none;align-items:flex-start;justify-content:center;padding-top:12vh}#pl-palette.open{display:flex}'
+ + '#pl-palette .box{width:min(620px,92vw);background:var(--surface,#fff);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;border:1px solid var(--line,#E2DCCD)}'
+ + '#pl-palette input{width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line,#E2DCCD);padding:16px 18px;font:500 16px Inter,system-ui,sans-serif;outline:none;background:transparent;color:var(--ink-900,#1B1B18);text-align:left}'
+ + '#pl-palette .list{max-height:52vh;overflow-y:auto;padding:6px}#pl-palette .sec{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500,#5F5B52);font-weight:700;padding:10px 12px 4px}'
+ + '#pl-palette .it{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--ink-900,#1B1B18)}#pl-palette .it .sw{width:8px;height:8px;border-radius:50%;flex:0 0 auto}#pl-palette .it .g{margin-left:auto;font-size:11px;color:var(--ink-500,#5F5B52)}#pl-palette .it.on{background:rgba(201,169,104,.22)}'
+ + '#pl-palette .hint{padding:8px 14px;font-size:11px;color:var(--ink-500,#5F5B52);border-top:1px solid var(--line,#E2DCCD);display:flex;gap:14px}'
+ + '.rail-group-label{cursor:pointer;user-select:none}.rail-group-label::after{content:"\\25BE";font-size:10px;margin-left:6px;opacity:.6;order:3}.rail-group.pl-collapsed .rail-group-label::after{content:"\\25B8"}.rail-group.pl-collapsed .rail-item{display:none}'
+ + '@media (max-width:760px){.brand-mid{display:none !important}.pl-searchwrap{min-width:0}.pl-search span{display:none}.pl-kbd{display:none}.pl-search::before{content:"\\1F50D";font-size:13px}.brand-bar{position:relative}}';
+var st = document.createElement('style'); st.id = 'pl-nav2-css'; st.textContent = CSS; document.head.appendChild(st);
+document.querySelectorAll('.pl-kbd').forEach(function(k){ k.textContent = mac ? '⌘K' : 'Ctrl K'; });
+
+/* ---- what the palette can open */
+function sheets(){ var out = []; GROUPS.forEach(function(g){ if(g.hidden) return; g.sheets.forEach(function(s){ if(typeof RENDERERS !== 'undefined' && !RENDERERS[s]) return; out.push({ kind:'sheet', label:s, group:g.label, color:g.color, run:function(){ showSheet(s); } }); }); }); return out; }
+function actions(){
+  var A = [{ kind:'act', label:'Start a new deal', group:'Action', run:function(){ showSheet('Home'); setTimeout(function(){ if(window.bkNewDealDialog) bkNewDealDialog(); }, 50); } },
+    { kind:'act', label:'Clear inputs on this deal', group:'Action', run:function(){ showSheet('Home'); setTimeout(function(){ if(window.bkClearInputsDialog) bkClearInputsDialog(); }, 50); } },
+    { kind:'act', label:'Import a T-12 and create a deal', group:'Action', run:function(){ showSheet('Import Deal'); } },
+    { kind:'act', label:'Import a rent roll into this deal', group:'Action', run:function(){ showSheet('Import Rent Roll'); } },
+    { kind:'act', label:'Save this deal to the portfolio', group:'Action', run:function(){ if(typeof bkPortfolioAddCurrent === 'function') bkPortfolioAddCurrent(); } },
+    { kind:'act', label:'Switch case: Downside', group:'Action', run:function(){ setCase('Downside'); } }, { kind:'act', label:'Switch case: Base', group:'Action', run:function(){ setCase('Base'); } }, { kind:'act', label:'Switch case: Upside', group:'Action', run:function(){ setCase('Upside'); } }];
+  try { bkPortfolioLoad().forEach(function(d){ var key = String(d.dealId || d.name || 'untitled'); A.push({ kind:'deal', label:'Open deal: ' + (d.name || d.dealId || key), group:'Saved deal', run:function(){ bkPortfolioLoadActive(key); } }); }); } catch(e){}
+  return A;
+}
+function setCase(c){ try { var s = bkLoad(); if(s && String(s.scenarioCase || 'Base') !== c){ s.scenarioCase = c; bkSave(s); } showSheet(currentSheet); } catch(e){} }
+function score(it, q){ var l = it.label.toLowerCase(), g = (it.group || '').toLowerCase(); if(!q) return 1; var toks = q.toLowerCase().split(/\s+/).filter(Boolean), sc = 0;
+  for(var i = 0; i < toks.length; i++){ var t = toks[i]; if(l.indexOf(t) === 0) sc += 6; else if(l.indexOf(' ' + t) >= 0) sc += 4; else if(l.indexOf(t) >= 0) sc += 3; else if(g.indexOf(t) >= 0) sc += 1; else return 0; } return sc; }
+var P = { items:[], sel:0 };
+function el(){ var e = document.getElementById('pl-palette'); if(e) return e; e = document.createElement('div'); e.id = 'pl-palette'; e.setAttribute('role', 'dialog'); e.setAttribute('aria-label', 'Search sheets and actions');
+  e.innerHTML = '<div class="box"><input type="text" id="pl-pq" placeholder="Search sheets and actions…" autocomplete="off" spellcheck="false"><div class="list" id="pl-pl" role="listbox"></div><div class="hint"><span>↑↓ move</span><span>Enter open</span><span>Esc close</span></div></div>';
+  document.body.appendChild(e); e.addEventListener('mousedown', function(ev){ if(ev.target === e) close(); });
+  e.querySelector('#pl-pq').addEventListener('input', function(){ P.sel = 0; draw(); });
+  e.querySelector('#pl-pl').addEventListener('click', function(ev){ var it = ev.target.closest('.it'); if(it) choose(+it.dataset.i); });
+  e.addEventListener('keydown', function(ev){ if(ev.key === 'Escape'){ ev.preventDefault(); close(); } else if(ev.key === 'ArrowDown'){ ev.preventDefault(); P.sel = Math.min(P.items.length - 1, P.sel + 1); mark(); } else if(ev.key === 'ArrowUp'){ ev.preventDefault(); P.sel = Math.max(0, P.sel - 1); mark(); } else if(ev.key === 'Enter'){ ev.preventDefault(); choose(P.sel); } });
+  return e; }
+function mark(){ var l = document.getElementById('pl-pl'); [].forEach.call(l.querySelectorAll('.it'), function(n){ n.classList.toggle('on', +n.dataset.i === P.sel); }); var on = l.querySelector('.it.on'); if(on && on.scrollIntoView) on.scrollIntoView({ block:'nearest' }); }
+function draw(){
+  var q = (document.getElementById('pl-pq').value || '').trim(), all = sheets().concat(actions()), rec = store(RKEY) || [], items;
+  if(!q){ var byName = {}; all.forEach(function(x){ if(x.kind === 'sheet') byName[x.label] = x; }); var r = rec.map(function(n){ return byName[n]; }).filter(Boolean).slice(0, 6); r.forEach(function(x){ x.sec = 'Recent'; });
+    var acts = actions().slice(0, 4); acts.forEach(function(x){ x.sec = 'Actions'; }); items = r.concat(acts); if(!r.length){ items = sheets().slice(0, 8).map(function(x){ x.sec = 'Sheets'; return x; }).concat(acts); } }
+  else { items = all.map(function(x){ return { x:x, s:score(x, q) }; }).filter(function(z){ return z.s > 0; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 40).map(function(z){ var it = z.x; it.sec = it.kind === 'sheet' ? 'Sheets' : 'Actions'; return it; }); }
+  P.items = items; var html = '', last = null;
+  items.forEach(function(it, i){ if(it.sec !== last){ html += '<div class="sec">' + it.sec + '</div>'; last = it.sec; }
+    html += '<div class="it" role="option" data-i="' + i + '">' + (it.color ? '<span class="sw" style="background:' + it.color + '"></span>' : '') + '<span>' + esc(it.label) + '</span><span class="g">' + esc(it.group || '') + '</span></div>'; });
+  document.getElementById('pl-pl').innerHTML = html || '<div class="sec">No matches</div>'; mark();
+}
+function choose(i){ var it = P.items[i]; if(!it) return; close(); setTimeout(function(){ it.run(); try { window.scrollTo(0, 0); } catch(e){} }, 0); }
+function open(){ var e = el(); e.classList.add('open'); var q = e.querySelector('#pl-pq'); q.value = ''; P.sel = 0; draw(); setTimeout(function(){ q.focus(); }, 0); }
+function close(){ var e = document.getElementById('pl-palette'); if(e) e.classList.remove('open'); }
+window.bkPalette = { open:open, close:close };
+document.addEventListener('keydown', function(e){
+  var k = String(e.key).toLowerCase(), typing = e.target && (e.target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName));
+  if((e.metaKey || e.ctrlKey) && k === 'k'){ e.preventDefault(); open(); return; }
+  if(k === '/' && !typing && !e.metaKey && !e.ctrlKey){ e.preventDefault(); open(); }
+}, true);
+document.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('[data-pl-palette]')){ e.preventDefault(); open(); } });
+
+/* ---- recent sheets */
+var _show = window.showSheet;
+var wrapped = function(sheet){ try { var r = store(RKEY) || []; r = [sheet].concat(r.filter(function(x){ return x !== sheet; })).slice(0, 8); store(RKEY, r); } catch(e){} var out = _show.apply(this, arguments); setTimeout(function(){ applyRail(); railHead(); }, 0); return out; };
+window.showSheet = wrapped; try { showSheet = wrapped; } catch(e){}
+
+/* ---- rail header: the deal you are in, not the workbook name */
+function railHead(){
+  var h = document.querySelector('#rail .rail-head'); if(!h) return; var t = h.querySelector('h1'), p = h.querySelector('p'), e = h.querySelector('.eyebrow'); if(!t || !p) return;
+  var s = null, on = true; try { on = typeof window.bkHasActiveDeal === 'function' ? window.bkHasActiveDeal() : true; s = on ? bkLoad() : null; } catch(x){}
+  if(e) e.textContent = 'Punchlist Capital';
+  if(s && s.name){ t.textContent = s.name; p.textContent = [s.dealType, s.propertyType, s.status].filter(Boolean).join(' \u00b7 '); } else { t.textContent = 'No deal open'; p.textContent = 'Start from Home: import a T-12 or begin a blank deal.'; }
+}
+/* ---- rail: only the working group is open; click a group name to open or fold it */
+function groupOf(sheet){ for(var i = 0; i < GROUPS.length; i++) if(GROUPS[i].sheets.indexOf(sheet) > -1) return GROUPS[i]; return null; }
+var userOpen = store(OKEY) || {};
+function applyRail(){
+  var rail = document.getElementById('rail-groups'); if(!rail) return; var cur = null; try { cur = currentSheet; } catch(e){} var g = groupOf(cur);
+  [].forEach.call(rail.querySelectorAll('.rail-group'), function(el){ var lab = (el.querySelector('.rail-group-label span') || {}).textContent || '';
+    var grp = GROUPS.filter(function(x){ return x.label === lab || lab.indexOf(x.label) === 0; })[0]; if(!grp) return;
+    var open = (g && grp.id === g.id) || !!userOpen[grp.id]; var has = el.classList.contains('pl-collapsed'); if(open === has) el.classList.toggle('pl-collapsed', !open); el.setAttribute('data-pl-gid', grp.id); });
+}
+document.addEventListener('click', function(e){ var lab = e.target.closest && e.target.closest('#rail-groups .rail-group-label'); if(!lab) return; var grp = lab.parentNode, id = grp.getAttribute('data-pl-gid'); if(!id) return;
+  var cur = null; try { cur = currentSheet; } catch(x){} var g = groupOf(cur), isCur = g && g.id === id;
+  if(grp.classList.contains('pl-collapsed')){ userOpen[id] = 1; grp.classList.remove('pl-collapsed'); } else { delete userOpen[id]; if(!isCur) grp.classList.add('pl-collapsed'); else { userOpen[id] = 0; grp.classList.add('pl-collapsed'); } }
+  store(OKEY, userOpen); });
+/* the current group re-opens when you move into it; a folded current group stays folded until you navigate */
+var rg = document.getElementById('rail-groups'); if(rg){ new MutationObserver(function(){ applyRail(); }).observe(rg, { childList:true }); }
+setTimeout(function(){ applyRail(); railHead(); }, 0);
+})();
+</script>
+
+<script id="bk-v29240-newdeal">
+/* V29.24.0 - START A NEW DEAL / CLEAR INPUTS, on Overview. Both ask first, say what they will do, and offer to save the current deal to the portfolio so nothing is lost. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof RENDERERS['Home'] !== 'function') return;
+var prev = RENDERERS['Home'];
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+var CSS = '.pl-toolbar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin:0 0 6px}.pl-hbtn{background:var(--surface,#fff);border:1px solid #C9A968;color:#17304A;border-radius:999px;padding:9px 16px;font:700 11.5px/1 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}'
+ + '.pl-hbtn.primary{background:#17304A;color:#fff;border-color:#17304A}.pl-hbtn:hover{box-shadow:0 3px 10px rgba(16,25,34,.18)}.pl-hbtn.danger{border-color:#C0392B;color:#B23A2C}'
+ + '#pl-modal{position:fixed;inset:0;z-index:2100;background:rgba(10,16,22,.55);display:none;align-items:center;justify-content:center;padding:16px}#pl-modal.open{display:flex}#pl-modal .box{width:min(520px,100%);background:var(--surface,#fff);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.35);border:1px solid var(--line,#E2DCCD);padding:22px 22px 18px}'
+ + '#pl-modal h3{font:700 22px/1.2 "Source Serif 4",Georgia,serif;margin:0 0 6px;color:var(--ink-900,#1B1B18)}#pl-modal p{font-size:13px;line-height:1.55;color:var(--ink-500,#5F5B52);margin:0 0 12px}#pl-modal label.f{display:block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--ink-500,#5F5B52);margin:10px 0 4px}'
+ + '#pl-modal input[type=text],#pl-modal select{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line,#E2DCCD);border-radius:8px;font:14px Inter,system-ui,sans-serif;background:#fff;text-align:right;text-align-last:right}#pl-modal .chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:12px 0 2px}#pl-modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}';
+var st = document.createElement('style'); st.id = 'pl-newdeal-css'; st.textContent = CSS; document.head.appendChild(st);
+function modal(html){ var m = document.getElementById('pl-modal'); if(!m){ m = document.createElement('div'); m.id = 'pl-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); document.body.appendChild(m);
+    m.addEventListener('mousedown', function(e){ if(e.target === m) closeModal(); }); m.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeModal(); } }); }
+  m.innerHTML = '<div class="box">' + html + '</div>'; m.classList.add('open'); var f = m.querySelector('input[type=text],button.primary,button'); if(f) setTimeout(function(){ f.focus(); }, 0); }
+function closeModal(){ var m = document.getElementById('pl-modal'); if(m) m.classList.remove('open'); }
+window.bkModalClose = closeModal;
+function active(){ return typeof window.bkHasActiveDeal === 'function' ? window.bkHasActiveDeal() : true; }
+function saveFirstBox(label){ var s = active() ? safe(function(){ return bkLoad(); }, null) : null; if(!s || !(s.name || s.dealId)) return ''; return '<label class="chk"><input type="checkbox" id="pl-save1" checked> <span>' + label + ' <b>' + esc(s.name || s.dealId) + '</b> to the portfolio first</span></label>'; }
+function snapshot(){ var cb = document.getElementById('pl-save1'); if(cb && cb.checked && typeof bkPortfolioAddCurrent === 'function'){ try { bkPortfolioAddCurrent(); } catch(e){} } }
+
+window.bkNewDealDialog = function(){
+  modal('<h3>Start a new deal</h3><p>This opens a blank deal. Nothing is calculated until the required inputs are in.</p>'
+    + '<label class="f" for="pl-nm">Deal name</label><input type="text" id="pl-nm" placeholder="e.g. 14 Main Street" autocomplete="off">'
+    + '<label class="f" for="pl-ty">Deal type</label><select id="pl-ty"><option value="Acquisition">Acquisition</option><option value="Development">Development</option></select>'
+    + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn" onclick="bkNewDealImport()">Import a T-12 instead</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create blank deal</button></div>');
+  var nm = document.getElementById('pl-nm'); if(nm) nm.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); bkNewDealGo(); } });
+};
+window.bkNewDealGo = function(){
+  var nm = (document.getElementById('pl-nm') || {}).value || '', ty = (document.getElementById('pl-ty') || {}).value || 'Acquisition';
+  snapshot(); closeModal();
+  var id = nm.trim() ? nm.trim().replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase().slice(0, 24) : '';
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm.trim(), dealId:id, dealType:ty });
+};
+window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import Deal'); };
+
+window.bkClearInputsDialog = function(){
+  var s = safe(function(){ return bkLoad(); }, {}), keep = [s.name, s.dealType, s.propertyType, s.closing].filter(Boolean).join(' · ');
+  modal('<h3>Clear all inputs?</h3><p>Every input on this deal goes back to blank or zero: income, expenses, debt, rent roll, tax and the saved cases.' + (keep ? ' The deal’s identity (<b>' + esc(keep) + '</b>) is kept.' : '') + ' Nothing is calculated again until the required inputs are re-entered.</p>'
+    + saveFirstBox('Save a copy of') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn danger" onclick="bkClearInputsGo()">Clear inputs</button></div>');
+};
+window.bkClearInputsGo = function(){
+  var s = safe(function(){ return bkLoad(); }, null); if(!s) return; snapshot(); closeModal();
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, name:s.name, location:s.location, dealType:s.dealType, propertyType:s.propertyType, status:s.status, closing:s.closing });
+};
+
+RENDERERS['Home'] = function(){
+  var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
+  var has = active(), bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New deal</button>' + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
+  return Object.assign({}, o, { main:o.main.replace('<div class="pl-home">', '<div class="pl-home">' + bar) });
+};
+if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
+/* the command palette gets the same two actions */
+if(window.bkPalette && typeof window.bkPalette.extra !== 'function'){ /* palette actions are built in nav2; added there */ }
 })();
 </script>
 
