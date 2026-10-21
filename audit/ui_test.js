@@ -228,6 +228,13 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.keyboard.press('Enter'); await p.waitForTimeout(250);
   check('a glossary entry opens its definition', await p.evaluate(() => /Debt service coverage ratio/.test(document.getElementById('pl-modal').innerText)));
   await p.keyboard.press('Escape'); await p.evaluate(() => bkModalClose());
+  // 15. Pro-forma / returns presentation
+  await p.evaluate(() => showSheet('Property CF')); await p.waitForTimeout(800);
+  const pf = await p.evaluate(() => { const v = document.querySelector('#viewport'); const t = v.querySelector('table.pf-tbl'); const rows = t ? [...t.querySelectorAll('tbody tr')].map(r => r.innerText) : []; const noi = rows.find(r => /Net operating income/i.test(r)) || ''; return { svgs: v.querySelectorAll('.pf-card svg').length, cols: t ? t.querySelectorAll('thead th').length : 0, noi, print: !!v.querySelector('.pf-bar button, .pf-bar .btn'), nan: /NaN|undefined/.test(v.innerText) }; });
+  check('Property CF shows its charts, a 5-year statement and a print button', pf.svgs >= 2 && pf.cols >= 6 && pf.print && !pf.nan, JSON.stringify({ s: pf.svgs, c: pf.cols, p: pf.print }));
+  check('statement NOI line ties to the engine Year-1 NOI', await p.evaluate(() => { const r = [...document.querySelectorAll('table.pf-tbl tbody tr')].find(x => /Net operating income/i.test(x.innerText)); const hs=[...r.closest('table').querySelectorAll('thead th')].map(h=>h.innerText.trim()); const c=hs.findIndex(h=>/^year 1$/i.test(h)); if(!r||c<1)return false; const m=+r.cells[c].innerText.replace(/[^0-9.-]/g,''); return c>0 && Math.abs(m - bkAnnualCF().arr[0].noi) < 1.5; }));
+  await p.evaluate(() => showSheet('Returns')); await p.waitForTimeout(800);
+  check('Returns shows the hurdle gauge, charts and the three scenarios', await p.evaluate(() => { const v = document.querySelector('#viewport'); return v.querySelectorAll('svg').length >= 3 && v.querySelectorAll('.pf-sc').length === 3 && !/NaN|undefined/.test(v.innerText); }));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();
