@@ -100,3 +100,6 @@ The PDF reader decodes embedded fonts through their ToUnicode maps and uses the 
 
 ## Home and navigation (ui_test.js)
 The Home sheet is a front door with no deal (ways in) and a dashboard with one (KPI tiles, a rule-driven next step, a review checklist that opens each sheet). Ctrl/Cmd+K opens a palette over every sheet and action; the left rail keeps only the working group open. All are presentation over the existing engine and checks; the UI test covers each.
+
+## Pro-forma / returns presentation (`bk-v29260-proforma`)
+Property CF, Operating Underwrite and Returns now open with a headline strip, plain-English insights, SVG charts (coverage, cash flow, profit bridge, income split, hurdle gauge), a 5-year statement and a Print / Save as PDF button; the original detail tables remain below. All figures come from the existing engine (no new maths); `ui_test.js` section 15 checks the charts render and the statement's Year-1 NOI ties to `bkAnnualCF()`.

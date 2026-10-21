@@ -31,7 +31,7 @@ const A = require(path.join(__dirname, 'deal.js'));
     await p.screenshot({ path: process.env.BK_SHOT || '/tmp/import.png' });
     await p.click('#viewport tr:has-text("ShorePointe") button:has-text("CREATE DEAL")'); await p.waitForTimeout(600);
     const made = await p.evaluate(() => { const s = bkLoad(); return { name: s.name, price: s.purchasePrice, units: s.units, noi: bkCalc().noi, sheet: currentSheet }; });
-    check('CREATE DEAL builds the deal and opens Deal Underwrite', made.name === 'ShorePointe' && made.sheet === 'Deal Underwrite' && made.price === 13664840, JSON.stringify(made));
+    check('CREATE DEAL builds the deal and opens the Home dashboard', made.name === 'ShorePointe' && made.sheet === 'Home' && made.price === 13664840, JSON.stringify(made));
     check("the created deal's statement NOI equals the T-12 line-item NOI", Math.abs(made.noi - 683241.98) < 1, String(made.noi));
     const props = await p.evaluate(async (b64) => { const u8 = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); const f = new File([u8], 'Yardi.xlsm'); const parsed = await bkImportParseFile(f);
       return bkImportExtract(parsed).map(x => ({ name: x.name, type: x.type, noi: x.noi, units: x.units, sf: x.sf, cap: x.cap, gap: x.gap, tied: x.tied, deal: x.cap ? bkImportDeal(x, x.cap, x.units) : null, flags: x.flags })); }, fs.readFileSync(X).toString('base64'));

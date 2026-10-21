@@ -121,13 +121,13 @@ const T = [
   await p2.goto('file://' + path.resolve(process.argv[2])); await p2.waitForTimeout(800);
   await p2.evaluate(a => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(a); }, A); await p2.waitForTimeout(800);
   check('no pop-up when a deal is loaded', await p2.evaluate(() => !document.getElementById('bk-conflict-toast')));
-  await p2.evaluate(() => bkSetConvention('cvRentGrowthStart', 'month1')); await p2.waitForTimeout(800);
+  await p2.evaluate(() => bkSetConvention('cvRentGrowthStart', 'month1')); await p2.waitForFunction(() => document.getElementById('bk-conflict-toast'), null, { timeout: 5000 }).catch(() => {}); await p2.waitForTimeout(150);
   const toast = await p2.evaluate(() => { const e = document.getElementById('bk-conflict-toast'); return e ? e.innerText : ''; });
   check('an edit that creates a conflict raises a pop-up that says why', /Why it matters/.test(toast) && /monthly cash flow/.test(toast), toast.slice(0, 160));
   await p2.evaluate(() => bkAckConflict('acct.statement-vs-cashflow')); await p2.waitForTimeout(300);
   check('acknowledging dismisses the pop-up', await p2.evaluate(() => !document.getElementById('bk-conflict-toast')));
   await p2.evaluate(() => bkSetConvention('cvRentGrowthStart', 'year2')); await p2.waitForTimeout(700);
-  await p2.evaluate(() => bkSetConvention('cvRentGrowthStart', 'month1')); await p2.waitForTimeout(800);
+  await p2.evaluate(() => bkSetConvention('cvRentGrowthStart', 'month1')); await p2.waitForFunction(() => document.getElementById('bk-conflict-toast'), null, { timeout: 5000 }).catch(() => {}); await p2.waitForTimeout(150);
   check('an acknowledged conflict is not raised again', await p2.evaluate(() => !document.getElementById('bk-conflict-toast')));
   await p2.evaluate(() => showSheet('Model Checks'));
   check('Model Checks sheet renders the findings', await p2.evaluate(() => /Conflicting Inputs and Their Consequences/i.test(document.querySelector('#viewport').innerText) || /CONFLICTING INPUTS/.test(document.querySelector('#viewport').innerText.toUpperCase())));
