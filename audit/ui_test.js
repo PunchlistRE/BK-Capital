@@ -4,6 +4,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const path = require('path');
 const B = require(path.join(__dirname, 'dealB.js'));
+const A_ = require(path.join(__dirname, 'deal.js'));
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); const errs = [];
@@ -207,6 +208,26 @@ const B = require(path.join(__dirname, 'dealB.js'));
   await p.click('.pl-toolbar button:has-text("Clear inputs")'); await p.waitForTimeout(200); await p.click('#pl-modal button.danger'); await p.waitForTimeout(500);
   const cl = await p.evaluate(() => { const s = bkLoad(); return { name: s.name, price: s.purchasePrice, units: s.units, taxes: s.taxes, rr: (s.rentRoll || []).length, type: s.dealType }; });
   check('Clear inputs blanks the numbers and keeps the deal identity', cl.name === nm0 && cl.price === 0 && cl.taxes === 0 && cl.rr === 0 && cl.type === 'Acquisition', JSON.stringify(cl));
+  // 14. Flow: step bar reflects the decision, one-step loan sizing, glossary hints, methodology after the deal's own inputs, import lands on Home
+  await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, A_); await p.waitForTimeout(600);
+  const stp = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('.bk-step')].map((x, i) => [i, x.className])));
+  check('the step bar shows the debt and returns steps amber and the review step red when policy and the hurdle are missed', /warn/.test(stp[3]) && /warn/.test(stp[4]) && /fail/.test(stp[5]), JSON.stringify(stp));
+  const sz = await p.evaluate(() => { const p0 = bkSizeLoanPlan(); return p0 && { ok: p0.ok, over: p0.cap.overage, from: p0.from, to: p0.dscr, loan: p0.loan, cap: p0.cap.capacity }; });
+  check('the loan-sizing plan lands the loan just inside policy capacity', sz && sz.ok && sz.loan <= sz.cap && sz.loan > sz.cap * 0.98 && sz.to > sz.from, JSON.stringify(sz));
+  await p.click('button:has-text("Size loan to policy")'); await p.waitForTimeout(250); await p.click('#pl-modal button:has-text("Apply")'); await p.waitForTimeout(600);
+  const sz2 = await p.evaluate(() => ({ over: bkDealGate().capacity.overage, dscr: bkLoad().acqDSCR, debt: document.querySelector('.bk-step:nth-of-type(4)') && 0 }));
+  check('applying it raises the sizing DSCR and removes the policy overage', sz2.over <= 0 && sz2.dscr > 1.25, JSON.stringify(sz2));
+  check('the debt step turns green once the loan is within policy', await p.evaluate(() => /done/.test([...document.querySelectorAll('.bk-step')][3].className)));
+  await p.evaluate(() => showSheet('Deal Underwrite')); await p.waitForTimeout(700);
+  const ord = await p.evaluate(() => { const caps = [...document.querySelectorAll('#viewport .main-col caption')].map(c => c.textContent.trim()); return { first: caps[0], last: caps[caps.length - 1], hint: true }; });
+  check('the methodology table is last, after the deal\'s own inputs', ord.first === 'Identity' && ord.last === 'Underwriting Conventions', JSON.stringify(ord));
+  const lab = p.locator('#viewport td.rowlabel', { hasText: 'Acquisition LTV Basis' }).first(); await lab.scrollIntoViewIfNeeded(); await p.waitForTimeout(250); await lab.hover(); await p.waitForTimeout(200);
+  check('hovering a term shows its plain-English definition', await p.evaluate(() => { const t = document.getElementById('pl-tip'); return !!t && t.style.display === 'block' && /Loan-to-value/.test(t.innerText); }));
+  await p.keyboard.press('Control+k'); await p.waitForTimeout(150); await p.keyboard.type('glossary dscr'); await p.waitForTimeout(150);
+  check('the search finds glossary entries', await p.evaluate(() => /Glossary: DSCR/.test(document.getElementById('pl-palette').innerText)));
+  await p.keyboard.press('Enter'); await p.waitForTimeout(250);
+  check('a glossary entry opens its definition', await p.evaluate(() => /Debt service coverage ratio/.test(document.getElementById('pl-modal').innerText)));
+  await p.keyboard.press('Escape'); await p.evaluate(() => bkModalClose());
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

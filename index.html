@@ -18015,6 +18015,7 @@ document.addEventListener('mousemove', function(e){
   background:#ECE9E1; color:#3A3A36; }
 .bk-step.done .n{ background:#E3F1E7; color:#1F7A45; }
 .bk-step.warn .n{ background:#FBF0D9; color:#8A6212; }
+.bk-step.fail .n{ background:#F8DDD9; color:#B23A2C; }
 .bk-step.cur{ border-color:var(--navy-900,#173049); color:var(--ink-900,#1B1B18); font-weight:700; }
 .bk-step-sep{ width:14px; height:1px; background:var(--line,#E2DCCD); flex:0 0 auto; }
 .bk-flow-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; flex-wrap:wrap; }
@@ -18217,13 +18218,29 @@ function stepStatus(){
   var noi = NaN; try { noi = bkCalc().noi; } catch(e){}
   out.ops = (r.canCalculate && isFinite(noi)) ? (noi > 0 ? { st:'done', tip:'Year-1 NOI ' + money(noi) } : { st:'warn', tip:'Year-1 NOI is not positive' }) : { st:'', tip:'Needs complete inputs' };
   var debtMiss = r.investMissing.some(function(m){ return m.key === 'debt'; });
-  out.debt = !r.canCalculate ? { st:'', tip:'Needs complete inputs' } : debtMiss ? { st:'warn', tip:'Debt rate / amortisation missing' } : { st:'done', tip:s.debtEnabled === false ? 'Unlevered (debt off)' : 'Loan sized' };
+  var gate = null, pol = {}, ctls = [];
+  if(r.canCalculate){
+    if(!isDev(s)){ try { gate = window.bkDealGatePeek ? window.bkDealGatePeek() : null; } catch(e){}
+      if(!gate && window.bkDealGate && !stepStatus.__pending){ stepStatus.__pending = true; setTimeout(function(){ stepStatus.__pending = false; try { window.bkDealGate(); } catch(e){} patchSteps(); }, 60); } }
+    try { pol = window.bkPolicy ? window.bkPolicy() : {}; } catch(e){} try { ctls = window.bkModelControls ? window.bkModelControls() : []; } catch(e){} }
+  var over = gate && gate.capacity && gate.capacity.overage > 0 ? gate.capacity.overage : 0;
+  out.debt = !r.canCalculate ? { st:'', tip:'Needs complete inputs' } : debtMiss ? { st:'warn', tip:'Debt rate / amortisation missing' } : over ? { st:'warn', tip:'Loan is ' + money(over) + ' above what policy supports' } : { st:'done', tip:s.debtEnabled === false ? 'Unlevered (debt off)' : 'Loan sized, within policy' };
   var irr = NaN; if(r.canCalculate){ try { irr = bkMonthlyReturns().irr; } catch(e){} }
-  out.returns = !r.canCalculate ? { st:'', tip:'Results withheld until inputs are complete' } : isFinite(irr) ? { st:'done', tip:'Levered IRR ' + pct(irr) } : { st:'warn', tip:'Levered IRR not finite' };
-  out.review = r.state === 'INVESTMENT READY' && !r.sourceReview ? { st:'done', tip:'Investment ready' }
+  var hur = Number(pol.targetIRR) || 0;
+  out.returns = !r.canCalculate ? { st:'', tip:'Results withheld until inputs are complete' } : !isFinite(irr) ? { st:'warn', tip:'Levered IRR not finite' } : (hur && irr < hur) ? { st:'warn', tip:'Levered IRR ' + pct(irr) + ' is below the ' + pct(hur) + ' hurdle' } : { st:'done', tip:'Levered IRR ' + pct(irr) };
+  var nFail = ctls.filter(function(c){ return c.level === 'FAIL'; }).length;
+  out.review = nFail ? { st:'fail', tip:nFail + ' model error' + (nFail > 1 ? 's' : '') + ' to fix' }
+             : (gate && gate.verdict === 'DECLINE') ? { st:'fail', tip:'Credit gate: ' + String(gate.status || 'decline') }
+             : r.state === 'INVESTMENT READY' && !r.sourceReview ? { st:'done', tip:'Investment ready' }
              : r.state === 'NOT DECISION-GRADE' || r.sourceReview || r.state === 'BLOCKED' ? { st:'warn', tip:r.state + (r.sourceReview ? ' - source review' : '') }
              : { st:'', tip:r.state };
   return out;
+}
+/* the credit gate takes about half a second, so a render shows the step bar from what is already known and this refreshes it once the gate has been worked out */
+function patchSteps(){
+  var st = stepStatus();
+  [].forEach.call(document.querySelectorAll('.bk-step'), function(btn){ var i = +btn.getAttribute('data-bk-step'), x = STEPS[i]; if(!x) return; var o = st[x.id] || {}, cur = btn.classList.contains('cur');
+    btn.className = 'bk-step ' + (o.st || '') + (cur ? ' cur' : ''); btn.title = o.tip || ''; var n = btn.querySelector('.n'); if(n) n.textContent = o.st === 'done' ? '\u2713' : o.st === 'fail' ? '\u2715' : o.st === 'warn' ? '!' : String(i + 1); });
 }
 function saveStatus(){
   var S = window.BK_SYNC || {};
@@ -18243,7 +18260,7 @@ function flowBar(sheet){
   var st = stepStatus(), si = stepOf(sheet), s = hasDeal() ? bkLoad() : {};
   var steps = STEPS.map(function(x, i){
     var o = st[x.id] || {}, cls = (o.st || '') + (i === si ? ' cur' : '');
-    var mark = o.st === 'done' ? '✓' : o.st === 'warn' ? '!' : String(i + 1);
+    var mark = o.st === 'done' ? '✓' : o.st === 'fail' ? '✕' : o.st === 'warn' ? '!' : String(i + 1);
     return (i ? '<span class="bk-step-sep"></span>' : '') + '<button type="button" class="bk-step ' + cls + '" data-bk-step="' + i + '" title="' + esc(o.tip || '') + '"><span class="n">' + mark + '</span>' + x.label + '</button>';
   }).join('');
   var c = String(s.scenarioCase || 'Base');
@@ -19245,7 +19262,14 @@ function dealGate(){
     hard:hard, soft:soft, overage:overage, overrideValid:overrideValid, override:ov, verdict:verdict, status:status, action:action, exceptions:exceptions,
     capacity:cap, cushions:rc, ret:ret, waterfall:w, register:rr, development:dev };
 }
-window.bkDealGate = dealGate;
+/* The gate re-runs the engine dozens of times (capacity ladder, cushions), about half a second. It is a pure function of the deal, so the last few results are kept by the deal's own contents. */
+var gateMemo = [];
+window.bkDealGatePeek = function(){ var key; try { key = JSON.stringify(bkLoad()); } catch(e){ return null; } for(var i = 0; i < gateMemo.length; i++) if(gateMemo[i][0] === key) return gateMemo[i][1]; return null; };
+window.bkDealGate = function(){
+  var key; try { key = JSON.stringify(bkLoad()); } catch(e){ return dealGate(); }
+  for(var i = 0; i < gateMemo.length; i++) if(gateMemo[i][0] === key) return gateMemo[i][1];
+  var v = dealGate(); gateMemo.unshift([key, v]); if(gateMemo.length > 4) gateMemo.length = 4; return v;
+};
 window.BK_GATES = GATES; window.BK_POLICY_DEFAULTS = POLICY_DEFAULTS;
 })();
 </script>
@@ -20679,7 +20703,7 @@ window.bkImportRun = async function(inp){
 };
 window.bkImportSet = function(i, k, v){ var e = S.props[i]; if(!e) return; if(k === 'cap'){ e.cap = v; e.capSrc = 'edited'; } else e.units = v; showSheet('Import Deal'); };
 window.bkImportCreate = function(i){ var e = S.props[i]; if(!e || !(e.cap > 0) || !(e.units > 0)) return; var d = dealFor(e.p, e.cap, e.units);
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d); if(typeof showSheet === 'function') showSheet('Deal Underwrite'); };
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d); if(typeof showSheet === 'function') showSheet('Home'); };
 function numInput(i, k, val, pct){ var shown = pct ? (val * 100).toFixed(2).replace(/\.?0+$/, '') : String(val); return '<input type="text" value="' + shown + '" style="width:64px;text-align:left" onchange="bkImportSet(' + i + ',\'' + k + '\',' + (pct ? '(parseFloat(this.value)||0)/100' : '(parseFloat(this.value)||0)') + ')">' + (pct ? '<span style="font-size:11px"> %</span>' : ''); }
 function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#E2DCCD);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 function render(){
@@ -20691,7 +20715,7 @@ function render(){
       var chip = p.tied ? '<span class="status-chip pass">TIES' + (Math.abs(p.gap) >= 1 ? ' \u00b7 ' + (p.gap < 0 ? '-' : '+') + $(Math.abs(p.gap)) : '') + '</span>' : (p.gap === null ? '<span class="status-chip">NO STATEMENT TOTAL</span>' : '<span class="status-chip warn">GAP ' + (p.gap < 0 ? '-' : '+') + $(Math.abs(p.gap)) + '</span>');
       var act = !ok ? '<span style="font-size:11px">Multifamily only</span>' : (!(e.units > 0) ? '<span style="font-size:11px">Enter units</span>' : '<button type="button" class="status-chip pass" onclick="bkImportCreate(' + i + ')">CREATE DEAL</button>');
       return '<tr><td class="rowlabel">' + esc(p.name) + '<div style="font-size:11px;opacity:.7">' + esc(p.type || '') + ' · ' + p.items + ' line items</div></td><td>' + numInput(i, 'units', e.units) + '</td><td>' + (p.sf ? p.sf.toLocaleString('en-US') : 'n/a') + '</td><td><b>' + $(p.noi) + '</b></td><td>' + (p.summaryNOI != null ? $(p.summaryNOI) : 'n/a') + '</td><td>' + numInput(i, 'cap', e.cap, true) + '<div style="font-size:10px;opacity:.7">' + e.capSrc + '</div></td><td>' + $(price) + '</td><td>' + chip + '</td><td>' + act + '</td></tr>'
-        + '<tr><td colspan="9" style="text-align:left"><details><summary style="cursor:pointer;font-size:12px">' + p.flags.length + ' extraction note' + (p.flags.length === 1 ? '' : 's') + '</summary><ul style="margin:6px 0 6px 18px;font-size:12px">' + p.flags.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details></td></tr>'; }).join('');
+        + '<tr><td colspan="9" style="text-align:left">' + (ok ? '<div style="font-size:12px;margin-bottom:4px"><b>Before you rely on it:</b> the T-12 has no replacement reserves, so the new deal starts at $0 (set them on Deal Underwrite); and there is no unit rent roll, so revenue uses the average rent per unit (import a rent roll for loss to lease and rollover).</div>' : '') + '<details><summary style="cursor:pointer;font-size:12px">' + p.flags.length + ' extraction note' + (p.flags.length === 1 ? '' : 's') + '</summary><ul style="margin:6px 0 6px 18px;font-size:12px">' + p.flags.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details></td></tr>'; }).join('');
     body += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Properties Extracted from ' + esc(S.file) + '</caption><thead><tr><th class="rowlabel-h">Property</th><th>Units</th><th>SF</th><th>NOI (line items)</th><th>Summary NOI</th><th>Cap rate</th><th>Implied price</th><th>Check</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
       + box('NOI is the sum of the line items (income less operating expenses; debt service, distributions and totals excluded). The summary-sheet figure is shown only for comparison. A missing cap rate defaults to ' + P(DEFAULT_CAP, 1) + ' (the national multifamily average on Market Benchmarks) - set your own. The new deal uses the app’s standard financing and growth assumptions; review them on Deal Underwrite.');
   }
@@ -21088,6 +21112,7 @@ function build(s, oldMain){
     if(gate) rows.push([gate.verdict === 'APPROVE' ? 'pass' : gate.verdict === 'DECLINE' ? 'fail' : 'warn', 'Credit decision', esc(String(gate.status || gate.verdict).replace(/\s+—\s+/, ': ')), 'IC Memo']);
     if(!dev){ var rk = safe(function(){ return bkRiskScenarios(); }, null); if(rk) rows.push([rk.pLoss > 0.2 ? 'warn' : 'pass', 'Downside odds', 'Scenario-weighted: ' + P(rk.pLoss, 0) + ' chance of losing money, ' + P(rk.pMiss, 0) + ' chance of missing the hurdle; expected IRR ' + P(rk.irrOfExpectedCF), 'Probability-Weighted']); }
   }
+  if(!dev) rows.push([Array.isArray(s.rentRoll) && s.rentRoll.length ? 'pass' : 'warn', 'Rent roll', Array.isArray(s.rentRoll) && s.rentRoll.length ? s.rentRoll.length + ' units loaded; revenue is built from them' : 'No unit rent roll: revenue uses the flat average rent per unit, with no loss to lease or rollover', 'Import Rent Roll']);
   rows.push([fails.length ? 'fail' : (warns.length ? 'warn' : 'pass'), 'Model checks', fails.length || warns.length ? fails.length + ' error' + (fails.length === 1 ? '' : 's') + ', ' + warns.length + ' warning' + (warns.length === 1 ? '' : 's') : 'No contradictions found', 'Model Checks']);
   if(mk && mk.rows){ var out = mk.rows.filter(function(r){ return r.status === 'ABOVE RANGE' || r.status === 'BELOW RANGE'; }); rows.push([out.length ? 'warn' : 'pass', 'Against the market', out.length ? out.length + ' of ' + mk.rows.length + ' assumptions outside published ranges' : 'All ' + mk.rows.length + ' assumptions inside published ranges', 'Market Benchmarks']); }
   if(ready && ready.sourceExceptions) rows.push(['warn', 'Sources', (ready.sourceExceptions.length != null ? ready.sourceExceptions.length : ready.sourceExceptions) + ' source finding(s) to review', 'Source Lineage']);
@@ -21098,7 +21123,7 @@ function build(s, oldMain){
   return '<div class="pl-home"><div class="pl-hero"><h2>' + esc(s.name || 'Untitled deal') + '</h2><p class="pl-sub">' + esc([s.dealType, s.propertyType, s.location, s.units ? s.units + (dev ? ' units planned' : ' units') : '', s.closing ? (dev ? 'start ' : 'closing ') + s.closing : ''].filter(Boolean).join(' · ')) + '</p>'
     + '<div class="pl-chips">' + tag(esc(rd || 'DRAFT'), /READY/.test(rd) ? 'pass' : 'warn') + tag(esc(String(s.scenarioCase || 'Base')) + ' CASE', '') + (price ? tag('Price ' + M(price), '') : '') + '</div></div>'
     + (kpis.length ? '<div class="pl-kpis">' + kpis.map(function(k){ return '<button type="button" class="pl-kpi ' + k[3] + '" ' + go(k[4]) + '><div class="k">' + k[0] + '</div><div class="v">' + k[1] + '</div><div class="s">' + esc(k[2]) + '</div></button>'; }).join('') + '</div>' : '')
-    + '<div class="pl-next"><div><div class="t">Next step</div><div class="m">' + next[0] + '</div><div class="d">' + next[1] + '</div></div><button type="button" class="pl-btn" ' + go(next[2]) + '>' + esc(next[3]) + ' &rarr;</button></div>'
+    + '<div class="pl-next"><div><div class="t">Next step</div><div class="m">' + next[0] + '</div><div class="d">' + next[1] + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">' + ((gate && gate.capacity && gate.capacity.overage > 0) ? '<button type="button" class="pl-btn ghost" onclick="bkSizeLoanDialog()">Size loan to policy</button>' : '') + '<button type="button" class="pl-btn" ' + go(next[2]) + '>' + esc(next[3]) + ' &rarr;</button></div></div>'
     + '<div class="pl-h">Review checklist</div><div class="pl-check">' + rows.map(function(r){ return '<div class="pl-row ' + r[0] + '" role="button" tabindex="0" ' + go(r[3]) + '><span class="dot"></span><span class="l">' + r[1] + '</span><span class="r">' + r[2] + '</span><span class="go">Open &rarr;</span></div>'; }).join('') + '</div>'
     + '<div class="pl-h">Go to</div><div class="pl-acts">' + acts.map(function(a){ return '<button type="button" class="pl-act" ' + go(a[2]) + '><b>' + a[0] + '</b><span>' + a[1] + '</span></button>'; }).join('') + '</div>'
     + dealsBlock(L) + (inList ? '' : '<div style="margin-top:12px"><button type="button" class="status-chip" onclick="bkPortfolioAddCurrent()">SAVE THIS DEAL TO THE PORTFOLIO</button></div>')
@@ -21147,6 +21172,8 @@ function actions(){
     { kind:'act', label:'Import a rent roll into this deal', group:'Action', run:function(){ showSheet('Import Rent Roll'); } },
     { kind:'act', label:'Save this deal to the portfolio', group:'Action', run:function(){ if(typeof bkPortfolioAddCurrent === 'function') bkPortfolioAddCurrent(); } },
     { kind:'act', label:'Switch case: Downside', group:'Action', run:function(){ setCase('Downside'); } }, { kind:'act', label:'Switch case: Base', group:'Action', run:function(){ setCase('Base'); } }, { kind:'act', label:'Switch case: Upside', group:'Action', run:function(){ setCase('Upside'); } }];
+  try { if(window.bkSizeLoanDialog) A.push({ kind:'act', label:'Size the loan to policy capacity', group:'Action', run:function(){ showSheet('Home'); setTimeout(function(){ bkSizeLoanDialog(); }, 50); } }); } catch(e){}
+  try { var G = window.BK_GLOSSARY || []; G.forEach(function(g){ A.push({ kind:'term', label:'Glossary: ' + g[0], group:'Definition', run:function(){ if(window.bkGlossaryShow) bkGlossaryShow(g[0]); } }); }); } catch(e){}
   try { bkPortfolioLoad().forEach(function(d){ var key = String(d.dealId || d.name || 'untitled'); A.push({ kind:'deal', label:'Open deal: ' + (d.name || d.dealId || key), group:'Saved deal', run:function(){ bkPortfolioLoadActive(key); } }); }); } catch(e){}
   return A;
 }
@@ -21166,7 +21193,7 @@ function draw(){
   var q = (document.getElementById('pl-pq').value || '').trim(), all = sheets().concat(actions()), rec = store(RKEY) || [], items;
   if(!q){ var byName = {}; all.forEach(function(x){ if(x.kind === 'sheet') byName[x.label] = x; }); var r = rec.map(function(n){ return byName[n]; }).filter(Boolean).slice(0, 6); r.forEach(function(x){ x.sec = 'Recent'; });
     var acts = actions().slice(0, 4); acts.forEach(function(x){ x.sec = 'Actions'; }); items = r.concat(acts); if(!r.length){ items = sheets().slice(0, 8).map(function(x){ x.sec = 'Sheets'; return x; }).concat(acts); } }
-  else { items = all.map(function(x){ return { x:x, s:score(x, q) }; }).filter(function(z){ return z.s > 0; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 40).map(function(z){ var it = z.x; it.sec = it.kind === 'sheet' ? 'Sheets' : 'Actions'; return it; }); }
+  else { items = all.map(function(x){ return { x:x, s:score(x, q) }; }).filter(function(z){ return z.s > 0; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 40).map(function(z){ var it = z.x; it.sec = it.kind === 'sheet' ? 'Sheets' : (it.kind === 'term' ? 'Glossary' : 'Actions'); return it; }); }
   P.items = items; var html = '', last = null;
   items.forEach(function(it, i){ if(it.sec !== last){ html += '<div class="sec">' + it.sec + '</div>'; last = it.sec; }
     html += '<div class="it" role="option" data-i="' + i + '">' + (it.color ? '<span class="sw" style="background:' + it.color + '"></span>' : '') + '<span>' + esc(it.label) + '</span><span class="g">' + esc(it.group || '') + '</span></div>'; });
@@ -21232,6 +21259,7 @@ function modal(html){ var m = document.getElementById('pl-modal'); if(!m){ m = d
     m.addEventListener('mousedown', function(e){ if(e.target === m) closeModal(); }); m.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeModal(); } }); }
   m.innerHTML = '<div class="box">' + html + '</div>'; m.classList.add('open'); var f = m.querySelector('input[type=text],button.primary,button'); if(f) setTimeout(function(){ f.focus(); }, 0); }
 function closeModal(){ var m = document.getElementById('pl-modal'); if(m) m.classList.remove('open'); }
+window.bkModal = modal;
 window.bkModalClose = closeModal;
 function active(){ return typeof window.bkHasActiveDeal === 'function' ? window.bkHasActiveDeal() : true; }
 function saveFirstBox(label){ var s = active() ? safe(function(){ return bkLoad(); }, null) : null; if(!s || !(s.name || s.dealId)) return ''; return '<label class="chk"><input type="checkbox" id="pl-save1" checked> <span>' + label + ' <b>' + esc(s.name || s.dealId) + '</b> to the portfolio first</span></label>'; }
@@ -21270,6 +21298,90 @@ RENDERERS['Home'] = function(){
 if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
 /* the command palette gets the same two actions */
 if(window.bkPalette && typeof window.bkPalette.extra !== 'function'){ /* palette actions are built in nav2; added there */ }
+})();
+</script>
+
+<script id="bk-v29250-flow">
+/* V29.25.0 - FLOW. (1) Size the loan to policy capacity in one step; (2) plain-English hints on the terms underwriters argue about, and a glossary in the search;
+   (3) the methodology table on Deal Underwrite moves to the end so the deal's own inputs come first. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined') return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function M(v){ if(v == null || !isFinite(v)) return '—'; var a = Math.abs(v); return (v < 0 ? '(' : '') + '$' + Math.round(a).toLocaleString('en-US') + (v < 0 ? ')' : ''); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+
+/* ---------------------------------------------------------------- 1. size the loan to policy */
+function plan(){
+  var s = safe(function(){ return bkLoad(); }, null); if(!s || /develop/i.test(String(s.dealType || ''))) return null;
+  var g = safe(function(){ return bkDealGate(); }, null), cap = g && g.capacity; if(!cap || !(cap.overage > 0)) return null;
+  var loanAt = function(ov){ return window.bkRunWith(ov, function(){ return bkDebt().loan; }); };
+  var target = cap.capacity * 0.9995, cur = Number(s.acqDSCR) || 1.25, now = loanAt({});
+  var lo = cur, hi = cur + 3; if(!(loanAt({ acqDSCR:hi }) <= target)) return { s:s, cap:cap, now:now, ok:false };
+  for(var i = 0; i < 60; i++){ var m = (lo + hi) / 2; if(loanAt({ acqDSCR:m }) > target) lo = m; else hi = m; }
+  var d = Math.ceil(hi * 1000) / 1000;
+  return { s:s, cap:cap, now:now, ok:true, dscr:d, from:cur, loan:loanAt({ acqDSCR:d }) };
+}
+window.bkSizeLoanPlan = plan;
+window.bkSizeLoanDialog = function(){
+  var p = plan(), modal = window.bkModal; if(!modal) return;
+  if(!p){ modal('<h3>Loan is within policy</h3><p>The loan the engine sized is not above what house credit policy supports, so there is nothing to resize.</p><div class="btns"><button type="button" class="pl-hbtn primary" onclick="bkModalClose()">Close</button></div>'); return; }
+  if(!p.ok){ modal('<h3>Raising the DSCR will not reach policy</h3><p>The loan is ' + M(p.cap.overage) + ' above what policy supports (' + M(p.cap.capacity) + ', binding on ' + esc(p.cap.binding && p.cap.binding.name || 'policy') + '), but the engine’s DSCR sizing is not what is setting it. Lower the maximum LTV or LTC on Deal Underwrite, or change the price.</p><div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Close</button><button type="button" class="pl-hbtn primary" onclick="bkModalClose();showSheet(\'Debt Capacity\')">Open Debt Capacity</button></div>'); return; }
+  modal('<h3>Size the loan to policy</h3><p>The loan the engine sized is <b>' + M(p.now) + '</b>, which is ' + M(p.cap.overage) + ' above what house policy supports (<b>' + M(p.cap.capacity) + '</b>, binding on ' + esc(p.cap.binding && p.cap.binding.name || 'policy') + ').</p>'
+    + '<p>This raises the minimum DSCR the loan is sized to from <b>' + p.from.toFixed(2) + 'x</b> to <b>' + p.dscr.toFixed(3) + 'x</b>. The engine then sizes the loan at <b>' + M(p.loan) + '</b>; debt service, returns, tax and the credit gate all recompute. Undo restores the old DSCR.</p>'
+    + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn primary" onclick="bkSizeLoanGo()">Apply</button></div>');
+};
+window.bkSizeLoanGo = function(){
+  var p = plan(); if(!p || !p.ok){ bkModalClose(); return; } var s = bkLoad(); s.acqDSCR = p.dscr; bkSave(s); bkModalClose(); showSheet('Home'); try { window.scrollTo(0, 0); } catch(e){}
+};
+
+/* ---------------------------------------------------------------- 2. glossary */
+var G = [
+  ['DSCR', /\bDSCR\b|debt service coverage/i, 'Debt service coverage ratio: net operating income divided by the year’s loan payments. 1.25x means income covers the payment 1.25 times. Lenders set a minimum.'],
+  ['Stressed DSCR', /stressed (underwriting )?(DSCR|coupon|rate)/i, 'DSCR recalculated with the interest rate raised by a cushion (here the policy’s stress, e.g. 150 bps), to see whether the loan still works if rates are worse than the quote.'],
+  ['LTV', /\bLTV\b|loan[- ]to[- ]value/i, 'Loan-to-value: the loan as a share of the property’s value. Higher means more leverage and less equity cushion.'],
+  ['LTC', /\bLTC\b|loan[- ]to[- ]cost/i, 'Loan-to-cost: the loan as a share of total project cost (price plus closing costs and fees; for development, all costs).'],
+  ['Debt yield', /debt yield/i, 'Year-1 NOI divided by the loan. It ignores the interest rate, so it shows how fast the income alone would repay the loan.'],
+  ['Cap rate', /cap(italisation|italization)? rate|going-in cap|exit cap/i, 'Capitalisation rate: NOI divided by value. Going-in cap is NOI over the purchase price; exit cap is the rate used to value the property when it is sold.'],
+  ['NOI', /\bNOI\b|net operating income/i, 'Net operating income: rent and other income less operating expenses, before debt service, taxes on income and capital costs.'],
+  ['Levered IRR', /levered IRR|\bIRR\b|XIRR/i, 'Internal rate of return on the equity cash flows after debt. It is the annualised return that makes the cash flows’ present value equal the equity put in. Unlevered IRR ignores the loan.'],
+  ['Equity multiple', /equity multiple|\bMOIC\b/i, 'Total cash returned to equity divided by the cash invested. 1.5x means $1.50 back for every $1.00 in, over the whole hold.'],
+  ['Hurdle', /hurdle/i, 'The return a deal must clear: the target IRR on Credit Policy, or the preferred return tiers in the waterfall.'],
+  ['Yield on cost', /yield on cost/i, 'Stabilised NOI divided by total cost. For development, compare it to the exit cap: the gap is the profit margin for taking construction risk.'],
+  ['Loss to lease', /loss to lease/i, 'The gap between what units could rent for at market and what in-place leases pay. Closing it is the upside; it is not extra vacancy.'],
+  ['Binding constraint', /binding/i, 'The one sizing test (LTV, LTC, DSCR, debt yield) that allows the smallest loan. Loosening any other test changes nothing.'],
+  ['Preferred return', /preferred return|\bpref\b/i, 'The return investors earn first, before the sponsor shares in profit.'],
+  ['Promote', /promote/i, 'The sponsor’s share of profit above the preferred return, paid in tiers as the deal clears higher hurdles.'],
+  ['Catch-up', /catch-?up/i, 'A tier that pays the sponsor extra until it has received its promote share of all profit so far.'],
+  ['Waterfall', /waterfall/i, 'The order in which cash is paid to investors and the sponsor: return of capital, preferred return, then tiered splits.'],
+  ['Replacement reserves', /reserves/i, 'Money set aside each year for replacing roofs, appliances and other capital items. Deducted from NOI to give NOI after reserves.'],
+  ['Bad debt', /bad debt/i, 'Rent billed but never collected, taken as a percentage of rent.'],
+  ['TI / LC', /\bTI\b|\bLC\b|leasing commission/i, 'Tenant improvements and leasing commissions: the costs of re-leasing a commercial space when a lease rolls.'],
+  ['T-12', /T-?12|trailing[- ]12/i, 'Trailing twelve months: the last year of actual income and expenses, month by month, from the seller’s accounting.'],
+  ['Bonus depreciation', /bonus/i, 'Writing off a large share of short-life assets in the first year instead of spreading it. The share depends on the placed-in-service date.'],
+  ['Cost segregation', /cost seg/i, 'An engineering study that splits a building into short-life parts (5, 7, 15 years) and 27.5/39-year structure, so more depreciation comes sooner.'],
+  ['Mid-quarter convention', /mid-?quarter/i, 'A depreciation rule that applies when more than 40% of the year’s short-life basis is placed in service in the last quarter. It cuts first-year deductions.'],
+  ['Recapture', /recapture|1250|1245/i, 'Tax paid on depreciation already deducted when the property is sold: ordinary rates for short-life assets, up to 25% for building depreciation.'],
+  ['P10 / P90', /\bP10\b|\bP90\b|percentile/i, 'In the Monte Carlo, P10 is the result that 10% of draws fall below (a bad case) and P90 the result 90% fall below (a good case).'],
+  ['Standard deviation', /std\.? dev|standard deviation/i, 'How far a driver typically moves from its base value. About two thirds of draws fall within one standard deviation and 95% within two.'],
+  ['Break-even occupancy', /break-?even occ/i, 'The occupancy at which NOI just covers debt service. Lower is safer.']
+];
+window.BK_GLOSSARY = G.map(function(g){ return [g[0], g[2]]; });
+window.bkGlossaryShow = function(term){ var g = G.filter(function(x){ return x[0] === term; })[0]; if(!g || !window.bkModal) return; window.bkModal('<h3>' + esc(g[0]) + '</h3><p>' + esc(g[2]) + '</p><div class="btns"><button type="button" class="pl-hbtn primary" onclick="bkModalClose()">Close</button></div>'); };
+/* hints appear on hover in a floating tip, without writing anything into the sheet (writing attributes there makes other layers re-render and drops the focus you are editing in) */
+var TIP = null;
+function tipEl(){ if(TIP) return TIP; TIP = document.createElement('div'); TIP.id = 'pl-tip'; TIP.setAttribute('role', 'tooltip'); document.body.appendChild(TIP); return TIP; }
+function matchTerm(el){ var t = (el.textContent || '').trim(); if(!t || t.length > 90) return null; for(var i = 0; i < G.length; i++){ if(G[i][1].test(t)) return G[i]; } return null; }
+document.addEventListener('mouseover', function(e){
+  var el = e.target.closest && e.target.closest('#viewport td.rowlabel, #viewport th, #viewport caption, #viewport .pl-kpi .k, #viewport .pl-row .l, #viewport .metric-row .k, #viewport .bk-sx-title'); if(!el){ return; }
+  if(el._plTerm === undefined) el._plTerm = matchTerm(el); var g = el._plTerm; if(!g) return;
+  var t = tipEl(); t.innerHTML = '<b>' + esc(g[0]) + '</b>' + esc(g[2]); var r = el.getBoundingClientRect(); t.style.display = 'block';
+  var w = Math.min(320, window.innerWidth - 16); t.style.width = w + 'px'; t.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px'; t.style.top = (r.bottom + 6 + t.offsetHeight > window.innerHeight ? Math.max(8, r.top - t.offsetHeight - 6) : r.bottom + 6) + 'px';
+});
+document.addEventListener('mouseout', function(e){ if(TIP && e.target.closest && e.target.closest('#viewport td.rowlabel, #viewport th, #viewport caption, #viewport .pl-kpi .k, #viewport .pl-row .l, #viewport .metric-row .k, #viewport .bk-sx-title')) TIP.style.display = 'none'; });
+document.addEventListener('scroll', function(){ if(TIP) TIP.style.display = 'none'; }, true);
+var CSS = '#pl-tip{position:fixed;z-index:2200;display:none;background:#17304A;color:#fff;border-radius:8px;padding:10px 12px;font:12.5px/1.45 Inter,system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3);pointer-events:none}#pl-tip b{display:block;color:#C9A968;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}';
+var st = document.createElement('style'); st.id = 'pl-flow-css'; st.textContent = CSS; document.head.appendChild(st);
 })();
 </script>
 
@@ -21409,6 +21521,23 @@ if(typeof prevCtl === 'function'){
 window.bkConventionsLabel = cvLabel;
 })();
 </script>
+<script id="bk-v29250-order">
+/* The methodology (conventions) table is added to Deal Underwrite by a late layer, so it is moved to the end here, after every layer that touches the sheet. Done in the page markup itself
+   (not with CSS), so the keyboard order, the focus restore and what you see all stay the same. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof RENDERERS['Deal Underwrite'] !== 'function') return;
+function moveConventions(h){
+  var cap = '<caption>Underwriting Conventions</caption>', i = h.indexOf(cap); if(i < 0) return h;
+  var s0 = h.lastIndexOf('<div class="tbl-wrap"', i), end = '</table></div>', e = h.indexOf(end, i); if(s0 < 0 || e < 0) return h; e += end.length;
+  var block = h.slice(s0, e); return h.slice(0, s0) + h.slice(e) + '<div style="height:16px"></div>' + block;
+}
+var prevDU = RENDERERS['Deal Underwrite'];
+RENDERERS['Deal Underwrite'] = function(){ var o = prevDU.apply(this, arguments); if(o && typeof o.main === 'string') o.main = moveConventions(o.main); return o; };
+if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Deal Underwrite', RENDERERS['Deal Underwrite']); } catch(e){}
+})();
+</script>
+
 <script id="bk-v29160-input-flow">
 /* ===========================================================================
    V29.16.0 - INPUT FLOW: keep scroll and focus, and move between inputs with the arrow keys
