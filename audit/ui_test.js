@@ -296,6 +296,12 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     const nd = await p.evaluate(async () => { const s = bkLoad(); return { id: s.dealId, price: s.purchasePrice, units: s.units, gsf: s.gsf, noi: Math.round(bkCalc().noi), slots: (await bkDocsList()).map(f => f.slot).sort(), loc: s.location }; });
     check('creating the deal loads price, units, area and NOI from the OM', nd.price === exp.price && nd.units === exp.units && nd.gsf === exp.sf && Math.abs(nd.noi - exp.curNOI) <= 2 && nd.loc === 'Fairview, OH', JSON.stringify(nd));
     check('the OM and a photo are attached to the new deal', JSON.stringify(nd.slots) === '["om","photo"]', JSON.stringify(nd.slots));
+    await p.evaluate(() => { bkGuideOn(); bkGuideGo('exit'); }); await p.waitForTimeout(500);
+    const gt = await p.evaluate(() => document.querySelector('.gd').innerText);
+    check('after an OM import the guide marks my assumptions for checking, and offers a suggestion', /my assumption: check it/i.test(gt) && /I suggest/.test(gt), gt.slice(0, 160));
+    await p.evaluate(() => { bkGuideGo('expenses'); }); await p.waitForTimeout(400);
+    check('and tags the figures read from the OM', await p.evaluate(() => /from the OM/i.test(document.querySelector('.gd').innerText)));
+    await p.evaluate(() => bkGuideOff()); await p.waitForTimeout(300);
     /* a second layout: two pages, no price, a hyphenated street number, additional income without its own heading */
     const expb = JSON.parse(fsx.readFileSync(path.join(__dirname, 'fixtures', 'sample_om_b_expected.json'), 'utf8'));
     await p.evaluate(() => { showSheet('Import OM'); }); await p.waitForTimeout(500);
@@ -319,6 +325,31 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     const dd2 = await p.evaluate(async () => { const s = bkLoad(); const m = bkMonthlyReturns(); return { t: s.dealType, price: s.purchasePrice, units: s.units, src: s.sourceConstruction, noi: Math.round(bkCalc().noi), irrOk: isFinite(m.irr), slots: (await bkDocsList()).map(f => f.slot).sort() }; });
     check('the development deal is created and runs through the development engine', dd2.t === 'Development' && dd2.price === expd.price && dd2.units === expd.units && dd2.src === expd.construction && Math.abs(dd2.noi - expd.noi) <= 3 && dd2.irrOk && dd2.slots.includes('om') && dd2.slots.includes('other'), JSON.stringify(dd2));
   }
+  // 22. Step-by-step guide
+  await p.evaluate(() => { bkGuideOff && bkGuideOff(); }); await p.waitForTimeout(300);
+  await p.evaluate(() => showSheet('Home')); await p.waitForTimeout(400);
+  check('the Overview is the normal page while the guide is off', await p.evaluate(() => !document.documentElement.classList.contains('bk-guide') && !document.querySelector('.gd')));
+  await p.evaluate(() => bkGuideOn()); await p.waitForTimeout(500);
+  await p.evaluate(() => bkGuideBlank('Acquisition')); await p.waitForTimeout(500);
+  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 6/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
+  await p.fill('#gdf-name', 'Guide Court'); await p.dispatchEvent('#gdf-name', 'change'); await p.fill('#gdf-units', '14'); await p.dispatchEvent('#gdf-units', 'change');
+  const g1 = await p.evaluate(() => ({ name: bkLoad().name, units: bkLoad().units, panel: document.getElementById('gd-chg').innerText, btn: document.getElementById('gd-next').innerText }));
+  check('typed values are only proposed: nothing is saved until the change is confirmed', g1.units !== 14 && g1.name !== 'Guide Court' && /Guide Court/.test(g1.panel) && /2 change/i.test(g1.btn), JSON.stringify(g1));
+  await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(500);
+  const g2 = await p.evaluate(() => ({ name: bkLoad().name, units: bkLoad().units, done: bkLoad()._guide.done, h: document.querySelector('.gd h1').innerText }));
+  check('confirming saves the changes, marks the step done and moves on', g2.name === 'Guide Court' && g2.units === 14 && g2.done.property === 1 && /price/i.test(g2.h), JSON.stringify(g2));
+  await p.evaluate(() => bkGuideSkip()); await p.waitForTimeout(400);
+  await p.evaluate(() => bkGuideGo('expenses')); await p.waitForTimeout(400);
+  await p.evaluate(() => bkGuideUse('reserves')); await p.waitForTimeout(400);
+  const g3 = await p.evaluate(() => ({ draft: document.getElementById('gdf-reserves').value, saved: bkLoad().reserves }));
+  check('a suggestion fills the proposal (14 units x $300) without saving it', g3.draft === '4,200' && !(g3.saved > 0), JSON.stringify(g3));
+  await p.evaluate(() => bkGuideGo('review')); await p.waitForTimeout(400);
+  const g4 = await p.evaluate(() => document.querySelector('.gd').innerText);
+  check('the review lists the skipped step and the steps not yet done', /Price and closing was skipped/.test(g4) && /Rents and other income has not been done/.test(g4));
+  await p.evaluate(() => bkGuideDetail('Deal Underwrite')); await p.waitForTimeout(500);
+  check('leaving for the full sheet shows the full app and a way back to the guide', await p.evaluate(() => !document.documentElement.classList.contains('bk-guide') && !!document.getElementById('bk-guide-back')));
+  await p.evaluate(() => bkGuideOff()); await p.waitForTimeout(400);
+  check('turning the guide off restores the normal app', await p.evaluate(() => !document.documentElement.classList.contains('bk-guide') && !document.getElementById('bk-guide-back') && !document.querySelector('.gd')));
   // 21. Header sign-in / sign-out (last: signing out clears the page)
   p.on('dialog', d => d.accept());
   await p.evaluate(() => showSheet('Home')); await p.waitForTimeout(400);
