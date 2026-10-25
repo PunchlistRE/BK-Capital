@@ -1,0 +1,8 @@
+
+/* Text-entry authority: editable text fields must type and display left-to-right. */
+#viewport table.fin tr.input[data-bk-fmt="text"] td.v[contenteditable="true"],
+#viewport table.fin tr.input[data-bk-fmt="text"] td.v {
+  direction:ltr !important;
+  unicode-bidi:normal !important;
+  text-align:left !important;
+}

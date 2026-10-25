@@ -1,0 +1,16 @@
+
+#viewport .bk-dep-v2 .dep-input,
+#viewport .bk-dep-v2 select.dep-input{
+  width:118px!important; min-width:118px!important; max-width:118px!important;
+  box-sizing:border-box!important; text-align:right!important;
+}
+#viewport .bk-dep-v2 input.dep-money{width:150px!important;min-width:150px!important;max-width:150px!important;text-align:right!important}
+#viewport .bk-dep-v2 .dep-readonly{font-weight:600}
+#viewport .bk-dep-v2 .dep-addbar{padding:14px 0 2px 0}
+#viewport .bk-dep-v2 .dep-addbtn{
+  display:inline-flex;align-items:center;gap:7px;border:3px solid #6f7375;border-radius:18px;
+  padding:3px 14px;background:#eef6f0;color:#2f7c55;font-weight:800;font-size:14px;cursor:pointer
+}
+#viewport .bk-dep-v2 .dep-del{border:0;background:transparent;font-weight:800;cursor:pointer;font-size:16px}
+#viewport .bk-dep-v2 .dep-empty{padding:14px 22px;font-size:16px}
+#viewport .bk-dep-v2 .dep-mode-note{font-size:12px;color:#6b737a}

@@ -1,0 +1,5 @@
+
+#bk-sync-status{margin:10px 14px 14px;padding:6px 8px;border-radius:4px;font-size:10.5px;line-height:1.35;letter-spacing:.02em;border:1px solid rgba(255,255,255,.12);color:#C9D2DA;}
+#bk-sync-status.bk-sync-ok{color:#7FCB9E;}
+#bk-sync-status.bk-sync-warn{color:#E7C878;border-color:rgba(231,200,120,.45);}
+#bk-sync-status.bk-sync-err{color:#F0A08F;border-color:rgba(240,160,143,.5);}

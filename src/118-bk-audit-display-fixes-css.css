@@ -1,0 +1,21 @@
+
+/* KEY-METRIC ROWS. The navy fill means "closing total" - the last row(s) of a table. A highlighted
+   row anywhere else (directly under the navy header, or mid-statement) used to share that fill and
+   ran into the header or into a neighbouring total. Those rows now read as a key line instead:
+   a light navy tint, bold ink and a gold rule, distinct from both the header and the closing total. */
+:root{ --bk-key-fill:#E3E9F0; --bk-key-ink:#0e2a4a; --bk-key-rule:#3E9AE6; --bk-key-line:rgba(23,48,73,.18); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(237,234,226,.08); --bk-key-ink:#e8eef5; --bk-key-line:rgba(237,234,226,.18); } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(237,234,226,.08); --bk-key-ink:#e8eef5; --bk-key-line:rgba(237,234,226,.18); }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > td,
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > th {
+  background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; font-weight:700 !important; opacity:1 !important;
+  border-top:1px solid var(--bk-key-line) !important; border-bottom:1px solid var(--bk-key-line) !important; }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > :first-child {
+  box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip:not(.pass):not(.warn):not(.fail) {
+  background:#e6edf3 !important; color:#2f4258 !important; border-color:transparent !important; }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.pass { background:#E3F1E7 !important; color:#1F7A45 !important; border-color:transparent !important; }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.warn { background:#FBF0D9 !important; color:#8A6212 !important; border-color:transparent !important; }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.fail { background:#F8E1DC !important; color:#9B2C1F !important; border-color:transparent !important; }
+/* two closing totals in a row get a hairline between them instead of fusing into one block */
+html body #viewport table.fin tbody tr.grandtotal:not([data-bk-emph="key"]) + tr.grandtotal:not([data-bk-emph="key"]) > td { border-top:1px solid rgba(244,239,225,.22) !important; }

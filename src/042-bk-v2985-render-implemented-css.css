@@ -1,0 +1,21 @@
+
+/* V29.8.5 - implements approved visual convention from render.
+   Value/input column = right. UOM/labels/notes/empty-state = left. */
+.fin th { white-space:nowrap; }
+.fin td.v, .fin th.bk-value-head { text-align:right !important; }
+.fin td.v input, .fin td.v select, .fin td.v textarea,
+.fin td[data-bk-align="num"] input, .fin td[data-bk-align="num"] select {
+  text-align:right !important; text-align-last:right !important;
+}
+.fin td.rowlabel, .fin th.rowlabel-h,
+.fin td.bk-uom, .fin th.bk-uom,
+.fin td.bk-note, .fin th.bk-note,
+.fin td.bk-empty-state { text-align:left !important; }
+.fin td.bk-empty-state { padding-left:14px !important; }
+.fin td.bk-uom { white-space:nowrap; }
+.fin td.v { font-variant-numeric:tabular-nums; }
+/* categorical values are still values: right aligned by approved convention */
+.fin td.v select { width:auto; max-width:100%; }
+/* keep tables readable rather than allowing narrow headers to stack vertically */
+.tbl-wrap { overflow-x:auto; }
+.fin th, .fin td { overflow-wrap:normal; word-break:normal; }

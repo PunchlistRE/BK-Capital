@@ -1,0 +1,440 @@
+
+/* Import OM: an offering memorandum (PDF, text or page images) becomes a deal. Page images are read with Tesseract.js (loaded on first use, runs in this browser). */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined') return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+/* OM text parser: pure function of the page texts. Works on OCR output or a PDF text layer. */
+function parseOM(pages){
+  var txt = pages.map(function(p){ return p || ''; });
+  var all = txt.join('\n\f\n'), src = {};
+  function num(s){ if(s == null) return null; var neg = /^\(/.test(s) || /^-/.test(s); var v = parseFloat(String(s).replace(/[^0-9.]/g, '')); return isFinite(v) ? (neg ? -v : v) : null; }
+  function find(re, group, field, pageHint){ for(var i = 0; i < txt.length; i++){ var m = re.exec(txt[i]); if(m){ if(field) src[field] = i + 1; return m[group || 1]; } } return null; }
+  var o = { sources:src, items:[] };
+  /* identity: the running footer "FOR SALE - Name - 48 Street, City, ST" repeats on every page */
+  var f = null, votes = {}, best = 0; for(var i = 0; i < txt.length; i++){ var fm = /FOR SALE\s*[-·•|]\s*(.+?)\s*[-·•|]\s*(\d+(?:\s*-\s*\d+)?\s+[^,\n]+?)\s*[-·•|,]\s*([A-Za-z .]+?),\s*([A-Z]{2})\b/i.exec(txt[i]); if(!fm) continue; var kk = fm.slice(1, 5).join('|'); votes[kk] = (votes[kk] || 0) + 1; if(votes[kk] > best){ best = votes[kk]; f = fm; src.name = i + 1; } }
+  if(f){ o.name = f[1].trim(); o.street = f[2].trim(); o.city = f[3].trim(); o.state = f[4]; }
+  var z = /\b([A-Z]{2})\s*[-·]?\s*(\d{5})\b/.exec(all); if(z){ o.zip = z[2]; if(!o.state) o.state = z[1]; }
+  o.price = num(find(/(?:Offering|Asking|List(?:ing)?|Purchase)\s*Price[^\d$\n]{0,20}\$\s?([\d,]{6,})/i, 1, 'price'));
+  if(!o.price){ for(i = 0; i < txt.length && !o.price; i++){ var L = txt[i].split(/\n/); for(var q = 0; q < L.length; q++){ if(!/(ASKING|OFFERING|LIST(?:ING)?|PURCHASE)\s*PRICE/i.test(L[q])) continue;
+      var win = [L[q - 3], L[q - 2], L[q - 1], L[q]].filter(function(x){ return x; }).join(' '), ms = win.match(/\$\s?\d{1,3}(?:,\d{3})+/g) || [], vals = ms.map(num).filter(function(v){ return v >= 100000; }); if(vals.length){ o.price = vals[vals.length - 1]; src.price = i + 1; o.priceFallback = true; break; } } } }
+  var noiM = null; for(i = 0; i < txt.length && !noiM; i++){ noiM = /\bNOI\s+\$?\s?([\d,]{5,})\s+\$?\s?([\d,]{5,})/.exec(txt[i]); if(noiM) src.noi = i + 1; }
+  if(noiM){ o.curNOI = num(noiM[1]); o.pfNOI = num(noiM[2]); }
+  var capM = null; for(i = 0; i < txt.length && !capM; i++){ capM = /Cap\s*Rate\s+([\d.]+)\s*%\s+([\d.]+)\s*%/i.exec(txt[i]); }
+  if(capM){ o.capPrinted = true; o.curCap = num(capM[1]) / 100; o.pfCap = num(capM[2]) / 100; }
+  o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/Total\s+Units\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/(\d{1,4})\s*[- ]?\s*units?\b/i, 1, 'units'));
+  o.sf = num(find(/\bTotal\s+\d{1,4}\s+Units\s+([\d,]{4,})\s*SF/i, 1, 'sf')) || num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf')) || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
+  o.yearBuilt = num(find(/YEAR BUILT\s+(\d{4})/i, 1, 'yearBuilt'));
+  o.lotAcres = num(find(/LOT SIZE[^\n]{0,30}?([\d.]+)\s*Acres/i, 1, 'lot')) || num(find(/\b(\d?\.\d+)\s*Acres/i, 1));
+  o.stories = num(find(/STORIES\s+(\d+)/i, 1));
+  o.parking = num(find(/PARKING\s+(\d+)\s*Spaces/i, 1, 'parking'));
+  o.zoning = find(/ZONING\s+([A-Za-z0-9-]+)/i, 1);
+  o.propertyType = find(/PROPERTY TYPE\s+(Multi-?family|Mixed[- ]Use|Retail|Office|Industrial|Student Housing|Senior Housing)/i, 1);
+  /* unit mix */
+  var mix = [], avgCur = null, avgPf = null;
+  for(i = 0; i < txt.length; i++){ if(!/Unit\s*Mix/i.test(txt[i]) || !/UNIT TYPE/i.test(txt[i])) continue; src.unitMix = i + 1;
+    txt[i].split(/\n/).forEach(function(line){ var m = /^\s*(.*?[A-Za-z].*?)\s+(\d{1,3})\s+([\d.]+)\s*%\s+\$([\d,]+)\s+(?:\$([\d,]+)\s+)?\$([\d,]+)\s*$/.exec(line);
+      if(!m) return; var label = m[1].trim(); if(/^total/i.test(label)){ avgCur = num(m[4]); avgPf = num(m[6]); return; }
+      mix.push({ type:label.replace(/^1BR$/i, '1 BR'), units:num(m[2]), cur:num(m[4]), high:m[5] ? num(m[5]) : null, pf:num(m[6]) }); }); break; }
+  o.unitMix = mix; o.avgCur = avgCur; o.avgPf = avgPf;
+  /* income and expense */
+  var ie = null; for(i = 0; i < txt.length; i++){ if(/OPERATING INCOME/i.test(txt[i]) && /OPERATING EXPENSES/i.test(txt[i])){ ie = txt[i]; src.income = i + 1; break; } }
+  if(ie){
+    var sec = 'inc', I = { addl:[], exp:[] }, done = false;
+    ie.split(/\n/).forEach(function(line){ if(done || /^\s*FOR SALE/i.test(line)){ done = true; return; }
+      if(/^\s*ADDITIONAL INCOME/i.test(line)){ sec = 'add'; return; } if(/^\s*OPERATING EXPENSES/i.test(line)){ sec = 'exp'; return; }
+      var re = /\(?\$?\s?\d[\d,]*(?:\.\d+)?\)?\s*%?/g, toks = [], m, cut = -1; while((m = re.exec(line))){ if(cut < 0) cut = m.index; var t = m[0].trim(); toks.push({ pct:/%$/.test(t), v:num(t.replace('%', '')), neg:/^\(/.test(t) }); }
+      if(cut < 0) return; var label = line.slice(0, cut).replace(/[\s:|]+$/, '').trim(); if(!label || /^(current|pro forma|%|\$ ?\/ ?unit)/i.test(label)) return;
+      var money = toks.filter(function(t){ return !t.pct; }).map(function(t){ return Math.abs(t.v); }), pcts = toks.filter(function(t){ return t.pct; }).map(function(t){ return t.v; });
+      if(!money.length) return;
+      if(sec === 'inc'){
+        if(/gross potential/i.test(label)) I.gpr = { cur:money[0], pf:money[1] };
+        else if(/loss to lease|below market/i.test(label)) I.ltl = { cur:money[0], pf:money[1] };
+        else if(/gross scheduled/i.test(label)) I.gsr = { cur:money[0], pf:money[1] };
+        else if(/^vacancy/i.test(label)) I.vac = { cur:money[0], pf:money[1], curPct:pcts[0] != null ? pcts[0] / 100 : null, pfPct:pcts[1] != null ? pcts[1] / 100 : null };
+        else if(/effective rental/i.test(label)) I.eri = { cur:money[0], pf:money[1] };
+        else if(/effective gross/i.test(label)) I.egi = { cur:money[0], pf:money[1] };
+        else if(/net operating/i.test(label)) I.noi = { cur:money[0], pf:money[1] };
+        else if(/^total additional/i.test(label)) I.addTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] };
+        else if(/\$/.test(line) && !/^(total|below|loss)/i.test(label) && /^[A-Za-z]/.test(label) && money.length >= 2) I.addl.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : (money[1] != null && money.length > 2 ? money[1] : money[0]) });
+      } else if(/effective gross/i.test(label)) I.egi = { cur:money[0], pf:money[1] };
+      else if(/net operating/i.test(label)){ I.noi = { cur:money[0], pf:money[1] }; done = true; }
+      else if(sec === 'add'){ if(/^total/i.test(label)) I.addTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] }; else I.addl.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : money[0] }); }
+      else if(sec === 'exp'){ if(/^total/i.test(label)) I.expTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] }; else I.exp.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : money[0] }); }
+    });
+    if(!I.egi && I.eri){ I.egi = { cur:I.eri.cur + (I.addTot ? I.addTot.cur : 0), pf:I.eri.pf + (I.addTot ? I.addTot.pf : 0), derived:true }; }
+    if(!I.addTot && I.addl.length) I.addTot = { cur:I.addl.reduce(function(t, e){ return t + e.cur; }, 0), pf:I.addl.reduce(function(t, e){ return t + e.pf; }, 0) };
+    o.ie = I;
+    if(I.noi){ o.curNOI = o.curNOI || I.noi.cur; o.pfNOI = o.pfNOI || I.noi.pf; }
+  }
+  if(o.price && o.curNOI && !o.curCap) o.curCap = o.curNOI / o.price;
+  return o;
+}
+
+
+var S = { busy:false, msg:'', mode:'', result:null, basis:'cur', file:null, target:'new' };
+function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function $(n){ return n == null || !isFinite(n) ? '—' : '$' + Math.round(n).toLocaleString('en-US'); }
+function pct(n, d){ return n == null || !isFinite(n) ? '—' : (n * 100).toFixed(d == null ? 2 : d) + '%'; }
+function slug(s){ return String(s || 'deal').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase().slice(0, 28); }
+function lat(u8){ var s = ''; for(var k = 0; k < u8.length; k += 65536) s += String.fromCharCode.apply(null, u8.subarray(k, k + 65536)); return s; }
+
+/* page images: scanned and designed OMs are one large JPEG per page */
+function pageJpegs(buf){
+  var u8 = new Uint8Array(buf), s = lat(u8), out = [], re = /(\d+)\s+\d+\s+obj\s*<<([\s\S]*?)>>\s*stream\r?\n/g, m;
+  while((m = re.exec(s))){ var d = m[2]; if(!/\/Subtype\s*\/Image/.test(d) || !/DCTDecode/.test(d)) continue; var w = +((/\/Width\s+(\d+)/.exec(d) || [])[1] || 0), h = +((/\/Height\s+(\d+)/.exec(d) || [])[1] || 0); if(w < 1000 || h < 700) continue;
+    var a = m.index + m[0].length, b = s.indexOf('endstream', a); if(b < 0) continue; var e = b; while(e > a && (u8[e - 1] === 10 || u8[e - 1] === 13)) e--; out.push({ w:w, h:h, blob:new Blob([u8.subarray(a, e)], { type:'image/jpeg' }) }); }
+  return out;
+}
+var CDN = 'https://cdn.jsdelivr.net/npm/', TV = '5.1.1', worker = null;
+function loadScript(src){ return new Promise(function(res, rej){ var t = document.createElement('script'); t.src = src; t.onload = res; t.onerror = function(){ rej(new Error('Could not load the text-recognition engine. It needs an internet connection the first time (about 6 MB, then cached).')); }; document.head.appendChild(t); }); }
+function poolSize(){ return Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)); }
+function getWorker(){ if(worker) return worker;
+  worker = (window.Tesseract ? Promise.resolve() : loadScript(CDN + 'tesseract.js@' + TV + '/dist/tesseract.min.js')).then(function(){
+    var sch = window.Tesseract.createScheduler(), n = poolSize(), opts = { workerPath:CDN + 'tesseract.js@' + TV + '/dist/worker.min.js', corePath:CDN + 'tesseract.js-core@' + TV + '/', langPath:CDN + '@tesseract.js-data/eng@1.0.0/4.0.0_best_int', gzip:true, logger:function(){} };
+    var made = []; for(var k = 0; k < n; k++) made.push(window.Tesseract.createWorker('eng', 1, opts).then(function(w){ sch.addWorker(w); }));
+    return Promise.all(made).then(function(){ return sch; }); });
+  worker.catch(function(){ worker = null; }); return worker; }
+/* page images are read at their own resolution up to 2700 px wide: shrinking to 1900 px drops fine print such as a white-on-dark NOI bar */
+function shrink(blob){ return createImageBitmap(blob).then(function(bm){ var sc = Math.min(1, 2700 / bm.width); if(sc >= 0.98) return blob; var c = document.createElement('canvas'); c.width = Math.round(bm.width * sc); c.height = Math.round(bm.height * sc); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); return new Promise(function(res){ c.toBlob(function(b){ res(b || blob); }, 'image/jpeg', 0.92); }); }).catch(function(){ return blob; }); }
+function ocr(blob){ return Promise.all([getWorker(), shrink(blob)]).then(function(a){ return a[0].addJob('recognize', a[1]); }).then(function(r){ return r.data.text; }); }
+var CK = 'bkcapital.omocr.';
+function cacheKey(f){ return CK + [f.name, f.size, f.lastModified || 0].join('|'); }
+function cacheGet(f){ try { var v = JSON.parse(localStorage.getItem(cacheKey(f)) || 'null'); return v && Array.isArray(v.pages) ? v : null; } catch(e){ return null; } }
+function cachePut(f, info){ try { Object.keys(localStorage).filter(function(k){ return k.indexOf(CK) === 0; }).slice(0, -7).forEach(function(k){ localStorage.removeItem(k); }); localStorage.setItem(cacheKey(f), JSON.stringify({ pages:info.pages, n:info.n })); } catch(e){} }
+
+function setMsg(t){ S.msg = t; if(typeof showSheet === 'function') showSheet('Import OM'); }
+var NEED = function(o){ return o.price && o.units && o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length; };
+var NEEDMIN = function(o){ return o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length; };
+/* read the OM: text layer if it has one, otherwise OCR the pages that matter (the contents page says which) */
+function readOMLegacy(file){
+  var info = { method:'', pages:[], cover:null };
+  return file.arrayBuffer().then(function(buf){
+    var ext = typeof window.bkImportParseFile === 'function' ? window.bkImportParseFile(file).catch(function(){ return null; }) : Promise.resolve(null);
+    return ext.then(function(parsed){
+      var rows = parsed && !parsed.unreadable && parsed.sheets && parsed.sheets[0] ? parsed.sheets[0].rows : null;
+      var tl = rows ? rows.map(function(r){ return (r || []).filter(function(c){ return c != null && c !== ''; }).join('  '); }).join('\n') : '';
+      if(tl.replace(/\s+/g, '').length > 1500){ info.method = 'text'; info.pages = [tl]; return info; }
+      var imgs = pageJpegs(buf); if(!imgs.length) throw new Error('This PDF has no readable text and no page images this reader can use. Export it again from the source, or use the T-12 and rent roll importers.');
+      info.method = 'ocr'; info.n = imgs.length; var hit = cacheGet(file); if(hit){ info.pages = hit.pages; info.cover = coverIsPhoto(hit.pages[0]) ? imgs[0].blob : null; info.cached = true; return info; } var texts = new Array(imgs.length).fill(''), done = {};
+      var step = function(i){ if(done[i] || i < 0 || i >= imgs.length) return Promise.resolve(); done[i] = 1; setMsg('Reading page ' + (i + 1) + ' of ' + imgs.length + '...'); return ocr(imgs[i].blob).then(function(t){ texts[i] = t; }); };
+      var seq = function(list){ return Promise.all(list.map(step)); };
+      return seq([0, 1].filter(function(i){ return i < imgs.length; })).then(function(){
+        var toc = texts[1] || '', want = []; [/Executive Summary/, /Property Summary/, /Property Overview/, /Building Overview/, /Unit Mix/, /Income\s*(?:&|and)\s*Expense/, /Rent Roll/].forEach(function(re){ var m = new RegExp(re.source + '[^\\n\\d]{0,60}?(\\d{1,2})\\b[^\\n\\d]{0,30}$', 'im').exec(toc); if(m){ var p = +m[1] - 1; if(p > 1 && p < imgs.length) want.push(p); } });
+        var first = want.length ? want : imgs.map(function(_, i){ return i; }).slice(2);
+        return seq(first).then(function(){ var rest = imgs.map(function(_, i){ return i; }).filter(function(i){ return !done[i]; }); var go = function(){ var o = parseOM(texts); if(NEED(o) || !rest.length) return Promise.resolve(); return seq(rest.splice(0, poolSize())).then(go); }; return go(); }); }).then(function(){
+        info.pages = texts; info.cover = coverIsPhoto(texts[0]) ? imgs[0].blob : null; cachePut(file, info); return info; });
+    });
+  });
+}
+var PV = '3.11.174';
+function loadPdfJs(){ if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib); return loadScript(CDN + 'pdfjs-dist@' + PV + '/build/pdf.min.js').then(function(){ window.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN + 'pdfjs-dist@' + PV + '/build/pdf.worker.min.js'; return window.pdfjsLib; }); }
+/* one page's text content, rebuilt into lines (items on the same baseline, left to right, wide gaps kept as two spaces) */
+function pageText(tc){ var rows = []; tc.items.forEach(function(it){ if(!it.str || !it.transform) return; var y = it.transform[5], fs = Math.abs(it.transform[3]) || 10, row = rows.filter(function(r){ return Math.abs(r.y - y) < fs * 0.45; })[0]; if(!row){ row = { y:y, its:[] }; rows.push(row); } row.its.push({ x:it.transform[4], w:it.width, s:it.str, fs:fs }); });
+  rows.sort(function(a, b){ return b.y - a.y; });
+  return rows.map(function(r){ r.its.sort(function(a, b){ return a.x - b.x; }); var out = '', end = null; r.its.forEach(function(t){ if(end != null){ var gap = t.x - end; out += gap > t.fs * 1.2 ? '  ' : gap > t.fs * 0.12 ? ' ' : ''; } out += t.s; end = t.x + t.w; }); return out.replace(/\s+$/, ''); }).filter(Boolean).join('\n'); }
+function renderPage(page, width){ var v1 = page.getViewport({ scale:1 }), vp = page.getViewport({ scale:width / v1.width }), c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height); var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  return page.render({ canvasContext:ctx, viewport:vp }).promise.then(function(){ return new Promise(function(res){ c.toBlob(function(b){ res(b); }, 'image/jpeg', 0.92); }); }); }
+/* image-only pages: take the picture itself at its own resolution (re-drawing the page smooths away fine print) */
+function pageImage(page){ var lib = window.pdfjsLib, OPS = lib.OPS;
+  return page.getOperatorList().then(function(ol){ var ids = []; for(var i = 0; i < ol.fnArray.length; i++){ var f = ol.fnArray[i]; if(f === OPS.paintImageXObject || f === OPS.paintJpegXObject) ids.push(ol.argsArray[i][0]); }
+    return Promise.all(ids.map(function(id){ return new Promise(function(res){ var done = false, fin = function(o){ if(!done){ done = true; res(o); } }; try { (/^g_/.test(id) ? page.commonObjs : page.objs).get(id, fin); } catch(e){ fin(null); } setTimeout(function(){ fin(null); }, 4000); }); }));
+  }).then(function(imgs){ var best = null; imgs.forEach(function(o){ if(o && o.width >= 1000 && (!best || o.width * o.height > best.width * best.height)) best = o; }); if(!best) return null;
+    var c = document.createElement('canvas'); c.width = best.width; c.height = best.height; var ctx = c.getContext('2d');
+    if(best.bitmap) ctx.drawImage(best.bitmap, 0, 0); else if(best.data){ var d = best.data, n = best.width * best.height, rgba = new Uint8ClampedArray(n * 4), k;
+      if(d.length === n * 4) rgba.set(d); else if(d.length === n * 3){ for(k = 0; k < n; k++){ rgba[k * 4] = d[k * 3]; rgba[k * 4 + 1] = d[k * 3 + 1]; rgba[k * 4 + 2] = d[k * 3 + 2]; rgba[k * 4 + 3] = 255; } } else return null;
+      ctx.putImageData(new ImageData(rgba, best.width, best.height), 0, 0); } else return null;
+    return new Promise(function(res){ c.toBlob(function(b){ res(b); }, 'image/png'); }); }).catch(function(){ return null; }); }
+/* read the OM with PDF.js: real text where the PDF has it (Canva, InDesign, Word), page images read by text recognition where it does not (scanned or image-only OMs, any image format) */
+function readOMPdfjs(file){
+  var info = { method:'', pages:[], cover:null };
+  var jpegs = null;
+  return Promise.all([file.arrayBuffer(), loadPdfJs()]).then(function(a){ jpegs = safe(function(){ return pageJpegs(a[0]); }, []); return a[1].getDocument({ data:new Uint8Array(a[0]) }).promise; }).then(function(doc){
+    var n = doc.numPages, texts = new Array(n).fill(''), pending = [], pages = [];
+    var getPage = function(i){ return pages[i] ? Promise.resolve(pages[i]) : doc.getPage(i + 1).then(function(p){ pages[i] = p; return p; }); };
+    var readAll = function(i){ if(i >= n) return Promise.resolve(); setMsg('Reading page ' + (i + 1) + ' of ' + n + '...'); return getPage(i).then(function(p){ return p.getTextContent(); }).then(function(tc){ var t = pageText(tc); if(t.replace(/\s+/g, '').length >= 60) texts[i] = t; else pending.push(i); return readAll(i + 1); }); };
+    return readAll(0).then(function(){
+      var pendingAll = pending.slice(); info.ocrPages = pendingAll.map(function(i){ return i + 1; }); info.dbg = { pending:pending.length, jpegs:jpegs.length, n:n }; info.n = n; info.method = pending.length === 0 ? 'text' : pending.length === n ? 'ocr' : 'mixed';
+      var hit = pending.length ? cacheGet(file) : null; if(hit && hit.pages.length === n){ pending.forEach(function(i){ texts[i] = hit.pages[i] || ''; }); pending = []; info.cached = true; }
+      var done = {}, step = function(i){ if(done[i] || pending.indexOf(i) < 0) return Promise.resolve(); done[i] = 1; setMsg('Reading page ' + (i + 1) + ' of ' + n + '...'); var jp = jpegs.length === n ? jpegs[i] : jpegs.length === pendingAll.length ? jpegs[pendingAll.indexOf(i)] : null; if(jp) return ocr(jp.blob).then(function(t){ texts[i] = t; }); return getPage(i).then(function(p){ return pageImage(p).then(function(b){ return b || renderPage(p, 2640); }); }).then(ocr).then(function(t){ texts[i] = t; }); };
+      var seq = function(list){ return Promise.all(list.map(step)); };
+      if(!pending.length) return;
+      return seq([0, 1]).then(function(){ var toc = texts[1] || '', want = []; [/Executive Summary/, /Property Summary/, /Property Overview/, /Building Overview/, /Unit Mix/, /Income\s*(?:&|and)\s*Expense/, /Rent Roll/].forEach(function(re){ var m = new RegExp(re.source + '[^\\n\\d]{0,60}?(\\d{1,2})\\b[^\\n\\d]{0,30}$', 'im').exec(toc); if(m){ var q = +m[1] - 1; if(q > 1 && q < n) want.push(q); } });
+        return seq(want.length ? want : pending.slice(2)).then(function(){ var rest = pending.filter(function(i){ return !done[i]; }); var go = function(){ if(NEED(parseOM(texts)) || !rest.length) return Promise.resolve(); return seq(rest.splice(0, poolSize())).then(go); }; return go(); }); }).then(function(){ cachePut(file, { pages:texts, n:n }); });
+    }).then(function(){
+      info.pages = texts; if(!coverIsPhoto(texts[0])) return info;
+      return getPage(0).then(function(p){ return renderPage(p, 1800); }).then(function(b){ info.cover = b; return info; }).catch(function(){ return info; }); });
+  });
+}
+function readOM(file){ return readOMPdfjs(file).catch(function(e){ return readOMLegacy(file).catch(function(e2){ throw e2 && /no readable text/.test(e2.message || '') && e ? new Error('Could not read this PDF: ' + (e.message || e) + ' ' + e2.message) : e2; }); }); }
+/* a cover page is mostly picture: no dollar figures in it. A first page of rent roll or income table is not a photo. */
+function coverIsPhoto(t){ return !/\$\s?\d/.test(t || ''); }
+/* the cover's photo, without the title text along its bottom */
+function coverPhoto(blob){ return createImageBitmap(blob).then(function(bm){ var h = Math.round(bm.height * 0.70), c = document.createElement('canvas'); c.width = bm.width; c.height = h; c.getContext('2d').drawImage(bm, 0, 0, bm.width, h, 0, 0, bm.width, h); return new Promise(function(res){ c.toBlob(function(b){ res(new File([b], 'cover-photo.jpg', { type:'image/jpeg' })); }, 'image/jpeg', 0.9); }); }); }
+
+function sumBy(list, rx, key){ return list.filter(function(e){ return rx.test(e.label); }).reduce(function(t, e){ return t + (e[key] || 0); }, 0); }
+function buildDeal(om0, basis, fileName){
+  var om = Object.assign({}, om0, { price:om0.price || S.mPrice || 0, units:om0.units || S.mUnits || 0 });
+  if(!om.curCap && om.price && om.curNOI) om.curCap = om.curNOI / om.price;
+  var I = om.ie, k = basis, u = om.units || 1, notes = [];
+  var gsr = basis === 'cur' ? (I.gsr ? I.gsr.cur : I.gpr && I.gpr.cur) : (I.gpr ? I.gpr.pf : I.gsr && I.gsr.pf), egi = I.egi ? I.egi[k] : null;
+  var vacPct = I.vac && I.vac[k + 'Pct'] != null ? I.vac[k + 'Pct'] : (I.vac && gsr ? I.vac[k] / gsr : 0.05);
+  var other = I.addTot ? I.addTot[k] : sumBy(I.addl, /./, k), ex = I.exp, E = function(rx){ return sumBy(ex, rx, k); };
+  var mgmt = E(/manag/i), taxes = E(/tax/i), ins = E(/insur/i), util = E(/electric|gas|heat|water|sewer|trash|refuse|utilit/i), rm = E(/repair|maint/i), con = E(/contract|landscap|snow|janitor|pest|cleaning/i), pay = E(/payroll|salar|on-?site|super|labor/i), mkt = E(/market|advert|leasing/i);
+  var used = mgmt + taxes + ins + util + rm + con + pay + mkt, totExp = I.expTot ? I.expTot[k] : ex.reduce(function(t, e){ return t + e[k]; }, 0), ga = Math.max(0, Math.round((totExp - used) * 100) / 100);
+  var cap = om.curCap || (om.price && I.noi ? I.noi.cur / om.price : 0.06);
+  var name = om.name || String(fileName || 'Imported deal').replace(/\.pdf$/i, '').replace(/\s*[-–—]\s*(offering memorandum|om|listing).*$/i, '').trim();
+  var d = { dealId:'OM-' + slug(name), name:name, location:[om.city, om.state].filter(Boolean).join(', '), dealType:'Acquisition', propertyType:/multi/i.test(om.propertyType || 'Multifamily') ? 'Multifamily' : (om.propertyType || 'Multifamily'), status:'Pipeline', closing:'1/1/2027',
+    units:u, gsf:om.sf || 0, commercialArea:0, parking:om.parking || 0, siteArea:om.lotAcres || 0, purchasePrice:om.price, t12noi:om.curNOI || (I.noi && I.noi.cur) || 0,
+    avgRent:Math.round(gsr / u / 12 * 100) / 100, otherIncomePerUnit:Math.round(other / u * 100) / 100, vacancy:Math.round(vacPct * 10000) / 10000, occupancy:Math.round((1 - vacPct) * 10000) / 10000, badDebtPct:0, mgmtPct:egi ? Math.round(mgmt / egi * 100000) / 100000 : 0.03,
+    taxes:taxes, insurance:ins, utilities:util, rm:rm, contract:con, payroll:pay, turnover:0, marketing:mkt, ga:ga, reserves:0,
+    exitCap:Math.round(cap * 10000) / 10000, holdYears:5, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, commercialRentGrowth:0, closingCostsPct:0.02, saleCostPct:0.02, miscPerGSF:0 };
+  var tie = safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
+  if(!E(/manag/i)) notes.push('The OM shows no management fee. Underwriting normally includes 3% to 5% of income for management, even when the owner self-manages. Set it on Deal Underwrite.');
+  if(!E(/repair|maint/i)) notes.push('The OM shows no repairs and maintenance line. Add an allowance on Deal Underwrite.');
+  if(!om0.price) notes.push('The OM does not state a price. The price above is the one you entered.');
+  notes.push('Replacement reserves are not in the OM, so they start at $0. Set them on Deal Underwrite (about $250 to $300 a unit is usual).');
+  notes.push('Exit cap rate starts at the going-in cap (' + pct(cap) + ') and hold at 5 years. Growth and closing costs are the app standards. Change them to your view.');
+  if(basis === 'pf') notes.push('This uses the broker pro forma. It assumes every unit reaches the rents the OM calls achievable, so treat the returns as the broker case.');
+  if(om.unitMix && om.unitMix.length) notes.push('Rents use the average across ' + om.unitMix.map(function(m){ return m.units + ' ' + m.type; }).join(' and ') + ' (a unit-level rent roll was not extracted).');
+  if(I.ltl && I.ltl.cur && basis === 'cur') notes.push('The OM shows ' + $(I.ltl.cur) + ' a year of loss to lease. In-place rents are below the rents it calls achievable.');
+  return { deal:d, tie:tie, want:want, notes:notes, cap:cap };
+}
+function run(file, target){
+  S = { busy:true, msg:'Starting...', mode:'om', result:null, basis:S.basis || 'cur', file:file, target:target || 'new' }; showSheet('Import OM');
+  return readOM(file).then(function(info){ var om = parseOM(info.pages); S.info = info; window.__bkOMState = S;
+    if(!NEEDMIN(om) && looksDev(info.pages)){ S.om = om; S.info = info; S.mode = 'dev'; S.dev = { om:parseDevOM(info.pages), taxBasis:'pf' }; S.result = true; S.busy = false; S.msg = 'Read ' + file.name + '.'; showSheet('Import OM'); return; }
+    if(!NEEDMIN(om) && /land for development|available parcels|sites (?:are )?available/i.test(info.pages.join('\n')) && !om.price){ S.msg = 'Read ' + file.name + '. It is a land listing with no price, unit count or financials, so there is nothing to underwrite from it yet. Keep it with the deal in Deal Documents, and use Import OM again once you have a priced offering or a pro forma.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
+    if(!NEEDMIN(om)){ S.msg = 'Read ' + file.name + ' but could not find an income and expense table with its net operating income (found: ' + [om.price && 'price', om.units && 'units', om.ie && om.ie.noi && 'NOI'].filter(Boolean).join(', ') + '). Use Import Deal for a T-12, or Source Ingestion for other layouts.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
+    S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mUnits = null; S.msg = 'Read ' + file.name + ' (' + (info.method === 'text' ? 'text layer' : info.method === 'mixed' ? 'text layer, and page images read by text recognition' : (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images')) + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
+}
+window.bkOMRun = function(inp){ var f = inp && inp.files && inp.files[0]; if(!f) return; if(/\.(xlsx|xlsm|csv)$/i.test(f.name)){ S = { busy:true, msg:'', mode:'dev', result:null, basis:'cur', file:null, target:'new', dev:{ om:{}, taxBasis:'pf' } }; devRun(inp); return; } run(f, 'new'); };
+window.bkOMBasis = function(b){ S.basis = b; showSheet('Import OM'); };
+window.bkOMManual = function(k, v){ v = parseFloat(String(v).replace(/[^0-9.]/g, '')); S[k] = isFinite(v) && v > 0 ? v : null; showSheet('Import OM'); };
+window.__bkOMDbg = { ocr:ocr, shrink:shrink, pageJpegs:pageJpegs, getWorker:getWorker };
+window.bkOMParse = parseOM; window.bkOMBuild = buildDeal; window.bkOMPageJpegs = pageJpegs;
+window.bkOMCreate = function(){ if(!S.om || !((S.om.price || S.mPrice) && (S.om.units || S.mUnits))) return; window.__bkOMLast = { sources:S.om.sources || null }; var b = buildDeal(S.om, S.basis, S.file && S.file.name), file = S.file, info = S.info;
+  stampImp(b.deal, confOM(S.om, b, info, S.basis), S.file && S.file.name);
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
+  if(b.deal._imp){ var si = bkLoad(); si._imp = b.deal._imp; bkSave(si); }
+  var id = String(b.deal.dealId), jobs = [];
+  if(file && typeof window.bkDocsAdd === 'function') jobs.push(window.bkDocsAdd('om', file, id));
+  if(info && info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverPhoto(info.cover).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
+  Promise.all(jobs).catch(function(){}).then(function(){ if(window.bkDocsInvalidate) window.bkDocsInvalidate(); if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Home'); }); };
+var KEEP = ['dealId', 'closing', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'commercialRentGrowth', 'closingCostsPct', 'saleCostPct', 'miscPerGSF'];
+window.bkOMApply = function(){ if(!S.om) return; var b = buildDeal(S.om, S.basis, S.file && S.file.name), cur = bkLoad(), nd = Object.assign({}, b.deal);
+  KEEP.forEach(function(k){ delete nd[k]; }); if(cur.name && !/^(untitled|-)?$/i.test(String(cur.name))){ delete nd.name; delete nd.location; }
+  if(!window.confirm('Apply these figures to "' + (cur.name || 'this deal') + '"? Price, units, rents, other income, vacancy and every expense line are replaced. The previous values stay in Version History.')) return;
+  if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before applying OM figures', true);
+  stampImp(nd, confOM(S.om, b, S.info, S.basis), S.file && S.file.name);
+  bkSave(Object.assign(cur, nd)); showSheet('Home'); };
+window.bkDocsExtractHook = function(fid){ window.bkDocsGet(fid).then(function(r){ if(!r) return; var f = new File([r.blob], r.name, { type:r.type }); if(r.slot === 't12') return t12(f); S.basis = 'cur'; run(f, 'apply'); }); };
+
+/* T-12 stored with a deal: extract with the Import Deal reader and apply to this deal */
+function t12(file){
+  S = { busy:true, msg:'Reading ' + file.name + '...', mode:'t12', result:null, basis:'cur', file:file, target:'apply' }; showSheet('Import OM');
+  if(typeof window.bkImportParseFile !== 'function'){ S.busy = false; S.msg = 'The T-12 reader is not available.'; showSheet('Import OM'); return; }
+  window.bkImportParseFile(file).then(function(parsed){ if(parsed.unreadable) throw new Error('This PDF has no readable text. Use the spreadsheet source.'); var props = window.bkImportExtract(parsed); if(!props.length) throw new Error('No Yardi-format T-12 line items found in ' + file.name + '.');
+    S.t12 = props; S.result = true; S.busy = false; S.msg = 'Found ' + props.length + ' propert' + (props.length === 1 ? 'y' : 'ies') + ' with line items.'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
+}
+window.bkT12Apply = function(i){ var p = S.t12 && S.t12[i]; if(!p) return; var cur = bkLoad(), price = Number(cur.purchasePrice) || 0, cap = price ? p.noi / price : 0.06, nd = window.bkImportDeal(p, cap, Number(cur.units) || p.units || 1);
+  ['dealId', 'name', 'closing', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'closingCostsPct', 'saleCostPct', 'exitCap', 'purchasePrice', 'location'].forEach(function(k){ delete nd[k]; });
+  if(!window.confirm('Replace this deal\'s income and expense lines with the T-12 for ' + p.name + '? Price, financing and growth stay as they are. The previous values stay in Version History.')) return;
+  if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before applying T-12', true);
+  bkSave(Object.assign(cur, nd)); showSheet('Home'); };
+
+/* ------------------------------------------------------------ development sites: the OM (facts) plus the developer's pro forma workbook (numbers) */
+function looksDev(pages){ var t = (pages || []).join('\n'); return /development site|shovel[- ]ready|approved\s+\d+[- ]unit|land for development|zoning\s*(?:&|and)\s*coastal approved/i.test(t); }
+function parseDevOM(pages){
+  var t = pages.join('\n'), o = {}, m;
+  o.price = (m = /\bPrice\s+\$\s?([\d,]{6,})/i.exec(t)) ? +m[1].replace(/,/g, '') : null;
+  o.units = (m = /Approved Units\s+(\d{1,4})/i.exec(t)) ? +m[1] : (m = /(\d{1,4})[- ]unit/i.exec(t)) ? +m[1] : null;
+  o.acres = (m = /\bAcres\s+([\d.]+)/i.exec(t)) ? +m[1] : (m = /([\d.]+)\s*Acres/i.exec(t)) ? +m[1] : null;
+  o.zoning = (m = /\bZoning\s+([A-Za-z0-9-]+)/.exec(t)) ? m[1] : null;
+  o.stories = (m = /Number of Stories\s+(\d+)/i.exec(t)) ? +m[1] : null;
+  if((m = /Address\s+(\d+[^,\n]+?),\s*([A-Za-z .]+?),\s*([A-Z]{2})\b/.exec(t))){ o.street = m[1].trim(); o.city = m[2].trim(); o.state = m[3]; }
+  else if((m = /^\s*(\d+\s+[A-Z][A-Za-z ]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Lane|Way))\b/m.exec(t))) o.street = m[1].trim();
+  o.mix = {}; var re = /(\d)\s*Bedroom Units\s+(\d+)/gi; while((m = re.exec(t))) o.mix[m[1] + 'BR'] = +m[2];
+  o.commercialSuites = (m = /Commercial Suites?\s+(\d+)/i.exec(t)) ? +m[1] : 0;
+  o.statedYield = (m = /year[- ]one yield of ([\d.]+)%/i.exec(t)) ? +m[1] / 100 : null;
+  o.sellerFinancing = /short-term land purchase financing for up to (\d+)% of the purchase price at ([\d.]+)%/i.exec(t);
+  o.tax = /tax abatement|tax fix/i.test(t);
+  return o;
+}
+function parseDevPF(parsed){
+  var sh = parsed.sheets.filter(function(s){ return (s.rows || []).some(function(r){ return r && r.some(function(c){ return /^RENTAL INCOME$/i.test(String(c || '').trim()); }); }); })[0] || parsed.sheets[0], R = (sh && sh.rows) || [], out = { rent:[], other:[], exp:[], caps:[] };
+  function lab(r){ for(var i = 0; i < r.length; i++){ if(typeof r[i] === 'string' && r[i].trim()) return { i:i, s:r[i].trim() }; } return null; }
+  function nums(r, i){ var o = []; for(var k = i + 1; k < r.length; k++){ if(typeof r[k] === 'number') o.push(r[k]); else if(typeof r[k] === 'string' && r[k].trim() && o.length) break; } return o; }
+  var sec = '';
+  R.forEach(function(r, ri){ if(!r) return; var l = lab(r); if(!l) { if(sec === 'land'){ var n = r.filter(function(c){ return typeof c === 'number'; }); if(n.length >= 2){ out.land = n[1]; out.totalProject = n[2]; sec = ''; } } return; }
+    var s = l.s, n = nums(r, l.i);
+    if(/^construction costs?$/i.test(s) && n.length) out.construction = n[0];
+    else if(/^land cost\/unit$/i.test(s)) sec = 'land';
+    else if(/^gross building size$/i.test(s) && n.length) out.gsf = n[0];
+    else if(/^net rentable$/i.test(s) && n.length) out.nsf = n[0];
+    else if(/^unit type$/i.test(s) && sec !== 'exp') sec = 'rent';
+    else if(/^gross rent$/i.test(s)){ sec = ''; out.grossRent = n[n.length - 1] !== undefined ? n[4] : null; }
+    else if(sec === 'rent' && n.length >= 5) out.rent.push({ type:s, units:n[0], sf:n[1], rentSF:n[2], rentUnit:n[3], annual:n[4] });
+    else if(/^other income$/i.test(s) && r.filter(function(c){ return typeof c === 'string' && /amount|unit/i.test(c); }).length){ sec = 'other'; }
+    else if(/^total other income$/i.test(s)){ sec = ''; out.otherTotal = n[1] != null ? n[1] : n[0]; }
+    else if(sec === 'other' && n.length >= 2) out.other.push({ label:s, amount:n[1] });
+    else if(/^vacancy$/i.test(s) && n.length){ out.vacPct = n[0]; out.vacAmt = n[n.length - 1]; }
+    else if(/^effective gross income$/i.test(s) && n.length) out.egi = n[0];
+    else if(/^gross income$/i.test(s) && n.length) out.gross = n[0];
+    else if(/^operating expenses$/i.test(s)) sec = 'exp';
+    else if(/^total operating expenses$/i.test(s)){ sec = ''; out.totalExp = n[1] != null ? n[1] : n[0]; }
+    else if(sec === 'exp' && n.length >= 2){ if(/management/i.test(s) && n.length >= 3){ out.mgmtPct = n[0]; out.exp.push({ label:s, amount:n[2] }); } else out.exp.push({ label:s, amount:n[1] }); }
+    else if(/^net operating income$/i.test(s) && n.length) out.noi = n[0];
+    else if(/^valuation range$/i.test(s)){ sec = 'caps'; }
+    else if(sec === 'caps' && r.length && typeof r[0] === 'number' && r[0] > 0 && r[0] < 0.2){ out.caps.push(r[0]); } });
+  R.forEach(function(r){ if(!r) return; if(typeof r[0] === 'number' && r[0] > 0.03 && r[0] < 0.2 && typeof r[1] === 'number' && r[1] > 10000) out.caps.push(r[0]); });
+  var tx = parsed.sheets.filter(function(s){ return /tax|pilot/i.test(s.name); })[0];
+  if(tx) (tx.rows || []).forEach(function(r){ if(r && /^Projected Taxes$/i.test(String(r[0] || '').trim())){ out.taxSchedule = r.slice(1).filter(function(c){ return typeof c === 'number'; }); } });
+  out.caps = out.caps.filter(function(v, i, a){ return a.indexOf(v) === i; });
+  return out;
+}
+var DEV_STD = { hc_demo:1, hc_sitework:9, hc_excavation:8, hc_parking:14, hc_podium:24, hc_envelope:17, hc_roofing:4, hc_mep:25, hc_elevators:4, hc_partitions:8, hc_unitint:12, hc_amenity:5, hc_landscape:3, hardGCPct:0.06, hardContractorFeePct:0.03, hardRiskBondsPct:0.015, hardContPct:0.05,
+  sc_ae:0.07, sc_civil:1.2, sc_entitlement:1.5, sc_environmental:0.4, sc_ffe:3500, sc_legal:1, sc_marketing:1.8, sc_ocip:2.2, sc_permits:3.5, sc_retaxconst:1.5, sc_sustainability:0.5, sc_technology:0.8, sc_testing:0.9, sc_title:0.008, devFeePct:0.03, cmFeePct:0.015, softContPct:0.05, predevCarry:150000,
+  conLTC:0.65, conRate:0.075, conUtil:0.6, conOrigFee:0.01 };
+function buildDevDeal(dev){
+  var om = dev.om || {}, pf = dev.pf, notes = [], res = pf.rent.filter(function(r){ return !/commercial|retail/i.test(r.type); }), com = pf.rent.filter(function(r){ return /commercial|retail/i.test(r.type); })[0];
+  var units = res.reduce(function(t, r){ return t + r.units; }, 0) || om.units || 0, resRent = res.reduce(function(t, r){ return t + r.annual; }, 0), vac = pf.vacPct != null ? pf.vacPct : 0.05;
+  var E = function(rx){ return pf.exp.filter(function(e){ return rx.test(e.label); }).reduce(function(t, e){ return t + e.amount; }, 0); };
+  var taxPF = E(/tax/i), taxFull = pf.taxSchedule && pf.taxSchedule.length ? pf.taxSchedule[pf.taxSchedule.length - 1] : taxPF, taxes = dev.taxBasis === 'full' ? taxFull : taxPF;
+  var mgmt = E(/manag/i), ins = E(/insur/i), util = E(/utilit/i), rm = E(/repair|maint/i), con = E(/contract/i), pay = E(/payroll/i), mkt = E(/market/i), turn = E(/make ready|turn/i), ga = E(/general|admin/i);
+  var used = taxPF + mgmt + ins + util + rm + con + pay + mkt + turn + ga, other = pf.exp.reduce(function(t, e){ return t + e.amount; }, 0) - used;
+  var street = om.street || 'Development site', name = String(street).replace(/\s+/g, ' ') + ' (development)', exitCap = pf.caps.length ? Math.max.apply(null, pf.caps) : 0.065, price = om.price || pf.land || 0;
+  var egi = pf.egi || ((resRent + (com ? com.annual : 0) + (pf.otherTotal || 0)) * (1 - vac));
+  var d = Object.assign({ dealId:'DEV-' + slug(street), name:name, location:[om.city, om.state].filter(Boolean).join(', '), dealType:'Development', propertyType:'Multifamily', status:'Pipeline', closing:'1/1/2027',
+    units:units, gsf:Math.round(pf.gsf || 0), commercialArea:com ? com.sf * com.units : 0, commercialRent:com ? Math.round((com.rentSF || (com.rentUnit / com.sf)) * 12 * 100) / 100 : 0, parking:0, siteArea:om.acres || 0, purchasePrice:price,
+    avgRent:Math.round(resRent / units / 12 * 100) / 100, otherIncomePerUnit:Math.round((pf.otherTotal || 0) * (1 - vac) / units * 100) / 100, vacancy:vac, commercialVacancy:vac, occupancy:1 - vac, badDebtPct:0, mgmtPct:pf.mgmtPct != null ? pf.mgmtPct : (egi ? mgmt / egi : 0.03),
+    taxes:Math.round(taxes), insurance:ins, utilities:util, rm:rm, contract:con, payroll:pay, turnover:turn, marketing:mkt, ga:Math.round((ga + Math.max(0, other)) * 100) / 100, reserves:0,
+    devBudgetMode:'SOURCE', sourceConstruction:pf.construction || 0, predevMonths:3, constructionMonths:21, leaseupMonths:12, holdYears:6,
+    exitCap:exitCap, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, commercialRentGrowth:0.025, closingCostsPct:0.02, saleCostPct:0.02, miscPerGSF:0, gpShare:0.10 }, DEV_STD);
+  var tie = safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = pf.noi;
+  notes.push('Construction cost of ' + $(pf.construction) + ' is taken as the total hard and soft budget (the pro forma\'s own total project is ' + $(pf.totalProject) + ' with land). The cost ladder inside it is the app\'s standard split.');
+  notes.push('Timeline is not in the files: 3 months pre-development, 21 months construction, 12 months lease-up, 6-year hold. The workbook mentions a 2-year construction period. Change these on the development sheets.');
+  notes.push('Exit cap rate ' + pct(exitCap) + ' is the top of the pro forma\'s own valuation range' + (pf.caps.length ? ' (' + pct(Math.min.apply(null, pf.caps)) + ' to ' + pct(exitCap) + ')' : '') + '. Replacement reserves are not in the pro forma, so they start at $0.');
+  notes.push('Other income is entered net of the ' + pct(vac, 0) + ' vacancy the pro forma also applies to it, so Year-1 NOI matches the workbook.');
+  if(pf.taxSchedule && pf.taxSchedule.length > 1) notes.push('Real estate taxes follow a phased tax-abatement schedule in the workbook (' + $(pf.taxSchedule[0]) + ' now, ' + $(taxPF) + ' in the pro forma year, ' + $(taxFull) + ' fully assessed). The engine takes one tax figure, so it uses ' + (dev.taxBasis === 'full' ? 'the fully assessed amount' : 'the pro forma year') + '. ' + (dev.taxBasis === 'full' ? '' : 'Fully assessed taxes would cut NOI by ' + $(taxFull - taxPF) + ' a year.'));
+  if(om.sellerFinancing) notes.push('The seller offers land financing up to ' + om.sellerFinancing[1] + '% of price at ' + om.sellerFinancing[2] + '% interest-only. That is not modelled; the engine uses its standard construction loan.');
+  return { deal:d, tie:tie, want:want, notes:notes, taxPF:taxPF, taxFull:taxFull };
+}
+function devRun(inp){ var f = inp && inp.files && inp.files[0]; if(!f) return; S.devFile = f; S.busy = true; S.msg = 'Reading ' + f.name + '...'; showSheet('Import OM');
+  Promise.resolve(window.bkImportParseFile(f)).then(function(parsed){ var pf = parseDevPF(parsed); if(!pf.noi || !pf.rent.length || !pf.exp.length) throw new Error('Could not find the rental income table, operating expenses and net operating income in ' + f.name + '. This importer reads a one-sheet development pro forma (unit types with rents, other income, expenses, NOI).'); S.dev = S.dev || { om:{} }; S.dev.pf = pf; S.dev.taxBasis = S.dev.taxBasis || 'pf'; S.mode = 'dev'; S.result = true; S.busy = false; S.msg = 'Read ' + f.name + '.'; showSheet('Import OM'); })
+    .catch(function(e){ S.busy = false; S.msg = (e && e.message) || String(e); showSheet('Import OM'); }); }
+window.bkOMDevPF = devRun; window.bkOMDevTax = function(b){ if(S.dev){ S.dev.taxBasis = b; showSheet('Import OM'); } };
+window.bkOMDevCreate = function(){ if(!S.dev || !S.dev.pf) return; var b = buildDevDeal(S.dev), id = String(b.deal.dealId), files = [S.file, S.devFile].filter(Boolean);
+  stampImp(b.deal, confDev(S.dev, b, S.info), S.devFile && S.devFile.name);
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
+  if(b.deal._imp){ var si = bkLoad(); si._imp = b.deal._imp; bkSave(si); }
+  var jobs = []; if(S.file && /\.pdf$/i.test(S.file.name)) jobs.push(window.bkDocsAdd('om', S.file, id)); if(S.devFile) jobs.push(window.bkDocsAdd('other', S.devFile, id));
+  if(S.info && S.info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverPhoto(S.info.cover).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
+  Promise.all(jobs).catch(function(){}).then(function(){ if(window.bkDocsInvalidate) window.bkDocsInvalidate(); if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Home'); }); };
+function renderDev(body){
+  var dv = S.dev || { om:{} }, om = dv.om || {};
+  if(!dv.pf){ return body + box('<b>This looks like a development site.</b> The OM gives the facts' + (om.price ? ' (price ' + $(om.price) + (om.units ? ', ' + om.units + ' approved units' : '') + (om.acres ? ', ' + om.acres + ' acres' : '') + ')' : '') + ', but not the income and cost figures. Add the developer\'s pro forma workbook (Excel) to build the deal.'
+    + '<div style="margin-top:10px"><input id="bkOMDevFile" type="file" accept=".xlsx,.xlsm,.csv" onchange="bkOMDevPF(this)"></div>'); }
+  var b = buildDevDeal(dv), d = b.deal, pf = dv.pf, ok = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002);
+  var C = confDev(dv, b, S.info), cf = C.fields;
+  var tb = function(k, t){ return '<button type="button" class="pl-hbtn' + (dv.taxBasis === k ? ' primary' : '') + '" onclick="bkOMDevTax(\'' + k + '\')">' + t + '</button>'; };
+  body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Real estate taxes</b>' + tb('pf', 'As the pro forma (' + $(b.taxPF) + ')') + tb('full', 'Fully assessed (' + $(b.taxFull) + ')') + '</div>');
+  body += confBar(C);
+  body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO PRO FORMA NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs workbook ' + $(b.want) + '</span>') + '</div><table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><thead><tr><th style="text-align:left;padding:5px 8px"></th><th style="text-align:right;padding:5px 8px">Value</th><th style="text-align:left;padding:5px 8px">Source</th><th style="text-align:left;padding:5px 8px">Confidence</th></tr></thead><tbody>'
+    + row('Land price', $(d.purchasePrice), 'OM', 'raw', cf.purchasePrice) + row('Construction budget (hard and soft)', $(d.sourceConstruction), 'workbook', 'raw', cf.sourceConstruction) + row('Residential units', d.units, 'OM / workbook', 'raw', cf.units) + row('Commercial', d.commercialArea ? d.commercialArea.toLocaleString('en-US') + ' SF at $' + d.commercialRent + '/SF/yr' : 'none', 'workbook', 'raw') + row('Gross building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', 'workbook', 'raw')
+    + row('Average monthly rent', $(d.avgRent), 'workbook', 'raw', cf.avgRent) + row('Other income per unit (year, net of vacancy)', $(d.otherIncomePerUnit), 'workbook', 'raw', cf.otherIncomePerUnit) + row('Vacancy', pct(d.vacancy, 1), 'workbook', 'raw', cf.vacancy) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', 'workbook', 'raw', cf.mgmtPct)
+    + row('Real estate taxes', $(d.taxes), 'workbook', 'raw', cf.taxes) + row('Insurance', $(d.insurance), 'workbook', 'raw', cf.insurance) + row('Utilities', $(d.utilities), 'workbook', 'raw', cf.utilities) + row('Payroll', $(d.payroll), 'workbook', 'raw', cf.payroll) + row('Repairs, contract, make-ready, marketing, G&A', $(d.rm + d.contract + d.turnover + d.marketing + d.ga), 'workbook', 'raw')
+    + row('Exit cap rate', pct(d.exitCap), 'workbook range', 'raw', cf.exitCap) + row('Timeline (months): pre-dev / construction / lease-up', d.predevMonths + ' / ' + d.constructionMonths + ' / ' + d.leaseupMonths, '', 'assumed', cf.constructionMonths) + row('Replacement reserves', '$0', '', 'assumed', cf.reserves) + '</tbody></table>');
+  body += box('<b>Before you rely on it</b><ul style="margin:6px 0 0 18px;padding:0">' + b.notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>');
+  body += '<div style="margin-top:14px"><button type="button" class="pl-hbtn primary" onclick="bkOMDevCreate()">Create development deal</button></div><div style="font-size:12px;opacity:.7;margin-top:6px">The OM, the workbook and the OM\'s cover picture are kept in the deal\'s Deal Documents.</div>';
+  return body;
+}
+
+/* Confidence: every imported figure gets a level and a one-line reason, so a bad parse is visible before it reaches the engine.
+   verified = reconciled against another number in the document; check = read directly but nothing corroborates it (or it came off a page image); low = does not reconcile or is missing; assumed = the app's default, not from the document. */
+var CONF_LABEL = { verified:'Verified', check:'Check', low:'Low', assumed:'Assumed' };
+function confSummary(F){ var c = { verified:0, check:0, low:0, assumed:0 }; Object.keys(F).forEach(function(k){ c[F[k].l]++; }); return c; }
+function confOM(om, b, info, basis){
+  var d = b.deal, I = om.ie || {}, F = {}, s = om.sources || {}, ocr = function(p){ return !!(info && info.ocrPages && p && info.ocrPages.indexOf(p) >= 0); };
+  var tieOK = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002), diff = b.tie != null && b.want != null ? Math.round(Math.abs(b.tie - b.want)) : null;
+  var set = function(k, l, why){ F[k] = { l:l, why:why }; };
+  var line = function(k, v, what){ if(tieOK) set(k, 'verified', 'The deal\'s NOI recomputes to the OM\'s NOI (within $' + diff + '), so this ' + what + ' reconciles.'); else if(b.tie == null) set(k, 'check', 'Read from the OM; the NOI tie-out could not run.'); else set(k, 'low', 'The deal\'s NOI is ' + $(b.tie) + ' against the OM\'s ' + $(b.want) + '. One of the income or expense lines is probably misread; compare this one with the OM page.'); };
+  /* price */
+  if(S.mPrice && !om.price) set('purchasePrice', 'verified', 'You entered it; the OM does not state a price.');
+  else if(!om.price) set('purchasePrice', 'low', 'The OM states no price. Enter one above.');
+  else if(om.capPrinted && om.curNOI && om.price){ var imp = om.curNOI / om.price; if(Math.abs(imp - om.curCap) <= 0.0006) set('purchasePrice', 'verified', 'In-place NOI divided by this price gives ' + pct(imp) + ', the cap rate the OM prints.'); else set('purchasePrice', 'low', 'NOI divided by this price is ' + pct(imp) + ' but the OM prints a ' + pct(om.curCap) + ' cap rate. The price or the NOI is misread.'); }
+  else if(om.priceFallback || ocr(s.price)) set('purchasePrice', 'check', (ocr(s.price) ? 'Read from a page image' : 'Found near the words "asking price"') + '; no printed cap rate to check it against. Confirm it on page ' + (s.price || '?') + '.');
+  else set('purchasePrice', 'check', 'Read directly from the text; nothing in the OM corroborates it.');
+  /* units, area */
+  var mixU = (om.unitMix || []).reduce(function(t, m){ return t + (m.units || 0); }, 0);
+  if(S.mUnits && !om.units) set('units', 'verified', 'You entered it.');
+  else if(mixU && om.units) set('units', mixU === om.units ? 'verified' : 'low', mixU === om.units ? 'Matches the ' + mixU + ' units in the unit mix table.' : 'The OM says ' + om.units + ' units but its unit mix adds to ' + mixU + '.');
+  else set('units', 'check', ocr(s.units) ? 'Read from a page image with no unit mix to check it against.' : 'No unit mix table to check it against.');
+  if(!d.gsf) set('gsf', 'low', 'No building area found.');
+  else { var spu = d.gsf / (d.units || 1); if(spu < 350 || spu > 2500) set('gsf', 'low', 'That is ' + Math.round(spu) + ' SF per unit, which is outside the usual range. The area or the unit count is misread.'); else set('gsf', ocr(s.sf) ? 'check' : 'verified', ocr(s.sf) ? 'Read from a page image; ' + Math.round(spu) + ' SF per unit is plausible.' : Math.round(spu) + ' SF per unit is plausible.'); }
+  /* income and expenses */
+  line('avgRent', d.avgRent, 'rent'); line('otherIncomePerUnit', d.otherIncomePerUnit, 'other income');
+  if(I.vac && (I.vac[basis + 'Pct'] != null || I.vac[basis] != null)) line('vacancy', d.vacancy, 'vacancy'); else set('vacancy', 'assumed', 'The OM shows no vacancy line; 5% is the app default.');
+  if(om.ie && I.exp && I.exp.some(function(e){ return /manag/i.test(e.label); })) line('mgmtPct', d.mgmtPct, 'management fee'); else set('mgmtPct', 'assumed', 'The OM shows no management fee; 3% of income is the app default.');
+  [['taxes', /tax/i, 'taxes'], ['insurance', /insur/i, 'insurance'], ['rm', /repair|maint/i, 'repairs and maintenance']].forEach(function(r){ if(!d[r[0]]) set(r[0], 'low', 'No ' + r[2] + ' line was found in the OM, so this is $0.'); else line(r[0], d[r[0]], r[2]); });
+  ['utilities', 'contract', 'payroll', 'marketing', 'ga'].forEach(function(k){ if(d[k]) line(k, d[k], 'expense line'); });
+  set('t12noi', om.curNOI ? (tieOK ? 'verified' : 'check') : 'low', om.curNOI ? 'The OM\'s own in-place NOI.' : 'Not found.');
+  ['exitCap', 'reserves', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'closingCostsPct', 'saleCostPct'].forEach(function(k){ set(k, 'assumed', k === 'exitCap' ? 'Starts at the going-in cap rate. Your view, not the OM\'s.' : 'App default; the OM does not provide it.'); });
+  return { fields:F, tieOK:tieOK, sum:confSummary(F) };
+}
+function confDev(dev, b, info){
+  var d = b.deal, om = dev.om || {}, pf = dev.pf, F = {}, set = function(k, l, why){ F[k] = { l:l, why:why }; };
+  var tieOK = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002), diff = b.tie != null && b.want != null ? Math.round(Math.abs(b.tie - b.want)) : null;
+  var line = function(k, what){ if(tieOK) set(k, 'verified', 'The deal\'s NOI recomputes to the workbook\'s NOI (within $' + diff + '), so this ' + what + ' reconciles.'); else set(k, b.tie == null ? 'check' : 'low', b.tie == null ? 'Read from the workbook; the NOI tie-out could not run.' : 'Deal NOI ' + $(b.tie) + ' against the workbook\'s ' + $(b.want) + '; one line is probably misread.'); };
+  if(om.price) set('purchasePrice', pf && pf.land && Math.abs(pf.land - om.price) < 1 ? 'verified' : 'check', pf && pf.land && Math.abs(pf.land - om.price) < 1 ? 'The OM price equals the land cost in the workbook.' : 'Read from the OM; the workbook does not repeat it.'); else set('purchasePrice', pf && pf.land ? 'check' : 'low', pf && pf.land ? 'Taken from the workbook land line; the OM states no price.' : 'No price found.');
+  var wu = pf.rent.filter(function(r){ return !/commercial|retail/i.test(r.type); }).reduce(function(t, r){ return t + r.units; }, 0);
+  if(om.units && wu) set('units', om.units === wu ? 'verified' : 'low', om.units === wu ? 'The OM\'s approved units equal the workbook\'s unit count.' : 'The OM approves ' + om.units + ' units; the workbook has ' + wu + '.'); else set('units', 'check', 'Only one document gives the unit count.');
+  set('siteArea', om.acres ? 'check' : 'low', om.acres ? 'Read from the OM.' : 'No site area found.');
+  line('avgRent', 'rent'); line('otherIncomePerUnit', 'other income'); line('vacancy', 'vacancy'); line('taxes', 'tax figure'); line('insurance', 'insurance'); line('utilities', 'utilities'); line('payroll', 'payroll');
+  set('mgmtPct', pf.mgmtPct != null ? (tieOK ? 'verified' : 'check') : 'assumed', pf.mgmtPct != null ? 'The workbook\'s management percentage.' : 'Derived from the workbook\'s fee dollars.');
+  set('sourceConstruction', pf.construction ? 'check' : 'low', pf.construction ? 'The workbook\'s construction total (' + $(pf.construction) + '). The split into hard and soft costs is the app\'s standard.' : 'No construction total found.');
+  set('exitCap', pf.caps && pf.caps.length ? 'check' : 'assumed', pf.caps && pf.caps.length ? 'The top of the workbook\'s own valuation range. A judgement call, so set your own.' : 'No cap rate in the workbook; 6.5% default.');
+  ['predevMonths', 'constructionMonths', 'leaseupMonths', 'holdYears', 'reserves', 'rentGrowth', 'opexGrowth'].forEach(function(k){ set(k, 'assumed', 'App default; the files do not provide it.'); });
+  return { fields:F, tieOK:tieOK, sum:confSummary(F) };
+}
+function confChip(c){ if(!c) return ''; var col = { verified:'#1F7A45', check:'#8A6212', low:'#B23A2C', assumed:'#566a80' }[c.l]; return '<span title="' + esc(c.why) + '" style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:' + col + '"><i style="width:8px;height:8px;border-radius:1px;background:' + col + ';display:inline-block"></i>' + CONF_LABEL[c.l] + '</span>'; }
+function confBar(C){ var s = C.sum; return box('<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center"><b>Confidence in what was read</b>' + ['verified', 'check', 'low', 'assumed'].map(function(k){ return confChip({ l:k, why:'' }).replace(CONF_LABEL[k], s[k] + ' ' + CONF_LABEL[k].toLowerCase()); }).join('') + '</div>'
+  + '<div style="font-size:12px;opacity:.75;margin-top:6px">Verified figures reconcile with another number in the document. Check means read directly with nothing to corroborate it. ' + (s.low ? '<b style="color:#B23A2C">' + s.low + ' figure' + (s.low > 1 ? 's' : '') + ' did not reconcile or were not found. Look at the rows marked Low before relying on this deal.</b> ' : '') + 'Hover a label for the reason. Flagged figures stay marked in the Guide until you confirm them.</div>'); }
+function stampImp(deal, C, fileName){ deal._imp = { source:String(fileName || ''), at:new Date().toISOString().slice(0, 10), fields:{} }; Object.keys(C.fields).forEach(function(k){ var f = C.fields[k]; if(f.l === 'low' || f.l === 'check') deal._imp.fields[k] = { l:f.l, why:f.why }; }); return deal; }
+function row(label, val, src, kind, c){ return '<tr><td style="padding:5px 8px">' + label + whyLine(c) + '</td><td style="padding:5px 8px;text-align:right;font-weight:600">' + val + '</td><td style="padding:5px 8px;font-size:11px;opacity:.65">' + (kind === 'assumed' ? 'app default' : kind === 'raw' ? src : src ? 'OM page ' + src : 'OM') + '</td><td style="padding:5px 8px;white-space:nowrap">' + confChip(c) + '</td></tr>'; }
+function whyLine(c){ return c && (c.l === 'low' || c.l === 'check') ? '<div style="font-size:11px;font-weight:400;opacity:.75">' + esc(c.why) + '</div>' : ''; }
+function render(){
+  var hdr = { title:'Import OM', crumbs:'Inputs', desc:'Upload an offering memorandum (PDF) and load its price, units, rents, income and expenses into the engine.', sidebar:'', meta:{ Source:S.file ? S.file.name : 'none', Method:S.info ? S.info.method : 'PDF' } };
+  var body = box('<b>Upload an offering memorandum.</b> The importer reads the PDF (including designed OMs that are page images, using text recognition in your browser), finds the price, unit mix and the income and expense table, and builds a deal from the in-place (current) figures or the broker pro forma. Nothing is sent to a server. The first scan downloads the recognition engine (about 6 MB, then cached).'
+    + '<div style="margin-top:10px"><input id="bkOMFile" type="file" accept=".pdf,.xlsx,.xlsm" onchange="bkOMRun(this)"' + (S.busy ? ' disabled' : '') + '></div>');
+  if(S.msg) body += box((S.busy ? '&#8987; ' : S.result ? '&#10003; ' : '&#9888; ') + esc(S.msg));
+  if(S.mode === 't12' && S.t12){ body += box('<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:5px 8px">Property</th><th style="text-align:right;padding:5px 8px">NOI</th><th></th></tr></thead><tbody>' + S.t12.map(function(p, i){ return '<tr><td style="padding:5px 8px">' + esc(p.name) + '</td><td style="padding:5px 8px;text-align:right"><b>' + $(p.noi) + '</b></td><td style="text-align:right"><button type="button" class="pl-hbtn primary" onclick="bkT12Apply(' + i + ')">Apply to this deal</button></td></tr>'; }).join('') + '</tbody></table>'); }
+  if(S.mode === 'dev' && S.result) body = renderDev(body);
+  if(S.mode === 'om' && S.result && S.om){
+    var om = S.om, b = buildDeal(om, S.basis, S.file && S.file.name), d = b.deal, I = om.ie, s = om.sources || {}, ok = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002);
+    var C = confOM(om, b, S.info, S.basis), cf = C.fields, need = '';
+    if(!om.price) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-right:14px">Asking price (not found in the OM)<input type="text" value="' + (S.mPrice || '') + '" placeholder="e.g. 3,600,000" onchange="bkOMManual(\'mPrice\',this.value)" style="width:150px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
+    if(!om.units) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Units (not found)<input type="text" value="' + (S.mUnits || '') + '" onchange="bkOMManual(\'mUnits\',this.value)" style="width:90px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
+    var ready = (om.price || S.mPrice) && (om.units || S.mUnits);
+    if(need) body += box('<b>One thing the OM did not state.</b> Enter it to continue.<div style="margin-top:8px">' + need + '</div>');
+    var basisBtn = function(k, t){ return '<button type="button" class="pl-hbtn' + (S.basis === k ? ' primary' : '') + '" onclick="bkOMBasis(\'' + k + '\')">' + t + '</button>'; };
+    body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Underwrite on</b>' + basisBtn('cur', 'In-place (current)') + basisBtn('pf', 'Broker pro forma') + '</div><div style="font-size:12px;opacity:.7;margin-top:6px">In-place uses current scheduled rents and today\'s expenses. The pro forma uses the rents the OM calls achievable' + (om.pfNOI ? ' (' + $(om.pfNOI) + ' NOI)' : '') + '.</div>');
+    body += confBar(C);
+    body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO OM NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs OM ' + $(b.want) + '</span>') + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><thead><tr><th style="text-align:left;padding:5px 8px"></th><th style="text-align:right;padding:5px 8px">Value</th><th style="text-align:left;padding:5px 8px">Source</th><th style="text-align:left;padding:5px 8px">Confidence</th></tr></thead><tbody>'
+      + row('Purchase price (asking)', $(d.purchasePrice), s.price, '', cf.purchasePrice) + row('Units', d.units, s.units, '', cf.units) + row('Building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', s.sf, '', cf.gsf) + row('Average monthly rent', $(d.avgRent), s.unitMix || s.income, '', cf.avgRent)
+      + row('Other income per unit (year)', $(d.otherIncomePerUnit), s.income, '', cf.otherIncomePerUnit) + row('Vacancy', pct(d.vacancy, 1), s.income, '', cf.vacancy) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', s.income, '', cf.mgmtPct)
+      + row('Real estate taxes', $(d.taxes), s.income, '', cf.taxes) + row('Insurance', $(d.insurance), s.income, '', cf.insurance) + row('Utilities (electric, gas, water, trash)', $(d.utilities), s.income, '', cf.utilities) + row('Repairs and maintenance', $(d.rm), s.income, '', cf.rm) + row('Contract services and landscaping', $(d.contract), s.income, '', cf.contract) + (d.ga ? row('Other expenses', $(d.ga), s.income, '', cf.ga) : '')
+      + row('Going-in cap rate on in-place NOI', pct(b.cap), s.noi, '', cf.t12noi) + row('Exit cap rate', pct(d.exitCap), '', 'assumed', cf.exitCap) + row('Replacement reserves', '$0', '', 'assumed', cf.reserves) + '</tbody></table>'
+      + (om.yearBuilt || om.zoning ? '<div style="font-size:12px;opacity:.7;margin-top:8px">Also in the OM: ' + [om.yearBuilt && 'built ' + om.yearBuilt, om.lotAcres && om.lotAcres + ' acres', om.stories && om.stories + ' stories', om.parking && om.parking + ' parking spaces', om.zoning && 'zoned ' + om.zoning].filter(Boolean).join(', ') + '.</div>' : ''));
+    body += box('<b>Before you rely on it</b><ul style="margin:6px 0 0 18px;padding:0">' + b.notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>');
+    body += '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="pl-hbtn primary" onclick="bkOMCreate()"' + (ready ? '' : ' disabled') + '>Create new deal from this OM</button>' + (S.target === 'apply' ? '<button type="button" class="pl-hbtn" onclick="bkOMApply()">Apply to the current deal instead</button>' : '') + '</div>'
+      + '<div style="font-size:12px;opacity:.7;margin-top:6px">A new deal keeps the OM in its Deal Documents and uses the OM\'s cover picture as its photo (replace it there with your own).</div>';
+  }
+  hdr.main = body; return hdr;
+}
+var g = function(){ return render(); };
+if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Import OM', g); else RENDERERS['Import OM'] = g;
+
+})();

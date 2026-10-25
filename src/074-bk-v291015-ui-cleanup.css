@@ -1,0 +1,67 @@
+
+/* Slight cleanup only - preserve existing palette and hierarchy */
+
+/* Keep input-page tables visually aligned */
+#viewport .bk-dep-v2 table.fin th,
+#viewport .bk-dep-v2 table.fin td {
+  vertical-align: middle;
+}
+
+/* Match the tighter, cleaner input-control proportions used elsewhere */
+#viewport .bk-dep-v2 input[type="date"],
+#viewport .bk-dep-v2 select.dep-input {
+  height: 30px !important;
+  line-height: 28px !important;
+}
+
+/* Dollar land-value input should read like a financial input, not raw digits */
+#viewport .bk-dep-v2 input.dep-money {
+  height: 30px !important;
+  padding: 2px 8px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status treatment consistent with the existing green OK pills */
+#viewport .bk-dep-v2 .bk-status-pill {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-width:62px;
+  justify-content:center;
+  padding:4px 10px;
+  border-radius:16px;
+  background:#e6f1eb;
+  color:#2f7c55;
+  font-size:12px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:.04em;
+  white-space:nowrap;
+}
+#viewport .bk-dep-v2 .bk-status-pill::before {
+  content:"";
+  width:7px;height:7px;border-radius:50%;
+  background:currentColor;
+  flex:0 0 7px;
+}
+#viewport .bk-dep-v2 .bk-status-pill.calc,
+#viewport .bk-dep-v2 .bk-status-pill.linked,
+#viewport .bk-dep-v2 .bk-status-pill.source {
+  background:#eef1f3;
+  color:#4c5963;
+}
+
+/* Numeric columns line up more like the portfolio tables */
+#viewport .bk-dep-v2 td:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rent Roll summary: slightly tighter and keep values hard-right */
+#viewport table.fin td:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Portfolio % columns: tabular numerals reduce visual wobble */
+#viewport table.fin td {
+  font-variant-numeric: tabular-nums;
+}

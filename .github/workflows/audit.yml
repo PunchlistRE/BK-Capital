@@ -8,5 +8,6 @@ jobs:
         with: { fetch-depth: 2 }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
+      - run: node build.js --check
       - run: npm install --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
       - run: PLAYWRIGHT_MODULE=$PWD/node_modules/playwright audit/run_all.sh

@@ -1,0 +1,16 @@
+
+/* V30.1 VISUAL STANDARD (display only).
+   Controls: one height, one border, one radius, one font size; selects in an input
+   grid share a width so a column of dropdowns lines up; clear focus/disabled states. */
+/* V31: control styling moved to bk-v31-cell-authority */
+#viewport select:focus, #viewport input:focus, #viewport td.v[contenteditable="true"]:focus {
+  outline: 2px solid #D4A73C; outline-offset: -1px;
+}
+#viewport select:disabled, #viewport input:disabled, #viewport button:disabled { opacity: .55; cursor: not-allowed; }
+#viewport table.fin thead th { color: #e1e9f1; }
+#viewport table.fin td, #viewport table.fin th { font-variant-numeric: tabular-nums; }
+.bk-controls-flag{margin:0 0 14px;}
+.bk-fail-banner{border-left:4px solid #9B2C1F !important;margin:0 0 14px;}
+.bk-controls-flag ul{margin:6px 0 0 16px;padding:0;}
+.bk-controls-flag li{margin:2px 0;}
+.bk-ctl-FAIL{color:#9B2C1F;font-weight:700;} .bk-ctl-WARN{color:#8A6212;font-weight:700;}
