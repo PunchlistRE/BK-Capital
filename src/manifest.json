@@ -1,0 +1,777 @@
+[
+{
+"file": "001-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "002-style.css",
+"open": "<style>",
+"close": "</style>"
+},
+{
+"file": "003-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "004-bk-production-auth-gate-v1.css",
+"open": "<style id=\"bk-production-auth-gate-v1\">",
+"close": "</style>"
+},
+{
+"file": "005-bk-v30-sync-css.css",
+"open": "\n<style id=\"bk-v30-sync-css\">",
+"close": "</style>"
+},
+{
+"file": "006-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "007-style.css",
+"open": "<style>",
+"close": "</style>"
+},
+{
+"file": "008-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "009-script.js",
+"open": "<script>",
+"close": "</script>"
+},
+{
+"file": "010-bk-functional-v02.js",
+"open": "\n\n<script id=\"bk-functional-v02\">",
+"close": "</script>"
+},
+{
+"file": "011-bk-v29105-storage-lifecycle.js",
+"open": "\n\n<script id=\"bk-v29105-storage-lifecycle\">",
+"close": "</script>"
+},
+{
+"file": "012-bk-functional-v03.js",
+"open": "\n\n\n<script id=\"bk-functional-v03\">",
+"close": "</script>"
+},
+{
+"file": "013-bk-functional-v04.js",
+"open": "\n\n<script id=\"bk-functional-v04\">",
+"close": "</script>"
+},
+{
+"file": "014-bk-functional-v05.js",
+"open": "\n\n<script id=\"bk-functional-v05\">",
+"close": "</script>"
+},
+{
+"file": "015-bk-functional-v06.js",
+"open": "\n\n<script id=\"bk-functional-v06\">",
+"close": "</script>"
+},
+{
+"file": "016-script.js",
+"open": "\n\n<script>",
+"close": "</script>"
+},
+{
+"file": "017-bk-functional-v08.js",
+"open": "\n<script id=\"bk-functional-v08\">",
+"close": "</script>"
+},
+{
+"file": "018-bk-functional-v09.js",
+"open": "\n\n<script id=\"bk-functional-v09\">",
+"close": "</script>"
+},
+{
+"file": "019-bk-functional-v12.js",
+"open": "\n\n\n<script id=\"bk-functional-v12\">",
+"close": "</script>"
+},
+{
+"file": "020-script.js",
+"open": "\n\n\n<script>",
+"close": "</script>"
+},
+{
+"file": "021-bk-functional-v13-rentroll-fix.js",
+"open": "\n\n<script id=\"bk-functional-v13-rentroll-fix\">",
+"close": "</script>"
+},
+{
+"file": "022-bk-functional-v14-monthly-engine.js",
+"open": "\n\n<script id=\"bk-functional-v14-monthly-engine\">",
+"close": "</script>"
+},
+{
+"file": "023-bk-functional-v15.js",
+"open": "\n\n<script id=\"bk-functional-v15\">",
+"close": "</script>"
+},
+{
+"file": "024-bk-functional-v16-rollover-structure.js",
+"open": "\n\n<script id=\"bk-functional-v16-rollover-structure\">",
+"close": "</script>"
+},
+{
+"file": "025-bk-functional-v17-covenant-sensitivity-reverse.js",
+"open": "\n\n<script id=\"bk-functional-v17-covenant-sensitivity-reverse\">",
+"close": "</script>"
+},
+{
+"file": "026-bk-functional-v18-after-tax.js",
+"open": "\n\n<script id=\"bk-functional-v18-after-tax\">",
+"close": "</script>"
+},
+{
+"file": "027-bk-functional-v19-portfolio.js",
+"open": "\n\n<script id=\"bk-functional-v19-portfolio\">",
+"close": "</script>"
+},
+{
+"file": "028-bk-functional-v20-monthly-engine.js",
+"open": "\n\n<script id=\"bk-functional-v20-monthly-engine\">",
+"close": "</script>"
+},
+{
+"file": "029-bk-functional-v21-portfolio-database.js",
+"open": "\n\n<script id=\"bk-functional-v21-portfolio-database\">",
+"close": "</script>"
+},
+{
+"file": "030-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "031-bk-functional-v23-data-export.js",
+"open": "<script id=\"bk-functional-v23-data-export\">",
+"close": "</script>"
+},
+{
+"file": "032-bk-v30-canonical-investors.js",
+"open": "\n\n<script id=\"bk-v30-canonical-investors\">",
+"close": "</script>"
+},
+{
+"file": "033-bk-functional-v24-development-engine-fix.js",
+"open": "\n<script id=\"bk-functional-v24-development-engine-fix\">",
+"close": "</script>"
+},
+{
+"file": "034-bk-functional-v27-source-basis.js",
+"open": "\n\n<script id=\"bk-functional-v27-source-basis\">",
+"close": "</script>"
+},
+{
+"file": "035-script.js",
+"open": "\n\n<script>",
+"close": "</script>"
+},
+{
+"file": "036-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "037-bk-v295-format-sweep.css",
+"open": "<style id=\"bk-v295-format-sweep\">",
+"close": "</style>"
+},
+{
+"file": "038-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "039-bk-v297-supabase-adapter.js",
+"open": "<script id=\"bk-v297-supabase-adapter\">",
+"close": "</script>"
+},
+{
+"file": "040-bk-v297-input-basis.js",
+"open": "\n\n<script id=\"bk-v297-input-basis\">",
+"close": "</script>"
+},
+{
+"file": "041-bk-v297-input-basis-css.css",
+"open": "\n<style id=\"bk-v297-input-basis-css\">",
+"close": "</style>"
+},
+{
+"file": "042-bk-v2985-render-implemented-css.css",
+"open": "\n\n\n\n\n\n\n<style id=\"bk-v2985-render-implemented-css\">",
+"close": "</style>"
+},
+{
+"file": "043-bk-v2985-render-implemented-js.js",
+"open": "\n<script id=\"bk-v2985-render-implemented-js\">",
+"close": "</script>"
+},
+{
+"file": "044-bk-v299-waterfall-basis.js",
+"open": "\n\n\n<script id=\"bk-v299-waterfall-basis\">",
+"close": "</script>"
+},
+{
+"file": "045-bk-v2991-fixed-floating-debt.js",
+"open": "<script id=\"bk-v2991-fixed-floating-debt\">",
+"close": "</script>"
+},
+{
+"file": "046-bk-v2992-floating-rate-curve.js",
+"open": "\n<script id=\"bk-v2992-floating-rate-curve\">",
+"close": "</script>"
+},
+{
+"file": "047-bk-v2993-debt-risk-scenarios-sensitivity.js",
+"open": "\n<script id=\"bk-v2993-debt-risk-scenarios-sensitivity\">",
+"close": "</script>"
+},
+{
+"file": "048-bk-v2994-audit-fixes.js",
+"open": "\n\n<script id=\"bk-v2994-audit-fixes\">",
+"close": "</script>"
+},
+{
+"file": "049-bk-v2995-regression-hardening.js",
+"open": "\n\n\n<script id=\"bk-v2995-regression-hardening\">",
+"close": "</script>"
+},
+{
+"file": "050-bk-v2997-tenant-reconciliation.js",
+"open": "\n\n\n<script id=\"bk-v2997-tenant-reconciliation\">",
+"close": "</script>"
+},
+{
+"file": "051-bk-v2998-field-level-approval.js",
+"open": "\n\n<script id=\"bk-v2998-field-level-approval\">",
+"close": "</script>"
+},
+{
+"file": "052-bk-v29100-live-ingestion-hardening.js",
+"open": "\n<script id=\"bk-v29100-live-ingestion-hardening\">",
+"close": "</script>"
+},
+{
+"file": "053-bk-v29103-ingestion-native-disabled-css.css",
+"open": "\n\n<style id=\"bk-v29103-ingestion-native-disabled-css\">",
+"close": "</style>"
+},
+{
+"file": "054-bk-v29103-ingestion-authoritative-state.js",
+"open": "\n<script id=\"bk-v29103-ingestion-authoritative-state\">",
+"close": "</script>"
+},
+{
+"file": "055-bk-v29105-empty-state.js",
+"open": "\n<script id=\"bk-v29105-empty-state\">",
+"close": "</script>"
+},
+{
+"file": "056-bk-v29104-master-data-crosswalk.js",
+"open": "\n\n\n<script id=\"bk-v29104-master-data-crosswalk\">",
+"close": "</script>"
+},
+{
+"file": "057-bk-v29104-portfolio-import.js",
+"open": "\n\n\n<script id=\"bk-v29104-portfolio-import\">",
+"close": "</script>"
+},
+{
+"file": "058-bk-v29105-embedded-xlsx.js",
+"open": "\n\n<script id=\"bk-v29105-embedded-xlsx\">",
+"close": "</script>"
+},
+{
+"file": "059-bk-v29105-source-governance.js",
+"open": "\n\n<script id=\"bk-v29105-source-governance\">",
+"close": "</script>"
+},
+{
+"file": "060-bk-v29108-final-lifecycle-paint.js",
+"open": "\n\n<script id=\"bk-v29108-final-lifecycle-paint\">",
+"close": "</script>"
+},
+{
+"file": "061-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "062-bk-v291011-input-grid-format-js.js",
+"open": "<script id=\"bk-v291011-input-grid-format-js\">",
+"close": "</script>"
+},
+{
+"file": "063-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "064-bk-v291012-ocd-format-js.js",
+"open": "<script id=\"bk-v291012-ocd-format-js\">",
+"close": "</script>"
+},
+{
+"file": "065-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "066-bk-uniform-deal-underwrite-dropdowns.css",
+"open": "<style id=\"bk-uniform-deal-underwrite-dropdowns\">",
+"close": "</style>"
+},
+{
+"file": "067-bk-v31-semantic-stub.js",
+"open": "\n\n\n<script id=\"bk-v31-semantic-stub\">",
+"close": "</script>"
+},
+{
+"file": "068-bk-v30-display-scheduler.js",
+"open": "\n<script id=\"bk-v30-display-scheduler\">",
+"close": "</script>"
+},
+{
+"file": "069-bk-after-tax-preset-dropdowns.js",
+"open": "\n<script id=\"bk-after-tax-preset-dropdowns\">",
+"close": "</script>"
+},
+{
+"file": "070-bk-harvard-depreciation-style.css",
+"open": "\n\n\n<style id=\"bk-harvard-depreciation-style\">",
+"close": "</style>"
+},
+{
+"file": "071-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "072-bk-depreciation-v2-style.css",
+"open": "<style id=\"bk-depreciation-v2-style\">",
+"close": "</style>"
+},
+{
+"file": "073-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "074-bk-v291015-ui-cleanup.css",
+"open": "<style id=\"bk-v291015-ui-cleanup\">",
+"close": "</style>"
+},
+{
+"file": "075-bk-v291015-ui-cleanup-js.js",
+"open": "\n\n<script id=\"bk-v291015-ui-cleanup-js\">",
+"close": "</script>"
+},
+{
+"file": "076-bk-v29110-depreciation-canonical.js",
+"open": "\n\n<script id=\"bk-v29110-depreciation-canonical\">",
+"close": "</script>"
+},
+{
+"file": "077-bk-v29110-depreciation-renderer.js",
+"open": "\n\n<script id=\"bk-v29110-depreciation-renderer\">",
+"close": "</script>"
+},
+{
+"file": "078-bk-v29110-aftertax-consumes-depreciation.js",
+"open": "\n\n<script id=\"bk-v29110-aftertax-consumes-depreciation\">",
+"close": "</script>"
+},
+{
+"file": "079-bk-v29111-debt-sizing-controls.js",
+"open": "\n\n<script id=\"bk-v29111-debt-sizing-controls\">",
+"close": "</script>"
+},
+{
+"file": "080-bk-v29112-deal-readiness.js",
+"open": "\n\n<script id=\"bk-v29112-deal-readiness\">",
+"close": "</script>"
+},
+{
+"file": "081-bk-wave1-exposure.js",
+"open": "\n\n<script id=\"bk-wave1-exposure\">",
+"close": "</script>"
+},
+{
+"file": "082-bk-wave2c-presentation.js",
+"open": "\n\n<script id=\"bk-wave2c-presentation\">",
+"close": "</script>"
+},
+{
+"file": "083-bk-wave3a-construction.js",
+"open": "\n<script id=\"bk-wave3a-construction\">",
+"close": "</script>"
+},
+{
+"file": "084-bk-wave3b-valuation-solvers.js",
+"open": "\n<script id=\"bk-wave3b-valuation-solvers\">",
+"close": "</script>"
+},
+{
+"file": "085-bk-wave3c-covenants-tax-investors.js",
+"open": "\n<script id=\"bk-wave3c-covenants-tax-investors\">",
+"close": "</script>"
+},
+{
+"file": "086-bk-final-parity-closeout.js",
+"open": "\n\n<script id=\"bk-final-parity-closeout\">",
+"close": "</script>"
+},
+{
+"file": "087-bk-investor-architecture-model.js",
+"open": "\n\n<script id=\"bk-investor-architecture-model\">",
+"close": "</script>"
+},
+{
+"file": "088-bk-investor-architecture-ui.js",
+"open": "\n\n<script id=\"bk-investor-architecture-ui\">",
+"close": "</script>"
+},
+{
+"file": "089-bk-final-portfolio-closeout.js",
+"open": "\n\n<script id=\"bk-final-portfolio-closeout\">",
+"close": "</script>"
+},
+{
+"file": "090-bk-final-backend-sheet-map.js",
+"open": "\n\n<script id=\"bk-final-backend-sheet-map\">",
+"close": "</script>"
+},
+{
+"file": "091-bk-ui-clarity-fixes.js",
+"open": "\n\n<script id=\"bk-ui-clarity-fixes\">",
+"close": "</script>"
+},
+{
+"file": "092-bk-final-format-normalization.js",
+"open": "\n\n<script id=\"bk-final-format-normalization\">",
+"close": "</script>"
+},
+{
+"file": "093-markup.html",
+"open": "",
+"close": ""
+},
+{
+"file": "094-bk-v30-edit-guard.js",
+"open": "<script id=\"bk-v30-edit-guard\">",
+"close": "</script>"
+},
+{
+"file": "095-bk-v291013-unit-normalization.js",
+"open": "\n<script id=\"bk-v291013-unit-normalization\">",
+"close": "</script>"
+},
+{
+"file": "096-bk-v291014-units-and-output-display-fix.js",
+"open": "\n<script id=\"bk-v291014-units-and-output-display-fix\">",
+"close": "</script>"
+},
+{
+"file": "097-bk-v291015-final-display-cleanup.js",
+"open": "<script id=\"bk-v291015-final-display-cleanup\">",
+"close": "</script>"
+},
+{
+"file": "098-bk-v291016-alignment-units-dashes.js",
+"open": "\n\n<script id=\"bk-v291016-alignment-units-dashes\">",
+"close": "</script>"
+},
+{
+"file": "099-bk-v291017-su-grid-alignment.js",
+"open": "\n\n<script id=\"bk-v291017-su-grid-alignment\">",
+"close": "</script>"
+},
+{
+"file": "100-bk-v291018-funding-fill-fix.js",
+"open": "\n\n\n<script id=\"bk-v291018-funding-fill-fix\">",
+"close": "</script>"
+},
+{
+"file": "101-bk-v302-lineage-scope.js",
+"open": "\n\n\n\n\n<script id=\"bk-v302-lineage-scope\">",
+"close": "</script>"
+},
+{
+"file": "102-bk-v302-reference-and-suppression.js",
+"open": "\n<script id=\"bk-v302-reference-and-suppression\">",
+"close": "</script>"
+},
+{
+"file": "103-bk-v30-nav-final.js",
+"open": "\n<script id=\"bk-v30-nav-final\">",
+"close": "</script>"
+},
+{
+"file": "104-bk-v31-visual-standard.css",
+"open": "\n<style id=\"bk-v31-visual-standard\">",
+"close": "</style>"
+},
+{
+"file": "105-bk-v31-number-consistency.js",
+"open": "\n<script id=\"bk-v31-number-consistency\">",
+"close": "</script>"
+},
+{
+"file": "106-bk-v31-input-controls.js",
+"open": "\n<script id=\"bk-v31-input-controls\">",
+"close": "</script>"
+},
+{
+"file": "107-bk-v302-responsive-system.css",
+"open": "\n<style id=\"bk-v302-responsive-system\">",
+"close": "</style>"
+},
+{
+"file": "108-bk-v302-table-classifier.js",
+"open": "\n<script id=\"bk-v302-table-classifier\">",
+"close": "</script>"
+},
+{
+"file": "109-bk-v31-cell-authority.css",
+"open": "\n<style id=\"bk-v31-cell-authority\">",
+"close": "</style>"
+},
+{
+"file": "110-bk-v31-cell-tagger.js",
+"open": "\n<script id=\"bk-v31-cell-tagger\">",
+"close": "</script>"
+},
+{
+"file": "111-bk-v30-persistence.js",
+"open": "\n<script id=\"bk-v30-persistence\">",
+"close": "</script>"
+},
+{
+"file": "112-bk-v30-auth-gate.js",
+"open": "\n<script id=\"bk-v30-auth-gate\">",
+"close": "</script>"
+},
+{
+"file": "113-bk-text-entry-ltr-fix-v291013.css",
+"open": "\n\n<style id=\"bk-text-entry-ltr-fix-v291013\">",
+"close": "</style>"
+},
+{
+"file": "114-bk-text-entry-ltr-runtime-v291013.js",
+"open": "\n<script id=\"bk-text-entry-ltr-runtime-v291013\">",
+"close": "</script>"
+},
+{
+"file": "115-bk-v32-template-banner.js",
+"open": "\n\n<script id=\"bk-v32-template-banner\">",
+"close": "</script>"
+},
+{
+"file": "116-bk-v321-opstatement.js",
+"open": "\n<script id=\"bk-v321-opstatement\">",
+"close": "</script>"
+},
+{
+"file": "117-bk-cr-v325.js",
+"open": "\n<script id=\"bk-cr-v325\" data-patches=\"pc1,pc2,pc3,pc4,pc5,pc6,pc7,f17\">",
+"close": "</script>"
+},
+{
+"file": "118-bk-audit-display-fixes-css.css",
+"open": "\n<style id=\"bk-audit-display-fixes-css\">",
+"close": "</style>"
+},
+{
+"file": "119-bk-audit-display-fixes.js",
+"open": "\n<script id=\"bk-audit-display-fixes\">",
+"close": "</script>"
+},
+{
+"file": "120-bk-sensitivity-explorer-css.css",
+"open": "\n<style id=\"bk-sensitivity-explorer-css\">",
+"close": "</style>"
+},
+{
+"file": "121-bk-sensitivity-explorer.js",
+"open": "\n<script id=\"bk-sensitivity-explorer\">",
+"close": "</script>"
+},
+{
+"file": "122-bk-ux-workflow-css.css",
+"open": "\n<style id=\"bk-ux-workflow-css\">",
+"close": "</style>"
+},
+{
+"file": "123-bk-ux-workflow.js",
+"open": "\n<script id=\"bk-ux-workflow\">",
+"close": "</script>"
+},
+{
+"file": "124-bk-v29120-macrs.js",
+"open": "\n<script id=\"bk-v29120-macrs\">",
+"close": "</script>"
+},
+{
+"file": "125-bk-v29120-macrs-ui.js",
+"open": "\n\n<script id=\"bk-v29120-macrs-ui\">",
+"close": "</script>"
+},
+{
+"file": "126-bk-v29130-credit-ic.js",
+"open": "\n\n<script id=\"bk-v29130-credit-ic\">",
+"close": "</script>"
+},
+{
+"file": "127-bk-v29130-credit-ic-ui.js",
+"open": "\n\n<script id=\"bk-v29130-credit-ic-ui\">",
+"close": "</script>"
+},
+{
+"file": "128-bk-v29140-conflicts.js",
+"open": "\n\n<script id=\"bk-v29140-conflicts\">",
+"close": "</script>"
+},
+{
+"file": "129-bk-v29140-conflicts-ui.js",
+"open": "\n\n<script id=\"bk-v29140-conflicts-ui\">",
+"close": "</script>"
+},
+{
+"file": "130-bk-v29150-refi.js",
+"open": "\n\n<script id=\"bk-v29150-refi\">",
+"close": "</script>"
+},
+{
+"file": "131-bk-v29170-business.js",
+"open": "\n\n<script id=\"bk-v29170-business\">",
+"close": "</script>"
+},
+{
+"file": "132-bk-v29170-business-ui.js",
+"open": "\n\n<script id=\"bk-v29170-business-ui\">",
+"close": "</script>"
+},
+{
+"file": "133-bk-v29180-market.js",
+"open": "\n\n<script id=\"bk-v29180-market\">",
+"close": "</script>"
+},
+{
+"file": "134-bk-v29190-nav.js",
+"open": "\n\n<script id=\"bk-v29190-nav\">",
+"close": "</script>"
+},
+{
+"file": "135-bk-v29200-import.js",
+"open": "\n\n<script id=\"bk-v29200-import\">",
+"close": "</script>"
+},
+{
+"file": "136-bk-v29220-risk.js",
+"open": "\n\n<script id=\"bk-v29220-risk\">",
+"close": "</script>"
+},
+{
+"file": "137-bk-v29210-import-rr.js",
+"open": "\n\n<script id=\"bk-v29210-import-rr\">",
+"close": "</script>"
+},
+{
+"file": "138-bk-v29230-home.js",
+"open": "\n\n<script id=\"bk-v29230-home\">",
+"close": "</script>"
+},
+{
+"file": "139-bk-v29230-nav2.js",
+"open": "\n\n<script id=\"bk-v29230-nav2\">",
+"close": "</script>"
+},
+{
+"file": "140-bk-v29240-newdeal.js",
+"open": "\n\n<script id=\"bk-v29240-newdeal\">",
+"close": "</script>"
+},
+{
+"file": "141-bk-v29250-flow.js",
+"open": "\n\n<script id=\"bk-v29250-flow\">",
+"close": "</script>"
+},
+{
+"file": "142-bk-v29260-proforma.js",
+"open": "\n\n<script id=\"bk-v29260-proforma\">",
+"close": "</script>"
+},
+{
+"file": "143-bk-v29270-report.js",
+"open": "\n\n<script id=\"bk-v29270-report\">",
+"close": "</script>"
+},
+{
+"file": "144-bk-v29280-history.js",
+"open": "\n\n<script id=\"bk-v29280-history\">",
+"close": "</script>"
+},
+{
+"file": "145-bk-v29290-finlab.js",
+"open": "\n\n<script id=\"bk-v29290-finlab\">",
+"close": "</script>"
+},
+{
+"file": "146-bk-v29320-user.css",
+"open": "\n\n<style id=\"bk-v29320-user\">",
+"close": "</style>"
+},
+{
+"file": "147-bk-v29320-user-js.js",
+"open": "\n<script id=\"bk-v29320-user-js\">",
+"close": "</script>"
+},
+{
+"file": "148-bk-v29300-docs.js",
+"open": "\n<script id=\"bk-v29300-docs\">",
+"close": "</script>"
+},
+{
+"file": "149-bk-v29310-om.js",
+"open": "\n\n<script id=\"bk-v29310-om\">",
+"close": "</script>"
+},
+{
+"file": "150-bk-v29330-guide.js",
+"open": "\n<script id=\"bk-v29330-guide\">",
+"close": "</script>"
+},
+{
+"file": "151-bk-conventions-ui.js",
+"open": "\n\n\n\n\n\n\n\n<script id=\"bk-conventions-ui\">",
+"close": "</script>"
+},
+{
+"file": "152-bk-v29250-order.js",
+"open": "\n<script id=\"bk-v29250-order\">",
+"close": "</script>"
+},
+{
+"file": "153-bk-v29160-input-flow.js",
+"open": "\n\n<script id=\"bk-v29160-input-flow\">",
+"close": "</script>"
+},
+{
+"file": "154-bk-v29340-institutional.css",
+"open": "\n\n<style id=\"bk-v29340-institutional\">",
+"close": "</style>"
+},
+{
+"file": "155-markup.html",
+"open": "",
+"close": ""
+}
+]

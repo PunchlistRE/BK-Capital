@@ -1,0 +1,63 @@
+
+/* ==========================================================================
+   V30.2 RESPONSIVE SYSTEM (one shared rule set; no page-specific patches)
+   Desktop (>760px) is unchanged. Below 760px every data table is classed by
+   the table classifier as either
+     .bk-m-stack  - ordinary input / readout tables (<= 4 columns): each row
+                    reflows into a label line + value / unit / status line
+     .bk-m-scroll - financial schedules (>= 5 columns): kept as a table, scrolls
+                    horizontally inside its frame with the row label frozen
+   ========================================================================== */
+@media (min-width: 761px){
+  #viewport tr.input td.v select, #viewport table.fin td.v select { min-width: 150px; max-width: 220px; }
+  #viewport table.fin td.v input[type="date"] { min-width: 150px; }
+}
+@media (max-width: 760px){
+  html, body { max-width: 100%; }
+  .brand-tag { display: none; }
+  .brand-mid .l1 { font-size: 11px; letter-spacing: .04em; }
+  .body-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .main-col, .side-col { min-width: 0 !important; max-width: 100%; }
+  .main-col { padding: 14px 12px 32px; }
+  .side-col { padding: 12px; }
+  #viewport select, #viewport input { min-width: 0 !important; max-width: 100% !important; }
+  #viewport .status-chip { white-space: nowrap; }
+  #viewport .tbl-wrap { max-width: 100%; }
+
+  /* ---- stacked input / readout tables ---- */
+  html body #viewport table.fin.bk-m-stack.bk-m-stack { table-layout: auto !important; width: 100% !important; min-width: 0 !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack { display: block; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack caption { display: block; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack colgroup, html body #viewport table.fin.bk-m-stack.bk-m-stack thead { display: none; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tbody, html body #viewport table.fin.bk-m-stack.bk-m-stack tfoot { display: block; width: 100%; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+       padding: 7px 10px; border-bottom: 1px solid var(--line); height: auto !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td { display: block; border: none !important; padding: 0 !important;
+       width: auto !important; min-width: 0; max-width: 100%; height: auto !important; flex: 0 1 auto;
+       white-space: normal; overflow-wrap: normal; word-break: normal; text-align: left !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td:first-child { flex: 1 0 100%; font-weight: 600; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td.v { flex: 0 0 auto; padding: 2px 6px !important; border-radius: 3px; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.input td.v { min-width: 46%; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td select, html body #viewport table.fin.bk-m-stack.bk-m-stack td input { width: auto !important; position: static !important; margin: 0 !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total { background: #0e2a4a; color: #eaf0f6; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td { background: #0e2a4a !important; color: #eaf0f6 !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td[colspan] { flex: 1 0 100%; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td[data-bk-label]::before { content: attr(data-bk-label); display: block;
+       font-size: 9px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: #8A8171; line-height: 1.2; }
+
+  /* ---- scrolling financial schedules ---- */
+  html body #viewport table.fin.bk-m-scroll.bk-m-scroll { table-layout: auto !important; width: max-content !important; min-width: 100% !important; }
+  html body #viewport table.fin.bk-m-scroll.bk-m-scroll th, html body #viewport table.fin.bk-m-scroll.bk-m-scroll td { white-space: nowrap; }
+  html body #viewport table.fin.bk-m-scroll.bk-m-scroll tbody tr > :first-child { position: sticky; left: 0; z-index: 1; background: var(--surface);
+       white-space: normal; min-width: 116px; max-width: 150px; box-shadow: 1px 0 0 var(--line); }
+  html body #viewport table.fin.bk-m-scroll.bk-m-scroll thead th:first-child { position: sticky; left: 0; z-index: 2; }
+  html body #viewport table.fin.bk-m-scroll.bk-m-scroll tr.grandtotal > :first-child, html body #viewport table.fin.bk-m-scroll.bk-m-scroll tr.total > :first-child { background: #0e2a4a; color: #eaf0f6; }
+  #viewport .tbl-wrap.bk-scrollable::before { content: 'Scroll sideways for all columns \2192'; display: block;
+       font-size: 10px; letter-spacing: .04em; color: var(--muted, #566a80); padding: 6px 10px 0; }
+}
+/* The signed-in page background matches the application canvas, so no dark band of the sign-in
+   theme shows below short pages. */
+html.bk-auth-ok body { background: #F4EFE3; }
+@media (min-width: 761px) and (max-width: 1100px){
+  .main-col { padding: 18px 18px 36px; }
+}

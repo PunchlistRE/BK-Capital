@@ -1,0 +1,10 @@
+
+/* Keep the existing page colors/formatting unchanged.
+   Only normalize select control width within the live Deal Underwrite sheet. */
+#viewport table.fin.bk-input-grid select,
+#viewport .bk-input-grid select {
+    width: 118px !important;
+    min-width: 118px !important;
+    max-width: 118px !important;
+    box-sizing: border-box !important;
+}

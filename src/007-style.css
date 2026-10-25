@@ -1,0 +1,316 @@
+
+  :root{
+    --navy-950:#091c33;
+    --navy-900:#0e2a4a;
+    --navy-800:#163a62;
+    --navy-700:#24507f;
+    --gold-600:#B4913F;
+    --gold-500:#3E9AE6;
+    --gold-200:#bfdbf5;
+    --gold-100:#e8f2fc;
+    --cream-50:#f4f7fa;
+    --cream-100:#eaf0f6;
+    --cream-200:#dbe4ec;
+    --line:#dbe4ec;
+    --line-soft:#e6edf3;
+    --ink-900:#10233a;
+    --ink-700:#2f4258;
+    --ink-500:#566a80;
+    --ink-400:#7C8792;
+    --input-blue:#1B5FA6;
+    --formula-ink:#10233a;
+    --linked-green:#2C7A4B;
+    --external-red:#A93B2C;
+    --stored-grey:#5f6f82;
+    --status-pass:#2C7A4B;
+    --status-warn:#B4913F;
+    --status-fail:#A93B2C;
+    --surface:#FFFFFF;
+    --rail-bg:#0a1d34;
+    --rail-ink:#C7CDD3;
+    --rail-ink-dim:#7E8892;
+    --shadow-card:0 1px 2px rgba(16,25,34,.06), 0 8px 24px -12px rgba(16,25,34,.18);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --cream-50:#0a1a2e;
+      --cream-100:#0f2640;
+      --cream-200:#17345280;
+      --surface:#0f2640;
+      --line:#244462;
+      --line-soft:#1b3a58;
+      --ink-900:#e8eef5;
+      --ink-700:#C7CBD1;
+      --ink-500:#98A1AA;
+      --ink-400:#78828C;
+      --gold-100:#12273d;
+      --input-blue:#6FA8DC;
+      --formula-ink:#e1e9f1;
+      --linked-green:#5FB784;
+      --external-red:#E07A64;
+      --stored-grey:#9A9488;
+    }
+  }
+  :root[data-theme="dark"]{
+    --cream-50:#0a1a2e;
+    --cream-100:#0f2640;
+    --cream-200:#17345280;
+    --surface:#0f2640;
+    --line:#244462;
+    --line-soft:#1b3a58;
+    --ink-900:#e8eef5;
+    --ink-700:#C7CBD1;
+    --ink-500:#98A1AA;
+    --ink-400:#78828C;
+    --gold-100:#12273d;
+    --input-blue:#6FA8DC;
+    --formula-ink:#e1e9f1;
+    --linked-green:#5FB784;
+    --external-red:#E07A64;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--rail-bg);
+    color:var(--ink-900);
+    font-family:'Schibsted Grotesk','Inter','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{display:flex; min-height:100vh; width:100%;}
+
+  /* ---------- REVIEW RAIL (this tool's own meta-nav, not part of the model) ---------- */
+  .rail{
+    width:272px; flex:0 0 272px;
+    background:var(--rail-bg);
+    color:var(--rail-ink);
+    padding:22px 14px 22px;
+    display:flex; flex-direction:column;
+    gap:2px;
+    border-right:1px solid #000;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .rail-head{padding:2px 10px 16px; border-bottom:1px solid #232B33; margin-bottom:10px;}
+  .rail-head .eyebrow{font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-500); font-weight:600;}
+  .rail-head h1{font-family:'Schibsted Grotesk','Inter','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif; font-size:19px; margin:4px 0 6px; font-weight:600; color:#fff;}
+  .rail-head p{font-size:11.5px; line-height:1.5; color:var(--rail-ink-dim); margin:0;}
+  .rail-group{margin-top:14px;}
+  .rail-group-label{
+    font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--rail-ink-dim);
+    padding:0 10px 6px; font-weight:600; display:flex; justify-content:space-between; align-items:center;
+  }
+  .rail-group-label .grp-tag{
+    font-size:9px; padding:1px 6px; border-radius:20px; border:1px solid #244462; color:var(--rail-ink-dim);
+  }
+  .rail-item{
+    display:flex; align-items:center; gap:9px;
+    padding:7px 10px; border-radius:6px; font-size:12.5px; cursor:pointer;
+    color:var(--rail-ink); border:1px solid transparent; line-height:1.3;
+  }
+  .rail-item .dot{width:7px;height:7px;border-radius:50%; flex:0 0 auto; background:var(--gid-color, #556);}
+  .rail-item .name{flex:1;}
+  .rail-item:hover{background:#161D24;}
+  .rail-item.active{background:#1B2530; border-color:#2C3946; color:#fff;}
+  .rail-item.hidden-sheet{opacity:.45;}
+  .rail-foot{margin-top:auto; padding:14px 10px 2px; border-top:1px solid #232B33; font-size:10.5px; color:var(--rail-ink-dim); line-height:1.6;}
+
+  /* ---------- SHEET FRAME (this IS the proposed Excel design) ---------- */
+  .sheet-viewport{flex:1; min-width:0; background:var(--cream-50); min-height:100vh;}
+  .sheet-frame{display:none;}
+  .sheet-frame.active{display:block;}
+
+  .brand-bar{
+    background:linear-gradient(180deg, var(--navy-900), var(--navy-950));
+    color:#eaf0f6;
+    padding:16px 28px;
+    display:flex; align-items:center; justify-content:space-between; gap:24px;
+    border-bottom:3px solid var(--gold-500);
+  }
+  .brand-mark{display:flex; align-items:center; gap:12px;}
+  .brand-mark .glyph{
+    width:34px;height:34px;border:1.5px solid var(--gold-500); border-radius:3px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Schibsted Grotesk','Inter','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif; font-weight:700; font-size:15px; color:var(--gold-500);
+  }
+.brand-mark .glyph{ border:0 !important; width:40px !important; height:40px !important; }
+.brand-mark .glyph .pl-logo{ width:40px; height:40px; display:block; }
+#bk-auth-gate .bk-login-glyph{ border:0 !important; width:52px !important; height:52px !important; }
+#bk-auth-gate .bk-login-glyph .pl-logo{ width:52px; height:52px; display:block; }
+  .brand-mark .word{font-family:'Schibsted Grotesk','Inter','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif; font-weight:600; font-size:19px; letter-spacing:.03em;}
+  .brand-mark .sub{font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:#B9C3CE; margin-top:1px;}
+  .brand-mid{text-align:center; font-size:11px; color:#CBD5DF;}
+  .brand-mid .l1{font-size:12.5px; font-weight:600; letter-spacing:.06em; color:#eaf0f6;}
+  .brand-mid .l2{color:var(--gold-500); letter-spacing:.04em; margin-top:1px;}
+  .brand-tag{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:#B9C3CE; text-align:right; max-width:180px;}
+
+  .tabnav{background:var(--navy-800); border-bottom:1px solid var(--navy-700);}
+
+  /* V29.7 nav overflow affordance.
+     The primary strip is a single row of 11 groups needing ~1448px. Below that width the
+     trailing groups (Portfolio & Investors, Monthly Engine, Portfolio Database, QA) simply
+     scrolled out of sight with no indication they existed -- which is what made Monthly
+     Engine look "inaccessible" in a narrower window. The strip stays a single row with its
+     original padding and spacing; a wrapper adds chevrons that appear ONLY when content is
+     actually off-screen, and native trackpad/mouse horizontal scrolling still works. */
+  .tabnav-primary-wrap{position:relative;}
+  .tabnav-primary{
+    display:flex; overflow-x:auto; padding:0 20px;
+    scroll-behavior:smooth;
+    scrollbar-width:none;            /* the chevrons are the affordance; no scrollbar gutter */
+    -ms-overflow-style:none;
+  }
+  .tabnav-primary::-webkit-scrollbar{height:0; display:none;}
+  .nav-chev{
+    position:absolute; top:0; bottom:0; width:30px; display:none; z-index:4;
+    align-items:center; justify-content:center; cursor:pointer; border:0; padding:0;
+    color:#DDE5EC; font:600 15px/1 Inter,system-ui,sans-serif;
+    background:var(--navy-800); /* fallback; overridden by the gradient below */
+  }
+  .nav-chev.show{display:flex;}
+  .nav-chev:hover{color:#fff;}
+  .nav-chev-l{left:0;  background:linear-gradient(to right, var(--navy-800) 62%, rgba(30,58,85,0));}
+  .nav-chev-r{right:0; background:linear-gradient(to left,  var(--navy-800) 62%, rgba(30,58,85,0));}
+  .tabnav-primary .grp-btn{
+    /* V29.7 nav legibility: inactive labels were #C9D3DC. That value is uniform across every
+       group, so the "Property Operations reads as disabled" effect was NOT coming from the text
+       colour -- it came from the category dot (see .sw below). The label is still lifted to a
+       clearly legible off-white so no category reads as greyed-out, while staying below the
+       active #fff. Weight stays 600 for every item: active state is communicated by the gold
+       underline + gold-tint background, never by making inactive items lighter/thinner. */
+    padding:10px 16px; font-size:11.5px; font-weight:600; letter-spacing:.03em; color:#DDE5EC;
+    white-space:nowrap; cursor:pointer; border-bottom:2.5px solid transparent; display:flex; align-items:center; gap:6px;
+  }
+  /* Category dots keep their exact GROUPS colours (they are the category key and are not
+     changed here), but several of them are as dark as the navy bar itself -- Property
+     Operations is #163a62, which IS --navy-800, so its dot was invisible; Monthly Engine
+     (#47507A) and Portfolio Database (#566a80) were similarly muddy. A 1px translucent light
+     ring makes every dot register at the same perceived weight against the navy without
+     altering a single category colour. */
+  .tabnav-primary .grp-btn .sw{
+    width:7px;height:7px;border-radius:50%;
+    box-shadow:0 0 0 1px rgba(233,239,245,.55);
+  }
+  .tabnav-primary .grp-btn.on{color:#fff; border-color:var(--gold-500); background:rgba(62,154,230,.1);}
+  .tabnav-primary .grp-btn.on .sw{box-shadow:0 0 0 1px rgba(255,255,255,.85);}
+  .tabnav-primary .grp-btn:hover{color:#fff;}
+  .tabnav-secondary{background:var(--cream-100); border-bottom:1px solid var(--line); display:flex; overflow-x:auto; padding:0 20px;}
+  .tabnav-secondary .sheet-btn{
+    padding:9px 15px; font-size:12px; font-weight:600; color:var(--ink-500); white-space:nowrap; cursor:pointer;
+    border-bottom:2.5px solid transparent; letter-spacing:.01em;
+  }
+  .tabnav-secondary .sheet-btn.on{color:var(--navy-900); border-color:var(--navy-900); background:var(--surface);}
+  .tabnav-secondary .sheet-btn.stub{color:var(--ink-400); font-style:italic; font-weight:500;}
+
+  .title-block{padding:22px 28px 16px; border-bottom:1px solid var(--line);}
+  .title-block .crumbs{font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--ink-400); font-weight:600; margin-bottom:6px;}
+  .title-block h2{font-family:'Schibsted Grotesk','Inter','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif; font-size:27px; font-weight:600; color:var(--navy-900); margin:0 0 6px; text-wrap:balance;}
+  .title-block .desc{font-size:12.5px; color:var(--ink-500); max-width:74ch; line-height:1.55; margin:0 0 14px;}
+  .meta-strip{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--surface);}
+  .meta-strip .cell{padding:9px 14px; border-right:1px solid var(--line-soft);}
+  .meta-strip .cell:last-child{border-right:none;}
+  .meta-strip .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-400); font-weight:600; margin-bottom:2px;}
+  .meta-strip .v{font-size:13px; font-weight:600; color:var(--ink-900); font-variant-numeric:tabular-nums;}
+
+  .body-grid{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:0; align-items:start;}
+  .body-grid:has(.pl-home){grid-template-columns:minmax(0,1fr);}
+  .main-col{padding:20px 28px 40px; min-width:0;}
+  .side-col{
+    padding:20px 20px 40px; border-left:1px solid var(--line);
+    position:sticky; top:0; align-self:start;
+    display:flex; flex-direction:column; gap:16px;
+  }
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow-card); overflow:hidden;}
+  .card-head{background:var(--navy-900); color:#eaf0f6; font-size:10.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; padding:9px 14px;}
+  .photo{aspect-ratio:4/3; width:100%; background:
+      linear-gradient(160deg, var(--navy-800), var(--navy-950));
+    position:relative; display:flex; align-items:center; justify-content:center;}
+  .photo::before{content:""; position:absolute; inset:0; background-image:
+      repeating-linear-gradient(45deg, rgba(62,154,230,.06) 0 2px, transparent 2px 14px);}
+  .photo span{position:relative; color:var(--gold-200); font-size:10px; letter-spacing:.1em; text-transform:uppercase; text-align:center; padding:0 20px; line-height:1.6;}
+  .metric-list{padding:4px 0;}
+  .metric-row{display:flex; justify-content:space-between; align-items:baseline; padding:8px 14px; border-bottom:1px solid var(--line-soft); gap:10px;}
+  .metric-row:last-child{border-bottom:none;}
+  .metric-row .k{font-size:11px; color:var(--ink-500);}
+  .metric-row .v{font-size:12.5px; font-weight:700; color:var(--ink-900); font-variant-numeric:tabular-nums; text-align:right;}
+  .metric-row .v.pos{color:var(--status-pass);}
+  .metric-row .v.neg{color:var(--status-fail);}
+  .info-list .metric-row .v{font-weight:600; font-size:12px;}
+  .status-chip{display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.04em; padding:2px 8px; border-radius:20px; text-transform:uppercase;}
+  .status-chip::before{content:""; width:6px;height:6px;border-radius:50%; background:currentColor;}
+  .status-chip.pass{color:var(--status-pass); background:rgba(44,122,75,.12);}
+  .status-chip.warn{color:var(--status-warn); background:rgba(180,145,63,.14);}
+  .status-chip.fail{color:var(--status-fail); background:rgba(169,59,44,.12);}
+
+  .keyrow{display:flex; gap:9px; align-items:flex-start; padding:8px 14px; border-bottom:1px solid var(--line-soft);}
+  .keyrow:last-child{border-bottom:none;}
+  .keyswatch{width:13px;height:13px;border-radius:3px; margin-top:1.5px; flex:0 0 auto; border:1px solid rgba(0,0,0,.08);}
+  .keyrow b{display:block; font-size:11px; color:var(--ink-900);}
+  .keyrow span{font-size:10.5px; color:var(--ink-500); line-height:1.4;}
+
+  /* data table */
+  table.fin{width:100%; border-collapse:collapse; font-size:11.8px; font-variant-numeric:tabular-nums;}
+  table.fin caption{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.09em; color:var(--ink-400); font-weight:700; padding:14px 10px 6px;}
+  table.fin th{
+    text-align:right; font-size:10px; letter-spacing:.03em; font-weight:700; color:#e1e9f1;
+    background:var(--navy-900); padding:8px 10px; white-space:nowrap;
+  }
+  table.fin th.rowlabel-h{text-align:left; color:#eaf0f6;}
+  table.fin td{padding:6.5px 10px; text-align:right; border-bottom:1px solid var(--line-soft); white-space:nowrap; color:var(--formula-ink);}
+  /* V29.10.5: prose columns (findings, reasons, evidence) must wrap. Numeric
+     columns keep nowrap so figures never break mid-number. */
+  table.fin.wrap{table-layout:fixed; width:100%;}
+  table.fin.wrap td, table.fin.wrap th{white-space:normal; word-break:normal; overflow-wrap:anywhere; vertical-align:top;}
+  table.fin.wrap td[data-bk-align="text"]{text-align:left;}
+  table.fin td.rowlabel{text-align:left; color:var(--ink-700); font-weight:500; white-space:normal;}
+  /* V29 alignment pass: bkInput() already tags every editable input row with data-bk-fmt.
+     Rows whose value is genuinely descriptive text (Investment Name, Location, Deal ID, dates,
+     etc. -- fmt='text') were inheriting the numeric-value default of right-align, which reads as
+     inconsistent next to a left-aligned row label. Numeric/money/pct/dropdown rows are unaffected
+     -- this only re-aligns the value cell for rows already marked as text. */
+  table.fin tr.input[data-bk-fmt="text"] td.v{text-align:left;}
+  /* V29 alignment pass: the "Units" column (the 3rd cell of every input row -- rowlabel, value,
+     unit, [status]) is a short descriptive label ("units","GSF","% of EGI","months", etc.), never
+     a number to be compared vertically, so per the sponsor's stated preference it reads better left-aligned
+     than right-aligned. Confirmed via audit_alignment_scan.py that every table.fin tr.input row
+     across the app (bkInput()-generated and the few hand-written rollover/reverse-solve rows) uses
+     this exact 3rd-column-is-units layout, so this single rule is safe app-wide. */
+  table.fin tr.input td:nth-child(3){text-align:left;}
+  /* Alignment consistency pass: a tr.section band (e.g. "Certification", "Revenue", "Operating
+     Expenses", an investor-name divider row) is always a title/label, never a numeric value, but
+     had no text-align of its own -- so it fell through to table.fin td's default text-align:right,
+     right-justifying every section title app-wide. One rule fixes every occurrence everywhere. */
+  table.fin tr.section td{background:var(--gold-100); font-weight:700; color:var(--navy-900); border-top:1px solid var(--gold-200); border-bottom:1px solid var(--gold-200); text-align:left;}
+  table.fin tr.subtotal td{background:var(--cream-100); font-weight:700; border-top:1px solid var(--line);}
+  table.fin tr.grandtotal td{background:var(--navy-900); color:#fff; font-weight:700;}
+  table.fin tr.input td.v{color:var(--input-blue); font-weight:600; background:var(--gold-100);}
+  table.fin td.linked{color:var(--linked-green); font-weight:600;}
+  table.fin td.stored{color:var(--stored-grey); font-style:italic;}
+  table.fin tbody tr:hover td{background:var(--cream-100);}
+  table.fin tr.grandtotal:hover td{background:var(--navy-900);}
+  table.fin tr.section:hover td, table.fin tr.subtotal:hover td{background:var(--gold-100);}
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px; background:var(--surface); box-shadow:var(--shadow-card);}
+
+  .kv-table{width:100%; border-collapse:collapse; font-size:12px;}
+  .kv-table td{padding:6px 10px; border-bottom:1px solid var(--line-soft); vertical-align:top;}
+  .kv-table td.lbl{color:var(--ink-500); width:40%;}
+  .kv-table td.val{font-weight:600; color:var(--ink-900); font-variant-numeric:tabular-nums;}
+  .kv-table tr.grp td{background:var(--navy-900); color:#eaf0f6; font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; padding:8px 10px;}
+
+  .note-flag{
+    display:flex; gap:8px; align-items:flex-start; background:var(--gold-100); border:1px solid var(--gold-200);
+    border-radius:6px; padding:9px 12px; font-size:11px; color:var(--ink-700); line-height:1.5; margin:12px 0 4px;
+  }
+  .note-flag b{color:var(--navy-900);}
+
+  .stub-panel{padding:80px 28px; text-align:center; color:var(--ink-400);}
+  .stub-panel .big{font-family:'Schibsted Grotesk','Inter','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif; font-size:20px; color:var(--ink-700); margin-bottom:8px;}
+  .stub-panel .small{font-size:12.5px; max-width:50ch; margin:0 auto;}
+
+  @media (max-width:900px){
+    .rail{position:fixed; z-index:20; transform:translateX(-100%); transition:transform .2s;}
+    .rail.open{transform:translateX(0);}
+    .body-grid{grid-template-columns:1fr;}
+    .side-col{border-left:none; border-top:1px solid var(--line); position:static;}
+    .meta-strip{grid-template-columns:repeat(2,1fr);}
+  }

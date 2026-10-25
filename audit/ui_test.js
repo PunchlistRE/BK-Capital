@@ -290,11 +290,18 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     await p.waitForFunction(() => /Read sample_om|could not find|Could not|has no readable/i.test(document.querySelector('#viewport').innerText), null, { timeout: 240000 });
     const om = await p.evaluate(() => ({ t: document.querySelector('#viewport').innerText }));
     check('the OM is read and its NOI ties to the engine', /TIES TO OM NOI/.test(om.t) && /Maple Court Apartments/.test(om.t) && /\$2,950,000/.test(om.t), om.t.slice(om.t.indexOf('Maple'), om.t.indexOf('Maple') + 120));
+    const cf = await p.evaluate(() => document.querySelector('#viewport').innerText);
+    check('every imported figure carries a confidence level, and a clean read has none marked Low', /Confidence in what was read/i.test(cf) && /\d+ verified/i.test(cf) && /\b0 low\b/i.test(cf) && /Real estate taxes[\s\S]{0,160}Verified/i.test(cf) && /Exit cap rate[\s\S]{0,120}Assumed/i.test(cf), cf.slice(cf.indexOf('Confidence in'), cf.indexOf('Confidence in') + 140));
+    /* a misread figure must show: nudge one parsed expense, re-render, then restore it */
+    const bad = await p.evaluate(async () => { const S = window.__bkOMState, e = S.om.ie.exp.filter(x => /tax/i.test(x.label))[0]; const was = e.cur, wasPf = e.pf; e.cur += 9000; e.pf += 9000; showSheet('Import OM'); await new Promise(r => setTimeout(r, 400)); const t = document.querySelector('#viewport').innerText; e.cur = was; e.pf = wasPf; showSheet('Import OM'); return t; });
+    check('a misread expense is flagged Low and the summary says the figures do not reconcile', /NOI DIFFERS/.test(bad) && /Real estate taxes[\s\S]{0,260}Low/i.test(bad) && /did not reconcile/i.test(bad) && !/\b0 low\b/i.test(bad));
     await p.evaluate(() => bkOMBasis('pf')); await p.waitForTimeout(400);
     check('the broker pro forma basis also ties to the OM NOI', await p.evaluate(() => /TIES TO OM NOI/.test(document.querySelector('#viewport').innerText)));
     await p.evaluate(() => bkOMBasis('cur')); await p.evaluate(() => bkOMCreate()); await p.waitForTimeout(2500);
     const nd = await p.evaluate(async () => { const s = bkLoad(); return { id: s.dealId, price: s.purchasePrice, units: s.units, gsf: s.gsf, noi: Math.round(bkCalc().noi), slots: (await bkDocsList()).map(f => f.slot).sort(), loc: s.location }; });
     check('creating the deal loads price, units, area and NOI from the OM', nd.price === exp.price && nd.units === exp.units && nd.gsf === exp.sf && Math.abs(nd.noi - exp.curNOI) <= 2 && nd.loc === 'Fairview, OH', JSON.stringify(nd));
+    const imp = await p.evaluate(() => { const s = bkLoad(); return { has: !!s._imp, keys: s._imp ? Object.keys(s._imp.fields) : [], levels: s._imp ? Object.values(s._imp.fields).map(x => x.l) : [] }; });
+    check('the import leaves its low and check flags on the deal', imp.has && imp.keys.length > 0 && imp.levels.every(l => l === 'low' || l === 'check'), JSON.stringify(imp));
     check('the OM and a photo are attached to the new deal', JSON.stringify(nd.slots) === '["om","photo"]', JSON.stringify(nd.slots));
     await p.evaluate(() => { bkGuideOn(); bkGuideGo('exit'); }); await p.waitForTimeout(500);
     const gx = await p.evaluate(() => ({ chk: !!document.querySelector('.gd-chk input'), t: document.querySelector('.gd').innerText }));
@@ -306,6 +313,17 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     check('ticking "I have checked this figure" confirms that assumption', await p.evaluate(() => Object.keys(bkLoad()._guide.confirmed).length === 1));
     await p.evaluate(() => { bkGuideGo('price'); }); await p.waitForTimeout(400);
     check('figures read from an OM carry the page they came from, with a way to view it', await p.evaluate(() => /from the OM, p\.\d+/i.test(document.querySelector('.gd').innerText) && !!document.querySelector('.gd-view')));
+    {
+      const ids = ['property', 'price', 'income', 'expenses', 'financing', 'exit']; let seen = null;
+      for (const id of ids) { await p.evaluate(i => bkGuideGo(i), id); await p.waitForTimeout(300); const t = await p.evaluate(() => document.querySelector('.gd').innerText); if (/import: (check it|low confidence)/i.test(t)) { seen = id; break; } }
+      const before = await p.evaluate(() => Object.keys(bkLoad()._imp.fields).length);
+      check('a flagged import figure is marked in the Guide with its reason', !!seen, String(seen));
+      if (seen) {
+        await p.evaluate(() => { const c = document.querySelector('.gd-chk input'); c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); bkGuideNext(); }); await p.waitForTimeout(400);
+        const after = await p.evaluate(() => Object.keys(bkLoad()._imp.fields).length);
+        check('confirming a flagged figure clears its flag', after < before, before + ' -> ' + after);
+      }
+    }
     await p.evaluate(() => { bkGuideGo('exit'); }); await p.waitForTimeout(400);
     const gt = await p.evaluate(() => document.querySelector('.gd').innerText);
     check('after an OM import the guide marks my assumptions for checking, and offers a suggestion', /my assumption: check it/i.test(gt) && /I suggest/.test(gt), gt.slice(0, 160));
@@ -318,6 +336,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     await p.setInputFiles('#bkOMFile', path.join(__dirname, 'fixtures', 'sample_om_b.pdf'));
     await p.waitForFunction(() => /✓ Read sample_om_b|could not find|Could not/i.test(document.querySelector('#viewport').innerText), null, { timeout: 240000 }); await p.waitForTimeout(500);
     const ob = await p.evaluate(() => ({ t: document.querySelector('#viewport').innerText, dis: !!document.querySelector('button[onclick="bkOMCreate()"]').disabled }));
+    check('an entered price is shown as verified, with the reason', await p.evaluate(async () => { bkOMManual('mPrice', '1,600,000'); await new Promise(r => setTimeout(r, 300)); const t = document.querySelector('#viewport').innerText; bkOMManual('mPrice', ''); return /Purchase price[\s\S]{0,200}Verified/i.test(t); }));
     check('a second OM layout is read, and a missing price is asked for', /NOT FOUND IN THE OM/i.test(ob.t) && /Elm Street Apartments/.test(ob.t) && /Brookfield, CT/.test(ob.t) && /TIES TO OM NOI/.test(ob.t) && ob.dis, ob.t.slice(ob.t.indexOf('Elm'), ob.t.indexOf('Elm') + 100));
     await p.evaluate(() => bkOMManual('mPrice', '1,600,000')); await p.waitForTimeout(400); await p.evaluate(() => bkOMCreate()); await p.waitForTimeout(2500);
     const nb = await p.evaluate(async () => { const s = bkLoad(); return { price: s.purchasePrice, units: s.units, noi: Math.round(bkCalc().noi), slots: (await bkDocsList()).map(f => f.slot).sort() }; });
@@ -330,6 +349,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     check('a development-site OM is recognised and asks for the pro forma workbook', await p.evaluate(() => !!document.querySelector('#bkOMDevFile') && /development site/i.test(document.querySelector('#viewport').innerText)));
     await p.setInputFiles('#bkOMDevFile', path.join(__dirname, 'fixtures', 'dev_proforma.xlsx')); await p.waitForTimeout(5000);
     const dv = await p.evaluate(() => document.querySelector('#viewport').innerText);
+    check('the development import shows confidence too, with nothing Low on a clean read', /Confidence in what was read/i.test(dv) && /\b0 low\b/i.test(dv) && /Land price[\s\S]{0,160}(Verified|Check)/i.test(dv));
     check('the development pro forma ties to the workbook NOI', /TIES TO PRO FORMA NOI/.test(dv) && /\$600,000/.test(dv) && /\$4,000,000/.test(dv), dv.slice(dv.indexOf('TIES'), dv.indexOf('TIES') + 90));
     await p.evaluate(() => bkOMDevCreate()); await p.waitForTimeout(4000);
     const dd2 = await p.evaluate(async () => { const s = bkLoad(); const m = bkMonthlyReturns(); return { t: s.dealType, price: s.purchasePrice, units: s.units, src: s.sourceConstruction, noi: Math.round(bkCalc().noi), irrOk: isFinite(m.irr), slots: (await bkDocsList()).map(f => f.slot).sort() }; });

@@ -22080,11 +22080,11 @@ function parseOM(pages){
   var z = /\b([A-Z]{2})\s*[-·]?\s*(\d{5})\b/.exec(all); if(z){ o.zip = z[2]; if(!o.state) o.state = z[1]; }
   o.price = num(find(/(?:Offering|Asking|List(?:ing)?|Purchase)\s*Price[^\d$\n]{0,20}\$\s?([\d,]{6,})/i, 1, 'price'));
   if(!o.price){ for(i = 0; i < txt.length && !o.price; i++){ var L = txt[i].split(/\n/); for(var q = 0; q < L.length; q++){ if(!/(ASKING|OFFERING|LIST(?:ING)?|PURCHASE)\s*PRICE/i.test(L[q])) continue;
-      var win = [L[q - 3], L[q - 2], L[q - 1], L[q]].filter(function(x){ return x; }).join(' '), ms = win.match(/\$\s?\d{1,3}(?:,\d{3})+/g) || [], vals = ms.map(num).filter(function(v){ return v >= 100000; }); if(vals.length){ o.price = vals[vals.length - 1]; src.price = i + 1; break; } } } }
+      var win = [L[q - 3], L[q - 2], L[q - 1], L[q]].filter(function(x){ return x; }).join(' '), ms = win.match(/\$\s?\d{1,3}(?:,\d{3})+/g) || [], vals = ms.map(num).filter(function(v){ return v >= 100000; }); if(vals.length){ o.price = vals[vals.length - 1]; src.price = i + 1; o.priceFallback = true; break; } } } }
   var noiM = null; for(i = 0; i < txt.length && !noiM; i++){ noiM = /\bNOI\s+\$?\s?([\d,]{5,})\s+\$?\s?([\d,]{5,})/.exec(txt[i]); if(noiM) src.noi = i + 1; }
   if(noiM){ o.curNOI = num(noiM[1]); o.pfNOI = num(noiM[2]); }
   var capM = null; for(i = 0; i < txt.length && !capM; i++){ capM = /Cap\s*Rate\s+([\d.]+)\s*%\s+([\d.]+)\s*%/i.exec(txt[i]); }
-  if(capM){ o.curCap = num(capM[1]) / 100; o.pfCap = num(capM[2]) / 100; }
+  if(capM){ o.capPrinted = true; o.curCap = num(capM[1]) / 100; o.pfCap = num(capM[2]) / 100; }
   o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/Total\s+Units\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/(\d{1,4})\s*[- ]?\s*units?\b/i, 1, 'units'));
   o.sf = num(find(/\bTotal\s+\d{1,4}\s+Units\s+([\d,]{4,})\s*SF/i, 1, 'sf')) || num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf')) || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
   o.yearBuilt = num(find(/YEAR BUILT\s+(\d{4})/i, 1, 'yearBuilt'));
@@ -22217,7 +22217,7 @@ function readOMPdfjs(file){
     var getPage = function(i){ return pages[i] ? Promise.resolve(pages[i]) : doc.getPage(i + 1).then(function(p){ pages[i] = p; return p; }); };
     var readAll = function(i){ if(i >= n) return Promise.resolve(); setMsg('Reading page ' + (i + 1) + ' of ' + n + '...'); return getPage(i).then(function(p){ return p.getTextContent(); }).then(function(tc){ var t = pageText(tc); if(t.replace(/\s+/g, '').length >= 60) texts[i] = t; else pending.push(i); return readAll(i + 1); }); };
     return readAll(0).then(function(){
-      var pendingAll = pending.slice(); info.dbg = { pending:pending.length, jpegs:jpegs.length, n:n }; info.n = n; info.method = pending.length === 0 ? 'text' : pending.length === n ? 'ocr' : 'mixed';
+      var pendingAll = pending.slice(); info.ocrPages = pendingAll.map(function(i){ return i + 1; }); info.dbg = { pending:pending.length, jpegs:jpegs.length, n:n }; info.n = n; info.method = pending.length === 0 ? 'text' : pending.length === n ? 'ocr' : 'mixed';
       var hit = pending.length ? cacheGet(file) : null; if(hit && hit.pages.length === n){ pending.forEach(function(i){ texts[i] = hit.pages[i] || ''; }); pending = []; info.cached = true; }
       var done = {}, step = function(i){ if(done[i] || pending.indexOf(i) < 0) return Promise.resolve(); done[i] = 1; setMsg('Reading page ' + (i + 1) + ' of ' + n + '...'); var jp = jpegs.length === n ? jpegs[i] : jpegs.length === pendingAll.length ? jpegs[pendingAll.indexOf(i)] : null; if(jp) return ocr(jp.blob).then(function(t){ texts[i] = t; }); return getPage(i).then(function(p){ return pageImage(p).then(function(b){ return b || renderPage(p, 2640); }); }).then(ocr).then(function(t){ texts[i] = t; }); };
       var seq = function(list){ return Promise.all(list.map(step)); };
@@ -22277,7 +22277,9 @@ window.bkOMManual = function(k, v){ v = parseFloat(String(v).replace(/[^0-9.]/g,
 window.__bkOMDbg = { ocr:ocr, shrink:shrink, pageJpegs:pageJpegs, getWorker:getWorker };
 window.bkOMParse = parseOM; window.bkOMBuild = buildDeal; window.bkOMPageJpegs = pageJpegs;
 window.bkOMCreate = function(){ if(!S.om || !((S.om.price || S.mPrice) && (S.om.units || S.mUnits))) return; window.__bkOMLast = { sources:S.om.sources || null }; var b = buildDeal(S.om, S.basis, S.file && S.file.name), file = S.file, info = S.info;
+  stampImp(b.deal, confOM(S.om, b, info, S.basis), S.file && S.file.name);
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
+  if(b.deal._imp){ var si = bkLoad(); si._imp = b.deal._imp; bkSave(si); }
   var id = String(b.deal.dealId), jobs = [];
   if(file && typeof window.bkDocsAdd === 'function') jobs.push(window.bkDocsAdd('om', file, id));
   if(info && info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverPhoto(info.cover).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
@@ -22287,6 +22289,7 @@ window.bkOMApply = function(){ if(!S.om) return; var b = buildDeal(S.om, S.basis
   KEEP.forEach(function(k){ delete nd[k]; }); if(cur.name && !/^(untitled|-)?$/i.test(String(cur.name))){ delete nd.name; delete nd.location; }
   if(!window.confirm('Apply these figures to "' + (cur.name || 'this deal') + '"? Price, units, rents, other income, vacancy and every expense line are replaced. The previous values stay in Version History.')) return;
   if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before applying OM figures', true);
+  stampImp(nd, confOM(S.om, b, S.info, S.basis), S.file && S.file.name);
   bkSave(Object.assign(cur, nd)); showSheet('Home'); };
 window.bkDocsExtractHook = function(fid){ window.bkDocsGet(fid).then(function(r){ if(!r) return; var f = new File([r.blob], r.name, { type:r.type }); if(r.slot === 't12') return t12(f); S.basis = 'cur'; run(f, 'apply'); }); };
 
@@ -22385,7 +22388,9 @@ function devRun(inp){ var f = inp && inp.files && inp.files[0]; if(!f) return; S
     .catch(function(e){ S.busy = false; S.msg = (e && e.message) || String(e); showSheet('Import OM'); }); }
 window.bkOMDevPF = devRun; window.bkOMDevTax = function(b){ if(S.dev){ S.dev.taxBasis = b; showSheet('Import OM'); } };
 window.bkOMDevCreate = function(){ if(!S.dev || !S.dev.pf) return; var b = buildDevDeal(S.dev), id = String(b.deal.dealId), files = [S.file, S.devFile].filter(Boolean);
+  stampImp(b.deal, confDev(S.dev, b, S.info), S.devFile && S.devFile.name);
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
+  if(b.deal._imp){ var si = bkLoad(); si._imp = b.deal._imp; bkSave(si); }
   var jobs = []; if(S.file && /\.pdf$/i.test(S.file.name)) jobs.push(window.bkDocsAdd('om', S.file, id)); if(S.devFile) jobs.push(window.bkDocsAdd('other', S.devFile, id));
   if(S.info && S.info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverPhoto(S.info.cover).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
   Promise.all(jobs).catch(function(){}).then(function(){ if(window.bkDocsInvalidate) window.bkDocsInvalidate(); if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Home'); }); };
@@ -22394,18 +22399,73 @@ function renderDev(body){
   if(!dv.pf){ return body + box('<b>This looks like a development site.</b> The OM gives the facts' + (om.price ? ' (price ' + $(om.price) + (om.units ? ', ' + om.units + ' approved units' : '') + (om.acres ? ', ' + om.acres + ' acres' : '') + ')' : '') + ', but not the income and cost figures. Add the developer\'s pro forma workbook (Excel) to build the deal.'
     + '<div style="margin-top:10px"><input id="bkOMDevFile" type="file" accept=".xlsx,.xlsm,.csv" onchange="bkOMDevPF(this)"></div>'); }
   var b = buildDevDeal(dv), d = b.deal, pf = dv.pf, ok = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002);
+  var C = confDev(dv, b, S.info), cf = C.fields;
   var tb = function(k, t){ return '<button type="button" class="pl-hbtn' + (dv.taxBasis === k ? ' primary' : '') + '" onclick="bkOMDevTax(\'' + k + '\')">' + t + '</button>'; };
   body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Real estate taxes</b>' + tb('pf', 'As the pro forma (' + $(b.taxPF) + ')') + tb('full', 'Fully assessed (' + $(b.taxFull) + ')') + '</div>');
-  body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO PRO FORMA NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs workbook ' + $(b.want) + '</span>') + '</div><table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><tbody>'
-    + row('Land price', $(d.purchasePrice), 'OM', 'raw') + row('Construction budget (hard and soft)', $(d.sourceConstruction), 'workbook', 'raw') + row('Residential units', d.units, 'OM / workbook', 'raw') + row('Commercial', d.commercialArea ? d.commercialArea.toLocaleString('en-US') + ' SF at $' + d.commercialRent + '/SF/yr' : 'none', 'workbook', 'raw') + row('Gross building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', 'workbook', 'raw')
-    + row('Average monthly rent', $(d.avgRent), 'workbook', 'raw') + row('Other income per unit (year, net of vacancy)', $(d.otherIncomePerUnit), 'workbook', 'raw') + row('Vacancy', pct(d.vacancy, 1), 'workbook', 'raw') + row('Management fee', pct(d.mgmtPct, 2) + ' of income', 'workbook', 'raw')
-    + row('Real estate taxes', $(d.taxes), 'workbook', 'raw') + row('Insurance', $(d.insurance), 'workbook', 'raw') + row('Utilities', $(d.utilities), 'workbook', 'raw') + row('Payroll', $(d.payroll), 'workbook', 'raw') + row('Repairs, contract, make-ready, marketing, G&A', $(d.rm + d.contract + d.turnover + d.marketing + d.ga), 'workbook', 'raw')
-    + row('Exit cap rate', pct(d.exitCap), 'workbook range', 'raw') + row('Timeline (months): pre-dev / construction / lease-up', d.predevMonths + ' / ' + d.constructionMonths + ' / ' + d.leaseupMonths, '', 'assumed') + row('Replacement reserves', '$0', '', 'assumed') + '</tbody></table>');
+  body += confBar(C);
+  body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO PRO FORMA NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs workbook ' + $(b.want) + '</span>') + '</div><table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><thead><tr><th style="text-align:left;padding:5px 8px"></th><th style="text-align:right;padding:5px 8px">Value</th><th style="text-align:left;padding:5px 8px">Source</th><th style="text-align:left;padding:5px 8px">Confidence</th></tr></thead><tbody>'
+    + row('Land price', $(d.purchasePrice), 'OM', 'raw', cf.purchasePrice) + row('Construction budget (hard and soft)', $(d.sourceConstruction), 'workbook', 'raw', cf.sourceConstruction) + row('Residential units', d.units, 'OM / workbook', 'raw', cf.units) + row('Commercial', d.commercialArea ? d.commercialArea.toLocaleString('en-US') + ' SF at $' + d.commercialRent + '/SF/yr' : 'none', 'workbook', 'raw') + row('Gross building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', 'workbook', 'raw')
+    + row('Average monthly rent', $(d.avgRent), 'workbook', 'raw', cf.avgRent) + row('Other income per unit (year, net of vacancy)', $(d.otherIncomePerUnit), 'workbook', 'raw', cf.otherIncomePerUnit) + row('Vacancy', pct(d.vacancy, 1), 'workbook', 'raw', cf.vacancy) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', 'workbook', 'raw', cf.mgmtPct)
+    + row('Real estate taxes', $(d.taxes), 'workbook', 'raw', cf.taxes) + row('Insurance', $(d.insurance), 'workbook', 'raw', cf.insurance) + row('Utilities', $(d.utilities), 'workbook', 'raw', cf.utilities) + row('Payroll', $(d.payroll), 'workbook', 'raw', cf.payroll) + row('Repairs, contract, make-ready, marketing, G&A', $(d.rm + d.contract + d.turnover + d.marketing + d.ga), 'workbook', 'raw')
+    + row('Exit cap rate', pct(d.exitCap), 'workbook range', 'raw', cf.exitCap) + row('Timeline (months): pre-dev / construction / lease-up', d.predevMonths + ' / ' + d.constructionMonths + ' / ' + d.leaseupMonths, '', 'assumed', cf.constructionMonths) + row('Replacement reserves', '$0', '', 'assumed', cf.reserves) + '</tbody></table>');
   body += box('<b>Before you rely on it</b><ul style="margin:6px 0 0 18px;padding:0">' + b.notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>');
   body += '<div style="margin-top:14px"><button type="button" class="pl-hbtn primary" onclick="bkOMDevCreate()">Create development deal</button></div><div style="font-size:12px;opacity:.7;margin-top:6px">The OM, the workbook and the OM\'s cover picture are kept in the deal\'s Deal Documents.</div>';
   return body;
 }
-function row(label, val, src, kind){ return '<tr><td style="padding:5px 8px">' + label + '</td><td style="padding:5px 8px;text-align:right;font-weight:600">' + val + '</td><td style="padding:5px 8px;font-size:11px;opacity:.65">' + (kind === 'assumed' ? 'app default' : kind === 'raw' ? src : src ? 'OM page ' + src : 'OM') + '</td></tr>'; }
+
+/* Confidence: every imported figure gets a level and a one-line reason, so a bad parse is visible before it reaches the engine.
+   verified = reconciled against another number in the document; check = read directly but nothing corroborates it (or it came off a page image); low = does not reconcile or is missing; assumed = the app's default, not from the document. */
+var CONF_LABEL = { verified:'Verified', check:'Check', low:'Low', assumed:'Assumed' };
+function confSummary(F){ var c = { verified:0, check:0, low:0, assumed:0 }; Object.keys(F).forEach(function(k){ c[F[k].l]++; }); return c; }
+function confOM(om, b, info, basis){
+  var d = b.deal, I = om.ie || {}, F = {}, s = om.sources || {}, ocr = function(p){ return !!(info && info.ocrPages && p && info.ocrPages.indexOf(p) >= 0); };
+  var tieOK = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002), diff = b.tie != null && b.want != null ? Math.round(Math.abs(b.tie - b.want)) : null;
+  var set = function(k, l, why){ F[k] = { l:l, why:why }; };
+  var line = function(k, v, what){ if(tieOK) set(k, 'verified', 'The deal\'s NOI recomputes to the OM\'s NOI (within $' + diff + '), so this ' + what + ' reconciles.'); else if(b.tie == null) set(k, 'check', 'Read from the OM; the NOI tie-out could not run.'); else set(k, 'low', 'The deal\'s NOI is ' + $(b.tie) + ' against the OM\'s ' + $(b.want) + '. One of the income or expense lines is probably misread; compare this one with the OM page.'); };
+  /* price */
+  if(S.mPrice && !om.price) set('purchasePrice', 'verified', 'You entered it; the OM does not state a price.');
+  else if(!om.price) set('purchasePrice', 'low', 'The OM states no price. Enter one above.');
+  else if(om.capPrinted && om.curNOI && om.price){ var imp = om.curNOI / om.price; if(Math.abs(imp - om.curCap) <= 0.0006) set('purchasePrice', 'verified', 'In-place NOI divided by this price gives ' + pct(imp) + ', the cap rate the OM prints.'); else set('purchasePrice', 'low', 'NOI divided by this price is ' + pct(imp) + ' but the OM prints a ' + pct(om.curCap) + ' cap rate. The price or the NOI is misread.'); }
+  else if(om.priceFallback || ocr(s.price)) set('purchasePrice', 'check', (ocr(s.price) ? 'Read from a page image' : 'Found near the words "asking price"') + '; no printed cap rate to check it against. Confirm it on page ' + (s.price || '?') + '.');
+  else set('purchasePrice', 'check', 'Read directly from the text; nothing in the OM corroborates it.');
+  /* units, area */
+  var mixU = (om.unitMix || []).reduce(function(t, m){ return t + (m.units || 0); }, 0);
+  if(S.mUnits && !om.units) set('units', 'verified', 'You entered it.');
+  else if(mixU && om.units) set('units', mixU === om.units ? 'verified' : 'low', mixU === om.units ? 'Matches the ' + mixU + ' units in the unit mix table.' : 'The OM says ' + om.units + ' units but its unit mix adds to ' + mixU + '.');
+  else set('units', 'check', ocr(s.units) ? 'Read from a page image with no unit mix to check it against.' : 'No unit mix table to check it against.');
+  if(!d.gsf) set('gsf', 'low', 'No building area found.');
+  else { var spu = d.gsf / (d.units || 1); if(spu < 350 || spu > 2500) set('gsf', 'low', 'That is ' + Math.round(spu) + ' SF per unit, which is outside the usual range. The area or the unit count is misread.'); else set('gsf', ocr(s.sf) ? 'check' : 'verified', ocr(s.sf) ? 'Read from a page image; ' + Math.round(spu) + ' SF per unit is plausible.' : Math.round(spu) + ' SF per unit is plausible.'); }
+  /* income and expenses */
+  line('avgRent', d.avgRent, 'rent'); line('otherIncomePerUnit', d.otherIncomePerUnit, 'other income');
+  if(I.vac && (I.vac[basis + 'Pct'] != null || I.vac[basis] != null)) line('vacancy', d.vacancy, 'vacancy'); else set('vacancy', 'assumed', 'The OM shows no vacancy line; 5% is the app default.');
+  if(om.ie && I.exp && I.exp.some(function(e){ return /manag/i.test(e.label); })) line('mgmtPct', d.mgmtPct, 'management fee'); else set('mgmtPct', 'assumed', 'The OM shows no management fee; 3% of income is the app default.');
+  [['taxes', /tax/i, 'taxes'], ['insurance', /insur/i, 'insurance'], ['rm', /repair|maint/i, 'repairs and maintenance']].forEach(function(r){ if(!d[r[0]]) set(r[0], 'low', 'No ' + r[2] + ' line was found in the OM, so this is $0.'); else line(r[0], d[r[0]], r[2]); });
+  ['utilities', 'contract', 'payroll', 'marketing', 'ga'].forEach(function(k){ if(d[k]) line(k, d[k], 'expense line'); });
+  set('t12noi', om.curNOI ? (tieOK ? 'verified' : 'check') : 'low', om.curNOI ? 'The OM\'s own in-place NOI.' : 'Not found.');
+  ['exitCap', 'reserves', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'closingCostsPct', 'saleCostPct'].forEach(function(k){ set(k, 'assumed', k === 'exitCap' ? 'Starts at the going-in cap rate. Your view, not the OM\'s.' : 'App default; the OM does not provide it.'); });
+  return { fields:F, tieOK:tieOK, sum:confSummary(F) };
+}
+function confDev(dev, b, info){
+  var d = b.deal, om = dev.om || {}, pf = dev.pf, F = {}, set = function(k, l, why){ F[k] = { l:l, why:why }; };
+  var tieOK = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002), diff = b.tie != null && b.want != null ? Math.round(Math.abs(b.tie - b.want)) : null;
+  var line = function(k, what){ if(tieOK) set(k, 'verified', 'The deal\'s NOI recomputes to the workbook\'s NOI (within $' + diff + '), so this ' + what + ' reconciles.'); else set(k, b.tie == null ? 'check' : 'low', b.tie == null ? 'Read from the workbook; the NOI tie-out could not run.' : 'Deal NOI ' + $(b.tie) + ' against the workbook\'s ' + $(b.want) + '; one line is probably misread.'); };
+  if(om.price) set('purchasePrice', pf && pf.land && Math.abs(pf.land - om.price) < 1 ? 'verified' : 'check', pf && pf.land && Math.abs(pf.land - om.price) < 1 ? 'The OM price equals the land cost in the workbook.' : 'Read from the OM; the workbook does not repeat it.'); else set('purchasePrice', pf && pf.land ? 'check' : 'low', pf && pf.land ? 'Taken from the workbook land line; the OM states no price.' : 'No price found.');
+  var wu = pf.rent.filter(function(r){ return !/commercial|retail/i.test(r.type); }).reduce(function(t, r){ return t + r.units; }, 0);
+  if(om.units && wu) set('units', om.units === wu ? 'verified' : 'low', om.units === wu ? 'The OM\'s approved units equal the workbook\'s unit count.' : 'The OM approves ' + om.units + ' units; the workbook has ' + wu + '.'); else set('units', 'check', 'Only one document gives the unit count.');
+  set('siteArea', om.acres ? 'check' : 'low', om.acres ? 'Read from the OM.' : 'No site area found.');
+  line('avgRent', 'rent'); line('otherIncomePerUnit', 'other income'); line('vacancy', 'vacancy'); line('taxes', 'tax figure'); line('insurance', 'insurance'); line('utilities', 'utilities'); line('payroll', 'payroll');
+  set('mgmtPct', pf.mgmtPct != null ? (tieOK ? 'verified' : 'check') : 'assumed', pf.mgmtPct != null ? 'The workbook\'s management percentage.' : 'Derived from the workbook\'s fee dollars.');
+  set('sourceConstruction', pf.construction ? 'check' : 'low', pf.construction ? 'The workbook\'s construction total (' + $(pf.construction) + '). The split into hard and soft costs is the app\'s standard.' : 'No construction total found.');
+  set('exitCap', pf.caps && pf.caps.length ? 'check' : 'assumed', pf.caps && pf.caps.length ? 'The top of the workbook\'s own valuation range. A judgement call, so set your own.' : 'No cap rate in the workbook; 6.5% default.');
+  ['predevMonths', 'constructionMonths', 'leaseupMonths', 'holdYears', 'reserves', 'rentGrowth', 'opexGrowth'].forEach(function(k){ set(k, 'assumed', 'App default; the files do not provide it.'); });
+  return { fields:F, tieOK:tieOK, sum:confSummary(F) };
+}
+function confChip(c){ if(!c) return ''; var col = { verified:'#1F7A45', check:'#8A6212', low:'#B23A2C', assumed:'#566a80' }[c.l]; return '<span title="' + esc(c.why) + '" style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:' + col + '"><i style="width:8px;height:8px;border-radius:1px;background:' + col + ';display:inline-block"></i>' + CONF_LABEL[c.l] + '</span>'; }
+function confBar(C){ var s = C.sum; return box('<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center"><b>Confidence in what was read</b>' + ['verified', 'check', 'low', 'assumed'].map(function(k){ return confChip({ l:k, why:'' }).replace(CONF_LABEL[k], s[k] + ' ' + CONF_LABEL[k].toLowerCase()); }).join('') + '</div>'
+  + '<div style="font-size:12px;opacity:.75;margin-top:6px">Verified figures reconcile with another number in the document. Check means read directly with nothing to corroborate it. ' + (s.low ? '<b style="color:#B23A2C">' + s.low + ' figure' + (s.low > 1 ? 's' : '') + ' did not reconcile or were not found. Look at the rows marked Low before relying on this deal.</b> ' : '') + 'Hover a label for the reason. Flagged figures stay marked in the Guide until you confirm them.</div>'); }
+function stampImp(deal, C, fileName){ deal._imp = { source:String(fileName || ''), at:new Date().toISOString().slice(0, 10), fields:{} }; Object.keys(C.fields).forEach(function(k){ var f = C.fields[k]; if(f.l === 'low' || f.l === 'check') deal._imp.fields[k] = { l:f.l, why:f.why }; }); return deal; }
+function row(label, val, src, kind, c){ return '<tr><td style="padding:5px 8px">' + label + whyLine(c) + '</td><td style="padding:5px 8px;text-align:right;font-weight:600">' + val + '</td><td style="padding:5px 8px;font-size:11px;opacity:.65">' + (kind === 'assumed' ? 'app default' : kind === 'raw' ? src : src ? 'OM page ' + src : 'OM') + '</td><td style="padding:5px 8px;white-space:nowrap">' + confChip(c) + '</td></tr>'; }
+function whyLine(c){ return c && (c.l === 'low' || c.l === 'check') ? '<div style="font-size:11px;font-weight:400;opacity:.75">' + esc(c.why) + '</div>' : ''; }
 function render(){
   var hdr = { title:'Import OM', crumbs:'Inputs', desc:'Upload an offering memorandum (PDF) and load its price, units, rents, income and expenses into the engine.', sidebar:'', meta:{ Source:S.file ? S.file.name : 'none', Method:S.info ? S.info.method : 'PDF' } };
   var body = box('<b>Upload an offering memorandum.</b> The importer reads the PDF (including designed OMs that are page images, using text recognition in your browser), finds the price, unit mix and the income and expense table, and builds a deal from the in-place (current) figures or the broker pro forma. Nothing is sent to a server. The first scan downloads the recognition engine (about 6 MB, then cached).'
@@ -22415,19 +22475,20 @@ function render(){
   if(S.mode === 'dev' && S.result) body = renderDev(body);
   if(S.mode === 'om' && S.result && S.om){
     var om = S.om, b = buildDeal(om, S.basis, S.file && S.file.name), d = b.deal, I = om.ie, s = om.sources || {}, ok = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002);
-    var need = '';
+    var C = confOM(om, b, S.info, S.basis), cf = C.fields, need = '';
     if(!om.price) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-right:14px">Asking price (not found in the OM)<input type="text" value="' + (S.mPrice || '') + '" placeholder="e.g. 3,600,000" onchange="bkOMManual(\'mPrice\',this.value)" style="width:150px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
     if(!om.units) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Units (not found)<input type="text" value="' + (S.mUnits || '') + '" onchange="bkOMManual(\'mUnits\',this.value)" style="width:90px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
     var ready = (om.price || S.mPrice) && (om.units || S.mUnits);
     if(need) body += box('<b>One thing the OM did not state.</b> Enter it to continue.<div style="margin-top:8px">' + need + '</div>');
     var basisBtn = function(k, t){ return '<button type="button" class="pl-hbtn' + (S.basis === k ? ' primary' : '') + '" onclick="bkOMBasis(\'' + k + '\')">' + t + '</button>'; };
     body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Underwrite on</b>' + basisBtn('cur', 'In-place (current)') + basisBtn('pf', 'Broker pro forma') + '</div><div style="font-size:12px;opacity:.7;margin-top:6px">In-place uses current scheduled rents and today\'s expenses. The pro forma uses the rents the OM calls achievable' + (om.pfNOI ? ' (' + $(om.pfNOI) + ' NOI)' : '') + '.</div>');
+    body += confBar(C);
     body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO OM NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs OM ' + $(b.want) + '</span>') + '</div>'
-      + '<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><tbody>'
-      + row('Purchase price (asking)', $(d.purchasePrice), s.price) + row('Units', d.units, s.units) + row('Building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', s.sf) + row('Average monthly rent', $(d.avgRent), s.unitMix || s.income)
-      + row('Other income per unit (year)', $(d.otherIncomePerUnit), s.income) + row('Vacancy', pct(d.vacancy, 1), s.income) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', s.income)
-      + row('Real estate taxes', $(d.taxes), s.income) + row('Insurance', $(d.insurance), s.income) + row('Utilities (electric, gas, water, trash)', $(d.utilities), s.income) + row('Repairs and maintenance', $(d.rm), s.income) + row('Contract services and landscaping', $(d.contract), s.income) + (d.ga ? row('Other expenses', $(d.ga), s.income) : '')
-      + row('Going-in cap rate on in-place NOI', pct(b.cap), s.noi) + row('Exit cap rate', pct(d.exitCap), '', 'assumed') + row('Replacement reserves', '$0', '', 'assumed') + '</tbody></table>'
+      + '<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><thead><tr><th style="text-align:left;padding:5px 8px"></th><th style="text-align:right;padding:5px 8px">Value</th><th style="text-align:left;padding:5px 8px">Source</th><th style="text-align:left;padding:5px 8px">Confidence</th></tr></thead><tbody>'
+      + row('Purchase price (asking)', $(d.purchasePrice), s.price, '', cf.purchasePrice) + row('Units', d.units, s.units, '', cf.units) + row('Building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', s.sf, '', cf.gsf) + row('Average monthly rent', $(d.avgRent), s.unitMix || s.income, '', cf.avgRent)
+      + row('Other income per unit (year)', $(d.otherIncomePerUnit), s.income, '', cf.otherIncomePerUnit) + row('Vacancy', pct(d.vacancy, 1), s.income, '', cf.vacancy) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', s.income, '', cf.mgmtPct)
+      + row('Real estate taxes', $(d.taxes), s.income, '', cf.taxes) + row('Insurance', $(d.insurance), s.income, '', cf.insurance) + row('Utilities (electric, gas, water, trash)', $(d.utilities), s.income, '', cf.utilities) + row('Repairs and maintenance', $(d.rm), s.income, '', cf.rm) + row('Contract services and landscaping', $(d.contract), s.income, '', cf.contract) + (d.ga ? row('Other expenses', $(d.ga), s.income, '', cf.ga) : '')
+      + row('Going-in cap rate on in-place NOI', pct(b.cap), s.noi, '', cf.t12noi) + row('Exit cap rate', pct(d.exitCap), '', 'assumed', cf.exitCap) + row('Replacement reserves', '$0', '', 'assumed', cf.reserves) + '</tbody></table>'
       + (om.yearBuilt || om.zoning ? '<div style="font-size:12px;opacity:.7;margin-top:8px">Also in the OM: ' + [om.yearBuilt && 'built ' + om.yearBuilt, om.lotAcres && om.lotAcres + ' acres', om.stories && om.stories + ' stories', om.parking && om.parking + ' parking spaces', om.zoning && 'zoned ' + om.zoning].filter(Boolean).join(', ') + '.</div>' : ''));
     body += box('<b>Before you rely on it</b><ul style="margin:6px 0 0 18px;padding:0">' + b.notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>');
     body += '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="pl-hbtn primary" onclick="bkOMCreate()"' + (ready ? '' : ' disabled') + '>Create new deal from this OM</button>' + (S.target === 'apply' ? '<button type="button" class="pl-hbtn" onclick="bkOMApply()">Apply to the current deal instead</button>' : '') + '</div>'
@@ -22563,12 +22624,14 @@ function fieldRow(fl, s, g){
   var v = cur(s, fl), tag = '', changed = Object.prototype.hasOwnProperty.call(st.draft, fl.k), id = 'gdf-' + fl.k;
   if(g.from && g.from.keys.indexOf(fl.k) >= 0 && g.assumed.indexOf(fl.k) < 0){ var pg = srcPage(g, fl.k); tag = '<span class="gd-tag from">from the ' + esc(g.from.label) + (pg ? ', p.' + pg : '') + '</span>' + (pg && g.from.label === 'OM' ? '<a href="#" class="gd-view" onclick="bkGuideViewSource(' + pg + ');return false">view</a>' : ''); }
   var unchecked = g.assumed.indexOf(fl.k) >= 0 && !g.confirmed[fl.k] && !st.checked[fl.k] && !changed; if(unchecked) tag = '<span class="gd-tag assumed">my assumption: check it</span>';
+  var imp = s._imp && s._imp.fields && s._imp.fields[fl.k], flagged = imp && !changed && !st.checked[fl.k] && !unchecked;
+  if(flagged) tag = '<span class="gd-tag assumed" title="' + esc(imp.why) + '">' + (imp.l === 'low' ? 'import: low confidence' : 'import: check it') + '</span>';
   var input;
   if(fl.t === 'bool') input = '<label style="display:flex;gap:8px;justify-content:flex-end;font-weight:400"><input type="checkbox" id="' + id + '"' + (v !== false && v !== 0 ? ' checked' : '') + ' onchange="bkGuideDraft(\'' + fl.k + '\',this.checked)"> Yes</label>';
   else input = '<input type="text" id="' + id + '" value="' + esc(fmt(fl, v)) + '" class="' + (changed ? 'chg' : '') + '" onchange="bkGuideDraft(\'' + fl.k + '\',this.value)" autocomplete="off">' ;
   var sug = fl.sug ? safe(function(){ return fl.sug(Object.assign({}, s, st.draft)); }, null) : null, empty = fl.t === 'text' ? !String(v || '').trim() : !(Number(v) > 0), same = sug && Math.abs(Number(v) - sug.v) < 1e-9;
   var sugRow = sug && !same && (empty || (g.assumed.indexOf(fl.k) >= 0 && !g.confirmed[fl.k])) ? '<div class="gd-sug"><span>I suggest <b>' + esc(fmt(fl, sug.v)) + (fl.t === 'pct' ? '%' : '') + '</b>. ' + esc(sug.why) + '</span><button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideUse(\'' + fl.k + '\')">Use this</button></div>' : '';
-  var chk = unchecked ? '<label class="gd-chk"><input type="checkbox" onchange="bkGuideCheck(\'' + fl.k + '\',this.checked)"> I have checked this figure</label>' : '';
+  var chk = unchecked || flagged ? (flagged ? '<div style="font-size:12px;margin:0 0 4px">' + esc(imp.why) + '</div>' : '') + '<label class="gd-chk"><input type="checkbox" onchange="bkGuideCheck(\'' + fl.k + '\',this.checked)"> I have checked this figure</label>' : '';
   return '<div class="gd-f"><label for="' + id + '">' + esc(fl.label + (fl.t === 'pct' && fl.label.indexOf('%') < 0 ? ' (%)' : '')) + (fl.req ? ' <span style="color:#b23a2c">*</span>' : '') + tag + (fl.help ? '<span class="h">' + esc(fl.help) + '</span>' : '') + '</label>' + input + sugRow + (chk ? '<div style="grid-column:1/-1">' + chk + '</div>' : '') + '</div>';
 }
 function changeList(s, sec){ var rows = Object.keys(st.draft).map(function(k){ var fl = sec.fields.filter(function(x){ return x.k === k; })[0]; if(!fl) return ''; var a = fmt(fl, s[k]), b = fmt(fl, st.draft[k]), sfx = fl.t === 'pct' ? '%' : ''; return esc(fl.label) + ': ' + (a === '' ? '(blank)' : esc(a) + sfx) + ' → <b style="display:inline">' + esc(b) + sfx + '</b>'; }).filter(Boolean); return rows; }
@@ -22659,6 +22722,7 @@ window.bkGuideUse = function(k){ var s = bkLoad(), sec = sections(s).filter(func
 function apply(sec){ var s = bkLoad(), g = gstate(s), ch = st.draft, keys = Object.keys(ch); keys.forEach(function(k){ s[k] = ch[k]; });
   if('vacancy' in ch){ s.occupancy = 1 - ch.vacancy; if(s.commercialVacancy != null) s.commercialVacancy = ch.vacancy; }
   sec.fields.forEach(function(fl){ if(g.assumed.indexOf(fl.k) >= 0 && (st.checked[fl.k] || fl.k in ch)) g.confirmed[fl.k] = 1; });
+  if(s._imp && s._imp.fields) sec.fields.forEach(function(fl){ if(st.checked[fl.k] || fl.k in ch) delete s._imp.fields[fl.k]; });
   g.done[sec.id] = 1; delete g.skipped[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.checked = {}; }
 function nextId(secs, cur){ var i = secs.findIndex(function(x){ return x.id === cur; }); return i + 1 < secs.length ? secs[i + 1].id : 'review'; }
 window.bkGuideNext = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; apply(sec); st.step = nextId(secs, sec.id); show(); };
