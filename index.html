@@ -21823,15 +21823,19 @@ var wrapper = function(d){
   var old = safe(function(){ return bkLoad(); }, null), r;
   /* the layers below test `window.bkSave === their own hook` to tell a real save from a scenario run, so they must see themselves in place */
   window.bkSave = prevSave; try { r = prevSave.apply(this, arguments); } finally { window.bkSave = wrapper; try { bkSave = wrapper; } catch(e){} }
-  if(r !== false) safe(function(){ record(old, d); });
+  if(r !== false){ queue.push([old, d]); if(!timer) timer = setTimeout(flush, 150); }
   return r;
 };
+var queue = [], timer = null;
+/* the log is written just after the edit, off the path that redraws the page and restores focus */
+function flush(){ if(timer){ clearTimeout(timer); timer = null; } var q = queue; queue = []; q.forEach(function(e){ safe(function(){ record(e[0], e[1]); }); }); }
+window.bkHistoryFlush = flush;
 window.bkSave = wrapper;
 try { bkSave = wrapper; } catch(e){}
 
 function snapshot(){ var s = bkLoad(), o = {}, k; for(k in s){ if(k !== '_history') o[k] = s[k]; } return o; }
 window.bkHistorySaveVersion = function(note, auto){
-  if(!active()) return null;
+  flush(); if(!active()) return null;
   var s = bkLoad(), h = hist(s), snap = snapshot(), j = JSON.stringify(snap), last = h.versions[h.versions.length - 1];
   if(auto && last && last.j === j) return last.id;
   var hl = headline(), v = { id:'v' + Date.now().toString(36), t:Date.now(), note:String(note || 'Version ' + (h.versions.length + 1)).slice(0, 80), auto:!!auto, irr:hl.irr, moic:hl.moic, j:j };
@@ -21840,6 +21844,7 @@ window.bkHistorySaveVersion = function(note, auto){
   s._history = { log:h.log, versions:h.versions }; write(s); return v.id;
 };
 window.bkHistoryDiff = function(vid){
+  flush();
   var s = bkLoad(), v = hist(s).versions.filter(function(x){ return x.id === vid; })[0]; if(!v) return null;
   var a = JSON.parse(v.j), rows = [], seen = {}, k;
   for(k in a){ seen[k] = 1; if(!eq(a[k], s[k])) rows.push({ k:k, from:a[k], to:s[k] }); }
@@ -21847,6 +21852,7 @@ window.bkHistoryDiff = function(vid){
   return { v:v, rows:rows, now:headline() };
 };
 window.bkHistoryRestore = function(vid){
+  flush();
   var s = bkLoad(), h = hist(s), v = h.versions.filter(function(x){ return x.id === vid; })[0]; if(!v) return false;
   bkHistorySaveVersion('Before restoring "' + v.note + '"', true);
   var s2 = bkLoad(), h2 = hist(s2), snap = JSON.parse(v.j);
@@ -21860,6 +21866,7 @@ window.bkHistorySaveFromForm = function(){ var e = document.getElementById('bk-v
 
 function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 function render(){
+  flush();
   var s = safe(function(){ return bkLoad(); }, null), h = hist(s), cur = headline(), hdr = { title:'Version History', crumbs:'QA', desc:'Every input change on this deal, and named versions you can compare and restore.', meta:{ Property:s && s.name, Versions:h.versions.length, Changes:h.log.length }, sidebar:'' };
   var T = 'width:100%;border-collapse:collapse;font-size:12.5px', TH = 'text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-bottom:2px solid #0e2a4a;opacity:.75', TD = 'padding:6px 8px;border-bottom:1px solid var(--line,#dbe4ec);vertical-align:top';
   var main = box('<div style="font-weight:700;margin-bottom:6px">Save a version</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="bk-ver-name" type="text" maxlength="80" placeholder="Name this version, e.g. Sent to lender, or After rent-roll import" style="flex:1;min-width:240px;padding:8px 10px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;text-align:left !important"><button type="button" class="pl-hbtn primary" onclick="bkHistorySaveFromForm()">Save version</button></div><div style="font-size:12px;opacity:.7;margin-top:6px">A version stores every input and the returns at that moment (' + (cur.irr == null ? 'n/a' : (cur.irr * 100).toFixed(2) + '% IRR, ' + (cur.moic || 0).toFixed(2) + 'x') + ' now). Creating a PDF summary saves one automatically.</div>');
