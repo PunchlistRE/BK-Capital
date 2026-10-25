@@ -191,7 +191,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.keyboard.press('Escape');
   // 13. New deal and Clear inputs on Overview
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(400);
-  check('Overview offers New deal, Create PDF summary and Clear inputs', await p.evaluate(() => [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|')) === '+ New deal|Create PDF summary|Clear inputs');
+  check('Overview offers New deal, Create PDF summary and Clear inputs', await p.evaluate(() => [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|')) === '+ New deal|Import OM|Create PDF summary|Clear inputs');
   await p.click('.pl-toolbar button:has-text("New deal")'); await p.waitForTimeout(250);
   check('New deal asks for a name and type and offers to save the current deal', await p.evaluate(() => { const m = document.getElementById('pl-modal'); return m.classList.contains('open') && !!m.querySelector('#pl-nm') && !!m.querySelector('#pl-ty') && !!m.querySelector('#pl-save1'); }));
   await p.fill('#pl-nm', 'Test Heights'); await p.selectOption('#pl-ty', 'Development');

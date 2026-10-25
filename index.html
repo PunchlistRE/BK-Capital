@@ -21084,7 +21084,7 @@ function dealsBlock(L, cur){
 function frontDoor(L){
   var steps = [['1  Bring the deal in', 'Upload a Yardi T-12 or a rent roll, or type the deal in.'], ['2  Check the model', 'Contradictions, market ranges and credit policy are checked as you go.'], ['3  Stress it', 'Downside cases, break-evens and probability-weighted returns.'], ['4  Take it to committee', 'IC memo with the decision, the cushions and the risks.']];
   return '<div class="pl-home"><div class="pl-hero"><h2>Underwrite a deal</h2><p class="pl-sub">Start from a rent roll or T-12, or from a blank deal. Nothing is calculated from placeholder numbers: figures appear once the required inputs are in.</p></div>'
-    + '<div class="pl-acts"><button type="button" class="pl-act primary" ' + go('Import Deal') + '><b>Import a T-12</b><span>Upload a Yardi workbook, CSV or PDF. Line items are footed to the statement and the price is set from the cap rate.</span></button>'
+    + '<div class="pl-acts"><button type="button" class="pl-act primary" ' + go('Import OM') + '><b>Import an offering memorandum</b><span>Upload the broker\'s OM (PDF). Price, units, rents, income and expenses load into a new deal, with the OM and its photo kept on the deal.</span></button><button type="button" class="pl-act" ' + go('Import Deal') + '><b>Import a T-12</b><span>Upload a Yardi workbook, CSV or PDF. Line items are footed to the statement and the price is set from the cap rate.</span></button>'
     + '<button type="button" class="pl-act" ' + go('Import Rent Roll') + '><b>Import a rent roll</b><span>Map the columns, review every unit, and apply it to the active deal.</span></button>'
     + '<button type="button" class="pl-act" onclick="bkCreateNewDeal()"><b>Start a blank deal</b><span>Enter the property, income, expenses and debt yourself.</span></button>'
     + '<button type="button" class="pl-act" ' + go('Source Ingestion') + '><b>Review a source package</b><span>Stage a workbook, reconcile it, and approve each figure before it reaches a deal.</span></button></div>'
@@ -21121,7 +21121,7 @@ function build(s, oldMain){
   if(mk && mk.rows){ var out = mk.rows.filter(function(r){ return r.status === 'ABOVE RANGE' || r.status === 'BELOW RANGE'; }); rows.push([out.length ? 'warn' : 'pass', 'Against the market', out.length ? out.length + ' of ' + mk.rows.length + ' assumptions outside published ranges' : 'All ' + mk.rows.length + ' assumptions inside published ranges', 'Market Benchmarks']); }
   if(ready && ready.sourceExceptions) rows.push(['warn', 'Sources', (ready.sourceExceptions.length != null ? ready.sourceExceptions.length : ready.sourceExceptions) + ' source finding(s) to review', 'Source Lineage']);
   var L = savedDeals(), inList = L.some(function(x){ return x.active; });
-  var acts = [['Import a T-12', 'Replace the income and expenses from a Yardi statement.', 'Import Deal'], ['Import a rent roll', 'Load units, rents and lease dates.', 'Import Rent Roll'], ['Stress the deal', 'Tornado, heat map and break-evens.', 'Sensitivity'], ['Probability-weighted returns', 'Odds of loss and of missing the hurdle.', 'Probability-Weighted'], [dev ? 'Development budget' : 'Debt capacity', dev ? 'Cost ladder and funding.' : 'How much debt policy supports.', dev ? 'Development' : 'Debt Capacity'], ['IC memo', 'The decision, the cushions and the risks.', 'IC Memo']];
+  var acts = [['Import an OM', 'Load a broker offering memorandum into a new deal.', 'Import OM'], ['Deal documents and photo', 'Keep the OM, T-12, CoStar and listing with the deal.', 'Deal Documents'], ['Import a T-12', 'Replace the income and expenses from a Yardi statement.', 'Import Deal'], ['Import a rent roll', 'Load units, rents and lease dates.', 'Import Rent Roll'], ['Stress the deal', 'Tornado, heat map and break-evens.', 'Sensitivity'], ['Probability-weighted returns', 'Odds of loss and of missing the hurdle.', 'Probability-Weighted'], [dev ? 'Development budget' : 'Debt capacity', dev ? 'Cost ladder and funding.' : 'How much debt policy supports.', dev ? 'Development' : 'Debt Capacity'], ['IC memo', 'The decision, the cushions and the risks.', 'IC Memo']];
   var tag = function(l, c){ return '<span class="status-chip ' + (c || '') + '">' + l + '</span>'; };
   var rd = ready ? String(ready.state || '') : '';
   return '<div class="pl-home"><div class="pl-hero"><h2>' + esc(s.name || 'Untitled deal') + '</h2><p class="pl-sub">' + esc([s.dealType, s.propertyType, s.location, s.units ? s.units + (dev ? ' units planned' : ' units') : '', s.closing ? (dev ? 'start ' : 'closing ') + s.closing : ''].filter(Boolean).join(' · ')) + '</p>'
@@ -21172,6 +21172,7 @@ function sheets(){ var out = []; GROUPS.forEach(function(g){ if(g.hidden) return
 function actions(){
   var A = [{ kind:'act', label:'Start a new deal', group:'Action', run:function(){ showSheet('Home'); setTimeout(function(){ if(window.bkNewDealDialog) bkNewDealDialog(); }, 50); } },
     { kind:'act', label:'Clear inputs on this deal', group:'Action', run:function(){ showSheet('Home'); setTimeout(function(){ if(window.bkClearInputsDialog) bkClearInputsDialog(); }, 50); } },
+    { kind:'act', label:'Import an offering memorandum and create a deal', group:'Action', run:function(){ showSheet('Import OM'); } },
     { kind:'act', label:'Import a T-12 and create a deal', group:'Action', run:function(){ showSheet('Import Deal'); } },
     { kind:'act', label:'Import a rent roll into this deal', group:'Action', run:function(){ showSheet('Import Rent Roll'); } },
     { kind:'act', label:'Save this deal to the portfolio', group:'Action', run:function(){ if(typeof bkPortfolioAddCurrent === 'function') bkPortfolioAddCurrent(); } },
@@ -21273,7 +21274,7 @@ window.bkNewDealDialog = function(){
   modal('<h3>Start a new deal</h3><p>This opens a blank deal. Nothing is calculated until the required inputs are in.</p>'
     + '<label class="f" for="pl-nm">Deal name</label><input type="text" id="pl-nm" placeholder="e.g. 14 Main Street" autocomplete="off">'
     + '<label class="f" for="pl-ty">Deal type</label><select id="pl-ty"><option value="Acquisition">Acquisition</option><option value="Development">Development</option></select>'
-    + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn" onclick="bkNewDealImport()">Import a T-12 instead</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create blank deal</button></div>');
+    + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn" onclick="bkNewDealImport()">Import a T-12 instead</button><button type="button" class="pl-hbtn" onclick="bkModalClose();showSheet(\'Import OM\')">Import an OM instead</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create blank deal</button></div>');
   var nm = document.getElementById('pl-nm'); if(nm) nm.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); bkNewDealGo(); } });
 };
 window.bkNewDealGo = function(){
@@ -21296,7 +21297,7 @@ window.bkClearInputsGo = function(){
 
 RENDERERS['Home'] = function(){
   var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
-  var has = active(), bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New deal</button>' + (has ? '<button type="button" class="pl-hbtn" onclick="bkReportOpen()" style="border-color:#3E9AE6;color:#12609f;font-weight:700">Create PDF summary</button>' : '') + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
+  var has = active(), bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New deal</button><button type="button" class="pl-hbtn" onclick="showSheet(\'Import OM\')">Import OM</button>' + (has ? '<button type="button" class="pl-hbtn" onclick="bkReportOpen()" style="border-color:#3E9AE6;color:#12609f;font-weight:700">Create PDF summary</button>' : '') + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
   return Object.assign({}, o, { main:o.main.replace('<div class="pl-home">', '<div class="pl-home">' + bar) });
 };
 if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
