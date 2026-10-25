@@ -191,7 +191,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.keyboard.press('Escape');
   // 13. New deal and Clear inputs on Overview
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(400);
-  check('Overview offers New deal and Clear inputs', await p.evaluate(() => [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|')) === '+ New deal|Clear inputs');
+  check('Overview offers New deal, Create PDF summary and Clear inputs', await p.evaluate(() => [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|')) === '+ New deal|Create PDF summary|Clear inputs');
   await p.click('.pl-toolbar button:has-text("New deal")'); await p.waitForTimeout(250);
   check('New deal asks for a name and type and offers to save the current deal', await p.evaluate(() => { const m = document.getElementById('pl-modal'); return m.classList.contains('open') && !!m.querySelector('#pl-nm') && !!m.querySelector('#pl-ty') && !!m.querySelector('#pl-save1'); }));
   await p.fill('#pl-nm', 'Test Heights'); await p.selectOption('#pl-ty', 'Development');
@@ -235,6 +235,15 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('statement NOI line ties to the engine Year-1 NOI', await p.evaluate(() => { const r = [...document.querySelectorAll('table.pf-tbl tbody tr')].find(x => /Net operating income/i.test(x.innerText)); const hs=[...r.closest('table').querySelectorAll('thead th')].map(h=>h.innerText.trim()); const c=hs.findIndex(h=>/^year 1$/i.test(h)); if(!r||c<1)return false; const m=+r.cells[c].innerText.replace(/[^0-9.-]/g,''); return c>0 && Math.abs(m - bkAnnualCF().arr[0].noi) < 1.5; }));
   await p.evaluate(() => showSheet('Returns')); await p.waitForTimeout(800);
   check('Returns shows the hurdle gauge, charts and the three scenarios', await p.evaluate(() => { const v = document.querySelector('#viewport'); return v.querySelectorAll('svg').length >= 3 && v.querySelectorAll('.pf-sc').length === 3 && !/NaN|undefined/.test(v.innerText); }));
+  // 16. Create PDF summary
+  await p.evaluate(a => { bkCreateNewDeal(a); showSheet('Home'); }, A_); await p.waitForTimeout(600);
+  await p.evaluate(() => bkReportOpen()); await p.waitForTimeout(2500);
+  const rp = await p.evaluate(() => { const f = document.getElementById('pl-report-frame'); const d = f && f.contentDocument; if (!d) return null; const D = bkProFormaData(); return { pages: d.querySelectorAll('.page').length, svgs: d.querySelectorAll('svg').length, txt: d.body.innerText, irr: (D.irr * 100).toFixed(2) + '%', moic: D.moic.toFixed(2) + 'x', eq: D.eq, nan: /NaN|undefined|\[object/.test(d.body.innerText), save: !!document.querySelector('#pl-report button') }; });
+  check('the summary opens with five pages, charts and a save button', rp && rp.pages === 5 && rp.svgs >= 8 && rp.save && !rp.nan, JSON.stringify(rp && { p: rp.pages, s: rp.svgs, nan: rp.nan }));
+  check('the summary shows the model\'s levered IRR and multiple', rp && rp.txt.indexOf(rp.irr) >= 0 && rp.txt.indexOf(rp.moic) >= 0, rp && (rp.irr + ' ' + rp.moic));
+  check('sources equal uses on the summary', await p.evaluate(() => { const d = document.getElementById('pl-report-frame').contentDocument; const t = [...d.querySelectorAll('tr.tot')].filter(r => /Total (sources|uses)/.test(r.innerText)).map(r => r.cells[1].innerText); return t.length === 2 && t[0] === t[1]; }));
+  await p.evaluate(() => bkReportClose());
+  check('closing removes the preview', await p.evaluate(() => !document.getElementById('pl-report')));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

@@ -21296,7 +21296,7 @@ window.bkClearInputsGo = function(){
 
 RENDERERS['Home'] = function(){
   var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
-  var has = active(), bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New deal</button>' + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
+  var has = active(), bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New deal</button>' + (has ? '<button type="button" class="pl-hbtn" onclick="bkReportOpen()" style="border-color:#C9A968;color:#8A6D2C;font-weight:700">Create PDF summary</button>' : '') + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
   return Object.assign({}, o, { main:o.main.replace('<div class="pl-home">', '<div class="pl-home">' + bar) });
 };
 if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
@@ -21567,8 +21567,148 @@ wrap('Property CF', proFormaBlock, false);
 wrap('Returns', returnsBlock, true);
 wrap('Operating Underwrite', dollarBlock, false);
 window.bkProFormaData = function(){ return safe(build, null); };
+window.bkProFormaKit = { build:build, chartCoverage:chartCoverage, chartCash:chartCash, chartBridge:chartBridge, chartDollar:chartDollar, gauge:gauge, M:M, F:F, P:P, X:X, esc:esc, sum:sum, COL:COL };
 })();
 </script>
+
+<script id="bk-v29270-report">
+/* Create PDF summary: a designed, print-ready property dashboard (cover, dashboard, financial summary, credit and risk) built from the live engine.
+   It renders in a preview overlay; "Save as PDF" prints that document at Letter size. No figure here is computed separately from the model: it reads
+   bkProFormaKit.build(), bkDealGate(), bkRiskScenarios() and bkMarketCompare(), and runs bkMonthlyReturns() under bkRunWith for the sensitivity grid. */
+(function(){
+'use strict';
+if(typeof window.bkProFormaKit !== 'object') return;
+var K = window.bkProFormaKit, M = K.M, F = K.F, P = K.P, X = K.X, esc = K.esc, sum = K.sum;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function num(v){ v = Number(v); return isFinite(v) ? v : null; }
+function logoMark(){ var el = document.querySelector('.brand-mark .glyph svg'); return el ? el.outerHTML.replace(/class="[^"]*"/, 'class="mk"') : ''; }
+
+function sensitivity(){
+  var s = safe(function(){ return bkLoad(); }, null); if(!s) return null;
+  var ec = Number(s.exitCap) || 0.06, rg = Number(s.rentGrowth) || 0.03, dEc = [-0.005, -0.0025, 0, 0.0025, 0.005], dRg = [-0.01, -0.005, 0, 0.005, 0.01], out = { ec:[], rg:[], v:[] };
+  dEc.forEach(function(d){ out.ec.push(ec + d); }); dRg.forEach(function(d){ out.rg.push(rg + d); });
+  out.rg.forEach(function(g){ var row = []; out.ec.forEach(function(c){ row.push(safe(function(){ return window.bkInCase(function(){ return window.bkRunWith({ exitCap:c, rentGrowth:g }, function(){ return bkMonthlyReturns().irr; }); }); }, null)); }); out.v.push(row); });
+  return out;
+}
+
+function fmtGate(r){ var v = r.value, t = r.threshold; if(r.type === 'pct') return [P(v, 2), (r.dir || '') + ' ' + P(t, 2)]; if(r.type === 'x') return [X(v), (r.dir || '') + ' ' + X(t)]; if(r.type === 'usd') return [F(v), (r.dir || '') + ' ' + F(t)]; return [v == null ? '—' : String(typeof v === 'number' ? (Math.round(v * 100) / 100) : v), t == null ? '' : (r.dir || '') + ' ' + (typeof t === 'number' ? Math.round(t * 100) / 100 : t)]; }
+
+var CSS = '@page{size:8.5in 11in;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0}body{font:12px/1.45 Inter,"Helvetica Neue",Arial,sans-serif;color:#17304A;background:#d9d5ca;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+ + '.page{position:relative;width:8.5in;height:11in;margin:0 auto 18px;background:#fff;overflow:hidden;page-break-after:always;break-after:page;box-shadow:0 6px 30px rgba(0,0,0,.25)}@media print{body{background:#fff}.page{margin:0;box-shadow:none}}'
+ + '.serif{font-family:"Source Serif 4",Georgia,"Times New Roman",serif}.mk{width:100%;height:100%;display:block}'
+ + '.cover{background:linear-gradient(160deg,#0B1726 0%,#12304D 55%,#1B4F7A 100%);color:#fff}.cover:before{content:"";position:absolute;right:-2.2in;top:-1.6in;width:6.4in;height:6.4in;border-radius:50%;background:radial-gradient(circle,rgba(81,168,219,.28),rgba(81,168,219,0) 68%)}.cover:after{content:"";position:absolute;left:-2in;bottom:-2.6in;width:7in;height:7in;border-radius:50%;background:radial-gradient(circle,rgba(201,169,104,.20),rgba(201,169,104,0) 66%)}'
+ + '.cover .in{position:relative;z-index:1;padding:.75in .8in;height:100%;display:flex;flex-direction:column}.brandrow{display:flex;align-items:center;gap:16px}.brandrow .lg{width:64px;height:60px}.brandrow .nm{font:800 27px/1 Inter,Arial,sans-serif;letter-spacing:.01em}.brandrow .sb{font-size:12.5px;letter-spacing:.2em;text-transform:uppercase;color:#B9C8D8;margin-top:5px}'
+ + '.cover .kick{margin-top:1.55in;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:#C9A968;font-weight:700}.cover h1{font:700 46px/1.08 "Source Serif 4",Georgia,serif;margin:12px 0 10px;max-width:6.4in}.cover .loc{font-size:15px;color:#C9D6E4}.cover .chips{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}.chip{display:inline-block;padding:5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.32);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:#E6EDF5}'
+ + '.verdict{margin-top:26px;display:inline-flex;align-items:center;gap:12px;padding:10px 18px 10px 12px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);align-self:flex-start}.verdict .dot{width:12px;height:12px;border-radius:50%}.verdict .t{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#B9C8D8}.verdict .v{font:700 17px/1.2 "Source Serif 4",Georgia,serif}'
+ + '.ck{margin-top:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid rgba(255,255,255,.22)}.ck div{padding:20px 16px 4px 0}.ck .k{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:#9FB3C8;font-weight:700}.ck .v{font:700 31px/1.15 "Source Serif 4",Georgia,serif;margin-top:6px}.ck .d{font-size:11px;color:#9FB3C8;margin-top:2px}'
+ + '.cover .ft{display:flex;justify-content:space-between;margin-top:26px;font-size:10px;color:#8FA5BB;letter-spacing:.06em}'
+ + '.hd{display:flex;align-items:center;justify-content:space-between;padding:.42in .6in .2in;border-bottom:3px solid #C9A968}.hd .l{display:flex;align-items:center;gap:11px}.hd .lg{width:34px;height:32px}.hd .w{font:800 13px/1 Inter,Arial,sans-serif;letter-spacing:.06em}.hd .p{font-size:10px;color:#6B7A8C;letter-spacing:.04em;margin-top:2px}.hd .r{text-align:right}.hd .r b{display:block;font:700 15px/1.2 "Source Serif 4",Georgia,serif}.hd .r span{font-size:10px;color:#6B7A8C;letter-spacing:.14em;text-transform:uppercase}'
+ + '.bd{padding:.26in .6in 0}.ft2{position:absolute;left:.6in;right:.6in;bottom:.3in;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#7A8797;border-top:1px solid #E3DED1;padding-top:8px}.ft2 .lg{width:16px;height:15px;display:inline-block;vertical-align:middle;margin-right:6px}'
+ + 'h2{font:700 10.5px/1 Inter,Arial,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8A6D2C;margin:0 0 9px;display:flex;align-items:center;gap:10px}h2:after{content:"";flex:1;height:1px;background:#E3DED1}'
+ + '.kp{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.kp .c{border:1px solid #E3DED1;border-radius:10px;padding:10px 12px;background:linear-gradient(180deg,#fff,#FBF9F4)}.kp .k{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#6B7A8C;font-weight:700}.kp .v{font:700 22px/1.2 "Source Serif 4",Georgia,serif;margin-top:3px}.kp .d{font-size:9.5px;color:#6B7A8C}.kp .c.hl{background:linear-gradient(160deg,#12304D,#1B4F7A);border-color:#12304D;color:#fff}.kp .c.hl .k,.kp .c.hl .d{color:#B9C8D8}'
+ + '.bx{border:1px solid #E3DED1;border-radius:12px;padding:12px 14px;background:#fff}.bx .t{font:700 12px/1.2 Inter,Arial,sans-serif}.bx .s{font-size:9.5px;color:#6B7A8C;margin:2px 0 6px;line-height:1.35}.bx svg{width:100%;height:auto;display:block;color:#17304A}'
+ + '.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.g1{display:grid;grid-template-columns:1fr;gap:10px}.mt{margin-top:14px}.ins{display:grid;gap:5px;margin-top:10px}.ins div{border-left:3px solid #C9A968;background:#FBF6EA;padding:7px 10px;border-radius:0 8px 8px 0;font-size:11px;line-height:1.45}'
+ + '.sc{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.sc .c{border:1px solid #E3DED1;border-radius:10px;padding:10px 12px}.sc .c.cur{border-color:#C9A968;box-shadow:0 0 0 1px #C9A968 inset;background:#FFFDF7}.sc .n{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6B7A8C;font-weight:700}.sc .v{font:700 23px/1.2 "Source Serif 4",Georgia,serif;margin:3px 0}.sc .d{font-size:9.5px;color:#6B7A8C}'
+ + 'table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th{background:#12304D;color:#fff;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:6px 7px;text-align:right}th:first-child,td:first-child{text-align:left}td{padding:4px 7px;border-top:1px solid #EEEAE0;text-align:right;font-size:10.5px}tr.sec td{background:#F5EFE0;font-weight:700;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#7A6A3E}tr.sub td{font-weight:700;background:#EEF3F8}tr.tot td{font-weight:700;background:#12304D;color:#fff}td.l{padding-left:15px}.neg{color:#B23A2C}tr.tot .neg{color:#FFB3A8}'
+ + '.su{display:grid;grid-template-columns:1fr 1fr;gap:12px}.su table td{font-size:10.5px}.bar{height:8px;border-radius:4px;background:#EEEAE0;overflow:hidden;display:flex}.bar i{display:block;height:100%}'
+ + '.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:8.5px;font-weight:700;letter-spacing:.08em}.pass{background:#E3F3EA;color:#1F7A4C}.fail{background:#FBE5E2;color:#B23A2C}.warn{background:#FBF1D9;color:#8A6410}.na{background:#EEF1F4;color:#6B7A8C}'
+ + '.hm{border-collapse:separate;border-spacing:3px}.hm td,.hm th{border:0;text-align:center;padding:5px 4px;font-size:10px;border-radius:5px}.hm th{background:none;color:#6B7A8C;font-size:8.5px;letter-spacing:.06em}.hm td.row{background:none;color:#6B7A8C;font-size:8.5px;font-weight:700;text-align:right;letter-spacing:.04em}'
+ + '.note{font-size:8.5px;color:#7A8797;line-height:1.5}.rng{position:relative;height:8px;background:#EEEAE0;border-radius:4px}.rng i{position:absolute;top:0;bottom:0;background:#BFD7EA;border-radius:4px}.rng b{position:absolute;top:-3px;width:4px;height:14px;border-radius:2px;margin-left:-2px}';
+
+function page(inner, n, N, D, cover){
+  var s = D.s;
+  if(cover) return '<section class="page cover">' + inner + '</section>';
+  return '<section class="page"><div class="hd"><div class="l"><div class="lg">' + logoMark() + '</div><div><div class="w">PUNCHLIST CAPITAL</div><div class="p">Investment Summary</div></div></div><div class="r"><b>' + esc(s.name || 'Property') + '</b><span>' + esc([s.location, s.propertyType].filter(Boolean).join(' · ')) + '</span></div></div><div class="bd">' + inner + '</div>'
+    + '<div class="ft2"><span><span class="lg">' + logoMark() + '</span>Punchlist Capital · Beta · figures from the underwriting model, check against your own</span><span>' + esc(s.dealId || '') + ' · ' + esc(D.caseName) + ' case · Page ' + n + ' of ' + N + '</span></div></section>';
+}
+
+function build(){
+  var D = K.build(); if(!D || !D.Y || !D.Y.length) return null;
+  var s = D.s, Y = D.Y, y1 = Y[0], d = D.d, calc = safe(function(){ return bkCalc(); }, {}), gate = safe(function(){ return bkDealGate(); }, null) || { rows:[], exceptions:[] };
+  var scen = safe(function(){ return bkRiskScenarios(); }, null), mkt = safe(function(){ return bkMarketCompare(); }, null), sens = sensitivity();
+  var caseName = safe(function(){ return (bkHeadline().c) || 'Base'; }, 'Base'); D.caseName = caseName;
+  var price = D.price, units = D.units, basis = Number(d.basis) || 0, lp = (gate.rows || []).filter(function(r){ return r.id === 'lpIRR'; })[0];
+  var goingIn = price ? y1.noiAfter / price : null, yoc = basis ? y1.noiAfter / basis : null, hurdle = Number(D.pol.targetIRR) || 0.12, ok = isFinite(D.irr) && D.irr >= hurdle;
+  var vcol = /ADVANCE|APPROVE/i.test(gate.verdict || '') ? '#3FB27F' : /COND/i.test(gate.verdict || '') ? '#E2B04A' : '#E5604D';
+  var date = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  var N = 5, pages = [];
+  /* 1 cover */
+  pages.push(page('<div class="in"><div class="brandrow"><div class="lg">' + logoMark() + '</div><div><div class="nm">Punchlist</div><div class="sb">Real Estate, LLC &nbsp;·&nbsp; Capital</div></div></div>'
+    + '<div class="kick">Investment summary</div><h1>' + esc(s.name || 'Property') + '</h1><div class="loc">' + esc([s.location, s.propertyType, units ? units + ' units' : '', s.gsf ? Math.round(Number(s.gsf)).toLocaleString('en-US') + ' SF' : ''].filter(Boolean).join('  ·  ')) + '</div>'
+    + '<div class="chips"><span class="chip">' + esc(s.dealType || 'Acquisition') + '</span><span class="chip">' + (D.H) + '-year hold</span><span class="chip">' + esc(caseName) + ' case</span>' + (s.closing ? '<span class="chip">Closing ' + esc(s.closing) + '</span>' : '') + '</div>'
+    + '<div class="verdict"><span class="dot" style="background:' + vcol + '"></span><div><div class="t">Credit gate</div><div class="v">' + esc(gate.verdict || 'Not assessed') + '</div></div></div>'
+    + '<div class="ck"><div><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 1) + '</div><div class="d">hurdle ' + P(hurdle, 1) + '</div></div><div><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(D.tot.profit) + ' profit</div></div><div><div class="k">Purchase price</div><div class="v">' + M(price) + '</div><div class="d">' + (units ? F(price / units) + ' per unit' : '') + '</div></div><div><div class="k">Equity required</div><div class="v">' + M(D.eq) + '</div><div class="d">' + M(d.loan) + ' senior loan</div></div></div>'
+    + '<div class="ft"><span>Prepared ' + date + '</span><span>Punchlist Capital · Beta · ' + esc(s.dealId || '') + '</span></div></div>', 0, N, D, true));
+  /* 2 dashboard */
+  var opShare = (D.tot.op + D.tot.events) ? D.tot.op / (D.tot.op + D.tot.events) : null;
+  var ins = ['<div>Equity of <b>' + M(D.eq) + '</b> returns <b>' + M(D.m.dist) + '</b> over ' + D.H + ' years: <b>' + X(D.moic) + '</b> and a <b>' + P(D.irr, 1) + '</b> levered IRR, ' + (ok ? '<b>' + ((D.irr - hurdle) * 100).toFixed(1) + ' points above</b>' : '<b>' + ((hurdle - D.irr) * 100).toFixed(1) + ' points below</b>') + ' the ' + P(hurdle, 1) + ' hurdle.</div>',
+    '<div>' + (opShare == null ? '' : 'About <b>' + Math.round(opShare * 100) + '%</b> of what equity gets back comes from running the property; <b>' + Math.round((1 - opShare) * 100) + '%</b> comes from the sale and refinancing, after repaying the loan.') + '</div>',
+    '<div>Year 1 NOI after reserves is <b>' + M(y1.noiAfter) + '</b> (' + P(goingIn, 2) + ' on price), covering debt service <b>' + X(y1.dscr) + '</b> against a ' + X(D.pol.minDSCR) + ' policy minimum.</div>'].filter(function(x){ return x.length > 12; }).join('');
+  var scenHtml = scen && scen.cases ? '<div class="sc mt">' + scen.cases.map(function(c){ return '<div class="c' + (c.name === caseName ? ' cur' : '') + '"><div class="n">' + esc(c.name) + ' · ' + Math.round((c.p || 0) * 100) + '% likely</div><div class="v" style="color:' + (c.irr >= hurdle ? '#1F7A4C' : c.irr < 0 ? '#B23A2C' : '#17304A') + '">' + P(c.irr, 1) + '</div><div class="d">' + X(c.moic) + ' multiple · ' + M(c.profit) + ' profit</div></div>'; }).join('') + '</div>'
+    + '<div class="note" style="margin-top:6px">Probability-weighted: expected profit <b>' + M(scen.expProfit) + '</b>, expected multiple <b>' + X(scen.expMoic) + '</b>, IRR of expected cash flow <b>' + P(scen.irrOfExpectedCF, 1) + '</b>; chance of missing the hurdle <b>' + Math.round((scen.pMiss || 0) * 100) + '%</b>, of losing money <b>' + Math.round((scen.pLoss || 0) * 100) + '%</b>.</div>' : '';
+  pages.push(page('<h2>Dashboard</h2><div class="kp"><div class="c hl"><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 2) + '</div><div class="d">' + esc(caseName) + ' case</div></div><div class="c hl"><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(D.tot.profit) + ' profit</div></div><div class="c"><div class="k">Unlevered IRR</div><div class="v">' + P(D.u.irr, 2) + '</div><div class="d">' + X(D.u.moic) + ' multiple</div></div><div class="c"><div class="k">Net LP IRR</div><div class="v">' + (lp ? P(lp.value, 2) : '—') + '</div><div class="d">after promote</div></div>'
+    + '<div class="c"><div class="k">Going-in cap</div><div class="v">' + P(goingIn, 2) + '</div><div class="d">Y1 NOI after reserves / price</div></div><div class="c"><div class="k">Yield on cost</div><div class="v">' + P(yoc, 2) + '</div><div class="d">on total basis ' + M(basis) + '</div></div><div class="c"><div class="k">Year 1 DSCR</div><div class="v">' + X(y1.dscr) + '</div><div class="d">minimum ' + X(D.pol.minDSCR) + '</div></div><div class="c"><div class="k">Leverage</div><div class="v">' + P(d.ltv, 0) + ' LTV</div><div class="d">' + P(d.ltc, 0) + ' LTC · ' + P(d.coupon, 2) + ' rate</div></div></div>'
+    + '<div class="bx mt"><div class="t">Levered return against the hurdle</div>' + K.gauge(D) + '</div><div class="ins">' + ins + '</div>'
+    + '<div class="g1 mt"><div class="bx"><div class="t">Equity cash flow</div><div class="s">Each year\'s cash to equity; the line is the running total. Year 1 includes the equity invested at close.</div>' + K.chartCash(D) + '</div></div>'
+    + '<h2 class="mt" style="margin-top:16px">How it holds up by case</h2>' + scenHtml, 2, N, D));
+  /* 3 financial summary */
+  var closing = price * (Number(s.closingCostsPct) || 0), acqFee = price * (Number(s.acqFeePct) || 0), other = basis - price - closing - acqFee, loanFee = Number(d.fee) || 0, totUses = basis + loanFee;
+  function su(label, v, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td' + (cls ? '' : ' class="l"') + '>' + label + '</td><td>' + F(v) + '</td><td>' + (totUses ? P(v / totUses, 1) : '') + '</td></tr>'; }
+  var sources = '<table><thead><tr><th>Sources</th><th>Amount</th><th>%</th></tr></thead><tbody>' + su('Senior loan', d.loan) + su('Equity', D.eq) + su('Total sources', (Number(d.loan) || 0) + (Number(D.eq) || 0), 'tot') + '</tbody></table>';
+  var uses = '<table><thead><tr><th>Uses</th><th>Amount</th><th>%</th></tr></thead><tbody>' + su('Purchase price', price) + su('Closing costs', closing) + (acqFee ? su('Acquisition fee', acqFee) : '') + (Math.abs(other) > 1 ? su('Other costs', other) : '') + (loanFee ? su('Loan fee', loanFee) : '') + su('Total uses', totUses, 'tot') + '</tbody></table>';
+  function row(label, key, cls, f){ var neg = function(v){ return v < 0 ? ' class="neg"' : ''; }; return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td' + (cls ? '' : ' class="l"') + '>' + label + '</td>' + Y.map(function(r){ var v = typeof key === 'function' ? key(r) : r[key]; if(typeof v === 'number' && Math.abs(v) < 0.5) v = 0; return '<td' + neg(v) + '>' + (f ? f(v) : F(v)) + '</td>'; }).join('') + '</tr>'; }
+  var stmt = '<table><thead><tr><th>Annual pro forma</th>' + Y.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + row('Gross potential rent', 'gpr') + row('Vacancy, bad debt, concessions', function(r){ return r.vac + r.bad + r.ltl; }) + row('Other income', 'other') + row('Effective gross income', 'egi', 'sub')
+    + row('Operating expenses', 'opex') + row('Net operating income', 'noi', 'sub') + row('Reserves', 'res') + row('NOI after reserves', 'noiAfter', 'sub')
+    + row('Debt service', 'ds') + row('Asset management fee', 'fee') + row('Cash flow after debt service', 'cfads', 'sub') + row('Debt service coverage', 'dscr', '', X) + row('Cash-on-cash return', 'coc', '', function(v){ return P(v, 1); })
+    + row('Sale, refinance and equity events', 'events') + row('Net cash flow to equity', 'cf', 'tot') + '</tbody></table>';
+  pages.push(page('<h2>Financial summary</h2><div class="su"><div>' + sources + '</div><div>' + uses + '</div></div>'
+    + '<div class="note" style="margin:6px 0 12px">Loan: ' + M(d.loan) + ' at ' + P(d.coupon, 2) + ' (' + esc(d.rateType || '') + '), ' + esc(String(s.acqAmort || '')) + '-year amortisation' + (Number(s.acqIO) ? ', ' + s.acqIO + ' months interest-only' : '') + '; sized by <b>' + esc(d.binding || '') + '</b>. Debt at sale ' + M(d.debtAtSale) + '.</div>'
+    + stmt + '<div class="bx mt"><div class="t">Where each dollar of income goes</div><div class="s">Year 1 effective gross income, split into what it pays for and what is left.</div>' + K.chartDollar(D) + '</div>', 3, N, D));
+  /* 4 credit and risk */
+  var rows = (gate.rows || []).filter(function(r){ return r.applicable !== false; }).slice(0, 12);
+  var gateTbl = '<table><thead><tr><th>Credit gate</th><th>Deal</th><th>Policy</th><th>Result</th></tr></thead><tbody>' + rows.map(function(r){ var f = fmtGate(r); return '<tr><td class="l">' + esc(r.label) + (r.severity === 'HARD' ? ' <span class="note">(hard)</span>' : '') + '</td><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td><td><span class="pill ' + (r.pass ? 'pass' : 'fail') + '">' + (r.pass ? 'PASS' : 'FAIL') + '</span></td></tr>'; }).join('') + '</tbody></table>';
+  var mrows = mkt && mkt.applies ? mkt.rows.slice(0, 6) : [];
+  function rngBar(r){ var lo = r.low, hi = r.high, v = r.value; if(!isFinite(lo) || !isFinite(hi) || !isFinite(v) || hi <= lo) return ''; var span = (hi - lo) * 1.6, a = lo - (hi - lo) * 0.3, pos = function(x){ return Math.max(0, Math.min(100, (x - a) / span * 100)); }; var col = r.status === 'IN RANGE' ? '#2E8B57' : '#C0392B'; return '<div class="rng"><i style="left:' + pos(lo) + '%;width:' + (pos(hi) - pos(lo)) + '%"></i><b style="left:' + pos(v) + '%;background:' + col + '"></b></div>'; }
+  function mfmt(r, v){ return /cap|ratio|growth|coupon|ltv|rate/i.test(r.id + r.label) && Math.abs(v) < 1.5 ? P(v, 2) : /dscr/.test(r.id) ? X(v) : /bps|spread/i.test(r.id + r.label) ? Math.round(v) + ' bps' : F(v); }
+  var mTbl = mrows.length ? '<table><thead><tr><th>Assumption</th><th>Deal</th><th style="width:1.5in">Market range</th><th>Status</th></tr></thead><tbody>' + mrows.map(function(r){ return '<tr><td class="l">' + esc(r.label.replace(/ \(.*\)/, '')) + '</td><td>' + mfmt(r, r.value) + '</td><td>' + rngBar(r) + '<div class="note" style="text-align:center">' + mfmt(r, r.low) + ' – ' + mfmt(r, r.high) + '</div></td><td><span class="pill ' + (r.status === 'IN RANGE' ? 'pass' : 'warn') + '">' + esc(r.status) + '</span></td></tr>'; }).join('') + '</tbody></table>' : '<div class="note">Market comparison applies to acquisition deals with benchmarks set.</div>';
+  var hm = '';
+  if(sens){ var all = [].concat.apply([], sens.v).filter(isFinite), mn = Math.min.apply(null, all), mxv = Math.max.apply(null, all);
+    var colr = function(v){ if(!isFinite(v)) return '#EEF1F4'; var t = v >= hurdle ? 0.5 + 0.5 * Math.min(1, (v - hurdle) / Math.max(0.0001, mxv - hurdle)) : 0.5 * (1 - Math.min(1, (hurdle - v) / Math.max(0.0001, hurdle - mn))); var c0 = [226, 96, 77], c1 = [255, 244, 214], c2 = [63, 178, 127], a = t < 0.5 ? c0 : c1, b = t < 0.5 ? c1 : c2, u = t < 0.5 ? t * 2 : (t - 0.5) * 2; return 'rgb(' + [0, 1, 2].map(function(i){ return Math.round(a[i] + (b[i] - a[i]) * u); }).join(',') + ')'; };
+    hm = '<table class="hm"><tr><th></th>' + sens.ec.map(function(c){ return '<th>' + P(c, 2) + '</th>'; }).join('') + '</tr>' + sens.rg.map(function(g, i){ return '<tr><td class="row">' + P(g, 1) + '</td>' + sens.v[i].map(function(v, j){ return '<td style="background:' + colr(v) + ';font-weight:' + (i === 2 && j === 2 ? 800 : 600) + ';outline:' + (i === 2 && j === 2 ? '2px solid #17304A' : 'none') + '">' + (isFinite(v) ? P(v, 1) : '—') + '</td>'; }).join('') + '</tr>'; }).join('') + '</table><div class="note" style="margin-top:4px">Levered IRR. Columns: exit cap rate. Rows: annual rent growth. Green meets the ' + P(hurdle, 1) + ' hurdle, red is furthest below it. Outlined cell is the base case.</div>'; }
+  var exc = (gate.exceptions || []).slice(0, 5).map(function(e){ return '<div>' + (e.severity === 'HARD' ? '<b>Hard:</b> ' : '<b>Soft:</b> ') + esc(e.message) + '</div>'; }).join('');
+  var asm = [['Purchase price', M(price) + (units ? ' (' + F(price / units) + '/unit)' : '')], ['Exit cap rate', P(Number(s.exitCap), 2)], ['Hold period', D.H + ' years'], ['Rent growth', P(Number(s.rentGrowth), 1) + ' / yr'], ['Expense growth', P(Number(s.opexGrowth), 1) + ' / yr'], ['Vacancy', P(Number(s.vacancy), 1)], ['Management fee', P(Number(s.mgmtPct), 1) + ' of EGI'], ['Sale cost', P(Number(s.saleCostPct), 1)]].map(function(a){ return '<tr><td class="l">' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join('');
+  pages.push(page('<h2>Performance and sensitivity</h2><div class="g1"><div class="bx"><div class="t">Income against debt service</div><div class="s">Bars are NOI after reserves, the line is debt service, the figure under each year is coverage.</div>' + K.chartCoverage(D) + '</div><div class="bx"><div class="t">Where the profit comes from</div><div class="s">Equity in, operating cash flow, then sale proceeds net of the loan.</div>' + K.chartBridge(D) + '</div></div>'
+    + '<div class="g2 mt"><div class="bx"><div class="t">Return sensitivity</div><div class="s">Levered IRR as exit cap and rent growth move.</div>' + hm + '</div><div><h2>Key assumptions</h2><table><tbody>' + asm + '</tbody></table></div></div>', 4, N, D));
+  pages.push(page('<h2>Credit and market</h2><div class="g2" style="grid-template-columns:1.3fr .9fr"><div>' + gateTbl + '</div><div><div class="bx" style="padding:10px 12px"><div class="t">Decision: ' + esc(gate.verdict || 'Not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div>' + (exc ? '<div class="ins" style="margin-top:4px">' + exc + '</div>' : '') + (gate.action ? '<div class="note" style="margin-top:7px"><b>Next step:</b> ' + esc(gate.action) + '</div>' : '') + '</div></div></div>'
+    + '<h2 style="margin-top:16px">Against the market</h2>' + mTbl
+    + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid reruns the model for each cell. This summary is an analytical aid, not an offer or a fairness opinion, and is only as good as the assumptions behind it. Check it against your own model before relying on it.</div></div>', 5, N, D));
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Investment Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
+}
+
+window.bkReportHTML = build;
+window.bkReportClose = function(){ var e = document.getElementById('pl-report'); if(e) e.remove(); document.documentElement.style.overflow = ''; };
+window.bkReportPrint = function(){ var f = document.getElementById('pl-report-frame'); if(f && f.contentWindow){ f.contentWindow.focus(); f.contentWindow.print(); } };
+window.bkReportOpen = function(){
+  var s = safe(function(){ return bkLoad(); }, null), msg = null;
+  if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())) msg = 'Open or create a deal first.';
+  else if(/develop/i.test(String(s.dealType || ''))) msg = 'The PDF summary covers acquisition deals so far. Development deals are next.';
+  if(msg){ if(typeof window.bkModal === 'function') window.bkModal('<h3 style="margin:0 0 8px">Create PDF summary</h3><p>' + msg + '</p>'); else alert(msg); return; }
+  var html = safe(build, null); if(!html){ alert('The summary could not be built for this deal.'); return; }
+  bkReportClose();
+  var o = document.createElement('div'); o.id = 'pl-report';
+  o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0B1726;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif';
+  o.innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#12304D;border-bottom:2px solid #C9A968;color:#fff"><b style="font-size:13px;letter-spacing:.06em">INVESTMENT SUMMARY</b><span style="font-size:12px;color:#B9C8D8">' + esc(s.name || '') + ' · 5 pages · Letter</span><span style="flex:1"></span><button type="button" onclick="bkReportPrint()" style="background:#C9A968;color:#0B1726;border:0;border-radius:999px;padding:8px 18px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.06em">SAVE AS PDF</button><button type="button" onclick="bkReportClose()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:7px 14px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer">Close</button></div>'
+    + '<iframe id="pl-report-frame" title="Investment summary preview" style="flex:1;border:0;width:100%;background:#d9d5ca"></iframe>';
+  document.body.appendChild(o); document.documentElement.style.overflow = 'hidden';
+  var f = document.getElementById('pl-report-frame');
+  f.addEventListener('load', function(){ try { var w = f.clientWidth, sc = Math.min(1, (w - 24) / 816); if(sc < 1) f.contentDocument.body.style.zoom = sc; } catch(e){} });
+  f.srcdoc = html;
+  document.addEventListener('keydown', function esc_(e){ if(e.key === 'Escape'){ bkReportClose(); document.removeEventListener('keydown', esc_); } });
+};
+})();
+</script>
+
 
 <script id="bk-conventions-ui">
 /* ===========================================================================
