@@ -272,6 +272,31 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('a lab cell equals a direct engine rerun with the same inputs', fl.same);
   check('more leverage means less equity, and viewing the lab leaves the deal unchanged', fl.higherLoanMoreEquity && fl.untouched);
   check('the Financing Lab sheet shows the grid and the structure table', /LTV \\ RATE/i.test(fl.txt) && /Interest-only 2 years/.test(fl.txt) && !/NaN|undefined/.test(fl.txt));
+  // 20. Deal Documents and Import OM (the OM is read by text recognition; the engine is served from BK_TESSERACT_DIR, default /tmp/claude-0/ocr/node_modules)
+  const TESS = process.env.BK_TESSERACT_DIR || '/tmp/claude-0/ocr/node_modules/'; const fsx = require('fs');
+  await p.evaluate(a => bkCreateNewDeal(a), A_); await p.waitForTimeout(400);
+  await p.evaluate(() => showSheet('Deal Documents')); await p.waitForTimeout(500);
+  await p.setInputFiles('input[onchange*="\'photo\'"]', path.join(__dirname, 'fixtures', 'sample_photo.jpg')); await p.waitForTimeout(1500);
+  await p.setInputFiles('input[onchange*="\'costar\'"]', path.join(__dirname, 'fixtures', 'sample_om.pdf')); await p.waitForTimeout(1500);
+  const dd = await p.evaluate(async () => ({ list: (await bkDocsList()).map(f => f.slot), photo: bkDealPhotoURL().length > 500, txt: document.querySelector('#viewport').innerText }));
+  check('a photo and a document are stored with the deal and listed', dd.list.includes('photo') && dd.list.includes('costar') && dd.photo && /sample_om\.pdf/.test(dd.txt), JSON.stringify(dd.list));
+  check('the PDF summary cover carries the deal photo', await p.evaluate(() => { const h = bkReportHTML(); return /class="coverphoto"/.test(h) && /class="th"/.test(h); }));
+  if (!fsx.existsSync(TESS + 'tesseract.js')) console.log('SKIP Import OM (text recognition engine not found in ' + TESS + ')');
+  else {
+    await p.route(/cdn\.jsdelivr\.net\/npm\//, r => { const u = r.request().url().replace(/^.*\/npm\//, ''), m = /^(@?[^@]+(?:\/[^@/]+)?)@[^/]+\/(.*)$/.exec(u), f = m && TESS + m[1] + '/' + m[2].split('?')[0]; if (f && fsx.existsSync(f)) r.fulfill({ path: f }); else r.abort(); });
+    const exp = JSON.parse(fsx.readFileSync(path.join(__dirname, 'fixtures', 'sample_om_expected.json'), 'utf8'));
+    await p.evaluate(() => showSheet('Import OM')); await p.waitForTimeout(500);
+    await p.setInputFiles('#bkOMFile', path.join(__dirname, 'fixtures', 'sample_om.pdf'));
+    await p.waitForFunction(() => /Read sample_om|could not find|Could not|has no readable/i.test(document.querySelector('#viewport').innerText), null, { timeout: 240000 });
+    const om = await p.evaluate(() => ({ t: document.querySelector('#viewport').innerText }));
+    check('the OM is read and its NOI ties to the engine', /TIES TO OM NOI/.test(om.t) && /Maple Court Apartments/.test(om.t) && /\$2,950,000/.test(om.t), om.t.slice(om.t.indexOf('Maple'), om.t.indexOf('Maple') + 120));
+    await p.evaluate(() => bkOMBasis('pf')); await p.waitForTimeout(400);
+    check('the broker pro forma basis also ties to the OM NOI', await p.evaluate(() => /TIES TO OM NOI/.test(document.querySelector('#viewport').innerText)));
+    await p.evaluate(() => bkOMBasis('cur')); await p.evaluate(() => bkOMCreate()); await p.waitForTimeout(2500);
+    const nd = await p.evaluate(async () => { const s = bkLoad(); return { id: s.dealId, price: s.purchasePrice, units: s.units, gsf: s.gsf, noi: Math.round(bkCalc().noi), slots: (await bkDocsList()).map(f => f.slot).sort(), loc: s.location }; });
+    check('creating the deal loads price, units, area and NOI from the OM', nd.price === exp.price && nd.units === exp.units && nd.gsf === exp.sf && Math.abs(nd.noi - exp.curNOI) <= 2 && nd.loc === 'Fairview, OH', JSON.stringify(nd));
+    check('the OM and a photo are attached to the new deal', JSON.stringify(nd.slots) === '["om","photo"]', JSON.stringify(nd.slots));
+  }
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

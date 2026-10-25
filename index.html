@@ -406,7 +406,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
 <script>
 const GROUPS = [
   {id:'overview', label:'Overview', color:'#7a8da1', sheets:['Home']},
-  {id:'inputs', label:'Inputs', color:'#3E9AE6', sheets:['Deal Underwrite','Rent Roll','Source Ingestion','Import Deal','Import Rent Roll','Depreciation','Market Benchmarks']},
+  {id:'inputs', label:'Inputs', color:'#3E9AE6', sheets:['Deal Underwrite','Deal Documents','Rent Roll','Source Ingestion','Import Deal','Import OM','Import Rent Roll','Depreciation','Market Benchmarks']},
   {id:'propops', label:'Property Operations', color:'#163a62', sheets:['Operating Underwrite','Property CF']},
   {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Draws','Residual Land']},
   {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor','Refi / Recap','Financing Lab']},
@@ -21603,7 +21603,7 @@ var CSS = '@page{size:8.5in 11in;margin:0}*{box-sizing:border-box}html,body{marg
  + '.verdict{margin-top:26px;display:inline-flex;align-items:center;gap:12px;padding:10px 18px 10px 12px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);align-self:flex-start}.verdict .dot{width:12px;height:12px;border-radius:50%}.verdict .t{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#B9C8D8}.verdict .v{font:700 17px/1.2 "Schibsted Grotesk","Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif}'
  + '.ck{margin-top:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid rgba(255,255,255,.22)}.ck div{padding:20px 16px 4px 0}.ck .k{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:#9FB3C8;font-weight:700}.ck .v{font:700 31px/1.15 "Schibsted Grotesk","Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;margin-top:6px}.ck .d{font-size:11px;color:#9FB3C8;margin-top:2px}'
  + '.cover .ft{display:flex;justify-content:space-between;margin-top:26px;font-size:10px;color:#8FA5BB;letter-spacing:.06em}'
- + '.hd{display:flex;align-items:center;justify-content:space-between;padding:.42in .6in .2in;border-bottom:3px solid #3E9AE6}.hd .l{display:flex;align-items:center;gap:11px}.hd .lg{width:34px;height:32px}.hd .w{font:800 13px/1 Inter,Arial,sans-serif;letter-spacing:.06em}.hd .p{font-size:10px;color:#566a80;letter-spacing:.04em;margin-top:2px}.hd .r{text-align:right}.hd .r b{display:block;font:700 15px/1.2 "Schibsted Grotesk","Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif}.hd .r span{font-size:10px;color:#566a80;letter-spacing:.14em;text-transform:uppercase}'
+ + '.hd{display:flex;align-items:center;justify-content:space-between;padding:.42in .6in .2in;border-bottom:3px solid #3E9AE6}.hd .l{display:flex;align-items:center;gap:11px}.hd .lg{width:34px;height:32px}.hd .w{font:800 13px/1 Inter,Arial,sans-serif;letter-spacing:.06em}.hd .p{font-size:10px;color:#566a80;letter-spacing:.04em;margin-top:2px}.hd .r{text-align:right;display:flex;align-items:center;gap:12px}.hd .r .th{width:58px;height:42px;object-fit:cover;border-radius:6px;box-shadow:0 1px 4px rgba(14,42,74,.3)}.coverphoto{position:absolute;left:0;right:0;top:0;height:6.1in;background-size:cover;background-position:center}.coverphoto:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,26,48,.82) 0%,rgba(8,26,48,.2) 34%,rgba(14,42,74,.6) 80%,#0e2a4a 100%)}.hasphoto:before,.hasphoto:after{display:none}.hasphoto .kick{margin-top:2.55in}.hd .r b{display:block;font:700 15px/1.2 "Schibsted Grotesk","Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif}.hd .r span{font-size:10px;color:#566a80;letter-spacing:.14em;text-transform:uppercase}'
  + '.bd{padding:.26in .6in 0}.ft2{position:absolute;left:.6in;right:.6in;bottom:.3in;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#7A8797;border-top:1px solid #dbe4ec;padding-top:8px}.ft2 .lg{width:16px;height:15px;display:inline-block;vertical-align:middle;margin-right:6px}'
  + 'h2{font:700 10.5px/1 Inter,Arial,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#12609f;margin:0 0 9px;display:flex;align-items:center;gap:10px}h2:after{content:"";flex:1;height:1px;background:#dbe4ec}'
  + '.kp{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.kp .c{border:1px solid #dbe4ec;border-radius:10px;padding:10px 12px;background:linear-gradient(180deg,#fff,#f8fafc)}.kp .k{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#566a80;font-weight:700}.kp .v{font:700 22px/1.2 "Schibsted Grotesk","Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;margin-top:3px}.kp .d{font-size:9.5px;color:#566a80}.kp .c.hl{background:linear-gradient(160deg,#0e2a4a,#12609f);border-color:#0e2a4a;color:#fff}.kp .c.hl .k,.kp .c.hl .d{color:#B9C8D8}'
@@ -21618,8 +21618,9 @@ var CSS = '@page{size:8.5in 11in;margin:0}*{box-sizing:border-box}html,body{marg
 
 function page(inner, n, N, D, cover){
   var s = D.s;
-  if(cover) return '<section class="page cover">' + inner + '</section>';
-  return '<section class="page"><div class="hd"><div class="l"><div class="lg">' + logoMark() + '</div><div><div class="w">PUNCHLIST CAPITAL</div><div class="p">Investment Summary</div></div></div><div class="r"><b>' + esc(s.name || 'Property') + '</b><span>' + esc([s.location, s.propertyType].filter(Boolean).join(' · ')) + '</span></div></div><div class="bd">' + inner + '</div>'
+  var ph = D && D.photo ? D.photo : '';
+  if(cover) return '<section class="page cover' + (ph ? ' hasphoto' : '') + '">' + (ph ? '<div class="coverphoto" style="background-image:url(\'' + ph + '\')"></div>' : '') + inner + '</section>';
+  return '<section class="page"><div class="hd"><div class="l"><div class="lg">' + logoMark() + '</div><div><div class="w">PUNCHLIST CAPITAL</div><div class="p">Investment Summary</div></div></div><div class="r">' + (ph ? '<img class="th" alt="" src="' + ph + '">' : '') + '<div><b>' + esc(s.name || 'Property') + '</b><span>' + esc([s.location, s.propertyType].filter(Boolean).join(' · ')) + '</span></div></div></div><div class="bd">' + inner + '</div>'
     + '<div class="ft2"><span><span class="lg">' + logoMark() + '</span>Punchlist Capital · Beta · figures from the underwriting model, check against your own</span><span>' + esc(s.dealId || '') + ' · ' + esc(D.caseName) + ' case · Page ' + n + ' of ' + N + '</span></div></section>';
 }
 
@@ -21633,7 +21634,7 @@ function buildDev(){
     var cf = S('cf'), eqin = -sum(R.map(function(r){ return Math.min(0, r.cf); })), op = sum(R.map(function(r){ return (r.noi || 0) - (r.reserve || 0) - (r.ds || 0) - (r.assetFee || 0); }));
     cum += cf; Y.push({ y:i, noi:S('noi'), egi:S('egi'), ds:-S('ds'), fee:-S('assetFee'), res:-S('reserve'), cfads:op, eqin:eqin, events:cf - op + eqin, other:cf - S('noi') + S('ds') + S('assetFee'), cf:cf, cum:cum }); }
   var tot = { eqin:sum(Y.map(function(r){ return r.eqin; })), op:sum(Y.map(function(r){ return r.cfads; })), events:sum(Y.map(function(r){ return r.events; })), profit:sum(Y.map(function(r){ return r.cf; })) };
-  var D = { s:s, Y:Y, H:H, units:Number(s.units) || 0, eq:fund.equityTotal, m:m, pol:base.pol, tot:tot, irr:m.irr, moic:m.moic, price:Number(s.purchasePrice) || 0, caseName:safe(function(){ return bkHeadline().c || 'Base'; }, 'Base') };
+  var D = { s:s, Y:Y, H:H, units:Number(s.units) || 0, eq:fund.equityTotal, m:m, pol:base.pol, tot:tot, irr:m.irr, moic:m.moic, price:Number(s.purchasePrice) || 0, caseName:safe(function(){ return bkHeadline().c || 'Base'; }, 'Base'), photo:safe(function(){ return window.bkDealPhotoURL(); }, '') };
   var caseName = D.caseName, hurdle = Number(D.pol.targetIRR) || 0.12, ok = isFinite(D.irr) && D.irr >= hurdle, sens = sensitivity();
   var lpRow = (gate.rows || []).filter(function(r){ return r.id === 'lpIRR'; })[0], spRow = (gate.rows || []).filter(function(r){ return r.id === 'devSpread'; })[0];
   var stabNOI = tk.stabPointNOI || tk.noi, yoc = fund.unlev ? stabNOI / fund.unlev : null, stabMonth = fund.stab, N = 5, pages = [];
@@ -21693,7 +21694,7 @@ function build(){
   var D = K.build(); if(!D || !D.Y || !D.Y.length) return null;
   var s = D.s, Y = D.Y, y1 = Y[0], d = D.d, calc = safe(function(){ return bkCalc(); }, {}), gate = safe(function(){ return bkDealGate(); }, null) || { rows:[], exceptions:[] };
   var scen = safe(function(){ return bkRiskScenarios(); }, null), mkt = safe(function(){ return bkMarketCompare(); }, null), sens = sensitivity();
-  var caseName = safe(function(){ return (bkHeadline().c) || 'Base'; }, 'Base'); D.caseName = caseName;
+  var caseName = safe(function(){ return (bkHeadline().c) || 'Base'; }, 'Base'); D.caseName = caseName; D.photo = safe(function(){ return window.bkDealPhotoURL(); }, '');
   var price = D.price, units = D.units, basis = Number(d.basis) || 0, lp = (gate.rows || []).filter(function(r){ return r.id === 'lpIRR'; })[0];
   var goingIn = price ? y1.noiAfter / price : null, yoc = basis ? y1.noiAfter / basis : null, hurdle = Number(D.pol.targetIRR) || 0.12, ok = isFinite(D.irr) && D.irr >= hurdle;
   var vcol = /ADVANCE|APPROVE/i.test(gate.verdict || '') ? '#3FB27F' : /COND/i.test(gate.verdict || '') ? '#E2B04A' : '#E5604D';
@@ -21756,7 +21757,8 @@ function build(){
 window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, null); return /develop/i.test(String(s && s.dealType || '')) ? buildDev() : build(); };
 window.bkReportClose = function(){ var e = document.getElementById('pl-report'); if(e) e.remove(); document.documentElement.style.overflow = ''; };
 window.bkReportPrint = function(){ var f = document.getElementById('pl-report-frame'); if(f && f.contentWindow){ f.contentWindow.focus(); f.contentWindow.print(); } };
-window.bkReportOpen = function(){
+window.bkReportOpen = function(){ var go = function(){ return bkReportOpenNow(); }; return Promise.resolve(typeof window.bkDocsWarm === 'function' ? window.bkDocsWarm() : '').then(go, go); };
+function bkReportOpenNow(){
   var s = safe(function(){ return bkLoad(); }, null), msg = null;
   if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())) msg = 'Open or create a deal first.';
   if(msg){ if(typeof window.bkModal === 'function') window.bkModal('<h3 style="margin:0 0 8px">Create PDF summary</h3><p>' + msg + '</p>'); else alert(msg); return; }
@@ -21947,6 +21949,278 @@ var g = function(){ if(!active() && typeof window.bkEmptyState === 'function') r
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Financing Lab', g); else RENDERERS['Financing Lab'] = g;
 })();
 </script>
+
+<script id="bk-v29300-docs">
+/* Deal Documents: every deal can hold its source documents (offering memorandum, T-12, CoStar report, listing summary, other) and a property photo. Files live in this
+   browser (IndexedDB, keyed by the deal id), not in the deal's saved inputs, so the saved deal stays small. The photo is used on the Overview and the PDF summaries. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof window.bkLoad !== 'function') return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function active(){ return typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal(); }
+function dealId(){ var s = safe(function(){ return bkLoad(); }, null); return s && s.dealId != null ? String(s.dealId) : ''; }
+var SLOTS = [['om', 'Offering memorandum', 'The broker\'s OM. Extract its price, units, rents, income and expenses into this deal.', '.pdf'], ['t12', 'T-12 / operating statement', 'Yardi or any trailing-12 statement.', '.pdf,.xlsx,.xlsm,.csv'],
+  ['costar', 'CoStar report', 'Market, comps or property report. Stored with the deal.', '.pdf,.xlsx,.csv'], ['listing', 'Listing summary', 'A one- or two-page listing or flyer.', '.pdf'], ['other', 'Other documents', 'Leases, inspections, appraisals, anything else.', '']];
+var db = null, cache = {};
+function open(){ if(db) return Promise.resolve(db); return new Promise(function(res, rej){ var r = indexedDB.open('punchlist-docs', 1); r.onupgradeneeded = function(){ r.result.createObjectStore('files', { keyPath:'id' }); }; r.onsuccess = function(){ db = r.result; res(db); }; r.onerror = function(){ rej(r.error); }; }); }
+function tx(mode, fn){ return open().then(function(d){ return new Promise(function(res, rej){ var t = d.transaction('files', mode), st = t.objectStore('files'), out = fn(st); t.oncomplete = function(){ res(out && out.result !== undefined ? out.result : undefined); }; t.onerror = function(){ rej(t.error); }; }); }); }
+function all(){ return open().then(function(d){ return new Promise(function(res, rej){ var r = d.transaction('files', 'readonly').objectStore('files').getAll(); r.onsuccess = function(){ res(r.result || []); }; r.onerror = function(){ rej(r.error); }; }); }); }
+window.bkDocsList = function(id){ id = id == null ? dealId() : String(id); return all().then(function(a){ return a.filter(function(f){ return f.dealId === id; }).sort(function(x, y){ return y.t - x.t; }); }); };
+window.bkDocsAdd = function(slot, file, id){ id = id == null ? dealId() : String(id); var rec = { id:'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), dealId:id, slot:slot, name:file.name || (slot + '.bin'), type:file.type || '', size:file.size, t:Date.now(), blob:file }; return tx('readwrite', function(st){ if(slot === 'photo'){ var q = st.getAll(); q.onsuccess = function(){ q.result.filter(function(f){ return f.dealId === id && f.slot === 'photo'; }).forEach(function(f){ st.delete(f.id); }); st.put(rec); }; return q; } return st.put(rec); }).then(function(){ return rec; }); };
+window.bkDocsGet = function(fid){ return open().then(function(d){ return new Promise(function(res, rej){ var r = d.transaction('files', 'readonly').objectStore('files').get(fid); r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); }; }); }); };
+window.bkDocsRemove = function(fid){ return tx('readwrite', function(st){ return st.delete(fid); }); };
+function toDataURL(blob){ return new Promise(function(res){ var fr = new FileReader(); fr.onload = function(){ res(fr.result); }; fr.onerror = function(){ res(''); }; fr.readAsDataURL(blob); }); }
+/* the photo: scaled to 1800 px on its long side and stored as a JPEG */
+window.bkDocsPrepPhoto = function(file){ return createImageBitmap(file).then(function(bm){ var sc = Math.min(1, 1800 / Math.max(bm.width, bm.height)), w = Math.round(bm.width * sc), h = Math.round(bm.height * sc), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(bm, 0, 0, w, h); return new Promise(function(res){ c.toBlob(function(b){ res(new File([b], (file.name || 'photo').replace(/\.\w+$/, '') + '.jpg', { type:'image/jpeg' })); }, 'image/jpeg', 0.88); }); }); };
+window.bkDocsSetPhoto = function(file, id){ id = id == null ? dealId() : String(id); return window.bkDocsPrepPhoto(file).then(function(f){ return window.bkDocsAdd('photo', f, id); }).then(function(rec){ return toDataURL(rec.blob).then(function(u){ cache[id] = u; return rec; }); }); };
+window.bkDocsWarm = function(){ var id = dealId(); if(!id) return Promise.resolve(''); if(cache[id] !== undefined) return Promise.resolve(cache[id]); return window.bkDocsList(id).then(function(a){ var p = a.filter(function(f){ return f.slot === 'photo'; })[0]; return p ? toDataURL(p.blob) : ''; }).then(function(u){ cache[id] = u || ''; return cache[id]; }).catch(function(){ cache[id] = ''; return ''; }); };
+window.bkDealPhotoURL = function(){ var id = dealId(); return (id && cache[id]) || ''; };
+window.bkDocsPhotoCache = cache;
+
+var busy = '';
+function fmtSize(n){ return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+window.bkDocsUpload = function(slot, input){ listing = null; var files = input && input.files ? Array.prototype.slice.call(input.files) : []; if(!files.length) return; busy = 'Saving ' + files[0].name + '...'; showSheet('Deal Documents');
+  Promise.all(files.map(function(f){ return slot === 'photo' ? window.bkDocsSetPhoto(f) : window.bkDocsAdd(slot, f); })).catch(function(e){ busy = 'Could not save: ' + (e && e.message || e); }).then(function(){ if(/^Saving/.test(busy)) busy = ''; listing = null; showSheet('Deal Documents'); }); };
+window.bkDocsDownload = function(fid){ window.bkDocsGet(fid).then(function(r){ if(!r) return; var a = document.createElement('a'); a.href = URL.createObjectURL(r.blob); a.download = r.name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000); }); };
+window.bkDocsDelete = function(fid){ if(!window.confirm('Remove this file from the deal?')) return; window.bkDocsGet(fid).then(function(r){ if(r && r.slot === 'photo') delete cache[r.dealId]; return window.bkDocsRemove(fid); }).then(function(){ listing = null; showSheet('Deal Documents'); }); };
+var listing = null;
+function render(){
+  var s = safe(function(){ return bkLoad(); }, null), hdr = { title:'Deal Documents', crumbs:'Inputs', desc:'The photo and source documents for this deal. They are kept in this browser with the deal and feed the data intake and the PDF summaries.', sidebar:'', meta:{ Property:s && s.name } };
+  var id = dealId(); if(!id){ hdr.main = '<div class="card" style="padding:16px">Open or create a deal first.</div>'; return hdr; }
+  if(listing === null || listing.id !== id){ listing = { id:id, files:null }; window.bkDocsList(id).then(function(a){ listing = { id:id, files:a }; window.bkDocsWarm().then(function(){ if(typeof showSheet === 'function' && document.querySelector('#bk-docs-root')) showSheet('Deal Documents'); }); }); }
+  var files = listing.files || [], photo = files.filter(function(f){ return f.slot === 'photo'; })[0], pu = window.bkDealPhotoURL();
+  var main = '<div id="bk-docs-root" style="max-width:1000px">' + (busy ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div>' + esc(busy) + '</div></div>' : '')
+    + '<div class="card" style="padding:16px;display:grid;grid-template-columns:minmax(220px,340px) 1fr;gap:18px;align-items:center"><div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#eef2f6;display:flex;align-items:center;justify-content:center;color:#7a8da1;font-size:12px;text-align:center">' + (pu ? '<img alt="Property photo" src="' + pu + '" style="width:100%;height:100%;object-fit:cover">' : 'No photo yet') + '</div><div><div style="font-weight:700;font-size:15px;margin-bottom:4px">Property photo</div><div style="font-size:13px;opacity:.75;margin-bottom:10px">Shown on the Overview and on the cover of the PDF summary. A landscape exterior shot works best.' + (photo ? '<br>' + esc(photo.name) + ' · ' + fmtSize(photo.size) : '') + '</div><label class="pl-hbtn primary" style="display:inline-block;cursor:pointer">' + (photo ? 'Replace photo' : 'Upload photo') + '<input type="file" accept="image/*" style="display:none" onchange="bkDocsUpload(\'photo\',this)"></label>' + (photo ? ' <button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + photo.id + '\')">Remove</button>' : '') + '</div></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px">' + SLOTS.map(function(sl){
+      var fs = files.filter(function(f){ return f.slot === sl[0]; });
+      var rows = fs.map(function(f){ var ex = (sl[0] === 'om' || sl[0] === 'listing') && /\.pdf$/i.test(f.name) ? '<button type="button" class="pl-hbtn" onclick="bkDocsExtract(\'' + f.id + '\')">Extract into this deal</button>' : sl[0] === 't12' ? '<button type="button" class="pl-hbtn" onclick="bkDocsExtract(\'' + f.id + '\')">Extract into this deal</button>' : '';
+        return '<div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:7px 0;border-top:1px solid var(--line,#dbe4ec);font-size:12.5px"><span style="flex:1;min-width:140px;word-break:break-word"><b>' + esc(f.name) + '</b><br><span style="opacity:.65">' + fmtSize(f.size) + ' · ' + new Date(f.t).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) + '</span></span>' + ex + '<button type="button" class="pl-hbtn" onclick="bkDocsDownload(\'' + f.id + '\')">Download</button><button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + f.id + '\')">Remove</button></div>'; }).join('');
+      return '<div class="card" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-weight:700">' + sl[1] + '</div><label class="pl-hbtn" style="cursor:pointer">Upload<input type="file" ' + (sl[3] ? 'accept="' + sl[3] + '"' : '') + ' multiple style="display:none" onchange="bkDocsUpload(\'' + sl[0] + '\',this)"></label></div><div style="font-size:12px;opacity:.7;margin:3px 0 6px">' + sl[2] + '</div>' + (rows || '<div style="font-size:12px;opacity:.55;padding-top:6px;border-top:1px solid var(--line,#dbe4ec)">Nothing uploaded</div>') + '</div>'; }).join('') + '</div>'
+    + '<div id="bk-docs-extract"></div></div>';
+  hdr.main = main; hdr.meta = { Property:s && s.name, Files:files.filter(function(f){ return f.slot !== 'photo'; }).length, Photo:photo ? 'Yes' : 'No' }; return hdr;
+}
+var g = function(){ if(!active() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Deal Documents'); return render(); };
+window.bkDocsInvalidate = function(){ listing = null; };
+if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Deal Documents', g); else RENDERERS['Deal Documents'] = g;
+window.bkDocsExtract = function(fid){ if(typeof window.bkDocsExtractHook === 'function') window.bkDocsExtractHook(fid); else alert('Extraction is not available.'); };
+
+/* Overview: a photo beside the deal name */
+(function(){ var prev = RENDERERS['Home']; if(typeof prev !== 'function') return;
+  RENDERERS['Home'] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; var id = dealId(); if(!id || !active()) return o;
+    var u = window.bkDealPhotoURL(); if(cache[id] === undefined) window.bkDocsWarm().then(function(x){ if(x && document.querySelector('.pl-home') && typeof showSheet === 'function' && /Home|Overview/i.test(String(window.__bkSheet || 'Home'))) showSheet('Home'); });
+    if(!u) return o; var tag = '<div class="pl-hero">'; if(o.main.indexOf(tag) < 0) return o;
+    return Object.assign({}, o, { main:o.main.replace(tag, '<div class="pl-hero" style="position:relative;min-height:150px;padding-right:220px"><img alt="" src="' + u + '" style="position:absolute;right:0;top:0;width:200px;height:150px;object-fit:cover;border-radius:10px;box-shadow:0 6px 18px rgba(14,42,74,.25)">') }); };
+  if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
+})();
+})();
+</script>
+
+<script id="bk-v29310-om">
+/* Import OM: an offering memorandum (PDF, text or page images) becomes a deal. Page images are read with Tesseract.js (loaded on first use, runs in this browser). */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined') return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+/* OM text parser: pure function of the page texts. Works on OCR output or a PDF text layer. */
+function parseOM(pages){
+  var txt = pages.map(function(p){ return p || ''; });
+  var all = txt.join('\n\f\n'), src = {};
+  function num(s){ if(s == null) return null; var neg = /^\(/.test(s) || /^-/.test(s); var v = parseFloat(String(s).replace(/[^0-9.]/g, '')); return isFinite(v) ? (neg ? -v : v) : null; }
+  function find(re, group, field, pageHint){ for(var i = 0; i < txt.length; i++){ var m = re.exec(txt[i]); if(m){ if(field) src[field] = i + 1; return m[group || 1]; } } return null; }
+  var o = { sources:src, items:[] };
+  /* identity: the running footer "FOR SALE - Name - 48 Street, City, ST" repeats on every page */
+  var f = null; for(var i = 0; i < txt.length && !f; i++){ f = /FOR SALE\s*[-·•|]\s*(.+?)\s*[-·•|]\s*(\d+\s+[^,\n]+?)\s*[-·•|,]\s*([A-Za-z .]+?),\s*([A-Z]{2})\b/.exec(txt[i]); if(f) src.name = i + 1; }
+  if(f){ o.name = f[1].trim(); o.street = f[2].trim(); o.city = f[3].trim(); o.state = f[4]; }
+  var z = /\b([A-Z]{2})\s*[-·]?\s*(\d{5})\b/.exec(all); if(z){ o.zip = z[2]; if(!o.state) o.state = z[1]; }
+  o.price = num(find(/(?:Offering|Asking|List(?:ing)?)\s*Price[^\d$\n]{0,20}\$\s?([\d,]{6,})/i, 1, 'price'));
+  var noiM = null; for(i = 0; i < txt.length && !noiM; i++){ noiM = /\bNOI\s+\$?\s?([\d,]{5,})\s+\$?\s?([\d,]{5,})/.exec(txt[i]); if(noiM) src.noi = i + 1; }
+  if(noiM){ o.curNOI = num(noiM[1]); o.pfNOI = num(noiM[2]); }
+  var capM = null; for(i = 0; i < txt.length && !capM; i++){ capM = /Cap\s*Rate\s+([\d.]+)\s*%\s+([\d.]+)\s*%/i.exec(txt[i]); }
+  if(capM){ o.curCap = num(capM[1]) / 100; o.pfCap = num(capM[2]) / 100; }
+  o.units = num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/(\d{1,4})\s*UNITS\b/i, 1, 'units'));
+  o.sf = num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf')) || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
+  o.yearBuilt = num(find(/YEAR BUILT\s+(\d{4})/i, 1, 'yearBuilt'));
+  o.lotAcres = num(find(/LOT SIZE\s+([\d.]+)\s*Acres/i, 1, 'lot'));
+  o.stories = num(find(/STORIES\s+(\d+)/i, 1));
+  o.parking = num(find(/PARKING\s+(\d+)\s*Spaces/i, 1, 'parking'));
+  o.zoning = find(/ZONING\s+([A-Za-z0-9-]+)/i, 1);
+  o.propertyType = find(/PROPERTY TYPE\s+(Multi-?family|Mixed[- ]Use|Retail|Office|Industrial|Student Housing|Senior Housing)/i, 1);
+  /* unit mix */
+  var mix = [], avgCur = null, avgPf = null;
+  for(i = 0; i < txt.length; i++){ if(!/Unit\s*Mix/i.test(txt[i]) || !/UNIT TYPE/i.test(txt[i])) continue; src.unitMix = i + 1;
+    txt[i].split(/\n/).forEach(function(line){ var m = /^\s*(.*?[A-Za-z].*?)\s+(\d{1,3})\s+([\d.]+)\s*%\s+\$([\d,]+)\s+(?:\$([\d,]+)\s+)?\$([\d,]+)\s*$/.exec(line);
+      if(!m) return; var label = m[1].trim(); if(/^total/i.test(label)){ avgCur = num(m[4]); avgPf = num(m[6]); return; }
+      mix.push({ type:label.replace(/^1BR$/i, '1 BR'), units:num(m[2]), cur:num(m[4]), high:m[5] ? num(m[5]) : null, pf:num(m[6]) }); }); break; }
+  o.unitMix = mix; o.avgCur = avgCur; o.avgPf = avgPf;
+  /* income and expense */
+  var ie = null; for(i = 0; i < txt.length; i++){ if(/OPERATING INCOME/i.test(txt[i]) && /OPERATING EXPENSES/i.test(txt[i])){ ie = txt[i]; src.income = i + 1; break; } }
+  if(ie){
+    var sec = 'inc', I = { addl:[], exp:[] }, done = false;
+    ie.split(/\n/).forEach(function(line){ if(done || /^\s*FOR SALE/i.test(line)){ done = true; return; }
+      if(/^\s*ADDITIONAL INCOME/i.test(line)){ sec = 'add'; return; } if(/^\s*OPERATING EXPENSES/i.test(line)){ sec = 'exp'; return; }
+      var re = /\(?\$?\s?\d[\d,]*(?:\.\d+)?\)?\s*%?/g, toks = [], m, cut = -1; while((m = re.exec(line))){ if(cut < 0) cut = m.index; var t = m[0].trim(); toks.push({ pct:/%$/.test(t), v:num(t.replace('%', '')), neg:/^\(/.test(t) }); }
+      if(cut < 0) return; var label = line.slice(0, cut).replace(/[\s:|]+$/, '').trim(); if(!label || /^(current|pro forma|%|\$ ?\/ ?unit)/i.test(label)) return;
+      var money = toks.filter(function(t){ return !t.pct; }).map(function(t){ return Math.abs(t.v); }), pcts = toks.filter(function(t){ return t.pct; }).map(function(t){ return t.v; });
+      if(!money.length) return;
+      if(sec === 'inc'){
+        if(/gross potential/i.test(label)) I.gpr = { cur:money[0], pf:money[1] };
+        else if(/loss to lease|below market/i.test(label)) I.ltl = { cur:money[0], pf:money[1] };
+        else if(/gross scheduled/i.test(label)) I.gsr = { cur:money[0], pf:money[1] };
+        else if(/^vacancy/i.test(label)) I.vac = { cur:money[0], pf:money[1], curPct:pcts[0] != null ? pcts[0] / 100 : null, pfPct:pcts[1] != null ? pcts[1] / 100 : null };
+        else if(/effective rental/i.test(label)) I.eri = { cur:money[0], pf:money[1] };
+        else if(/effective gross/i.test(label)) I.egi = { cur:money[0], pf:money[1] };
+        else if(/net operating/i.test(label)) I.noi = { cur:money[0], pf:money[1] };
+      } else if(/effective gross/i.test(label)) I.egi = { cur:money[0], pf:money[1] };
+      else if(/net operating/i.test(label)){ I.noi = { cur:money[0], pf:money[1] }; done = true; }
+      else if(sec === 'add'){ if(/^total/i.test(label)) I.addTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] }; else I.addl.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : money[0] }); }
+      else if(sec === 'exp'){ if(/^total/i.test(label)) I.expTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] }; else I.exp.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : money[0] }); }
+    });
+    o.ie = I;
+    if(I.noi){ o.curNOI = o.curNOI || I.noi.cur; o.pfNOI = o.pfNOI || I.noi.pf; }
+  }
+  return o;
+}
+
+
+var S = { busy:false, msg:'', mode:'', result:null, basis:'cur', file:null, target:'new' };
+function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function $(n){ return n == null || !isFinite(n) ? '—' : '$' + Math.round(n).toLocaleString('en-US'); }
+function pct(n, d){ return n == null || !isFinite(n) ? '—' : (n * 100).toFixed(d == null ? 2 : d) + '%'; }
+function slug(s){ return String(s || 'deal').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase().slice(0, 28); }
+function lat(u8){ var s = ''; for(var k = 0; k < u8.length; k += 65536) s += String.fromCharCode.apply(null, u8.subarray(k, k + 65536)); return s; }
+
+/* page images: scanned and designed OMs are one large JPEG per page */
+function pageJpegs(buf){
+  var u8 = new Uint8Array(buf), s = lat(u8), out = [], re = /(\d+)\s+\d+\s+obj\s*<<([\s\S]*?)>>\s*stream\r?\n/g, m;
+  while((m = re.exec(s))){ var d = m[2]; if(!/\/Subtype\s*\/Image/.test(d) || !/DCTDecode/.test(d)) continue; var w = +((/\/Width\s+(\d+)/.exec(d) || [])[1] || 0), h = +((/\/Height\s+(\d+)/.exec(d) || [])[1] || 0); if(w < 1000 || h < 700) continue;
+    var a = m.index + m[0].length, b = s.indexOf('endstream', a); if(b < 0) continue; var e = b; while(e > a && (u8[e - 1] === 10 || u8[e - 1] === 13)) e--; out.push({ w:w, h:h, blob:new Blob([u8.subarray(a, e)], { type:'image/jpeg' }) }); }
+  return out;
+}
+var CDN = 'https://cdn.jsdelivr.net/npm/', TV = '5.1.1', worker = null;
+function loadScript(src){ return new Promise(function(res, rej){ var t = document.createElement('script'); t.src = src; t.onload = res; t.onerror = function(){ rej(new Error('Could not load the text-recognition engine. It needs an internet connection the first time (about 6 MB, then cached).')); }; document.head.appendChild(t); }); }
+function getWorker(){ if(worker) return Promise.resolve(worker);
+  return (window.Tesseract ? Promise.resolve() : loadScript(CDN + 'tesseract.js@' + TV + '/dist/tesseract.min.js')).then(function(){
+    return window.Tesseract.createWorker('eng', 1, { workerPath:CDN + 'tesseract.js@' + TV + '/dist/worker.min.js', corePath:CDN + 'tesseract.js-core@' + TV + '/', langPath:CDN + '@tesseract.js-data/eng@1.0.0/4.0.0_best_int', gzip:true, logger:function(){} }); }).then(function(w){ worker = w; return w; }); }
+function ocr(blob){ return getWorker().then(function(w){ return w.recognize(blob); }).then(function(r){ return r.data.text; }); }
+
+function setMsg(t){ S.msg = t; if(typeof showSheet === 'function') showSheet('Import OM'); }
+var NEED = function(o){ return o.price && o.units && o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length; };
+/* read the OM: text layer if it has one, otherwise OCR the pages that matter (the contents page says which) */
+function readOM(file){
+  var info = { method:'', pages:[], cover:null };
+  return file.arrayBuffer().then(function(buf){
+    var ext = typeof window.bkImportParseFile === 'function' ? window.bkImportParseFile(file).catch(function(){ return null; }) : Promise.resolve(null);
+    return ext.then(function(parsed){
+      var rows = parsed && !parsed.unreadable && parsed.sheets && parsed.sheets[0] ? parsed.sheets[0].rows : null;
+      var tl = rows ? rows.map(function(r){ return (r || []).filter(function(c){ return c != null && c !== ''; }).join('  '); }).join('\n') : '';
+      if(tl.replace(/\s+/g, '').length > 1500){ info.method = 'text'; info.pages = [tl]; return info; }
+      var imgs = pageJpegs(buf); if(!imgs.length) throw new Error('This PDF has no readable text and no page images this reader can use. Export it again from the source, or use the T-12 and rent roll importers.');
+      info.method = 'ocr'; info.n = imgs.length; var texts = new Array(imgs.length).fill(''), done = {};
+      var step = function(i){ if(done[i] || i < 0 || i >= imgs.length) return Promise.resolve(); done[i] = 1; setMsg('Reading page ' + (i + 1) + ' of ' + imgs.length + '...'); return ocr(imgs[i].blob).then(function(t){ texts[i] = t; }); };
+      var seq = function(list){ return list.reduce(function(p, i){ return p.then(function(){ return step(i); }); }, Promise.resolve()); };
+      return seq([0, 1].filter(function(i){ return i < imgs.length; })).then(function(){
+        var toc = texts[1] || '', want = []; [/Executive Summary/, /Property Summary/, /Unit Mix/, /Income\s*(?:&|and)\s*Expense/, /Rent Roll/].forEach(function(re){ var m = new RegExp(re.source + '[^\\n]{0,60}?(\\d{1,2})\\s*$', 'im').exec(toc); if(m){ var p = +m[1] - 1; if(p > 1 && p < imgs.length) want.push(p); } });
+        var first = want.length ? want : imgs.map(function(_, i){ return i; }).slice(2);
+        return seq(first).then(function(){ var rest = imgs.map(function(_, i){ return i; }).filter(function(i){ return !done[i]; }); var go = function(){ var o = parseOM(texts); if(NEED(o) || !rest.length) return Promise.resolve(); return step(rest.shift()).then(go); }; return go(); }); }).then(function(){
+        info.pages = texts; info.cover = imgs[0].blob; return info; });
+    });
+  });
+}
+/* the cover's photo, without the title text along its bottom */
+function coverPhoto(blob){ return createImageBitmap(blob).then(function(bm){ var h = Math.round(bm.height * 0.70), c = document.createElement('canvas'); c.width = bm.width; c.height = h; c.getContext('2d').drawImage(bm, 0, 0, bm.width, h, 0, 0, bm.width, h); return new Promise(function(res){ c.toBlob(function(b){ res(new File([b], 'cover-photo.jpg', { type:'image/jpeg' })); }, 'image/jpeg', 0.9); }); }); }
+
+function sumBy(list, rx, key){ return list.filter(function(e){ return rx.test(e.label); }).reduce(function(t, e){ return t + (e[key] || 0); }, 0); }
+function buildDeal(om, basis, fileName){
+  var I = om.ie, k = basis, u = om.units || 1, notes = [];
+  var gsr = basis === 'cur' ? (I.gsr ? I.gsr.cur : I.gpr && I.gpr.cur) : (I.gpr ? I.gpr.pf : I.gsr && I.gsr.pf), egi = I.egi ? I.egi[k] : null;
+  var vacPct = I.vac && I.vac[k + 'Pct'] != null ? I.vac[k + 'Pct'] : (I.vac && gsr ? I.vac[k] / gsr : 0.05);
+  var other = I.addTot ? I.addTot[k] : sumBy(I.addl, /./, k), ex = I.exp, E = function(rx){ return sumBy(ex, rx, k); };
+  var mgmt = E(/manag/i), taxes = E(/tax/i), ins = E(/insur/i), util = E(/electric|gas|heat|water|sewer|trash|refuse|utilit/i), rm = E(/repair|maint/i), con = E(/contract|landscap|snow|janitor|pest|cleaning/i), pay = E(/payroll|salar|on-?site|super|labor/i), mkt = E(/market|advert|leasing/i);
+  var used = mgmt + taxes + ins + util + rm + con + pay + mkt, totExp = I.expTot ? I.expTot[k] : ex.reduce(function(t, e){ return t + e[k]; }, 0), ga = Math.max(0, Math.round((totExp - used) * 100) / 100);
+  var cap = om.curCap || (om.price && I.noi ? I.noi.cur / om.price : 0.06);
+  var name = om.name || String(fileName || 'Imported deal').replace(/\.pdf$/i, '').replace(/\s*[-–—]\s*(offering memorandum|om|listing).*$/i, '').trim();
+  var d = { dealId:'OM-' + slug(name), name:name, location:[om.city, om.state].filter(Boolean).join(', '), dealType:'Acquisition', propertyType:/multi/i.test(om.propertyType || 'Multifamily') ? 'Multifamily' : (om.propertyType || 'Multifamily'), status:'Pipeline', closing:'1/1/2027',
+    units:u, gsf:om.sf || 0, commercialArea:0, parking:om.parking || 0, siteArea:om.lotAcres || 0, purchasePrice:om.price, t12noi:om.curNOI || (I.noi && I.noi.cur) || 0,
+    avgRent:Math.round(gsr / u / 12 * 100) / 100, otherIncomePerUnit:Math.round(other / u * 100) / 100, vacancy:Math.round(vacPct * 10000) / 10000, occupancy:Math.round((1 - vacPct) * 10000) / 10000, badDebtPct:0, mgmtPct:egi ? Math.round(mgmt / egi * 100000) / 100000 : 0.03,
+    taxes:taxes, insurance:ins, utilities:util, rm:rm, contract:con, payroll:pay, turnover:0, marketing:mkt, ga:ga, reserves:0,
+    exitCap:Math.round(cap * 10000) / 10000, holdYears:5, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, commercialRentGrowth:0, closingCostsPct:0.02, saleCostPct:0.02, miscPerGSF:0 };
+  var tie = safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
+  notes.push('Replacement reserves are not in the OM, so they start at $0. Set them on Deal Underwrite (about $250 to $300 a unit is usual).');
+  notes.push('Exit cap rate starts at the going-in cap (' + pct(cap) + ') and hold at 5 years. Growth and closing costs are the app standards. Change them to your view.');
+  if(basis === 'pf') notes.push('This uses the broker pro forma. It assumes every unit reaches the rents the OM calls achievable, so treat the returns as the broker case.');
+  if(om.unitMix && om.unitMix.length) notes.push('Rents use the average across ' + om.unitMix.map(function(m){ return m.units + ' ' + m.type; }).join(' and ') + ' (a unit-level rent roll was not extracted).');
+  if(I.ltl && I.ltl.cur && basis === 'cur') notes.push('The OM shows ' + $(I.ltl.cur) + ' a year of loss to lease. In-place rents are below the rents it calls achievable.');
+  return { deal:d, tie:tie, want:want, notes:notes, cap:cap };
+}
+function run(file, target){
+  S = { busy:true, msg:'Starting...', mode:'om', result:null, basis:S.basis || 'cur', file:file, target:target || 'new' }; showSheet('Import OM');
+  return readOM(file).then(function(info){ var om = parseOM(info.pages);
+    if(!NEED(om)){ S.msg = 'Read ' + file.name + ' but could not find the price, units and the income and expense table together (found: ' + [om.price && 'price', om.units && 'units', om.ie && om.ie.noi && 'NOI'].filter(Boolean).join(', ') + '). Use Import Deal for a T-12, or Source Ingestion for other layouts.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
+    S.om = om; S.info = info; S.result = true; S.busy = false; S.msg = 'Read ' + file.name + ' (' + (info.method === 'ocr' ? 'text recognised from page images' : 'text layer') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
+}
+window.bkOMRun = function(inp){ var f = inp && inp.files && inp.files[0]; if(f) run(f, 'new'); };
+window.bkOMBasis = function(b){ S.basis = b; showSheet('Import OM'); };
+window.bkOMParse = parseOM; window.bkOMBuild = buildDeal; window.bkOMPageJpegs = pageJpegs;
+window.bkOMCreate = function(){ if(!S.om) return; var b = buildDeal(S.om, S.basis, S.file && S.file.name), file = S.file, info = S.info;
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
+  var id = String(b.deal.dealId), jobs = [];
+  if(file && typeof window.bkDocsAdd === 'function') jobs.push(window.bkDocsAdd('om', file, id));
+  if(info && info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverPhoto(info.cover).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
+  Promise.all(jobs).catch(function(){}).then(function(){ if(window.bkDocsInvalidate) window.bkDocsInvalidate(); showSheet('Home'); }); };
+var KEEP = ['dealId', 'closing', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'commercialRentGrowth', 'closingCostsPct', 'saleCostPct', 'miscPerGSF'];
+window.bkOMApply = function(){ if(!S.om) return; var b = buildDeal(S.om, S.basis, S.file && S.file.name), cur = bkLoad(), nd = Object.assign({}, b.deal);
+  KEEP.forEach(function(k){ delete nd[k]; }); if(cur.name && !/^(untitled|-)?$/i.test(String(cur.name))){ delete nd.name; delete nd.location; }
+  if(!window.confirm('Apply these figures to "' + (cur.name || 'this deal') + '"? Price, units, rents, other income, vacancy and every expense line are replaced. The previous values stay in Version History.')) return;
+  if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before applying OM figures', true);
+  bkSave(Object.assign(cur, nd)); showSheet('Home'); };
+window.bkDocsExtractHook = function(fid){ window.bkDocsGet(fid).then(function(r){ if(!r) return; var f = new File([r.blob], r.name, { type:r.type }); if(r.slot === 't12') return t12(f); S.basis = 'cur'; run(f, 'apply'); }); };
+
+/* T-12 stored with a deal: extract with the Import Deal reader and apply to this deal */
+function t12(file){
+  S = { busy:true, msg:'Reading ' + file.name + '...', mode:'t12', result:null, basis:'cur', file:file, target:'apply' }; showSheet('Import OM');
+  if(typeof window.bkImportParseFile !== 'function'){ S.busy = false; S.msg = 'The T-12 reader is not available.'; showSheet('Import OM'); return; }
+  window.bkImportParseFile(file).then(function(parsed){ if(parsed.unreadable) throw new Error('This PDF has no readable text. Use the spreadsheet source.'); var props = window.bkImportExtract(parsed); if(!props.length) throw new Error('No Yardi-format T-12 line items found in ' + file.name + '.');
+    S.t12 = props; S.result = true; S.busy = false; S.msg = 'Found ' + props.length + ' propert' + (props.length === 1 ? 'y' : 'ies') + ' with line items.'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
+}
+window.bkT12Apply = function(i){ var p = S.t12 && S.t12[i]; if(!p) return; var cur = bkLoad(), price = Number(cur.purchasePrice) || 0, cap = price ? p.noi / price : 0.06, nd = window.bkImportDeal(p, cap, Number(cur.units) || p.units || 1);
+  ['dealId', 'name', 'closing', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'closingCostsPct', 'saleCostPct', 'exitCap', 'purchasePrice', 'location'].forEach(function(k){ delete nd[k]; });
+  if(!window.confirm('Replace this deal\'s income and expense lines with the T-12 for ' + p.name + '? Price, financing and growth stay as they are. The previous values stay in Version History.')) return;
+  if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before applying T-12', true);
+  bkSave(Object.assign(cur, nd)); showSheet('Home'); };
+
+function row(label, val, src, kind){ return '<tr><td style="padding:5px 8px">' + label + '</td><td style="padding:5px 8px;text-align:right;font-weight:600">' + val + '</td><td style="padding:5px 8px;font-size:11px;opacity:.65">' + (kind === 'assumed' ? 'app default' : src ? 'OM page ' + src : 'OM') + '</td></tr>'; }
+function render(){
+  var hdr = { title:'Import OM', crumbs:'Inputs', desc:'Upload an offering memorandum (PDF) and load its price, units, rents, income and expenses into the engine.', sidebar:'', meta:{ Source:S.file ? S.file.name : 'none', Method:S.info ? S.info.method : 'PDF' } };
+  var body = box('<b>Upload an offering memorandum.</b> The importer reads the PDF (including designed OMs that are page images, using text recognition in your browser), finds the price, unit mix and the income and expense table, and builds a deal from the in-place (current) figures or the broker pro forma. Nothing is sent to a server. The first scan downloads the recognition engine (about 6 MB, then cached).'
+    + '<div style="margin-top:10px"><input id="bkOMFile" type="file" accept=".pdf" onchange="bkOMRun(this)"' + (S.busy ? ' disabled' : '') + '></div>');
+  if(S.msg) body += box((S.busy ? '&#8987; ' : S.result ? '&#10003; ' : '&#9888; ') + esc(S.msg));
+  if(S.mode === 't12' && S.t12){ body += box('<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:5px 8px">Property</th><th style="text-align:right;padding:5px 8px">NOI</th><th></th></tr></thead><tbody>' + S.t12.map(function(p, i){ return '<tr><td style="padding:5px 8px">' + esc(p.name) + '</td><td style="padding:5px 8px;text-align:right"><b>' + $(p.noi) + '</b></td><td style="text-align:right"><button type="button" class="pl-hbtn primary" onclick="bkT12Apply(' + i + ')">Apply to this deal</button></td></tr>'; }).join('') + '</tbody></table>'); }
+  if(S.mode === 'om' && S.result && S.om){
+    var om = S.om, b = buildDeal(om, S.basis, S.file && S.file.name), d = b.deal, I = om.ie, s = om.sources || {}, ok = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002);
+    var basisBtn = function(k, t){ return '<button type="button" class="pl-hbtn' + (S.basis === k ? ' primary' : '') + '" onclick="bkOMBasis(\'' + k + '\')">' + t + '</button>'; };
+    body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Underwrite on</b>' + basisBtn('cur', 'In-place (current)') + basisBtn('pf', 'Broker pro forma') + '</div><div style="font-size:12px;opacity:.7;margin-top:6px">In-place uses current scheduled rents and today\'s expenses. The pro forma uses the rents the OM calls achievable' + (om.pfNOI ? ' (' + $(om.pfNOI) + ' NOI)' : '') + '.</div>');
+    body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO OM NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs OM ' + $(b.want) + '</span>') + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><tbody>'
+      + row('Purchase price (asking)', $(d.purchasePrice), s.price) + row('Units', d.units, s.units) + row('Building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', s.sf) + row('Average monthly rent', $(d.avgRent), s.unitMix || s.income)
+      + row('Other income per unit (year)', $(d.otherIncomePerUnit), s.income) + row('Vacancy', pct(d.vacancy, 1), s.income) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', s.income)
+      + row('Real estate taxes', $(d.taxes), s.income) + row('Insurance', $(d.insurance), s.income) + row('Utilities (electric, gas, water, trash)', $(d.utilities), s.income) + row('Repairs and maintenance', $(d.rm), s.income) + row('Contract services and landscaping', $(d.contract), s.income) + (d.ga ? row('Other expenses', $(d.ga), s.income) : '')
+      + row('Going-in cap rate on in-place NOI', pct(b.cap), s.noi) + row('Exit cap rate', pct(d.exitCap), '', 'assumed') + row('Replacement reserves', '$0', '', 'assumed') + '</tbody></table>'
+      + (om.yearBuilt || om.zoning ? '<div style="font-size:12px;opacity:.7;margin-top:8px">Also in the OM: ' + [om.yearBuilt && 'built ' + om.yearBuilt, om.lotAcres && om.lotAcres + ' acres', om.stories && om.stories + ' stories', om.parking && om.parking + ' parking spaces', om.zoning && 'zoned ' + om.zoning].filter(Boolean).join(', ') + '.</div>' : ''));
+    body += box('<b>Before you rely on it</b><ul style="margin:6px 0 0 18px;padding:0">' + b.notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>');
+    body += '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="pl-hbtn primary" onclick="bkOMCreate()">Create new deal from this OM</button>' + (S.target === 'apply' ? '<button type="button" class="pl-hbtn" onclick="bkOMApply()">Apply to the current deal instead</button>' : '') + '</div>'
+      + '<div style="font-size:12px;opacity:.7;margin-top:6px">A new deal keeps the OM in its Deal Documents and uses the OM\'s cover picture as its photo (replace it there with your own).</div>';
+  }
+  hdr.main = body; return hdr;
+}
+var g = function(){ return render(); };
+if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Import OM', g); else RENDERERS['Import OM'] = g;
+
+})();
+</script>
+
+
 
 
 
