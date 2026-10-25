@@ -62,9 +62,14 @@ const path = require('path'); const A = require(path.join(__dirname, 'deal.js'))
   const yq = Math.round(await p.evaluate(() => window.scrollY)), act = await p.evaluate(() => document.activeElement.tagName);
   check('editing a Credit Policy input and pressing Arrow Down keeps the page near where it was', Math.abs(yq - yp) < 400, JSON.stringify({ yp, yq }));
   check('and focus is on another input', act === 'INPUT', act);
+  /* wait until the page has stopped redrawing before taking the select: a late redraw would move focus for reasons unrelated to the select */
+  await p.evaluate(() => new Promise(res => { let t = setTimeout(res, 400); const mo = new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { mo.disconnect(); res(); }, 400); }); mo.observe(document.querySelector('#viewport'), { childList: true, subtree: true }); setTimeout(() => { mo.disconnect(); res(); }, 3500); }));
   await p.evaluate(() => { const s = document.querySelector('#viewport select'); if (s) s.focus(); });
   const before = await p.evaluate(() => document.activeElement.tagName); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(200);
-  check('a select keeps its own arrow-key behaviour (focus stays on it)', before === 'SELECT' && (await p.evaluate(() => document.activeElement.tagName)) === 'SELECT');
+  /* the dropdown's change redraws the sheet (a few hundred ms on this sheet); focus is handed back 25 ms after the redraw, so allow for that */
+  await p.waitForFunction(() => document.activeElement.tagName === 'SELECT', null, { timeout: 2000 }).catch(() => {});
+  const after = await p.evaluate(() => document.activeElement.tagName + ' ' + (document.querySelectorAll('#viewport select').length));
+  check('a select keeps its own arrow-key behaviour (focus stays on it)', before === 'SELECT' && /^SELECT/.test(after), JSON.stringify({ before, after }));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(`${checks} checks, ${fails} failures`); process.exit(fails ? 1 : 0);
 })();

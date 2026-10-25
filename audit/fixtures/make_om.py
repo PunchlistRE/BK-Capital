@@ -44,3 +44,23 @@ pages = [page(cover, 1), page(toc, 2), page(exe, 3), page(prop, 4), page(mix, 5)
 pages[0].save(os.path.join(HERE, 'sample_om.pdf'), save_all=True, append_images=pages[1:], resolution=150)
 json.dump({'name': 'Maple Court Apartments', 'city': 'Fairview', 'state': 'OH', 'price': 2950000, 'units': 20, 'sf': 12400, 'curNOI': 193540, 'pfNOI': 231730, 'yearBuilt': 1975, 'parking': 30}, open(os.path.join(HERE, 'sample_om_expected.json'), 'w'), indent=1)
 print('ok')
+
+# ---- second synthetic OM: two pages (rent roll, income and expense), no price, hyphenated street number, additional income without its own heading
+FOOT2 = 'For Sale - Elm Street Apartments - 40-42 Elm Street, Brookfield, CT 06804'
+def page2(draw_fn, n):
+    im = Image.new('RGB', (W, H), 'white'); d = ImageDraw.Draw(im); draw_fn(d)
+    d.text((60, H - 70), FOOT2, font=F(18), fill=(80, 80, 80)); d.text((W - 80, H - 70), str(22 + n), font=F(18), fill=(80, 80, 80)); return im
+def rr(d):
+    d.text((80, 80), 'Unit Mix & Rent Roll', font=F(40, True), fill=(20, 40, 70))
+    d.text((80, 170), 'UNIT   TYPE   SF   DESIGNATION   IN-PLACE   MARKET   PRO FORMA', font=F(16, True), fill=(90, 90, 90))
+    rows = [('A-1', '2/1', '900', 'Market', '$2,400', '$2,400', '$2,500'), ('A-2', '2/1', '900', 'Market', '$2,350', '$2,400', '$2,500'), ('B-1', '2/1.5', '1,100', 'Affordable', '$1,500', '$1,500', '$1,550'), ('B-2', '2/1.5', '1,100', 'Market', '$2,600', '$2,600', '$2,700')]
+    for i, r in enumerate(rows): d.text((80, 230 + i * 56), '   '.join(r), font=F(26), fill=(20, 20, 20))
+    d.text((80, 500), 'Total 4 Units 4,000 SF', font=F(28, True), fill=(20, 20, 20))
+L2 = ['OPERATING INCOME', 'Gross Potential Rent $118,800 - $122,400 -', 'Below Market Rent -$1,200 - $0 -', 'Gross Scheduled Rent $117,600 - $122,400 -', 'Vacancy & Collections Loss -$2,352 - -$2,448 -', 'Effective Rental Income $115,248 - $119,952 -',
+      'Utility Bill Back $3,600 $900 $3,600 $900', 'Total Additional Income $3,600 $900 $3,600 $900', 'OPERATING EXPENSES', 'Real Estate Tax $14,400 $3,600 $14,400 $3,600', 'Property Insurance $3,200 $800 $3,200 $800', 'Water $1,000 $250 $1,000 $250', 'Snow Removal $4,000 $1,000 $4,000 $1,000', 'Total Expense $22,600 $5,650 $22,600 $5,650', 'Net Operating Income $96,248 - $100,952 -']
+def ie2(d):
+    d.text((80, 80), 'Income & Expense Analysis', font=F(40, True), fill=(20, 40, 70))
+    for i, t in enumerate(L2): d.text((80, 170 + i * 44), t, font=F(26, bool(t.isupper())), fill=(20, 20, 20))
+p2 = [page2(rr, 1), page2(ie2, 2)]
+p2[0].save(os.path.join(HERE, 'sample_om_b.pdf'), save_all=True, append_images=p2[1:], resolution=150)
+json.dump({'name': 'Elm Street Apartments', 'city': 'Brookfield', 'state': 'CT', 'units': 4, 'sf': 4000, 'curNOI': 96248, 'pfNOI': 100952, 'price': None}, open(os.path.join(HERE, 'sample_om_b_expected.json'), 'w'), indent=1)

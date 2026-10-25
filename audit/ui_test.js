@@ -254,9 +254,9 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(() => bkReportClose());
   // 18. Version history and change log
   await p.evaluate(a => bkCreateNewDeal(a), A_); await p.waitForTimeout(500);
-  const vh = await p.evaluate(() => { const o = {}; let s = bkLoad(); s.exitCap = 0.06; bkSave(s); s = bkLoad(); s.exitCap = 0.0625; bkSave(s); o.log = bkLoad()._history.log.filter(l => l.k === 'exitCap').map(l => [l.from, l.to]);
+  const vh = await p.evaluate(() => { const o = {}; let s = bkLoad(); s.exitCap = 0.06; bkSave(s); s = bkLoad(); s.exitCap = 0.0625; bkSave(s); bkHistoryFlush(); o.log = bkLoad()._history.log.filter(l => l.k === 'exitCap').map(l => [l.from, l.to]);
     o.id = bkHistorySaveVersion('Baseline'); s = bkLoad(); s.purchasePrice = 23000000; bkSave(s); o.diff = bkHistoryDiff(o.id).rows.map(r => r.k);
-    const n = bkLoad()._history.log.length; bkReportHTML(); bkRunWith({ exitCap: 0.07 }, () => bkMonthlyReturns().irr); o.scratchLogged = bkLoad()._history.log.length !== n;
+    bkHistoryFlush(); const n = bkLoad()._history.log.length; bkReportHTML(); bkRunWith({ exitCap: 0.07 }, () => bkMonthlyReturns().irr); bkHistoryFlush(); o.scratchLogged = bkLoad()._history.log.length !== n;
     bkHistoryRestore(o.id); o.after = [bkLoad().purchasePrice, bkLoad().exitCap]; o.safety = bkLoad()._history.versions.some(v => /Before restoring/.test(v.note)); return o; });
   check('an edit is logged with its old and new value, and repeat edits coalesce', JSON.stringify(vh.log) === JSON.stringify([[0.0575, 0.0625]]), JSON.stringify(vh.log));
   check('comparing a version lists exactly the inputs that changed', JSON.stringify(vh.diff) === '["purchasePrice"]', JSON.stringify(vh.diff));
@@ -296,6 +296,16 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     const nd = await p.evaluate(async () => { const s = bkLoad(); return { id: s.dealId, price: s.purchasePrice, units: s.units, gsf: s.gsf, noi: Math.round(bkCalc().noi), slots: (await bkDocsList()).map(f => f.slot).sort(), loc: s.location }; });
     check('creating the deal loads price, units, area and NOI from the OM', nd.price === exp.price && nd.units === exp.units && nd.gsf === exp.sf && Math.abs(nd.noi - exp.curNOI) <= 2 && nd.loc === 'Fairview, OH', JSON.stringify(nd));
     check('the OM and a photo are attached to the new deal', JSON.stringify(nd.slots) === '["om","photo"]', JSON.stringify(nd.slots));
+    /* a second layout: two pages, no price, a hyphenated street number, additional income without its own heading */
+    const expb = JSON.parse(fsx.readFileSync(path.join(__dirname, 'fixtures', 'sample_om_b_expected.json'), 'utf8'));
+    await p.evaluate(() => { showSheet('Import OM'); }); await p.waitForTimeout(500);
+    await p.setInputFiles('#bkOMFile', path.join(__dirname, 'fixtures', 'sample_om_b.pdf'));
+    await p.waitForFunction(() => /✓ Read sample_om_b|could not find|Could not/i.test(document.querySelector('#viewport').innerText), null, { timeout: 240000 }); await p.waitForTimeout(500);
+    const ob = await p.evaluate(() => ({ t: document.querySelector('#viewport').innerText, dis: !!document.querySelector('button[onclick="bkOMCreate()"]').disabled }));
+    check('a second OM layout is read, and a missing price is asked for', /NOT FOUND IN THE OM/i.test(ob.t) && /Elm Street Apartments/.test(ob.t) && /Brookfield, CT/.test(ob.t) && /TIES TO OM NOI/.test(ob.t) && ob.dis, ob.t.slice(ob.t.indexOf('Elm'), ob.t.indexOf('Elm') + 100));
+    await p.evaluate(() => bkOMManual('mPrice', '1,600,000')); await p.waitForTimeout(400); await p.evaluate(() => bkOMCreate()); await p.waitForTimeout(2500);
+    const nb = await p.evaluate(async () => { const s = bkLoad(); return { price: s.purchasePrice, units: s.units, noi: Math.round(bkCalc().noi), slots: (await bkDocsList()).map(f => f.slot).sort() }; });
+    check('the entered price and the OM figures build the deal, and a table page is not used as the photo', nb.price === 1600000 && nb.units === expb.units && Math.abs(nb.noi - expb.curNOI) <= 2 && JSON.stringify(nb.slots) === '["om"]', JSON.stringify(nb));
   }
   // 21. Header sign-in / sign-out (last: signing out clears the page)
   p.on('dialog', d => d.accept());
