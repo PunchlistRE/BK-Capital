@@ -1,0 +1,12 @@
+{
+ "name": "Maple Court Apartments",
+ "city": "Fairview",
+ "state": "OH",
+ "price": 2950000,
+ "units": 20,
+ "sf": 12400,
+ "curNOI": 193540,
+ "pfNOI": 231730,
+ "yearBuilt": 1975,
+ "parking": 30
+}
