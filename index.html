@@ -22063,18 +22063,20 @@ function parseOM(pages){
   function find(re, group, field, pageHint){ for(var i = 0; i < txt.length; i++){ var m = re.exec(txt[i]); if(m){ if(field) src[field] = i + 1; return m[group || 1]; } } return null; }
   var o = { sources:src, items:[] };
   /* identity: the running footer "FOR SALE - Name - 48 Street, City, ST" repeats on every page */
-  var f = null; for(var i = 0; i < txt.length && !f; i++){ f = /FOR SALE\s*[-·•|]\s*(.+?)\s*[-·•|]\s*(\d+\s+[^,\n]+?)\s*[-·•|,]\s*([A-Za-z .]+?),\s*([A-Z]{2})\b/.exec(txt[i]); if(f) src.name = i + 1; }
+  var f = null; for(var i = 0; i < txt.length && !f; i++){ f = /FOR SALE\s*[-·•|]\s*(.+?)\s*[-·•|]\s*(\d+(?:\s*-\s*\d+)?\s+[^,\n]+?)\s*[-·•|,]\s*([A-Za-z .]+?),\s*([A-Z]{2})\b/i.exec(txt[i]); if(f) src.name = i + 1; }
   if(f){ o.name = f[1].trim(); o.street = f[2].trim(); o.city = f[3].trim(); o.state = f[4]; }
   var z = /\b([A-Z]{2})\s*[-·]?\s*(\d{5})\b/.exec(all); if(z){ o.zip = z[2]; if(!o.state) o.state = z[1]; }
-  o.price = num(find(/(?:Offering|Asking|List(?:ing)?)\s*Price[^\d$\n]{0,20}\$\s?([\d,]{6,})/i, 1, 'price'));
+  o.price = num(find(/(?:Offering|Asking|List(?:ing)?|Purchase)\s*Price[^\d$\n]{0,20}\$\s?([\d,]{6,})/i, 1, 'price'));
+  if(!o.price){ for(i = 0; i < txt.length && !o.price; i++){ var L = txt[i].split(/\n/); for(var q = 0; q < L.length; q++){ if(!/(ASKING|OFFERING|LIST(?:ING)?|PURCHASE)\s*PRICE/i.test(L[q])) continue;
+      var win = [L[q - 3], L[q - 2], L[q - 1], L[q]].filter(function(x){ return x; }).join(' '), ms = win.match(/\$\s?\d{1,3}(?:,\d{3})+/g) || [], vals = ms.map(num).filter(function(v){ return v >= 100000; }); if(vals.length){ o.price = vals[vals.length - 1]; src.price = i + 1; break; } } } }
   var noiM = null; for(i = 0; i < txt.length && !noiM; i++){ noiM = /\bNOI\s+\$?\s?([\d,]{5,})\s+\$?\s?([\d,]{5,})/.exec(txt[i]); if(noiM) src.noi = i + 1; }
   if(noiM){ o.curNOI = num(noiM[1]); o.pfNOI = num(noiM[2]); }
   var capM = null; for(i = 0; i < txt.length && !capM; i++){ capM = /Cap\s*Rate\s+([\d.]+)\s*%\s+([\d.]+)\s*%/i.exec(txt[i]); }
   if(capM){ o.curCap = num(capM[1]) / 100; o.pfCap = num(capM[2]) / 100; }
-  o.units = num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/(\d{1,4})\s*UNITS\b/i, 1, 'units'));
-  o.sf = num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf')) || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
+  o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/Total\s+Units\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/(\d{1,4})\s*[- ]?\s*units?\b/i, 1, 'units'));
+  o.sf = num(find(/\bTotal\s+\d{1,4}\s+Units\s+([\d,]{4,})\s*SF/i, 1, 'sf')) || num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf')) || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
   o.yearBuilt = num(find(/YEAR BUILT\s+(\d{4})/i, 1, 'yearBuilt'));
-  o.lotAcres = num(find(/LOT SIZE\s+([\d.]+)\s*Acres/i, 1, 'lot'));
+  o.lotAcres = num(find(/LOT SIZE[^\n]{0,30}?([\d.]+)\s*Acres/i, 1, 'lot')) || num(find(/\b(\d?\.\d+)\s*Acres/i, 1));
   o.stories = num(find(/STORIES\s+(\d+)/i, 1));
   o.parking = num(find(/PARKING\s+(\d+)\s*Spaces/i, 1, 'parking'));
   o.zoning = find(/ZONING\s+([A-Za-z0-9-]+)/i, 1);
@@ -22104,14 +22106,19 @@ function parseOM(pages){
         else if(/effective rental/i.test(label)) I.eri = { cur:money[0], pf:money[1] };
         else if(/effective gross/i.test(label)) I.egi = { cur:money[0], pf:money[1] };
         else if(/net operating/i.test(label)) I.noi = { cur:money[0], pf:money[1] };
+        else if(/^total additional/i.test(label)) I.addTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] };
+        else if(/\$/.test(line) && !/^(total|below|loss)/i.test(label) && /^[A-Za-z]/.test(label) && money.length >= 2) I.addl.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : (money[1] != null && money.length > 2 ? money[1] : money[0]) });
       } else if(/effective gross/i.test(label)) I.egi = { cur:money[0], pf:money[1] };
       else if(/net operating/i.test(label)){ I.noi = { cur:money[0], pf:money[1] }; done = true; }
       else if(sec === 'add'){ if(/^total/i.test(label)) I.addTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] }; else I.addl.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : money[0] }); }
       else if(sec === 'exp'){ if(/^total/i.test(label)) I.expTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] }; else I.exp.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : money[0] }); }
     });
+    if(!I.egi && I.eri){ I.egi = { cur:I.eri.cur + (I.addTot ? I.addTot.cur : 0), pf:I.eri.pf + (I.addTot ? I.addTot.pf : 0), derived:true }; }
+    if(!I.addTot && I.addl.length) I.addTot = { cur:I.addl.reduce(function(t, e){ return t + e.cur; }, 0), pf:I.addl.reduce(function(t, e){ return t + e.pf; }, 0) };
     o.ie = I;
     if(I.noi){ o.curNOI = o.curNOI || I.noi.cur; o.pfNOI = o.pfNOI || I.noi.pf; }
   }
+  if(o.price && o.curNOI && !o.curCap) o.curCap = o.curNOI / o.price;
   return o;
 }
 
@@ -22132,13 +22139,24 @@ function pageJpegs(buf){
 }
 var CDN = 'https://cdn.jsdelivr.net/npm/', TV = '5.1.1', worker = null;
 function loadScript(src){ return new Promise(function(res, rej){ var t = document.createElement('script'); t.src = src; t.onload = res; t.onerror = function(){ rej(new Error('Could not load the text-recognition engine. It needs an internet connection the first time (about 6 MB, then cached).')); }; document.head.appendChild(t); }); }
-function getWorker(){ if(worker) return Promise.resolve(worker);
-  return (window.Tesseract ? Promise.resolve() : loadScript(CDN + 'tesseract.js@' + TV + '/dist/tesseract.min.js')).then(function(){
-    return window.Tesseract.createWorker('eng', 1, { workerPath:CDN + 'tesseract.js@' + TV + '/dist/worker.min.js', corePath:CDN + 'tesseract.js-core@' + TV + '/', langPath:CDN + '@tesseract.js-data/eng@1.0.0/4.0.0_best_int', gzip:true, logger:function(){} }); }).then(function(w){ worker = w; return w; }); }
-function ocr(blob){ return getWorker().then(function(w){ return w.recognize(blob); }).then(function(r){ return r.data.text; }); }
+function poolSize(){ return Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)); }
+function getWorker(){ if(worker) return worker;
+  worker = (window.Tesseract ? Promise.resolve() : loadScript(CDN + 'tesseract.js@' + TV + '/dist/tesseract.min.js')).then(function(){
+    var sch = window.Tesseract.createScheduler(), n = poolSize(), opts = { workerPath:CDN + 'tesseract.js@' + TV + '/dist/worker.min.js', corePath:CDN + 'tesseract.js-core@' + TV + '/', langPath:CDN + '@tesseract.js-data/eng@1.0.0/4.0.0_best_int', gzip:true, logger:function(){} };
+    var made = []; for(var k = 0; k < n; k++) made.push(window.Tesseract.createWorker('eng', 1, opts).then(function(w){ sch.addWorker(w); }));
+    return Promise.all(made).then(function(){ return sch; }); });
+  worker.catch(function(){ worker = null; }); return worker; }
+/* a page image at about 1900 px wide reads as well as the 2640 px original in roughly half the time */
+function shrink(blob){ return createImageBitmap(blob).then(function(bm){ var sc = Math.min(1, 1900 / bm.width); if(sc >= 0.98) return blob; var c = document.createElement('canvas'); c.width = Math.round(bm.width * sc); c.height = Math.round(bm.height * sc); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); return new Promise(function(res){ c.toBlob(function(b){ res(b || blob); }, 'image/jpeg', 0.92); }); }).catch(function(){ return blob; }); }
+function ocr(blob){ return Promise.all([getWorker(), shrink(blob)]).then(function(a){ return a[0].addJob('recognize', a[1]); }).then(function(r){ return r.data.text; }); }
+var CK = 'bkcapital.omocr.';
+function cacheKey(f){ return CK + [f.name, f.size, f.lastModified || 0].join('|'); }
+function cacheGet(f){ try { var v = JSON.parse(localStorage.getItem(cacheKey(f)) || 'null'); return v && Array.isArray(v.pages) ? v : null; } catch(e){ return null; } }
+function cachePut(f, info){ try { Object.keys(localStorage).filter(function(k){ return k.indexOf(CK) === 0; }).slice(0, -7).forEach(function(k){ localStorage.removeItem(k); }); localStorage.setItem(cacheKey(f), JSON.stringify({ pages:info.pages, n:info.n })); } catch(e){} }
 
 function setMsg(t){ S.msg = t; if(typeof showSheet === 'function') showSheet('Import OM'); }
 var NEED = function(o){ return o.price && o.units && o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length; };
+var NEEDMIN = function(o){ return o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length; };
 /* read the OM: text layer if it has one, otherwise OCR the pages that matter (the contents page says which) */
 function readOM(file){
   var info = { method:'', pages:[], cover:null };
@@ -22149,22 +22167,26 @@ function readOM(file){
       var tl = rows ? rows.map(function(r){ return (r || []).filter(function(c){ return c != null && c !== ''; }).join('  '); }).join('\n') : '';
       if(tl.replace(/\s+/g, '').length > 1500){ info.method = 'text'; info.pages = [tl]; return info; }
       var imgs = pageJpegs(buf); if(!imgs.length) throw new Error('This PDF has no readable text and no page images this reader can use. Export it again from the source, or use the T-12 and rent roll importers.');
-      info.method = 'ocr'; info.n = imgs.length; var texts = new Array(imgs.length).fill(''), done = {};
+      info.method = 'ocr'; info.n = imgs.length; var hit = cacheGet(file); if(hit){ info.pages = hit.pages; info.cover = coverIsPhoto(hit.pages[0]) ? imgs[0].blob : null; info.cached = true; return info; } var texts = new Array(imgs.length).fill(''), done = {};
       var step = function(i){ if(done[i] || i < 0 || i >= imgs.length) return Promise.resolve(); done[i] = 1; setMsg('Reading page ' + (i + 1) + ' of ' + imgs.length + '...'); return ocr(imgs[i].blob).then(function(t){ texts[i] = t; }); };
-      var seq = function(list){ return list.reduce(function(p, i){ return p.then(function(){ return step(i); }); }, Promise.resolve()); };
+      var seq = function(list){ return Promise.all(list.map(step)); };
       return seq([0, 1].filter(function(i){ return i < imgs.length; })).then(function(){
-        var toc = texts[1] || '', want = []; [/Executive Summary/, /Property Summary/, /Unit Mix/, /Income\s*(?:&|and)\s*Expense/, /Rent Roll/].forEach(function(re){ var m = new RegExp(re.source + '[^\\n]{0,60}?(\\d{1,2})\\s*$', 'im').exec(toc); if(m){ var p = +m[1] - 1; if(p > 1 && p < imgs.length) want.push(p); } });
+        var toc = texts[1] || '', want = []; [/Executive Summary/, /Property Summary/, /Property Overview/, /Building Overview/, /Unit Mix/, /Income\s*(?:&|and)\s*Expense/, /Rent Roll/].forEach(function(re){ var m = new RegExp(re.source + '[^\\n\\d]{0,60}?(\\d{1,2})\\b[^\\n\\d]{0,30}$', 'im').exec(toc); if(m){ var p = +m[1] - 1; if(p > 1 && p < imgs.length) want.push(p); } });
         var first = want.length ? want : imgs.map(function(_, i){ return i; }).slice(2);
-        return seq(first).then(function(){ var rest = imgs.map(function(_, i){ return i; }).filter(function(i){ return !done[i]; }); var go = function(){ var o = parseOM(texts); if(NEED(o) || !rest.length) return Promise.resolve(); return step(rest.shift()).then(go); }; return go(); }); }).then(function(){
-        info.pages = texts; info.cover = imgs[0].blob; return info; });
+        return seq(first).then(function(){ var rest = imgs.map(function(_, i){ return i; }).filter(function(i){ return !done[i]; }); var go = function(){ var o = parseOM(texts); if(NEED(o) || !rest.length) return Promise.resolve(); return seq(rest.splice(0, poolSize())).then(go); }; return go(); }); }).then(function(){
+        info.pages = texts; info.cover = coverIsPhoto(texts[0]) ? imgs[0].blob : null; cachePut(file, info); return info; });
     });
   });
 }
+/* a cover page is mostly picture: no dollar figures in it. A first page of rent roll or income table is not a photo. */
+function coverIsPhoto(t){ return !/\$\s?\d/.test(t || ''); }
 /* the cover's photo, without the title text along its bottom */
 function coverPhoto(blob){ return createImageBitmap(blob).then(function(bm){ var h = Math.round(bm.height * 0.70), c = document.createElement('canvas'); c.width = bm.width; c.height = h; c.getContext('2d').drawImage(bm, 0, 0, bm.width, h, 0, 0, bm.width, h); return new Promise(function(res){ c.toBlob(function(b){ res(new File([b], 'cover-photo.jpg', { type:'image/jpeg' })); }, 'image/jpeg', 0.9); }); }); }
 
 function sumBy(list, rx, key){ return list.filter(function(e){ return rx.test(e.label); }).reduce(function(t, e){ return t + (e[key] || 0); }, 0); }
-function buildDeal(om, basis, fileName){
+function buildDeal(om0, basis, fileName){
+  var om = Object.assign({}, om0, { price:om0.price || S.mPrice || 0, units:om0.units || S.mUnits || 0 });
+  if(!om.curCap && om.price && om.curNOI) om.curCap = om.curNOI / om.price;
   var I = om.ie, k = basis, u = om.units || 1, notes = [];
   var gsr = basis === 'cur' ? (I.gsr ? I.gsr.cur : I.gpr && I.gpr.cur) : (I.gpr ? I.gpr.pf : I.gsr && I.gsr.pf), egi = I.egi ? I.egi[k] : null;
   var vacPct = I.vac && I.vac[k + 'Pct'] != null ? I.vac[k + 'Pct'] : (I.vac && gsr ? I.vac[k] / gsr : 0.05);
@@ -22179,6 +22201,9 @@ function buildDeal(om, basis, fileName){
     taxes:taxes, insurance:ins, utilities:util, rm:rm, contract:con, payroll:pay, turnover:0, marketing:mkt, ga:ga, reserves:0,
     exitCap:Math.round(cap * 10000) / 10000, holdYears:5, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, commercialRentGrowth:0, closingCostsPct:0.02, saleCostPct:0.02, miscPerGSF:0 };
   var tie = safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
+  if(!E(/manag/i)) notes.push('The OM shows no management fee. Underwriting normally includes 3% to 5% of income for management, even when the owner self-manages. Set it on Deal Underwrite.');
+  if(!E(/repair|maint/i)) notes.push('The OM shows no repairs and maintenance line. Add an allowance on Deal Underwrite.');
+  if(!om0.price) notes.push('The OM does not state a price. The price above is the one you entered.');
   notes.push('Replacement reserves are not in the OM, so they start at $0. Set them on Deal Underwrite (about $250 to $300 a unit is usual).');
   notes.push('Exit cap rate starts at the going-in cap (' + pct(cap) + ') and hold at 5 years. Growth and closing costs are the app standards. Change them to your view.');
   if(basis === 'pf') notes.push('This uses the broker pro forma. It assumes every unit reaches the rents the OM calls achievable, so treat the returns as the broker case.');
@@ -22189,13 +22214,14 @@ function buildDeal(om, basis, fileName){
 function run(file, target){
   S = { busy:true, msg:'Starting...', mode:'om', result:null, basis:S.basis || 'cur', file:file, target:target || 'new' }; showSheet('Import OM');
   return readOM(file).then(function(info){ var om = parseOM(info.pages);
-    if(!NEED(om)){ S.msg = 'Read ' + file.name + ' but could not find the price, units and the income and expense table together (found: ' + [om.price && 'price', om.units && 'units', om.ie && om.ie.noi && 'NOI'].filter(Boolean).join(', ') + '). Use Import Deal for a T-12, or Source Ingestion for other layouts.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
-    S.om = om; S.info = info; S.result = true; S.busy = false; S.msg = 'Read ' + file.name + ' (' + (info.method === 'ocr' ? 'text recognised from page images' : 'text layer') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
+    if(!NEEDMIN(om)){ S.msg = 'Read ' + file.name + ' but could not find an income and expense table with its net operating income (found: ' + [om.price && 'price', om.units && 'units', om.ie && om.ie.noi && 'NOI'].filter(Boolean).join(', ') + '). Use Import Deal for a T-12, or Source Ingestion for other layouts.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
+    S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mUnits = null; S.msg = 'Read ' + file.name + ' (' + (info.method === 'ocr' ? (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images') : 'text layer') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
 }
 window.bkOMRun = function(inp){ var f = inp && inp.files && inp.files[0]; if(f) run(f, 'new'); };
 window.bkOMBasis = function(b){ S.basis = b; showSheet('Import OM'); };
+window.bkOMManual = function(k, v){ v = parseFloat(String(v).replace(/[^0-9.]/g, '')); S[k] = isFinite(v) && v > 0 ? v : null; showSheet('Import OM'); };
 window.bkOMParse = parseOM; window.bkOMBuild = buildDeal; window.bkOMPageJpegs = pageJpegs;
-window.bkOMCreate = function(){ if(!S.om) return; var b = buildDeal(S.om, S.basis, S.file && S.file.name), file = S.file, info = S.info;
+window.bkOMCreate = function(){ if(!S.om || !((S.om.price || S.mPrice) && (S.om.units || S.mUnits))) return; var b = buildDeal(S.om, S.basis, S.file && S.file.name), file = S.file, info = S.info;
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
   var id = String(b.deal.dealId), jobs = [];
   if(file && typeof window.bkDocsAdd === 'function') jobs.push(window.bkDocsAdd('om', file, id));
@@ -22231,6 +22257,11 @@ function render(){
   if(S.mode === 't12' && S.t12){ body += box('<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:5px 8px">Property</th><th style="text-align:right;padding:5px 8px">NOI</th><th></th></tr></thead><tbody>' + S.t12.map(function(p, i){ return '<tr><td style="padding:5px 8px">' + esc(p.name) + '</td><td style="padding:5px 8px;text-align:right"><b>' + $(p.noi) + '</b></td><td style="text-align:right"><button type="button" class="pl-hbtn primary" onclick="bkT12Apply(' + i + ')">Apply to this deal</button></td></tr>'; }).join('') + '</tbody></table>'); }
   if(S.mode === 'om' && S.result && S.om){
     var om = S.om, b = buildDeal(om, S.basis, S.file && S.file.name), d = b.deal, I = om.ie, s = om.sources || {}, ok = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002);
+    var need = '';
+    if(!om.price) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-right:14px">Asking price (not found in the OM)<input type="text" value="' + (S.mPrice || '') + '" placeholder="e.g. 3,600,000" onchange="bkOMManual(\'mPrice\',this.value)" style="width:150px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
+    if(!om.units) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Units (not found)<input type="text" value="' + (S.mUnits || '') + '" onchange="bkOMManual(\'mUnits\',this.value)" style="width:90px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
+    var ready = (om.price || S.mPrice) && (om.units || S.mUnits);
+    if(need) body += box('<b>One thing the OM did not state.</b> Enter it to continue.<div style="margin-top:8px">' + need + '</div>');
     var basisBtn = function(k, t){ return '<button type="button" class="pl-hbtn' + (S.basis === k ? ' primary' : '') + '" onclick="bkOMBasis(\'' + k + '\')">' + t + '</button>'; };
     body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Underwrite on</b>' + basisBtn('cur', 'In-place (current)') + basisBtn('pf', 'Broker pro forma') + '</div><div style="font-size:12px;opacity:.7;margin-top:6px">In-place uses current scheduled rents and today\'s expenses. The pro forma uses the rents the OM calls achievable' + (om.pfNOI ? ' (' + $(om.pfNOI) + ' NOI)' : '') + '.</div>');
     body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO OM NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs OM ' + $(b.want) + '</span>') + '</div>'
@@ -22241,7 +22272,7 @@ function render(){
       + row('Going-in cap rate on in-place NOI', pct(b.cap), s.noi) + row('Exit cap rate', pct(d.exitCap), '', 'assumed') + row('Replacement reserves', '$0', '', 'assumed') + '</tbody></table>'
       + (om.yearBuilt || om.zoning ? '<div style="font-size:12px;opacity:.7;margin-top:8px">Also in the OM: ' + [om.yearBuilt && 'built ' + om.yearBuilt, om.lotAcres && om.lotAcres + ' acres', om.stories && om.stories + ' stories', om.parking && om.parking + ' parking spaces', om.zoning && 'zoned ' + om.zoning].filter(Boolean).join(', ') + '.</div>' : ''));
     body += box('<b>Before you rely on it</b><ul style="margin:6px 0 0 18px;padding:0">' + b.notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>');
-    body += '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="pl-hbtn primary" onclick="bkOMCreate()">Create new deal from this OM</button>' + (S.target === 'apply' ? '<button type="button" class="pl-hbtn" onclick="bkOMApply()">Apply to the current deal instead</button>' : '') + '</div>'
+    body += '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="pl-hbtn primary" onclick="bkOMCreate()"' + (ready ? '' : ' disabled') + '>Create new deal from this OM</button>' + (S.target === 'apply' ? '<button type="button" class="pl-hbtn" onclick="bkOMApply()">Apply to the current deal instead</button>' : '') + '</div>'
       + '<div style="font-size:12px;opacity:.7;margin-top:6px">A new deal keeps the OM in its Deal Documents and uses the OM\'s cover picture as its photo (replace it there with your own).</div>';
   }
   hdr.main = body; return hdr;

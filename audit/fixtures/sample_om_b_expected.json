@@ -1,0 +1,10 @@
+{
+ "name": "Elm Street Apartments",
+ "city": "Brookfield",
+ "state": "CT",
+ "units": 4,
+ "sf": 4000,
+ "curNOI": 96248,
+ "pfNOI": 100952,
+ "price": null
+}
