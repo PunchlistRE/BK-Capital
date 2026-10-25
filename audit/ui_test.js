@@ -244,6 +244,14 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('sources equal uses on the summary', await p.evaluate(() => { const d = document.getElementById('pl-report-frame').contentDocument; const t = [...d.querySelectorAll('tr.tot')].filter(r => /Total (sources|uses)/.test(r.innerText)).map(r => r.cells[1].innerText); return t.length === 2 && t[0] === t[1]; }));
   await p.evaluate(() => bkReportClose());
   check('closing removes the preview', await p.evaluate(() => !document.getElementById('pl-report')));
+  // 17. Create PDF summary for a development deal
+  await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, require(path.join(__dirname, 'devdeal.js'))); await p.waitForTimeout(600);
+  await p.evaluate(() => bkReportOpen()); await p.waitForTimeout(3000);
+  const rdv = await p.evaluate(() => { const f = document.getElementById('pl-report-frame'); const d = f && f.contentDocument; if (!d) return null; const m = bkMonthlyReturns(); const t = d.body.innerText; const tots = [...d.querySelectorAll('tr.tot')].filter(r => /Total (sources|uses|project)/.test(r.innerText)).map(r => r.cells[1].innerText); return { pages: d.querySelectorAll('.page').length, irr: (m.irr * 100).toFixed(2) + '%', moic: m.moic.toFixed(2) + 'x', t, tots, nan: /NaN|undefined|\[object/.test(t) }; });
+  check('a development deal gets a five-page summary', rdv && rdv.pages === 5 && !rdv.nan, JSON.stringify(rdv && { p: rdv.pages, nan: rdv.nan }));
+  check('the development summary shows the model\'s IRR and multiple', rdv && rdv.t.indexOf(rdv.irr) >= 0 && rdv.t.indexOf(rdv.moic) >= 0, rdv && (rdv.irr + ' ' + rdv.moic));
+  check('development sources equal uses', rdv && rdv.tots.length === 2 && rdv.tots[0] === rdv.tots[1], rdv && JSON.stringify(rdv.tots));
+  await p.evaluate(() => bkReportClose());
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();
