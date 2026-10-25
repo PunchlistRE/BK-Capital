@@ -306,6 +306,18 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     await p.evaluate(() => bkOMManual('mPrice', '1,600,000')); await p.waitForTimeout(400); await p.evaluate(() => bkOMCreate()); await p.waitForTimeout(2500);
     const nb = await p.evaluate(async () => { const s = bkLoad(); return { price: s.purchasePrice, units: s.units, noi: Math.round(bkCalc().noi), slots: (await bkDocsList()).map(f => f.slot).sort() }; });
     check('the entered price and the OM figures build the deal, and a table page is not used as the photo', nb.price === 1600000 && nb.units === expb.units && Math.abs(nb.noi - expb.curNOI) <= 2 && JSON.stringify(nb.slots) === '["om"]', JSON.stringify(nb));
+    /* a development-site OM (a text PDF, read with PDF.js) plus the developer's pro forma workbook */
+    const expd = JSON.parse(fsx.readFileSync(path.join(__dirname, 'fixtures', 'dev_expected.json'), 'utf8'));
+    await p.evaluate(() => { showSheet('Import OM'); }); await p.waitForTimeout(500);
+    await p.setInputFiles('#bkOMFile', path.join(__dirname, 'fixtures', 'dev_om.pdf'));
+    await p.waitForSelector('#bkOMDevFile', { timeout: 120000 }).catch(() => {});
+    check('a development-site OM is recognised and asks for the pro forma workbook', await p.evaluate(() => !!document.querySelector('#bkOMDevFile') && /development site/i.test(document.querySelector('#viewport').innerText)));
+    await p.setInputFiles('#bkOMDevFile', path.join(__dirname, 'fixtures', 'dev_proforma.xlsx')); await p.waitForTimeout(5000);
+    const dv = await p.evaluate(() => document.querySelector('#viewport').innerText);
+    check('the development pro forma ties to the workbook NOI', /TIES TO PRO FORMA NOI/.test(dv) && /\$600,000/.test(dv) && /\$4,000,000/.test(dv), dv.slice(dv.indexOf('TIES'), dv.indexOf('TIES') + 90));
+    await p.evaluate(() => bkOMDevCreate()); await p.waitForTimeout(4000);
+    const dd2 = await p.evaluate(async () => { const s = bkLoad(); const m = bkMonthlyReturns(); return { t: s.dealType, price: s.purchasePrice, units: s.units, src: s.sourceConstruction, noi: Math.round(bkCalc().noi), irrOk: isFinite(m.irr), slots: (await bkDocsList()).map(f => f.slot).sort() }; });
+    check('the development deal is created and runs through the development engine', dd2.t === 'Development' && dd2.price === expd.price && dd2.units === expd.units && dd2.src === expd.construction && Math.abs(dd2.noi - expd.noi) <= 3 && dd2.irrOk && dd2.slots.includes('om') && dd2.slots.includes('other'), JSON.stringify(dd2));
   }
   // 21. Header sign-in / sign-out (last: signing out clears the page)
   p.on('dialog', d => d.accept());
