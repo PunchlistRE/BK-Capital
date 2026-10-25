@@ -264,6 +264,14 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('restore brings back the inputs and keeps a safety version', vh.after[0] === 24000000 && vh.after[1] === 0.0625 && vh.safety, JSON.stringify(vh.after));
   await p.evaluate(() => showSheet('Version History')); await p.waitForTimeout(600);
   check('the Version History sheet lists versions and changes', await p.evaluate(() => { const t = document.querySelector('#viewport').innerText; return /Baseline/.test(t) && /Purchase Price/.test(t) && !/NaN|undefined/.test(t); }));
+  // 19. Financing Lab
+  await p.evaluate(a => bkCreateNewDeal(a), A_); await p.waitForTimeout(500);
+  const fl = await p.evaluate(() => { const before = JSON.stringify(bkLoad()); const L = bkFinLabData(); const mid = L.grid[3][3]; const direct = bkRunWith({ acqLTV: 0.65, acqLTC: 1, acqDSCR: 0.01, acqDebtYield: 0, acqRate: 0.065, debtEnabled: true, debtRateType: 'Fixed', purchasePrice: L.B.noi / L.B.cap, exitCap: L.B.exit }, () => bkProFormaKit.build().irr);
+    showSheet('Financing Lab'); const txt = document.querySelector('#viewport').innerText; return { rows: L.grid.length, cols: L.grid[0].length, nulls: L.grid.flat().filter(c => !c).length, same: Math.abs(mid.irr - direct) < 1e-12, untouched: before === JSON.stringify(bkLoad()), txt, higherLoanMoreEquity: L.grid[0][0].eq > L.grid[5][0].eq }; });
+  check('the lab grid has 6 loan-to-value rows and 7 rate columns, all computed', fl.rows === 6 && fl.cols === 7 && fl.nulls === 0, JSON.stringify([fl.rows, fl.cols, fl.nulls]));
+  check('a lab cell equals a direct engine rerun with the same inputs', fl.same);
+  check('more leverage means less equity, and viewing the lab leaves the deal unchanged', fl.higherLoanMoreEquity && fl.untouched);
+  check('the Financing Lab sheet shows the grid and the structure table', /LTV \\ RATE/i.test(fl.txt) && /Interest-only 2 years/.test(fl.txt) && !/NaN|undefined/.test(fl.txt));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();

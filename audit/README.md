@@ -109,3 +109,6 @@ Home has a **Create PDF summary** button for the active acquisition deal. It ope
 
 ## Version history (`bk-v29280-history`)
 QA > **Version History** records every input change on the active deal (field, old value, new value, time; repeat edits to one field within five minutes coalesce) and keeps named versions with the returns at the time. Compare shows exactly which inputs differ; Restore first saves a safety version. Creating a PDF summary saves a version automatically. The record lives in the deal (`_history`), is capped (400 changes, 30 versions), and scratch runs (`bkRunWith`) write nothing. `ui_test.js` section 18 checks logging, coalescing, diff, restore and the sheet.
+
+## Financing Lab (`bk-v29290-finlab`)
+Debt > **Financing Lab** prices the active acquisition at a market cap rate (Year-1 NOI / cap) and reruns the full engine on a scratch copy for a grid of loan-to-value by interest rate (IRR, DSCR, cash-on-cash or multiple), plus a loan-structure comparison (amortisation, interest-only) and the rate at which debt stops adding to the return. Debt is sized by LTV alone in the grid and coverage below policy is flagged. `ui_test.js` section 19 checks the grid against a direct engine rerun and that the deal is untouched.
