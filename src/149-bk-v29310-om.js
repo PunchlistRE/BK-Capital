@@ -97,8 +97,16 @@ function getWorker(){ if(worker) return worker;
     return Promise.all(made).then(function(){ return sch; }); });
   worker.catch(function(){ worker = null; }); return worker; }
 /* page images are read at their own resolution up to 2700 px wide: shrinking to 1900 px drops fine print such as a white-on-dark NOI bar */
-function shrink(blob){ return createImageBitmap(blob).then(function(bm){ var sc = Math.min(1, 2700 / bm.width); if(sc >= 0.98) return blob; var c = document.createElement('canvas'); c.width = Math.round(bm.width * sc); c.height = Math.round(bm.height * sc); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); return new Promise(function(res){ c.toBlob(function(b){ res(b || blob); }, 'image/jpeg', 0.92); }); }).catch(function(){ return blob; }); }
-function ocr(blob){ return Promise.all([getWorker(), shrink(blob)]).then(function(a){ return a[0].addJob('recognize', a[1]); }).then(function(r){ return r.data.text; }); }
+function shrink(blob, maxW){ return createImageBitmap(blob).then(function(bm){ var sc = Math.min(1, (maxW || 2700) / bm.width); if(sc >= 0.98) return blob; var c = document.createElement('canvas'); c.width = Math.round(bm.width * sc); c.height = Math.round(bm.height * sc); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); return new Promise(function(res){ c.toBlob(function(b){ res(b || blob); }, 'image/jpeg', 0.92); }); }).catch(function(){ return blob; }); }
+/* the top fifth of a page at a modest size: enough to read its heading, and a fraction of the work of reading the whole page */
+function topStrip(blob){ return createImageBitmap(blob).then(function(bm){ var sc = Math.min(1, 1300 / bm.width), sh = Math.round(bm.height * 0.24), c = document.createElement('canvas'); c.width = Math.round(bm.width * sc); c.height = Math.round(sh * sc); c.getContext('2d').drawImage(bm, 0, 0, bm.width, sh, 0, 0, c.width, c.height); return new Promise(function(res){ c.toBlob(function(b){ res(b || blob); }, 'image/jpeg', 0.9); }); }).catch(function(){ return blob; }); }
+function ocr(blob, maxW){ return Promise.all([getWorker(), shrink(blob, maxW)]).then(function(a){ return a[0].addJob('recognize', a[1]); }).then(function(r){ return r.data.text; }); }
+/* a second opinion for tables: one worker told to treat the page as a single block of text, which keeps table rows together */
+var worker6 = null;
+function ocrBlock(blob, maxW){ if(!worker6) worker6 = (window.Tesseract ? Promise.resolve() : loadScript(CDN + 'tesseract.js@' + TV + '/dist/tesseract.min.js')).then(function(){ return window.Tesseract.createWorker('eng', 1, { workerPath:CDN + 'tesseract.js@' + TV + '/dist/worker.min.js', corePath:CDN + 'tesseract.js-core@' + TV + '/', langPath:CDN + '@tesseract.js-data/eng@1.0.0/4.0.0_best_int', gzip:true, logger:function(){} }); }).then(function(w){ return w.setParameters({ tessedit_pageseg_mode:'6' }).then(function(){ return w; }); });
+  worker6.catch(function(){ worker6 = null; }); return Promise.all([worker6, shrink(blob, maxW)]).then(function(a){ return a[0].recognize(a[1]); }).then(function(r){ return r.data.text; }); }
+/* warm the engines while the user is choosing a file, so the first scan does not wait for the download and start-up */
+window.bkOMPrewarm = function(){ if(window.__bkOMWarm) return; window.__bkOMWarm = true; setTimeout(function(){ try { loadPdfJs().catch(function(){}); getWorker().catch(function(){}); } catch(e){} }, 300); };
 var CK = 'bkcapital.omocr.';
 function cacheKey(f){ return CK + [f.name, f.size, f.lastModified || 0].join('|'); }
 function cacheGet(f){ try { var v = JSON.parse(localStorage.getItem(cacheKey(f)) || 'null'); return v && Array.isArray(v.pages) ? v : null; } catch(e){ return null; } }
@@ -148,20 +156,40 @@ function pageImage(page){ var lib = window.pdfjsLib, OPS = lib.OPS;
     return new Promise(function(res){ c.toBlob(function(b){ res(b); }, 'image/png'); }); }).catch(function(){ return null; }); }
 /* read the OM with PDF.js: real text where the PDF has it (Canva, InDesign, Word), page images read by text recognition where it does not (scanned or image-only OMs, any image format) */
 function readOMPdfjs(file){
-  var info = { method:'', pages:[], cover:null };
+  var info = { method:'', pages:[], cover:null, t:{ start:Date.now() } };
   var jpegs = null;
-  return Promise.all([file.arrayBuffer(), loadPdfJs()]).then(function(a){ jpegs = safe(function(){ return pageJpegs(a[0]); }, []); return a[1].getDocument({ data:new Uint8Array(a[0]) }).promise; }).then(function(doc){
+  return Promise.all([file.arrayBuffer(), loadPdfJs()]).then(function(a){ info.t.libs = Date.now() - info.t.start; jpegs = safe(function(){ return pageJpegs(a[0]); }, []); info.t.jpegs = Date.now() - info.t.start - info.t.libs; return a[1].getDocument({ data:new Uint8Array(a[0]) }).promise; }).then(function(doc){
     var n = doc.numPages, texts = new Array(n).fill(''), pending = [], pages = [];
     var getPage = function(i){ return pages[i] ? Promise.resolve(pages[i]) : doc.getPage(i + 1).then(function(p){ pages[i] = p; return p; }); };
     var readAll = function(i){ if(i >= n) return Promise.resolve(); setMsg('Reading page ' + (i + 1) + ' of ' + n + '...'); return getPage(i).then(function(p){ return p.getTextContent(); }).then(function(tc){ var t = pageText(tc); if(t.replace(/\s+/g, '').length >= 60) texts[i] = t; else pending.push(i); return readAll(i + 1); }); };
     return readAll(0).then(function(){
+      info.t.text = Date.now() - info.t.start;
       var pendingAll = pending.slice(); info.ocrPages = pendingAll.map(function(i){ return i + 1; }); info.dbg = { pending:pending.length, jpegs:jpegs.length, n:n }; info.n = n; info.method = pending.length === 0 ? 'text' : pending.length === n ? 'ocr' : 'mixed';
       var hit = pending.length ? cacheGet(file) : null; if(hit && hit.pages.length === n){ pending.forEach(function(i){ texts[i] = hit.pages[i] || ''; }); pending = []; info.cached = true; }
-      var done = {}, step = function(i){ if(done[i] || pending.indexOf(i) < 0) return Promise.resolve(); done[i] = 1; setMsg('Reading page ' + (i + 1) + ' of ' + n + '...'); var jp = jpegs.length === n ? jpegs[i] : jpegs.length === pendingAll.length ? jpegs[pendingAll.indexOf(i)] : null; if(jp) return ocr(jp.blob).then(function(t){ texts[i] = t; }); return getPage(i).then(function(p){ return pageImage(p).then(function(b){ return b || renderPage(p, 2640); }); }).then(ocr).then(function(t){ texts[i] = t; }); };
-      var seq = function(list){ return Promise.all(list.map(step)); };
       if(!pending.length) return;
-      return seq([0, 1]).then(function(){ var toc = texts[1] || '', want = []; [/Executive Summary/, /Property Summary/, /Property Overview/, /Building Overview/, /Unit Mix/, /Income\s*(?:&|and)\s*Expense/, /Rent Roll/].forEach(function(re){ var m = new RegExp(re.source + '[^\\n\\d]{0,60}?(\\d{1,2})\\b[^\\n\\d]{0,30}$', 'im').exec(toc); if(m){ var q = +m[1] - 1; if(q > 1 && q < n) want.push(q); } });
-        return seq(want.length ? want : pending.slice(2)).then(function(){ var rest = pending.filter(function(i){ return !done[i]; }); var go = function(){ if(NEED(parseOM(texts)) || !rest.length) return Promise.resolve(); return seq(rest.splice(0, poolSize())).then(go); }; return go(); }); }).then(function(){ cachePut(file, { pages:texts, n:n }); });
+      /* Faster and more accurate than reading every page at full size: (1) scan every image page small, which is quick and still finds the headings; (2) read only the pages that look like the summary, unit mix and income table at a moderate size; (3) if the income table does not add up to the OM's own NOI, read just those pages again at full size, then as a single block of text. */
+      var blobs = {}, lows = {}, hi = {}, WS = window.bkOMWidths || [], W1 = WS[0] || 1800, W2 = WS[1] || 2700;
+      var imgFor = function(i){ if(blobs[i]) return blobs[i];
+        var jp = jpegs.length === n ? jpegs[i] : jpegs.length === pendingAll.length ? jpegs[pendingAll.indexOf(i)] : null;
+        blobs[i] = jp ? Promise.resolve(jp.blob) : getPage(i).then(function(p){ return pageImage(p).then(function(b){ return b || renderPage(p, 2640); }); }); return blobs[i]; };
+      var readAt = function(i, w, label){ setMsg(label + ' (page ' + (i + 1) + ' of ' + n + ')...'); return imgFor(i).then(function(b){ return ocr(b, w); }).then(function(t){ texts[i] = t; hi[i] = w; }); };
+      var batches = function(list, w, label, stop){ var rest = list.slice(), go = function(){ if(!rest.length || (stop && stop())) return Promise.resolve(); return Promise.all(rest.splice(0, poolSize()).map(function(i){ return readAt(i, w, label); })).then(go); }; return go(); };
+      var score = function(i){ var t = lows[i] || '', s = 0; if(/OPERATING\s+(INCOME|EXPENSES?)|NET\s+OPERATING|INCOME\s*(?:&|AND)\s*EXPENSE|\bNOI\b/i.test(t)) s += 5; if(/UNIT\s*MIX|RENT\s*ROLL/i.test(t)) s += 2; if(/OFFERING|ASKING|LIST(?:ING)?\s+PRICE|EXECUTIVE\s+SUMMARY|PROPERTY\s+(?:SUMMARY|OVERVIEW)|INVESTMENT\s+(?:SUMMARY|HIGHLIGHTS)/i.test(t)) s += 2; if(/\$\s?\d[\d,]{4,}/.test(t)) s += 1; return s; };
+      var tieDiff = function(){ var o = parseOM(texts); if(!NEEDMIN(o)) return null; var r = safe(function(){ return buildDeal(Object.assign({}, o, { price:o.price || 1, units:o.units || 1 }), 'cur', 'tie'); }, null); return r && r.tie != null && r.want != null ? Math.abs(r.tie - r.want) : null; };
+      var tied = function(){ var d = tieDiff(); if(d == null) return false; var o = parseOM(texts), want = o.ie && o.ie.noi ? o.ie.noi.cur : 0; return d <= Math.max(5, want * 0.002); };
+      var pickRel = [], ok = function(){ return NEED(parseOM(texts)) && tied(); }, unread = function(){ return pending.filter(function(i){ return !hi[i]; }); };
+      /* step 1: read each page's heading (the top strip, cheap), step 2: read in full only the pages whose headings say summary, unit mix or income and expense */
+      var rest = pending.slice(), scan = rest.length > 3 ? (setMsg('Scanning ' + rest.length + ' pages...'), Promise.all(rest.map(function(i){ return imgFor(i).then(topStrip).then(function(b){ return getWorker().then(function(w){ return w.addJob('recognize', b); }); }).then(function(r){ lows[i] = r.data.text; }).catch(function(){ lows[i] = ''; }); }))) : Promise.resolve();
+      return scan.then(function(){ info.t.scan = Date.now() - info.t.start;
+        var order = rest.sort(function(x, y){ return (score(y) - score(x)) || ((lows[y] || '').length - (lows[x] || '').length) || (x - y); });
+        var relevant = pickRel = order.filter(function(i){ return score(i) > 0 || rest.length <= 3; }), others = order.filter(function(i){ return relevant.indexOf(i) < 0; });
+        return batches(relevant, W1, 'Reading the income and unit pages', ok).then(function(){ return batches(others, W1, 'Reading page', function(){ return NEED(parseOM(texts)); }); });
+      }).then(function(){ info.t.read = Date.now() - info.t.start; if(!hi[0] && pending.indexOf(0) >= 0 && !texts[0]) texts[0] = lows[0] || '';
+        if(tied()) return;
+        var o = parseOM(texts), s = o.sources || {}, again = []; [s.income, s.noi, s.unitMix, s.price].forEach(function(p){ if(p && pending.indexOf(p - 1) >= 0 && again.indexOf(p - 1) < 0) again.push(p - 1); }); if(!NEEDMIN(o)) pickRel.slice(0, 4).forEach(function(i){ if(again.indexOf(i) < 0) again.push(i); }); if(!again.length) return;
+        var best = tieDiff(), attempt = function(read){ var prev = {}; again.forEach(function(i){ prev[i] = texts[i]; }); return read().then(function(){ var d = tieDiff(); if(d != null && (best == null || d <= best)) best = d; else again.forEach(function(i){ texts[i] = prev[i]; }); }); };
+        return attempt(function(){ return batches(again, W2, 'Checking the figures at full size'); }).then(function(){ if(tied()) return; return attempt(function(){ return Promise.all(again.map(function(i){ return imgFor(i).then(function(b){ return ocrBlock(b, W2); }).then(function(t){ texts[i] = t; }); })); }); });
+      }).then(function(){ info.t.ocr = Date.now() - info.t.start; info.t.total = info.t.ocr; info.fullPages = Object.keys(hi).length; cachePut(file, { pages:texts, n:n }); });
     }).then(function(){
       info.pages = texts; if(!coverIsPhoto(texts[0])) return info;
       return getPage(0).then(function(p){ return renderPage(p, 1800); }).then(function(b){ info.cover = b; return info; }).catch(function(){ return info; }); });
@@ -405,7 +433,8 @@ function stampImp(deal, C, fileName){ deal._imp = { source:String(fileName || ''
 function row(label, val, src, kind, c){ return '<tr><td style="padding:5px 8px">' + label + whyLine(c) + '</td><td style="padding:5px 8px;text-align:right;font-weight:600">' + val + '</td><td style="padding:5px 8px;font-size:11px;opacity:.65">' + (kind === 'assumed' ? 'app default' : kind === 'raw' ? src : src ? 'OM page ' + src : 'OM') + '</td><td style="padding:5px 8px;white-space:nowrap">' + confChip(c) + '</td></tr>'; }
 function whyLine(c){ return c && (c.l === 'low' || c.l === 'check') ? '<div style="font-size:11px;font-weight:400;opacity:.75">' + esc(c.why) + '</div>' : ''; }
 function render(){
-  var hdr = { title:'Import OM', crumbs:'Inputs', desc:'Upload an offering memorandum (PDF) and load its price, units, rents, income and expenses into the engine.', sidebar:'', meta:{ Source:S.file ? S.file.name : 'none', Method:S.info ? S.info.method : 'PDF' } };
+  if(typeof window.bkOMPrewarm === 'function') window.bkOMPrewarm();
+  var hdr = { title:'Import OM', crumbs:'Inputs', desc:'Upload an offering memorandum (PDF) and load its price, units, rents, income and expenses into the engine.', sidebar:'', meta:{ Source:S.file ? S.file.name : 'none', Method:S.info ? S.info.method + (S.info.t && S.info.t.total ? ', read in ' + (S.info.t.total / 1000).toFixed(1) + 's' : '') : 'PDF' } };
   var body = box('<b>Upload an offering memorandum.</b> The importer reads the PDF (including designed OMs that are page images, using text recognition in your browser), finds the price, unit mix and the income and expense table, and builds a deal from the in-place (current) figures or the broker pro forma. Nothing is sent to a server. The first scan downloads the recognition engine (about 6 MB, then cached).'
     + '<div style="margin-top:10px"><input id="bkOMFile" type="file" accept=".pdf,.xlsx,.xlsm" onchange="bkOMRun(this)"' + (S.busy ? ' disabled' : '') + '></div>');
   if(S.msg) body += box((S.busy ? '&#8987; ' : S.result ? '&#10003; ' : '&#9888; ') + esc(S.msg));
