@@ -252,6 +252,18 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('the development summary shows the model\'s IRR and multiple', rdv && rdv.t.indexOf(rdv.irr) >= 0 && rdv.t.indexOf(rdv.moic) >= 0, rdv && (rdv.irr + ' ' + rdv.moic));
   check('development sources equal uses', rdv && rdv.tots.length === 2 && rdv.tots[0] === rdv.tots[1], rdv && JSON.stringify(rdv.tots));
   await p.evaluate(() => bkReportClose());
+  // 18. Version history and change log
+  await p.evaluate(a => bkCreateNewDeal(a), A_); await p.waitForTimeout(500);
+  const vh = await p.evaluate(() => { const o = {}; let s = bkLoad(); s.exitCap = 0.06; bkSave(s); s = bkLoad(); s.exitCap = 0.0625; bkSave(s); o.log = bkLoad()._history.log.filter(l => l.k === 'exitCap').map(l => [l.from, l.to]);
+    o.id = bkHistorySaveVersion('Baseline'); s = bkLoad(); s.purchasePrice = 23000000; bkSave(s); o.diff = bkHistoryDiff(o.id).rows.map(r => r.k);
+    const n = bkLoad()._history.log.length; bkReportHTML(); bkRunWith({ exitCap: 0.07 }, () => bkMonthlyReturns().irr); o.scratchLogged = bkLoad()._history.log.length !== n;
+    bkHistoryRestore(o.id); o.after = [bkLoad().purchasePrice, bkLoad().exitCap]; o.safety = bkLoad()._history.versions.some(v => /Before restoring/.test(v.note)); return o; });
+  check('an edit is logged with its old and new value, and repeat edits coalesce', JSON.stringify(vh.log) === JSON.stringify([[0.0575, 0.0625]]), JSON.stringify(vh.log));
+  check('comparing a version lists exactly the inputs that changed', JSON.stringify(vh.diff) === '["purchasePrice"]', JSON.stringify(vh.diff));
+  check('scratch runs (sensitivity, report) write nothing to the log', !vh.scratchLogged);
+  check('restore brings back the inputs and keeps a safety version', vh.after[0] === 24000000 && vh.after[1] === 0.0625 && vh.safety, JSON.stringify(vh.after));
+  await p.evaluate(() => showSheet('Version History')); await p.waitForTimeout(600);
+  check('the Version History sheet lists versions and changes', await p.evaluate(() => { const t = document.querySelector('#viewport').innerText; return /Baseline/.test(t) && /Purchase Price/.test(t) && !/NaN|undefined/.test(t); }));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();
