@@ -341,6 +341,27 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     await p.evaluate(() => bkOMManual('mPrice', '1,600,000')); await p.waitForTimeout(400); await p.evaluate(() => bkOMCreate()); await p.waitForTimeout(2500);
     const nb = await p.evaluate(async () => { const s = bkLoad(); return { price: s.purchasePrice, units: s.units, noi: Math.round(bkCalc().noi), slots: (await bkDocsList()).map(f => f.slot).sort() }; });
     check('the entered price and the OM figures build the deal, and a table page is not used as the photo', nb.price === 1600000 && nb.units === expb.units && Math.abs(nb.noi - expb.curNOI) <= 2 && JSON.stringify(nb.slots) === '["om"]', JSON.stringify(nb));
+    /* speed and accuracy of the reading itself: a 32-page image OM is scanned by heading and only the relevant pages are read in full; a poor first read is retried larger */
+    {
+      const clear = () => p.evaluate(() => { Object.keys(localStorage).filter(k => k.indexOf('bkcapital.omocr.') === 0).forEach(k => localStorage.removeItem(k)); });
+      const bigPath = path.join(__dirname, 'fixtures', 'sample_om_big.pdf');
+      try { require('child_process').execSync('python3 ' + JSON.stringify(path.join(__dirname, 'fixtures', 'make_om_big.py')), { stdio: 'ignore' }); } catch (e) {}
+      if (fsx.existsSync(bigPath)) {
+        await clear(); await p.evaluate(() => { showSheet('Import OM'); }); await p.waitForTimeout(400);
+        await p.setInputFiles('#bkOMFile', bigPath);
+        await p.waitForFunction(() => /✓ Read sample_om_big|could not find|Could not/i.test(document.querySelector('#viewport').innerText), null, { timeout: 280000 });
+        const bg = await p.evaluate(() => ({ t: document.querySelector('#viewport').innerText, info: window.__bkOMState.info }));
+        check('a 32-page image OM is read by heading, ties to the OM NOI, and only a few pages are read in full', /TIES TO OM NOI/.test(bg.t) && bg.info.t && bg.info.t.scan > 0 && bg.info.fullPages <= 10 && bg.info.n === 32, JSON.stringify({ n: bg.info.n, full: bg.info.fullPages, t: bg.info.t }));
+        check('the read time is shown on the page', /read in \d+(\.\d)?s/.test(bg.t));
+        fsx.unlinkSync(bigPath);
+      } else console.log('SKIP big OM timing (python3 / PIL not available)');
+      await clear(); await p.evaluate(() => { window.bkOMWidths = [450, 2700]; showSheet('Import OM'); }); await p.waitForTimeout(400);
+      await p.setInputFiles('#bkOMFile', path.join(__dirname, 'fixtures', 'sample_om.pdf'));
+      await p.waitForFunction(() => /✓ Read sample_om|could not find|Could not/i.test(document.querySelector('#viewport').innerText), null, { timeout: 200000 });
+      const rt = await p.evaluate(() => ({ t: document.querySelector('#viewport').innerText, info: window.__bkOMState.info }));
+      check('a poor first read (tiny scan size) is retried at full size and then ties to the OM NOI', /TIES TO OM NOI/.test(rt.t) && rt.info.t.ocr > rt.info.t.read, JSON.stringify(rt.info.t));
+      await p.evaluate(() => { window.bkOMWidths = null; }); await clear();
+    }
     /* a development-site OM (a text PDF, read with PDF.js) plus the developer's pro forma workbook */
     const expd = JSON.parse(fsx.readFileSync(path.join(__dirname, 'fixtures', 'dev_expected.json'), 'utf8'));
     await p.evaluate(() => { showSheet('Import OM'); }); await p.waitForTimeout(500);
