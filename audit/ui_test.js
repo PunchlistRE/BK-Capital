@@ -297,6 +297,14 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     check('creating the deal loads price, units, area and NOI from the OM', nd.price === exp.price && nd.units === exp.units && nd.gsf === exp.sf && Math.abs(nd.noi - exp.curNOI) <= 2 && nd.loc === 'Fairview, OH', JSON.stringify(nd));
     check('the OM and a photo are attached to the new deal', JSON.stringify(nd.slots) === '["om","photo"]', JSON.stringify(nd.slots));
   }
+  // 21. Header sign-in / sign-out (last: signing out clears the page)
+  p.on('dialog', d => d.accept());
+  await p.evaluate(() => showSheet('Home')); await p.waitForTimeout(400);
+  check('the header offers Sign in when there is no session', await p.evaluate(() => /sign in/i.test((document.getElementById('pl-user') || {}).innerText || '')));
+  await p.evaluate(() => { localStorage.setItem('bkcapital.supabase.auth.v01', JSON.stringify({ access_token: 'x', user: { id: '1', email: 'tester@example.com' }, expires_at: Date.now() + 3.6e6 })); bkHeaderUserPaint(); });
+  check('with a session the header shows the account and Sign out', await p.evaluate(() => { const t = (document.getElementById('pl-user') || {}).innerText || ''; return /tester@example\.com/.test(t) && /sign out/i.test(t); }));
+  await p.evaluate(() => bkHeaderSignOut()); await p.waitForTimeout(1500);
+  check('signing out clears the session and returns to the sign-in screen', await p.evaluate(() => !document.documentElement.classList.contains('bk-auth-ok') && !localStorage.getItem('bkcapital.supabase.auth.v01') && getComputedStyle(document.getElementById('bk-auth-gate')).display !== 'none'));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })();
