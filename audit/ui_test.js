@@ -295,6 +295,14 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     /* a misread figure must show: nudge one parsed expense, re-render, then restore it */
     const bad = await p.evaluate(async () => { const S = window.__bkOMState, e = S.om.ie.exp.filter(x => /tax/i.test(x.label))[0]; const was = e.cur, wasPf = e.pf; e.cur += 9000; e.pf += 9000; showSheet('Import OM'); await new Promise(r => setTimeout(r, 400)); const t = document.querySelector('#viewport').innerText; e.cur = was; e.pf = wasPf; showSheet('Import OM'); return t; });
     check('a misread expense is flagged Low and the summary says the figures do not reconcile', /NOI DIFFERS/.test(bad) && /Real estate taxes[\s\S]{0,260}Low/i.test(bad) && /did not reconcile/i.test(bad) && !/\b0 low\b/i.test(bad));
+    /* learning: move Landscaping out of contract services; the NOI must not move and the next import must classify it the same way */
+    await p.evaluate(() => bkLearn.clear());
+    const lc = await p.evaluate(() => { const b0 = bkOMBuild(window.__bkOMState.om, 'cur'), i = b0.lines.findIndex(l => /landscap/i.test(l.label)); bkOMClass(i, 'ga'); const b1 = bkOMBuild(window.__bkOMState.om, 'cur'); return { i, c0: b0.deal.contract, c1: b1.deal.contract, g0: b0.deal.ga, g1: b1.deal.ga, t0: Math.round(b0.tie), t1: Math.round(b1.tie), learned: b1.lines[i].learned, html: document.querySelector('#viewport').innerHTML.indexOf('LEARNED') >= 0 }; });
+    check('reclassifying an expense line moves it between categories without changing the NOI, and marks it learned', lc.i >= 0 && lc.c1 === lc.c0 - 3400 && Math.round(lc.g1 - lc.g0) === 3400 && lc.t0 === lc.t1 && lc.learned && lc.html, JSON.stringify(lc));
+    await p.setInputFiles('#bkOMFile', path.join(__dirname, 'fixtures', 'sample_om.pdf'));
+    await p.waitForFunction(() => /Read sample_om/i.test(document.querySelector('#viewport').innerText), null, { timeout: 240000 }); await p.waitForTimeout(400);
+    check('a fresh import of the same wording applies the learned class by itself', await p.evaluate(() => { const b = bkOMBuild(window.__bkOMState.om, 'cur'); return b.deal.contract === 0 && /What the importer has learned/.test(document.querySelector('#viewport').innerText); }));
+    await p.evaluate(() => { bkLearn.clear(); showSheet('Import OM'); });
     await p.evaluate(() => bkOMBasis('pf')); await p.waitForTimeout(400);
     check('the broker pro forma basis also ties to the OM NOI', await p.evaluate(() => /TIES TO OM NOI/.test(document.querySelector('#viewport').innerText)));
     await p.evaluate(() => bkOMBasis('cur')); await p.evaluate(() => bkOMCreate()); await p.waitForTimeout(2500);
@@ -322,6 +330,13 @@ const A_ = require(path.join(__dirname, 'deal.js'));
         await p.evaluate(() => { const c = document.querySelector('.gd-chk input'); c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); bkGuideNext(); }); await p.waitForTimeout(400);
         const after = await p.evaluate(() => Object.keys(bkLoad()._imp.fields).length);
         check('confirming a flagged figure clears its flag', after < before, before + ' -> ' + after);
+        const fx = await p.evaluate(() => { const s = bkLoad(), ks = Object.keys(s._imp.fields).filter(k => typeof s[k] === 'number'); return ks[0] || null; });
+        if (fx) {
+          const sec = await p.evaluate(k => { const ids = ['property', 'price', 'income', 'expenses', 'financing', 'exit']; for (const id of ids) { bkGuideGo(id); if (document.getElementById('gdf-' + k)) return id; } return null; }, fx); await p.waitForTimeout(300);
+          if (sec) { await p.evaluate(k => { bkGuideDraft(k, String(Number(bkLoad()[k]) + 1)); bkGuideNext(); }, fx); await p.waitForTimeout(300); }
+          check('correcting a flagged figure is noted so the importer can learn from it', !!sec && await p.evaluate(k => bkLearn.logAll().some(e => e.kind === 'fix' && e.field === k), fx), String(fx));
+        }
+        await p.evaluate(() => bkLearn.clear());
       }
     }
     await p.evaluate(() => { bkGuideGo('exit'); }); await p.waitForTimeout(400);

@@ -117,10 +117,28 @@ window.bkRRApply = function(mode, setUnits){
   var rows = R.units.map(function(u){ return { unitId:u.unitId, sf:u.sf, tenantType:u.tenantType, status:u.status, inPlaceRent:u.inPlaceRent, marketRent:u.marketRent, recovery:u.recovery, leaseStart:u.leaseStart, leaseEnd:u.leaseEnd }; });
   var old = Array.isArray(s.rentRoll) ? s.rentRoll : [];
   s.rentRoll = mode === 'add' ? old.concat(rows) : rows;
-  s.revenueBasis = 'RENT ROLL';
+  s.revenueBasis = 'RENT ROLL'; var C = confRR(R); s._impRR = window.bkConf.stamp({}, C, S.file)._imp;
   if(setUnits){ var st = bkRentRollStats(s.rentRoll); if(st.resUnits > 0) s.units = st.resUnits; }
   bkSave(s); showSheet('Rent Roll');
 };
+/* confidence in what the roll will load: totals the report prints are the strongest check; mapped-by-guess columns are only Check until you confirm them */
+function confRR(R){ var F = {}, set = function(k, l, why){ F[k] = { l:l, why:why }; }, rc = R.recon, us = R.units, map = S.map, n = function(rx){ return us.filter(function(u){ return u._w.some(function(w){ return rx.test(w); }); }).length; };
+  var s = bkLoad(), want = s && Number(s.units) > 0 ? Number(s.units) : 0;
+  if(!us.length) return { fields:F, sum:window.bkConf.summary(F) };
+  var dup = R.warnings.filter(function(w){ return /repeated unit row/.test(w); })[0];
+  set('unit', dup ? 'check' : 'verified', dup ? dup : us.length + ' unit IDs, none repeated.');
+  if(want && R.stats.resUnits && R.stats.resUnits !== want) set('unitCount', 'low', 'The deal has ' + want + ' units; the rent roll has ' + R.stats.resUnits + ' residential. The option below can set the deal to the roll.'); else if(want) set('unitCount', 'verified', 'The residential count matches the deal\'s ' + want + ' units.');
+  if(map.sf == null) set('sf', 'low', 'No square-feet column is mapped.'); else if(rc && rc.sfOk === true) set('sf', 'verified', 'The imported square feet add up to the report\'s printed total (' + rc.sfPrinted.toLocaleString('en-US') + ').'); else if(rc && rc.sfOk === false) set('sf', 'low', 'Imported square feet (' + rc.sfSum.toLocaleString('en-US') + ') differ from the printed total (' + rc.sfPrinted.toLocaleString('en-US') + ').'); else set('sf', n(/no square feet/) ? 'low' : 'check', n(/no square feet/) ? n(/no square feet/) + ' units have no square feet.' : 'No printed total to check against.');
+  var occ = us.filter(function(u){ return u.status === 'Occupied' && u.tenantType === 'Residential' && u.inPlaceRent > 0; }), avg = occ.length ? occ.reduce(function(t, u){ return t + u.inPlaceRent; }, 0) / occ.length : null;
+  if(map.inplace == null) set('inplace', 'low', 'No in-place rent column is mapped.'); else if(avg != null && (avg < 200 || avg > 15000)) set('inplace', 'low', 'Occupied residential units average ' + $(avg) + ' a month, which looks wrong. Check whether the rents are monthly, annual or per square foot.'); else if(rc && rc.rentOk === true) set('inplace', 'verified', 'Imported in-place rents add up to the report\'s printed total.'); else if(rc && rc.rentOk === false) set('inplace', 'low', 'Imported in-place rents do not add up to the report\'s printed total. Check the rent basis (monthly, annual, per SF).'); else set('inplace', n(/occupied with no rent/) ? 'low' : 'check', n(/occupied with no rent/) ? n(/occupied with no rent/) + ' occupied units show no rent.' : 'No printed total to check against. Confirm the rent basis (monthly, annual, per SF).');
+  if(map.market == null) set('market', 'assumed', 'No market-rent column: occupied units use their in-place rent, so there is no loss to lease.'); else set('market', n(/>150%/) ? 'check' : 'check', n(/>150%/) ? n(/>150%/) + ' units have in-place rent above 150% of market.' : 'Mapped by header name; nothing in the report corroborates it.');
+  var bad = n(/ends before it starts/);
+  if(map.start == null && map.end == null) set('dates', 'low', 'No lease dates are mapped, so rollover has nothing to work with.'); else set('dates', bad ? 'low' : 'check', bad ? bad + ' leases end before they start.' : 'Dates read from the mapped columns.');
+  set('type', S.typeMode === 'auto' ? 'check' : 'verified', S.typeMode === 'auto' ? 'Residential or commercial is guessed from the unit type wording.' : 'You set every unit\'s type.');
+  set('status', map.status != null ? 'check' : 'check', map.status != null ? 'From the status column.' : 'Occupied or vacant is inferred from the tenant name and rent.');
+  return { fields:F, sum:window.bkConf.summary(F) }; }
+window.bkRRConf = function(){ return S.head >= 0 ? confRR(parseUnits()) : null; };
+var RR_ROWS = { unit:['unit', 'unitCount'], type:['type'], sf:['sf'], tenant:['status'], status:['status'], inplace:['inplace'], market:['market'], start:['dates'], end:['dates'] };
 function sel(k){ var hdr = S.rows[S.head] || [], cur = S.map[k]; var o = '<option value="">(none)</option>'; hdr.forEach(function(h, c){ var t = txt(h); if(t) o += '<option value="' + c + '"' + (cur === c ? ' selected' : '') + '>' + esc(t) + '</option>'; });
   return '<select onchange="bkRRMap(\'' + k + '\',this.value)">' + o + '</select>'; }
 function render(){
@@ -128,8 +146,8 @@ function render(){
     + '<div style="margin-top:10px"><input id="bkRRFile" type="file" accept=".xlsx,.xlsm,.csv,.pdf" onchange="bkRRRun(this)"></div>');
   if(S.msg) body += box((S.msgOk ? '&#10003; ' : '&#9888; ') + esc(S.msg));
   if(S.head >= 0){
-    var R = parseUnits(), st = R.stats, maprows = FIELDS.map(function(f){ return '<tr><td class="rowlabel">' + f[1] + '</td><td>' + sel(f[0]) + '</td></tr>'; }).join('');
-    body += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Column Mapping</caption><thead><tr><th class="rowlabel-h">App field</th><th style="text-align:left">Column in the file</th></tr></thead><tbody>' + maprows
+    var R = parseUnits(), st = R.stats, CR = confRR(R), maprows = FIELDS.map(function(f){ var ck = (RR_ROWS[f[0]] || []).map(function(k){ return CR.fields[k]; }).filter(Boolean); return '<tr><td class="rowlabel">' + f[1] + '</td><td>' + sel(f[0]) + '</td><td style="white-space:nowrap">' + ck.map(function(c){ return window.bkConf.chip(c); }).join(' ') + '</td></tr>'; }).join('');
+    body += window.bkConf.bar(CR, 'report') + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Column Mapping</caption><thead><tr><th class="rowlabel-h">App field</th><th style="text-align:left">Column in the file</th><th style="text-align:left">Confidence</th></tr></thead><tbody>' + maprows
       + '<tr><td class="rowlabel">Rent amounts are</td><td style="text-align:left"><select onchange="bkRROpt(\'basis\',this.value)">' + [['monthly', 'monthly $ per unit'], ['annual', 'annual $ per unit'], ['annualPsf', 'annual $ per SF']].map(function(o){ return '<option value="' + o[0] + '"' + (S.basis === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td></tr>'
       + '<tr><td class="rowlabel">Treat every unit as</td><td style="text-align:left"><select onchange="bkRROpt(\'typeMode\',this.value)">' + [['auto', 'detect from unit type'], ['Residential', 'residential'], ['Commercial', 'commercial']].map(function(o){ return '<option value="' + o[0] + '"' + (S.typeMode === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td></tr></tbody></table></div>';
     var rc = R.recon, rcTxt = '';

@@ -199,8 +199,9 @@ function reconcile(items, mi, flags){
   });
   return fix;
 }
+function autoGroup(label){ for(var q = 0; q < GROUPS_RX.length; q++){ if(GROUPS_RX[q][1].test(label)) return GROUPS_RX[q][0]; } return 'ga'; }
 function buildProperty(blk){
-  var flags = [], items = blk.items, f = blk.facts, inc = { rent:0, other:0 }, grp = { ga:0 }, nonrec = [];
+  var flags = [], items = blk.items, f = blk.facts, inc = { rent:0, other:0 }, grp = { ga:0 }, nonrec = [], lines = [], fixedGroups = {};
   GROUPS_RX.forEach(function(g){ grp[g[0]] = 0; });
   var reported = {}; items.forEach(function(r){ reported[r.label.toUpperCase()] = r.total; });
   var mi0 = reported['MORTGAGE INTEREST'] || 0, fix = reconcile(items, mi0, flags);
@@ -210,7 +211,9 @@ function buildProperty(blk){
     if(r.sec.indexOf('Residential Rent') === 0) inc.rent += v;
     else if(r.sec.indexOf('Other Property') === 0 || r.sec.indexOf('Commercial') === 0) inc.other += v;
     else if((r.sec.indexOf('Property Exp') === 0 || r.sec.indexOf('Office Exp') === 0) && !NOT_OPEX.test(r.label)){
-      var g = 'ga'; for(var q = 0; q < GROUPS_RX.length; q++){ if(GROUPS_RX[q][1].test(r.label)){ g = GROUPS_RX[q][0]; break; } } grp[g] += v; }
+      var auto = autoGroup(r.label), lg = window.bkLearn && window.bkLearn.get(r.label), g = lg && lg !== 'contract' ? lg : auto;
+      lines.push({ label:r.label, amount:v, group:g, auto:auto, learned:!!(lg && lg !== 'contract'), fixed:fix.has(r) });
+      if(g === 'exclude') return; grp[g] = (grp[g] || 0) + v; if(fix.has(r)) fixedGroups[g] = 1; }
     if(NONREC.test(r.label) && Math.abs(v) > 0) nonrec.push(r.label + ' ' + $(v));
   });
   var egi = inc.rent + inc.other, opex = 0; Object.keys(grp).forEach(function(k){ opex += grp[k]; });
@@ -219,11 +222,11 @@ function buildProperty(blk){
   flags.push('cross-check: income ' + $(egi) + ' - operating expenses ' + $(opex) + ' = NOI ' + $(noi) + (repNI !== null ? '; statement NET INCOME ' + $(repNI) + ' + mortgage interest ' + $(mi) + ' = ' + $(repNI + mi) + ' (difference ' + $(gap) + ')' : '; the statement prints no NET INCOME line to check against'));
   if(f.summaryNOI != null && noi) flags.push('summary figure T-12 NOI ' + $(f.summaryNOI) + ' is NOT used (it differs from the line items by ' + (((f.summaryNOI - noi) / noi) * 100).toFixed(0) + '%)');
   if(nonrec.length) flags.push('left in NOI as reported, but non-recurring / non-operating in nature: ' + nonrec.join('; '));
-  return { name:blk.name, type:f.type || '', units:f.units || 0, sf:f.sf || 0, cap:f.cap != null ? f.cap : null, summaryNOI:f.summaryNOI, egi:egi, opex:opex, noi:noi, inc:inc, grp:grp, repNI:repNI, mi:mi, gap:gap, flags:flags,
+  return { name:blk.name, type:f.type || '', units:f.units || 0, sf:f.sf || 0, cap:f.cap != null ? f.cap : null, summaryNOI:f.summaryNOI, egi:egi, opex:opex, noi:noi, inc:inc, grp:grp, repNI:repNI, mi:mi, gap:gap, flags:flags, lines:lines, fixedGroups:fixedGroups, footFail:flags.some(function(x){ return /do not foot/.test(x); }), blk:blk,
     tied: gap !== null && Math.abs(gap) <= Math.max(1, 0.0025 * Math.abs(noi)), items:items.length };
 }
 function dealFor(p, cap, units){
-  var egi = p.egi, grp = p.grp, u = units || p.units || 1, price = Math.round(p.noi / cap), mgmtPct = egi ? grp.mgmt / egi : 0;
+  var egi = p.egi, grp = Object.assign({ taxes:0, insurance:0, utilities:0, rm:0, payroll:0, turnover:0, marketing:0, mgmt:0, ga:0 }, p.grp), u = units || p.units || 1, price = Math.round(p.noi / cap), mgmtPct = egi ? grp.mgmt / egi : 0;
   var d = { dealId:'IMP-' + p.name.replace(/[^A-Za-z0-9]+/g, '-').toUpperCase().slice(0, 24), name:p.name, dealType:'Acquisition', propertyType:'Multifamily', status:'Pipeline', closing:'1/1/2027',
     units:u, gsf:p.sf || 0, commercialArea:0, purchasePrice:price, t12noi:Math.round(p.noi * 100) / 100, avgRent:p.inc.rent / u / 12, otherIncomePerUnit:p.inc.other / u, vacancy:0, badDebtPct:0, mgmtPct:mgmtPct,
     taxes:r2(grp.taxes), insurance:r2(grp.insurance), utilities:r2(grp.utilities), rm:r2(grp.rm), contract:0, payroll:r2(grp.payroll), turnover:r2(grp.turnover), marketing:r2(grp.marketing), ga:r2(grp.ga), reserves:0,
@@ -233,11 +236,29 @@ function dealFor(p, cap, units){
   return d;
 }
 function r2(x){ return Math.round(x * 100) / 100; }
+/* confidence in each figure: statement NOI is checked against its own printed net income plus mortgage interest, sections against their printed totals */
+function confT12(e){
+  var p = e.p, F = {}, set = function(k, l, why){ F[k] = { l:l, why:why }; }, tied = p.tied, noStmt = p.gap === null, gapTxt = p.gap === null ? '' : $(Math.abs(p.gap));
+  var line = function(k, what, grp){ if(grp && p.fixedGroups && p.fixedGroups[grp]) return set(k, 'check', 'A scanned figure on one of these lines was corrected so its section foots to the printed total. Compare with the statement.');
+    if(tied) set(k, p.footFail ? 'check' : 'verified', p.footFail ? 'NOI ties to the statement, but a section did not foot to its printed total.' : 'Line-item NOI equals the statement\'s net income plus mortgage interest (within ' + (gapTxt || '$0') + '), so this ' + what + ' reconciles.');
+    else if(noStmt) set(k, 'check', 'The statement prints no net income line to check against.');
+    else set(k, 'low', 'Line-item NOI differs from the statement\'s net income plus mortgage interest by ' + gapTxt + '. One line is probably misread.'); };
+  line('avgRent', 'rent'); line('otherIncomePerUnit', 'other income'); set('vacancy', 'assumed', 'The T-12 shows rent as collected, so vacancy starts at 0%. Set your own on Deal Underwrite.');
+  [['taxes', 'taxes'], ['insurance', 'insurance'], ['utilities', 'utilities'], ['rm', 'repairs and maintenance'], ['payroll', 'payroll'], ['turnover', 'turnover'], ['marketing', 'marketing'], ['ga', 'general and admin']].forEach(function(r){ var v = (p.grp || {})[r[0]];
+    if((r[0] === 'taxes' || r[0] === 'insurance') && !v) set(r[0], 'low', 'No ' + r[1] + ' line was found in the statement, so this is $0.'); else if(v || r[0] === 'ga') line(r[0], r[1] + ' total', r[0]); });
+  line('mgmtPct', 'management fee', 'mgmt'); line('t12noi', 'NOI');
+  set('units', e.unitsSrc === 'edited' ? 'verified' : p.units ? 'check' : 'low', e.unitsSrc === 'edited' ? 'You entered it.' : p.units ? 'From the statement\'s summary block; nothing else corroborates it.' : 'The statement gives no unit count. Enter it.');
+  set('gsf', p.sf ? 'check' : 'low', p.sf ? 'From the statement\'s summary block.' : 'No square footage on the statement.');
+  set('exitCap', e.capSrc === 'edited' ? 'verified' : e.capSrc === 'source' ? 'check' : 'assumed', e.capSrc === 'edited' ? 'You set it.' : e.capSrc === 'source' ? 'The cap rate printed on the statement summary.' : 'Default cap rate, not from the statement. Set your own.');
+  set('purchasePrice', 'assumed', 'Derived: line-item NOI divided by the cap rate. It is not a price from the documents.');
+  ['reserves', 'holdYears', 'rentGrowth', 'opexGrowth', 'closingCostsPct', 'saleCostPct'].forEach(function(k){ set(k, 'assumed', 'App default; the statement does not provide it.'); });
+  return { fields:F, sum:window.bkConf.summary(F) };
+}
 function extract(parsed){
   var props = [];
   parsed.sheets.forEach(function(sh){ var blk = extractBlock(sh.name, sh.rows); if(blk.items.length < 5) return;
     var nm = sh.name; if(parsed.kind === 'pdf' || parsed.kind === 'csv'){ var t = (blk.title || '').split(/\s+[—–-]\s+/)[0].trim(); if(t) nm = t.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }); }
-    blk.name = nm; props.push(buildProperty(blk)); });
+    blk.name = nm; var bp = buildProperty(blk); props.push(bp); });
   return props;
 }
 window.bkImportExtract = function(parsed){ return extract(parsed); };
@@ -256,9 +277,16 @@ window.bkImportRun = async function(inp){
   } catch(e){ S.msg = 'Could not read ' + f.name + ': ' + (e && e.message || e); }
   S.busy = false; showSheet('Import Deal');
 };
-window.bkImportSet = function(i, k, v){ var e = S.props[i]; if(!e) return; if(k === 'cap'){ e.cap = v; e.capSrc = 'edited'; } else e.units = v; showSheet('Import Deal'); };
-window.bkImportCreate = function(i){ var e = S.props[i]; if(!e || !(e.cap > 0) || !(e.units > 0)) return; var d = dealFor(e.p, e.cap, e.units);
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d); if(typeof showSheet === 'function') showSheet('Home'); };
+window.bkImportSet = function(i, k, v){ var e = S.props[i]; if(!e) return; if(k === 'cap'){ e.cap = v; e.capSrc = 'edited'; } else { e.units = v; e.unitsSrc = 'edited'; } showSheet('Import Deal'); };
+window.bkImportClass = function(i, j, cat){ var e = S.props[i]; if(!e) return; var l = e.p.lines[j]; if(!l) return; if(!cat || cat === l.auto) window.bkLearn.remove(l.label); else window.bkLearn.set(l.label, cat); e.p = buildProperty(e.p.blk); showSheet('Import Deal'); };
+window.bkImportCreate = function(i){ var e = S.props[i]; if(!e || !(e.cap > 0) || !(e.units > 0)) return; var d = dealFor(e.p, e.cap, e.units); window.bkConf.stamp(d, confT12(e), S.file);
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d);
+  if(d._imp){ var si = bkLoad(); si._imp = d._imp; bkSave(si); } if(typeof showSheet === 'function') showSheet('Home'); };
+var CONF_ROWS = [['avgRent', 'Rent'], ['otherIncomePerUnit', 'Other income'], ['taxes', 'Taxes'], ['insurance', 'Insurance'], ['utilities', 'Utilities'], ['rm', 'Repairs and maintenance'], ['payroll', 'Payroll'], ['mgmtPct', 'Management fee'], ['ga', 'General and admin'], ['t12noi', 'NOI'], ['units', 'Units'], ['gsf', 'Square feet'], ['exitCap', 'Cap rate'], ['purchasePrice', 'Implied price']];
+function confBlock(e, i){ var C = confT12(e), s = C.sum, F = C.fields;
+  var cls = e.p.lines && e.p.lines.length ? '<details style="margin:6px 0"><summary style="cursor:pointer;font-size:12px"><b>How each expense line was classified</b> <span style="opacity:.7">(' + e.p.lines.length + ' lines; change one and it is remembered for the next import)</span></summary><table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:12px"><tbody>' + e.p.lines.map(function(l, j){ var opts = window.bkLearn.options(l.auto, ['taxes', 'insurance', 'mgmt', 'utilities', 'turnover', 'payroll', 'marketing', 'rm', 'ga', 'exclude'])(l.learned ? l.group : ''); return '<tr><td style="padding:3px 6px;text-align:left">' + esc(l.label) + (l.learned ? ' <span style="font-size:10.5px;color:#12609f;font-weight:700">LEARNED</span>' : '') + '</td><td style="padding:3px 6px;text-align:right">' + $(l.amount) + '</td><td style="padding:3px 6px"><select onchange="bkImportClass(' + i + ',' + j + ',this.value)" style="font:inherit;font-size:12px">' + opts + '</select></td></tr>'; }).join('') + '</tbody></table></details>' : '';
+  return '<div style="font-size:12px;margin:4px 0;display:flex;gap:14px;flex-wrap:wrap;align-items:center"><b>Confidence</b>' + ['verified', 'check', 'low', 'assumed'].map(function(k){ return window.bkConf.chip({ l:k, why:'' }, s[k] + ' ' + window.bkConf.LABEL[k].toLowerCase()); }).join('') + '</div>'
+    + '<div style="font-size:12px;display:flex;gap:6px 16px;flex-wrap:wrap;margin-bottom:4px">' + CONF_ROWS.filter(function(r){ return F[r[0]]; }).map(function(r){ return '<span>' + r[1] + ' ' + window.bkConf.chip(F[r[0]]) + '</span>'; }).join('') + '</div>' + cls; }
 function numInput(i, k, val, pct){ var shown = pct ? (val * 100).toFixed(2).replace(/\.?0+$/, '') : String(val); return '<input type="text" value="' + shown + '" style="width:64px;text-align:left" onchange="bkImportSet(' + i + ',\'' + k + '\',' + (pct ? '(parseFloat(this.value)||0)/100' : '(parseFloat(this.value)||0)') + ')">' + (pct ? '<span style="font-size:11px"> %</span>' : ''); }
 function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 function render(){
@@ -270,9 +298,9 @@ function render(){
       var chip = p.tied ? '<span class="status-chip pass">TIES' + (Math.abs(p.gap) >= 1 ? ' \u00b7 ' + (p.gap < 0 ? '-' : '+') + $(Math.abs(p.gap)) : '') + '</span>' : (p.gap === null ? '<span class="status-chip">NO STATEMENT TOTAL</span>' : '<span class="status-chip warn">GAP ' + (p.gap < 0 ? '-' : '+') + $(Math.abs(p.gap)) + '</span>');
       var act = !ok ? '<span style="font-size:11px">Multifamily only</span>' : (!(e.units > 0) ? '<span style="font-size:11px">Enter units</span>' : '<button type="button" class="status-chip pass" onclick="bkImportCreate(' + i + ')">CREATE DEAL</button>');
       return '<tr><td class="rowlabel">' + esc(p.name) + '<div style="font-size:11px;opacity:.7">' + esc(p.type || '') + ' · ' + p.items + ' line items</div></td><td>' + numInput(i, 'units', e.units) + '</td><td>' + (p.sf ? p.sf.toLocaleString('en-US') : 'n/a') + '</td><td><b>' + $(p.noi) + '</b></td><td>' + (p.summaryNOI != null ? $(p.summaryNOI) : 'n/a') + '</td><td>' + numInput(i, 'cap', e.cap, true) + '<div style="font-size:10px;opacity:.7">' + e.capSrc + '</div></td><td>' + $(price) + '</td><td>' + chip + '</td><td>' + act + '</td></tr>'
-        + '<tr><td colspan="9" style="text-align:left">' + (ok ? '<div style="font-size:12px;margin-bottom:4px"><b>Before you rely on it:</b> the T-12 has no replacement reserves, so the new deal starts at $0 (set them on Deal Underwrite); and there is no unit rent roll, so revenue uses the average rent per unit (import a rent roll for loss to lease and rollover).</div>' : '') + '<details><summary style="cursor:pointer;font-size:12px">' + p.flags.length + ' extraction note' + (p.flags.length === 1 ? '' : 's') + '</summary><ul style="margin:6px 0 6px 18px;font-size:12px">' + p.flags.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details></td></tr>'; }).join('');
+        + '<tr><td colspan="9" style="text-align:left">' + (ok ? '<div style="font-size:12px;margin-bottom:4px"><b>Before you rely on it:</b> the T-12 has no replacement reserves, so the new deal starts at $0 (set them on Deal Underwrite); and there is no unit rent roll, so revenue uses the average rent per unit (import a rent roll for loss to lease and rollover).</div>' : '') + (ok ? confBlock(e, i) : '') + '<details><summary style="cursor:pointer;font-size:12px">' + p.flags.length + ' extraction note' + (p.flags.length === 1 ? '' : 's') + '</summary><ul style="margin:6px 0 6px 18px;font-size:12px">' + p.flags.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details></td></tr>'; }).join('');
     body += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Properties Extracted from ' + esc(S.file) + '</caption><thead><tr><th class="rowlabel-h">Property</th><th>Units</th><th>SF</th><th>NOI (line items)</th><th>Summary NOI</th><th>Cap rate</th><th>Implied price</th><th>Check</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
-      + box('NOI is the sum of the line items (income less operating expenses; debt service, distributions and totals excluded). The summary-sheet figure is shown only for comparison. A missing cap rate defaults to ' + P(DEFAULT_CAP, 1) + ' (the national multifamily average on Market Benchmarks) - set your own. The new deal uses the app’s standard financing and growth assumptions; review them on Deal Underwrite.');
+      + window.bkLearn.panel() + box('NOI is the sum of the line items (income less operating expenses; debt service, distributions and totals excluded). The summary-sheet figure is shown only for comparison. A missing cap rate defaults to ' + P(DEFAULT_CAP, 1) + ' (the national multifamily average on Market Benchmarks) - set your own. The new deal uses the app’s standard financing and growth assumptions; review them on Deal Underwrite.');
   }
   return { title:'Import Deal', crumbs:'Inputs', desc:'Upload a Yardi T-12 (Excel, CSV or PDF), extract the line items and create a deal.', meta:{ Source:S.file || 'none', Format:S.kind ? S.kind.toUpperCase() : 'xlsx / csv / pdf', Properties:S.props.length }, sidebar:'', main:body };
 }

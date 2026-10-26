@@ -216,7 +216,7 @@ window.bkGuideProp = function(k, v){ var s = bkLoad(), secs = sections(s), sec =
 window.bkGuideWhere = function(){ st.screen = 'where'; st.draft = {}; show(); };
 window.bkGuideViewSource = function(page){ window.bkDocsList().then(function(a){ var o = a.filter(function(f){ return f.slot === 'om'; })[0]; if(!o) return; var u = URL.createObjectURL(o.blob) + '#page=' + page; window.open(u, '_blank'); }); };
 window.bkGuideUse = function(k){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0], fl = sec.fields.filter(function(x){ return x.k === k; })[0], sug = fl.sug(Object.assign({}, s, st.draft)); if(!sug) return; st.draft[k] = sug.v; var g = gstate(s); if(g.assumed.indexOf(k) >= 0){ /* using the suggestion is a confirmation */ } show(); setTimeout(function(){ refreshChanges(sec); }, 0); };
-function apply(sec){ var s = bkLoad(), g = gstate(s), ch = st.draft, keys = Object.keys(ch); keys.forEach(function(k){ s[k] = ch[k]; });
+function apply(sec){ var s = bkLoad(), g = gstate(s), ch = st.draft, keys = Object.keys(ch); keys.forEach(function(k){ var im = s._imp && s._imp.fields && s._imp.fields[k]; if(im && window.bkLearn) window.bkLearn.log({ kind:'fix', field:k, was:s[k], now:ch[k], why:im.why, source:s._imp.source }); s[k] = ch[k]; });
   if('vacancy' in ch){ s.occupancy = 1 - ch.vacancy; if(s.commercialVacancy != null) s.commercialVacancy = ch.vacancy; }
   sec.fields.forEach(function(fl){ if(g.assumed.indexOf(fl.k) >= 0 && (st.checked[fl.k] || fl.k in ch)) g.confirmed[fl.k] = 1; });
   if(s._imp && s._imp.fields) sec.fields.forEach(function(fl){ if(st.checked[fl.k] || fl.k in ch) delete s._imp.fields[fl.k]; });

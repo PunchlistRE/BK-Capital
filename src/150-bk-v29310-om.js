@@ -202,32 +202,37 @@ function coverIsPhoto(t){ return !/\$\s?\d/.test(t || ''); }
 function coverPhoto(blob){ return createImageBitmap(blob).then(function(bm){ var h = Math.round(bm.height * 0.70), c = document.createElement('canvas'); c.width = bm.width; c.height = h; c.getContext('2d').drawImage(bm, 0, 0, bm.width, h, 0, 0, bm.width, h); return new Promise(function(res){ c.toBlob(function(b){ res(new File([b], 'cover-photo.jpg', { type:'image/jpeg' })); }, 'image/jpeg', 0.9); }); }); }
 
 function sumBy(list, rx, key){ return list.filter(function(e){ return rx.test(e.label); }).reduce(function(t, e){ return t + (e[key] || 0); }, 0); }
+var CAT_RX = [['mgmt', /manag/i], ['taxes', /tax/i], ['insurance', /insur/i], ['utilities', /electric|gas|heat|water|sewer|trash|refuse|utilit/i], ['rm', /repair|maint/i], ['contract', /contract|landscap|snow|janitor|pest|cleaning/i], ['payroll', /payroll|salar|on-?site|super|labor/i], ['marketing', /market|advert|leasing/i]];
+function autoCat(label){ for(var q = 0; q < CAT_RX.length; q++){ if(CAT_RX[q][1].test(label)) return CAT_RX[q][0]; } return 'ga'; }
+function catOf(label){ return window.bkLearn.get(label) || autoCat(label); }
 function buildDeal(om0, basis, fileName){
   var om = Object.assign({}, om0, { price:om0.price || S.mPrice || 0, units:om0.units || S.mUnits || 0 });
   if(!om.curCap && om.price && om.curNOI) om.curCap = om.curNOI / om.price;
   var I = om.ie, k = basis, u = om.units || 1, notes = [];
   var gsr = basis === 'cur' ? (I.gsr ? I.gsr.cur : I.gpr && I.gpr.cur) : (I.gpr ? I.gpr.pf : I.gsr && I.gsr.pf), egi = I.egi ? I.egi[k] : null;
   var vacPct = I.vac && I.vac[k + 'Pct'] != null ? I.vac[k + 'Pct'] : (I.vac && gsr ? I.vac[k] / gsr : 0.05);
-  var other = I.addTot ? I.addTot[k] : sumBy(I.addl, /./, k), ex = I.exp, E = function(rx){ return sumBy(ex, rx, k); };
-  var mgmt = E(/manag/i), taxes = E(/tax/i), ins = E(/insur/i), util = E(/electric|gas|heat|water|sewer|trash|refuse|utilit/i), rm = E(/repair|maint/i), con = E(/contract|landscap|snow|janitor|pest|cleaning/i), pay = E(/payroll|salar|on-?site|super|labor/i), mkt = E(/market|advert|leasing/i);
-  var used = mgmt + taxes + ins + util + rm + con + pay + mkt, totExp = I.expTot ? I.expTot[k] : ex.reduce(function(t, e){ return t + e[k]; }, 0), ga = Math.max(0, Math.round((totExp - used) * 100) / 100);
+  var other = I.addTot ? I.addTot[k] : sumBy(I.addl, /./, k), ex = I.exp, sums = {};
+  ex.forEach(function(e){ var c = catOf(e.label); sums[c] = (sums[c] || 0) + (e[k] || 0); });
+  var mgmt = sums.mgmt || 0, taxes = sums.taxes || 0, ins = sums.insurance || 0, util = sums.utilities || 0, rm = sums.rm || 0, con = sums.contract || 0, pay = sums.payroll || 0, mkt = sums.marketing || 0, turn = sums.turnover || 0, excl = sums.exclude || 0, has = function(c){ return !!sums[c]; };
+  var lines = ex.map(function(e){ return { label:e.label, amount:e[k] || 0, cat:catOf(e.label), auto:autoCat(e.label), learned:!!window.bkLearn.get(e.label) }; });
+  var used = mgmt + taxes + ins + util + rm + con + pay + mkt + turn, totExp = (I.expTot ? I.expTot[k] : ex.reduce(function(t, e){ return t + e[k]; }, 0)) - excl, ga = Math.max(0, Math.round((totExp - used) * 100) / 100);
   var cap = om.curCap || (om.price && I.noi ? I.noi.cur / om.price : 0.06);
   var name = om.name || String(fileName || 'Imported deal').replace(/\.pdf$/i, '').replace(/\s*[-–—]\s*(offering memorandum|om|listing).*$/i, '').trim();
   var d = { dealId:'OM-' + slug(name), name:name, location:[om.city, om.state].filter(Boolean).join(', '), dealType:'Acquisition', propertyType:/multi/i.test(om.propertyType || 'Multifamily') ? 'Multifamily' : (om.propertyType || 'Multifamily'), status:'Pipeline', closing:'1/1/2027',
     units:u, gsf:om.sf || 0, commercialArea:0, parking:om.parking || 0, siteArea:om.lotAcres || 0, purchasePrice:om.price, t12noi:om.curNOI || (I.noi && I.noi.cur) || 0,
     avgRent:Math.round(gsr / u / 12 * 100) / 100, otherIncomePerUnit:Math.round(other / u * 100) / 100, vacancy:Math.round(vacPct * 10000) / 10000, occupancy:Math.round((1 - vacPct) * 10000) / 10000, badDebtPct:0, mgmtPct:egi ? Math.round(mgmt / egi * 100000) / 100000 : 0.03,
-    taxes:taxes, insurance:ins, utilities:util, rm:rm, contract:con, payroll:pay, turnover:0, marketing:mkt, ga:ga, reserves:0,
+    taxes:taxes, insurance:ins, utilities:util, rm:rm, contract:con, payroll:pay, turnover:turn, marketing:mkt, ga:ga, reserves:0,
     exitCap:Math.round(cap * 10000) / 10000, holdYears:5, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, commercialRentGrowth:0, closingCostsPct:0.02, saleCostPct:0.02, miscPerGSF:0 };
   var tie = safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
-  if(!E(/manag/i)) notes.push('The OM shows no management fee. Underwriting normally includes 3% to 5% of income for management, even when the owner self-manages. Set it on Deal Underwrite.');
-  if(!E(/repair|maint/i)) notes.push('The OM shows no repairs and maintenance line. Add an allowance on Deal Underwrite.');
+  if(!has('mgmt')) notes.push('The OM shows no management fee. Underwriting normally includes 3% to 5% of income for management, even when the owner self-manages. Set it on Deal Underwrite.');
+  if(!has('rm')) notes.push('The OM shows no repairs and maintenance line. Add an allowance on Deal Underwrite.');
   if(!om0.price) notes.push('The OM does not state a price. The price above is the one you entered.');
   notes.push('Replacement reserves are not in the OM, so they start at $0. Set them on Deal Underwrite (about $250 to $300 a unit is usual).');
   notes.push('Exit cap rate starts at the going-in cap (' + pct(cap) + ') and hold at 5 years. Growth and closing costs are the app standards. Change them to your view.');
   if(basis === 'pf') notes.push('This uses the broker pro forma. It assumes every unit reaches the rents the OM calls achievable, so treat the returns as the broker case.');
   if(om.unitMix && om.unitMix.length) notes.push('Rents use the average across ' + om.unitMix.map(function(m){ return m.units + ' ' + m.type; }).join(' and ') + ' (a unit-level rent roll was not extracted).');
   if(I.ltl && I.ltl.cur && basis === 'cur') notes.push('The OM shows ' + $(I.ltl.cur) + ' a year of loss to lease. In-place rents are below the rents it calls achievable.');
-  return { deal:d, tie:tie, want:want, notes:notes, cap:cap };
+  return { deal:d, tie:tie, want:want, notes:notes, cap:cap, lines:lines };
 }
 function run(file, target){
   S = { busy:true, msg:'Starting...', mode:'om', result:null, basis:S.basis || 'cur', file:file, target:target || 'new' }; showSheet('Import OM');
@@ -381,8 +386,7 @@ function renderDev(body){
 
 /* Confidence: every imported figure gets a level and a one-line reason, so a bad parse is visible before it reaches the engine.
    verified = reconciled against another number in the document; check = read directly but nothing corroborates it (or it came off a page image); low = does not reconcile or is missing; assumed = the app's default, not from the document. */
-var CONF_LABEL = { verified:'Verified', check:'Check', low:'Low', assumed:'Assumed' };
-function confSummary(F){ var c = { verified:0, check:0, low:0, assumed:0 }; Object.keys(F).forEach(function(k){ c[F[k].l]++; }); return c; }
+var CONF_LABEL = window.bkConf.LABEL, confSummary = window.bkConf.summary;
 function confOM(om, b, info, basis){
   var d = b.deal, I = om.ie || {}, F = {}, s = om.sources || {}, ocr = function(p){ return !!(info && info.ocrPages && p && info.ocrPages.indexOf(p) >= 0); };
   var tieOK = b.tie != null && b.want != null && Math.abs(b.tie - b.want) <= Math.max(5, b.want * 0.002), diff = b.tie != null && b.want != null ? Math.round(Math.abs(b.tie - b.want)) : null;
@@ -404,9 +408,9 @@ function confOM(om, b, info, basis){
   /* income and expenses */
   line('avgRent', d.avgRent, 'rent'); line('otherIncomePerUnit', d.otherIncomePerUnit, 'other income');
   if(I.vac && (I.vac[basis + 'Pct'] != null || I.vac[basis] != null)) line('vacancy', d.vacancy, 'vacancy'); else set('vacancy', 'assumed', 'The OM shows no vacancy line; 5% is the app default.');
-  if(om.ie && I.exp && I.exp.some(function(e){ return /manag/i.test(e.label); })) line('mgmtPct', d.mgmtPct, 'management fee'); else set('mgmtPct', 'assumed', 'The OM shows no management fee; 3% of income is the app default.');
-  [['taxes', /tax/i, 'taxes'], ['insurance', /insur/i, 'insurance'], ['rm', /repair|maint/i, 'repairs and maintenance']].forEach(function(r){ if(!d[r[0]]) set(r[0], 'low', 'No ' + r[2] + ' line was found in the OM, so this is $0.'); else line(r[0], d[r[0]], r[2]); });
-  ['utilities', 'contract', 'payroll', 'marketing', 'ga'].forEach(function(k){ if(d[k]) line(k, d[k], 'expense line'); });
+  if(om.ie && I.exp && I.exp.some(function(e){ return catOf(e.label) === 'mgmt'; })) line('mgmtPct', d.mgmtPct, 'management fee'); else set('mgmtPct', 'assumed', 'The OM shows no management fee; 3% of income is the app default.');
+  [['taxes', 'taxes', 'taxes'], ['insurance', 'insurance', 'insurance'], ['rm', 'rm', 'repairs and maintenance']].forEach(function(r){ if(!d[r[0]]) set(r[0], 'low', 'No ' + r[2] + ' line was found in the OM, so this is $0.'); else line(r[0], d[r[0]], r[2]); });
+  ['utilities', 'contract', 'payroll', 'marketing', 'turnover', 'ga'].forEach(function(k){ if(d[k]) line(k, d[k], 'expense line'); });
   set('t12noi', om.curNOI ? (tieOK ? 'verified' : 'check') : 'low', om.curNOI ? 'The OM\'s own in-place NOI.' : 'Not found.');
   ['exitCap', 'reserves', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'closingCostsPct', 'saleCostPct'].forEach(function(k){ set(k, 'assumed', k === 'exitCap' ? 'Starts at the going-in cap rate. Your view, not the OM\'s.' : 'App default; the OM does not provide it.'); });
   return { fields:F, tieOK:tieOK, sum:confSummary(F) };
@@ -426,10 +430,12 @@ function confDev(dev, b, info){
   ['predevMonths', 'constructionMonths', 'leaseupMonths', 'holdYears', 'reserves', 'rentGrowth', 'opexGrowth'].forEach(function(k){ set(k, 'assumed', 'App default; the files do not provide it.'); });
   return { fields:F, tieOK:tieOK, sum:confSummary(F) };
 }
-function confChip(c){ if(!c) return ''; var col = { verified:'#1F7A45', check:'#8A6212', low:'#B23A2C', assumed:'#566a80' }[c.l]; return '<span title="' + esc(c.why) + '" style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:' + col + '"><i style="width:8px;height:8px;border-radius:1px;background:' + col + ';display:inline-block"></i>' + CONF_LABEL[c.l] + '</span>'; }
-function confBar(C){ var s = C.sum; return box('<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center"><b>Confidence in what was read</b>' + ['verified', 'check', 'low', 'assumed'].map(function(k){ return confChip({ l:k, why:'' }).replace(CONF_LABEL[k], s[k] + ' ' + CONF_LABEL[k].toLowerCase()); }).join('') + '</div>'
-  + '<div style="font-size:12px;opacity:.75;margin-top:6px">Verified figures reconcile with another number in the document. Check means read directly with nothing to corroborate it. ' + (s.low ? '<b style="color:#B23A2C">' + s.low + ' figure' + (s.low > 1 ? 's' : '') + ' did not reconcile or were not found. Look at the rows marked Low before relying on this deal.</b> ' : '') + 'Hover a label for the reason. Flagged figures stay marked in the Guide until you confirm them.</div>'); }
-function stampImp(deal, C, fileName){ deal._imp = { source:String(fileName || ''), at:new Date().toISOString().slice(0, 10), fields:{} }; Object.keys(C.fields).forEach(function(k){ var f = C.fields[k]; if(f.l === 'low' || f.l === 'check') deal._imp.fields[k] = { l:f.l, why:f.why }; }); return deal; }
+var confChip = window.bkConf.chip, confBar = function(C){ return window.bkConf.bar(C, 'document'); }, stampImp = window.bkConf.stamp;
+/* every expense line and where it was put; change one and the importer remembers that wording */
+function classBox(lines){ if(!lines || !lines.length) return '';
+  var rows = lines.map(function(l, i){ var opts = window.bkLearn.options(l.auto)(l.learned ? l.cat : ''); return '<tr><td style="padding:4px 8px">' + esc(l.label) + (l.learned ? ' <span style="font-size:10.5px;color:#12609f;font-weight:700">LEARNED</span>' : '') + '</td><td style="padding:4px 8px;text-align:right">' + $(l.amount) + '</td><td style="padding:4px 8px"><select onchange="bkOMClass(' + i + ',this.value)" style="font:inherit;font-size:12px">' + opts + '</select></td></tr>'; }).join('');
+  return box('<details><summary style="cursor:pointer"><b>How each expense line was classified</b> <span style="opacity:.7;font-size:12px">(' + lines.length + ' lines; change one and it is remembered for the next import)</span></summary><table style="width:100%;border-collapse:collapse;margin-top:8px"><tbody>' + rows + '</tbody></table></details>'); }
+window.bkOMClass = function(i, cat){ var e = S.om && S.om.ie && S.om.ie.exp[i]; if(!e) return; if(!cat || cat === autoCat(e.label)) window.bkLearn.remove(e.label); else window.bkLearn.set(e.label, cat); showSheet('Import OM'); };
 function row(label, val, src, kind, c){ return '<tr><td style="padding:5px 8px">' + label + whyLine(c) + '</td><td style="padding:5px 8px;text-align:right;font-weight:600">' + val + '</td><td style="padding:5px 8px;font-size:11px;opacity:.65">' + (kind === 'assumed' ? 'app default' : kind === 'raw' ? src : src ? 'OM page ' + src : 'OM') + '</td><td style="padding:5px 8px;white-space:nowrap">' + confChip(c) + '</td></tr>'; }
 function whyLine(c){ return c && (c.l === 'low' || c.l === 'check') ? '<div style="font-size:11px;font-weight:400;opacity:.75">' + esc(c.why) + '</div>' : ''; }
 function render(){
@@ -457,7 +463,9 @@ function render(){
       + row('Real estate taxes', $(d.taxes), s.income, '', cf.taxes) + row('Insurance', $(d.insurance), s.income, '', cf.insurance) + row('Utilities (electric, gas, water, trash)', $(d.utilities), s.income, '', cf.utilities) + row('Repairs and maintenance', $(d.rm), s.income, '', cf.rm) + row('Contract services and landscaping', $(d.contract), s.income, '', cf.contract) + (d.ga ? row('Other expenses', $(d.ga), s.income, '', cf.ga) : '')
       + row('Going-in cap rate on in-place NOI', pct(b.cap), s.noi, '', cf.t12noi) + row('Exit cap rate', pct(d.exitCap), '', 'assumed', cf.exitCap) + row('Replacement reserves', '$0', '', 'assumed', cf.reserves) + '</tbody></table>'
       + (om.yearBuilt || om.zoning ? '<div style="font-size:12px;opacity:.7;margin-top:8px">Also in the OM: ' + [om.yearBuilt && 'built ' + om.yearBuilt, om.lotAcres && om.lotAcres + ' acres', om.stories && om.stories + ' stories', om.parking && om.parking + ' parking spaces', om.zoning && 'zoned ' + om.zoning].filter(Boolean).join(', ') + '.</div>' : ''));
+    body += classBox(b.lines);
     body += box('<b>Before you rely on it</b><ul style="margin:6px 0 0 18px;padding:0">' + b.notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>');
+    body += window.bkLearn.panel();
     body += '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="pl-hbtn primary" onclick="bkOMCreate()"' + (ready ? '' : ' disabled') + '>Create new deal from this OM</button>' + (S.target === 'apply' ? '<button type="button" class="pl-hbtn" onclick="bkOMApply()">Apply to the current deal instead</button>' : '') + '</div>'
       + '<div style="font-size:12px;opacity:.7;margin-top:6px">A new deal keeps the OM in its Deal Documents and uses the OM\'s cover picture as its photo (replace it there with your own).</div>';
   }

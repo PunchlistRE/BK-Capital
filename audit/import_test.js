@@ -23,6 +23,28 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('CSV: one property extracted', syn.length === 1, JSON.stringify(syn));
   if (syn.length) { check('CSV: NOI = income 10,300 less opex 2,600', Math.abs(syn[0].noi - 7700) < 0.01, String(syn[0].noi)); check('CSV: units, cap rate read from the facts block', syn[0].units === 10 && Math.abs(syn[0].cap - 0.055) < 1e-9);
     check('CSV: ties to the statement NET INCOME', syn[0].tied === true); }
+  // confidence flags, and learning from a reclassified expense line, driven through the sheet
+  const tmp = require('os').tmpdir(), up = (name, text) => { const fp = path.join(tmp, name); fs.writeFileSync(fp, text); return fp; };
+  await p.evaluate(() => { bkLearn.clear(); showSheet('Import Deal'); }); await p.waitForTimeout(300);
+  await p.setInputFiles('#bkImportFile', up('testville.csv', csv)); await p.waitForTimeout(1200);
+  const cv = await p.evaluate(() => document.querySelector('#viewport').innerText);
+  check('Import Deal rates every figure; a statement that ties has verified figures and none Low', /Confidence/.test(cv) && /\d+ verified/i.test(cv) && /\b0 low\b/i.test(cv) && /Taxes\s+Verified/i.test(cv), cv.slice(cv.indexOf('Confidence'), cv.indexOf('Confidence') + 160));
+  check('the cap rate on the statement is Check; the implied price is Assumed', /Cap rate\s+Check/i.test(cv) && /Implied price\s+Assumed/i.test(cv));
+  const bad = csv.replace('NET INCOME,0,0,7700', 'NET INCOME,0,0,7000');
+  await p.setInputFiles('#bkImportFile', up('testville2.csv', bad)); await p.waitForTimeout(1200);
+  const cb = await p.evaluate(() => document.querySelector('#viewport').innerText);
+  check('a statement whose line items do not match its net income marks the figures Low', /\b[1-9]\d* low\b/i.test(cb) && /Taxes\s+Low/i.test(cb), cb.slice(cb.indexOf('Confidence'), cb.indexOf('Confidence') + 160));
+  await p.setInputFiles('#bkImportFile', up('testville.csv', csv)); await p.waitForTimeout(1200);
+  const before = await p.evaluate(async c => { const ps = bkImportExtract(await bkImportParseFile(new File([c], 'testville.csv', { type: 'text/csv' }))); const d = bkImportDeal(ps[0], 0.055, 10); return { rm: d.rm, ga: d.ga, taxes: d.taxes, lines: ps[0].lines.map(l => l.label + ':' + l.group) }; }, csv);
+  check('T-12 expense lines are classified by wording', before.rm === 200 && before.taxes === 2000, JSON.stringify(before));
+  await p.evaluate(() => bkImportClass(0, 1, 'ga')); await p.waitForTimeout(500);
+  const after = await p.evaluate(async c => { const ps = bkImportExtract(await bkImportParseFile(new File([c], 'testville.csv', { type: 'text/csv' }))); const d = bkImportDeal(ps[0], 0.055, 10); return { rm: d.rm, ga: d.ga, noi: Math.round(ps[0].noi), learned: ps[0].lines.some(l => l.learned), txt: document.querySelector('#viewport').innerHTML.indexOf('LEARNED') >= 0 }; }, csv);
+  check('reclassifying a line is remembered for the next import, and the NOI does not move', after.rm === 0 && after.ga >= 200 && after.noi === 7700 && after.learned && after.txt, JSON.stringify(after));
+  await p.evaluate(() => { bkImportSet(0, 'units', 10); }); await p.waitForTimeout(300);
+  await p.evaluate(() => bkImportCreate(0)); await p.waitForTimeout(800);
+  const made = await p.evaluate(() => { const s = bkLoad(); return { has: !!s._imp, keys: s._imp ? Object.keys(s._imp.fields) : [] }; });
+  check('creating the deal keeps the low and check flags on it', made.has && made.keys.includes('gsf') && !made.keys.includes('purchasePrice'), JSON.stringify(made));
+  await p.evaluate(() => bkLearn.clear());
   const X = process.env.BK_YARDI_XLSM, PDF = process.env.BK_SHOREPOINTE_PDF;
   const same = (a, bv, tol) => Math.abs(a - bv) <= tol;
   if (X && fs.existsSync(X)) {
