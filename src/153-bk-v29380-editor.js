@@ -53,17 +53,22 @@ function btn(label, onclick, pri){ return '<button type="button" class="ae-btn' 
 function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
 function summaryTable(title, rows){ return '<div class="ae-panel ae-sum"><div class="ae-ph"><i>=</i>' + esc(title) + '</div><table class="ae-grid"><tbody>' + rows.map(function(r){ return '<tr class="' + (r[3] || '') + '"><td class="c">' + esc(r[0]) + '</td><td class="c r">' + r[1] + '</td><td class="c r ro">' + (r[2] || '') + '</td></tr>'; }).join('') + '</tbody></table></div>'; }
 /* a line grid for operating-style amounts: How Input, Amount, Frequency, Annual Total and the shares of income and per unit */
-var BASES = [['total', '$ / Year (Total)'], ['unit', '$ / Unit / Year'], ['gsf', '$ / GSF / Year']];
-function mult(s, key){ var ed = s._ed || {}, b = (ed.basis || {})[key] || 'total', f = (ed.freq || {})[key] || 'A', m = f === 'M' ? 12 : 1; return b === 'unit' ? m * Math.max(1, num(s.units)) : b === 'gsf' ? m * Math.max(1, num(s.gsf)) : m; }
-window.bkEdLine = function(key, what, raw){ var s = bkLoad(); s._ed = s._ed || {}; s._ed.basis = s._ed.basis || {}; s._ed.freq = s._ed.freq || {};
-  if(what === 'basis') s._ed.basis[key] = raw; else if(what === 'freq') s._ed.freq[key] = raw === 'Monthly' ? 'M' : 'A';
-  else { var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } s[key] = v * mult(s, key); }
-  bkSave(s); showSheet(cur()); };
-function lineRows(s, items, egi){ var u = Math.max(1, num(s.units)), g = Math.max(1, num(s.gsf));
-  return items.map(function(it){ var key = it[0], total = num(s[key]), ed = s._ed || {}, b = (ed.basis || {})[key] || 'total', f = (ed.freq || {})[key] || 'A', m = mult(s, key), amount = total / m, id = 'ae-line-' + key;
-    return '<tr><td class="c">' + esc(it[1]) + '</td><td><select onchange="bkEdLine(\'' + key + '\',\'basis\',this.value)">' + BASES.map(function(a){ return '<option value="' + a[0] + '"' + (a[0] === b ? ' selected' : '') + '>' + a[1] + '</option>'; }).join('') + '</select></td>'
-      + '<td><input type="text" id="' + id + '" class="num" value="' + esc(fmtIn(+amount.toFixed(4), 'num')) + '" autocomplete="off" onchange="bkEdLine(\'' + key + '\',\'amount\',this.value)"></td>'
-      + '<td><select onchange="bkEdLine(\'' + key + '\',\'freq\',this.value)"><option' + (f === 'A' ? ' selected' : '') + '>Annually</option><option' + (f === 'M' ? ' selected' : '') + '>Monthly</option></select></td>'
+/* Basis and amount use the app's existing input-basis system (the same one Deal Underwrite uses), so a basis picked here is the basis shown there. Frequency (annual or monthly) is an extra display layer kept in _ed. */
+var BLAB = { DOLLARS_YR:'$ / Year (Total)', DOLLARS_UNIT_YR:'$ / Unit / Year', DOLLARS_GSF_YR:'$ / GSF / Year', PCT_EGI:'% of EGI' };
+function freqOf(s, key){ return (((s._ed || {}).freq || {})[key]) === 'M' ? 12 : 1; }
+window.bkEdLine = function(key, what, raw){
+  if(what === 'basis'){ window.bkBasisSet(key, raw); return; }
+  var s = bkLoad();
+  if(what === 'freq'){ s._ed = s._ed || {}; s._ed.freq = s._ed.freq || {}; s._ed.freq[key] = raw === 'Monthly' ? 'M' : 'A'; bkSave(s); showSheet(cur()); return; }
+  var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; }
+  window.bkBasisSetValue(key, String(v * (window.bkBasisGet(key) === 'PCT_EGI' ? 1 : freqOf(s, key)))); };
+function lineRows(s, items, egi){ var u = Math.max(1, num(s.units)), g = Math.max(1, num(s.gsf)), defs = window.bkBasisDefs().FIELDS;
+  return items.map(function(it){ var key = it[0], total = num(s[key]) * (defs[key] && defs[key].canonical === 'DOLLARS_UNIT_YR' ? u : defs[key] && defs[key].canonical === 'DOLLARS_GSF_YR' ? g : 1), info = window.bkBasisInfo(key, s), id = 'ae-line-' + key;
+    total = info && info.annual != null ? info.annual : total; var basis = info.basis, pctBasis = basis === 'PCT_EGI', m = pctBasis ? 1 : freqOf(s, key), amount = info.shown == null ? 0 : info.shown / m, f = m === 12 ? 'M' : 'A';
+    var opts = defs[key].bases.filter(function(b){ return info.available.indexOf(b) >= 0; });
+    return '<tr><td class="c">' + esc(it[1]) + '</td><td><select onchange="bkEdLine(\'' + key + '\',\'basis\',this.value)">' + opts.map(function(b){ return '<option value="' + b + '"' + (b === basis ? ' selected' : '') + '>' + BLAB[b] + '</option>'; }).join('') + '</select></td>'
+      + '<td><input type="text" id="' + id + '" class="num" value="' + esc(fmtIn(+(pctBasis ? amount * 100 : amount).toFixed(4), 'num')) + '" autocomplete="off" onchange="bkEdLine(\'' + key + '\',\'amount\',this.value)"></td>'
+      + '<td>' + (pctBasis ? '<span class="ae-unit" style="padding:4px 8px;display:block">-</span>' : '<select onchange="bkEdLine(\'' + key + '\',\'freq\',this.value)"><option' + (f === 'A' ? ' selected' : '') + '>Annually</option><option' + (f === 'M' ? ' selected' : '') + '>Monthly</option></select>') + '</td>'
       + '<td class="c r ro">' + money(total) + '</td><td class="c r ro">' + money(total / u) + '</td><td class="c r ro">' + money(total / g, 2) + '</td><td class="c r ro">' + (egi > 0 ? pct(total / egi, 1) : '-') + '</td><td class="c ro">' + esc(it[2] || '') + '</td></tr>'; }).join(''); }
 function lineGrid(s, items, egi){ return '<div class="ae-panel"><table class="ae-grid"><thead><tr><th class="grp" colspan="1">General</th><th class="grp" colspan="3">Amount</th><th class="grp" colspan="4">Year 1</th><th class="grp">Inflation</th></tr><tr><th>Name</th><th>How Input</th><th>Amount</th><th>Frequency</th><th>Annual Total</th><th>$ / Unit</th><th>$ / GSF</th><th>% of EGI</th><th>Rate</th></tr></thead><tbody>' + lineRows(s, items, egi) + '</tbody></table></div>'; }
 /* ---------- PROPERTY ---------- */
@@ -141,7 +146,7 @@ function expSummary(s){ var c = calc(), tot = num(c.total), egi = num(c.egi);
   return summaryTable('Year 1 Expense Summary', [['Total Operating Expenses', money(tot), egi > 0 ? pct(tot / egi, 1) + ' of income' : ''], ['Net Operating Income (before reserves)', money(c.noi), '', 'tot'], ['Replacement Reserves', money(num(c.noi) - num(c.after)), ''], ['Net Operating Income (after reserves)', money(c.after), '', 'tot'], ['Capital Items in the Hold', money(safe(function(){ return (Array.isArray(s.capex) ? s.capex : []).reduce(function(t, l){ return t + num(l.amount); }, 0); }, 0)), 'below NOI']]); }
 var OPLINES = [['taxes', 'Real Estate Taxes', 'Tax growth'], ['insurance', 'Insurance', 'Expense inflation'], ['utilities', 'Utilities', 'Expense inflation'], ['rm', 'Repairs & Maintenance', 'Expense inflation'], ['payroll', 'Payroll & Benefits', 'Expense inflation'], ['turnover', 'Turnover / Make-Ready', 'Expense inflation'], ['contract', 'Contract Services', 'Expense inflation'], ['marketing', 'Marketing & Advertising', 'Expense inflation'], ['ga', 'General & Administrative', 'Expense inflation']];
 function pOp(s){ var egi = num(calc().egi);
-  return lineGrid(s, OPLINES, egi) + form('Fee and Other Operating Cost', 'F', [R('Management Fee', inp('mgmtPct', 'pct', { s:s }), '% of effective gross income'), R('Other Operating Expense', inp('miscPerGSF', 'num', { s:s }), '$ / GSF / year (for example retail operating costs you do not recover)')]); }
+  return lineGrid(s, OPLINES.concat([['mgmtPct', 'Management Fee', 'Expense inflation']]), egi) + form('Other Operating Cost', 'F', [R('Other Operating Expense', inp('miscPerGSF', 'num', { s:s }), '$ / GSF / year (for example retail operating costs you do not recover)')]); }
 function pNonop(s){ var egi = num(calc().egi);
   return lineGrid(s, [['reserves', 'Replacement Reserves', 'Expense inflation']], egi) + form('Asset Management', 'A', [R('Asset Management Fee', inp('assetMgmtPct', 'pct', { s:s }), '% of effective gross income, below NOI'), NOTE('Reserves sit inside NOI before lender tests when the lender basis is set to after reserves (Investment > Financing). The asset management fee is a cost to equity, not an operating expense.')]); }
 window.bkEdCap = function(i, field, raw){ var s = bkLoad(); s.capex = Array.isArray(s.capex) ? s.capex : []; var l = s.capex[i]; if(!l) return; if(field === 'amount'){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } l.amount = v; } else l[field] = raw; bkSave(s); showSheet(cur()); };

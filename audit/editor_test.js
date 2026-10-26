@@ -36,13 +36,13 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   await set('ae-misc-name-0', 'Roof Antenna'); await set('ae-misc-amt-0', '15,000'); const after = await p.evaluate(() => ({ other: bkCalc().other, egi: bkCalc().egi, txt: document.querySelector('#viewport').innerText }));
   check('a miscellaneous line of $15,000 a year adds $15,000 to other income and to EGI, and shows in the revenue build', Math.abs(after.other - before.other - 15000) < 1e-6 && Math.abs(after.egi - before.egi - 15000) < 1e-6 && /\$15,000/.test(after.txt), JSON.stringify([after.other - before.other, after.egi - before.egi]));
   /* Expenses: how-input conversions */
-  await go('Expenses', 'op'); await p.selectOption('#viewport tr:has-text("Insurance") select >> nth=0', 'unit'); await p.waitForTimeout(200); await set('ae-line-insurance', 1000); s = await st();
-  check('Expenses > Operating: $1,000 per unit a year on 100 units is stored as $100,000 a year', s.insurance === 100000 && s._ed.basis.insurance === 'unit', String(s.insurance));
+  await go('Expenses', 'op'); await p.selectOption('#viewport tr:has-text("Insurance") select >> nth=0', 'DOLLARS_UNIT_YR'); await p.waitForTimeout(200); await set('ae-line-insurance', 1000); s = await st();
+  check('Expenses > Operating: $1,000 per unit a year on 100 units is stored as $100,000 a year', s.insurance === 100000 && s._basis.insurance === 'DOLLARS_UNIT_YR', String(s.insurance));
   await p.selectOption('#viewport tr:has-text("Insurance") select >> nth=1', 'Monthly'); await p.waitForTimeout(200); await set('ae-line-insurance', 2000); s = await st();
   check('monthly frequency multiplies by twelve: $2,000 a month per unit on 100 units is $2,400,000 a year', s.insurance === 2400000, String(s.insurance));
-  await set('ae-line-insurance', 1000); await p.selectOption('#viewport tr:has-text("Insurance") select >> nth=1', 'Annually'); await p.selectOption('#viewport tr:has-text("Insurance") select >> nth=0', 'total'); await p.waitForTimeout(150); await set('ae-line-insurance', 96000);
+  await set('ae-line-insurance', 1000); await p.selectOption('#viewport tr:has-text("Insurance") select >> nth=1', 'Annually'); await p.selectOption('#viewport tr:has-text("Insurance") select >> nth=0', 'DOLLARS_YR'); await p.waitForTimeout(150); await set('ae-line-insurance', 96000);
   check('the Year 1 expense summary equals the engine\'s own figures', await p.evaluate(() => { const c = bkCalc(), t = document.querySelector('#viewport').innerText; const f = n => '$' + Math.round(n).toLocaleString('en-US'); return t.includes(f(c.total)) && t.includes(f(c.noi)) && t.includes(f(c.after)); }));
-  await set('ae-mgmtPct', '4'); check('the management fee percentage writes as a decimal', Math.abs((await st()).mgmtPct - 0.04) < 1e-12);
+  await set('ae-line-mgmtPct', '4'); check('the management fee percentage writes as a decimal', Math.abs((await st()).mgmtPct - 0.04) < 1e-12);
   /* Expenses: capital items move cash flow, never NOI */
   const nb = await p.evaluate(() => ({ noi: bkCalc().noi, irr: bkMonthlyReturns().irr, cf: bkMonthlyReturns().rows.map(r => r.cf) })); await go('Expenses', 'cap'); await p.click('button:has-text("Add a capital item")'); await p.waitForTimeout(200);
   await set('ae-cap-name-0', 'Roof repair'); await p.fill('#ae-cap-month-0', '2027-07'); await p.dispatchEvent('#ae-cap-month-0', 'change'); await p.waitForTimeout(150); await set('ae-cap-amt-0', 55000);

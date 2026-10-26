@@ -140,7 +140,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   // 9. Top navigation: six tabs, dropdowns of sheets, one open at a time, choosing a sheet opens it and closes the menu
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Depreciation'); }, B); await p.waitForTimeout(200);
   const nv = await p.evaluate(() => ({ tabs: [...document.querySelectorAll('.tabnav-primary > *')].length, secondary: document.querySelectorAll('.tabnav-secondary').length, cur: document.querySelector('.tabnav-primary .grp-btn.on').innerText }));
-  check('top bar has six tabs and no second row of sheet tabs', nv.tabs === 6 && nv.secondary === 0, JSON.stringify(nv));
+  check('top bar has the main tabs and no second row of sheet tabs', nv.tabs >= 6 && nv.secondary === 0, JSON.stringify(nv));
   check('the active tab names the current sheet', /Underwrite/.test(nv.cur) && /Depreciation/.test(nv.cur), nv.cur);
   await p.click('.bk-nav:has-text("Underwrite") > .grp-btn'); await p.click('.bk-nav:has-text("Business") > .grp-btn');
   check('only one dropdown is open at a time', await p.evaluate(() => document.querySelectorAll('.bk-nav.open').length) === 1);

@@ -22,6 +22,7 @@ echo "== import rent roll (CSV / XLSX / PDF, synthetic fixtures)"; node audit/im
 echo "== tie-out to the owner's V7.2 master workbook (10 stored deals)"; node audit/gold_tieout.js index.html --check | tail -1
 echo "== editor engine support (growth curves, miscellaneous income, capital items)"; node audit/editor_engine_test.js index.html | tail -2
 echo "== property editor (7 tabs, 28 sub-tabs, writes and conversions)"; node audit/editor_test.js index.html | tail -2
+echo "== reports (cash flow, valuation, tenant, audit; reconcile to the engine)"; node audit/reports_test.js index.html | tail -2
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
