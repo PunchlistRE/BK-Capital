@@ -2945,18 +2945,21 @@ window.bkAnnualCF = function(){
   const _cv = bkConventions(s);
   const gExp = _cv.cvRentGrowthStart === 'year2' ? function(m){ return Math.ceil(m/12) - 1; } : function(m){ return m/12; };
   const opexVar = _cv.cvOpexVariablePct;
+  /* rentGrowthY1 (optional): a different rent growth rate for the first twelve months, then rentGrowth after (an 'operating year 1 trend'). Blank or 0 = rentGrowth throughout, which is every existing deal. Used only with continuous growth. */
+  const rentGrowthY1 = _cv.cvRentGrowthStart === 'month1' && Number(s.rentGrowthY1) > 0 ? Number(s.rentGrowthY1) : null;
+  const rentF = rentGrowthY1 === null ? function(m){ return Math.pow(1+rentGrowth, gExp(m)); } : function(m){ return Math.pow(1+rentGrowthY1, Math.min(m,12)/12) * Math.pow(1+rentGrowth, Math.max(m-12,0)/12); };
 
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
-    const resRev = (k_GPR/12) * resOcc * Math.pow(1+rentGrowth, gExp(m));
+    const resRev = (k_GPR/12) * resOcc * rentF(m);
     // CONVENTION cvBadDebtBasis: 'gross' charges gross potential rent; 'afterVacancy' and the legacy
     // monthly behaviour charge rent after vacancy (the legacy expression is kept literally).
-    const bad = _cv.cvBadDebtBasis==='gross' ? -((k_GPR/12) * Math.pow(1+rentGrowth, gExp(m)))*badDebtPct : -resRev*badDebtPct;
+    const bad = _cv.cvBadDebtBasis==='gross' ? -((k_GPR/12) * rentF(m))*badDebtPct : -resRev*badDebtPct;
     // Applied to GROSS potential rent, exactly as the workbook does, using the same
     // expression the vacancy split below already uses so the parts still sum to the whole.
     // At the default of zero both terms are -0, and x + -0 === x for every x, so no existing
     // figure can move by a floating-point bit.
-    const _gprG   = (k_GPR/12) * Math.pow(1+rentGrowth, gExp(m));
+    const _gprG   = (k_GPR/12) * rentF(m);
     const ltl     = -_gprG*ltlPct;
     const concess = -_gprG*(m<=stabMonths ? concessLUPct : concessPct);
     const netRes = resRev+bad+ltl+concess;
@@ -3021,7 +3024,9 @@ window.bkAnnualCF = function(){
   // in_exit_basis defaults to "NOI After Reserves" -- Havard's actual Excel setting; the app has
   // no separate toggle for this yet, so that default is used unconditionally).
   let fwdSum=0;
-  for(let mm=holdMonths+1; mm<=holdMonths+12; mm++) fwdSum += monthNOI(mm).noi;
+  /* exitNoiBasis (optional): 'before' prices the sale on forward NOI before replacement reserves; blank = after reserves (the original behaviour). */
+  const exitBefore = s.exitNoiBasis === 'before';
+  for(let mm=holdMonths+1; mm<=holdMonths+12; mm++){ const r_ = monthNOI(mm); fwdSum += exitBefore ? r_.noiBeforeReserves : r_.noi; }
   const terminalNOI = fwdSum;
   const grossSale = Number(s.exitCap) ? terminalNOI/Number(s.exitCap) : 0;
   const saleCost = grossSale*Number(s.saleCostPct);
@@ -6579,14 +6584,16 @@ try{implement(document);}catch(e){}
   window.bkDebtLifecycle=function(){return bkDebt().lifecycle;};
   window.bkDebt=function(){
     const s=bkEnsureV04(),op=bkCalc(),basis=Number(s.purchasePrice)*(1+Number(s.closingCostsPct)+bkAcqFeePct(s));
-    const stab=Number(s.exitCap)>0?op.noi/Number(s.exitCap):0;
+    const stab=Number(s.exitCap)>0?((s.lenderNoiBasis==='after'&&isFinite(op.after))?op.after:op.noi)/Number(s.exitCap):0;
     /* CONVENTION cvLtvBasis: the value the acquisition LTV test is applied to. LTC, DSCR and debt
        yield are unchanged and the loan is still the lowest of all constraints. */
     const ltvBasis=bkConventions(s).cvLtvBasis, price=Number(s.purchasePrice)||0;
     const ltvValue=ltvBasis==='price'?price:ltvBasis==='lesser'?(stab>0?Math.min(price,stab):price):stab;
     const byLTV=Number(s.acqLTV)*ltvValue,byLTC=Number(s.acqLTC)>0?Number(s.acqLTC)*basis:Infinity;
     const coupon=bkDebtRateForMonth(s,1),amortMonths=Math.max(1,Math.round(Number(s.acqAmort)*12)),unitPmt=bkPmt(coupon/12,amortMonths,1);
-    const byDSCR=(Number(s.acqDSCR)>0&&unitPmt>0)?(op.noi/Number(s.acqDSCR))/(unitPmt*12):Infinity;
+    /* lenderNoiBasis (optional): 'after' runs the lender tests (DSCR, and LTV when it is measured on value) on NOI after replacement reserves, as many lenders do; blank = NOI before reserves, the original behaviour. */
+    const dscrNoi=(s.lenderNoiBasis==='after'&&isFinite(op.after))?op.after:op.noi;
+    const byDSCR=(Number(s.acqDSCR)>0&&unitPmt>0)?(dscrNoi/Number(s.acqDSCR))/(unitPmt*12):Infinity;
     /* V29.11.0 - fourth ORIGINATION constraint. Uses op.noi, the SAME underwriting NOI the
        DSCR test uses, so adding a constraint never changes the debt engine's NOI basis.
        acqDebtYield is the ACQUISITION minimum and is deliberately a DIFFERENT field from
@@ -6596,7 +6603,7 @@ try{implement(document);}catch(e){}
        via a falsy-OR and must never be used to mean no debt. */
     const debtOff=(s.debtEnabled===false);
     const raw=Math.max(0,Math.min(byLTV,byLTC,byDSCR,byDebtYield)),loan=debtOff?0:Math.floor(raw/1000)*1000,fee=debtOff?0:loan*Number(s.acqOrigFee);
-    const initialPmt=bkPmt(coupon/12,amortMonths,loan),dscr=initialPmt?op.noi/(initialPmt*12):0,ltv=ltvValue?loan/ltvValue:0,ltc=basis?loan/basis:0;
+    const initialPmt=bkPmt(coupon/12,amortMonths,loan),dscr=initialPmt?dscrNoi/(initialPmt*12):0,ltv=ltvValue?loan/ltvValue:0,ltc=basis?loan/basis:0;
     let binding=debtOff?'DEBT OFF':'LTV';const rounded=x=>Math.floor(x/1000)*1000;
     if(!debtOff){ if(rounded(byDebtYield)===loan)binding='DEBT YIELD';
       else if(rounded(byDSCR)===loan)binding='DSCR'; else if(rounded(byLTC)===loan)binding='LTC'; }
@@ -6604,9 +6611,9 @@ try{implement(document);}catch(e){}
     const L=bkDebtLifecycleCore(s,loan,hold,debtOff,()=>bkAnnualCF().arr);
     const months=L.combined,annual=L.annual,liveR=months.filter(x=>x.loan!=='NONE');
     /* V32.3 (CV-D2): reported payment and going-in DSCR use the ACTUAL month-1 contractual payment (interest-only during an IO period). The amortizing figures stay available as pmtAmortizing / dscrAmortizing. Debt SIZING is unchanged (still sized on the amortizing constant). */
-    const goingInPmt=(L.combined[0]&&L.combined[0].loan!=='NONE')?L.combined[0].payment:0,goingInDscr=goingInPmt?op.noi/(goingInPmt*12):0,pmtBasis=Math.round(Number(s.acqIO)*12)>0?'INTEREST-ONLY':'AMORTIZING';
+    const goingInPmt=(L.combined[0]&&L.combined[0].loan!=='NONE')?L.combined[0].payment:0,goingInDscr=goingInPmt?dscrNoi/(goingInPmt*12):0,pmtBasis=Math.round(Number(s.acqIO)*12)>0?'INTEREST-ONLY':'AMORTIZING';
     const equity=basis+fee-loan,maxCoupon=liveR.length?Math.max(...liveR.map(x=>x.annualRate)):coupon,minCoupon=liveR.length?Math.min(...liveR.map(x=>x.annualRate)):coupon;
-    return{s,op,basis,stab,ltvBasis,ltvValue,byLTV,byLTC,byDSCR,byDebtYield,debtEnabled:!debtOff,loan,fee,pmt:debtOff?0:goingInPmt,dscr:debtOff?0:goingInDscr,pmtBasis,pmtAmortizing:debtOff?0:initialPmt,dscrAmortizing:debtOff?0:dscr,ltv:debtOff?0:ltv,ltc:debtOff?0:ltc,binding,months,annual,equity,debtAtSale:debtOff?0:L.payoffAtSale,coupon,rateType:isFloating(s)?'Floating':'Fixed',maxCoupon,minCoupon,lifecycle:L};
+    return{s,op,basis,stab,ltvBasis,ltvValue,byLTV,byLTC,byDSCR,byDebtYield,dscrNoi,debtEnabled:!debtOff,loan,fee,pmt:debtOff?0:goingInPmt,dscr:debtOff?0:goingInDscr,pmtBasis,pmtAmortizing:debtOff?0:initialPmt,dscrAmortizing:debtOff?0:dscr,ltv:debtOff?0:ltv,ltc:debtOff?0:ltc,binding,months,annual,equity,debtAtSale:debtOff?0:L.payoffAtSale,coupon,rateType:isFloating(s)?'Floating':'Fixed',maxCoupon,minCoupon,lifecycle:L};
   };
 
   const _du=sheetDealUnderwrite;
@@ -9905,6 +9912,10 @@ window.bkSetDebtEnabled = function(v){
   if(typeof showSheet === 'function') showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Debt');
 };
 /* Entered as a percentage, stored as a decimal, consistent with acqLTV/acqDSCR. */
+window.bkSetLenderNoiBasis = function(v){
+  var s = bkLoad(); s.lenderNoiBasis = (v === 'after') ? 'after' : ''; bkSave(s);
+  if(typeof showSheet === 'function') showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Debt');
+};
 window.bkSetAcqDebtYield = function(pctText){
   var n = Number(pctText);
   var s = bkLoad(); s.acqDebtYield = (isFinite(n) && n > 0) ? n/100 : 0; bkSave(s);
@@ -9947,6 +9958,13 @@ function panel(){
     +     ' onchange="bkSetAcqDebtYield(this.value)"></td>'
     +   '<td data-bk-align="text">%</td>'
     +   '<td>' + (Number(s.acqDebtYield)>0 ? chip('','INPUT') : chip('','NOT APPLIED')) + '</td></tr>'
+    + '<tr><td class="rowlabel" data-bk-align="text">Lender Tests Use<span class="bk-sub">NOI before or after replacement reserves (DSCR, and LTV on value)</span></td>'
+    +   '<td class="v"><select onchange="bkSetLenderNoiBasis(this.value)">'
+    +     '<option value=""'  + (s.lenderNoiBasis === 'after' ? '' : ' selected') + '>NOI before reserves</option>'
+    +     '<option value="after"' + (s.lenderNoiBasis === 'after' ? ' selected' : '') + '>NOI after reserves</option>'
+    +   '</select></td>'
+    +   '<td data-bk-align="text">-</td>'
+    +   '<td>' + chip('', 'INPUT') + '</td></tr>'
     + '</tbody></table></div>'
     + '<div class="note-flag" style="margin-top:10px;"><span>&#9432;</span><div>'
     + 'This is the <b>origination</b> minimum debt yield, used to size the loan at close. It is a '
