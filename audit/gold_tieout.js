@@ -1,35 +1,50 @@
 // Ties this app's engine to the owner's Excel master model (CRE_MASTER_V7_2_GOLD.xlsm): the ten deals stored in the workbook's SYS_DealDB are loaded into the app and each result is
 // compared with the workbook's own stored snapshot (Y1 NOI, all-in cost, loan, peak equity, unlevered and levered IRR and multiple).
-//   node audit/gold_tieout.js [index.html] [--json out.json]     data: audit/real/gold_v72.json (extracted from the workbook)
+//   node audit/gold_tieout.js [index.html] [--json out.json] [--implied-tax]   (--implied-tax: where the workbook left taxes blank, use the tax that reproduces its Y1 NOI, to isolate everything downstream)     data: audit/real/gold_v72.json (extracted from the workbook)
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const fs = require('fs'), path = require('path');
 const G = JSON.parse(fs.readFileSync(path.join(__dirname, 'real', 'gold_v72.json'), 'utf8')); const app = path.resolve(process.argv[2] && !/^--/.test(process.argv[2]) ? process.argv[2] : path.join(__dirname, '..', 'index.html'));
 const jsonOut = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined }), p = await b.newPage(); await p.route(/supabase\.co|vercel\.app|fonts\.g/, r => r.abort());
   await p.goto('file://' + app); await p.waitForTimeout(700);
-  const MODEARG = process.argv.includes('--standard') ? 'standard' : 'legacy';
-  const rows = await p.evaluate(([G, MODE]) => {
+  const MODEARG = process.argv.includes('--standard') ? 'standard' : 'legacy', IMPLIED = process.argv.includes('--implied-tax');
+  const rows = await p.evaluate(([G, MODE, IMPLIED]) => {
     document.documentElement.classList.add('bk-auth-ok'); const out = [], gl = G.globals, v = k => gl[k][3 - 0] === undefined ? null : gl[k]; const one = k => gl[k][0];
     const base = { rentGrowthY1: gl['Rent Growth - Operating Year 1 Trend'][0], exitNoiBasis: 'before', rentGrowth: gl['Market Rent Growth - Stabilized'][3], otherGrowth: one('Other Income Growth'), opexGrowth: one('Operating Expense Growth'), taxGrowth: one('Assessed Value / Tax Growth'), badDebtPct: one('Bad Debt / Credit Loss'), concessionPct: one('Concessions - Stabilized'), concessionLeaseUpPct: one('Concessions - Lease-Up'), lossToLeasePct: one('Loss to Lease'), saleCostPct: one('Cost of Sale'), commercialVacancy: one('Retail Vacancy / Credit Loss'), commercialRentGrowth: one('Retail Rent Growth'), assessmentRatio: one('Assessment Ratio'), millageRate: one('Effective Millage / Tax Rate') };
     const coupon = gl['Permanent / Acq Loan Coupon'][3];
+    const LADDER = { hc_demo: 5, hc_sitework: 12.5, hc_excavation: 21.5, hc_parking: 0, hc_podium: 57, hc_envelope: 33.5, hc_roofing: 6.5, hc_mep: 45, hc_elevators: 5.6, hc_partitions: 39, hc_unitint: 21.5, hc_amenity: 8.5, hc_commshell: 3.75, hc_landscape: 5.25, hardGCPct: 0.065, hardContractorFeePct: 0.035, hardRiskBondsPct: 0.0125, hardContPct: 0.05,
+      sc_ae: 0.045, sc_civil: 3.5, sc_environmental: 1.25, sc_entitlement: 2.5, sc_permits: 32, sc_legal: 3, sc_retaxconst: 2.75, sc_ocip: 3.25, sc_marketing: 2.75, sc_testing: 1.75, sc_sustainability: 0.85, sc_technology: 1.6, sc_ti: 65, sc_ffe: 2400, sc_title: 0.0035, softContPct: 0.05 }; /* the workbook's own reference rates (Development sheet), used when it calibrates to a source construction total */
     G.deals.forEach((d, i) => { const u = d.units, dt = d.acq_date.split('-'), e = G.expected[i], dev = d.deal_type === 'Development', n = x => x == null ? 0 : x;
       const s = Object.assign({ dealId: d.deal_id, name: d.name, location: d.location, dealType: d.deal_type, propertyType: d.prop_type, closing: (+dt[1]) + '/' + (+dt[2]) + '/' + dt[0], units: u, gsf: d.gsf, commercialArea: n(d.retail_sf), parking: n(d.parking), siteArea: d.acres,
-        purchasePrice: d.purchase_price, t12noi: n(d.t12_noi), taxes: d.re_tax_actual || 0, avgRent: d.rent_mo, commercialRent: n(d.retail_rent_sf), recovery: n(d.retail_recov_sf), otherIncomePerUnit: d.other_inc_u, closingCostsPct: d.closing_pct, vacancy: d.vacancy, mgmtPct: d.mgmt_pct,
+        purchasePrice: d.purchase_price, t12noi: n(d.t12_noi), taxes: d.re_tax_actual || 0, avgRent: d.rent_mo, commercialRent: n(d.retail_rent_sf), recovery: n(d.retail_recov_sf), otherIncomePerUnit: d.other_inc_u, closingCostsPct: d.closing_pct, closingPct: d.closing_pct, miscPerGSF: n(d.retail_sf) * gl['Retail Operating Expenses'][0] / d.gsf, vacancy: d.vacancy, mgmtPct: d.mgmt_pct,
         insurance: d.ins_u * u, payroll: d.payroll_u * u, rm: d.rm_u * u, turnover: d.turn_u * u, utilities: d.util_u * u, contract: d.contract_u * u, marketing: d.mktg_u * u, ga: d.ga_u * u, reserves: d.reserves_u * u,
         occupancy: d.preleased, exitCap: d.exit_cap, holdYears: d.hold_yrs, gpShare: d.gp_share, pref: d.pref, hurdle2: d.hurdle2, hurdle3: d.hurdle3, t2LP: d.t2_lp, t3LP: d.t3_lp, t4LP: d.t4_lp, gpCatchup: d.catchup, gpCatchupTarget: d.catchup_tgt, hurdleBasis: d.hurdle_basis, em1: d.em_h1, em2: d.em_h2, em3: d.em_h3,
         acqFeePct: d.acq_fee, acquisitionFeePct: d.acq_fee, assetMgmtPct: d.am_fee, dispositionFeePct: d.dispo_fee, devFeePct: n(d.dev_fee), cmFeePct: n(d.cm_fee), guarantyFeePct: n(d.guaranty_fee) }, base);
+      if (dev) { const one = k => gl[k][0]; Object.assign(s, LADDER, { devBudgetMode: d.budget_mode, sourceConstruction: n(d.source_constr), predevMonths: n(d.predev_mo), constructionMonths: n(d.constr_mo), leaseupMonths: Math.ceil(u / d.absorb_mo), predevCarry: n(d.predev_carry), preleasedPct: n(d.preleased),
+        conLTC: n(d.c_ltc), conLTV: n(d.c_ltv), conOrigFee: n(d.c_fee), conCapCost: n(d.c_cap_cost), conUtil: n(d.c_util), refiAtStab: d.refi === 1 ? 1 : 0, permLTV: n(d.p_ltv), permDSCR: n(d.p_dscr), permDebtYield: n(d.p_dy), permAmort: n(d.p_amort), permIO: n(d.p_io), permOrigFee: n(d.p_fee), refiCapRate: n(d.p_val_cap),
+        conRate: Math.max(one('SOFR - Spot'), one('SOFR Floor')) + gl['Construction Loan Spread'][3], lenderLegal: one('Lender Legal / Third-Party Reports'), debtIndexRate: one('SOFR - Spot'), debtSpread: gl['Construction Loan Spread'][3], debtFloor: one('SOFR Floor'), rateCapStrike: one('Interest Rate Cap Strike') }); }
       if (!dev) Object.assign(s, { leaseupMonths: 1, acqLTV: d.a_ltv, acqLTC: d.a_ltc, acqDSCR: d.a_dscr, acqRate: d.a_rate, lenderNoiBasis: 'after', acqAmort: d.a_amort, acqIO: d.a_io, acqOrigFee: d.a_fee });
       if (MODE === 'legacy') Object.assign(s, BK_CV_LEGACY);
       bkCreateNewDeal(s);
       /* taxes left blank in the workbook are estimated ad valorem: assessed value = NOI before tax / (exit cap + ratio x millage) */
-      if (!d.re_tax_actual) { const ar = gl['Assessment Ratio'][0], ml = gl['Effective Millage / Tax Rate'][0], st = bkLoad(); st.taxes = Math.round(bkCalc().noi * ar * ml / (d.exit_cap + ar * ml)); bkSave(st); }
-      const c = bkCalc(), m = bkMonthlyReturns(), db = dev ? null : bkDebt();
-      const ac = bkAnnualCF(), unlev = { irr: ac.irr, moic: ac.moic }; /* property-level, no financing, no sponsor fees: what the workbook calls unlevered */
-      out.push({ i: i + 1, id: d.deal_id, type: d.deal_type, y1NOI: c.after, expY1: e['Y1 NOI (after reserves)'], loan: db ? db.loan : null, expLoan: e['Debt (commitment / loan)'], eq: m.contrib, expEq: e['Peak Equity'], unlevIRR: unlev.irr, expUnlevIRR: e['Unlevered IRR'], unlevMOIC: unlev.moic, expUnlevMOIC: e['Unlevered MOIC'], levIRR: m.irr, expLevIRR: e['Levered IRR'], levMOIC: m.moic, expLevMOIC: e['Levered MOIC'] }); });
-    return out; }, [G, MODEARG]);
+      if (!d.re_tax_actual) { const ar = gl['Assessment Ratio'][0], ml = gl['Effective Millage / Tax Rate'][0], st = bkLoad(); st.taxes = Math.round(bkCalc().noi * ar * ml / (d.exit_cap + ar * ml)); bkSave(st); if (IMPLIED) { const st2 = bkLoad(); st2.taxes = Math.round(st2.taxes + (bkCalc().after - e['Y1 NOI (after reserves)'])); bkSave(st2); } }
+      const c = bkCalc(), m = bkMonthlyReturns(), db = dev ? null : bkDebt(), fd = dev ? bkDevFundingV10() : null, tk = dev ? bkDevTakeoutV11() : null;
+      const ac = dev ? null : bkAnnualCF(), unlev = dev ? bkRunWith({ debtEnabled: false }, () => { const x = bkMonthlyReturns(); return { irr: x.irr, moic: x.moic }; }) : { irr: ac.irr, moic: ac.moic }; /* property-level, no financing, no sponsor fees: what the workbook calls unlevered */
+      out.push({ i: i + 1, id: d.deal_id, type: d.deal_type, y1NOI: tk ? tk.stabPointNOI : c.after, expY1: e['Y1 NOI (after reserves)'], loan: db ? db.loan : (fd ? fd.commit : null), unlevCost: fd ? fd.unlev : null, expUnlevCost: e['Unlevered All-In Cost'], levCost: fd ? fd.levered : null, expLevCost: e['Levered All-In Cost'], stabVal: tk ? tk.stabVal : null, expStabVal: e['Stabilized Value'], expLoan: e['Debt (commitment / loan)'], eq: fd ? fd.equityTotal : m.contrib, expEq: e['Peak Equity'], unlevIRR: unlev.irr, expUnlevIRR: e['Unlevered IRR'], unlevMOIC: unlev.moic, expUnlevMOIC: e['Unlevered MOIC'], levIRR: m.irr, expLevIRR: e['Levered IRR'], levMOIC: m.moic, expLevMOIC: e['Levered MOIC'] }); });
+    return out; }, [G, MODEARG, IMPLIED]);
   const f = (x, d) => x == null || !isFinite(x) ? '   n/a' : x.toFixed(d), pc = (a, e) => a == null || e == null || typeof e !== 'number' ? '   n/a' : ((a / e - 1) * 100).toFixed(2) + '%', pp = (a, e) => a == null || typeof e !== 'number' ? '   n/a' : ((a - e) * 100).toFixed(2) + ' pts';
   console.log('Deal       Type         Y1 NOI diff    Loan diff     Equity diff   Unlev IRR diff   Lev IRR diff   Lev MOIC diff');
   rows.forEach(r => console.log((r.id).padEnd(10), r.type.padEnd(12), pc(r.y1NOI, r.expY1).padStart(10), pc(r.loan, r.expLoan).padStart(12), pc(r.eq, r.expEq).padStart(12), pp(r.unlevIRR, r.expUnlevIRR).padStart(16), pp(r.levIRR, r.expLevIRR).padStart(14), pc(r.levMOIC, r.expLevMOIC).padStart(14)));
+  if (process.argv.includes('--check')) {
+    /* regression guard: acquisition deals must keep tying to the workbook; development deals are held to a looser bound while their construction-loan and takeout timing is still being reconciled */
+    let bad = 0; const fail = (id, what, v) => { bad++; console.log('FAIL ' + id + ' ' + what + ' ' + v); };
+    rows.forEach(r => { const rel = (a, e) => Math.abs(a / e - 1), dp = (a, e) => Math.abs(a - e);
+      if (r.type === 'Acquisition') { if (rel(r.y1NOI, r.expY1) > 0.001) fail(r.id, 'Y1 NOI', pc(r.y1NOI, r.expY1)); if (rel(r.loan, r.expLoan) > 0.001) fail(r.id, 'loan', pc(r.loan, r.expLoan)); if (rel(r.eq, r.expEq) > 0.002) fail(r.id, 'equity', pc(r.eq, r.expEq));
+        if (dp(r.unlevIRR, r.expUnlevIRR) > 0.002) fail(r.id, 'unlevered IRR', pp(r.unlevIRR, r.expUnlevIRR)); if (dp(r.levIRR, r.expLevIRR) > 0.004) fail(r.id, 'levered IRR', pp(r.levIRR, r.expLevIRR)); if (rel(r.levMOIC, r.expLevMOIC) > 0.02) fail(r.id, 'levered multiple', pc(r.levMOIC, r.expLevMOIC)); }
+      else { if (rel(r.y1NOI, r.expY1) > 0.005) fail(r.id, 'stabilised NOI', pc(r.y1NOI, r.expY1)); if (rel(r.levCost, r.expLevCost) > 0.03) fail(r.id, 'levered cost', pc(r.levCost, r.expLevCost)); } });
+    console.log(bad ? bad + ' tie-out check(s) failed' : 'tie-out checks passed (' + rows.filter(r => r.type === 'Acquisition').length + ' acquisition deals within tolerance, ' + rows.filter(r => r.type !== 'Acquisition').length + ' development deals within the looser bound)');
+    await b.close(); process.exit(bad ? 1 : 0);
+  }
   if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify(rows, null, 1));
   await b.close();
 })();
