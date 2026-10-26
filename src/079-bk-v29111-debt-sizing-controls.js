@@ -24,6 +24,10 @@ window.bkSetDebtEnabled = function(v){
   if(typeof showSheet === 'function') showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Debt');
 };
 /* Entered as a percentage, stored as a decimal, consistent with acqLTV/acqDSCR. */
+window.bkSetLenderNoiBasis = function(v){
+  var s = bkLoad(); s.lenderNoiBasis = (v === 'after') ? 'after' : ''; bkSave(s);
+  if(typeof showSheet === 'function') showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Debt');
+};
 window.bkSetAcqDebtYield = function(pctText){
   var n = Number(pctText);
   var s = bkLoad(); s.acqDebtYield = (isFinite(n) && n > 0) ? n/100 : 0; bkSave(s);
@@ -66,6 +70,13 @@ function panel(){
     +     ' onchange="bkSetAcqDebtYield(this.value)"></td>'
     +   '<td data-bk-align="text">%</td>'
     +   '<td>' + (Number(s.acqDebtYield)>0 ? chip('','INPUT') : chip('','NOT APPLIED')) + '</td></tr>'
+    + '<tr><td class="rowlabel" data-bk-align="text">Lender Tests Use<span class="bk-sub">NOI before or after replacement reserves (DSCR, and LTV on value)</span></td>'
+    +   '<td class="v"><select onchange="bkSetLenderNoiBasis(this.value)">'
+    +     '<option value=""'  + (s.lenderNoiBasis === 'after' ? '' : ' selected') + '>NOI before reserves</option>'
+    +     '<option value="after"' + (s.lenderNoiBasis === 'after' ? ' selected' : '') + '>NOI after reserves</option>'
+    +   '</select></td>'
+    +   '<td data-bk-align="text">-</td>'
+    +   '<td>' + chip('', 'INPUT') + '</td></tr>'
     + '</tbody></table></div>'
     + '<div class="note-flag" style="margin-top:10px;"><span>&#9432;</span><div>'
     + 'This is the <b>origination</b> minimum debt yield, used to size the loan at close. It is a '

@@ -74,14 +74,16 @@
   window.bkDebtLifecycle=function(){return bkDebt().lifecycle;};
   window.bkDebt=function(){
     const s=bkEnsureV04(),op=bkCalc(),basis=Number(s.purchasePrice)*(1+Number(s.closingCostsPct)+bkAcqFeePct(s));
-    const stab=Number(s.exitCap)>0?op.noi/Number(s.exitCap):0;
+    const stab=Number(s.exitCap)>0?((s.lenderNoiBasis==='after'&&isFinite(op.after))?op.after:op.noi)/Number(s.exitCap):0;
     /* CONVENTION cvLtvBasis: the value the acquisition LTV test is applied to. LTC, DSCR and debt
        yield are unchanged and the loan is still the lowest of all constraints. */
     const ltvBasis=bkConventions(s).cvLtvBasis, price=Number(s.purchasePrice)||0;
     const ltvValue=ltvBasis==='price'?price:ltvBasis==='lesser'?(stab>0?Math.min(price,stab):price):stab;
     const byLTV=Number(s.acqLTV)*ltvValue,byLTC=Number(s.acqLTC)>0?Number(s.acqLTC)*basis:Infinity;
     const coupon=bkDebtRateForMonth(s,1),amortMonths=Math.max(1,Math.round(Number(s.acqAmort)*12)),unitPmt=bkPmt(coupon/12,amortMonths,1);
-    const byDSCR=(Number(s.acqDSCR)>0&&unitPmt>0)?(op.noi/Number(s.acqDSCR))/(unitPmt*12):Infinity;
+    /* lenderNoiBasis (optional): 'after' runs the lender tests (DSCR, and LTV when it is measured on value) on NOI after replacement reserves, as many lenders do; blank = NOI before reserves, the original behaviour. */
+    const dscrNoi=(s.lenderNoiBasis==='after'&&isFinite(op.after))?op.after:op.noi;
+    const byDSCR=(Number(s.acqDSCR)>0&&unitPmt>0)?(dscrNoi/Number(s.acqDSCR))/(unitPmt*12):Infinity;
     /* V29.11.0 - fourth ORIGINATION constraint. Uses op.noi, the SAME underwriting NOI the
        DSCR test uses, so adding a constraint never changes the debt engine's NOI basis.
        acqDebtYield is the ACQUISITION minimum and is deliberately a DIFFERENT field from
@@ -91,7 +93,7 @@
        via a falsy-OR and must never be used to mean no debt. */
     const debtOff=(s.debtEnabled===false);
     const raw=Math.max(0,Math.min(byLTV,byLTC,byDSCR,byDebtYield)),loan=debtOff?0:Math.floor(raw/1000)*1000,fee=debtOff?0:loan*Number(s.acqOrigFee);
-    const initialPmt=bkPmt(coupon/12,amortMonths,loan),dscr=initialPmt?op.noi/(initialPmt*12):0,ltv=ltvValue?loan/ltvValue:0,ltc=basis?loan/basis:0;
+    const initialPmt=bkPmt(coupon/12,amortMonths,loan),dscr=initialPmt?dscrNoi/(initialPmt*12):0,ltv=ltvValue?loan/ltvValue:0,ltc=basis?loan/basis:0;
     let binding=debtOff?'DEBT OFF':'LTV';const rounded=x=>Math.floor(x/1000)*1000;
     if(!debtOff){ if(rounded(byDebtYield)===loan)binding='DEBT YIELD';
       else if(rounded(byDSCR)===loan)binding='DSCR'; else if(rounded(byLTC)===loan)binding='LTC'; }
@@ -99,9 +101,9 @@
     const L=bkDebtLifecycleCore(s,loan,hold,debtOff,()=>bkAnnualCF().arr);
     const months=L.combined,annual=L.annual,liveR=months.filter(x=>x.loan!=='NONE');
     /* V32.3 (CV-D2): reported payment and going-in DSCR use the ACTUAL month-1 contractual payment (interest-only during an IO period). The amortizing figures stay available as pmtAmortizing / dscrAmortizing. Debt SIZING is unchanged (still sized on the amortizing constant). */
-    const goingInPmt=(L.combined[0]&&L.combined[0].loan!=='NONE')?L.combined[0].payment:0,goingInDscr=goingInPmt?op.noi/(goingInPmt*12):0,pmtBasis=Math.round(Number(s.acqIO)*12)>0?'INTEREST-ONLY':'AMORTIZING';
+    const goingInPmt=(L.combined[0]&&L.combined[0].loan!=='NONE')?L.combined[0].payment:0,goingInDscr=goingInPmt?dscrNoi/(goingInPmt*12):0,pmtBasis=Math.round(Number(s.acqIO)*12)>0?'INTEREST-ONLY':'AMORTIZING';
     const equity=basis+fee-loan,maxCoupon=liveR.length?Math.max(...liveR.map(x=>x.annualRate)):coupon,minCoupon=liveR.length?Math.min(...liveR.map(x=>x.annualRate)):coupon;
-    return{s,op,basis,stab,ltvBasis,ltvValue,byLTV,byLTC,byDSCR,byDebtYield,debtEnabled:!debtOff,loan,fee,pmt:debtOff?0:goingInPmt,dscr:debtOff?0:goingInDscr,pmtBasis,pmtAmortizing:debtOff?0:initialPmt,dscrAmortizing:debtOff?0:dscr,ltv:debtOff?0:ltv,ltc:debtOff?0:ltc,binding,months,annual,equity,debtAtSale:debtOff?0:L.payoffAtSale,coupon,rateType:isFloating(s)?'Floating':'Fixed',maxCoupon,minCoupon,lifecycle:L};
+    return{s,op,basis,stab,ltvBasis,ltvValue,byLTV,byLTC,byDSCR,byDebtYield,dscrNoi,debtEnabled:!debtOff,loan,fee,pmt:debtOff?0:goingInPmt,dscr:debtOff?0:goingInDscr,pmtBasis,pmtAmortizing:debtOff?0:initialPmt,dscrAmortizing:debtOff?0:dscr,ltv:debtOff?0:ltv,ltc:debtOff?0:ltc,binding,months,annual,equity,debtAtSale:debtOff?0:L.payoffAtSale,coupon,rateType:isFloating(s)?'Floating':'Fixed',maxCoupon,minCoupon,lifecycle:L};
   };
 
   const _du=sheetDealUnderwrite;

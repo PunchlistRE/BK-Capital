@@ -85,18 +85,21 @@ window.bkAnnualCF = function(){
   const _cv = bkConventions(s);
   const gExp = _cv.cvRentGrowthStart === 'year2' ? function(m){ return Math.ceil(m/12) - 1; } : function(m){ return m/12; };
   const opexVar = _cv.cvOpexVariablePct;
+  /* rentGrowthY1 (optional): a different rent growth rate for the first twelve months, then rentGrowth after (an 'operating year 1 trend'). Blank or 0 = rentGrowth throughout, which is every existing deal. Used only with continuous growth. */
+  const rentGrowthY1 = _cv.cvRentGrowthStart === 'month1' && Number(s.rentGrowthY1) > 0 ? Number(s.rentGrowthY1) : null;
+  const rentF = rentGrowthY1 === null ? function(m){ return Math.pow(1+rentGrowth, gExp(m)); } : function(m){ return Math.pow(1+rentGrowthY1, Math.min(m,12)/12) * Math.pow(1+rentGrowth, Math.max(m-12,0)/12); };
 
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
-    const resRev = (k_GPR/12) * resOcc * Math.pow(1+rentGrowth, gExp(m));
+    const resRev = (k_GPR/12) * resOcc * rentF(m);
     // CONVENTION cvBadDebtBasis: 'gross' charges gross potential rent; 'afterVacancy' and the legacy
     // monthly behaviour charge rent after vacancy (the legacy expression is kept literally).
-    const bad = _cv.cvBadDebtBasis==='gross' ? -((k_GPR/12) * Math.pow(1+rentGrowth, gExp(m)))*badDebtPct : -resRev*badDebtPct;
+    const bad = _cv.cvBadDebtBasis==='gross' ? -((k_GPR/12) * rentF(m))*badDebtPct : -resRev*badDebtPct;
     // Applied to GROSS potential rent, exactly as the workbook does, using the same
     // expression the vacancy split below already uses so the parts still sum to the whole.
     // At the default of zero both terms are -0, and x + -0 === x for every x, so no existing
     // figure can move by a floating-point bit.
-    const _gprG   = (k_GPR/12) * Math.pow(1+rentGrowth, gExp(m));
+    const _gprG   = (k_GPR/12) * rentF(m);
     const ltl     = -_gprG*ltlPct;
     const concess = -_gprG*(m<=stabMonths ? concessLUPct : concessPct);
     const netRes = resRev+bad+ltl+concess;
@@ -161,7 +164,9 @@ window.bkAnnualCF = function(){
   // in_exit_basis defaults to "NOI After Reserves" -- Havard's actual Excel setting; the app has
   // no separate toggle for this yet, so that default is used unconditionally).
   let fwdSum=0;
-  for(let mm=holdMonths+1; mm<=holdMonths+12; mm++) fwdSum += monthNOI(mm).noi;
+  /* exitNoiBasis (optional): 'before' prices the sale on forward NOI before replacement reserves; blank = after reserves (the original behaviour). */
+  const exitBefore = s.exitNoiBasis === 'before';
+  for(let mm=holdMonths+1; mm<=holdMonths+12; mm++){ const r_ = monthNOI(mm); fwdSum += exitBefore ? r_.noiBeforeReserves : r_.noi; }
   const terminalNOI = fwdSum;
   const grossSale = Number(s.exitCap) ? terminalNOI/Number(s.exitCap) : 0;
   const saleCost = grossSale*Number(s.saleCostPct);
