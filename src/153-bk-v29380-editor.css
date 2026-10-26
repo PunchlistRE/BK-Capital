@@ -43,3 +43,5 @@
 
 .ae-grid td select{ min-width:132px; } .ae-grid td input.num{ min-width:96px; }
 .body-grid:has(> .main-col > .ae){ grid-template-columns:minmax(0,1fr) !important; } .ae{ max-width:none; }
+.ae-grid input.w{ min-width:110px; text-align:left; } .ae-grid input[type=date]{ min-width:128px; }
+.ae-x{ border:0; background:transparent; color:var(--ae-mut,#8a8f98); font-size:18px; line-height:1; cursor:pointer; padding:0 6px; } .ae-x:hover{ color:#c0392b; }

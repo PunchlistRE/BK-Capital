@@ -41,6 +41,8 @@
 /* capex: dated one-off capital items below NOI, each {name, month:'YYYY-MM', amount}. Returns the amount falling in each operating month 1..months (month 1 is the closing month). */
 window.bkCapexByMonth = function(s, months){
   const out = new Array(months).fill(0), list = Array.isArray(s && s.capex) ? s.capex : [];
+  /* leasing costs (TI and LC) from the commercial lease model are capital below NOI */
+  if(typeof bkLeaseOn === 'function' && bkLeaseOn(s)){ const lc = bkLeaseCosts(s, months); for(let i = 0; i < months; i++) out[i] += lc.ti[i] + lc.lc[i]; }
   if(!list.length) return out;
   const c = bkParseDealDate(s.closing, '2026-01-01'), cy = c.getFullYear(), cm = c.getMonth() + 1;
   list.forEach(function(l){ const mm = /^(\d{4})-(\d{1,2})/.exec(String(l && l.month || '')), v = Number(l && l.amount); if(!mm || !isFinite(v)) return;
@@ -114,6 +116,8 @@ window.bkAnnualCF = function(){
   /* taxes step once a year, from operating year 2 */
   const taxA = (_gc && _gc.tax) || [], taxFactor = _has('tax') ? function(yr){ let f = 1; for(let k = 2; k <= yr; k++) f *= 1 + (_ok(taxA[k-1]) ? Number(taxA[k-1]) : taxGrowth); return f; } : function(yr){ return Math.pow(1+taxGrowth, yr-1); };
 
+  /* commercial lease model: tenant-by-tenant retail income for the hold and the 12 forward months used for the sale */
+  const LM = (typeof bkLeaseOn === 'function' && bkLeaseOn(s)) ? bkLeaseEval(s, holdMonths + 12, { tax:taxFactor, opex:opexF }, true) : null;
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
     const resRev = (k_GPR/12) * resOcc * rentF(m);
@@ -128,14 +132,15 @@ window.bkAnnualCF = function(){
     const ltl     = -_gprG*ltlPct;
     const concess = -_gprG*(m<=stabMonths ? concessLUPct : concessPct);
     const netRes = resRev+bad+ltl+concess;
-    const comm = (k_RetailAnn/12) * commOcc * commF(m);
+    const comm = LM ? (LM.rent[m-1] + LM.rec[m-1]) * (1 - LM.creditLoss) : (k_RetailAnn/12) * commOcc * commF(m);
     const other = (k_OtherAnn/12) * otherF(m);
     const egi = netRes+comm+other;
     const opexGF = opexF(m);
     // V27 intentional divergence from Excel SYS_CF!G50 (see the block comment above this function):
     // revenue-weighted blend of residential/commercial occupancy, not residential occupancy alone.
     const revWeightTotal = k_GPR + k_RetailAnn;
-    const blendedOcc = revWeightTotal>0 ? (k_GPR*resOcc + k_RetailAnn*commOcc)/revWeightTotal : 1;
+    const commOccM = LM ? LM.occ[m-1] : commOcc;
+    const blendedOcc = revWeightTotal>0 ? (k_GPR*resOcc + k_RetailAnn*commOccM)/revWeightTotal : 1;
     // legacy split kept as the literal expression so legacy deals reproduce bit-for-bit
     const ctrlOpex = -(k_CtrlOpex/12) * opexGF * (opexVar === 0.4 ? (0.6+0.4*blendedOcc) : ((1-opexVar) + opexVar*blendedOcc));
     const insurance = -(k_InsAnn/12) * opexGF;
@@ -155,7 +160,7 @@ window.bkAnnualCF = function(){
     // and no existing figure can move by so much as a floating-point bit.
     const gprGross  = _gprG;
     const resVac    = resRev - gprGross;          // negative; resRev = gprGross * resOcc
-    const commGross = (k_RetailAnn/12) * commF(m);
+    const commGross = LM ? LM.rent[m-1] + LM.rec[m-1] : (k_RetailAnn/12) * commF(m);
     const commVac   = comm - commGross;           // negative; comm = commGross * commOcc
     return {egi, totalOpex, noiBeforeReserves, noi,
             gprGross, resVac, resRev, bad, ltl, concess, netRes,
@@ -222,7 +227,7 @@ window.bkAnnualCF = function(){
 
   const cfs=[initial, ...arr.map((a,i)=>a.after-capexM.slice(i*12,(i+1)*12).reduce((t,v)=>t+v,0)+(i===n-1?netSale:0))];
 
-  return {s, arr, monthly, holdMonths, terminalNOI, grossSale, saleCost, netSale, initial, cfs, irr, moic, acqDate, capex:capexM};
+  return {s, arr, monthly, holdMonths, terminalNOI, grossSale, saleCost, netSale, initial, cfs, irr, moic, acqDate, capex:capexM, lease:LM};
 };
 
 // Property CF's note-flag and engine badge still described the old flat-annual-growth
