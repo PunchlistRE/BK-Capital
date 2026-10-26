@@ -38,6 +38,15 @@
 // like every other revenue line, the same treatment Excel gives commercial/other/opex. Havard has
 // zero residential revenue (100% commercial), so this choice doesn't affect any Havard-verified
 // figure -- it has not been checked against a residential-bearing deal.
+/* capex: dated one-off capital items below NOI, each {name, month:'YYYY-MM', amount}. Returns the amount falling in each operating month 1..months (month 1 is the closing month). */
+window.bkCapexByMonth = function(s, months){
+  const out = new Array(months).fill(0), list = Array.isArray(s && s.capex) ? s.capex : [];
+  if(!list.length) return out;
+  const c = bkParseDealDate(s.closing, '2026-01-01'), cy = c.getFullYear(), cm = c.getMonth() + 1;
+  list.forEach(function(l){ const mm = /^(\d{4})-(\d{1,2})/.exec(String(l && l.month || '')), v = Number(l && l.amount); if(!mm || !isFinite(v)) return;
+    const k = (Number(mm[1]) - cy) * 12 + (Number(mm[2]) - cm) + 1; if(k >= 1 && k <= months) out[k - 1] += v; });
+  return out;
+};
 window.bkAnnualCF = function(){
   const s = bkEnsureV13();
   const y1 = bkCalc();
@@ -87,7 +96,23 @@ window.bkAnnualCF = function(){
   const opexVar = _cv.cvOpexVariablePct;
   /* rentGrowthY1 (optional): a different rent growth rate for the first twelve months, then rentGrowth after (an 'operating year 1 trend'). Blank or 0 = rentGrowth throughout, which is every existing deal. Used only with continuous growth. */
   const rentGrowthY1 = _cv.cvRentGrowthStart === 'month1' && Number(s.rentGrowthY1) > 0 ? Number(s.rentGrowthY1) : null;
-  const rentF = rentGrowthY1 === null ? function(m){ return Math.pow(1+rentGrowth, gExp(m)); } : function(m){ return Math.pow(1+rentGrowthY1, Math.min(m,12)/12) * Math.pow(1+rentGrowth, Math.max(m-12,0)/12); };
+  /* growthCurves (optional): year-by-year growth rates {rent, other, opex, tax, commercial: [year1, year2, ...]}; a blank year uses the single rate. With continuous growth the rate for year k applies through operating year k; with annual steps it applies at the start of year k (year 1 has no step). curveShiftRent carries an upside or downside case's rent-growth shift onto the years entered explicitly. No curve = the original expressions, bit for bit. */
+  const _gc = (s.growthCurves && typeof s.growthCurves === 'object') ? s.growthCurves : null, _shiftRent = Number(s.curveShiftRent) || 0;
+  const _ok = function(v){ return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); };
+  const _has = function(k){ const a = _gc && _gc[k]; return Array.isArray(a) && a.some(_ok); };
+  function growthFactor(stream, scalar, y1, legacy){
+    if(!_has(stream) && !(y1 > 0 && stream === 'rent')) return legacy;
+    const a = (_gc && _gc[stream]) || [], cont = _cv.cvRentGrowthStart === 'month1', memo = [1];
+    const rate = function(k){ if(_ok(a[k-1])) return Number(a[k-1]) + (stream === 'rent' ? _shiftRent : 0); if(k === 1 && stream === 'rent' && y1 > 0 && cont) return y1; return scalar; };
+    const full = function(Y){ while(memo.length <= Y){ const k = memo.length; memo.push(memo[k-1] * (1 + rate(cont ? k : k + 1))); } return memo[Y]; };   /* product of the first Y full-year steps */
+    return cont ? function(m){ const Y = Math.ceil(m/12); return full(Y-1) * Math.pow(1 + rate(Y), (m - 12*(Y-1))/12); } : function(m){ return full(Math.ceil(m/12) - 1); };
+  }
+  const rentF = growthFactor('rent', rentGrowth, rentGrowthY1, rentGrowthY1 === null ? function(m){ return Math.pow(1+rentGrowth, gExp(m)); } : function(m){ return Math.pow(1+rentGrowthY1, Math.min(m,12)/12) * Math.pow(1+rentGrowth, Math.max(m-12,0)/12); });
+  const commF = growthFactor('commercial', commGrowth, 0, function(m){ return Math.pow(1+commGrowth, gExp(m)); });
+  const otherF = growthFactor('other', otherGrowth, 0, function(m){ return Math.pow(1+otherGrowth, gExp(m)); });
+  const opexF = growthFactor('opex', opexGrowth, 0, function(m){ return Math.pow(1+opexGrowth, gExp(m)); });
+  /* taxes step once a year, from operating year 2 */
+  const taxA = (_gc && _gc.tax) || [], taxFactor = _has('tax') ? function(yr){ let f = 1; for(let k = 2; k <= yr; k++) f *= 1 + (_ok(taxA[k-1]) ? Number(taxA[k-1]) : taxGrowth); return f; } : function(yr){ return Math.pow(1+taxGrowth, yr-1); };
 
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
@@ -103,10 +128,10 @@ window.bkAnnualCF = function(){
     const ltl     = -_gprG*ltlPct;
     const concess = -_gprG*(m<=stabMonths ? concessLUPct : concessPct);
     const netRes = resRev+bad+ltl+concess;
-    const comm = (k_RetailAnn/12) * commOcc * Math.pow(1+commGrowth, gExp(m));
-    const other = (k_OtherAnn/12) * Math.pow(1+otherGrowth, gExp(m));
+    const comm = (k_RetailAnn/12) * commOcc * commF(m);
+    const other = (k_OtherAnn/12) * otherF(m);
     const egi = netRes+comm+other;
-    const opexGF = Math.pow(1+opexGrowth, gExp(m));
+    const opexGF = opexF(m);
     // V27 intentional divergence from Excel SYS_CF!G50 (see the block comment above this function):
     // revenue-weighted blend of residential/commercial occupancy, not residential occupancy alone.
     const revWeightTotal = k_GPR + k_RetailAnn;
@@ -114,7 +139,7 @@ window.bkAnnualCF = function(){
     // legacy split kept as the literal expression so legacy deals reproduce bit-for-bit
     const ctrlOpex = -(k_CtrlOpex/12) * opexGF * (opexVar === 0.4 ? (0.6+0.4*blendedOcc) : ((1-opexVar) + opexVar*blendedOcc));
     const insurance = -(k_InsAnn/12) * opexGF;
-    const taxes = -(k_TaxYr1/12) * Math.pow(1+taxGrowth, opYear-1);
+    const taxes = -(k_TaxYr1/12) * taxFactor(opYear);
     const mgmt = -egi*mgmtPct;
     const totalOpex = ctrlOpex+insurance+taxes+mgmt;
     const noiBeforeReserves = egi+totalOpex;
@@ -130,7 +155,7 @@ window.bkAnnualCF = function(){
     // and no existing figure can move by so much as a floating-point bit.
     const gprGross  = _gprG;
     const resVac    = resRev - gprGross;          // negative; resRev = gprGross * resOcc
-    const commGross = (k_RetailAnn/12) * Math.pow(1+commGrowth, gExp(m));
+    const commGross = (k_RetailAnn/12) * commF(m);
     const commVac   = comm - commGross;           // negative; comm = commGross * commOcc
     return {egi, totalOpex, noiBeforeReserves, noi,
             gprGross, resVac, resRev, bad, ltl, concess, netRes,
@@ -182,10 +207,11 @@ window.bkAnnualCF = function(){
      moved the unlevered multiple by 0.05-0.30%. Both flows keep the same modeled date, so
      the date-weighted IRR is mathematically unchanged; the multiple is now conventional
      (total inflows / total outflows). */
+  const capexM = bkCapexByMonth(s, holdMonths);
   const values=[initial], dates=[new Date(acqDate)];
   for(let m=1; m<=holdMonths; m++){
     const r = monthNOI(m);
-    let cf = r.noi;
+    let cf = r.noi - capexM[m-1];
     if(m===holdMonths) cf += netSale;
     values.push(cf);
     dates.push(bkMonthEnd(acqDate, m));   // V32.1: month-end
@@ -194,9 +220,9 @@ window.bkAnnualCF = function(){
   const inflows = values.reduce((a,v)=>a+Math.max(0,v),0), outflows = values.reduce((a,v)=>a+Math.max(0,-v),0);
   const moic = outflows ? inflows/outflows : 0;
 
-  const cfs=[initial, ...arr.map((a,i)=>a.after+(i===n-1?netSale:0))];
+  const cfs=[initial, ...arr.map((a,i)=>a.after-capexM.slice(i*12,(i+1)*12).reduce((t,v)=>t+v,0)+(i===n-1?netSale:0))];
 
-  return {s, arr, monthly, holdMonths, terminalNOI, grossSale, saleCost, netSale, initial, cfs, irr, moic, acqDate};
+  return {s, arr, monthly, holdMonths, terminalNOI, grossSale, saleCost, netSale, initial, cfs, irr, moic, acqDate, capex:capexM};
 };
 
 // Property CF's note-flag and engine badge still described the old flat-annual-growth

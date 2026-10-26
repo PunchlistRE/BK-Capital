@@ -28,7 +28,7 @@
     for(let m=1;m<=months;m++){const y=Math.ceil(m/12),a=u.arr[Math.min(y-1,u.arr.length-1)],mo=(u.monthly&&u.monthly[m-1])||null,
         egi=mo?mo.egi:a.egi/12,noi=mo?mo.noiBeforeReserves:a.noi/12,reserve=mo?(mo.noiBeforeReserves-mo.noi):(a.noi-a.after)/12,
         assetFee=egi*Number(s.assetMgmtPct||0),sale=m===months?u.netSale:0,dispoFee=m===months?u.grossSale*dispPct:0;const ds=L.flows.ds[m-1],payoff=(m===months)?L.payoffAtSale:0,refiProceeds=L.flows.refiProceeds[m-1],refiShortfall=L.flows.refiShortfall[m-1],balloonEq=L.flows.balloonEquity[m-1];
-      const other=noi-reserve-ds-assetFee+sale-dispoFee-payoff+refiProceeds-refiShortfall-balloonEq;
+      const capexAmt=(u.capex&&u.capex[m-1])||0,other=noi-reserve-ds-assetFee+sale-dispoFee-payoff+refiProceeds-refiShortfall-balloonEq-capexAmt;
       const draw=(m===1)?eqDraw:0,cf=other-draw,dt=bkMonthEnd(start,m);
       values.push(cf);dates.push(dt);xv.push(other);xd.push(dt);
       rows.push({m,y,dt,egi,noi,reserve,ds,assetFee,sale,dispoFee,payoff,refi:refiProceeds,refiEq:refiShortfall,balloonEq,eqDraw:draw,cf,wfContrib:draw+Math.max(0,-other),wfDist:Math.max(0,other)});}

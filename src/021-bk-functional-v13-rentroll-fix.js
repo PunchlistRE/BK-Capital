@@ -109,6 +109,9 @@ function bkRentRollStats(rr){
   };
 }
 window.bkRentRollStats = bkRentRollStats;
+/* miscIncome: flat income lines (roof antenna, parking, storage...), each {name, amount, freq:'Annually'|'Monthly'}. Added to other income, so it grows with other-income growth and bears the management fee. */
+function bkMiscIncomeAnnual(s){ const a = Array.isArray(s && s.miscIncome) ? s.miscIncome : []; return a.reduce(function(t, l){ const v = Number(l && l.amount); return t + (isFinite(v) ? v * (l.freq === 'Monthly' ? 12 : 1) : 0); }, 0); }
+window.bkMiscIncomeAnnual = bkMiscIncomeAnnual;
 window.bkCalc = function(){
   const s = bkEnsureV13();
   // V2.6 fix: a populated Rent Roll is always the canonical revenue source -- it must not require a
@@ -136,7 +139,7 @@ window.bkCalc = function(){
   const ltl = -gpr*(Number(s.lossToLeasePct)||0);
   const concess = -gpr*(Number(s.concessionPct)||0);
   const netRes = gpr+vacancy+bad+ltl+concess;
-  const other = Number(s.otherIncomePerUnit)*Number(s.units);
+  const other = Number(s.otherIncomePerUnit)*Number(s.units) + bkMiscIncomeAnnual(s);
 
   const commercial = useRR ? (applyMarket?rrs.commMarket:rrs.commInPlace)*12 : Number(s.commercialArea)*Number(s.commercialRent);
   const recovery = useRR ? rrs.commRecoveries : Number(s.commercialArea)*Number(s.recovery);
