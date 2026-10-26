@@ -9,7 +9,7 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) { fails++; console.log('FAIL ' + n + (d ? '  ' + d : '')); } };
   const fresh = deal => p.evaluate(a => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(a); }, deal);
   await fresh(Object.assign({}, A, { capex: [{ name: 'Roof', month: '2028-07', amount: 55000 }], miscIncome: [{ name: 'Antenna', amount: 15000, freq: 'Annually' }] }));
-  check('Reports is a navigation group of four sheets with a ribbon tab', await p.evaluate(() => { const g = GROUPS.find(x => x.id === 'reports'); return !!g && g.sheets.join() === 'Cash Flow Report,Valuation Report,Tenant Report,Audit Report' && NAV_TABS.some(t => t.id === 'reports'); }));
+  check('Reports is a navigation group of five sheets with a ribbon tab', await p.evaluate(() => { const g = GROUPS.find(x => x.id === 'reports'); return !!g && g.sheets.join() === 'Cash Flow Report,Valuation Report,Tenant Report,Lease Schedule,Audit Report' && NAV_TABS.some(t => t.id === 'reports'); }));
   /* cash flow reconciles with the engine */
   const r = await p.evaluate(() => { const cf = bkRpCashFlow(), ac = bkAnnualCF(), m = bkMonthlyReturns(), n = ac.arr.length, f = cf.f, d = bkDebt(), out = { n, egr: [], noib: [], noi: [], eqYears: [] };
     for (let y = 1; y <= n; y++) { out.egr.push(Math.abs(f.egr(y) - ac.arr[y - 1].egi)); out.noib.push(Math.abs(f.noib(y) - ac.arr[y - 1].noi)); out.noi.push(Math.abs(f.noi(y) - ac.arr[y - 1].after)); }

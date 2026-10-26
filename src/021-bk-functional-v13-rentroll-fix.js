@@ -141,9 +141,11 @@ window.bkCalc = function(){
   const netRes = gpr+vacancy+bad+ltl+concess;
   const other = Number(s.otherIncomePerUnit)*Number(s.units) + bkMiscIncomeAnnual(s);
 
-  const commercial = useRR ? (applyMarket?rrs.commMarket:rrs.commInPlace)*12 : Number(s.commercialArea)*Number(s.commercialRent);
-  const recovery = useRR ? rrs.commRecoveries : Number(s.commercialArea)*Number(s.recovery);
-  const commVacRate = Math.max(0,Math.min(1,Number(s.commercialVacancy)));
+  /* with the commercial lease model on, retail income is the tenant schedule's first twelve months (vacancy is explicit in the schedule; only credit loss is a rate) */
+  const LM1 = (typeof bkLeaseOn==='function' && bkLeaseOn(s)) ? bkLeaseYear1(s) : null;
+  const commercial = LM1 ? LM1.rent : useRR ? (applyMarket?rrs.commMarket:rrs.commInPlace)*12 : Number(s.commercialArea)*Number(s.commercialRent);
+  const recovery = LM1 ? LM1.rec : useRR ? rrs.commRecoveries : Number(s.commercialArea)*Number(s.recovery);
+  const commVacRate = LM1 ? LM1.creditLoss : Math.max(0,Math.min(1,Number(s.commercialVacancy)));
   const commercialVac = -(commercial+recovery)*commVacRate;
   const netComm = commercial+recovery+commercialVac;
 
