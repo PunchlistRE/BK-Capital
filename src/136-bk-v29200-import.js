@@ -254,6 +254,7 @@ function confT12(e){
   ['reserves', 'holdYears', 'rentGrowth', 'opexGrowth', 'closingCostsPct', 'saleCostPct'].forEach(function(k){ set(k, 'assumed', 'App default; the statement does not provide it.'); });
   return { fields:F, sum:window.bkConf.summary(F) };
 }
+window.bkImportConfidence = function(p, cap){ return confT12({ p:p, cap:cap, capSrc:p.cap != null ? 'source' : 'default' }); };
 function extract(parsed){
   var props = [];
   parsed.sheets.forEach(function(sh){ var blk = extractBlock(sh.name, sh.rows); if(blk.items.length < 5) return;

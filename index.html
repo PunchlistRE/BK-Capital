@@ -5568,6 +5568,7 @@ function bkReconstructState(dealRow, inputRow, rrRows){
 }
 
 // Expose the pure mappers for the offline round-trip test harness.
+window.bkCloudCfg = bkCloudCfg; window.bkCloudConfigured = bkCloudConfigured;
 window.bkSb = bkSb;   /* V30: shared authenticated transport for the persistence layer */
 window.bkMap = {
   stateToDealRow      : bkStateToDealRow,
@@ -20472,17 +20473,28 @@ function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k) || 'null')
 function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
 function norm(l){ return String(l || '').toLowerCase().replace(/[^a-z& ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
 var CATS = { mgmt:'Management fee', taxes:'Real estate taxes', insurance:'Insurance', utilities:'Utilities', rm:'Repairs and maintenance', contract:'Contract services', payroll:'Payroll', marketing:'Marketing', turnover:'Turnover', ga:'General and admin', exclude:'Not an operating expense (leave out)' };
+/* The rules also ride along on the active deal (deal._learn), which the cloud sync already saves, so they follow you to another computer: loading a deal merges its rules in.
+   A removal leaves a dated tombstone so an older copy on another deal cannot bring the rule back. */
+var lastMerge = 0;
+function mergeFromDeal(force){ var now = Date.now(); if(!force && now - lastMerge < 1500) return; lastMerge = now;
+  try { if(typeof bkLoad !== 'function') return; var s = bkLoad(), L = s && s._learn; if(!L) return; var cur = load(RK, {}), rm = load(RK + '.rm', {}), ch = false, rch = false;
+    Object.keys(L.rules || {}).forEach(function(k){ var r = L.rules[k], t = r.t || 0; if(rm[k] && rm[k] >= t) return; if(!cur[k] || (cur[k].t || 0) < t){ cur[k] = r; ch = true; } });
+    Object.keys(L.rm || {}).forEach(function(k){ var t = L.rm[k]; if(!rm[k] || rm[k] < t){ rm[k] = t; rch = true; } if(cur[k] && (cur[k].t || 0) <= t){ delete cur[k]; ch = true; } });
+    if(ch) save(RK, cur); if(rch) save(RK + '.rm', rm); } catch(e){} }
+function mirrorToDeal(){ try { if(typeof bkLoad !== 'function' || typeof bkSave !== 'function') return; if(typeof bkHasActiveDeal === 'function' && !bkHasActiveDeal()) return;
+  var s = bkLoad(), next = JSON.stringify({ rules:load(RK, {}), rm:load(RK + '.rm', {}) }); if(JSON.stringify(s._learn || null) === next) return; s._learn = JSON.parse(next); bkSave(s); } catch(e){} }
 window.bkLearn = {
+  merge:function(){ mergeFromDeal(true); },
   CATS:CATS, norm:norm,
-  get:function(label){ var r = load(RK, {})[norm(label)]; return r && CATS[r.cat] ? r.cat : null; },
-  set:function(label, cat){ var n = norm(label); if(!n || !CATS[cat]) return; var r = load(RK, {}); r[n] = { cat:cat, label:String(label).slice(0, 80), at:new Date().toISOString().slice(0, 10) }; save(RK, r); this.log({ kind:'class', field:String(label).slice(0, 80), now:cat }); },
-  remove:function(label){ var r = load(RK, {}); delete r[norm(label)]; save(RK, r); },
-  all:function(){ return load(RK, {}); },
+  get:function(label){ mergeFromDeal(); var r = load(RK, {})[norm(label)]; return r && CATS[r.cat] ? r.cat : null; },
+  set:function(label, cat){ var n = norm(label); if(!n || !CATS[cat]) return; var r = load(RK, {}); r[n] = { cat:cat, label:String(label).slice(0, 80), at:new Date().toISOString().slice(0, 10), t:Date.now() }; save(RK, r); var rm = load(RK + '.rm', {}); if(rm[n]){ delete rm[n]; save(RK + '.rm', rm); } this.log({ kind:'class', field:String(label).slice(0, 80), now:cat }); mirrorToDeal(); },
+  remove:function(label){ var r = load(RK, {}), n = norm(label); if(r[n]){ delete r[n]; save(RK, r); var rm = load(RK + '.rm', {}); rm[n] = Date.now(); save(RK + '.rm', rm); mirrorToDeal(); } },
+  all:function(){ mergeFromDeal(); return load(RK, {}); },
   log:function(e){ var l = load(LK, []); e.at = new Date().toISOString().slice(0, 10); l.push(e); save(LK, l.slice(-200)); },
   logAll:function(){ return load(LK, []); },
-  clear:function(){ try { localStorage.removeItem(RK); localStorage.removeItem(LK); } catch(e){} },
+  clear:function(){ var r = load(RK, {}), rm = load(RK + '.rm', {}), t = Date.now(); Object.keys(r).forEach(function(k){ rm[k] = t; }); try { localStorage.removeItem(RK); localStorage.removeItem(LK); } catch(e){} save(RK + '.rm', rm); mirrorToDeal(); },
   options:function(autoCat, allowed){ var o = '<option value="">Automatic' + (autoCat ? ' (' + esc(CATS[autoCat] || autoCat) + ')' : '') + '</option>'; return function(cur){ return o + (allowed || Object.keys(CATS)).map(function(k){ return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(CATS[k]) + '</option>'; }).join(''); }; },
-  panel:function(){ var n = Object.keys(load(RK, {})).length, m = load(LK, []).filter(function(e){ return e.kind === 'fix'; }).length; if(!n && !m) return '';
+  panel:function(){ mergeFromDeal(); var n = Object.keys(load(RK, {})).length, m = load(LK, []).filter(function(e){ return e.kind === 'fix'; }).length; if(!n && !m) return '';
     return box('<b>What the importer has learned here</b> <span style="opacity:.75">' + n + ' expense wording' + (n === 1 ? '' : 's') + ' classified your way' + (m ? ', ' + m + ' figure correction' + (m === 1 ? '' : 's') + ' noted' : '') + '. It applies them to every later import in this browser.</span> <button type="button" class="pl-hbtn" style="margin-left:8px" onclick="if(confirm(\'Forget everything the importer has learned from your corrections?\')){bkLearn.clear();showSheet(currentSheet)}">Forget</button>'); }
 };
 })();
@@ -20744,6 +20756,7 @@ function confT12(e){
   ['reserves', 'holdYears', 'rentGrowth', 'opexGrowth', 'closingCostsPct', 'saleCostPct'].forEach(function(k){ set(k, 'assumed', 'App default; the statement does not provide it.'); });
   return { fields:F, sum:window.bkConf.summary(F) };
 }
+window.bkImportConfidence = function(p, cap){ return confT12({ p:p, cap:cap, capSrc:p.cap != null ? 'source' : 'default' }); };
 function extract(parsed){
   var props = [];
   parsed.sheets.forEach(function(sh){ var blk = extractBlock(sh.name, sh.rows); if(blk.items.length < 5) return;
@@ -22100,6 +22113,7 @@ function all(){ return open().then(function(d){ return new Promise(function(res,
 window.bkDocsList = function(id){ id = id == null ? dealId() : String(id); return all().then(function(a){ return a.filter(function(f){ return f.dealId === id; }).sort(function(x, y){ return y.t - x.t; }); }); };
 window.bkDocsAdd = function(slot, file, id){ id = id == null ? dealId() : String(id); var rec = { id:'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), dealId:id, slot:slot, name:file.name || (slot + '.bin'), type:file.type || '', size:file.size, t:Date.now(), blob:file }; return tx('readwrite', function(st){ if(slot === 'photo'){ var q = st.getAll(); q.onsuccess = function(){ q.result.filter(function(f){ return f.dealId === id && f.slot === 'photo'; }).forEach(function(f){ st.delete(f.id); }); st.put(rec); }; return q; } return st.put(rec); }).then(function(){ return rec; }); };
 window.bkDocsGet = function(fid){ return open().then(function(d){ return new Promise(function(res, rej){ var r = d.transaction('files', 'readonly').objectStore('files').get(fid); r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); }; }); }); };
+window.bkDocsPut = function(rec){ return tx('readwrite', function(st){ if(rec.slot === 'photo'){ var q = st.getAll(); q.onsuccess = function(){ q.result.filter(function(f){ return f.dealId === rec.dealId && f.slot === 'photo' && f.id !== rec.id; }).forEach(function(f){ st.delete(f.id); }); st.put(rec); }; return q; } return st.put(rec); }); };
 window.bkDocsRemove = function(fid){ return tx('readwrite', function(st){ return st.delete(fid); }); };
 function toDataURL(blob){ return new Promise(function(res){ var fr = new FileReader(); fr.onload = function(){ res(fr.result); }; fr.onerror = function(){ res(''); }; fr.readAsDataURL(blob); }); }
 /* the photo: scaled to 1800 px on its long side and stored as a JPEG */
@@ -22121,12 +22135,12 @@ function render(){
   var id = dealId(); if(!id){ hdr.main = '<div class="card" style="padding:16px">Open or create a deal first.</div>'; return hdr; }
   if(listing === null || listing.id !== id){ listing = { id:id, files:null }; window.bkDocsList(id).then(function(a){ listing = { id:id, files:a }; window.bkDocsWarm().then(function(){ if(typeof showSheet === 'function' && document.querySelector('#bk-docs-root')) showSheet('Deal Documents'); }); }); }
   var files = listing.files || [], photo = files.filter(function(f){ return f.slot === 'photo'; })[0], pu = window.bkDealPhotoURL();
-  var main = '<div id="bk-docs-root" style="max-width:1000px">' + (busy ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div>' + esc(busy) + '</div></div>' : '')
+  var main = '<div id="bk-docs-root" style="max-width:1000px">' + (window.bkDocsSyncNote ? window.bkDocsSyncNote() : '') + (busy ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div>' + esc(busy) + '</div></div>' : '')
     + '<div class="card" style="padding:16px;display:grid;grid-template-columns:minmax(220px,340px) 1fr;gap:18px;align-items:center"><div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#eef2f6;display:flex;align-items:center;justify-content:center;color:#7a8da1;font-size:12px;text-align:center">' + (pu ? '<img alt="Property photo" src="' + pu + '" style="width:100%;height:100%;object-fit:cover">' : 'No photo yet') + '</div><div><div style="font-weight:700;font-size:15px;margin-bottom:4px">Property photo</div><div style="font-size:13px;opacity:.75;margin-bottom:10px">Shown on the Overview and on the cover of the PDF summary. A landscape exterior shot works best.' + (photo ? '<br>' + esc(photo.name) + ' · ' + fmtSize(photo.size) : '') + '</div><label class="pl-hbtn primary" style="display:inline-block;cursor:pointer">' + (photo ? 'Replace photo' : 'Upload photo') + '<input type="file" accept="image/*" style="display:none" onchange="bkDocsUpload(\'photo\',this)"></label>' + (photo ? ' <button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + photo.id + '\')">Remove</button>' : '') + '</div></div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px">' + SLOTS.map(function(sl){
       var fs = files.filter(function(f){ return f.slot === sl[0]; });
       var rows = fs.map(function(f){ var ex = (sl[0] === 'om' || sl[0] === 'listing') && /\.pdf$/i.test(f.name) ? '<button type="button" class="pl-hbtn" onclick="bkDocsExtract(\'' + f.id + '\')">Extract into this deal</button>' : sl[0] === 't12' ? '<button type="button" class="pl-hbtn" onclick="bkDocsExtract(\'' + f.id + '\')">Extract into this deal</button>' : '';
-        return '<div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:7px 0;border-top:1px solid var(--line,#dbe4ec);font-size:12.5px"><span style="flex:1;min-width:140px;word-break:break-word"><b>' + esc(f.name) + '</b><br><span style="opacity:.65">' + fmtSize(f.size) + ' · ' + new Date(f.t).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) + '</span></span>' + ex + '<button type="button" class="pl-hbtn" onclick="bkDocsDownload(\'' + f.id + '\')">Download</button><button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + f.id + '\')">Remove</button></div>'; }).join('');
+        return '<div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:7px 0;border-top:1px solid var(--line,#dbe4ec);font-size:12.5px"><span style="flex:1;min-width:140px;word-break:break-word"><b>' + esc(f.name) + '</b><br><span style="opacity:.65">' + fmtSize(f.size) + ' · ' + new Date(f.t).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) + (window.bkDocsSyncLabel ? window.bkDocsSyncLabel(f.id) : '') + '</span></span>' + ex + '<button type="button" class="pl-hbtn" onclick="bkDocsDownload(\'' + f.id + '\')">Download</button><button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + f.id + '\')">Remove</button></div>'; }).join('');
       return '<div class="card" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-weight:700">' + sl[1] + '</div><label class="pl-hbtn" style="cursor:pointer">Upload<input type="file" ' + (sl[3] ? 'accept="' + sl[3] + '"' : '') + ' multiple style="display:none" onchange="bkDocsUpload(\'' + sl[0] + '\',this)"></label></div><div style="font-size:12px;opacity:.7;margin:3px 0 6px">' + sl[2] + '</div>' + (rows || '<div style="font-size:12px;opacity:.55;padding-top:6px;border-top:1px solid var(--line,#dbe4ec)">Nothing uploaded</div>') + '</div>'; }).join('') + '</div>'
     + '<div id="bk-docs-extract"></div></div>';
   hdr.main = main; hdr.meta = { Property:s && s.name, Files:files.filter(function(f){ return f.slot !== 'photo'; }).length, Photo:photo ? 'Yes' : 'No' }; return hdr;
@@ -22144,6 +22158,58 @@ window.bkDocsExtract = function(fid){ if(typeof window.bkDocsExtractHook === 'fu
     return Object.assign({}, o, { main:o.main.replace(tag, '<div class="pl-hero" style="position:relative;min-height:150px;padding-right:220px"><img alt="" src="' + u + '" style="position:absolute;right:0;top:0;width:200px;height:150px;object-fit:cover;border-radius:10px;box-shadow:0 6px 18px rgba(14,42,74,.25)">') }); };
   if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
 })();
+})();
+</script>
+
+<script id="bk-v29360-docsync">
+/* Deal Documents sync. The photo and source files are still stored in this browser first (instant, works offline). When you are signed in they are also copied to a private
+   storage bucket in your account, listed on the deal (deal._files, which the deal sync already saves), and fetched back on another computer. Needs the one-time migration
+   BK_Capital_V35_Documents_Migration.sql; until it is run the files simply stay in this browser and the page says so. */
+(function(){
+'use strict';
+if(typeof window.bkDocsAdd !== 'function' || typeof window.bkCloudCfg !== 'function') return;
+var BUCKET = 'deal-documents', MAX = 45 * 1048576, state = {}, note = '', synced = {};
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function user(){ return safe(function(){ return window.bkAuthSignedIn && window.bkAuthSignedIn() ? window.bkAuthUser() : null; }, null); }
+function enabled(){ return !!(user() && safe(function(){ return window.bkCloudConfigured ? window.bkCloudConfigured() : true; }, true)); }
+function dealCode(){ var s = safe(function(){ return bkLoad(); }, null); return s ? String(s.dealId || s.name || '') : ''; }
+function seg(v){ return String(v).replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'file'; }
+function pathFor(rec){ return user().id + '/' + seg(rec.dealId) + '/' + rec.id + '-' + seg(rec.name); }
+function call(method, p, body, type){ var c = window.bkCloudCfg(), go = function(){ return fetch(c.url + '/storage/v1/object/' + BUCKET + '/' + p.split('/').map(encodeURIComponent).join('/'), { method:method, headers:Object.assign({ apikey:c.anonKey, Authorization:'Bearer ' + window.bkAuthToken() }, type ? { 'Content-Type':type, 'x-upsert':'true' } : {}), body:body }); };
+  return (typeof window.bkAuthEnsureFresh === 'function' ? window.bkAuthEnsureFresh().catch(function(){}).then(go) : go()).catch(function(e){ var ne = new Error('unreachable'); ne.kind = 'network'; throw ne; }); }
+function failure(res){ return res.text().then(function(t){ var m = ''; try { m = (JSON.parse(t) || {}).message || (JSON.parse(t) || {}).error || ''; } catch(e){ m = t; } if(res.status === 404 || /bucket not found/i.test(m)) note = 'setup'; var e = new Error(m || ('HTTP ' + res.status)); e.status = res.status; return e; }); }
+function manifest(fn){ var s = safe(function(){ return bkLoad(); }, null); if(!s) return; s._files = s._files || {}; fn(s._files); bkSave(s); }
+function refresh(){ if(window.bkDocsInvalidate) window.bkDocsInvalidate(); if(typeof showSheet === 'function' && typeof currentSheet !== 'undefined' && /^(Deal Documents|Home)$/.test(currentSheet)) showSheet(currentSheet); }
+function push(rec){
+  if(!enabled()){ state[rec.id] = 'local'; return Promise.resolve(false); }
+  if(rec.size > MAX){ state[rec.id] = 'large'; return Promise.resolve(false); }
+  state[rec.id] = 'syncing'; var p = pathFor(rec);
+  return call('POST', p, rec.blob, rec.type || 'application/octet-stream').then(function(res){ if(!res.ok) return failure(res).then(function(e){ throw e; });
+    if(dealCode() === rec.dealId) manifest(function(m){ Object.keys(m).forEach(function(k){ if(m[k].slot === 'photo' && rec.slot === 'photo' && k !== rec.id){ call('DELETE', m[k].path).catch(function(){}); delete m[k]; } }); m[rec.id] = { slot:rec.slot, name:rec.name, type:rec.type, size:rec.size, t:rec.t, path:p }; });
+    state[rec.id] = 'synced'; note = note === 'setup' ? '' : note; return true; })
+  .catch(function(e){ state[rec.id] = note === 'setup' ? 'setup' : 'error:' + (e && e.message || e); return false; });
+}
+function drop(fid){ var m = safe(function(){ return bkLoad()._files; }, null), e = m && m[fid]; if(!e || !enabled()) return Promise.resolve(); return call('DELETE', e.path).then(function(){ manifest(function(mm){ delete mm[fid]; }); }).catch(function(){}); }
+function put(rec){ return window.bkDocsPut(rec); }
+function pull(id){ var m = safe(function(){ return bkLoad()._files; }, null) || {}, ids = Object.keys(m); if(!ids.length) return Promise.resolve(0);
+  return list0(id).then(function(local){ var have = {}; local.forEach(function(f){ have[f.id] = 1; }); var need = ids.filter(function(k){ return !have[k]; }); var n = 0;
+    return need.reduce(function(chain, k){ return chain.then(function(){ var e = m[k]; return call('GET', e.path).then(function(res){ if(!res.ok) return failure(res).then(function(er){ throw er; }); return res.blob(); }).then(function(blob){ return put({ id:k, dealId:id, slot:e.slot, name:e.name, type:e.type, size:e.size, t:e.t, blob:new Blob([blob], { type:e.type || blob.type }) }); }).then(function(){ state[k] = 'synced'; n++; }).catch(function(er){ state[k] = 'error:' + (er && er.message || er); }); }); }, Promise.resolve()).then(function(){ return n; }); }); }
+function reconcile(id){ return list0(id).then(function(local){ var m = safe(function(){ return bkLoad()._files; }, null) || {}; local.forEach(function(f){ if(m[f.id]) state[f.id] = state[f.id] || 'synced'; });
+  return local.filter(function(f){ return !m[f.id] && state[f.id] !== 'syncing' && state[f.id] !== 'large'; }).reduce(function(chain, f){ return chain.then(function(){ return push(f); }); }, Promise.resolve()); }); }
+/* once per deal and sign-in: restore what the account has, then upload what only this browser has */
+function syncDeal(){ var id = safe(function(){ return String(bkLoad().dealId || ''); }, ''); if(!id || !enabled()) return Promise.resolve(); var key = id + '|' + user().id; if(synced[key]) return synced[key];
+  synced[key] = pull(id).then(function(n){ return reconcile(id).then(function(){ if(n) { delete window.bkDocsPhotoCache[id]; } refresh(); }); }).catch(function(){ delete synced[key]; });
+  return synced[key]; }
+var add0 = window.bkDocsAdd; window.bkDocsAdd = function(){ return add0.apply(this, arguments).then(function(rec){ push(rec).then(refresh); return rec; }); };
+var rm0 = window.bkDocsRemove; window.bkDocsRemove = function(fid){ var d = drop(fid); return rm0.apply(this, arguments).then(function(r){ delete state[fid]; return d.then(function(){ return r; }); }); };
+var warm0 = window.bkDocsWarm; window.bkDocsWarm = function(){ var p = warm0.apply(this, arguments); syncDeal(); return p; };
+var list0 = window.bkDocsList; window.bkDocsList = function(){ var p = list0.apply(this, arguments); syncDeal(); return p; };
+window.bkDocsSyncNow = function(){ synced = {}; note = ''; return syncDeal(); };
+window.bkDocsSyncLabel = function(fid){ var st = state[fid], on = safe(function(){ return bkLoad()._files && bkLoad()._files[fid]; }, null);
+  if(on && !st) st = 'synced'; if(!st) return ''; var t = st === 'synced' ? 'saved to your account' : st === 'syncing' ? 'saving to your account...' : st === 'large' ? 'this browser only (over 45 MB)' : st === 'setup' ? 'this browser only (account storage not set up)' : st === 'local' ? 'this browser only (sign in to keep it)' : 'not saved: ' + st.slice(6);
+  return ' · <span style="' + (st === 'synced' ? 'color:#1F7A45' : st === 'syncing' ? '' : 'color:#8A6212') + '">' + esc(t) + '</span>'; };
+window.bkDocsSyncNote = function(){ return note === 'setup' ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div>Your files are kept in this browser only. To keep them in your account and open them on another computer, run <b>BK_Capital_V35_Documents_Migration.sql</b> once in your Supabase project, then press <a href="#" onclick="bkDocsSyncNow();return false">Try again</a>.</div></div>' : ''; };
 })();
 </script>
 

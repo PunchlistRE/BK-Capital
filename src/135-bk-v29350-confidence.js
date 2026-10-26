@@ -23,17 +23,28 @@ function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k) || 'null')
 function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
 function norm(l){ return String(l || '').toLowerCase().replace(/[^a-z& ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
 var CATS = { mgmt:'Management fee', taxes:'Real estate taxes', insurance:'Insurance', utilities:'Utilities', rm:'Repairs and maintenance', contract:'Contract services', payroll:'Payroll', marketing:'Marketing', turnover:'Turnover', ga:'General and admin', exclude:'Not an operating expense (leave out)' };
+/* The rules also ride along on the active deal (deal._learn), which the cloud sync already saves, so they follow you to another computer: loading a deal merges its rules in.
+   A removal leaves a dated tombstone so an older copy on another deal cannot bring the rule back. */
+var lastMerge = 0;
+function mergeFromDeal(force){ var now = Date.now(); if(!force && now - lastMerge < 1500) return; lastMerge = now;
+  try { if(typeof bkLoad !== 'function') return; var s = bkLoad(), L = s && s._learn; if(!L) return; var cur = load(RK, {}), rm = load(RK + '.rm', {}), ch = false, rch = false;
+    Object.keys(L.rules || {}).forEach(function(k){ var r = L.rules[k], t = r.t || 0; if(rm[k] && rm[k] >= t) return; if(!cur[k] || (cur[k].t || 0) < t){ cur[k] = r; ch = true; } });
+    Object.keys(L.rm || {}).forEach(function(k){ var t = L.rm[k]; if(!rm[k] || rm[k] < t){ rm[k] = t; rch = true; } if(cur[k] && (cur[k].t || 0) <= t){ delete cur[k]; ch = true; } });
+    if(ch) save(RK, cur); if(rch) save(RK + '.rm', rm); } catch(e){} }
+function mirrorToDeal(){ try { if(typeof bkLoad !== 'function' || typeof bkSave !== 'function') return; if(typeof bkHasActiveDeal === 'function' && !bkHasActiveDeal()) return;
+  var s = bkLoad(), next = JSON.stringify({ rules:load(RK, {}), rm:load(RK + '.rm', {}) }); if(JSON.stringify(s._learn || null) === next) return; s._learn = JSON.parse(next); bkSave(s); } catch(e){} }
 window.bkLearn = {
+  merge:function(){ mergeFromDeal(true); },
   CATS:CATS, norm:norm,
-  get:function(label){ var r = load(RK, {})[norm(label)]; return r && CATS[r.cat] ? r.cat : null; },
-  set:function(label, cat){ var n = norm(label); if(!n || !CATS[cat]) return; var r = load(RK, {}); r[n] = { cat:cat, label:String(label).slice(0, 80), at:new Date().toISOString().slice(0, 10) }; save(RK, r); this.log({ kind:'class', field:String(label).slice(0, 80), now:cat }); },
-  remove:function(label){ var r = load(RK, {}); delete r[norm(label)]; save(RK, r); },
-  all:function(){ return load(RK, {}); },
+  get:function(label){ mergeFromDeal(); var r = load(RK, {})[norm(label)]; return r && CATS[r.cat] ? r.cat : null; },
+  set:function(label, cat){ var n = norm(label); if(!n || !CATS[cat]) return; var r = load(RK, {}); r[n] = { cat:cat, label:String(label).slice(0, 80), at:new Date().toISOString().slice(0, 10), t:Date.now() }; save(RK, r); var rm = load(RK + '.rm', {}); if(rm[n]){ delete rm[n]; save(RK + '.rm', rm); } this.log({ kind:'class', field:String(label).slice(0, 80), now:cat }); mirrorToDeal(); },
+  remove:function(label){ var r = load(RK, {}), n = norm(label); if(r[n]){ delete r[n]; save(RK, r); var rm = load(RK + '.rm', {}); rm[n] = Date.now(); save(RK + '.rm', rm); mirrorToDeal(); } },
+  all:function(){ mergeFromDeal(); return load(RK, {}); },
   log:function(e){ var l = load(LK, []); e.at = new Date().toISOString().slice(0, 10); l.push(e); save(LK, l.slice(-200)); },
   logAll:function(){ return load(LK, []); },
-  clear:function(){ try { localStorage.removeItem(RK); localStorage.removeItem(LK); } catch(e){} },
+  clear:function(){ var r = load(RK, {}), rm = load(RK + '.rm', {}), t = Date.now(); Object.keys(r).forEach(function(k){ rm[k] = t; }); try { localStorage.removeItem(RK); localStorage.removeItem(LK); } catch(e){} save(RK + '.rm', rm); mirrorToDeal(); },
   options:function(autoCat, allowed){ var o = '<option value="">Automatic' + (autoCat ? ' (' + esc(CATS[autoCat] || autoCat) + ')' : '') + '</option>'; return function(cur){ return o + (allowed || Object.keys(CATS)).map(function(k){ return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(CATS[k]) + '</option>'; }).join(''); }; },
-  panel:function(){ var n = Object.keys(load(RK, {})).length, m = load(LK, []).filter(function(e){ return e.kind === 'fix'; }).length; if(!n && !m) return '';
+  panel:function(){ mergeFromDeal(); var n = Object.keys(load(RK, {})).length, m = load(LK, []).filter(function(e){ return e.kind === 'fix'; }).length; if(!n && !m) return '';
     return box('<b>What the importer has learned here</b> <span style="opacity:.75">' + n + ' expense wording' + (n === 1 ? '' : 's') + ' classified your way' + (m ? ', ' + m + ' figure correction' + (m === 1 ? '' : 's') + ' noted' : '') + '. It applies them to every later import in this browser.</span> <button type="button" class="pl-hbtn" style="margin-left:8px" onclick="if(confirm(\'Forget everything the importer has learned from your corrections?\')){bkLearn.clear();showSheet(currentSheet)}">Forget</button>'); }
 };
 })();
