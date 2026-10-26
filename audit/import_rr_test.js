@@ -51,6 +51,19 @@ const A = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(() => showSheet('Import Rent Roll')); await p.setInputFiles('#bkRRFile', path.join(FX, 'rent_roll_yardi.csv')); await p.waitForTimeout(1500);
   await p.click('button:has-text("REPLACE THE EXISTING")'); await p.waitForTimeout(400);
   check('"replace" leaves exactly the imported units', await p.evaluate(() => bkLoad().rentRoll.length) === EXP.units.length);
+  // confidence: a roll whose totals tie is verified; a missing column or a wrong basis is Low; unmapped market rent is Assumed
+  await p.evaluate(() => showSheet('Import Rent Roll')); await p.setInputFiles('#bkRRFile', path.join(FX, 'rent_roll_yardi.csv')); await p.waitForTimeout(1500);
+  const rt = await p.evaluate(() => ({ t: document.querySelector('#viewport').innerText, c: bkRRConf() }));
+  check('the rent roll shows confidence, and the printed totals verify square feet and rent', /Confidence in what was read/i.test(rt.t) && rt.c.fields.sf.l === 'verified' && rt.c.fields.inplace.l === 'verified' && rt.c.sum.low === 0, JSON.stringify(rt.c.sum));
+  check('market rent mapped by header is Check, lease dates are Check, residential or commercial is Check', rt.c.fields.market.l === 'check' && rt.c.fields.dates.l === 'check' && rt.c.fields.type.l === 'check');
+  await p.evaluate(() => bkRROpt('basis', 'annual')); await p.waitForTimeout(400);
+  const rb = await p.evaluate(() => ({ t: document.querySelector('#viewport').innerText, c: bkRRConf() }));
+  check('the wrong rent basis breaks the printed total and the rent is marked Low', rb.c.fields.inplace.l === 'low' && rb.c.sum.low >= 1 && /[1-9]\d* low/i.test(rb.t), JSON.stringify(rb.c.fields.inplace));
+  await p.evaluate(() => bkRROpt('basis', 'monthly')); await p.waitForTimeout(300);
+  const nm = await p.evaluate(() => { const rows = [['Unit', 'Sq Ft', 'Lease Rent', 'Tenant'], ['A1', 500, 1000, 'x'], ['A2', 600, 1100, 'y']]; window.bkRRMap('market', ''); return bkRRConf().fields; });
+  check('a roll with no market-rent column marks market rent Assumed', nm.market.l === 'assumed', JSON.stringify(nm.market));
+  await p.evaluate(() => bkRRApply('replace', false)); await p.waitForTimeout(300);
+  check('applying keeps a record of what was flagged', await p.evaluate(() => !!bkLoad()._impRR && typeof bkLoad()._impRR.fields === 'object'));
   // mapping controls: annual rents and a forced type
   const ann = await p.evaluate(() => { const rows = [['Unit', 'Sq Ft', 'Annual Rent', 'Market Rent (annual)', 'Tenant'], ['A1', 500, 12000, 14400, 'x'], ['A2', 600, 0, 15600, '']]; const r = bkRRParse(rows, { basis: 'annual' }); return r && r.units.map(u => [u.inPlaceRent, u.marketRent, u.status]); });
   check('annual rent amounts are converted to monthly and a blank tenant is vacant', JSON.stringify(ann) === JSON.stringify([[1000, 1200, 'Occupied'], [0, 1300, 'Vacant']]), JSON.stringify(ann));
