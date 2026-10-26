@@ -445,6 +445,7 @@ function bkReconstructState(dealRow, inputRow, rrRows){
 }
 
 // Expose the pure mappers for the offline round-trip test harness.
+window.bkCloudCfg = bkCloudCfg; window.bkCloudConfigured = bkCloudConfigured;
 window.bkSb = bkSb;   /* V30: shared authenticated transport for the persistence layer */
 window.bkMap = {
   stateToDealRow      : bkStateToDealRow,

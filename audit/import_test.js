@@ -44,6 +44,11 @@ const A = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(() => bkImportCreate(0)); await p.waitForTimeout(800);
   const made = await p.evaluate(() => { const s = bkLoad(); return { has: !!s._imp, keys: s._imp ? Object.keys(s._imp.fields) : [] }; });
   check('creating the deal keeps the low and check flags on it', made.has && made.keys.includes('gsf') && !made.keys.includes('purchasePrice'), JSON.stringify(made));
+  // learned wording rides on the deal, so it follows you to another computer, and a removal is not undone by an older copy
+  const lr = await p.evaluate(() => { bkCreateNewDeal({ name: 'Learn Test', dealId: 'LRN-1' }); bkLearn.clear(); bkLearn.set('Janitorial Supplies', 'ga'); const o = { onDeal: Object.keys(bkLoad()._learn.rules).length }; const saved = JSON.parse(JSON.stringify(bkLoad()._learn));
+    localStorage.removeItem('bkcapital.learn.rules.v1'); localStorage.removeItem('bkcapital.learn.rules.v1.rm'); bkLearn.merge(); o.restored = bkLearn.get('janitorial supplies');
+    bkLearn.remove('Janitorial Supplies'); o.removed = bkLearn.get('Janitorial Supplies'); const s = bkLoad(); s._learn = saved; bkSave(s); bkLearn.merge(); o.resurrected = bkLearn.get('Janitorial Supplies'); return o; });
+  check('learned wording is saved on the deal, restored on a fresh browser, and a removal is not undone by an old copy', lr.onDeal === 1 && lr.restored === 'ga' && lr.removed === null && lr.resurrected === null, JSON.stringify(lr));
   await p.evaluate(() => bkLearn.clear());
   const X = process.env.BK_YARDI_XLSM, PDF = process.env.BK_SHOREPOINTE_PDF;
   const same = (a, bv, tol) => Math.abs(a - bv) <= tol;

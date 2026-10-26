@@ -129,3 +129,9 @@ Guide, second pass: turning it on mid-deal opens **Where this deal stands** (eac
 
 ## Build and import confidence
 `index.html` is built from `src/` (`node build.js`; CI runs `node build.js --check`). The Import OM sections of `ui_test.js` also check the confidence flags: a clean read shows verified figures and none marked Low, a deliberately misread expense turns Low with "NOI DIFFERS", an entered price is verified, flagged figures are marked in the Guide and clear when confirmed, and the development import shows confidence too.
+
+## Document sync, learning, and the real-file benchmark
+- `docsync_test.js` runs Deal Documents sync against a mocked Supabase storage endpoint (upload, list on the deal, restore on a fresh browser, remove, offline and no-bucket fallbacks). It proves the client logic; it does not talk to a real project. Run `BK_Capital_V35_Documents_Migration.sql` once in Supabase to switch the real thing on.
+- Learned expense wording is saved on the active deal (`_learn`) as well as in the browser, so it follows the deal through cloud sync; `import_test.js` covers restore and the removal tombstone.
+- `node build.js --lint` (also run in CI) checks that every script part compiles, style braces balance, ids are unique and every `src/` file is in the manifest.
+- `real_import_bench.js <folder>` runs your own OMs, T-12s and rent rolls (folders `om/`, `t12/`, `rentroll/`, or named so) through the importers and prints the share that read cleanly and the median time. It is the way to put a number on real-world accuracy; nothing leaves your machine.
