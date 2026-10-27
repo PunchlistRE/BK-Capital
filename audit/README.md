@@ -225,3 +225,5 @@ Three fills, three jobs, never swapped. Defined once at the top of `src/162a-bk-
 Everything else takes no fill: cells are plain, calculated cells use the editor's read-only tint, inputs are boxed fields. Status chips keep their own pass / warn / fail colours.
 
 For a new page: use `tr.grandtotal` (or `data-bk-emph="key"`) for the answer row, `tr.subtotal` for a subtotal, `tr.sec` / `tr.section` for a divider, and never set a background in the page itself. `fillrule_test.js` walks every sheet at 1280 px and 390 px and fails on a value row filled as a header or a heading filled as a key metric.
+
+A full polish pass added: no sideways page overflow on any of the 77 sheets at 768, 1024 and 1280 px (and phone), dark mode spot-checked on Overview, Debt, Cash Flow Report and Sponsor CF, status chips never break inside a word, and `lease_fix_test` accepts the two-decimal percentage display.
