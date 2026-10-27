@@ -30,13 +30,15 @@ function stkLabels(root){
   [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
     [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
 }
+/* a number cell is right-aligned, whatever column rule marked it left (set inline so no stylesheet order can undo it) */
+function numRight(root){ [].forEach.call(root.querySelectorAll('td.bk-a-num[data-bk-col="left"]'), function(td){ if(td.style.getPropertyValue('text-align') !== 'right') td.style.setProperty('text-align', 'right', 'important'); }); }
 /* a column that holds status chips is centred, header and cells alike */
 function chipCols(root){
   [].forEach.call(root.querySelectorAll('table'), function(t){
     var cols = {}; [].forEach.call(t.rows, function(r){ [].forEach.call(r.cells, function(c){ if(c.tagName === 'TH' || c.colSpan !== 1) return; var k = c.cellIndex, o = cols[k] || (cols[k] = { chip:0, other:0 }), ch = c.querySelector('.status-chip'), tx = c.textContent.trim();
       if(!tx) return; if(ch && tx === ch.textContent.trim()) o.chip++; else o.other++; }); });
     Object.keys(cols).forEach(function(k){ var o = cols[k]; if(!o.chip || o.chip < 0.6 * (o.chip + o.other)) return;
-      [].forEach.call(t.rows, function(r){ var c = r.cells[k]; if(c && c.colSpan === 1) c.classList.add('bk-col-chip'); }); });
+      [].forEach.call(t.rows, function(r){ var c = r.cells[k]; if(c && c.colSpan === 1){ c.classList.add('bk-col-chip'); if(c.style.getPropertyValue('text-align') !== 'center') c.style.setProperty('text-align', 'center', 'important'); if(c.tagName === 'TH'){ c.classList.remove('bk-h-l', 'bk-h-r'); c.classList.add('bk-h-c'); } } }); });
   });
 }
 /* a figure with a unit beside its box ("12.00 %"): the unit gets a fixed slot inside the cell, and every box in that column gets the same slot, so the figures end on one line and nothing spills across the column border */
@@ -57,7 +59,7 @@ function alignHeads(root){
   [].forEach.call(root.querySelectorAll('table.fin'), function(t){
     var heads = [].filter.call(t.rows, function(r){ return r.parentNode.tagName === 'THEAD' || (r.cells.length && [].every.call(r.cells, function(c){ return c.tagName === 'TH'; })); }); if(!heads.length) return;
     var body = [].filter.call(t.rows, function(r){ return heads.indexOf(r) < 0 && r.cells.length > 1; }).slice(0, 14); if(!body.length) return;
-    heads.forEach(function(hr){ [].forEach.call(hr.cells, function(th){ if(th.colSpan !== 1) return; var i = th.cellIndex, n = { l:0, r:0, c:0 }, tot = 0;
+    heads.forEach(function(hr){ [].forEach.call(hr.cells, function(th){ if(th.colSpan !== 1 || th.classList.contains('bk-col-chip')) return; var i = th.cellIndex, n = { l:0, r:0, c:0 }, tot = 0;
       body.forEach(function(r){ var td = r.cells[i]; if(!td || td.colSpan !== 1 || !td.textContent.trim() && !td.querySelector('input,select')) return; var a = getComputedStyle(td).textAlign; tot++; if(a === 'right' || a === 'end') n.r++; else if(a === 'center') n.c++; else n.l++; });
       if(tot < 2) return; var k = n.r >= n.c && n.r >= n.l ? 'r' : n.c >= n.l ? 'c' : 'l'; if(n[k] / tot < 0.6) return;
       ['bk-h-l', 'bk-h-r', 'bk-h-c'].forEach(function(c){ th.classList.remove(c); }); th.classList.add('bk-h-' + k);
@@ -82,7 +84,7 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });

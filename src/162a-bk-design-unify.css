@@ -136,7 +136,7 @@ html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl 
   html body .brand-bar .pl-user button{ padding:4px 8px; font-size:11px; }
   /* stacked rows: a highlighted or total row is one light band with dark text, nothing boxed inside it */
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal,
-  html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{ background:#e3e9f0 !important; color:#0e2a4a !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{ background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal td{ background:transparent !important; color:#0e2a4a !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td::before, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td::before{ color:#566a80 !important; background:transparent !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td:empty, html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip:not(:has(*)){ display:none !important; }
@@ -153,4 +153,16 @@ html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl 
   html body #viewport .bk-box > div[style*="overflow-x"]{ overflow-x:visible !important; }
   html body #viewport table.fin caption{ white-space:normal !important; line-height:1.3; }
 }
+
+/* a number cell is always right-aligned, even if a column rule marked it left */
+html body #viewport table.fin tbody td.bk-a-num[data-bk-col="left"]{ text-align:right !important; }
+
+/* panels written with an inline rounded border take the same square panel as the rest */
+html body #viewport [style*="border-radius:8px"][style*="border:1px solid"]{ border-radius:0 !important; box-shadow:none !important; }
+
+/* KEY METRICS (weighted IRR, equity multiple, totals that matter): a warm gold band with a gold rule, so they do not blend into the blue-grey header bands */
+:root{ --bk-key-fill:#F5EDD3; --bk-key-ink:#1f2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(184,137,43,.18); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32); } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(184,137,43,.18); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32); }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > :first-child{ box-shadow:inset 4px 0 0 var(--bk-key-rule); }
 
