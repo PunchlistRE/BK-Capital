@@ -31,6 +31,11 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('Debt Capacity: it flags the loan above house capacity by the calculated amount', /above capacity/.test(dt) && /\$11,272,955/.test(dt), dt.replace(/\s+/g, ' ').slice(dt.indexOf('CHECKS'), dt.indexOf('CHECKS') + 160));
   const dbt = await p.evaluate(async () => { showSheet('Debt'); await new Promise(r => setTimeout(r, 700)); return document.querySelector('#viewport .bk-sg').innerText; });
   check('Debt: it reports the loan, the binding constraint and the DSCR against the policy minimum', /\$13,427,000/.test(dbt) && /DSCR/.test(dbt) && /1\.25x/.test(dbt));
+  const lay = await p.evaluate(async () => { showSheet('Debt'); await new Promise(r => setTimeout(r, 700)); const g = document.querySelector('#viewport .bk-sg'), li = [...g.querySelectorAll('.bk-sg-c li')], b = g.querySelector('.bk-sg-badge'); const cols = getComputedStyle(g.querySelector('.bk-sg-grid')).gridTemplateColumns.split(' ').length;
+    g.open = false; g.dispatchEvent(new Event('toggle')); await new Promise(r => setTimeout(r, 50)); const stored = localStorage.getItem('bk-sg-open'); g.open = true; g.dispatchEvent(new Event('toggle')); return { first: li[0] && li[0].className, n: li.length, badge: b && b.innerText, cols, stored, terms: g.querySelectorAll('.bk-sg-d dt').length, next: g.querySelectorAll('.bk-sg-n button').length }; });
+  check('Debt guide: the check that needs attention comes first and is counted in a badge; it reads in two columns, with terms, checks and next steps laid out as lists', lay.first === 'warn' && /1 thing to review/.test(lay.badge) && lay.cols === 2 && lay.terms >= 3 && lay.next === 2, JSON.stringify(lay));
+  check('Debt guide: it flags the loan above house capacity', /above the house capacity/.test(dbt));
+  check('the guide remembers whether it was collapsed', lay.stored === '0', lay.stored);
   /* where the step flow already guides, no second guide; the deal is untouched; the guide stays out of print */
   const d0 = await p.evaluate(async () => { showSheet('Deal Underwrite'); await new Promise(r => setTimeout(r, 600)); return !!document.querySelector('#viewport .bk-sg'); });
   check('Deal Underwrite (covered by the step-by-step flow) shows no extra section guide', d0 === false);
