@@ -870,6 +870,11 @@
 "close": "</script>"
 },
 {
+"file": "174-bk-guideask.js",
+"open": "\n<script id=\"bk-guideask\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
