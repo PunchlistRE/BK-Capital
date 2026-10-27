@@ -21,7 +21,7 @@ function build(){
     for(var k = 0; k < H; k++){ var a = u.arr[k], L = a.lines || {}, rows = m.rows.filter(function(r){ return r.y === k + 1; });
       var ds = sum(rows.map(function(r){ return r.ds; })), fee = sum(rows.map(function(r){ return r.assetFee; })), noi = a.noi, res = -(L.reserves || 0) || sum(rows.map(function(r){ return r.reserve; })), eqin = sum(rows.map(function(r){ return r.eqDraw; }));
       var cf = sum(rows.map(function(r){ return r.cf; })), op = noi - res - ds - fee, events = cf - op + eqin;
-      Y.push({ y:k + 1, gpr:(L.gprGross || 0) + (L.commGross || 0), vac:(L.resVac || 0) + (L.commVac || 0), bad:L.bad || 0, ltl:(L.ltl || 0) + (L.concess || 0), other:L.other || 0, egi:a.egi,
+      Y.push({ y:k + 1, gpr:(L.gprGross || 0) + (L.commGross || 0), vac:(L.resVac || 0) + (L.commVac || 0) - (L.commFree || 0) - (L.commCredit || 0), bad:(L.bad || 0) + (L.commCredit || 0), ltl:(L.ltl || 0) + (L.concess || 0) + (L.commFree || 0), other:L.other || 0, egi:a.egi,
         taxes:L.taxes || 0, ins:L.insurance || 0, ctrl:L.ctrlOpex || 0, mgmt:L.mgmt || 0, opex:-a.expenses, noi:noi, res:-res, noiAfter:a.after, ds:-ds, fee:-fee, cfads:op, dscr:ds ? a.after / ds : null, eqin:eqin, cf:cf, events:events, coc:null });
     }
     var eq = Number(d.equity) || sum(Y.map(function(r){ return r.eqin; }));

@@ -123,10 +123,15 @@ window.bkLeaseEval = function(s, months, fac, detail){
      the conventional treatment, and it is what makes downside and sensitivity cases that raise the commercial vacancy
      rate stress a lease-by-lease deal. Potential income is income from occupied space grossed up to 100% occupancy. */
   var gv = Math.max(0, Math.min(1, num(s.commercialVacancy)));
+  /* POTENTIAL retail income: rent (including abated free rent) and recoveries on the whole schedule at full occupancy.
+     The schedule prices only occupied space, so potential is occupied income grossed up by occupancy; a month with the
+     whole schedule dark carries the last known potential forward. */
+  var lastP = 0;
+  out.potential = out.occ.map(function(o, i){ if(o > 0) lastP = (out.rent[i] + out.free[i] + out.rec[i]) / o; return lastP; });
   out.genVac = out.occ.map(function(o, i){
     if(!(gv > 0) || !(o > 0)) return 0;
     var extra = gv - (1 - o); if(!(extra > 0)) return 0;
-    return extra * (out.rent[i] + out.free[i] + out.rec[i]) / o;
+    return extra * out.potential[i];
   });
   out.genVacRate = gv; if(detail) out.byT.forEach(function(T, i){ var sf = S.tenants[i].sf; T.occ = T.occ.map(function(v){ return v / sf; }); });
   out.creditLoss = Math.max(0, Math.min(1, num(S.M.creditLoss)));
@@ -138,17 +143,21 @@ window.bkLeaseCosts = function(s, months){
   S.segs.forEach(function(g){ if(g.tiAt >= 1 && g.tiAt <= months){ ti[g.tiAt - 1] += g.ti; lc[g.tiAt - 1] += g.lc; } });
   return { ti:ti, lc:lc };
 };
-/* first-year statement for bkCalc: rent after free rent, recoveries on a flat pool */
+/* first-year statement for bkCalc: rent after free rent, recoveries on a flat pool. The flat pool is deliberate: the
+   statement holds every expense at its Year-1 input, so recoveries must be measured against those same figures. Under
+   the standard growth convention (from Year 2) the monthly engine's Year 1 is also flat and the two agree exactly; under
+   the legacy month-1 convention every line of the monthly Year 1, recoveries included, is above the statement by design. */
 window.bkLeaseYear1 = function(s){ var e = bkLeaseEval(s, 12, null, false), t = function(a){ return a.reduce(function(x, v){ return x + v; }, 0); }; return { rent:t(e.rent), rec:t(e.rec), free:t(e.free), occ:t(e.occ) / 12, creditLoss:e.creditLoss, genVac:t(e.genVac) }; };
 /* summary used by the editor and the reports */
 window.bkLeaseSummary = function(s){
-  s = s || bkLoad(); var S = struct(s), H = S.hold, tot = S.tenants.reduce(function(t, x){ return t + x.sf; }, 0), occ0 = 0, walt = 0, inpl = 0, mktv = 0, byYear = {};
+  s = s || bkLoad(); var S = struct(s), H = S.hold, tot = S.tenants.reduce(function(t, x){ return t + x.sf; }, 0), openEnded = 0, occ0 = 0, walt = 0, inpl = 0, mktv = 0, byYear = {};
   (s.leases || []).forEach(function(L){
     var sf = num(L && L.sf); if(!(sf > 0)) return; var occupied = String(L.status) !== 'Vacant' && (num(L.rent) > 0 || L.end); if(!occupied) return;
-    var e = bkParseDealDate(L.end, null), E = e ? S.idx(e) : 9999; occ0 += sf; inpl += sf * num(L.rent); mktv += sf * (num(L.mkt) > 0 ? num(L.mkt) : num(L.rent));
-    var yrs = Math.max(0, Math.min(E, 9999) / 12); walt += sf * yrs; if(e){ var y = Math.max(1, Math.ceil(Math.max(E, 1) / 12)); byYear[y] = (byYear[y] || 0) + sf; }
+    /* a lease with no end date is assumed to run through the analysis, so it counts to the end of the hold */
+    var e = bkParseDealDate(L.end, null), E = e ? S.idx(e) : H; if(!e) openEnded++; occ0 += sf; inpl += sf * num(L.rent); mktv += sf * (num(L.mkt) > 0 ? num(L.mkt) : num(L.rent));
+    var yrs = Math.max(0, E / 12); walt += sf * yrs; if(e){ var y = Math.max(1, Math.ceil(Math.max(E, 1) / 12)); byYear[y] = (byYear[y] || 0) + sf; }
   });
-  return { sf:tot, occSF:occ0, occPct:tot ? occ0 / tot : 0, walt:occ0 ? walt / occ0 : 0, inPlacePsf:occ0 ? inpl / occ0 : 0, marketPsf:occ0 ? mktv / occ0 : 0, byYear:byYear, hold:H / 12 };
+  return { sf:tot, occSF:occ0, occPct:tot ? occ0 / tot : 0, walt:occ0 ? walt / occ0 : 0, inPlacePsf:occ0 ? inpl / occ0 : 0, marketPsf:occ0 ? mktv / occ0 : 0, byYear:byYear, hold:H / 12, openEnded:openEnded };
 };
 /* build tenants from the commercial rows of the unit rent roll (rents there are monthly dollars per suite) */
 window.bkLeaseFromRentRoll = function(s){

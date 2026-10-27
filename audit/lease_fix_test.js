@@ -1,4 +1,4 @@
-// Regression tests for four lease-model defects found in review of #33.
+// Regression tests for the ten lease-model findings from the review of #33.
 //   node audit/lease_fix_test.js index.html [reference.html]
 // reference.html (optional) is a build from before the rollover change; when given, rollover results are compared
 // against it month by month to prove that merging branches changed no figure.
@@ -85,6 +85,54 @@ const deal = (o) => Object.assign({}, A, { commLeaseModel: true, commercialRentG
   check('and the schedule says so', nb.issues.some(x => /No lease start date/.test(x)));
   const ws = await evalDeal(p, deal({ leases: [T({ start: '2019-07-01', end: '2040-12-31', rent: 30, bump: 0.10, recType: 'Gross' })] }));
   check('with a start date, bumps still fall on the lease anniversary (July)', near(ws.rent[5], m) && near(ws.rent[6], m * 1.1) && near(ws.rent[18], m * 1.21), [5, 6, 18].map(i => ws.rent[i].toFixed(0)).join(' / '));
+
+  /* 5. Year-1 recoveries: statement and monthly Year 1 agree under the standard growth convention (base-year tenants included) */
+  const recDeal = (cv) => deal({ cvRentGrowthStart: cv, opexGrowth: 0.03, taxGrowth: 0.03, leases: [T({ end: '2040-12-31', recType: 'NNN' }), T({ tenant: 'Base', suite: '102', end: '2040-12-31', recType: 'BaseYear', start: '2026-01-01' })] });
+  const ry2 = await evalDeal(p, recDeal('year2')), rm1 = await evalDeal(p, recDeal('month1'));
+  const sum12 = a => a.slice(0, 12).reduce((t, v) => t + v, 0);
+  check('growth from Year 2: Year-1 recoveries in the statement equal the monthly Year 1 exactly', near(ry2.calc.recovery, sum12(ry2.rec), 1e-12), `${ry2.calc.recovery.toFixed(2)} vs ${sum12(ry2.rec).toFixed(2)}`);
+  check('legacy month-1 growth: monthly Year-1 recoveries sit above the flat statement, like every other line under that setting', sum12(rm1.rec) > rm1.calc.recovery);
+
+  /* 6. Retail bridge: gross potential at full occupancy, then free rent, credit loss and vacancy in their own rows */
+  const brDeal = deal({ commercialRentGrowth: 0, opexGrowth: 0, taxGrowth: 0, leases: [T({ end: '2028-12-31', recType: 'Gross', bump: 0, mkt: 30 }), T({ tenant: 'Stay', suite: '102', end: '2040-12-31', recType: 'Gross', bump: 0, mkt: 30 })],
+    leaseMkt: MKT({ creditLoss: 0.02, renewPct: 1, bump: 0 }), rolloverAssumptions: Object.assign({}, RA, { renewalProbability: 0 }) });
+  const br = await p.evaluate(d => { bkCreateNewDeal(d); const a = bkAnnualCF(); showSheet('Cash Flow Report');
+    const rows = {}; document.querySelectorAll('#rp-cashflow tbody tr').forEach(r => { const c = [...r.cells].map(x => x.textContent.trim()); if (c.length > 3) rows[c[0]] = c.slice(1, a.arr.length + 1).map(v => { const n = Number(v.replace(/[$,()\s]/g, '')); return /\(/.test(v) ? -n : n; }); });
+    return { lines: a.arr.map(x => x.lines), egi: a.arr.map(x => x.egi), rows }; }, brDeal);
+  const y3 = br.lines[2];
+  check('a suite dark for the downtime: retail gross potential stays at full-occupancy rent (both suites x $30 x 10,000 SF)', near(y3.commGross, 2 * 300000, 1e-9), y3.commGross.toFixed(0));
+  check('the bridge sums exactly: potential + vacancy = collected retail income, every year', br.lines.every(L => near(L.commGross + L.commVac, L.comm, 1e-9)));
+  check('free rent and credit loss are separated out of vacancy', y3.commFree < 0 && y3.commCredit < 0 && near(y3.commCredit, -0.02 * (y3.comm / 0.98), 1e-9), `free ${y3.commFree.toFixed(0)}, credit ${y3.commCredit.toFixed(0)}`);
+  const r3 = k => br.rows[k] ? br.rows[k][2] : NaN;
+  check('Cash Flow report: the retail potential row shows full-occupancy potential', Math.abs(r3('Gross Potential Rent and Recoveries - Retail') - y3.commGross) < 1, `${r3('Gross Potential Rent and Recoveries - Retail')}`);
+  check('Cash Flow report: retail credit loss is in the Credit Loss row and free rent in Concessions', Math.abs(r3('Credit Loss') - (y3.bad + y3.commCredit)) < 1 && Math.abs(r3('Concessions') - (y3.concess + y3.commFree)) < 1);
+  check('Cash Flow report: effective gross revenue still equals the engine, every year', br.egi.every((v, i) => Math.abs(br.rows['Effective Gross Revenue'][i] - v) < 1));
+
+  /* 7. Occupancy weighting: retail dark at closing that leases up later carries its weight in occupancy-variable expenses */
+  const ow = await p.evaluate(d => { bkCreateNewDeal(d); const s = bkLoad(), a = bkAnnualCF(), LM = a.lease, cv = bkConventions(s), v = cv.cvOpexVariablePct, res = 1 - s.vacancy;
+    const k = ['rm','payroll','turnover','utilities','contract','marketing','ga'].reduce((t, x) => t + Number(s[x] || 0), 0) + Number(s.gsf) * Number(s.miscPerGSF || 0);
+    const m = 30, mo = a.monthly[m - 1], resW = bkCalc().gpr / 12, retW = LM.potential[m - 1], blend = (resW * res + retW * LM.occ[m - 1]) / (resW + retW);
+    return { engine: mo.ctrlOpex, expect: -(k / 12) * ((1 - v) + v * blend), occ: LM.occ[m - 1], y1Retail: a.arr[0].lines.comm }; },
+    deal({ cvOpexVariablePct: 0.4, opexGrowth: 0, rentGrowth: 0, leases: [T({ status: 'Vacant', rent: 0, start: '', end: '', over: { vacantMonths: 18 } })] }));
+  check('retail vacant until month 19: in month 30 controllable opex uses the leased-up retail weight', near(ow.engine, ow.expect, 1e-12) && ow.occ > 0.99, `${ow.engine.toFixed(2)} vs ${ow.expect.toFixed(2)}`);
+
+  /* 8. WALT counts a lease with no end date to the end of the hold, not 9999 months */
+  const wl = await p.evaluate(d => { bkCreateNewDeal(d); const sm = bkLeaseSummary(bkLoad()); showSheet('Lease Schedule'); return { walt: sm.walt, open: sm.openEnded, text: document.getElementById('viewport').innerText }; },
+    deal({ holdYears: 5, leases: [T({ end: '2027-12-31' }), T({ tenant: 'Open', suite: '102', end: '' })] }));
+  check('WALT with one lease ending in 12 months and one open-ended over a 5-year hold is (1 + 5) / 2 = 3.0 years', near(wl.walt, 3, 1e-9) && wl.open === 1, wl.walt.toFixed(2));
+  check('and the Lease Schedule says how open-ended leases were counted', /no end date counted to the end of the hold/.test(wl.text));
+
+  /* 9. Lease warnings name the right tenant when an earlier row has no area */
+  const nt = await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Lease Schedule'); return [...document.querySelectorAll('#viewport .rp-ul li')].map(x => x.textContent); },
+    deal({ leases: [T({ tenant: 'Blank Row', sf: 0 }), T({ tenant: 'Open Tenant', suite: '102', end: '' }), T({ tenant: 'Third', suite: '103', end: '' })] }));
+  check('the no-end-date warnings name Open Tenant and Third, not a neighbour or "Tenant"', nt.some(x => /^Open Tenant: No lease end date/.test(x)) && nt.some(x => /^Third: No lease end date/.test(x)) && !nt.some(x => /^Tenant: /.test(x)), nt.filter(x => /end date/.test(x)).join(' | '));
+
+  /* 10. The Cash Flow report reuses the cash flow's leasing costs instead of recomputing them */
+  const cf = await p.evaluate(d => { bkCreateNewDeal(d); const a = bkAnnualCF(); showSheet('Cash Flow Report');
+    const row = [...document.querySelectorAll('#rp-cashflow tbody tr')].find(r => /^Leasing Costs/.test(r.cells[0].textContent));
+    const y1 = -a.lease.ti.slice(0, 12).concat(a.lease.lc.slice(0, 12)).reduce((t, v) => t + v, 0), shown = Number(row.cells[1].textContent.replace(/[$,()\s]/g, '')) * (/\(/.test(row.cells[1].textContent) ? -1 : 1);
+    return { y1, shown }; }, deal({ leases: [T({ end: '2027-06-30' })] }));
+  check('Cash Flow report: the leasing-cost row equals the cash flow\'s own TI and commissions', Math.abs(cf.shown - cf.y1) < 1, `${cf.shown} vs ${cf.y1.toFixed(0)}`);
 
   check('no page errors', p.errs.length === 0 && (!ref || ref.errs.length === 0), p.errs.concat(ref ? ref.errs : []).join(' | '));
   await b.close(); console.log(checks + ' checks, ' + fails + ' failures'); process.exit(fails ? 1 : 0);

@@ -141,7 +141,11 @@ window.bkAnnualCF = function(){
     // revenue-weighted blend of residential/commercial occupancy, not residential occupancy alone.
     const revWeightTotal = k_GPR + k_RetailAnn;
     const commOccM = LM ? LM.occ[m-1] : commOcc;
-    const blendedOcc = revWeightTotal>0 ? (k_GPR*resOcc + k_RetailAnn*commOccM)/revWeightTotal : 1;
+    // lease model: weight by THIS month's residential and retail potential, so retail that is dark or in free rent in
+    // Year 1 still carries its weight once it leases up (the flat path keeps its Year-1 weights unchanged)
+    const resW = LM ? (k_GPR/12) * rentF(m) : 0, retW = LM ? LM.potential[m-1] : 0;
+    const blendedOcc = LM ? ((resW + retW) > 0 ? (resW*resOcc + retW*commOccM)/(resW + retW) : 1)
+                          : (revWeightTotal>0 ? (k_GPR*resOcc + k_RetailAnn*commOccM)/revWeightTotal : 1);
     // legacy split kept as the literal expression so legacy deals reproduce bit-for-bit
     const ctrlOpex = -(k_CtrlOpex/12) * opexGF * (opexVar === 0.4 ? (0.6+0.4*blendedOcc) : ((1-opexVar) + opexVar*blendedOcc));
     const insurance = -(k_InsAnn/12) * opexGF;
@@ -161,18 +165,22 @@ window.bkAnnualCF = function(){
     // and no existing figure can move by so much as a floating-point bit.
     const gprGross  = _gprG;
     const resVac    = resRev - gprGross;          // negative; resRev = gprGross * resOcc
-    const commGross = LM ? LM.rent[m-1] + LM.rec[m-1] : (k_RetailAnn/12) * commF(m);
-    const commVac   = comm - commGross;           // negative; comm = commGross * commOcc
+    // lease model: gross is the schedule's potential at full occupancy; the bridge to collected splits into free rent
+    // (a concession), credit loss and vacancy (downtime, vacant suites and any general allowance), still summing exactly
+    const commGross = LM ? LM.potential[m-1] : (k_RetailAnn/12) * commF(m);
+    const commFree  = LM ? -LM.free[m-1] : 0;
+    const commCredit = LM ? -(LM.rent[m-1] + LM.rec[m-1] - LM.genVac[m-1]) * LM.creditLoss : 0;
+    const commVac   = comm - commGross;           // negative; comm = commGross * commOcc (lease model: all retail losses)
     return {egi, totalOpex, noiBeforeReserves, noi,
             gprGross, resVac, resRev, bad, ltl, concess, netRes,
-            commGross, commVac, comm, other,
+            commGross, commVac, commFree, commCredit, comm, other,
             ctrlOpex, insurance, taxes, mgmt, reserves};
   }
 
   // WAVE 1 EXPOSURE ONLY. The four original accumulators (egi, expenses, noi, after)
   // are computed exactly as before and pushed under exactly their original keys; the
   // line-item accumulators are additive and are what the detailed pro forma renders.
-  const LINES = ['gprGross','resVac','resRev','bad','ltl','concess','netRes','commGross','commVac','comm',
+  const LINES = ['gprGross','resVac','resRev','bad','ltl','concess','netRes','commGross','commVac','commFree','commCredit','comm',
                  'other','ctrlOpex','insurance','taxes','mgmt','reserves'];
   const arr=[];
   const monthly=[];
