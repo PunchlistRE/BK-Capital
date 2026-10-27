@@ -251,3 +251,11 @@ html body #viewport table.fin.bk-mc button{ width:auto !important; min-width:0 !
 /* the editor's total rows follow the same fill rule: a total is KEY, not HEADER */
 html body #viewport .ae-grid tr.tot td{ background:var(--bk-fill-key) !important; color:var(--bk-key-ink); box-shadow:none; }
 html body #viewport .ae-grid tr.tot td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+
+/* mid widths: wide report tables and editor grids scroll inside their panel instead of widening the page */
+html body #viewport .ae .ae-panel{ overflow-x:auto; }
+@media (max-width:1100px){
+  html body #viewport .rp .rp-tbl{ display:block; overflow-x:auto; max-width:100%; width:100%; }
+}
+/* a status chip may wrap between words, never inside one */
+html body #viewport .status-chip{ overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none; }

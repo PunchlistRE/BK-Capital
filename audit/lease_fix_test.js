@@ -43,7 +43,7 @@ const deal = (o) => Object.assign({}, A, { commLeaseModel: true, commercialRentG
   await p.waitForTimeout(200);
   const box = async id => p.$eval('#' + id, e => ({ v: e.value, unit: e.closest('tr, .ae-r, div').parentElement.textContent }));
   const ids = { 'ae-leaseMkt-termNew': '60', 'ae-leaseMkt-renewPct': '100', 'ae-leaseMkt-freeNew': '3', 'ae-rolloverAssumptions-renewalProbability': '65' };
-  for (const [id, want] of Object.entries(ids)) { const x = await box(id); check(`${id.replace('ae-', '')} shows the default in use (${want}) and says so`, x.v === want && /\(default\)/.test(x.unit), x.v); }
+  for (const [id, want] of Object.entries(ids)) { const x = await box(id); check(`${id.replace('ae-', '')} shows the default in use (${want}) and says so`, Number(x.v) === Number(want) && /\(default\)/.test(x.unit), x.v); }
   const setBox = async (id, v) => { await p.fill('#' + id, v); await p.dispatchEvent('#' + id, 'change'); await p.waitForTimeout(200); };
   await setBox('ae-leaseMkt-renewPct', '90');
   check('typing a value saves it', await p.evaluate(() => bkLoad().leaseMkt.renewPct) === 0.9);
