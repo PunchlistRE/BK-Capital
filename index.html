@@ -3326,8 +3326,10 @@ RENDERERS['Rent Roll'] = function(){
 <script id="bk-v29400-lease-engine">/* COMMERCIAL LEASE MODEL. A tenant-by-tenant projection of commercial income, used in place of the flat retail line when `commLeaseModel` is on and `leases` has tenants.
    Each tenant carries the lease in place (rent per SF with annual bumps or dated steps, expiry, recovery type). At expiry the space renews with the renewal probability, or goes dark for the
    downtime and re-leases at market; both outcomes are carried as probability-weighted branches, and each new lease rolls again until the end of the horizon. Free rent, tenant improvements and
-   leasing commissions follow the new lease. Recoveries are the tenant's pro-rata share of the recoverable expense pool. TI and LC are capital below NOI (they reduce cash flow, not NOI).
-   Rolled leases use market rent grown at the commercial rent growth. Not modeled: expense gross-up for vacancy, expense caps and stops other than base year, percentage rent, and inflation on TI and LC. */
+   leasing commissions follow the new lease. Recoveries are the tenant's pro-rata share of the recoverable expense pool, or the shares stated in its lease, line by line; they can be
+   NNN, base year, expense stop, fixed or none, with an optional cap on controllable expenses and a gross-up of variable expenses for vacancy. In-place rent rises by a fixed bump, by dated
+   steps, or by the greater of a floor and the CPI change. TI and LC are capital below NOI (they reduce cash flow, not NOI). Rolled leases use market rent grown at the commercial rent
+   growth. Not modeled: percentage rent, and inflation on TI and LC. */
 (function(){
 'use strict';
 function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
@@ -3335,11 +3337,15 @@ function has(v){ return v !== null && v !== undefined && v !== '' && isFinite(Nu
 function pick(a, b){ return has(a) ? Number(a) : b; }
 function isDevDeal(s){ return /develop/i.test(String(s && s.dealType || '')); }
 var DEF_POOL = ['taxes', 'insurance', 'utilities', 'rm', 'contract'];
+/* taxes and insurance do not vary with occupancy (the engine's own split); recovery caps conventionally exclude them and utilities */
+var FIXED_KEYS = ['taxes', 'insurance'], UNCAPPED_KEYS = ['taxes', 'insurance', 'utilities'];
+var REC_TYPES = ['NNN', 'Gross', 'BaseYear', 'Stop', 'Fixed'];
 window.BK_LEASE_POOL_KEYS = [['taxes', 'Real estate taxes'], ['insurance', 'Insurance'], ['utilities', 'Utilities'], ['rm', 'Repairs and maintenance'], ['contract', 'Contract services'], ['payroll', 'Payroll'], ['ga', 'General and administrative'], ['marketing', 'Marketing']];
 window.bkLeaseOn = function(s){ s = s || bkLoad(); return !!(s && s.commLeaseModel === true && Array.isArray(s.leases) && s.leases.length && !isDevDeal(s)); };
 window.bkLeaseMarket = function(s){
-  var M = Object.assign({ growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL }, (s && s.leaseMkt) || {});
+  var M = Object.assign({ growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL, grossUp:1, grossVar:null, cpiForecast:0.025, cpiIndex:[] }, (s && s.leaseMkt) || {});
   if(!Array.isArray(M.recoverable)) M.recoverable = DEF_POOL;
+  if(!Array.isArray(M.cpiIndex)) M.cpiIndex = [];
   M.g = has(M.growth) ? Number(M.growth) : num(s && s.commercialRentGrowth);
   var RA = Object.assign({ renewalProbability:0.65, downtimeMonths:6, tiNewPerSF:20, tiRenewalPerSF:5, lcNewPct:0.06, lcRenewalPct:0.03 }, (s && s.rolloverAssumptions) || {});
   return { M:M, RA:RA };
@@ -3360,6 +3366,14 @@ function build(s){
   var n = Math.max(1, Math.min(15, Math.round(num(s.holdYears) || 10))), hold = n * 12, H = hold + 12;
   var mk = bkLeaseMarket(s), M = mk.M, RA = mk.RA, mf = marketFactor(s, M.g), segs = [], issues = [], tenants = [];
   var bsf = Math.max(num(s.gsf), (s.leases || []).reduce(function(t, l){ return t + num(l && l.sf); }, 0));
+  /* CPI index by model month (month 1 = closing month). Known values are entered by month; between and beyond them the
+     index moves at the CPI forecast, so with no values entered every annual change is exactly the forecast. */
+  var cf = num(M.cpiForecast), cpts = M.cpiIndex.map(function(x){ var q = /^(\d{4})-(\d{1,2})/.exec(String(x && x.month || '')); return q && num(x.value) > 0 ? { m:(Number(q[1]) - cy) * 12 + (Number(q[2]) - cm) + 1, v:num(x.value) } : null; }).filter(Boolean).sort(function(a, b){ return a.m - b.m; });
+  var cpiAt = function(m){
+    if(!cpts.length) return Math.pow(1 + cf, m / 12);
+    var p = null; for(var j = 0; j < cpts.length && cpts[j].m <= m; j++) p = cpts[j];
+    return p ? p.v * Math.pow(1 + cf, (m - p.m) / 12) : cpts[0].v / Math.pow(1 + cf, (cpts[0].m - m) / 12);
+  };
   (s.leases || []).forEach(function(L, ti){
     var sf = num(L && L.sf); if(!(sf > 0)) return;
     var ov = L.over && typeof L.over === 'object' ? L.over : {};
@@ -3367,12 +3381,17 @@ function build(s){
     var tiN = pick(ov.tiNewPerSF, num(RA.tiNewPerSF)), tiR = pick(ov.tiRenewalPerSF, num(RA.tiRenewalPerSF)), lcN = pick(ov.lcNewPct, num(RA.lcNewPct)), lcR = pick(ov.lcRenewalPct, num(RA.lcRenewalPct));
     var termN = Math.max(1, Math.round(pick(ov.termNew, M.termNew))), termR = Math.max(1, Math.round(pick(ov.termRenew, M.termRenew))), freeN = Math.max(0, Math.round(pick(ov.freeNew, M.freeNew))), freeR = Math.max(0, Math.round(pick(ov.freeRenew, M.freeRenew)));
     var rent = num(L.rent), mkt = num(L.mkt) > 0 ? num(L.mkt) : rent, startD = bkParseDealDate(L.start, null), endD = bkParseDealDate(L.end, null);
-    var rtype = ['NNN', 'Gross', 'BaseYear', 'Fixed'].indexOf(L.recType) >= 0 ? L.recType : 'NNN', rfix = num(L.recFixed);
+    var rtype = REC_TYPES.indexOf(L.recType) >= 0 ? L.recType : 'NNN', rfix = num(L.recFixed), rstop = num(L.recStop), cap = Math.max(0, num(L.recCap));
+    /* what the tenant pays toward each expense line: the lease's stated shares when it has any, else its area share of the market pool */
+    var shares = L.recShares && typeof L.recShares === 'object' ? L.recShares : {}, wk = {};
+    Object.keys(shares).forEach(function(k){ if(has(shares[k]) && Number(shares[k]) > 0) wk[k] = Math.min(1, Number(shares[k])); });
+    if(!Object.keys(wk).length) M.recoverable.forEach(function(k){ wk[k] = sf / bsf; });
     var steps = (Array.isArray(L.steps) ? L.steps : []).map(function(x){ var m = /^(\d{4})-(\d{1,2})/.exec(String(x && x.month || '')); return m && has(x.rent) ? { m:(Number(m[1]) - cy) * 12 + (Number(m[2]) - cm) + 1, r:Number(x.rent) } : null; }).filter(Boolean).sort(function(a, b){ return a.m - b.m; });
     var tn = { i:ti, name:String(L.tenant || L.suite || ('Tenant ' + (ti + 1))), sf:sf, p:p };
     tenants.push(tn);
-    var rtypeRoll = ['NNN', 'Gross', 'BaseYear', 'Fixed'].indexOf(L.recRoll) >= 0 ? L.recRoll : rtype;
-    var base = function(seg){ seg.t = ti; seg.sf = sf; seg.rtype = seg.kind === 'cur' ? rtype : rtypeRoll; seg.rfix = rfix; segs.push(seg); return seg; };
+    var rtypeRoll = REC_TYPES.indexOf(L.recRoll) >= 0 ? L.recRoll : rtype;
+    /* the cap is a term of today's lease; it carries into rolled leases only when recoveries stay "same as today" */
+    var base = function(seg){ seg.t = ti; seg.sf = sf; seg.rtype = seg.kind === 'cur' ? rtype : rtypeRoll; seg.rfix = rfix; seg.rstop = rstop; seg.wk = wk; seg.cap = seg.kind === 'cur' || !L.recRoll ? cap : 0; seg.anc = seg.kind === 'cur' ? seg.ks : seg.a; segs.push(seg); return seg; };
     var aggRent = function(rent0, bump, term, free){ var t = 0; for(var j = free; j < term; j++) t += rent0 * Math.pow(1 + bump, Math.floor(j / 12)) * sf / 12; return t; };
     var market = function(a, w, kind){
       var term = kind === 'renew' ? termR : termN, free = kind === 'renew' ? freeR : freeN, rent0 = mkt * mf(a) * (kind === 'renew' ? num(M.renewPct) : 1), ti_ = (kind === 'renew' ? tiR : tiN) * sf * w, lc = (kind === 'renew' ? lcR : lcN) * aggRent(rent0, num(M.bump), term, free) * w;
@@ -3398,12 +3417,17 @@ function build(s){
     var ks = startD ? idx(startD) : -9999, E = endD ? idx(endD) : H + 9999;
     /* annual bumps need a lease anniversary: without a start date they fall on closing anniversaries (month 13, 25, ...) */
     var anchor = startD ? ks : 1;
-    if(!startD && num(L.bump) && !steps.length) issues.push({ t:ti, level:'check', msg:'No lease start date: annual bumps are assumed on closing anniversaries.' });
+    if(!startD && num(L.bump) && !steps.length && L.esc !== 'cpi') issues.push({ t:ti, level:'check', msg:'No lease start date: annual bumps are assumed on closing anniversaries.' });
     if(!endD) issues.push({ t:ti, level:'check', msg:'No lease end date: the lease is assumed to run through the analysis.' });
     if(E < 1){ issues.push({ t:ti, level:'check', msg:'The lease ended before closing: treated as rolling at closing.' }); roll(1, 1); return; }
     var dim = endD ? new Date(endD.getFullYear(), endD.getMonth() + 1, 0).getDate() : 1, fb = endD ? endD.getDate() / dim : 1;
     var fa = 1; if(startD && ks >= 1){ var d1 = new Date(startD.getFullYear(), startD.getMonth() + 1, 0).getDate(); fa = (d1 - startD.getDate() + 1) / d1; }
-    base({ kind:'cur', a:ks, b:E, w:1, rent0:rent, steps:steps, bump:num(L.bump), ks:anchor, free:0, fa:fa, fb:fb, base:Math.max(1, L.baseYear ? idx(new Date(Number(L.baseYear), 0, 1)) : ks), ti:0, lc:0, tiAt:0 });
+    /* CPI escalation: on each anniversary A the rent rises by the greater of the floor (the bump field) and the CPI change over
+       the 12 months ending lag months before A (lag 1: the month before the lease year starts), optionally capped */
+    var cpi = L.esc === 'cpi' && !steps.length, lag = Math.max(0, Math.round(pick(L.cpiLag, 1))), cpiCap = has(L.cpiCap) ? Number(L.cpiCap) : null;
+    var cpiCh = cpi ? function(A){ return cpiAt(A - lag) / cpiAt(A - lag - 12) - 1; } : null;
+    if(cpi && !startD) issues.push({ t:ti, level:'check', msg:'CPI increases with no lease start date: assumed on closing anniversaries.' });
+    base({ kind:'cur', a:ks, b:E, w:1, rent0:rent, steps:steps, bump:num(L.bump), cpiCh:cpiCh, cpiCap:cpiCap, ks:anchor, free:0, fa:fa, fb:fb, base:Math.max(1, L.baseYear ? idx(new Date(Number(L.baseYear), 0, 1)) : ks), ti:0, lc:0, tiAt:0 });
     roll(E + 1, 1);
   });
   return { segs:segs, tenants:tenants, issues:issues, hold:hold, H:H, bsf:bsf, M:M, mf:mf, idx:idx, closing:cd };
@@ -3416,33 +3440,66 @@ function struct(s){
 function curRent(g, m){
   if(g.steps && g.steps.length){ var r = g.rent0; g.steps.forEach(function(x){ if(x.m <= m) r = x.r; }); return r; }
   /* bumps fall on anniversaries ks+12, ks+24, ... that are in month 2 or later and on or before m (counted, not looped) */
+  var kmin = Math.max(1, Math.ceil((2 - g.ks) / 12)), kmax = Math.floor((m - g.ks) / 12);
+  if(g.cpiCh){
+    var memo = g.cpiMemo || (g.cpiMemo = {}), r0 = g.rent0;
+    for(var k = kmin; k <= kmax; k++){ if(memo[k] === undefined){ var inc = Math.max(g.bump, g.cpiCh(g.ks + 12 * k)); if(g.cpiCap !== null) inc = Math.min(g.cpiCap, inc); memo[k] = inc; } r0 *= 1 + memo[k]; }
+    return r0;
+  }
   if(!g.bump) return g.rent0;
-  var kmin = Math.max(1, Math.ceil((2 - g.ks) / 12)), kmax = Math.floor((m - g.ks) / 12), nb = Math.max(0, kmax - kmin + 1);
+  var nb = Math.max(0, kmax - kmin + 1);
   return g.rent0 * Math.pow(1 + g.bump, nb);
 }
 /* Month-by-month result for months 1..months. fac = { tax(year), opex(month) } growth factors on the recoverable pool (identity for a Year 1 statement). detail adds per-tenant arrays. */
 window.bkLeaseEval = function(s, months, fac, detail){
   s = s || bkLoad(); var S = struct(s), segs = S.segs; fac = fac || {}; var fT = fac.tax || function(){ return 1; }, fO = fac.opex || function(){ return 1; };
   var z = function(){ return new Array(months).fill(0); }, out = { rent:z(), free:z(), rec:z(), occ:z(), ti:z(), lc:z(), tenants:S.tenants, issues:S.issues, struct:S };
-  var keys = S.M.recoverable, poolMemo = {};
-  var pool = function(m){ m = Math.max(1, m); if(poolMemo[m] !== undefined) return poolMemo[m]; var t = 0; keys.forEach(function(k){ t += num(s[k]) / 12 * (k === 'taxes' ? fT(Math.ceil(m / 12)) : fO(m)); }); return (poolMemo[m] = t); };
   if(detail) out.byT = S.tenants.map(function(){ return { rent:z(), free:z(), rec:z(), cost:z(), occ:z() }; });
-  var bsf = S.bsf;
+  var tix = S.tenants.map(function(x){ return x.i; }), Tof = function(g){ return detail ? out.byT[tix.indexOf(g.t)] : null; };
+  var fracOf = function(g, m){ return (m === g.a && g.kind === 'cur' ? g.fa : 1) * (m === g.b && g.kind === 'cur' ? g.fb : 1); };
+  /* pass 1: rent, free rent, occupancy and leasing costs */
   segs.forEach(function(g){
-    var lo = Math.max(g.a, 1), hi = Math.min(g.b, months), share = g.sf / bsf, bp = g.rtype === 'BaseYear' ? pool(g.base) : 0, T = detail ? out.byT[S.tenants.map(function(x){ return x.i; }).indexOf(g.t)] : null;
+    var lo = Math.max(g.a, 1), hi = Math.min(g.b, months), T = Tof(g);
     for(var m = lo; m <= hi; m++){
-      var frac = (m === g.a && g.kind === 'cur' ? g.fa : 1) * (m === g.b && g.kind === 'cur' ? g.fb : 1);
+      var frac = fracOf(g, m);
       var psf = g.kind === 'cur' ? curRent(g, m) : g.rent0 * Math.pow(1 + g.bump, Math.floor((m - g.a) / 12)), r = g.sf * psf / 12 * g.w * frac, fr = 0;
       if(g.kind !== 'cur' && m - g.a < g.free){ fr = r; r = 0; }
-      var rc = 0; if(g.rtype === 'NNN') rc = share * pool(m); else if(g.rtype === 'BaseYear') rc = share * Math.max(0, pool(m) - bp); else if(g.rtype === 'Fixed') rc = g.sf * g.rfix / 12 * fO(m);
-      rc *= g.w * frac; var oc = g.sf * g.w * frac;
-      out.rent[m - 1] += r; out.free[m - 1] += fr; out.rec[m - 1] += rc; out.occ[m - 1] += oc;
-      if(T){ T.rent[m - 1] += r; T.free[m - 1] += fr; T.rec[m - 1] += rc; T.occ[m - 1] += oc; }
+      var oc = g.sf * g.w * frac;
+      out.rent[m - 1] += r; out.free[m - 1] += fr; out.occ[m - 1] += oc;
+      if(T){ T.rent[m - 1] += r; T.free[m - 1] += fr; T.occ[m - 1] += oc; }
     }
-    if(g.tiAt >= 1 && g.tiAt <= months){ out.ti[g.tiAt - 1] += g.ti; out.lc[g.tiAt - 1] += g.lc; if(T) T.cost[g.tiAt - 1] += g.ti + g.lc; }
+    if(g.tiAt >= 1 && g.tiAt <= months){ out.ti[g.tiAt - 1] += g.ti; out.lc[g.tiAt - 1] += g.lc; var T2 = Tof(g); if(T2) T2.cost[g.tiAt - 1] += g.ti + g.lc; }
   });
   var tot = S.tenants.reduce(function(t, x){ return t + x.sf; }, 0) || 1;
   out.occ = out.occ.map(function(v){ return v / tot; });
+  /* pass 2: recoveries. Expense inputs are the cost at full occupancy; the variable share of every line but taxes and
+     insurance falls with occupancy, as in the engine's own operating expenses. Gross-up bills the variable share as if
+     occupancy were at least the gross-up level, so the default of 100% recovers on full-occupancy costs. */
+  var cv = typeof bkConventions === 'function' ? bkConventions(s) : {}, c01 = function(v){ return Math.max(0, Math.min(1, Number(v))); };
+  var vv = has(S.M.grossVar) ? c01(S.M.grossVar) : c01(num(cv.cvOpexVariablePct)), gu = has(S.M.grossUp) ? c01(S.M.grossUp) : 1, amtMemo = {};
+  var amt = function(k, m){
+    m = Math.max(1, Math.min(months, m)); var key = k + '|' + m; if(amtMemo[key] !== undefined) return amtMemo[key];
+    var a = num(s[k]) / 12 * (k === 'taxes' ? fT(Math.ceil(m / 12)) : fO(m));
+    if(FIXED_KEYS.indexOf(k) < 0) a *= (1 - vv) + vv * Math.max(out.occ[m - 1], gu);
+    return (amtMemo[key] = a);
+  };
+  /* the tenant's billed expenses: [total, the part a cap applies to] */
+  var tpool = function(g, m){ var t = 0, c = 0; for(var k in g.wk){ var a = g.wk[k] * amt(k, m); t += a; if(UNCAPPED_KEYS.indexOf(k) < 0) c += a; } return [t, c]; };
+  segs.forEach(function(g){
+    var lo = Math.max(g.a, 1), hi = Math.min(g.b, months), T = Tof(g); if(g.rtype === 'Gross' || hi < lo) return;
+    /* a cap holds controllable expenses to the reference year's level grown at the cap rate, stepping on lease anniversaries (cumulative) */
+    var ref = Math.max(1, g.rtype === 'BaseYear' ? g.base : g.a), c0 = g.cap > 0 ? tpool(g, ref)[1] : 0, bp = g.rtype === 'BaseYear' ? tpool(g, g.base)[0] : 0;
+    for(var m = lo; m <= hi; m++){
+      var rc;
+      if(g.rtype === 'Fixed') rc = g.sf * g.rfix / 12 * fO(m);
+      else {
+        var p = tpool(g, m), bill = p[0];
+        if(g.cap > 0 && m > ref){ var n = Math.floor((m - g.anc) / 12) - Math.floor((ref - g.anc) / 12); bill = p[0] - p[1] + Math.min(p[1], c0 * Math.pow(1 + g.cap, Math.max(0, n))); }
+        rc = g.rtype === 'BaseYear' ? Math.max(0, bill - bp) : g.rtype === 'Stop' ? Math.max(0, bill - g.sf * g.rstop / 12) : bill;
+      }
+      rc *= g.w * fracOf(g, m); out.rec[m - 1] += rc; if(T) T.rec[m - 1] += rc;
+    }
+  });
   /* GENERAL VACANCY ALLOWANCE. The deal's commercial vacancy rate is a floor on retail vacancy, reduced by the vacancy the
      tenant schedule already carries (downtime between leases, vacant suites): only the excess is an extra loss. This is
      the conventional treatment, and it is what makes downside and sensitivity cases that raise the commercial vacancy
@@ -21959,7 +22016,10 @@ var CSS = '@page{size:8.5in 11in;margin:0}*{box-sizing:border-box}html,body{marg
  + '.cover{background:#14283d}.cover:before,.cover:after{display:none}.cover .kick{color:#6fb4f2}.chip{border-radius:2px;border-color:rgba(255,255,255,.3)}.verdict{border-radius:2px;background:rgba(255,255,255,.06)}.verdict .dot{border-radius:2px}.ck{border-top:2px solid rgba(255,255,255,.4)}'
  + '.hd{border-bottom:2px solid #14283d}.hd .r .th{border-radius:2px;box-shadow:none}h2{color:#25313d}h2:after{background:#aeb7c0}'
  + '.kp .c,.sc .c,.bx{border-radius:2px;border-color:#c8cfd6}.kp .c{background:#fff}.kp .c.hl{background:#eef2f6;border-color:#c8cfd6;border-top:3px solid #1a5f9e;color:#14283d}.kp .c.hl .k,.kp .c.hl .d{color:#566a80}.sc .c.cur{border-color:#1a5f9e;box-shadow:none;border-top:3px solid #1a5f9e;background:#f3f8fd}.ins div{border-radius:0;background:#f3f6f9;border-left-color:#1a5f9e}'
- + 'th{background:#e8ecf0;color:#25313d;border-bottom:1px solid #aeb7c0}tr.sec td{background:#f1f3f5;color:#25313d}tr.sub td{background:#f6f7f9}tr.tot td{background:#eaeff4;color:#14283d;border-top:2px solid #25313d}tr.tot .neg{color:#B23A2C}.pill{border-radius:2px}.hm td,.hm th{border-radius:2px}.bar,.rng,.rng i{border-radius:1px}body{background:#d5d9de}.ck .k{min-height:2.4em}';
+ + 'th{background:#e8ecf0;color:#25313d;border-bottom:1px solid #aeb7c0}tr.sec td{background:#f1f3f5;color:#25313d}tr.sub td{background:#f6f7f9}tr.tot td{background:#eaeff4;color:#14283d;border-top:2px solid #25313d}tr.tot .neg{color:#B23A2C}.pill{border-radius:2px}.hm td,.hm th{border-radius:2px}.bar,.rng,.rng i{border-radius:1px}body{background:#d5d9de}.ck .k{min-height:2.4em}'
+ + '.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kv td{font-size:9.5px;padding:3px 4px}.kv tr.tot td{font-size:9.5px}.bx .kv{margin-top:6px}'
+ + '.cft{table-layout:fixed}.cft th,.cft td{font-size:8px;padding:2.6px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cft th:first-child,.cft td:first-child{width:1.62in}.cft td:first-child{padding-left:8px}.cft tr.sub td:first-child,.cft tr.tot td:first-child,.cft tr.sec td{padding-left:3px}'
+ + '.cft tr.sec td{font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;padding-top:6px}.cft td.c0{background:#f6f7f9}.cft tr.sub td{font-weight:700}.cft tr.tot td{font-weight:800}.cft .neg{color:#B23A2C}.cc svg{max-height:2.25in}.mtx{margin-top:10px}.mtx td{color:#25313d}.rr td,.rr th{white-space:nowrap;font-size:9px;padding:3px 5px}.rrc{table-layout:fixed}.rrc td{overflow:hidden;text-overflow:ellipsis}.rrc td:first-child,.rrc th:first-child{width:50%}';
 
 function page(inner, n, N, D, cover){
   var s = D.s;
@@ -22044,7 +22104,7 @@ function build(){
   var goingIn = price ? y1.noiAfter / price : null, yoc = basis ? y1.noiAfter / basis : null, hurdle = Number(D.pol.targetIRR) || 0.12, ok = isFinite(D.irr) && D.irr >= hurdle;
   var vcol = /ADVANCE|APPROVE/i.test(gate.verdict || '') ? '#3FB27F' : /COND/i.test(gate.verdict || '') ? '#E2B04A' : '#E5604D';
   var date = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
-  var N = 5, pages = [];
+  var N = 6, pages = [];
   /* 1 cover */
   pages.push(page('<div class="in"><div class="lockup">' + LOCKUP + '</div>'
     + '<div class="kick">Punchlist Capital · Investment summary</div><h1>' + esc(s.name || 'Property') + '</h1><div class="loc">' + esc([s.location, s.propertyType, units ? units + ' units' : '', s.gsf ? Math.round(Number(s.gsf)).toLocaleString('en-US') + ' SF' : ''].filter(Boolean).join('  ·  ')) + '</div>'
@@ -22062,22 +22122,68 @@ function build(){
   pages.push(page('<h2>Dashboard</h2><div class="kp"><div class="c hl"><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 2) + '</div><div class="d">' + esc(caseName) + ' case</div></div><div class="c hl"><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(D.tot.profit) + ' profit</div></div><div class="c"><div class="k">Unlevered IRR</div><div class="v">' + P(D.u.irr, 2) + '</div><div class="d">' + X(D.u.moic) + ' multiple</div></div><div class="c"><div class="k">Net LP IRR</div><div class="v">' + (lp ? P(lp.value, 2) : '—') + '</div><div class="d">after promote</div></div>'
     + '<div class="c"><div class="k">Going-in cap</div><div class="v">' + P(goingIn, 2) + '</div><div class="d">Y1 NOI after reserves / price</div></div><div class="c"><div class="k">Yield on cost</div><div class="v">' + P(yoc, 2) + '</div><div class="d">on total basis ' + M(basis) + '</div></div><div class="c"><div class="k">Year 1 DSCR</div><div class="v">' + X(y1.dscr) + '</div><div class="d">minimum ' + X(D.pol.minDSCR) + '</div></div><div class="c"><div class="k">Leverage</div><div class="v">' + P(d.ltv, 0) + ' LTV</div><div class="d">' + P(d.ltc, 0) + ' LTC · ' + P(d.coupon, 2) + ' rate</div></div></div>'
     + '<div class="bx mt"><div class="t">Levered return against the hurdle</div>' + K.gauge(D) + '</div><div class="ins">' + ins + '</div>'
-    + '<div class="g1 mt"><div class="bx"><div class="t">Equity cash flow</div><div class="s">Each year\'s cash to equity; the line is the running total. Year 1 includes the equity invested at close.</div>' + K.chartCash(D) + '</div></div>'
+    + '<div class="g1 mt"><div class="bx"><div class="t">Equity cash flow</div><div class="s">Each year\'s cash to equity; the line is the running total. Year 1 includes the equity invested at close.</div><div class="cc">' + K.chartCash(D) + '</div></div></div>'
     + '<h2 class="mt" style="margin-top:16px">How it holds up by case</h2>' + scenHtml, 2, N, D));
-  /* 3 financial summary */
+  /* 3 financial summary: sources and uses, the loan, the exit, the returns, and what the income is made of */
   var closing = price * (Number(s.closingCostsPct) || 0), acqFee = price * (Number(s.acqFeePct) || 0), other = basis - price - closing - acqFee, loanFee = Number(d.fee) || 0, totUses = basis + loanFee;
   function su(label, v, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td' + (cls ? '' : ' class="l"') + '>' + label + '</td><td>' + F(v) + '</td><td>' + (totUses ? P(v / totUses, 1) : '') + '</td></tr>'; }
   var sources = '<table><thead><tr><th>Sources</th><th>Amount</th><th>%</th></tr></thead><tbody>' + su('Senior loan', d.loan) + su('Equity', D.eq) + su('Total sources', (Number(d.loan) || 0) + (Number(D.eq) || 0), 'tot') + '</tbody></table>';
   var uses = '<table><thead><tr><th>Uses</th><th>Amount</th><th>%</th></tr></thead><tbody>' + su('Purchase price', price) + su('Closing costs', closing) + (acqFee ? su('Acquisition fee', acqFee) : '') + (Math.abs(other) > 1 ? su('Other costs', other) : '') + (loanFee ? su('Loan fee', loanFee) : '') + su('Total uses', totUses, 'tot') + '</tbody></table>';
-  function row(label, key, cls, f){ var neg = function(v){ return v < 0 ? ' class="neg"' : ''; }; return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td' + (cls ? '' : ' class="l"') + '>' + label + '</td>' + Y.map(function(r){ var v = typeof key === 'function' ? key(r) : r[key]; if(typeof v === 'number' && Math.abs(v) < 0.5) v = 0; return '<td' + neg(v) + '>' + (f ? f(v) : F(v)) + '</td>'; }).join('') + '</tr>'; }
-  var stmt = '<table><thead><tr><th>Annual pro forma</th>' + Y.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
-    + row('Gross potential rent', 'gpr') + row('Vacancy, bad debt, concessions', function(r){ return r.vac + r.bad + r.ltl; }) + row('Other income', 'other') + row('Effective gross income', 'egi', 'sub')
-    + row('Operating expenses', 'opex') + row('Net operating income', 'noi', 'sub') + row('Reserves', 'res') + row('NOI after reserves', 'noiAfter', 'sub')
-    + row('Debt service', 'ds') + row('Asset management fee', 'fee') + row('Cash flow after debt service', 'cfads', 'sub') + row('Debt service coverage', 'dscr', '', X) + row('Cash-on-cash return', 'coc', '', function(v){ return P(v, 1); })
-    + row('Sale, refinance and equity events', 'events') + row('Net cash flow to equity', 'cf', 'tot') + '</tbody></table>';
+  /* the year-by-year cash detail, all from the engine's own monthly rows and annual lines */
+  var MR = (D.m && D.m.rows) || [], DM = (d && d.months) || [], H = Y.length, U = D.u || {};
+  var yr = function(y, key){ return sum(MR.filter(function(r){ return r.y === y; }).map(function(r){ return r[key] || 0; })); };
+  var dsPart = function(y, key){ var t = 0; for(var mm = (y - 1) * 12; mm < y * 12 && mm < DM.length; mm++) t += (DM[mm] && DM[mm][key]) || 0; return t; };
+  var close0 = MR.length ? (MR[0].eqDraw || 0) : 0;
+  var ctrlKeys = [['rm', 'Repairs and maintenance'], ['payroll', 'Payroll'], ['turnover', 'Turnover'], ['utilities', 'Utilities'], ['contract', 'Contract services'], ['marketing', 'Marketing'], ['ga', 'General and administrative'], ['misc', 'Other operating']];
+  var ctrlBase = { misc:(Number(s.gsf) || 0) * (Number(s.miscPerGSF) || 0) }; ctrlKeys.forEach(function(k){ if(k[0] !== 'misc') ctrlBase[k[0]] = Number(s[k[0]]) || 0; });
+  var ctrlTot = sum(ctrlKeys.map(function(k){ return ctrlBase[k[0]]; }));
+  var C = Y.map(function(r, i){ var y = i + 1, L = (U.arr && U.arr[i] && U.arr[i].lines) || {}, c = {};
+    c.gprRes = L.gprGross || 0; c.gprCom = L.commGross || 0; c.vac = (L.resVac || 0) + (L.commVac || 0) - (L.commFree || 0) - (L.commCredit || 0); c.conc = (L.ltl || 0) + (L.concess || 0) + (L.commFree || 0); c.credit = (L.bad || 0) + (L.commCredit || 0); c.other = L.other || 0; c.egi = r.egi;
+    c.taxes = L.taxes || 0; c.ins = L.insurance || 0; c.mgmt = L.mgmt || 0; ctrlKeys.forEach(function(k){ c['x_' + k[0]] = ctrlTot ? (L.ctrlOpex || 0) * ctrlBase[k[0]] / ctrlTot : 0; });
+    c.opexOther = r.opex - (c.taxes + c.ins + c.mgmt + (ctrlTot ? (L.ctrlOpex || 0) : 0)); c.opex = r.opex; c.noi = r.noi; c.res = -yr(y, 'reserve'); c.noiAfter = r.noi + c.res;
+    c.int = -dsPart(y, 'interest'); c.prin = -dsPart(y, 'principal'); c.ds = -yr(y, 'ds'); c.dsOther = c.ds - c.int - c.prin; c.fee = -yr(y, 'assetFee'); c.cfads = c.noiAfter + c.ds + c.fee;
+    c.sale = yr(y, 'sale') ? (U.grossSale || 0) : 0; c.saleCost = yr(y, 'sale') ? -((U.grossSale || 0) - (U.netSale || 0)) : 0; c.dispo = -yr(y, 'dispoFee'); c.payoff = -yr(y, 'payoff'); c.refi = yr(y, 'refi');
+    c.eqin = -(yr(y, 'eqDraw') - (y === 1 ? close0 : 0)); c.cf = yr(y, 'cf') + (y === 1 ? close0 : 0);
+    c.capital = c.cf - (c.cfads + c.sale + c.saleCost + c.dispo + c.payoff + c.refi + c.eqin);
+    var bal = DM[Math.min(DM.length, y * 12) - 1]; c.balBeg = DM[(y - 1) * 12] ? (DM[(y - 1) * 12].beg || 0) : 0;
+    c.dscr = c.ds ? c.noiAfter / -c.ds : null; c.dy = c.balBeg ? c.noiAfter / c.balBeg : null; c.coc = D.eq ? c.cfads / D.eq : null; c.er = c.egi ? -c.opex / c.egi : null; c.g = i ? c.noi / (Y[i - 1].noi || 1) - 1 : null; c.bal = bal ? bal.balance : null;
+    return c; });
+  var lastC = C[H - 1] || {}, exitNOI = Number(U.terminalNOI) || 0, sumCF = -close0 + sum(C.map(function(c){ return c.cf; })), avgCoc = sum(C.map(function(c){ return c.coc || 0; })) / (H || 1);
+  var kv = function(rows){ return '<table class="kv"><tbody>' + rows.filter(Boolean).map(function(a){ return '<tr' + (a[2] ? ' class="' + a[2] + '"' : '') + '><td class="l">' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join('') + '</tbody></table>'; };
+  var fin = kv([['Loan amount', F(d.loan)], ['Rate', P(d.coupon, 2) + (d.rateType ? ' ' + esc(String(d.rateType).toLowerCase()) : '')], ['Amortisation', esc(String(s.acqAmort || '—')) + ' years' + (Number(s.acqIO) ? ', ' + s.acqIO + ' mo interest-only' : '')], ['Sized by', esc(d.binding || '—')],
+    ['Loan to value / cost', P(d.ltv, 1) + ' / ' + P(d.ltc, 1)], ['Year 1 debt service', F(-C[0].ds)], ['Year 1 coverage', X(C[0].dscr)], ['Year 1 debt yield', P(C[0].dy, 2)], ['Balance at sale', F(d.debtAtSale)]]);
+  var exit = kv([['Sale at end of year', String(H)], ['Forward NOI', F(exitNOI)], ['Exit cap rate', P(Number(s.exitCap), 2)], ['Gross sale price', F(lastC.sale), 'sub'], ['Cost of sale', F(lastC.saleCost)], lastC.dispo ? ['Disposition fee', F(lastC.dispo)] : null, ['Loan payoff', F(lastC.payoff)],
+    ['Net sale proceeds to equity', F(lastC.sale + lastC.saleCost + lastC.dispo + lastC.payoff), 'tot']]);
+  var ret = kv([['Levered IRR', P(D.irr, 2)], ['Equity multiple', X(D.moic)], ['Equity invested', F(D.eq)], ['Total profit', F(D.tot.profit)], ['Unlevered IRR', P(D.u.irr, 2)], ['Unlevered multiple', X(D.u.moic)], ['Average cash-on-cash', P(avgCoc, 1)], ['Going-in cap / yield on cost', P(goingIn, 2) + ' / ' + P(yoc, 2)], lp ? ['Net LP IRR', P(lp.value, 2)] : null]);
+  /* what the income is made of: the rent roll by unit type and the commercial tenants, or the Year 1 income mix */
+  var RR = Array.isArray(s.rentRoll) ? s.rentRoll : [], comp = '';
+  if(RR.length){ var res = RR.filter(function(u){ return u.tenantType !== 'Commercial'; }), com = RR.filter(function(u){ return u.tenantType === 'Commercial'; }), rent = function(u){ return Number(u.status === 'Occupied' ? u.inPlaceRent : u.marketRent) || 0; }, byT = {};
+    res.forEach(function(u){ var k = String(u.unitType || 'All units').replace(/^unit$/i, 'All units').replace(/\s+/g, ' '); (byT[k] = byT[k] || []).push(u); });
+    var mix = Object.keys(byT).sort().map(function(k){ var a = byT[k], t = sum(a.map(rent)); return '<tr><td class="l">' + esc(k) + '</td><td>' + a.length + '</td><td>' + a.filter(function(u){ return u.status !== 'Occupied'; }).length + '</td><td>' + F(t / a.length) + '</td><td>' + F(t * 12) + '</td></tr>'; }).join('');
+    var rt = sum(res.map(rent));
+    comp = '<div><table><thead><tr><th>Residential</th><th>Units</th><th>Vacant</th><th>Avg / mo</th><th>Annual</th></tr></thead><tbody>' + mix + '<tr class="tot"><td>Total</td><td>' + res.length + '</td><td>' + res.filter(function(u){ return u.status !== 'Occupied'; }).length + '</td><td>' + F(res.length ? rt / res.length : 0) + '</td><td>' + F(rt * 12) + '</td></tr></tbody></table></div>';
+    if(com.length) comp += '<div><table class="rrc"><thead><tr><th>Commercial</th><th>SF</th><th>Rent / mo</th><th>Expires</th></tr></thead><tbody>' + com.slice(0, 8).map(function(u){ return '<tr><td class="l">' + esc((String(u.unitId || '') + (u.tenant ? ' · ' + u.tenant : '')).slice(0, 34)) + '</td><td>' + (Number(u.sf) ? Math.round(u.sf).toLocaleString('en-US') : '—') + '</td><td>' + F(rent(u)) + '</td><td>' + (u.status !== 'Occupied' ? 'vacant' : esc(String(u.leaseEnd || '—').replace(/^(\d{4})-(\d{2})-\d{2}$/, '$2/$1'))) + '</td></tr>'; }).join('')
+      + '<tr class="tot"><td>Total' + (com.length > 8 ? ' (' + com.length + ' spaces)' : '') + '</td><td>' + (sum(com.map(function(u){ return Number(u.sf) || 0; })) ? Math.round(sum(com.map(function(u){ return Number(u.sf) || 0; }))).toLocaleString('en-US') : '—') + '</td><td>' + F(sum(com.map(rent))) + '</td><td></td></tr></tbody></table></div>';
+    comp = '<h2 class="mt" style="margin-top:14px">Rent roll</h2><div class="g2 rr" style="grid-template-columns:.85fr 1.15fr">' + comp + '</div>'; }
   pages.push(page('<h2>Financial summary</h2><div class="su"><div>' + sources + '</div><div>' + uses + '</div></div>'
-    + '<div class="note" style="margin:6px 0 12px">Loan: ' + M(d.loan) + ' at ' + P(d.coupon, 2) + ' (' + esc(d.rateType || '') + '), ' + esc(String(s.acqAmort || '')) + '-year amortisation' + (Number(s.acqIO) ? ', ' + s.acqIO + ' months interest-only' : '') + '; sized by <b>' + esc(d.binding || '') + '</b>. Debt at sale ' + M(d.debtAtSale) + '.</div>'
-    + stmt + '<div class="bx mt"><div class="t">Where each dollar of income goes</div><div class="s">Year 1 effective gross income, split into what it pays for and what is left.</div>' + K.chartDollar(D) + '</div>', 3, N, D));
+    + '<div class="g3 mt"><div class="bx"><div class="t">Financing</div>' + fin + '</div><div class="bx"><div class="t">Exit</div>' + exit + '</div><div class="bx"><div class="t">Returns</div>' + ret + '</div></div>'
+    + comp + '<div class="bx mt"><div class="t">Where each dollar of income goes</div><div class="s">Year 1 effective gross income, split into what it pays for and what is left.</div>' + K.chartDollar(D) + '</div>', 3, N, D));
+  /* 4 annual cash flow: every line, from closing to the sale; the columns add up to the engine's net cash flow to equity */
+  var big = H > 7, fm = function(v){ if(v == null || !isFinite(v)) return '—'; if(Math.abs(v) < 0.5) return '–'; var a = Math.abs(v), t = big ? (a / 1000).toLocaleString('en-US', { maximumFractionDigits:0 }) : Math.round(a).toLocaleString('en-US'); return v < 0 ? '(' + t + ')' : t; };
+  var any = function(k){ return C.some(function(c){ return Math.abs(c[k] || 0) >= 0.5; }); };
+  function cr(label, key, cls, f, close){ if(!cls && !f && !any(key) && !close) return ''; return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td><td class="c0">' + (close == null ? '' : fm(close)) + '</td>' + C.map(function(c){ var v = c[key]; return '<td' + (v < -0.5 && !f ? ' class="neg"' : '') + '>' + (f ? f(v) : fm(v)) + '</td>'; }).join('') + '</tr>'; }
+  function sec(t){ return '<tr class="sec"><td colspan="' + (H + 2) + '">' + t + '</td></tr>'; }
+  var cft = '<table class="cft"><thead><tr><th>' + (big ? '$ thousands' : 'Annual cash flow') + '</th><th>Close</th>' + Y.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + sec('Revenue') + cr('Gross potential rent, residential', 'gprRes') + cr('Gross potential rent, commercial', 'gprCom') + cr('Vacancy', 'vac') + cr('Loss to lease and concessions', 'conc') + cr('Credit loss and bad debt', 'credit') + cr('Other income', 'other') + cr('Effective gross income', 'egi', 'sub')
+    + sec('Operating expenses') + cr('Real estate taxes', 'taxes') + cr('Insurance', 'ins') + ctrlKeys.map(function(k){ return cr(k[1], 'x_' + k[0]); }).join('') + cr('Management fee', 'mgmt') + cr('Other expenses', 'opexOther') + cr('Total operating expenses', 'opex', 'sub')
+    + cr('Net operating income', 'noi', 'tot') + cr('Replacement reserves', 'res') + cr('NOI after reserves', 'noiAfter', 'sub')
+    + sec('Debt and fees') + cr('Interest', 'int') + cr('Principal', 'prin') + cr('Other debt costs', 'dsOther') + cr('Asset management fee', 'fee') + cr('Cash flow after debt service', 'cfads', 'sub')
+    + sec('Capital events') + cr('Equity invested', 'eqin', '', null, -close0) + cr('Capital items and leasing costs', 'capital') + cr('Refinance proceeds', 'refi') + cr('Gross sale price', 'sale') + cr('Cost of sale', 'saleCost') + cr('Disposition fee', 'dispo') + cr('Loan payoff', 'payoff')
+    + cr('Net cash flow to equity', 'cf', 'tot', null, -close0) + '</tbody></table>';
+  var mt = '<table class="cft mtx"><thead><tr><th>Measures</th><th class="c0"></th>' + Y.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + cr('Debt service coverage', 'dscr', '', X) + cr('Debt yield (NOI after reserves / loan)', 'dy', '', function(v){ return P(v, 1); }) + cr('Cash-on-cash return', 'coc', '', function(v){ return P(v, 1); }) + cr('Expense ratio', 'er', '', function(v){ return P(v, 1); }) + cr('NOI growth', 'g', '', function(v){ return v == null ? '' : P(v, 1); }) + cr('Loan balance, year end', 'bal', '', fm) + '</tbody></table>';
+  pages.push(page('<h2>Annual cash flow</h2>' + cft + mt
+    + '<div class="note" style="margin-top:8px">' + (big ? 'Figures in thousands of dollars. ' : '') + 'Close is the equity invested at closing. Net cash flow to equity sums to <b>' + M(sumCF) + '</b> of profit on <b>' + M(close0) + '</b> invested (' + X(D.moic) + ', ' + P(D.irr, 1) + ' levered IRR). Controllable expenses are shown by line in proportion to their inputs; the engine scales them together with occupancy and growth. Debt yield is NOI after reserves over the loan balance at the start of the year.</div>', 4, N, D));
   /* 4 credit and risk */
   var rows = (gate.rows || []).filter(function(r){ return r.applicable !== false; }).slice(0, 12);
   var gateTbl = '<table><thead><tr><th>Credit gate</th><th>Deal</th><th>Policy</th><th>Result</th></tr></thead><tbody>' + rows.map(function(r){ var f = fmtGate(r); return '<tr><td class="l">' + esc(r.label) + (r.severity === 'HARD' ? ' <span class="note">(hard)</span>' : '') + '</td><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td><td><span class="pill ' + (r.pass ? 'pass' : 'fail') + '">' + (r.pass ? 'PASS' : 'FAIL') + '</span></td></tr>'; }).join('') + '</tbody></table>';
@@ -22092,10 +22198,10 @@ function build(){
   var exc = (gate.exceptions || []).slice(0, 5).map(function(e){ return '<div>' + (e.severity === 'HARD' ? '<b>Hard:</b> ' : '<b>Soft:</b> ') + esc(e.message) + '</div>'; }).join('');
   var asm = [['Purchase price', M(price) + (units ? ' (' + F(price / units) + '/unit)' : '')], ['Exit cap rate', P(Number(s.exitCap), 2)], ['Hold period', D.H + ' years'], ['Rent growth', P(Number(s.rentGrowth), 1) + ' / yr'], ['Expense growth', P(Number(s.opexGrowth), 1) + ' / yr'], ['Vacancy', P(Number(s.vacancy), 1)], ['Management fee', P(Number(s.mgmtPct), 1) + ' of EGI'], ['Sale cost', P(Number(s.saleCostPct), 1)]].map(function(a){ return '<tr><td class="l">' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join('');
   pages.push(page('<h2>Performance and sensitivity</h2><div class="g1"><div class="bx"><div class="t">Income against debt service</div><div class="s">Bars are NOI after reserves, the line is debt service, the figure under each year is coverage.</div>' + K.chartCoverage(D) + '</div><div class="bx"><div class="t">Where the profit comes from</div><div class="s">Equity in, operating cash flow, then sale proceeds net of the loan.</div>' + K.chartBridge(D) + '</div></div>'
-    + '<div class="g2 mt"><div class="bx"><div class="t">Return sensitivity</div><div class="s">Levered IRR as exit cap and rent growth move.</div>' + hm + '</div><div><h2>Key assumptions</h2><table><tbody>' + asm + '</tbody></table></div></div>', 4, N, D));
+    + '<div class="g2 mt"><div class="bx"><div class="t">Return sensitivity</div><div class="s">Levered IRR as exit cap and rent growth move.</div>' + hm + '</div><div><h2>Key assumptions</h2><table><tbody>' + asm + '</tbody></table></div></div>', 5, N, D));
   pages.push(page('<h2>Credit and market</h2><div class="g2" style="grid-template-columns:1.3fr .9fr"><div>' + gateTbl + '</div><div><div class="bx" style="padding:10px 12px"><div class="t">Decision: ' + esc(gate.verdict || 'Not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div>' + (exc ? '<div class="ins" style="margin-top:4px">' + exc + '</div>' : '') + (gate.action ? '<div class="note" style="margin-top:7px"><b>Next step:</b> ' + esc(gate.action) + '</div>' : '') + '</div></div></div>'
     + '<h2 style="margin-top:16px">Against the market</h2>' + mTbl
-    + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid reruns the model for each cell. This summary is an analytical aid, not an offer or a fairness opinion, and is only as good as the assumptions behind it. Check it against your own model before relying on it.</div></div>', 5, N, D));
+    + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid reruns the model for each cell. This summary is an analytical aid, not an offer or a fairness opinion, and is only as good as the assumptions behind it. Check it against your own model before relying on it.</div></div>', 6, N, D));
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Investment Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 
@@ -22112,7 +22218,7 @@ function bkReportOpenNow(){
   bkReportClose();
   var o = document.createElement('div'); o.id = 'pl-report';
   o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#081a30;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif';
-  o.innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0e2a4a;border-bottom:2px solid #3E9AE6;color:#fff"><b style="font-size:13px;letter-spacing:.06em">INVESTMENT SUMMARY</b><span style="font-size:12px;color:#B9C8D8">' + esc(s.name || '') + ' · 5 pages · Letter</span><span style="flex:1"></span><button type="button" onclick="bkReportPrint()" style="background:#3E9AE6;color:#081a30;border:0;border-radius:999px;padding:8px 18px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.06em">SAVE AS PDF</button><button type="button" onclick="bkReportClose()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:7px 14px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer">Close</button></div>'
+  o.innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0e2a4a;border-bottom:2px solid #3E9AE6;color:#fff"><b style="font-size:13px;letter-spacing:.06em">INVESTMENT SUMMARY</b><span style="font-size:12px;color:#B9C8D8">' + esc(s.name || '') + ' · ' + ((html.match(/<section class="page/g) || []).length) + ' pages · Letter</span><span style="flex:1"></span><button type="button" onclick="bkReportPrint()" style="background:#3E9AE6;color:#081a30;border:0;border-radius:999px;padding:8px 18px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.06em">SAVE AS PDF</button><button type="button" onclick="bkReportClose()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:7px 14px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer">Close</button></div>'
     + '<iframe id="pl-report-frame" title="Investment summary preview" style="flex:1;border:0;width:100%;background:#c9d6e2"></iframe>';
   document.body.appendChild(o); document.documentElement.style.overflow = 'hidden';
   var f = document.getElementById('pl-report-frame');
@@ -22581,7 +22687,7 @@ function inp(path, kind, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s
 function sel(path, options, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s, path); if(v == null || v === '') v = o.def == null ? '' : o.def;
   return '<select class="ae-sel" onchange="bkEdSet(\'' + path + '\',\'text\',this.value)">' + options.map(function(op){ var val = Array.isArray(op) ? op[0] : op, lab = Array.isArray(op) ? op[1] : op; return '<option value="' + esc(val) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(lab) + '</option>'; }).join('') + '</select>'; }
 function ro(t){ return '<span class="ae-ro">' + t + '</span>'; }
-function form(title, ic, rows){ return '<div class="ae-panel"><div class="ae-ph"><i>' + (ic || 'i') + '</i>' + esc(title) + '</div><div class="ae-form">' + rows.map(function(r){
+function form(title, ic, rows){ return '<div class="ae-panel"><div class="ae-ph"><i>' + (ic || 'i') + '</i>' + esc(title) + '</div><div class="ae-form">' + rows.filter(Boolean).map(function(r){
     if('note' in r) return r.note ? '<div class="note">' + r.note + '</div>' : '';
     return '<label>' + esc(r.l) + '</label><div>' + r.h + (r.u ? '<span class="ae-unit">' + esc(r.u) + '</span>' : '') + '</div>'; }).join('') + '</div></div>'; }
 function R(l, h, u){ return { l:l, h:h, u:u }; }
@@ -22710,6 +22816,7 @@ function pAbs(s){ var u = num(s.units), lm = num(s.leaseupMonths);
 function pCoh(s){ return '<div class="ae-panel"><div class="ae-ph"><i>C</i>Lease Cohort</div><div class="ae-row">' + btn('Lease cohort cash flow', 'showSheet(\'Lease Cohort CF\')', true) + btn('Rent roll', 'bkEdGo(\'Tenants\',\'Tenants\',\'roll\')') + '</div><div class="ae-form"><div class="note">Groups leases by the year they expire so you can see rollover risk. It reads the unit rent roll.</div></div></div>'; }
 /* ---------- COMMERCIAL LEASES ---------- */
 var pickT = 0;
+var REC_OPTS = [['NNN', 'NNN (pro rata)'], ['Gross', 'Gross'], ['BaseYear', 'Base year'], ['Stop', 'Expense stop'], ['Fixed', 'Fixed $ / SF']];
 function leaseList(s){ return Array.isArray(s.leases) ? s.leases : []; }
 window.bkLeaseOnSet = function(raw){ var s = bkLoad(); s.commLeaseModel = raw === 'true'; bkSave(s); showSheet(cur()); };
 window.bkLeaseAdd = function(){ var s = bkLoad(); s.leases = leaseList(s).slice(); s.leases.push({ tenant:'', suite:'', sf:0, status:'Occupied', start:'', end:'', rent:0, bump:0.03, mkt:0, recType:'NNN', recFixed:0 }); pickT = s.leases.length - 1; bkSave(s); showSheet(cur()); };
@@ -22717,7 +22824,9 @@ window.bkLeaseDel = function(i){ var s = bkLoad(); if(!Array.isArray(s.leases)) 
 window.bkLeasePick = function(i){ pickT = i; showSheet(cur()); };
 window.bkLeaseSeed = function(){ var s = bkLoad(), a = bkLeaseFromRentRoll(s); if(!a.length){ showSheet(cur()); return; } s.leases = a; s.commLeaseModel = true; pickT = 0; bkSave(s); showSheet(cur()); };
 window.bkLeaseSet = function(i, field, raw){ var s = bkLoad(), L = leaseList(s)[i]; if(!L) return;
-  if(['sf', 'rent', 'mkt', 'recFixed'].indexOf(field) >= 0){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } L[field] = v; }
+  if(['sf', 'rent', 'mkt', 'recFixed', 'recStop'].indexOf(field) >= 0){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } L[field] = v; }
+  else if(['recCap', 'cpiCap', 'cpiLag'].indexOf(field) >= 0){ var c = parse(field === 'cpiLag' ? 'int' : 'pct', raw, 'unset'); if(c === undefined || (c !== UNSET && c < 0)){ showSheet(cur()); return; } if(c === UNSET) delete L[field]; else L[field] = c; }
+  else if(field === 'esc'){ if(raw === 'cpi') L.esc = 'cpi'; else delete L.esc; }
   else if(field === 'bump'){ var b = parse('pct', raw); if(b === undefined){ showSheet(cur()); return; } L.bump = b; }
   else if(field === 'baseYear'){ var y = parse('int', raw); if(!y) delete L.baseYear; else L.baseYear = y; }
   else if(field === 'status'){ L.status = raw; }
@@ -22729,6 +22838,14 @@ window.bkLeaseOver = function(i, field, raw, kind){ var s = bkLoad(), L = leaseL
 window.bkLeaseStep = function(i, j, field, raw){ var s = bkLoad(), L = leaseList(s)[i]; if(!L || !L.steps || !L.steps[j]) return; if(field === 'rent'){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } L.steps[j].rent = v; } else L.steps[j].month = raw; bkSave(s); showSheet(cur()); };
 window.bkLeaseStepAdd = function(i){ var s = bkLoad(), L = leaseList(s)[i]; if(!L) return; L.steps = Array.isArray(L.steps) ? L.steps : []; var c = safe(function(){ return bkParseDealDate(s.closing, '2027-01-01'); }, new Date()); L.steps.push({ month:(c.getFullYear() + 1) + '-' + String(c.getMonth() + 1).padStart(2, '0'), rent:num(L.rent) }); bkSave(s); showSheet(cur()); };
 window.bkLeaseStepDel = function(i, j){ var s = bkLoad(), L = leaseList(s)[i]; if(!L || !L.steps) return; L.steps.splice(j, 1); if(!L.steps.length) delete L.steps; bkSave(s); showSheet(cur()); };
+/* a tenant's stated share of one expense line; blank removes it, and a tenant with no stated shares pays its area share of the market pool */
+window.bkLeaseShare = function(i, key, raw){ var s = bkLoad(), L = leaseList(s)[i]; if(!L) return; var v = parse('pct', raw, 'unset'); if(v === undefined || (v !== UNSET && (v < 0 || v > 1))){ showSheet(cur()); return; }
+  L.recShares = Object.assign({}, L.recShares || {}); if(v === UNSET || v === 0) delete L.recShares[key]; else L.recShares[key] = v; if(!Object.keys(L.recShares).length) delete L.recShares; bkSave(s); showSheet(cur()); };
+window.bkLeaseCpi = function(j, field, raw){ var s = bkLoad(), M = s.leaseMkt = Object.assign({}, s.leaseMkt || {}), a = M.cpiIndex = (Array.isArray(M.cpiIndex) ? M.cpiIndex : []).slice(); if(!a[j]) return;
+  if(field === 'value'){ var v = parse('num', raw); if(v === undefined || !(v > 0)){ showSheet(cur()); return; } a[j] = Object.assign({}, a[j], { value:v }); } else a[j] = Object.assign({}, a[j], { month:raw }); bkSave(s); showSheet(cur()); };
+window.bkLeaseCpiAdd = function(){ var s = bkLoad(), M = s.leaseMkt = Object.assign({}, s.leaseMkt || {}), a = M.cpiIndex = (Array.isArray(M.cpiIndex) ? M.cpiIndex : []).slice(), c = safe(function(){ return bkParseDealDate(s.closing, '2027-01-01'); }, new Date());
+  a.push({ month:(c.getFullYear() - 1) + '-' + String(c.getMonth() + 1).padStart(2, '0'), value:a.length ? num(a[a.length - 1].value) : 100 }); bkSave(s); showSheet(cur()); };
+window.bkLeaseCpiDel = function(j){ var s = bkLoad(), M = s.leaseMkt = Object.assign({}, s.leaseMkt || {}), a = (Array.isArray(M.cpiIndex) ? M.cpiIndex : []).slice(); a.splice(j, 1); if(a.length) M.cpiIndex = a; else delete M.cpiIndex; bkSave(s); showSheet(cur()); };
 window.bkLeasePool = function(key, on){ var s = bkLoad(), M = bkLeaseMarket(s).M, a = M.recoverable.slice(), k = a.indexOf(key); if(on && k < 0) a.push(key); if(!on && k >= 0) a.splice(k, 1); s.leaseMkt = Object.assign({}, s.leaseMkt || {}, { recoverable:a }); bkSave(s); showSheet(cur()); };
 function cellIn(i, field, v, kind, cls, ph){ return '<input type="text" id="ae-ls-' + field + '-' + i + '" class="' + (cls || 'num') + '" value="' + esc(fmtIn(v, kind)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' autocomplete="off" onchange="bkLeaseSet(' + i + ',\'' + field + '\',this.value)">'; }
 function pLease(s){
@@ -22741,10 +22858,10 @@ function pLease(s){
       + '<td><select onchange="bkLeaseSet(' + i + ',\'status\',this.value)"><option' + (occ ? ' selected' : '') + '>Occupied</option><option' + (occ ? '' : ' selected') + '>Vacant</option></select></td>'
       + '<td><input type="date" id="ae-ls-start-' + i + '" value="' + esc(L.start || '') + '" onchange="bkLeaseSet(' + i + ',\'start\',this.value)"></td><td><input type="date" id="ae-ls-end-' + i + '" value="' + esc(L.end || '') + '" onchange="bkLeaseSet(' + i + ',\'end\',this.value)"></td>'
       + '<td>' + cellIn(i, 'rent', L.rent, 'num') + '</td><td>' + cellIn(i, 'bump', L.bump, 'pct') + '</td><td>' + cellIn(i, 'mkt', L.mkt, 'num') + '</td>'
-      + '<td><select onchange="bkLeaseSet(' + i + ',\'recType\',this.value)">' + [['NNN', 'NNN (pro rata)'], ['Gross', 'Gross'], ['BaseYear', 'Base year'], ['Fixed', 'Fixed $ / SF']].map(function(o){ return '<option value="' + o[0] + '"' + ((L.recType || 'NNN') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td>'
-      + '<td>' + (L.recType === 'Fixed' ? cellIn(i, 'recFixed', L.recFixed, 'num') : L.recType === 'BaseYear' ? cellIn(i, 'baseYear', L.baseYear, 'int', 'num', 'year') : '<span class="ae-unit">-</span>') + '</td>'
+      + '<td><select onchange="bkLeaseSet(' + i + ',\'recType\',this.value)">' + REC_OPTS.map(function(o){ return '<option value="' + o[0] + '"' + ((L.recType || 'NNN') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td>'
+      + '<td>' + (L.recType === 'Fixed' ? cellIn(i, 'recFixed', L.recFixed, 'num') : L.recType === 'BaseYear' ? cellIn(i, 'baseYear', L.baseYear, 'int', 'num', 'year') : L.recType === 'Stop' ? cellIn(i, 'recStop', L.recStop, 'num', 'num', 'stop $ / SF') : '<span class="ae-unit">-</span>') + '</td>'
       + '<td class="c"><button type="button" class="ae-btn" onclick="bkLeasePick(' + i + ')">' + (i === pickT ? 'Terms below' : 'Terms') + '</button> <button type="button" class="ae-x" title="Remove" onclick="bkLeaseDel(' + i + ')">&times;</button></td></tr>'; }).join('');
-  var grid = '<div class="ae-panel"><div style="overflow-x:auto"><table class="ae-grid"><thead><tr><th class="grp" colspan="4">Tenant</th><th class="grp" colspan="2">Lease Term</th><th class="grp" colspan="3">Rent ($ / SF / year)</th><th class="grp" colspan="2">Recoveries</th><th></th></tr><tr><th>Tenant</th><th>Suite</th><th>Area (SF)</th><th>Status</th><th>Start</th><th>Expires</th><th>In Place</th><th>Annual Bump</th><th>Market</th><th>Type</th><th>$ / SF or Year</th><th></th></tr></thead><tbody>'
+  var grid = '<div class="ae-panel"><div style="overflow-x:auto"><table class="ae-grid"><thead><tr><th class="grp" colspan="4">Tenant</th><th class="grp" colspan="2">Lease Term</th><th class="grp" colspan="3">Rent ($ / SF / year)</th><th class="grp" colspan="2">Recoveries</th><th></th></tr><tr><th>Tenant</th><th>Suite</th><th>Area (SF)</th><th>Status</th><th>Start</th><th>Expires</th><th>In Place</th><th>Annual Bump (CPI Floor)</th><th>Market</th><th>Type</th><th>$ / SF or Year</th><th></th></tr></thead><tbody>'
     + (rows || '<tr><td class="c ro" colspan="12">No tenants. Add one, or build the schedule from the commercial rows of the unit rent roll.</td></tr>') + '</tbody></table></div></div>';
   var detail = '';
   if(a[pickT]){ var L = a[pickT], i = pickT, ov = L.over || {}, ph = function(v){ return 'default ' + v; };
@@ -22752,10 +22869,18 @@ function pLease(s){
     var steps = (Array.isArray(L.steps) ? L.steps : []).map(function(x, j){ return '<tr><td><input type="month" value="' + esc(x.month) + '" onchange="bkLeaseStep(' + i + ',' + j + ',\'month\',this.value)"></td><td><input type="text" class="num" id="ae-lst-' + i + '-' + j + '" value="' + esc(fmtIn(x.rent, 'num')) + '" autocomplete="off" onchange="bkLeaseStep(' + i + ',' + j + ',\'rent\',this.value)"></td><td class="c"><button type="button" class="ae-x" onclick="bkLeaseStepDel(' + i + ',' + j + ')">&times;</button></td></tr>'; }).join('');
     detail = form('Terms for ' + (L.tenant || L.suite || 'Tenant ' + (i + 1)), 'T', [
       NOTE('Blank fields use the market leasing assumptions below. A tenant with dated rent steps ignores the annual bump.'),
+      R('Rent Increases', '<select class="ae-sel" id="ae-ls-esc-' + i + '" onchange="bkLeaseSet(' + i + ',\'esc\',this.value)"><option value="">Fixed annual bump</option><option value="cpi"' + (L.esc === 'cpi' ? ' selected' : '') + '>Greater of the bump and CPI</option></select>', L.esc === 'cpi' ? 'the bump column is the floor (0% for straight CPI)' : 'on each lease anniversary'),
+      L.esc === 'cpi' ? R('CPI Ceiling', cellIn(i, 'cpiCap', L.cpiCap, 'pct', 'ae-in num', 'none'), '% most in one year (blank: no ceiling)') : null,
+      L.esc === 'cpi' ? R('CPI Measured to', cellIn(i, 'cpiLag', L.cpiLag, 'int', 'ae-in num', '1'), 'months before the anniversary (1: the 12 months to the month before the lease year starts)') : null,
+      R('Recovery Cap', cellIn(i, 'recCap', L.recCap, 'pct', 'ae-in num', 'none'), '% a year, cumulative, on controllable expenses (not taxes, insurance or utilities)'),
       ovIn('renewalProbability', 'pct', num(RA.renewalProbability), 'Renewal Probability', '% chance the tenant renews at expiry'), ovIn('downtimeMonths', 'int', num(RA.downtimeMonths), 'Downtime if the Tenant Leaves', 'months'), ovIn('vacantMonths', 'int', num(RA.downtimeMonths), 'Months to Lease a Vacant Suite', 'months from closing (vacant suites only)'),
       ovIn('termRenew', 'int', M.termRenew, 'Renewal Lease Term', 'months'), ovIn('termNew', 'int', M.termNew, 'New Lease Term', 'months'), ovIn('freeRenew', 'int', M.freeRenew, 'Free Rent on Renewal', 'months'), ovIn('freeNew', 'int', M.freeNew, 'Free Rent on a New Lease', 'months'),
       ovIn('tiRenewalPerSF', 'num', num(RA.tiRenewalPerSF), 'Tenant Improvements, Renewal', '$ / SF'), ovIn('tiNewPerSF', 'num', num(RA.tiNewPerSF), 'Tenant Improvements, New', '$ / SF'), ovIn('lcRenewalPct', 'pct', num(RA.lcRenewalPct), 'Commission, Renewal', '% of rent over the term'), ovIn('lcNewPct', 'pct', num(RA.lcNewPct), 'Commission, New', '% of rent over the term'),
-      R('Recoveries After the Lease Rolls', '<select class="ae-sel" onchange="bkLeaseSet(' + i + ',\'recRoll\',this.value)"><option value="">Same as today</option>' + [['NNN', 'NNN (pro rata)'], ['Gross', 'Gross'], ['BaseYear', 'Base year'], ['Fixed', 'Fixed $ / SF']].map(function(o){ return '<option value="' + o[0] + '"' + (L.recRoll === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>')])
+      R('Recoveries After the Lease Rolls', '<select class="ae-sel" onchange="bkLeaseSet(' + i + ',\'recRoll\',this.value)"><option value="">Same as today</option>' + REC_OPTS.map(function(o){ return '<option value="' + o[0] + '"' + (L.recRoll === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>')])
+      + (function(){ var sh = L.recShares || {}, anyS = Object.keys(sh).length > 0, bsf = Math.max(num(s.gsf), a.reduce(function(t, x){ return t + num(x && x.sf); }, 0)), area = bsf > 0 ? num(L.sf) / bsf : 0;
+          var rowsS = window.BK_LEASE_POOL_KEYS.map(function(k){ var v = sh[k[0]], inPool = M.recoverable.indexOf(k[0]) >= 0;
+            return '<tr><td>' + esc(k[1]) + '</td><td class="num">' + money(num(s[k[0]])) + '</td><td><input type="text" class="num" id="ae-lsh-' + k[0] + '-' + i + '" value="' + esc(has(v) ? fmtIn(v, 'pct') : '') + '" placeholder="' + esc(anyS ? '0' : inPool ? +(area * 100).toFixed(2) + '' : '0') + '" autocomplete="off" onchange="bkLeaseShare(' + i + ',\'' + k[0] + '\',this.value)"></td></tr>'; }).join('');
+          return '<div class="ae-panel"><div class="ae-ph"><i>R</i>Recovery Shares (optional)</div><table class="ae-grid"><thead><tr><th>Expense</th><th>Year 1</th><th>Tenant Pays (%)</th></tr></thead><tbody>' + rowsS + '</tbody></table><div class="ae-form"><div class="note">' + (anyS ? 'This tenant pays only the shares entered here; blank lines are not recovered from it.' : 'Blank: the tenant pays its area share (' + pct(area, 2) + ') of the recoverable expenses ticked under Market Leasing. Enter the shares stated in the lease to override, line by line.') + ' Water and sewer are in Utilities: a tenant paying only water takes a Utilities share sized to the water bill.</div></div></div>'; })()
       + '<div class="ae-panel"><div class="ae-ph"><i>S</i>Rent Steps (optional)</div><table class="ae-grid"><thead><tr><th>From</th><th>Rent ($ / SF / year)</th><th></th></tr></thead><tbody>' + (steps || '<tr><td class="c ro" colspan="3">No steps. The in-place rent grows by the annual bump on each lease anniversary.</td></tr>') + '</tbody></table><div class="ae-row">' + btn('Add a rent step', 'bkLeaseStepAdd(' + i + ')') + '</div></div>'; }
   function mi(path, kind, label, unit, blank){ return R(label, inp(path, kind, { s:s, blank:blank }), unit); }
   /* Market Leasing inputs show the value the engine is actually using. When nothing is saved that is the default, labelled
@@ -22770,7 +22895,12 @@ function pLease(s){
     md('leaseMkt.termNew', 'int', 'New Lease Term', 'months'), md('leaseMkt.termRenew', 'int', 'Renewal Lease Term', 'months'), md('leaseMkt.freeNew', 'int', 'Free Rent, New Lease', 'months'), md('leaseMkt.freeRenew', 'int', 'Free Rent, Renewal', 'months'),
     md('rolloverAssumptions.renewalProbability', 'pct', 'Renewal Probability', '%'), md('rolloverAssumptions.downtimeMonths', 'int', 'Downtime if the Tenant Leaves', 'months'),
     md('rolloverAssumptions.tiNewPerSF', 'num', 'Tenant Improvements, New', '$ / SF'), md('rolloverAssumptions.tiRenewalPerSF', 'num', 'Tenant Improvements, Renewal', '$ / SF'), md('rolloverAssumptions.lcNewPct', 'pct', 'Commission, New', '% of rent over the term'), md('rolloverAssumptions.lcRenewalPct', 'pct', 'Commission, Renewal', '% of rent over the term'),
-    md('leaseMkt.creditLoss', 'pct', 'Credit Loss on Retail Income', '% of rent and recoveries'), R('Recoverable Expenses', pool, 'a tenant pays its share of these')]);
+    md('leaseMkt.creditLoss', 'pct', 'Credit Loss on Retail Income', '% of rent and recoveries'), R('Recoverable Expenses', pool, 'a tenant pays its share of these'),
+    md('leaseMkt.grossUp', 'pct', 'Gross-Up Occupancy', '% (variable expenses are billed as if at least this occupied; 100% bills full-occupancy costs)'),
+    R('Variable Share of Expenses', inp('leaseMkt.grossVar', 'pct', { s:s, blank:'unset', def:safe(function(){ return bkConventions(s).cvOpexVariablePct; }, 0) }), '% of every line but taxes and insurance that moves with occupancy' + (has(M.grossVar) ? '' : ' (default: the deal\'s convention)')),
+    md('leaseMkt.cpiForecast', 'pct', 'CPI Forecast', '% a year, after the last CPI value entered below')]);
+  var cpiRows = (Array.isArray(M.cpiIndex) ? M.cpiIndex : []).map(function(x, j){ return '<tr><td><input type="month" value="' + esc(x.month) + '" onchange="bkLeaseCpi(' + j + ',\'month\',this.value)"></td><td><input type="text" class="num" id="ae-cpi-' + j + '" value="' + esc(fmtIn(x.value, 'num')) + '" autocomplete="off" onchange="bkLeaseCpi(' + j + ',\'value\',this.value)"></td><td class="c"><button type="button" class="ae-x" onclick="bkLeaseCpiDel(' + j + ')">&times;</button></td></tr>'; }).join('');
+  mkt += '<div class="ae-panel"><div class="ae-ph"><i>C</i>CPI Index (optional)</div><table class="ae-grid"><thead><tr><th>Month</th><th>Index Value</th><th></th></tr></thead><tbody>' + (cpiRows || '<tr><td class="c ro" colspan="3">No values: every CPI increase is the forecast above.</td></tr>') + '</tbody></table><div class="ae-form"><div class="note">Enter the published index the leases name (for example CPI-U less food and energy) for the months you know; the forecast carries it forward. Each CPI lease rises by the 12-month change to the month it is measured to.</div></div><div class="ae-row">' + btn('Add a CPI value', 'bkLeaseCpiAdd()') + '</div></div>';
   var sum = '';
   if(a.length){ var S = safe(function(){ return bkLeaseSummary(s); }, null), c = calc(), cost = safe(function(){ var k = bkLeaseCosts(s, Math.round(num(s.holdYears) * 12)); return k.ti.reduce(function(t, v){ return t + v; }, 0) + k.lc.reduce(function(t, v){ return t + v; }, 0); }, 0), E = safe(function(){ return bkLeaseEval(s, 12, null, false); }, null);
     var exp = S ? Object.keys(S.byYear).sort(function(x, y){ return x - y; }).map(function(y){ return '<tr><td class="c">Year ' + y + '</td><td class="c r">' + Math.round(S.byYear[y]).toLocaleString('en-US') + '</td><td class="c r">' + (S.occSF ? pct(S.byYear[y] / S.occSF, 1) : '-') + '</td></tr>'; }).join('') : '';
@@ -22973,6 +23103,93 @@ if(typeof bkBuildRail === 'function') bkBuildRail();
 if(typeof RENDERERS === 'undefined') return;
 function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+/* RENT-ROLL OM LAYOUT. Many small-building OMs print a unit-by-unit rent roll, a list of expenses and the totals (gross
+   income, expenses, NOI) instead of an income and expense statement; a two-building offering prints one rent roll and one
+   expense column per building and a combined NOI. This reads that layout into the same shape as the statement parser
+   (ie.exp, ie.noi, ...) plus the rent roll itself (o.rr) and its other income lines (o.misc). */
+var RR_MONEY = /\$\s?\d[\d,]*(?:\.\d+)?|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b|\b\d+\.\d{2}\b/g;
+var RR_LONE = /^\s*\$?\s?\d[\d,]*(?:\.\d+)?\.?\s*$/;
+function rrNum(s){ var v = parseFloat(String(s).replace(/[^0-9.]/g, '')); return isFinite(v) ? v : null; }
+/* money figures in a segment; an area ("1,070 SF") is not money */
+function rrMoney(seg){ var out = [], m; RR_MONEY.lastIndex = 0; while((m = RR_MONEY.exec(seg))){ if(/^\s*SF\b/i.test(seg.slice(m.index + m[0].length))) continue; out.push({ v:rrNum(m[0]), i:m.index, e:m.index + m[0].length }); } return out; }
+/* label / amount pairs in one segment ("Consulting $5,333.00 Accounting $3,125.00 Legal $2,060.00") */
+function rrPairs(seg){ var ms = rrMoney(seg), out = [], from = 0; ms.forEach(function(m){ var lab = seg.slice(from, m.i).replace(/^[\s|:]+|[\s|:$]+$/g, '').trim(); if(/[A-Za-z]/.test(lab)) out.push({ label:lab, v:m.v }); from = m.e; }); return out; }
+function rrISO(d){ var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(d || '')); return m ? m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2) : ''; }
+var RR_OTHER = /^(storage|parking|cam\b|cam charges|laundry|avg laundry|property\s*tax|re tax|real estate tax|tax reimb|utility reimb|water reimb|late fees?|pet|antenna|roof|signage)/i;
+var RR_COMM = /^(c\d+\b|suite\b|retail\b|store\b|shop\b|smoke|comm|office\b|restaurant|bodega|deli|salon)/i;
+var RR_UNIT = /^((?:Apt|Unit|Suite|Retail|Store|Shop)\s+[\w-]+(?:\s*&\s*\w+)?|[A-Z]{0,2}\d+[A-Z]?|[A-Z]{1,2}\d*)(?:\s*-\s*Free\s*Market(?:\s*\d{4})?)?(?:\s+(.*))?$/;
+function parseRR(txt, o){
+  var pages = txt.map(function(t){ return String(t || '').split(/\n/); });
+  var rrPages = [], expPages = [];
+  pages.forEach(function(L, i){ var t = L.join('\n'); if(/rent\s*roll|rentroll/i.test(t)) rrPages.push(i); if(/\bEXPENSES\b/.test(t)) expPages.push(i); });
+  if(!rrPages.length || !expPages.length) return false;
+  var rows = [], misc = [], exp = [], expTotals = [], noiTot = null, noiList = [], incList = [], incTot = null, building = null;
+  var monthly = /monthly|x\s*12/i.test(rrPages.map(function(i){ return txt[i]; }).join('\n'));
+  pages.forEach(function(L, pi){
+    var inRR = false, inExp = false, isRR = rrPages.indexOf(pi) >= 0, afterTotal = false, secMisc = [];
+    for(var li = 0; li < L.length; li++){
+      var line = L[li];
+      var bh = /^\s*(\d[\d-]*\s+[A-Za-z][A-Za-z .]*?\b(?:AV|AVE|AVENUE|ST|STREET|RD|ROAD|BLVD|PL|PLACE|DR|DRIVE|LN|LANE|WAY))\b.*?(?:INCOME|Rent\s*roll)/i.exec(line); if(bh) building = bh[1].replace(/\s+/g, ' ').trim();
+      if(/rent\s*roll|rentroll/i.test(line)){ inRR = true; afterTotal = false; secMisc = []; }
+      if(/\bEXPENSES\b/.test(line)) inExp = true;
+      /* a figure broken up by the layout ("$ 5 2 9 , 7 8 7 ." with "60" on the next line) is rejoined */
+      var fixed = line.replace(/\$\s((?:\d\s?|,\s?)+(?:\.\s?\d?\s?\d?)?)/g, function(m, g){ return '$' + g.replace(/\s+/g, ''); });
+      if(/\d\.\s*$/.test(fixed) && /^\s*\d{2}\s*$/.test(L[li + 1] || '')){ fixed = fixed.replace(/\.\s*$/, '.' + L[li + 1].trim()); li++; }
+      var segs = fixed.split(/\s{2,}/).filter(function(x){ return x.trim(); });
+      /* a figure printed apart from its label ("Annual Income (...)    $445,856.76") belongs to the segment before it */
+      for(var sj = segs.length - 1; sj > 0; sj--){ if(RR_LONE.test(segs[sj]) && !RR_LONE.test(segs[sj - 1])){ segs[sj - 1] += ' ' + segs[sj]; segs.splice(sj, 1); } }
+      for(var si = 0; si < segs.length; si++){
+        var seg = segs[si].trim(), ms = rrMoney(seg); if(!ms.length) continue;
+        var lab = seg.slice(0, ms[0].i).trim();
+        /* totals and NOI (the last figure on the segment) */
+        if(/^(total\s+)?noi\b|net\s+operating\s+income|^noi for/i.test(lab)){ var nv = ms[ms.length - 1].v; if(/^total\s+noi/i.test(lab)) noiTot = nv; else noiList.push(nv); inExp = false; continue; }
+        if(/^gross\s+revenue|^total\s+(annual\s+)?income|^effective\s+gross/i.test(lab)){ incTot = ms[ms.length - 1].v; inExp = false; continue; }
+        if(/^annual\s+income/i.test(lab)){ incList.push(ms[ms.length - 1].v); continue; }
+        if(/^monthly\s+total|^operating\s+income|^annual\s+operating|^total\s+expenses\s*\(/i.test(lab)) continue;
+        /* a rent-roll row: unit label, then the monthly rent (and an annual figure 12x it, or parking / tax columns) */
+        var ratio = ms.length >= 2 && ms[0].v > 0 && Math.abs(ms[1].v / ms[0].v - 12) < 0.05;
+        if((inRR && isRR && !inExp) || ratio){
+          if(/^totals?:?$/i.test(lab)){ afterTotal = true; continue; }
+          if(/^total\b/i.test(lab)) continue;
+          if(!lab || /^rent income\b/i.test(lab) || /^unit\b/i.test(lab)) continue;
+          var mon = monthly || ratio ? ms[0].v : ms[0].v / 12, dates = (seg.match(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g) || []).map(rrISO);
+          /* other income: a row of the roll (storage, CAM, laundry) or, after the roll's total, its column totals (parking, tax) */
+          if(RR_OTHER.test(lab)){ var key = lab.split(/\s+/)[0].toLowerCase(); if(afterTotal && secMisc.indexOf(key) >= 0) continue; secMisc.push(key);
+            misc.push({ name:lab.replace(/^avg\s+/i, '').replace(/\s+N\/A$/i, '').trim(), amount:Math.round(mon * 100) / 100, freq:'Monthly' }); continue; }
+          if(afterTotal) continue;
+          var sfm = /([\d,]{3,})\s*SF\b/i.exec(lab), sf = sfm ? rrNum(sfm[1]) : 0;
+          var base = lab.replace(/\s+[\d,]+\s*SF\b.*$/i, '').replace(/\s+N\/A$/i, '').replace(/\s+(\d\s*BR|JR\s*1|STUDIO|1BR|2BR|3BR)\b.*$/i, '').trim();
+          /* the unit code apart from the tenant name: "C1 Clarity and Wellness ...", "Suite 4 & 5 TS Spa Corp", "3A -Free Market 2024 Bryan D. Hujsak" */
+          var um = RR_UNIT.exec(base), unit = um ? um[1] : base, name = um ? (um[2] || '') : '', vacant = /\bvacant\b/i.test(seg);
+          var comm = !!sf || RR_COMM.test(unit) || /\b(LLC|L\.L\.C|INC|CORP|PLLC|LTD)\b/i.test(lab);
+          rows.push({ unitId:unit, tenant:vacant ? 'Vacant' : name.replace(/^-\s*/, ''), tenantType:comm ? 'Commercial' : 'Residential', sf:sf, status:vacant ? 'Vacant' : 'Occupied',
+            inPlaceRent:vacant ? 0 : Math.round(mon * 100) / 100, marketRent:Math.round(mon * 100) / 100, recovery:0, leaseStart:dates[0] || '', leaseEnd:dates[1] || '',
+            building:building || '', spaces:comm ? 1 + (unit.match(/&/g) || []).length : 1, unitType:((/\b(\d\s*BR|JR\s*1|STUDIO)\b/i.exec(lab) || [])[1] || '').toUpperCase() });
+          continue;
+        }
+        if(inExp) rrPairs(seg).forEach(function(p){ if(/^total/i.test(p.label)) expTotals.push(p.v); else exp.push({ label:p.label.replace(/\s+/g, ' '), cur:p.v, pf:p.v }); });
+      }
+    }
+  });
+  if(!rows.length || !exp.length) return false;
+  misc = misc.map(function(x){ return { name:/tax/i.test(x.name) ? 'Real estate tax reimbursements' : x.name.replace(/^cam charges$/i, 'CAM charges'), amount:x.amount, freq:x.freq }; });
+  /* one NOI per building (printed twice is still one): the total if the OM prints one, else their sum */
+  var uniq = noiList.filter(function(v, i){ return noiList.indexOf(v) === i; }), noi = noiTot != null ? noiTot : uniq.length ? uniq.reduce(function(t, v){ return t + v; }, 0) : null;
+  var inc = incTot != null ? incTot : incList.length ? incList.reduce(function(t, v){ return t + v; }, 0) : null, expT = expTotals.length ? expTotals.reduce(function(t, v){ return t + v; }, 0) : exp.reduce(function(t, e){ return t + e.cur; }, 0);
+  /* income less expenses when the printed NOI is missing, or matches it but lost its cents to the layout */
+  if(inc != null && (noi == null || !(noi > 0) || Math.abs(inc - expT - noi) < 1)) noi = Math.round((inc - expT) * 100) / 100;
+  if(noi == null) return false;
+  var res = rows.filter(function(r){ return r.tenantType === 'Residential'; }), com = rows.filter(function(r){ return r.tenantType === 'Commercial'; }), sum = function(a, k){ return a.reduce(function(t, r){ return t + (Number(r[k]) || 0); }, 0); };
+  var resGross = sum(res, 'marketRent') * 12, comGross = sum(com, 'marketRent') * 12, miscAnn = misc.reduce(function(t, x){ return t + x.amount * 12; }, 0);
+  o.layout = 'rentroll'; o.rr = rows; o.misc = misc; o.unitsOM = o.units || null; o.units = res.length || o.units; o.commSpaces = com.reduce(function(t, r){ return t + r.spaces; }, 0); o.commSF = sum(com, 'sf');
+  o.buildings = rows.reduce(function(a, r){ if(r.building && a.indexOf(r.building) < 0) a.push(r.building); return a; }, []);
+  o.incOM = inc; o.expOM = expT;
+  o.ie = { addl:misc.map(function(x){ return { label:x.name, cur:x.amount * 12, pf:x.amount * 12 }; }), exp:exp, expTot:{ cur:expT, pf:expT }, noi:{ cur:noi, pf:noi }, gsr:{ cur:resGross, pf:resGross }, comm:{ cur:comGross, pf:comGross },
+    addTot:{ cur:miscAnn, pf:miscAnn }, egi:{ cur:resGross + comGross + miscAnn, pf:resGross + comGross + miscAnn }, noVacancy:true };
+  o.sources.income = expPages[0] + 1; o.sources.noi = o.sources.income; o.sources.rentRoll = rrPages[0] + 1; o.sources.units = o.sources.rentRoll;
+  o.curNOI = noi; o.pfNOI = noi;
+  return true;
+}
 /* OM text parser: pure function of the page texts. Works on OCR output or a PDF text layer. */
 function parseOM(pages){
   var txt = pages.map(function(p){ return p || ''; });
@@ -22983,8 +23200,21 @@ function parseOM(pages){
   /* identity: the running footer "FOR SALE - Name - 48 Street, City, ST" repeats on every page */
   var f = null, votes = {}, best = 0; for(var i = 0; i < txt.length; i++){ var fm = /FOR SALE\s*[-·•|]\s*(.+?)\s*[-·•|]\s*(\d+(?:\s*-\s*\d+)?\s+[^,\n]+?)\s*[-·•|,]\s*([A-Za-z .]+?),\s*([A-Z]{2})\b/i.exec(txt[i]); if(!fm) continue; var kk = fm.slice(1, 5).join('|'); votes[kk] = (votes[kk] || 0) + 1; if(votes[kk] > best){ best = votes[kk]; f = fm; src.name = i + 1; } }
   if(f){ o.name = f[1].trim(); o.street = f[2].trim(); o.city = f[3].trim(); o.state = f[4]; }
+  /* no running footer: a street address line followed by "City, ST 12345" on the first pages (cover text often loses its
+     spaces: "6 EastSidneyAvenue" / "MtVernon, NY10550") */
+  if(!o.name){ var dc = function(x){ return String(x || '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Za-z])(\d)/g, '$1 $2').replace(/\s+/g, ' ').trim(); };
+    for(i = 0; i < Math.min(3, txt.length) && !o.name; i++){ var NL = txt[i].split(/\n/); for(var nq = 0; nq < NL.length - 1; nq++){
+      var st = dc(NL[nq]), ct = /^([A-Za-z .]+?),\s*([A-Z]{2})\s*(\d{5})\b/.exec(dc(NL[nq + 1]));
+      if(ct && /^\d+(?:-\d+)?\s+[A-Za-z].*\b(Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Place|Pl|Drive|Dr|Lane|Ln|Way|Parkway|Pkwy|Court|Ct|Terrace)\.?$/i.test(st)){ o.name = st; o.street = st; o.city = ct[1].trim(); o.state = ct[2]; o.zip = ct[3]; src.name = i + 1; break; } } } }
   var z = /\b([A-Z]{2})\s*[-·]?\s*(\d{5})\b/.exec(all); if(z){ o.zip = z[2]; if(!o.state) o.state = z[1]; }
   o.price = num(find(/(?:Offering|Asking|List(?:ing)?|Purchase)\s*Price[^\d$\n]{0,20}\$\s?([\d,]{6,})/i, 1, 'price'));
+  /* the price on the line after its label ("Price to Sell:" then "$6,250,000"); "$12.999,000" (a period typed for a comma) reads as $12,999,000 */
+  if(!o.price){ for(i = 0; i < txt.length && !o.price; i++){ var PL = txt[i].split(/\n/); for(var pq = 0; pq < PL.length && !o.price; pq++){
+      var lm = /(price\s*to\s*sell|asking\s*price|offering\s*price|sale\s*price|list(?:ing)?\s*price|purchase\s*price)/i.exec(PL[pq]); if(!lm) continue;
+      var after = [PL[pq].slice(lm.index + lm[1].length), PL[pq + 1], PL[pq + 2]].filter(Boolean).join('  ');
+      var ty = /\$\s?(\d{1,3})\.(\d{3}),(\d{3})\b/.exec(after), pm = ty ? null : /\$\s?(\d{1,3}(?:,\d{3}){2,}|\d{6,})\b(?!\s*%)/.exec(after);
+      if(ty){ o.price = Number(ty[1] + ty[2] + ty[3]); o.priceTypo = ty[0].trim(); src.price = i + 1; }
+      else if(pm && num(pm[1]) >= 100000){ o.price = num(pm[1]); src.price = i + 1; o.priceFallback = true; } } } }
   if(!o.price){ for(i = 0; i < txt.length && !o.price; i++){ var L = txt[i].split(/\n/); for(var q = 0; q < L.length; q++){ if(!/(ASKING|OFFERING|LIST(?:ING)?|PURCHASE)\s*PRICE/i.test(L[q])) continue;
       var win = [L[q - 3], L[q - 2], L[q - 1], L[q]].filter(function(x){ return x; }).join(' '), ms = win.match(/\$\s?\d{1,3}(?:,\d{3})+/g) || [], vals = ms.map(num).filter(function(v){ return v >= 100000; }); if(vals.length){ o.price = vals[vals.length - 1]; src.price = i + 1; o.priceFallback = true; break; } } } }
   var noiM = null; for(i = 0; i < txt.length && !noiM; i++){ noiM = /\bNOI\s+\$?\s?([\d,]{5,})\s+\$?\s?([\d,]{5,})/.exec(txt[i]); if(noiM) src.noi = i + 1; }
@@ -22992,7 +23222,8 @@ function parseOM(pages){
   var capM = null; for(i = 0; i < txt.length && !capM; i++){ capM = /Cap\s*Rate\s+([\d.]+)\s*%\s+([\d.]+)\s*%/i.exec(txt[i]); }
   if(capM){ o.capPrinted = true; o.curCap = num(capM[1]) / 100; o.pfCap = num(capM[2]) / 100; }
   o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/Total\s+Units\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/(\d{1,4})\s*[- ]?\s*units?\b/i, 1, 'units'));
-  o.sf = num(find(/\bTotal\s+\d{1,4}\s+Units\s+([\d,]{4,})\s*SF/i, 1, 'sf')) || num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf')) || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
+  o.sf = num(find(/\bTotal\s+\d{1,4}\s+Units\s+([\d,]{4,})\s*SF/i, 1, 'sf')) || num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf'))
+    || num(find(/([\d,]{4,})\s*Total\s*SF\b/i, 1, 'sf')) || (function(){ var bm = /Building\s*SF\s+([\d,]{3,})\s*SF(?:\s*\|\s*([\d,]{3,})\s*SF)?/i.exec(all); return bm ? num(bm[1]) + (bm[2] ? num(bm[2]) : 0) : null; })() || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
   o.yearBuilt = num(find(/YEAR BUILT\s+(\d{4})/i, 1, 'yearBuilt'));
   o.lotAcres = num(find(/LOT SIZE[^\n]{0,30}?([\d.]+)\s*Acres/i, 1, 'lot')) || num(find(/\b(\d?\.\d+)\s*Acres/i, 1));
   o.stories = num(find(/STORIES\s+(\d+)/i, 1));
@@ -23036,6 +23267,7 @@ function parseOM(pages){
     o.ie = I;
     if(I.noi){ o.curNOI = o.curNOI || I.noi.cur; o.pfNOI = o.pfNOI || I.noi.pf; }
   }
+  if(!(o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length)) parseRR(txt, o);
   if(o.price && o.curNOI && !o.curCap) o.curCap = o.curNOI / o.price;
   return o;
 }
@@ -23157,7 +23389,9 @@ function readOMPdfjs(file){
         var o = parseOM(texts), s = o.sources || {}, again = []; [s.income, s.noi, s.unitMix, s.price].forEach(function(p){ if(p && pending.indexOf(p - 1) >= 0 && again.indexOf(p - 1) < 0) again.push(p - 1); }); if(!NEEDMIN(o)) pickRel.slice(0, 4).forEach(function(i){ if(again.indexOf(i) < 0) again.push(i); }); if(!again.length) return;
         var best = tieDiff(), attempt = function(read){ var prev = {}; again.forEach(function(i){ prev[i] = texts[i]; }); return read().then(function(){ var d = tieDiff(); if(d != null && (best == null || d <= best)) best = d; else again.forEach(function(i){ texts[i] = prev[i]; }); }); };
         return attempt(function(){ return batches(again, W2, 'Checking the figures at full size'); }).then(function(){ if(tied()) return; return attempt(function(){ return Promise.all(again.map(function(i){ return imgFor(i).then(function(b){ return ocrBlock(b, W2); }).then(function(t){ texts[i] = t; }); })); }); });
-      }).then(function(){ info.t.ocr = Date.now() - info.t.start; info.t.total = info.t.ocr; info.fullPages = Object.keys(hi).length; cachePut(file, { pages:texts, n:n }); });
+      }).then(function(){ info.t.ocr = Date.now() - info.t.start; info.t.total = info.t.ocr; info.fullPages = Object.keys(hi).length; cachePut(file, { pages:texts, n:n }); })
+      /* picture pages could not be read (no recognition engine, offline): keep the pages that have text rather than giving up on them */
+      .catch(function(e){ if(pendingAll.length >= n) throw e; info.ocrError = (e && e.message) || String(e); info.ocrSkipped = pendingAll.map(function(i){ return i + 1; }); pendingAll.forEach(function(i){ if(!texts[i]) texts[i] = ''; }); });
     }).then(function(){
       info.pages = texts; if(!coverIsPhoto(texts[0])) return info;
       return getPage(0).then(function(p){ return renderPage(p, 1800); }).then(function(b){ info.cover = b; return info; }).catch(function(){ return info; }); });
@@ -23170,7 +23404,7 @@ function coverIsPhoto(t){ return !/\$\s?\d/.test(t || ''); }
 function coverPhoto(blob){ return createImageBitmap(blob).then(function(bm){ var h = Math.round(bm.height * 0.70), c = document.createElement('canvas'); c.width = bm.width; c.height = h; c.getContext('2d').drawImage(bm, 0, 0, bm.width, h, 0, 0, bm.width, h); return new Promise(function(res){ c.toBlob(function(b){ res(new File([b], 'cover-photo.jpg', { type:'image/jpeg' })); }, 'image/jpeg', 0.9); }); }); }
 
 function sumBy(list, rx, key){ return list.filter(function(e){ return rx.test(e.label); }).reduce(function(t, e){ return t + (e[key] || 0); }, 0); }
-var CAT_RX = [['mgmt', /manag/i], ['taxes', /tax/i], ['insurance', /insur/i], ['utilities', /electric|gas|heat|water|sewer|trash|refuse|utilit/i], ['rm', /repair|maint/i], ['contract', /contract|landscap|snow|janitor|pest|cleaning/i], ['payroll', /payroll|salar|on-?site|super|labor/i], ['marketing', /market|advert|leasing/i]];
+var CAT_RX = [['mgmt', /manag/i], ['taxes', /tax/i], ['insurance', /insur/i], ['utilities', /electric|gas|heat|water|sewer|trash|refuse|utilit/i], ['rm', /repair|maint|plumb|hvac|appliance|key\/?lock|lock(?:smith)?\b/i], ['contract', /contract|landscap|snow|janitor|pest|exterminat|cleaning|elevator|alarm|security/i], ['payroll', /payroll|salar|on-?site|super|labor/i], ['marketing', /market|advert|leasing/i]];
 function autoCat(label){ for(var q = 0; q < CAT_RX.length; q++){ if(CAT_RX[q][1].test(label)) return CAT_RX[q][0]; } return 'ga'; }
 function catOf(label){ return window.bkLearn.get(label) || autoCat(label); }
 function buildDeal(om0, basis, fileName){
@@ -23191,6 +23425,24 @@ function buildDeal(om0, basis, fileName){
     avgRent:Math.round(gsr / u / 12 * 100) / 100, otherIncomePerUnit:Math.round(other / u * 100) / 100, vacancy:Math.round(vacPct * 10000) / 10000, occupancy:Math.round((1 - vacPct) * 10000) / 10000, badDebtPct:0, mgmtPct:egi ? Math.round(mgmt / egi * 100000) / 100000 : 0.03,
     taxes:taxes, insurance:ins, utilities:util, rm:rm, contract:con, payroll:pay, turnover:turn, marketing:mkt, ga:ga, reserves:0,
     exitCap:Math.round(cap * 10000) / 10000, holdYears:5, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, commercialRentGrowth:0, closingCostsPct:0.02, saleCostPct:0.02, miscPerGSF:0 };
+  if(om.layout === 'rentroll'){
+    /* the OM's own rent roll is the revenue: every unit at its rent (a vacant one at its asking rent, as the OM counts it), the
+       roll's parking, storage, CAM and tax lines as other income, and no vacancy, because the OM's NOI carries none */
+    var multi = (om.buildings || []).length > 1;
+    d.rentRoll = om.rr.map(function(r){ return { unitId:(multi && r.building ? r.building.replace(/\s+(AV|AVE|AVENUE|ST|STREET|RD|ROAD)$/i, '') + ' ' : '') + r.unitId, tenantType:r.tenantType, unitType:r.unitType, tenant:r.tenant, sf:r.sf, status:r.status, inPlaceRent:r.inPlaceRent, marketRent:r.marketRent, recovery:0, leaseStart:r.leaseStart, leaseEnd:r.leaseEnd }; });
+    d.miscIncome = (om.misc || []).map(function(x){ return { name:x.name, amount:x.amount, freq:x.freq }; });
+    d.otherIncomePerUnit = 0; d.vacancy = 0; d.occupancy = 1; d.commercialVacancy = 0; d.commercialArea = om.commSF || 0; d.commLeaseModel = false; d.leases = [];
+    d.lossToLeasePct = 0; d.concessionPct = 0; d.rentAppliedBasis = 'In-Place';
+    if(om.commSpaces) d.propertyType = 'Mixed-Use';
+    var nRes = om.rr.filter(function(r){ return r.tenantType === 'Residential'; }).length, vacR = om.rr.filter(function(r){ return r.status === 'Vacant'; });
+    notes.unshift('Revenue is the OM\'s unit rent roll: ' + nRes + ' apartments' + (om.commSpaces ? ' and ' + om.commSpaces + ' commercial space' + (om.commSpaces === 1 ? '' : 's') + (om.commSF ? ' (' + om.commSF.toLocaleString('en-US') + ' SF)' : '') : '') + (multi ? ' in ' + om.buildings.length + ' buildings (' + om.buildings.join(', ') + '), combined into one deal' : '') + '. The units count is apartments only.');
+    notes.push('The OM\'s NOI carries no vacancy or credit loss, so vacancy starts at 0% to match it. Set your own residential and commercial vacancy on Deal Underwrite.');
+    if(vacR.length) notes.push(vacR.map(function(r){ return r.unitId; }).join(', ') + ' ' + (vacR.length === 1 ? 'is' : 'are') + ' vacant; the OM counts ' + (vacR.length === 1 ? 'it' : 'them') + ' at the asking rent (' + vacR.map(function(r){ return $(r.marketRent) + '/mo'; }).join(', ') + '), and so does the deal.');
+    var stale = om.rr.filter(function(r){ return r.leaseEnd && r.leaseEnd < '2026-01-01'; });
+    if(stale.length) notes.push(stale.length + ' of the ' + om.rr.length + ' leases in the rent roll expired before 2026. Ask the broker for a current rent roll.');
+    if(om.priceTypo) notes.push('The OM prints the price as "' + om.priceTypo + '"; it is read as ' + $(om.price) + '. Confirm it with the broker.');
+    if(om.misc && om.misc.length) notes.push('Other income from the rent roll: ' + om.misc.map(function(x){ return x.name + ' ' + $(x.amount * 12) + '/yr'; }).join(', ') + '.');
+  }
   var tie = safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
   if(!has('mgmt')) notes.push('The OM shows no management fee. Underwriting normally includes 3% to 5% of income for management, even when the owner self-manages. Set it on Deal Underwrite.');
   if(!has('rm')) notes.push('The OM shows no repairs and maintenance line. Add an allowance on Deal Underwrite.');
@@ -23198,7 +23450,7 @@ function buildDeal(om0, basis, fileName){
   notes.push('Replacement reserves are not in the OM, so they start at $0. Set them on Deal Underwrite (about $250 to $300 a unit is usual).');
   notes.push('Exit cap rate starts at the going-in cap (' + pct(cap) + ') and hold at 5 years. Growth and closing costs are the app standards. Change them to your view.');
   if(basis === 'pf') notes.push('This uses the broker pro forma. It assumes every unit reaches the rents the OM calls achievable, so treat the returns as the broker case.');
-  if(om.unitMix && om.unitMix.length) notes.push('Rents use the average across ' + om.unitMix.map(function(m){ return m.units + ' ' + m.type; }).join(' and ') + ' (a unit-level rent roll was not extracted).');
+  if(om.layout !== 'rentroll' && om.unitMix && om.unitMix.length) notes.push('Rents use the average across ' + om.unitMix.map(function(m){ return m.units + ' ' + m.type; }).join(' and ') + ' (a unit-level rent roll was not extracted).');
   if(I.ltl && I.ltl.cur && basis === 'cur') notes.push('The OM shows ' + $(I.ltl.cur) + ' a year of loss to lease. In-place rents are below the rents it calls achievable.');
   return { deal:d, tie:tie, want:want, notes:notes, cap:cap, lines:lines };
 }
@@ -23208,7 +23460,7 @@ function run(file, target){
     if(!NEEDMIN(om) && looksDev(info.pages)){ S.om = om; S.info = info; S.mode = 'dev'; S.dev = { om:parseDevOM(info.pages), taxBasis:'pf' }; S.result = true; S.busy = false; S.msg = 'Read ' + file.name + '.'; showSheet('Import OM'); return; }
     if(!NEEDMIN(om) && /land for development|available parcels|sites (?:are )?available/i.test(info.pages.join('\n')) && !om.price){ S.msg = 'Read ' + file.name + '. It is a land listing with no price, unit count or financials, so there is nothing to underwrite from it yet. Keep it with the deal in Deal Documents, and use Import OM again once you have a priced offering or a pro forma.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
     if(!NEEDMIN(om)){ S.msg = 'Read ' + file.name + ' but could not find an income and expense table with its net operating income (found: ' + [om.price && 'price', om.units && 'units', om.ie && om.ie.noi && 'NOI'].filter(Boolean).join(', ') + '). Use Import Deal for a T-12, or Source Ingestion for other layouts.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
-    S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mUnits = null; S.msg = 'Read ' + file.name + ' (' + (info.method === 'text' ? 'text layer' : info.method === 'mixed' ? 'text layer, and page images read by text recognition' : (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images')) + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
+    S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mUnits = null; S.msg = 'Read ' + file.name + ' (' + (info.ocrError ? 'text layer; ' + info.ocrSkipped.length + ' picture page' + (info.ocrSkipped.length === 1 ? '' : 's') + ' skipped, the text recognition engine did not load' : info.method === 'text' ? 'text layer' : info.method === 'mixed' ? 'text layer, and page images read by text recognition' : (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images')) + (om.layout === 'rentroll' ? '; unit rent roll and expense list' + ((om.buildings || []).length > 1 ? ' for ' + om.buildings.length + ' buildings' : '') : '') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
 }
 window.bkOMRun = function(inp){ var f = inp && inp.files && inp.files[0]; if(!f) return; if(/\.(xlsx|xlsm|csv)$/i.test(f.name)){ S = { busy:true, msg:'', mode:'dev', result:null, basis:'cur', file:null, target:'new', dev:{ om:{}, taxBasis:'pf' } }; devRun(inp); return; } run(f, 'new'); };
 window.bkOMBasis = function(b){ S.basis = b; showSheet('Import OM'); };
@@ -23363,6 +23615,7 @@ function confOM(om, b, info, basis){
   /* price */
   if(S.mPrice && !om.price) set('purchasePrice', 'verified', 'You entered it; the OM does not state a price.');
   else if(!om.price) set('purchasePrice', 'low', 'The OM states no price. Enter one above.');
+  else if(om.priceTypo) set('purchasePrice', 'check', 'The OM prints "' + om.priceTypo + '"; read as ' + $(om.price) + '. Confirm it.');
   else if(om.capPrinted && om.curNOI && om.price){ var imp = om.curNOI / om.price; if(Math.abs(imp - om.curCap) <= 0.0006) set('purchasePrice', 'verified', 'In-place NOI divided by this price gives ' + pct(imp) + ', the cap rate the OM prints.'); else set('purchasePrice', 'low', 'NOI divided by this price is ' + pct(imp) + ' but the OM prints a ' + pct(om.curCap) + ' cap rate. The price or the NOI is misread.'); }
   else if(om.priceFallback || ocr(s.price)) set('purchasePrice', 'check', (ocr(s.price) ? 'Read from a page image' : 'Found near the words "asking price"') + '; no printed cap rate to check it against. Confirm it on page ' + (s.price || '?') + '.');
   else set('purchasePrice', 'check', 'Read directly from the text; nothing in the OM corroborates it.');
@@ -23370,12 +23623,13 @@ function confOM(om, b, info, basis){
   var mixU = (om.unitMix || []).reduce(function(t, m){ return t + (m.units || 0); }, 0);
   if(S.mUnits && !om.units) set('units', 'verified', 'You entered it.');
   else if(mixU && om.units) set('units', mixU === om.units ? 'verified' : 'low', mixU === om.units ? 'Matches the ' + mixU + ' units in the unit mix table.' : 'The OM says ' + om.units + ' units but its unit mix adds to ' + mixU + '.');
+  else if(om.layout === 'rentroll'){ var spaces = d.units + (om.commSpaces || 0); if(om.unitsOM && spaces === om.unitsOM) set('units', 'verified', d.units + ' apartments in the rent roll' + (om.commSpaces ? ' plus ' + om.commSpaces + ' commercial spaces' : '') + ' = the ' + om.unitsOM + ' units the OM states.'); else set('units', 'check', 'Counted from the rent roll: ' + d.units + ' apartments' + (om.commSpaces ? ' and ' + om.commSpaces + ' commercial spaces' : '') + (om.unitsOM ? '; the OM states ' + om.unitsOM + ' units.' : '.')); }
   else set('units', 'check', ocr(s.units) ? 'Read from a page image with no unit mix to check it against.' : 'No unit mix table to check it against.');
   if(!d.gsf) set('gsf', 'low', 'No building area found.');
   else { var spu = d.gsf / (d.units || 1); if(spu < 350 || spu > 2500) set('gsf', 'low', 'That is ' + Math.round(spu) + ' SF per unit, which is outside the usual range. The area or the unit count is misread.'); else set('gsf', ocr(s.sf) ? 'check' : 'verified', ocr(s.sf) ? 'Read from a page image; ' + Math.round(spu) + ' SF per unit is plausible.' : Math.round(spu) + ' SF per unit is plausible.'); }
   /* income and expenses */
   line('avgRent', d.avgRent, 'rent'); line('otherIncomePerUnit', d.otherIncomePerUnit, 'other income');
-  if(I.vac && (I.vac[basis + 'Pct'] != null || I.vac[basis] != null)) line('vacancy', d.vacancy, 'vacancy'); else set('vacancy', 'assumed', 'The OM shows no vacancy line; 5% is the app default.');
+  if(I.vac && (I.vac[basis + 'Pct'] != null || I.vac[basis] != null)) line('vacancy', d.vacancy, 'vacancy'); else if(I.noVacancy) set('vacancy', 'check', 'The OM\'s NOI has no vacancy allowance, so this starts at 0% to match it. Set your own.'); else set('vacancy', 'assumed', 'The OM shows no vacancy line; 5% is the app default.');
   if(om.ie && I.exp && I.exp.some(function(e){ return catOf(e.label) === 'mgmt'; })) line('mgmtPct', d.mgmtPct, 'management fee'); else set('mgmtPct', 'assumed', 'The OM shows no management fee; 3% of income is the app default.');
   [['taxes', 'taxes', 'taxes'], ['insurance', 'insurance', 'insurance'], ['rm', 'rm', 'repairs and maintenance']].forEach(function(r){ if(!d[r[0]]) set(r[0], 'low', 'No ' + r[2] + ' line was found in the OM, so this is $0.'); else line(r[0], d[r[0]], r[2]); });
   ['utilities', 'contract', 'payroll', 'marketing', 'turnover', 'ga'].forEach(function(k){ if(d[k]) line(k, d[k], 'expense line'); });
@@ -23422,12 +23676,14 @@ function render(){
     var ready = (om.price || S.mPrice) && (om.units || S.mUnits);
     if(need) body += box('<b>One thing the OM did not state.</b> Enter it to continue.<div style="margin-top:8px">' + need + '</div>');
     var basisBtn = function(k, t){ return '<button type="button" class="pl-hbtn' + (S.basis === k ? ' primary' : '') + '" onclick="bkOMBasis(\'' + k + '\')">' + t + '</button>'; };
-    body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Underwrite on</b>' + basisBtn('cur', 'In-place (current)') + basisBtn('pf', 'Broker pro forma') + '</div><div style="font-size:12px;opacity:.7;margin-top:6px">In-place uses current scheduled rents and today\'s expenses. The pro forma uses the rents the OM calls achievable' + (om.pfNOI ? ' (' + $(om.pfNOI) + ' NOI)' : '') + '.</div>');
+    /* a rent-roll OM has no broker pro forma to switch to */
+    if(om.layout !== 'rentroll') body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Underwrite on</b>' + basisBtn('cur', 'In-place (current)') + basisBtn('pf', 'Broker pro forma') + '</div><div style="font-size:12px;opacity:.7;margin-top:6px">In-place uses current scheduled rents and today\'s expenses. The pro forma uses the rents the OM calls achievable' + (om.pfNOI ? ' (' + $(om.pfNOI) + ' NOI)' : '') + '.</div>');
     body += confBar(C);
     body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO OM NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs OM ' + $(b.want) + '</span>') + '</div>'
       + '<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><thead><tr><th style="text-align:left;padding:5px 8px"></th><th style="text-align:right;padding:5px 8px">Value</th><th style="text-align:left;padding:5px 8px">Source</th><th style="text-align:left;padding:5px 8px">Confidence</th></tr></thead><tbody>'
-      + row('Purchase price (asking)', $(d.purchasePrice), s.price, '', cf.purchasePrice) + row('Units', d.units, s.units, '', cf.units) + row('Building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', s.sf, '', cf.gsf) + row('Average monthly rent', $(d.avgRent), s.unitMix || s.income, '', cf.avgRent)
-      + row('Other income per unit (year)', $(d.otherIncomePerUnit), s.income, '', cf.otherIncomePerUnit) + row('Vacancy', pct(d.vacancy, 1), s.income, '', cf.vacancy) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', s.income, '', cf.mgmtPct)
+      + row('Purchase price (asking)', $(d.purchasePrice), s.price, '', cf.purchasePrice) + row(om.layout === 'rentroll' ? 'Apartments' : 'Units', d.units, s.units, '', cf.units) + row('Building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', s.sf, '', cf.gsf)
+      + (om.layout === 'rentroll' ? row('Residential rent (year)', $(I.gsr.cur) + ' · ' + $(d.avgRent) + ' avg/mo', s.rentRoll, '', cf.avgRent) + (I.comm.cur ? row('Commercial rent (year)', $(I.comm.cur), s.rentRoll, '', cf.avgRent) : '') + row('Other income (year)', $(I.addTot.cur), s.rentRoll, '', cf.avgRent)
+        : row('Average monthly rent', $(d.avgRent), s.unitMix || s.income, '', cf.avgRent) + row('Other income per unit (year)', $(d.otherIncomePerUnit), s.income, '', cf.otherIncomePerUnit)) + row('Vacancy', pct(d.vacancy, 1), s.income, '', cf.vacancy) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', s.income, '', cf.mgmtPct)
       + row('Real estate taxes', $(d.taxes), s.income, '', cf.taxes) + row('Insurance', $(d.insurance), s.income, '', cf.insurance) + row('Utilities (electric, gas, water, trash)', $(d.utilities), s.income, '', cf.utilities) + row('Repairs and maintenance', $(d.rm), s.income, '', cf.rm) + row('Contract services and landscaping', $(d.contract), s.income, '', cf.contract) + (d.ga ? row('Other expenses', $(d.ga), s.income, '', cf.ga) : '')
       + row('Going-in cap rate on in-place NOI', pct(b.cap), s.noi, '', cf.t12noi) + row('Exit cap rate', pct(d.exitCap), '', 'assumed', cf.exitCap) + row('Replacement reserves', '$0', '', 'assumed', cf.reserves) + '</tbody></table>'
       + (om.yearBuilt || om.zoning ? '<div style="font-size:12px;opacity:.7;margin-top:8px">Also in the OM: ' + [om.yearBuilt && 'built ' + om.yearBuilt, om.lotAcres && om.lotAcres + ' acres', om.stories && om.stories + ' stories', om.parking && om.parking + ' parking spaces', om.zoning && 'zoned ' + om.zoning].filter(Boolean).join(', ') + '.</div>' : ''));

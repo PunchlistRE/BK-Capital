@@ -1,8 +1,10 @@
 /* COMMERCIAL LEASE MODEL. A tenant-by-tenant projection of commercial income, used in place of the flat retail line when `commLeaseModel` is on and `leases` has tenants.
    Each tenant carries the lease in place (rent per SF with annual bumps or dated steps, expiry, recovery type). At expiry the space renews with the renewal probability, or goes dark for the
    downtime and re-leases at market; both outcomes are carried as probability-weighted branches, and each new lease rolls again until the end of the horizon. Free rent, tenant improvements and
-   leasing commissions follow the new lease. Recoveries are the tenant's pro-rata share of the recoverable expense pool. TI and LC are capital below NOI (they reduce cash flow, not NOI).
-   Rolled leases use market rent grown at the commercial rent growth. Not modeled: expense gross-up for vacancy, expense caps and stops other than base year, percentage rent, and inflation on TI and LC. */
+   leasing commissions follow the new lease. Recoveries are the tenant's pro-rata share of the recoverable expense pool, or the shares stated in its lease, line by line; they can be
+   NNN, base year, expense stop, fixed or none, with an optional cap on controllable expenses and a gross-up of variable expenses for vacancy. In-place rent rises by a fixed bump, by dated
+   steps, or by the greater of a floor and the CPI change. TI and LC are capital below NOI (they reduce cash flow, not NOI). Rolled leases use market rent grown at the commercial rent
+   growth. Not modeled: percentage rent, and inflation on TI and LC. */
 (function(){
 'use strict';
 function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
@@ -10,11 +12,15 @@ function has(v){ return v !== null && v !== undefined && v !== '' && isFinite(Nu
 function pick(a, b){ return has(a) ? Number(a) : b; }
 function isDevDeal(s){ return /develop/i.test(String(s && s.dealType || '')); }
 var DEF_POOL = ['taxes', 'insurance', 'utilities', 'rm', 'contract'];
+/* taxes and insurance do not vary with occupancy (the engine's own split); recovery caps conventionally exclude them and utilities */
+var FIXED_KEYS = ['taxes', 'insurance'], UNCAPPED_KEYS = ['taxes', 'insurance', 'utilities'];
+var REC_TYPES = ['NNN', 'Gross', 'BaseYear', 'Stop', 'Fixed'];
 window.BK_LEASE_POOL_KEYS = [['taxes', 'Real estate taxes'], ['insurance', 'Insurance'], ['utilities', 'Utilities'], ['rm', 'Repairs and maintenance'], ['contract', 'Contract services'], ['payroll', 'Payroll'], ['ga', 'General and administrative'], ['marketing', 'Marketing']];
 window.bkLeaseOn = function(s){ s = s || bkLoad(); return !!(s && s.commLeaseModel === true && Array.isArray(s.leases) && s.leases.length && !isDevDeal(s)); };
 window.bkLeaseMarket = function(s){
-  var M = Object.assign({ growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL }, (s && s.leaseMkt) || {});
+  var M = Object.assign({ growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL, grossUp:1, grossVar:null, cpiForecast:0.025, cpiIndex:[] }, (s && s.leaseMkt) || {});
   if(!Array.isArray(M.recoverable)) M.recoverable = DEF_POOL;
+  if(!Array.isArray(M.cpiIndex)) M.cpiIndex = [];
   M.g = has(M.growth) ? Number(M.growth) : num(s && s.commercialRentGrowth);
   var RA = Object.assign({ renewalProbability:0.65, downtimeMonths:6, tiNewPerSF:20, tiRenewalPerSF:5, lcNewPct:0.06, lcRenewalPct:0.03 }, (s && s.rolloverAssumptions) || {});
   return { M:M, RA:RA };
@@ -35,6 +41,14 @@ function build(s){
   var n = Math.max(1, Math.min(15, Math.round(num(s.holdYears) || 10))), hold = n * 12, H = hold + 12;
   var mk = bkLeaseMarket(s), M = mk.M, RA = mk.RA, mf = marketFactor(s, M.g), segs = [], issues = [], tenants = [];
   var bsf = Math.max(num(s.gsf), (s.leases || []).reduce(function(t, l){ return t + num(l && l.sf); }, 0));
+  /* CPI index by model month (month 1 = closing month). Known values are entered by month; between and beyond them the
+     index moves at the CPI forecast, so with no values entered every annual change is exactly the forecast. */
+  var cf = num(M.cpiForecast), cpts = M.cpiIndex.map(function(x){ var q = /^(\d{4})-(\d{1,2})/.exec(String(x && x.month || '')); return q && num(x.value) > 0 ? { m:(Number(q[1]) - cy) * 12 + (Number(q[2]) - cm) + 1, v:num(x.value) } : null; }).filter(Boolean).sort(function(a, b){ return a.m - b.m; });
+  var cpiAt = function(m){
+    if(!cpts.length) return Math.pow(1 + cf, m / 12);
+    var p = null; for(var j = 0; j < cpts.length && cpts[j].m <= m; j++) p = cpts[j];
+    return p ? p.v * Math.pow(1 + cf, (m - p.m) / 12) : cpts[0].v / Math.pow(1 + cf, (cpts[0].m - m) / 12);
+  };
   (s.leases || []).forEach(function(L, ti){
     var sf = num(L && L.sf); if(!(sf > 0)) return;
     var ov = L.over && typeof L.over === 'object' ? L.over : {};
@@ -42,12 +56,17 @@ function build(s){
     var tiN = pick(ov.tiNewPerSF, num(RA.tiNewPerSF)), tiR = pick(ov.tiRenewalPerSF, num(RA.tiRenewalPerSF)), lcN = pick(ov.lcNewPct, num(RA.lcNewPct)), lcR = pick(ov.lcRenewalPct, num(RA.lcRenewalPct));
     var termN = Math.max(1, Math.round(pick(ov.termNew, M.termNew))), termR = Math.max(1, Math.round(pick(ov.termRenew, M.termRenew))), freeN = Math.max(0, Math.round(pick(ov.freeNew, M.freeNew))), freeR = Math.max(0, Math.round(pick(ov.freeRenew, M.freeRenew)));
     var rent = num(L.rent), mkt = num(L.mkt) > 0 ? num(L.mkt) : rent, startD = bkParseDealDate(L.start, null), endD = bkParseDealDate(L.end, null);
-    var rtype = ['NNN', 'Gross', 'BaseYear', 'Fixed'].indexOf(L.recType) >= 0 ? L.recType : 'NNN', rfix = num(L.recFixed);
+    var rtype = REC_TYPES.indexOf(L.recType) >= 0 ? L.recType : 'NNN', rfix = num(L.recFixed), rstop = num(L.recStop), cap = Math.max(0, num(L.recCap));
+    /* what the tenant pays toward each expense line: the lease's stated shares when it has any, else its area share of the market pool */
+    var shares = L.recShares && typeof L.recShares === 'object' ? L.recShares : {}, wk = {};
+    Object.keys(shares).forEach(function(k){ if(has(shares[k]) && Number(shares[k]) > 0) wk[k] = Math.min(1, Number(shares[k])); });
+    if(!Object.keys(wk).length) M.recoverable.forEach(function(k){ wk[k] = sf / bsf; });
     var steps = (Array.isArray(L.steps) ? L.steps : []).map(function(x){ var m = /^(\d{4})-(\d{1,2})/.exec(String(x && x.month || '')); return m && has(x.rent) ? { m:(Number(m[1]) - cy) * 12 + (Number(m[2]) - cm) + 1, r:Number(x.rent) } : null; }).filter(Boolean).sort(function(a, b){ return a.m - b.m; });
     var tn = { i:ti, name:String(L.tenant || L.suite || ('Tenant ' + (ti + 1))), sf:sf, p:p };
     tenants.push(tn);
-    var rtypeRoll = ['NNN', 'Gross', 'BaseYear', 'Fixed'].indexOf(L.recRoll) >= 0 ? L.recRoll : rtype;
-    var base = function(seg){ seg.t = ti; seg.sf = sf; seg.rtype = seg.kind === 'cur' ? rtype : rtypeRoll; seg.rfix = rfix; segs.push(seg); return seg; };
+    var rtypeRoll = REC_TYPES.indexOf(L.recRoll) >= 0 ? L.recRoll : rtype;
+    /* the cap is a term of today's lease; it carries into rolled leases only when recoveries stay "same as today" */
+    var base = function(seg){ seg.t = ti; seg.sf = sf; seg.rtype = seg.kind === 'cur' ? rtype : rtypeRoll; seg.rfix = rfix; seg.rstop = rstop; seg.wk = wk; seg.cap = seg.kind === 'cur' || !L.recRoll ? cap : 0; seg.anc = seg.kind === 'cur' ? seg.ks : seg.a; segs.push(seg); return seg; };
     var aggRent = function(rent0, bump, term, free){ var t = 0; for(var j = free; j < term; j++) t += rent0 * Math.pow(1 + bump, Math.floor(j / 12)) * sf / 12; return t; };
     var market = function(a, w, kind){
       var term = kind === 'renew' ? termR : termN, free = kind === 'renew' ? freeR : freeN, rent0 = mkt * mf(a) * (kind === 'renew' ? num(M.renewPct) : 1), ti_ = (kind === 'renew' ? tiR : tiN) * sf * w, lc = (kind === 'renew' ? lcR : lcN) * aggRent(rent0, num(M.bump), term, free) * w;
@@ -73,12 +92,17 @@ function build(s){
     var ks = startD ? idx(startD) : -9999, E = endD ? idx(endD) : H + 9999;
     /* annual bumps need a lease anniversary: without a start date they fall on closing anniversaries (month 13, 25, ...) */
     var anchor = startD ? ks : 1;
-    if(!startD && num(L.bump) && !steps.length) issues.push({ t:ti, level:'check', msg:'No lease start date: annual bumps are assumed on closing anniversaries.' });
+    if(!startD && num(L.bump) && !steps.length && L.esc !== 'cpi') issues.push({ t:ti, level:'check', msg:'No lease start date: annual bumps are assumed on closing anniversaries.' });
     if(!endD) issues.push({ t:ti, level:'check', msg:'No lease end date: the lease is assumed to run through the analysis.' });
     if(E < 1){ issues.push({ t:ti, level:'check', msg:'The lease ended before closing: treated as rolling at closing.' }); roll(1, 1); return; }
     var dim = endD ? new Date(endD.getFullYear(), endD.getMonth() + 1, 0).getDate() : 1, fb = endD ? endD.getDate() / dim : 1;
     var fa = 1; if(startD && ks >= 1){ var d1 = new Date(startD.getFullYear(), startD.getMonth() + 1, 0).getDate(); fa = (d1 - startD.getDate() + 1) / d1; }
-    base({ kind:'cur', a:ks, b:E, w:1, rent0:rent, steps:steps, bump:num(L.bump), ks:anchor, free:0, fa:fa, fb:fb, base:Math.max(1, L.baseYear ? idx(new Date(Number(L.baseYear), 0, 1)) : ks), ti:0, lc:0, tiAt:0 });
+    /* CPI escalation: on each anniversary A the rent rises by the greater of the floor (the bump field) and the CPI change over
+       the 12 months ending lag months before A (lag 1: the month before the lease year starts), optionally capped */
+    var cpi = L.esc === 'cpi' && !steps.length, lag = Math.max(0, Math.round(pick(L.cpiLag, 1))), cpiCap = has(L.cpiCap) ? Number(L.cpiCap) : null;
+    var cpiCh = cpi ? function(A){ return cpiAt(A - lag) / cpiAt(A - lag - 12) - 1; } : null;
+    if(cpi && !startD) issues.push({ t:ti, level:'check', msg:'CPI increases with no lease start date: assumed on closing anniversaries.' });
+    base({ kind:'cur', a:ks, b:E, w:1, rent0:rent, steps:steps, bump:num(L.bump), cpiCh:cpiCh, cpiCap:cpiCap, ks:anchor, free:0, fa:fa, fb:fb, base:Math.max(1, L.baseYear ? idx(new Date(Number(L.baseYear), 0, 1)) : ks), ti:0, lc:0, tiAt:0 });
     roll(E + 1, 1);
   });
   return { segs:segs, tenants:tenants, issues:issues, hold:hold, H:H, bsf:bsf, M:M, mf:mf, idx:idx, closing:cd };
@@ -91,33 +115,66 @@ function struct(s){
 function curRent(g, m){
   if(g.steps && g.steps.length){ var r = g.rent0; g.steps.forEach(function(x){ if(x.m <= m) r = x.r; }); return r; }
   /* bumps fall on anniversaries ks+12, ks+24, ... that are in month 2 or later and on or before m (counted, not looped) */
+  var kmin = Math.max(1, Math.ceil((2 - g.ks) / 12)), kmax = Math.floor((m - g.ks) / 12);
+  if(g.cpiCh){
+    var memo = g.cpiMemo || (g.cpiMemo = {}), r0 = g.rent0;
+    for(var k = kmin; k <= kmax; k++){ if(memo[k] === undefined){ var inc = Math.max(g.bump, g.cpiCh(g.ks + 12 * k)); if(g.cpiCap !== null) inc = Math.min(g.cpiCap, inc); memo[k] = inc; } r0 *= 1 + memo[k]; }
+    return r0;
+  }
   if(!g.bump) return g.rent0;
-  var kmin = Math.max(1, Math.ceil((2 - g.ks) / 12)), kmax = Math.floor((m - g.ks) / 12), nb = Math.max(0, kmax - kmin + 1);
+  var nb = Math.max(0, kmax - kmin + 1);
   return g.rent0 * Math.pow(1 + g.bump, nb);
 }
 /* Month-by-month result for months 1..months. fac = { tax(year), opex(month) } growth factors on the recoverable pool (identity for a Year 1 statement). detail adds per-tenant arrays. */
 window.bkLeaseEval = function(s, months, fac, detail){
   s = s || bkLoad(); var S = struct(s), segs = S.segs; fac = fac || {}; var fT = fac.tax || function(){ return 1; }, fO = fac.opex || function(){ return 1; };
   var z = function(){ return new Array(months).fill(0); }, out = { rent:z(), free:z(), rec:z(), occ:z(), ti:z(), lc:z(), tenants:S.tenants, issues:S.issues, struct:S };
-  var keys = S.M.recoverable, poolMemo = {};
-  var pool = function(m){ m = Math.max(1, m); if(poolMemo[m] !== undefined) return poolMemo[m]; var t = 0; keys.forEach(function(k){ t += num(s[k]) / 12 * (k === 'taxes' ? fT(Math.ceil(m / 12)) : fO(m)); }); return (poolMemo[m] = t); };
   if(detail) out.byT = S.tenants.map(function(){ return { rent:z(), free:z(), rec:z(), cost:z(), occ:z() }; });
-  var bsf = S.bsf;
+  var tix = S.tenants.map(function(x){ return x.i; }), Tof = function(g){ return detail ? out.byT[tix.indexOf(g.t)] : null; };
+  var fracOf = function(g, m){ return (m === g.a && g.kind === 'cur' ? g.fa : 1) * (m === g.b && g.kind === 'cur' ? g.fb : 1); };
+  /* pass 1: rent, free rent, occupancy and leasing costs */
   segs.forEach(function(g){
-    var lo = Math.max(g.a, 1), hi = Math.min(g.b, months), share = g.sf / bsf, bp = g.rtype === 'BaseYear' ? pool(g.base) : 0, T = detail ? out.byT[S.tenants.map(function(x){ return x.i; }).indexOf(g.t)] : null;
+    var lo = Math.max(g.a, 1), hi = Math.min(g.b, months), T = Tof(g);
     for(var m = lo; m <= hi; m++){
-      var frac = (m === g.a && g.kind === 'cur' ? g.fa : 1) * (m === g.b && g.kind === 'cur' ? g.fb : 1);
+      var frac = fracOf(g, m);
       var psf = g.kind === 'cur' ? curRent(g, m) : g.rent0 * Math.pow(1 + g.bump, Math.floor((m - g.a) / 12)), r = g.sf * psf / 12 * g.w * frac, fr = 0;
       if(g.kind !== 'cur' && m - g.a < g.free){ fr = r; r = 0; }
-      var rc = 0; if(g.rtype === 'NNN') rc = share * pool(m); else if(g.rtype === 'BaseYear') rc = share * Math.max(0, pool(m) - bp); else if(g.rtype === 'Fixed') rc = g.sf * g.rfix / 12 * fO(m);
-      rc *= g.w * frac; var oc = g.sf * g.w * frac;
-      out.rent[m - 1] += r; out.free[m - 1] += fr; out.rec[m - 1] += rc; out.occ[m - 1] += oc;
-      if(T){ T.rent[m - 1] += r; T.free[m - 1] += fr; T.rec[m - 1] += rc; T.occ[m - 1] += oc; }
+      var oc = g.sf * g.w * frac;
+      out.rent[m - 1] += r; out.free[m - 1] += fr; out.occ[m - 1] += oc;
+      if(T){ T.rent[m - 1] += r; T.free[m - 1] += fr; T.occ[m - 1] += oc; }
     }
-    if(g.tiAt >= 1 && g.tiAt <= months){ out.ti[g.tiAt - 1] += g.ti; out.lc[g.tiAt - 1] += g.lc; if(T) T.cost[g.tiAt - 1] += g.ti + g.lc; }
+    if(g.tiAt >= 1 && g.tiAt <= months){ out.ti[g.tiAt - 1] += g.ti; out.lc[g.tiAt - 1] += g.lc; var T2 = Tof(g); if(T2) T2.cost[g.tiAt - 1] += g.ti + g.lc; }
   });
   var tot = S.tenants.reduce(function(t, x){ return t + x.sf; }, 0) || 1;
   out.occ = out.occ.map(function(v){ return v / tot; });
+  /* pass 2: recoveries. Expense inputs are the cost at full occupancy; the variable share of every line but taxes and
+     insurance falls with occupancy, as in the engine's own operating expenses. Gross-up bills the variable share as if
+     occupancy were at least the gross-up level, so the default of 100% recovers on full-occupancy costs. */
+  var cv = typeof bkConventions === 'function' ? bkConventions(s) : {}, c01 = function(v){ return Math.max(0, Math.min(1, Number(v))); };
+  var vv = has(S.M.grossVar) ? c01(S.M.grossVar) : c01(num(cv.cvOpexVariablePct)), gu = has(S.M.grossUp) ? c01(S.M.grossUp) : 1, amtMemo = {};
+  var amt = function(k, m){
+    m = Math.max(1, Math.min(months, m)); var key = k + '|' + m; if(amtMemo[key] !== undefined) return amtMemo[key];
+    var a = num(s[k]) / 12 * (k === 'taxes' ? fT(Math.ceil(m / 12)) : fO(m));
+    if(FIXED_KEYS.indexOf(k) < 0) a *= (1 - vv) + vv * Math.max(out.occ[m - 1], gu);
+    return (amtMemo[key] = a);
+  };
+  /* the tenant's billed expenses: [total, the part a cap applies to] */
+  var tpool = function(g, m){ var t = 0, c = 0; for(var k in g.wk){ var a = g.wk[k] * amt(k, m); t += a; if(UNCAPPED_KEYS.indexOf(k) < 0) c += a; } return [t, c]; };
+  segs.forEach(function(g){
+    var lo = Math.max(g.a, 1), hi = Math.min(g.b, months), T = Tof(g); if(g.rtype === 'Gross' || hi < lo) return;
+    /* a cap holds controllable expenses to the reference year's level grown at the cap rate, stepping on lease anniversaries (cumulative) */
+    var ref = Math.max(1, g.rtype === 'BaseYear' ? g.base : g.a), c0 = g.cap > 0 ? tpool(g, ref)[1] : 0, bp = g.rtype === 'BaseYear' ? tpool(g, g.base)[0] : 0;
+    for(var m = lo; m <= hi; m++){
+      var rc;
+      if(g.rtype === 'Fixed') rc = g.sf * g.rfix / 12 * fO(m);
+      else {
+        var p = tpool(g, m), bill = p[0];
+        if(g.cap > 0 && m > ref){ var n = Math.floor((m - g.anc) / 12) - Math.floor((ref - g.anc) / 12); bill = p[0] - p[1] + Math.min(p[1], c0 * Math.pow(1 + g.cap, Math.max(0, n))); }
+        rc = g.rtype === 'BaseYear' ? Math.max(0, bill - bp) : g.rtype === 'Stop' ? Math.max(0, bill - g.sf * g.rstop / 12) : bill;
+      }
+      rc *= g.w * fracOf(g, m); out.rec[m - 1] += rc; if(T) T.rec[m - 1] += rc;
+    }
+  });
   /* GENERAL VACANCY ALLOWANCE. The deal's commercial vacancy rate is a floor on retail vacancy, reduced by the vacancy the
      tenant schedule already carries (downtime between leases, vacant suites): only the excess is an extra loss. This is
      the conventional treatment, and it is what makes downside and sensitivity cases that raise the commercial vacancy
