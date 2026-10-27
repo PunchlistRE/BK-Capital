@@ -69,7 +69,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(() => bkRemRun()); await p.waitForFunction(() => /Side by side/.test(document.querySelector('#viewport').innerText), null, { timeout: 180000 });
   const ui = await p.evaluate(() => document.querySelector('#viewport').innerText);
   check('after the run: side by side, what each intervention requires, and the limits', /Side by side/.test(ui) && /What each intervention requires/.test(ui) && /Maximum price/.test(ui) && /Rent required/.test(ui) && /Occupancy required/.test(ui) && /Resize debt/.test(ui) && /not assumed to be achievable/.test(ui));
-  check('the sheet states the price cut in dollars and per cent, and that occupancy alone cannot fix it', /below the asking price/.test(ui) && /even at 100% occupancy/.test(ui));
+  check('the sheet states the price cut in dollars and per cent, and that occupancy alone cannot fix it', /below the asking price/.test(ui) && /even at 100(\.00)?% occupancy/.test(ui));
   check('no page errors', errs.length === 0, errs.slice(0, 2).join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();

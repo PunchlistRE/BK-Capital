@@ -3,7 +3,7 @@ const GROUPS = [
   {id:'overview', label:'Overview', color:'#7a8da1', sheets:['Home']},
   {id:'inputs', label:'Inputs', color:'#3E9AE6', sheets:['Deal Underwrite','Deal Documents','Rent Roll','Source Ingestion','Import Deal','Import OM','Import Rent Roll','Depreciation','Market Benchmarks']},
   {id:'propops', label:'Property Operations', color:'#163a62', sheets:['Operating Underwrite','Property CF']},
-  {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Draws','Residual Land']},
+  {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Lease-Up','Dev Draws','Residual Land']},
   {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor','Refi / Recap','Financing Lab','Financing Compare']},
   {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax','Probability-Weighted','Pre-Offer Bid']},
   {id:'biz', label:'Operating Business', color:'#6B4E71', sheets:['Business Model','Business Valuation','Sell vs Hold']},

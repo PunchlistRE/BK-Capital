@@ -408,7 +408,7 @@ const GROUPS = [
   {id:'overview', label:'Overview', color:'#7a8da1', sheets:['Home']},
   {id:'inputs', label:'Inputs', color:'#3E9AE6', sheets:['Deal Underwrite','Deal Documents','Rent Roll','Source Ingestion','Import Deal','Import OM','Import Rent Roll','Depreciation','Market Benchmarks']},
   {id:'propops', label:'Property Operations', color:'#163a62', sheets:['Operating Underwrite','Property CF']},
-  {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Draws','Residual Land']},
+  {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Lease-Up','Dev Draws','Residual Land']},
   {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor','Refi / Recap','Financing Lab','Financing Compare']},
   {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax','Probability-Weighted','Pre-Offer Bid']},
   {id:'biz', label:'Operating Business', color:'#6B4E71', sheets:['Business Model','Business Valuation','Sell vs Hold']},
@@ -2308,7 +2308,7 @@ function bkDevV09(){
  const s=bkEnsureV06(), isDev=String(s.dealType||'').toLowerCase().includes('develop');
  const land=Number(s.landOverrideOn)?Number(s.residualLandValue||0):Number(s.purchasePrice||0);
  const gsf=Number(s.gsf||0), close=land*Number(s.closingPct||0), acq=land*bkAcqFeePct(s), pre=isDev?Number(s.predevCarry||0):0;
- const preMo=isDev?Math.max(0,Math.round(Number(s.predevMonths||0))):0, conMo=isDev?Math.max(0,Math.round(Number(s.constructionMonths||0))):0, luMo=isDev?Math.max(0,Math.round(Number(s.leaseupMonths||0))):0;
+ const preMo=isDev?Math.max(0,Math.round(Number(s.predevMonths||0))):0, conMo=isDev?Math.max(0,Math.round(Number(s.constructionMonths||0))):0, luMo=isDev?((typeof bkDevUnitOn==='function'&&bkDevUnitOn(s))?bkDevUnitLeaseupMonths(s):Math.max(0,Math.round(Number(s.leaseupMonths||0)))):0;
  const co=preMo+conMo, stab=Math.max(isDev?co+luMo:1,1), hold=Math.max(1,Math.round(Number(s.holdYears||5)*12));
  let hard=0,soft=0,hardLadder=null,softLadder=null,k=1;
  // Total cost (hard+soft) is an affine function of the calibration factor k (Development!C70-C75): the
@@ -2399,6 +2399,8 @@ function bkDevFundingV10(){
     sizes the commitment must stop there too, with or without a takeout; otherwise a no-takeout loan exceeds its LTC. */
  const payoff=Number(s.refiAtStab||0)?x.stab:x.hold, accr=Math.max(3,Math.round((Math.min(payoff,x.stab)-(x.preMo+1)+1)*.7)), intFac=Math.max(0,Number(s.conUtil||0))*rate*accr/12, U0=x.unlev+Number(s.lenderLegal||0), ltc=Number(s.conLTC||0), ltv=Number(s.conLTV||0);
  const commitLTC=ltc>0&&ltc*(feeFac+intFac)<1?ltc*U0/(1-ltc*(feeFac+intFac)):0,commitLTV=ltv>0?ltv*stabVal:Number.POSITIVE_INFINITY,commit=(()=>{const a=ltc>0?(commitLTC||0):Number.POSITIVE_INFINITY,raw=Math.min(a,commitLTV);return isFinite(raw)?Math.max(0,Math.floor(raw/1000)*1000):0;})(),upfront=commit*feeFac+Number(s.lenderLegal||0),estInt=commit*intFac,eqTarget=commit>0?Math.max(0,x.unlev+upfront+estInt-commit):9.9e14;
+ /* unit-level lease-up: the operating shortfall is funded in the months it actually occurs (the unit schedule's negative NOI), not spread evenly */
+ let leaseShares=null;if(typeof bkDevUnitOn==='function'&&bkDevUnitOn(s)&&x.leaseDef>0){const sf={};let tot=0;(x.leaseupRamp||[]).forEach(r=>{const v=Math.max(0,-Number(r.after||0));if(v>0){sf[r.mo]=v;tot+=v;}});if(tot>0){leaseShares={};Object.keys(sf).forEach(k=>{leaseShares[k]=sf[k]/tot;});}}
  let bal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
  for(let mo=1;mo<=x.hold;mo++){
    const land=mo===1?x.land+x.close+x.acq+x.pre:0;
@@ -2407,7 +2409,7 @@ function bkDevFundingV10(){
    const conShare=bkCurveShare(mo,LC.conStart,LC.conLen,s.softConMethod,s.softConSteepness);
    const luShare=x.luMo>0?bkCurveShare(mo,x.co+1,x.luMo,s.softLeaseMethod,1):0;
    let soft=x.soft*(.28*preShare+(.62+(x.preMo===0?.28:0))*conShare+.10*luShare);if(x.luMo===0&&mo===LC.closeoutMo)soft+=x.soft*.10;
-   let lease=x.leaseDef*bkCurveShare(mo,x.co+1,x.luMo,'Straight-Line',1),fees=mo===x.preMo+1?upfront:0;
+   let lease=x.leaseDef*(leaseShares?(leaseShares[mo]||0):bkCurveShare(mo,x.co+1,x.luMo,'Straight-Line',1)),fees=mo===x.preMo+1?upfront:0;
    cumHard+=hard;cumSoft+=soft;cumLease+=lease;cumFees+=fees;
    if(mo===LC.sweepMo){const rh=x.hard-cumHard,rs=x.soft-cumSoft,rl=x.leaseDef-cumLease,rf=upfront-cumFees;if(rh>.01)hard+=rh;if(rs>.01)soft+=rs;if(rl>.01)lease+=rl;if(rf>.01)fees+=rf;}
    const need=land+hard+soft+lease+fees;
@@ -23014,7 +23016,8 @@ function pRoll(s){ var rr = Array.isArray(s.rentRoll) ? s.rentRoll : [], st = sa
   return head + '<div class="ae-form"><label>Units / Suites</label><div>' + ro(rr.length) + '</div><label>Occupied</label><div>' + ro(num(st.occupied) + ' of ' + rr.length) + '</div></div>'
     + '<div style="overflow-x:auto"><table class="ae-grid"><thead><tr><th>Unit</th><th>Type</th><th>Area (SF)</th><th>Status</th><th>In-Place Rent</th><th>Market Rent</th><th>Lease Start</th><th>Lease End</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (rr.length > 60 ? '<div class="ae-row"><span class="ae-unit">Showing 60 of ' + rr.length + ' rows.</span></div>' : '') + '</div>'; }
 function pAbs(s){ var u = num(s.units), lm = num(s.leaseupMonths);
-  return form('Space Absorption (lease-up)', 'A', [R('Lease-Up Period', inp('leaseupMonths', 'int', { s:s }), 'months after completion'), R('Absorption', ro(lm > 0 && u > 0 ? (u / lm).toFixed(1) : '-'), 'units leased per month (units / months)'), R('Pre-Leased at Completion', inp('preleasedPct', 'pct', { s:s }), '% of units'), R('Concessions During Lease-Up', inp('concessionLeaseUpPct', 'pct', { s:s }), '% of potential rent'),
+  return form('Space Absorption (lease-up)', 'A', [R('Lease-Up Period', safe(function(){ return window.bkDevUnitOn(s); }, false) ? ro(String(lm)) : inp('leaseupMonths', 'int', { s:s }), safe(function(){ return window.bkDevUnitOn(s); }, false) ? 'months after completion (from the unit schedule)' : 'months after completion'), R('Absorption', ro(lm > 0 && u > 0 ? (u / lm).toFixed(1) : '-'), 'units leased per month (units / months)'), R('Pre-Leased at Completion', inp('preleasedPct', 'pct', { s:s }), '% of units'), R('Concessions During Lease-Up', inp('concessionLeaseUpPct', 'pct', { s:s }), '% of potential rent'),
+    (/develop/i.test(String(s.dealType || '')) ? R('Lease-Up Method', ro(safe(function(){ return window.bkDevUnitOn(s); }, false) ? 'By unit type' : 'Simple ramp'), btn('Open Dev Lease-Up', 'showSheet(\'Dev Lease-Up\')', true)) : ''),
     NOTE('These drive development lease-up and, for an acquisition, the lease-up concession window. Cumulative lease-up cash shortfall is on Development > Dev Schedule.')]); }
 function pCoh(s){ return '<div class="ae-panel"><div class="ae-ph"><i>C</i>Lease Cohort</div><div class="ae-row">' + btn('Lease cohort cash flow', 'showSheet(\'Lease Cohort CF\')', true) + btn('Rent roll', 'bkEdGo(\'Tenants\',\'Tenants\',\'roll\')') + '</div><div class="ae-form"><div class="note">Groups leases by the year they expire so you can see rollover risk. It reads the unit rent roll.</div></div></div>'; }
 /* ---------- COMMERCIAL LEASES ---------- */
@@ -23130,7 +23133,7 @@ function pFin(s){ var d = isDev(s), out = '';
     + summaryTable('Construction Loan Result', [['Commitment', money(f.commit), ''], ['Total Project Cost (levered)', money(f.levered), ''], ['Equity Required', money(f.equityTotal), '', 'tot']]); }
   return out; }
 function pDev(s){ if(!isDev(s)) return '<div class="ae-panel"><div class="ae-ph"><i>D</i>Development</div><div class="ae-form"><div class="note">This is an acquisition. Change the Deal Type on Property &gt; Description to Development to model a budget, schedule and construction financing.</div></div></div>';
-  return form('Budget and Schedule', 'D', [R('Budget Mode', sel('devBudgetMode', [['SOURCE', 'Calibrate to the source construction total'], ['PARAMETRIC', 'Build up from the cost ladder']], { s:s, def:'SOURCE' })), R('Source Construction Budget', inp('sourceConstruction', 'num', { s:s }), '$ hard and soft'), R('Pre-Development Period', inp('predevMonths', 'int', { s:s }), 'months'), R('Construction Period', inp('constructionMonths', 'int', { s:s }), 'months'), R('Lease-Up Period', inp('leaseupMonths', 'int', { s:s }), 'months'), R('Pre-Leased at Completion', inp('preleasedPct', 'pct', { s:s }), '%'), R('Hard Cost Contingency', inp('hardContPct', 'pct', { s:s }), '%'), R('Soft Cost Contingency', inp('softContPct', 'pct', { s:s }), '%')])
+  return form('Budget and Schedule', 'D', [R('Budget Mode', sel('devBudgetMode', [['SOURCE', 'Calibrate to the source construction total'], ['PARAMETRIC', 'Build up from the cost ladder']], { s:s, def:'SOURCE' })), R('Source Construction Budget', inp('sourceConstruction', 'num', { s:s }), '$ hard and soft'), R('Pre-Development Period', safe(function(){ return window.bkDevGanttOn(s); }, false) ? ro(String(num(s.predevMonths))) : inp('predevMonths', 'int', { s:s }), safe(function(){ return window.bkDevGanttOn(s); }, false) ? 'months (from the task schedule on Dev Schedule)' : 'months'), R('Construction Period', safe(function(){ return window.bkDevGanttOn(s); }, false) ? ro(String(num(s.constructionMonths))) : inp('constructionMonths', 'int', { s:s }), safe(function(){ return window.bkDevGanttOn(s); }, false) ? 'months (from the task schedule on Dev Schedule)' : 'months'), R('Lease-Up Period', safe(function(){ return window.bkDevUnitOn(s); }, false) ? ro(String(num(s.leaseupMonths))) : inp('leaseupMonths', 'int', { s:s }), safe(function(){ return window.bkDevUnitOn(s); }, false) ? 'months (from the unit schedule on Dev Lease-Up)' : 'months'), R('Pre-Leased at Completion', inp('preleasedPct', 'pct', { s:s }), '%'), R('Hard Cost Contingency', inp('hardContPct', 'pct', { s:s }), '%'), R('Soft Cost Contingency', inp('softContPct', 'pct', { s:s }), '%')])
     + '<div class="ae-row">' + btn('Cost ladder and budget', 'showSheet(\'Development\')', true) + btn('Schedule', 'showSheet(\'Dev Schedule\')') + btn('Draws', 'showSheet(\'Dev Draws\')') + '</div>'; }
 function pJv(s){ return form('Equity Waterfall', 'W', [R('GP / Sponsor Equity Share', inp('gpShare', 'pct', { s:s }), '%'), R('Hurdle Basis', sel('hurdleBasis', [['1', 'IRR hurdles'], ['2', 'Equity multiple hurdles'], ['3', 'IRR and equity multiple hurdles']], { s:s, def:String(num(s.hurdleBasis) || 1) })), R('IRR and Multiple Combine', sel('hurdleBoth', [['all', 'Both must be met'], ['either', 'Either is enough']], { s:s, def:String(s.hurdleBoth || 'all') })), R('Tested On', sel('cvHurdleBasis', [['lp', 'LP contributions and distributions'], ['deal', 'Total deal equity cash flows']], { s:s, def:safe(function(){ return bkConventions(s).cvHurdleBasis; }, 'lp') })),
     R('Tier 1 Preferred Return', inp('pref', 'pct', { s:s }), '% IRR'), R('Second Hurdle', inp('hurdle2', 'pct', { s:s }), '% IRR'), R('Third Hurdle', inp('hurdle3', 'pct', { s:s }), '% IRR'), R('Tier 2 Split to LP', inp('t2LP', 'pct', { s:s }), '%'), R('Tier 3 Split to LP', inp('t3LP', 'pct', { s:s }), '%'), R('Tier 4 Split to LP (residual)', inp('t4LP', 'pct', { s:s }), '%'),
@@ -25817,6 +25820,8 @@ var G = {
   'Probability-Weighted': { what:'Expected returns and the odds of losing money or missing the hurdle, weighting the downside, base and upside cases.', read:[['P(loss)', 'The chance the equity loses money.'], ['IRR of the expected cash flow', 'The honest expected return; a weighted average of IRRs is not.']], checks:function(x){ return [info('The three cases are coarse; the Monte Carlo spreads the main drivers for a smoother answer.')]; }, next:[['Sensitivity', 'Move one driver at a time.']] },
   'Sensitivity': { what:'How the return moves when one assumption changes.', read:[['Each cell', 'A full engine re-run with that assumption changed.']], checks:function(){ return [info('Look for the assumption whose small change moves the return most; that is where the diligence belongs.')]; }, next:[['Pre-Offer Bid', 'Turn the thresholds into a maximum price.']] },
   'Reverse Solve': { what:'Solve an input (price, rent, exit cap) for a target return.', read:[['Target', 'The return the solved input must reach.']], checks:function(){ return [info('A solved input is what the target requires, not a forecast.')]; }, next:[['Pre-Offer Bid', 'Solve the price against all your constraints at once.']] },
+  'Dev Lease-Up': { what:'How the units are delivered, leased and moved in, type by type, and the income, shortfall and stabilisation month that follow.', read:[['Delivered', 'Units completed and handed over; a unit cannot be occupied before it is delivered.'], ['Moved in', 'Leases that have commenced; free-rent units count here but pay nothing yet.'], ['Income share', 'The rent-weighted share of units paying rent, which scales stabilised income.']],
+    checks:function(x){ var o = [], s = x.s; if(!window.bkDevUnitOn || !window.bkDevUnitOn(s)) return [info('The simple ramp is in use. Choose By unit type to model deliveries and absorption for each type.')]; var sc = window.bkDevUnitSchedule(s); if(!sc) return o; sc.warnings.forEach(function(w){ o.push(warn(w)); }); o.push(info('Stabilised in month ' + sc.luMo + ' after completion; units and average rent are taken from this mix.')); return o; }, next:[['Dev Schedule', 'See the lease-up on the project timeline.'], ['Dev Draws', 'See how the lease-up shortfall is funded.']] },
   'Pre-Offer Bid': { what:'The maximum purchase price the deal supports under your constraints, found by re-running the engine at each price.', read:[['Binding constraint', 'The constraint that stops the price from going higher.'], ['Verified', 'The engine is re-run just below and just above the answer.']],
     checks:function(x){ var o = [], s = x.s; if(!(num(s.purchasePrice) > 0)) o.push(warn('Enter a purchase price first.')); o.push(info('Switch constraints on or off, and add your proposed offer to see it beside the asking price and the maximum bid.')); return o; }, next:[['Deal Remedies', 'Compare debt, price, rent and occupancy side by side.']] },
   'Deal Remedies': { what:'What it would take for a deal that fails the credit policy to pass: resize the debt, renegotiate the price, or improve rent and occupancy.', read:[['Resize debt', 'Additional equity, DSCR and returns at the smaller loan.'], ['Maximum price', 'The cut required, in dollars and per cent.']],
@@ -26018,6 +26023,362 @@ if(typeof prev === 'function'){
   wrapped.__bkWfChecks = true; wrapped.__bkOriginal = prev.__bkOriginal || prev;
   if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Equity Waterfall', wrapped); else RENDERERS['Equity Waterfall'] = wrapped;
 }
+})();
+</script>
+<script id="bk-devunits">/* ===========================================================================
+   DEVELOPMENT LEASE-UP BY UNIT TYPE. A development deal can lease up two ways:
+     "Simple ramp" (the default, and every existing deal): one occupancy line for the whole project, from the pre-leased share to 100% over the lease-up months.
+     "By unit type": each unit type has its own units, rent, delivery pattern (when units are completed and handed over), marketing start, absorption (units
+     signed a month), sign-to-move-in lag and free rent. Deliveries, leases signed, leases commenced (units occupied) and units paying rent are tracked month by
+     month for each type; the project's occupancy is the units occupied over all units, and its income is the rent-weighted share of units paying.
+   Nothing here replaces the engine. The monthly schedule is turned into the SAME ramp the engine already consumes (bkDevLeaseupRamp: month, occupancy, EGI,
+   NOI, NOI after reserves), so the lease-up operating deficit that is funded in the cost ladder, the monthly NOI earned during lease-up in the development
+   cash flow, the stabilisation month and the exit all follow from the unit schedule. Stabilised income is untouched: it is still the deal's stabilised EGI
+   (units x average rent less vacancy and the rest), and in this mode the units and the average rent come from the unit mix, so the two always agree.
+   Switching to "By unit type" seeds one unit type that reproduces the simple ramp exactly, so nothing moves until a schedule is edited.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof RENDERERS === 'undefined') return;
+var MAXJ = 240;   /* months after completion searched for stabilisation */
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+function has(v){ return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function isDev(s){ return /develop/i.test(String((s && s.dealType) || '')); }
+function money(v){ return (v < 0 ? '($' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US') + (v < 0 ? ')' : ''); }
+function pct(v, d){ return isFinite(v) ? (v * 100).toFixed(d === undefined ? 2 : d) + '%' : '-'; }
+function cur(){ return typeof currentSheet !== 'undefined' ? currentSheet : 'Dev Lease-Up'; }
+
+window.bkDevUnitOn = function(s){ s = s || bkLoad(); var d = s && s.devLeaseup; return !!(s && isDev(s) && d && d.mode === 'units' && Array.isArray(d.types) && d.types.some(function(t){ return num(t && t.units) > 0; })); };
+
+function norm(t){
+  var U = Math.max(0, num(t.units));
+  return { name:String(t.name || 'Unit type'), units:U, rent:Math.max(0, num(t.rent)),
+    dStart:Math.round(num(t.deliverStart)), dPer:num(t.deliverPerMo) > 0 ? num(t.deliverPerMo) : U,
+    mStart:has(t.marketStart) ? Math.round(num(t.marketStart)) : Math.round(num(t.deliverStart)), aPer:Math.max(0, num(t.absorbPerMo)),
+    pre:Math.max(0, Math.min(U, num(t.preleased))), lag:Math.max(0, Math.round(num(t.commenceLag))), free:Math.max(0, Math.round(num(t.freeMonths))) };
+}
+
+/* One pass of the schedule at a given absorption time-stretch (lambda 1 = as entered). */
+function run(T, U, stabTarget, lambda){
+  var out = [], stabJ = null, rentW = T.reduce(function(a, t){ return a + t.units * t.rent; }, 0);
+  for(var j = 0; j <= MAXJ; j++){
+    var row = { j:j, byType:[], delivered:0, signed:0, commenced:0, paying:0 }, payRent = 0;
+    T.forEach(function(t, ti){
+      var delivered = j >= t.dStart ? Math.min(t.units, t.dPer * (j - t.dStart + 1)) : 0;
+      var signedAt = function(k){ var after = k > t.mStart ? (k - t.mStart) / lambda : 0; return Math.min(t.units, t.pre + t.aPer * after); };
+      var commencedAt = function(k){ return k < 0 ? 0 : Math.min(t.units, Math.min(t.units, t.dPer * Math.max(0, k - t.dStart + 1)) * (k >= t.dStart ? 1 : 0), signedAt(k - t.lag)); };
+      var signed = signedAt(j), commenced = commencedAt(j), paying = commencedAt(j - t.free);
+      row.byType.push({ delivered:delivered, signed:signed, commenced:commenced, paying:paying });
+      row.delivered += delivered; row.signed += signed; row.commenced += commenced; row.paying += paying; payRent += paying * t.rent;
+    });
+    row.occ = U > 0 ? row.commenced / U : 0;
+    row.delShare = U > 0 ? row.delivered / U : 0;
+    row.payOcc = rentW > 0 ? payRent / rentW : (U > 0 ? row.paying / U : 0);
+    out.push(row);
+    if(stabJ === null && row.occ >= stabTarget - 1e-9){ stabJ = j; break; }
+  }
+  return { months:out, stabJ:stabJ };
+}
+
+/* The schedule for the active deal (or a scratch copy). Returns null when there are no units. */
+window.bkDevUnitSchedule = function(s){
+  s = s || bkLoad(); var d = (s && s.devLeaseup) || {}, T = (Array.isArray(d.types) ? d.types : []).map(norm).filter(function(t){ return t.units > 0; });
+  if(!T.length) return null;
+  var U = T.reduce(function(a, t){ return a + t.units; }, 0), stabTarget = has(d.stabTarget) && num(d.stabTarget) > 0 ? Math.min(1, num(d.stabTarget)) : 1;
+  var base = run(T, U, stabTarget, 1), baseLu = base.stabJ === null ? MAXJ : base.stabJ, lambda = 1, res = base;
+  /* a lease-up scenario (slower or faster) is applied through leaseupMonths: the absorption is stretched in time so the period is that long */
+  var lm = Math.round(num(s.leaseupMonths));
+  if(lm > 0 && baseLu > 0 && lm !== baseLu && base.stabJ !== null){ lambda = lm / baseLu; res = run(T, U, stabTarget, lambda); }
+  var warnings = [], luMo = res.stabJ === null ? MAXJ : res.stabJ;
+  if(res.stabJ === null) warnings.push('At these absorption rates the project never reaches ' + pct(stabTarget, 0) + ' occupied within ' + MAXJ + ' months. Check each type has units leased per month above zero.');
+  T.forEach(function(t){ if(t.units - t.pre > 1e-9 && !(t.aPer > 0)) warnings.push(t.name + ': no units are leased per month, so its ' + (t.units - t.pre) + ' unpre-leased units never lease.'); });
+  return { types:T, units:U, months:res.months, luMo:luMo, baseLuMo:baseLu, lambda:lambda, stabTarget:stabTarget, incomplete:res.stabJ === null, warnings:warnings };
+};
+/* lease-up months implied by the unit schedule (the engine reads this in place of leaseupMonths) */
+window.bkDevUnitLeaseupMonths = function(s){ var sc = window.bkDevUnitSchedule(s); return sc ? sc.luMo : 0; };
+
+/* the engine's lease-up ramp, built from the unit schedule when the deal uses it, otherwise the simple ramp exactly as before */
+var legacyRamp = window.bkDevLeaseupRamp;
+window.bkDevLeaseupRamp = function(s, co, stab, luMo){
+  if(!window.bkDevUnitOn(s)) return legacyRamp(s, co, stab, luMo);
+  if(luMo <= 0) return { months:[], leaseDef:0 };
+  var sc = window.bkDevUnitSchedule(s); if(!sc) return legacyRamp(s, co, stab, luMo);
+  var c = bkCalc(), mgmtPct = num(s.mgmtPct), fixedAnnual = c.total - c.mgmt, resAnnual = num(s.reserves), byDel = (s.devLeaseup && s.devLeaseup.opexBasis) === 'delivered', months = [];
+  for(var j = 0; j < luMo; j++){
+    var r = sc.months[Math.min(j, sc.months.length - 1)], f = Math.min(1, sc.stabTarget > 0 ? r.payOcc / sc.stabTarget : 0), share = byDel ? r.delShare : 1;
+    var egi = c.egi * f / 12, mgmt = egi * mgmtPct, noi = egi - fixedAnnual * share / 12 - mgmt, after = noi - resAnnual * share / 12;
+    months.push({ mo:co + j, occ:r.occ, payOcc:r.payOcc, delivered:r.delivered, signed:r.signed, commenced:r.commenced, paying:r.paying, egi:egi, noi:noi, after:after });
+  }
+  return { months:months, leaseDef:Math.max(0, -months.reduce(function(a, m){ return a + m.after; }, 0)) };
+};
+
+/* ------------------------------ editing ------------------------------ */
+var FIELDS = { name:'text', units:'int', rent:'num', deliverStart:'int', deliverPerMo:'num', marketStart:'int', absorbPerMo:'num', preleased:'num', commenceLag:'int', freeMonths:'int' };
+function defaults(){ return { name:'', units:0, rent:0, deliverStart:0, deliverPerMo:0, marketStart:0, absorbPerMo:0, preleased:0, commenceLag:0, freeMonths:0 }; }
+function save(s){ window.bkDevUnitSync(s); bkSave(s); if(typeof showSheet === 'function') showSheet(cur()); }
+/* the unit mix is the source of the project's unit count and average rent, and the schedule is the source of the lease-up period */
+window.bkDevUnitSync = function(s){
+  var d = s.devLeaseup; if(!d || d.mode !== 'units') return s; var T = (d.types || []).filter(function(t){ return num(t.units) > 0; }), U = T.reduce(function(a, t){ return a + num(t.units); }, 0);
+  if(U > 0){ s.units = U; s.avgRent = T.reduce(function(a, t){ return a + num(t.units) * num(t.rent); }, 0) / U; }
+  var tmp = Object.assign({}, s, { leaseupMonths:0 }), sc = window.bkDevUnitSchedule(tmp); if(sc) s.leaseupMonths = sc.baseLuMo; return s;
+};
+window.bkDevUnitMode = function(mode){
+  var s = bkLoad(); s.devLeaseup = Object.assign({}, s.devLeaseup || {});
+  if(mode === 'units'){
+    if(!Array.isArray(s.devLeaseup.types) || !s.devLeaseup.types.some(function(t){ return num(t.units) > 0; })){
+      var U = Math.max(0, Math.round(num(s.units))), lu = Math.max(0, Math.round(num(s.leaseupMonths))), pre = Math.max(0, Math.min(1, num(s.preleasedPct)));
+      s.devLeaseup.types = [{ name:'All units', units:U, rent:num(s.avgRent), deliverStart:0, deliverPerMo:0, marketStart:0, absorbPerMo:lu > 0 ? U * (1 - pre) / lu : U, preleased:lu > 0 ? U * pre : U, commenceLag:0, freeMonths:0 }];
+    }
+    s.devLeaseup.mode = 'units'; if(!s.devLeaseup.opexBasis) s.devLeaseup.opexBasis = 'full';
+  } else { s.devLeaseup.mode = 'simple'; }
+  save(s);
+};
+window.bkDevUnitField = function(i, key, raw){
+  var s = bkLoad(), d = s.devLeaseup = Object.assign({}, s.devLeaseup || {}), T = d.types = (d.types || []).map(function(t){ return Object.assign({}, t); }), t = T[i]; if(!t || !FIELDS[key]) return;
+  if(FIELDS[key] === 'text') t[key] = String(raw || '').trim(); else { var txt = String(raw == null ? '' : raw).replace(/[$,\s]/g, ''), n = txt === '' ? 0 : Number(txt); if(!isFinite(n)){ showSheet(cur()); return; } t[key] = FIELDS[key] === 'int' ? Math.round(n) : n; }
+  save(s);
+};
+window.bkDevUnitAdd = function(){ var s = bkLoad(), d = s.devLeaseup = Object.assign({}, s.devLeaseup || {}); d.types = (d.types || []).slice(); var n = defaults(); n.name = 'Type ' + (d.types.length + 1); d.types.push(n); save(s); };
+window.bkDevUnitRemove = function(i){ var s = bkLoad(), d = s.devLeaseup = Object.assign({}, s.devLeaseup || {}); d.types = (d.types || []).filter(function(t, k){ return k !== i; }); if(!d.types.length) d.mode = 'simple'; save(s); };
+window.bkDevUnitOpex = function(v){ var s = bkLoad(); s.devLeaseup = Object.assign({}, s.devLeaseup || {}, { opexBasis:v === 'delivered' ? 'delivered' : 'full' }); save(s); };
+window.bkDevUnitStab = function(raw){ var n = Number(String(raw).replace(/[%\s,]/g, '')) / 100, s = bkLoad(); s.devLeaseup = Object.assign({}, s.devLeaseup || {}); if(isFinite(n) && n > 0 && n <= 1) s.devLeaseup.stabTarget = n; else delete s.devLeaseup.stabTarget; save(s); };
+
+/* ------------------------------ the sheet ------------------------------ */
+function inp(i, key, v, w){ return '<td class="v"><input type="' + (FIELDS[key] === 'text' ? 'text' : 'number') + '" step="any" style="' + (w ? 'width:' + w + 'px;' : '') + (FIELDS[key] === 'text' ? 'text-align:left !important' : '') + '"' + ' value="' + esc(v === 0 && FIELDS[key] !== 'text' && key !== 'deliverStart' && key !== 'marketStart' && key !== 'commenceLag' && key !== 'freeMonths' && key !== 'preleased' ? '' : v) + '" onchange="bkDevUnitField(' + i + ',\'' + key + '\',this.value)"></td>'; }
+function chart(sc){
+  var W = 760, H = 250, L = 70, R = 130, top = 12, bottom = 30, n = sc.months.length, last = Math.max(1, n - 1), X = function(j){ return L + (j / last) * (W - L - R); }, Y = function(v){ return top + (1 - v) * (H - top - bottom); };
+  var COL = ['#2f5f9a', '#c0702b', '#3f7a52', '#7a4e8a', '#9a7b1f', '#a3453a', '#2a7f86'], g = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Lease-up: share of units delivered and occupied, by unit type and for the project">';
+  [0, .25, .5, .75, 1].forEach(function(v){ g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--ae-line,#c9d1dc)" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end" font-size="11" fill="var(--ae-dim,#5a6877)">' + Math.round(v * 100) + '%</text>'; });
+  var step = Math.max(1, Math.ceil(n / 8)); for(var j = 0; j < n; j += step) g += '<text x="' + X(j) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="var(--ae-dim,#5a6877)">' + (j === 0 ? 'CO' : '+' + j) + '</text>';
+  var line = function(vals, col, w, dash){ var d = ''; vals.forEach(function(v, k){ d += (k ? 'L' : 'M') + X(k).toFixed(1) + ',' + Y(Math.max(0, Math.min(1, v))).toFixed(1); }); return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + ' stroke-linejoin="round"/>'; };
+  g += line(sc.months.map(function(r){ return r.delShare; }), 'var(--ae-dim,#8a97a5)', 1.5, '4 3');
+  sc.types.forEach(function(t, ti){ g += line(sc.months.map(function(r){ return t.units > 0 ? r.byType[ti].commenced / t.units : 0; }), COL[ti % COL.length], 1.6); });
+  g += line(sc.months.map(function(r){ return r.occ; }), 'var(--ae-ink,#1b2733)', 2.8);
+  var ly = top + 4; g += '<text x="' + (W - R + 10) + '" y="' + (ly += 14) + '" font-size="11" font-weight="700" fill="var(--ae-ink,#1b2733)">Project occupied</text>';
+  sc.types.forEach(function(t, ti){ g += '<text x="' + (W - R + 10) + '" y="' + (ly += 15) + '" font-size="11" fill="' + COL[ti % COL.length] + '">&#9632; ' + esc(t.name).slice(0, 16) + '</text>'; });
+  g += '<text x="' + (W - R + 10) + '" y="' + (ly += 15) + '" font-size="11" fill="var(--ae-dim,#5a6877)">- - Delivered</text>';
+  return g + '</svg>';
+}
+function render(){
+  var s = bkLoad(), dev = isDev(s);
+  var title = 'Dev Lease-Up', crumbs = 'Development', desc = 'Lease-up by unit type: deliveries, absorption, move-ins, occupancy and the income and cash flow they drive.';
+  if(!dev) return { title:title, crumbs:crumbs, desc:desc, meta:{ Property:s.name, Status:'Acquisition - N/A' }, main:'<div class="note-flag"><span>&#9432;</span><div>Lease-up by unit type applies to development deals. Open a development deal to use it.</div></div>', sidebar:'' };
+  var on = window.bkDevUnitOn(s), d = s.devLeaseup || {}, sc = on ? window.bkDevUnitSchedule(s) : null, x = bkDevV09();
+  var head = '<div class="ae-form" style="margin:0 0 10px"><label style="font-weight:600">Lease-up method</label> <select onchange="bkDevUnitMode(this.value)"><option value="simple"' + (on ? '' : ' selected') + '>Simple ramp (one line for the whole project)</option><option value="units"' + (on ? ' selected' : '') + '>By unit type (deliveries and absorption for each type)</option></select></div>';
+  var main = '<div class="tbl-wrap"><div style="padding:10px 12px">' + head
+    + (on ? '' : '<div class="note-flag"><span>&#9432;</span><div><b>Simple ramp is in use.</b> ' + (num(s.leaseupMonths) > 0 ? 'The project goes from ' + pct(num(s.preleasedPct), 0) + ' pre-leased to fully leased over ' + Math.round(num(s.leaseupMonths)) + ' months, in a straight line. ' : 'No lease-up period is set. ') + 'Choose <b>By unit type</b> to model each unit type separately. It starts as one type that reproduces this ramp exactly, so nothing changes until you edit it.</div></div>') + '</div></div>';
+  if(!on) return { title:title, crumbs:crumbs, desc:desc, meta:{ Property:s.name, Method:'Simple ramp', 'Lease-Up':x.luMo + ' mo' }, main:main, sidebar:'' };
+  var hdr = '<tr><th class="rowlabel-h">Unit type</th><th>Units</th><th>Rent $ / mo</th><th>First delivery<br><small>mo after CO</small></th><th>Delivered<br><small>per month (blank: all)</small></th><th>Marketing starts<br><small>mo after CO</small></th><th>Leased<br><small>per month</small></th><th>Pre-leased<br><small>units</small></th><th>Sign to move-in<br><small>months</small></th><th>Free rent<br><small>months</small></th><th></th></tr>';
+  var rows = (d.types || []).map(function(t, i){ return '<tr class="input">' + inp(i, 'name', t.name || '', 120) + inp(i, 'units', num(t.units), 70) + inp(i, 'rent', num(t.rent), 80) + inp(i, 'deliverStart', num(t.deliverStart), 70) + inp(i, 'deliverPerMo', num(t.deliverPerMo), 80) + inp(i, 'marketStart', has(t.marketStart) ? num(t.marketStart) : num(t.deliverStart), 70) + inp(i, 'absorbPerMo', num(t.absorbPerMo), 70) + inp(i, 'preleased', num(t.preleased), 70) + inp(i, 'commenceLag', num(t.commenceLag), 60) + inp(i, 'freeMonths', num(t.freeMonths), 60) + '<td><button type="button" class="bk-btn" onclick="bkDevUnitRemove(' + i + ')">Remove</button></td></tr>'; }).join('');
+  var gpr = (d.types || []).reduce(function(a, t){ return a + num(t.units) * num(t.rent) * 12; }, 0);
+  var mix = '<div class="tbl-wrap" style="margin-top:12px"><table class="fin bk-m-scroll" style="table-layout:auto !important;width:max-content !important;min-width:1000px !important;max-width:none !important"><caption>Unit mix and lease-up schedule</caption><thead>' + hdr + '</thead><tbody>' + rows
+    + '<tr class="grandtotal"><td class="rowlabel">TOTAL / AVERAGE</td><td>' + Math.round(sc.units).toLocaleString('en-US') + ' units</td><td>' + money(sc.units > 0 ? gpr / 12 / sc.units : 0) + '</td><td colspan="8">Units and average rent are taken from this mix. Annual potential rent ' + money(gpr) + '.</td></tr></tbody></table></div>'
+    + '<div style="margin:8px 0"><button type="button" class="bk-btn" onclick="bkDevUnitAdd()">+ Add unit type</button></div>';
+  var last = sc.months[sc.months.length - 1], settings = '<div class="tbl-wrap" style="margin-top:12px"><table class="fin"><caption>Lease-up settings and result</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th><th style="text-align:left">What it does</th></tr></thead><tbody>'
+    + '<tr class="input"><td class="rowlabel">Operating costs during lease-up</td><td class="v"><select onchange="bkDevUnitOpex(this.value)"><option value="full"' + (d.opexBasis === 'delivered' ? '' : ' selected') + '>Full from completion</option><option value="delivered"' + (d.opexBasis === 'delivered' ? ' selected' : '') + '>Follow units delivered</option></select></td><td data-bk-align="text">Whether fixed costs run in full from the certificate of occupancy (the simple ramp does), or grow with the share of units delivered. The management fee always follows income.</td></tr>'
+    + '<tr class="input"><td class="rowlabel">Stabilised when occupied reaches</td><td class="v"><input type="number" step="any" value="' + ((sc.stabTarget * 100).toFixed(2)) + '" onchange="bkDevUnitStab(this.value)"></td><td data-bk-align="text">% of all units. Stabilised income starts that month. 100% means every unit is leased and moved in.</td></tr>'
+    + '<tr><td class="rowlabel">Lease-up period</td><td class="v">' + sc.luMo + ' months' + (sc.lambda !== 1 ? ' (' + sc.baseLuMo + ' as entered)' : '') + '</td><td data-bk-align="text">From the certificate of occupancy (month ' + x.co + ') to stabilisation (month ' + x.stab + '). It replaces the lease-up months input.</td></tr>'
+    + '<tr><td class="rowlabel">Lease-up operating shortfall</td><td class="v">' + money(x.leaseDef) + '</td><td data-bk-align="text">The cumulative negative NOI during lease-up, added to the project cost and funded with it.</td></tr>'
+    + '<tr><td class="rowlabel">Occupied at stabilisation</td><td class="v">' + pct(last.occ, 1) + '</td><td data-bk-align="text">Units moved in, over all units. Free-rent units count as occupied but pay no rent yet.</td></tr></tbody></table></div>';
+  var warn = sc.warnings.length ? '<div class="note-flag"><span>&#9888;</span><div>' + sc.warnings.map(esc).join('<br>') + '</div></div>' : '';
+  var ramp = x.leaseupRamp || [], rampBy = {}; ramp.forEach(function(r){ rampBy[r.mo] = r; });
+  var tb = '<div class="tbl-wrap" style="margin-top:12px"><div style="overflow-x:auto"><table class="fin bk-m-scroll"><caption>Month by month</caption><thead><tr><th class="rowlabel-h">Month</th><th>Delivered</th><th>Leases signed</th><th>Moved in</th><th>Paying rent</th><th>Occupied</th><th>Income share</th><th>EGI</th><th>NOI after reserves</th></tr></thead><tbody>'
+    + sc.months.slice(0, Math.min(sc.months.length, 60)).map(function(r, j){ var rr = rampBy[x.co + j]; return '<tr><td class="rowlabel" style="white-space:nowrap">' + (j === 0 ? 'CO (month ' + x.co + ')' : 'Month ' + (x.co + j) + ' (+' + j + ')') + (j === sc.luMo ? ' &middot; stabilised' : '') + '</td><td>' + r.delivered.toFixed(1) + '</td><td>' + r.signed.toFixed(1) + '</td><td>' + r.commenced.toFixed(1) + '</td><td>' + r.paying.toFixed(1) + '</td><td>' + pct(r.occ, 1) + '</td><td>' + pct(Math.min(1, r.payOcc / sc.stabTarget), 1) + '</td><td>' + (rr ? money(rr.egi) : '-') + '</td><td>' + (rr ? money(rr.after) : '-') + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+  var ch = '<div class="tbl-wrap" style="margin-top:12px"><div style="padding:10px 12px"><b>Occupancy by unit type</b><div style="font-size:12px;opacity:.8;margin:2px 0 6px">Share of each type\'s units moved in, the project total, and the share of units delivered.</div><div class="bk-sx-svgwrap">' + chart(sc) + '</div></div></div>';
+  var side = typeof sidebarShell === 'function' ? sidebarShell('<div class="card"><div class="card-head">Lease-Up</div><div class="metric-list"><div class="metric-row"><span class="k">Method</span><span class="v">By unit type</span></div><div class="metric-row"><span class="k">Unit types</span><span class="v">' + sc.types.length + '</span></div><div class="metric-row"><span class="k">Units</span><span class="v">' + Math.round(sc.units) + '</span></div><div class="metric-row"><span class="k">Lease-up</span><span class="v">' + sc.luMo + ' mo</span></div><div class="metric-row"><span class="k">Shortfall</span><span class="v">' + money(x.leaseDef) + '</span></div></div></div>') : '';
+  return { title:title, crumbs:crumbs, desc:desc, meta:{ Property:s.name, Method:'By unit type', 'Unit types':sc.types.length, Units:Math.round(sc.units), 'Lease-Up':sc.luMo + ' mo' }, main:main + mix + settings + warn + ch + tb, sidebar:side };
+}
+RENDERERS['Dev Lease-Up'] = render;
+})();
+</script>
+<script id="bk-devgantt">/* ===========================================================================
+   DEVELOPMENT SCHEDULE AS A GANTT. Tasks with a start and a duration in months, overlaps, and finish-to-start dependencies with a lead or lag. A forward and a
+   backward pass give each task its earliest and latest dates, its float and whether it is on the critical path. The critical path runs to stabilisation:
+   the construction tasks feed the certificate of occupancy, lease-up follows it, and stabilised operations follow lease-up.
+   What the engine supports, the schedule drives: the first construction task's start sets the pre-development months, and the span of the construction tasks
+   sets the construction months, so the draw curves, the construction facility, the certificate of occupancy and the lease-up all move with the tasks. The lease-up
+   period itself still comes from the lease-up method (simple ramp or unit types), so it is shown as a linked row, not edited here.
+   Until a schedule is switched on nothing changes: the chart is drawn from the engine's own phases. Switching it on seeds tasks that reproduce the phases exactly.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof RENDERERS === 'undefined') return;
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+function has(v){ return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function isDev(s){ return /develop/i.test(String((s && s.dealType) || '')); }
+function cur(){ return typeof currentSheet !== 'undefined' ? currentSheet : 'Dev Schedule'; }
+var GROUPS = [['predev', 'Pre-development'], ['construction', 'Construction'], ['other', 'Other']];
+
+window.bkDevGanttOn = function(s){ s = s || bkLoad(); var g = s && s.devGantt; return !!(s && isDev(s) && g && g.mode === 'tasks' && Array.isArray(g.tasks) && g.tasks.length); };
+
+function startDate(s){ return (typeof bkParseDealDate === 'function') ? bkParseDealDate(s.closing, '2027-01-01') : new Date(); }
+function monthStart(s, m){ var d = startDate(s); return new Date(d.getFullYear(), d.getMonth() + (m - 1), 1); }
+function monthEnd(s, m){ var d = startDate(s); return new Date(d.getFullYear(), d.getMonth() + m, 0); }
+function fmtD(d){ return d.toLocaleDateString('en-US', { month:'short', year:'numeric' }); }
+
+/* ------------------------------------------------------------------ the schedule (critical path method) ------------------------------------------------------------------ */
+function normTasks(g){ return (g.tasks || []).map(function(t, i){ return { id:String(t.id || ('t' + (i + 1))), name:String(t.name || 'Task ' + (i + 1)), group:t.group === 'predev' || t.group === 'other' ? t.group : 'construction', start:has(t.start) && num(t.start) >= 1 ? Math.round(num(t.start)) : null, dur:Math.max(1, Math.round(num(t.dur) || 1)), milestone:!!t.milestone, preds:(Array.isArray(t.preds) ? t.preds : []).map(function(p){ return { id:String(p.id), lag:Math.round(num(p.lag)) }; }) }; }); }
+
+/* Forward and backward pass over the task network. Months are 1-based and inclusive: a task that starts in month 4 with a 3-month duration finishes in month 6, and a
+   finish-to-start successor with no lag starts in month 7 (a negative lag overlaps it with its predecessor). */
+window.bkDevGanttSchedule = function(s, ov){
+  s = s || bkLoad(); var g = s.devGantt || {}, T = normTasks(g), byId = {}, warnings = [], n = T.length;
+  T.forEach(function(t){ byId[t.id] = t; });
+  T.forEach(function(t){ t.preds = t.preds.filter(function(p){ if(!byId[p.id] || p.id === t.id){ warnings.push(t.name + ': a predecessor that does not exist was ignored.'); return false; } return true; }); t.succ = []; });
+  T.forEach(function(t){ t.preds.forEach(function(p){ byId[p.id].succ.push({ id:t.id, lag:p.lag }); }); });
+  /* forward pass, in dependency order (a cycle is reported and its tasks keep their manual starts) */
+  var state = {}, order = [], cycle = false;
+  (function visit(){ var tmp = {}; function dfs(t){ if(state[t.id] === 2) return; if(state[t.id] === 1){ cycle = true; return; } state[t.id] = 1; t.preds.forEach(function(p){ dfs(byId[p.id]); }); state[t.id] = 2; order.push(t); } T.forEach(dfs); })();
+  if(cycle) warnings.push('The dependencies form a loop, so the schedule cannot be ordered. Remove one of them.');
+  order.forEach(function(t){ var es = t.start || 1; if(!cycle) t.preds.forEach(function(p){ var q = byId[p.id]; if(q.EF !== undefined) es = Math.max(es, q.EF + 1 + p.lag); }); t.ES = Math.max(1, es); t.EF = t.ES + t.dur - 1; });
+  T.forEach(function(t){ if(t.ES === undefined){ t.ES = t.start || 1; t.EF = t.ES + t.dur - 1; } });
+  var cons = T.filter(function(t){ return t.group === 'construction'; }), pre = T.filter(function(t){ return t.group === 'predev'; });
+  var conStart = cons.length ? Math.min.apply(null, cons.map(function(t){ return t.ES; })) : null, conEnd = cons.length ? Math.max.apply(null, cons.map(function(t){ return t.EF; })) : null;
+  var x = ov || (typeof bkDevV09 === 'function' ? bkDevV09() : { luMo:0, hold:60 });
+  var preMo = cons.length ? Math.max(0, conStart - 1) : num(x.preMo), conMo = cons.length ? conEnd - conStart + 1 : num(x.conMo), co = cons.length ? conEnd : num(x.co), luMo = num(x.luMo), stab = co + luMo, hold = Math.max(1, Math.round(num(x.hold) || num(s.holdYears) * 12));
+  if(cons.length && pre.some(function(t){ return t.EF >= conStart; }) && false) warnings.push('');
+  if(stab > hold) warnings.push('Stabilisation (month ' + stab + ') falls after the end of the analysis (month ' + hold + '). Lengthen the hold or shorten the schedule.');
+  /* backward pass to stabilisation: construction tasks must finish by the certificate of occupancy; pre-development tasks without a successor must finish before construction starts */
+  var finish = Math.max(co + luMo, T.reduce(function(a, t){ return Math.max(a, t.EF); }, 0)), project = cons.length ? co : finish;
+  var LF = {}, LS = {};
+  (function(){ var rev = order.slice().reverse(); rev.forEach(function(t){ var lf = Infinity; t.succ.forEach(function(sc){ if(LS[sc.id] !== undefined) lf = Math.min(lf, LS[sc.id] - 1 - sc.lag); });
+    if(lf === Infinity) lf = t.group === 'construction' ? project : t.group === 'predev' ? (cons.length ? conStart - 1 : project) : t.EF;
+    LF[t.id] = lf; LS[t.id] = lf - t.dur + 1; }); })();
+  T.forEach(function(t){ t.LF = LF[t.id] !== undefined ? LF[t.id] : t.EF; t.LS = LS[t.id] !== undefined ? LS[t.id] : t.ES; t.float = t.LS - t.ES; t.critical = Math.abs(t.float) < 1e-9 && (t.group === 'construction' || t.succ.length > 0 || t.group === 'predev'); });
+  /* only tasks that actually drive the end of construction (or the start of it) are on the critical path: a zero-float task with no relation to either is just on time */
+  T.forEach(function(t){ if(t.critical && t.group === 'other' && !t.succ.length) t.critical = false; });
+  T.forEach(function(t){ t.startDate = monthStart(s, t.ES); t.endDate = monthEnd(s, t.EF); });
+  return { tasks:T, conStart:conStart, conEnd:conEnd, preMo:preMo, conMo:conMo, co:co, luMo:luMo, stab:stab, hold:hold, project:project, cycle:cycle, warnings:warnings, hasConstruction:cons.length > 0 };
+};
+
+/* the engine's pre-development and construction months follow the schedule (written to the deal's own fields, so every consumer sees the same numbers) */
+window.bkDevGanttSync = function(s){
+  if(!window.bkDevGanttOn(s)) return s; var sc = window.bkDevGanttSchedule(s, { luMo:0, hold:60, preMo:num(s.predevMonths), conMo:num(s.constructionMonths), co:num(s.predevMonths) + num(s.constructionMonths) });
+  if(sc.hasConstruction && !sc.cycle){ s.predevMonths = sc.preMo; s.constructionMonths = sc.conMo; } return s;
+};
+
+/* ------------------------------------------------------------------ editing ------------------------------------------------------------------ */
+function save(s){ window.bkDevGanttSync(s); bkSave(s); if(typeof showSheet === 'function') showSheet(cur()); }
+function nextId(T){ var k = T.length + 1; while(T.some(function(t){ return t.id === 't' + k; })) k++; return 't' + k; }
+function parsePreds(raw, T, selfId){
+  var out = [], txt = String(raw == null ? '' : raw).trim(); if(!txt) return out;
+  txt.split(/[,;]/).forEach(function(part){ var m = /^\s*(\d+)\s*(?:([+-])\s*(\d+))?\s*$/.exec(part); if(!m) return; var row = Number(m[1]) - 1, tk = T[row]; if(!tk || tk.id === selfId) return; out.push({ id:tk.id, lag:m[2] ? (m[2] === '-' ? -1 : 1) * Number(m[3]) : 0 }); });
+  return out;
+}
+window.bkDevGanttMode = function(mode){
+  var s = bkLoad(); s.devGantt = Object.assign({}, s.devGantt || {});
+  if(mode === 'tasks'){
+    if(!Array.isArray(s.devGantt.tasks) || !s.devGantt.tasks.length){
+      var x = bkDevV09(), pre = Math.max(0, Math.round(num(s.predevMonths))), con = Math.max(0, Math.round(num(s.constructionMonths))), T = [];
+      if(pre > 0) T.push({ id:'t1', name:'Entitlements, design and permits', group:'predev', start:1, dur:pre, preds:[] });
+      if(con > 0){
+        var base = pre > 0 ? [{ id:'t1', lag:0 }] : [], st = pre > 0 ? null : 1, id = function(){ return 't' + (T.length + 1); };
+        if(con < 4){ T.push({ id:id(), name:'Construction', group:'construction', start:st, dur:con, preds:base }); }
+        else {
+          var a = Math.max(1, Math.round(con * 0.2)), b = Math.max(2, Math.round(con * 0.5)), over = Math.min(Math.max(1, Math.round(b * 0.3)), b - 1), c = con - a - b + over;
+          while(c < 1){ b--; over = Math.min(over, b - 1); c = con - a - b + over; }
+          var ia = id(); T.push({ id:ia, name:'Site work and foundations', group:'construction', start:st, dur:a, preds:base });
+          var ib = id(); T.push({ id:ib, name:'Structure and envelope', group:'construction', start:null, dur:b, preds:[{ id:ia, lag:0 }] });
+          T.push({ id:id(), name:'MEP, interiors and finishes', group:'construction', start:null, dur:c, preds:[{ id:ib, lag:-over }] });
+        }
+      }
+      s.devGantt.tasks = T;
+    }
+    s.devGantt.mode = 'tasks';
+  } else { s.devGantt.mode = 'phases'; }
+  save(s);
+};
+window.bkDevGanttField = function(i, key, raw){
+  var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}), T = g.tasks = (g.tasks || []).map(function(t){ return Object.assign({}, t, { preds:(t.preds || []).map(function(p){ return Object.assign({}, p); }) }); }), t = T[i]; if(!t) return;
+  var txt = String(raw == null ? '' : raw).trim();
+  if(key === 'name') t.name = txt || t.name;
+  else if(key === 'group') t.group = txt === 'predev' || txt === 'other' ? txt : 'construction';
+  else if(key === 'dur'){ var d = Math.round(Number(txt.replace(/[,\s]/g, ''))); if(!isFinite(d) || d < 1){ showSheet(cur()); return; } t.dur = d; }
+  else if(key === 'start'){ if(txt === ''){ t.start = null; } else { var m = Math.round(Number(txt.replace(/[,\s]/g, ''))); if(!isFinite(m) || m < 1){ showSheet(cur()); return; } t.start = m; } }
+  else if(key === 'startDate'){ var dt = typeof bkParseDealDate === 'function' ? bkParseDealDate(txt, null) : null; if(!dt || isNaN(dt.getTime())){ showSheet(cur()); return; } var sd = startDate(s), mo = (dt.getFullYear() - sd.getFullYear()) * 12 + (dt.getMonth() - sd.getMonth()) + 1; if(mo < 1){ showSheet(cur()); return; } t.start = mo; }
+  else if(key === 'preds'){ t.preds = parsePreds(txt, T.map(function(q){ return { id:q.id }; }), t.id); }
+  else if(key === 'milestone'){ t.milestone = txt === 'true'; if(t.milestone) t.dur = 1; }
+  save(s);
+};
+window.bkDevGanttAdd = function(){ var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}); g.tasks = (g.tasks || []).slice(); g.tasks.push({ id:nextId(g.tasks), name:'New task', group:'construction', start:1, dur:3, preds:[] }); save(s); };
+window.bkDevGanttRemove = function(i){ var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}), T = g.tasks || [], id = T[i] && T[i].id; g.tasks = T.filter(function(t, k){ return k !== i; }).map(function(t){ return Object.assign({}, t, { preds:(t.preds || []).filter(function(p){ return p.id !== id; }) }); }); if(!g.tasks.length) g.mode = 'phases'; save(s); };
+
+/* ------------------------------------------------------------------ the chart ------------------------------------------------------------------ */
+var COL = { predev:'#7a8da1', construction:'#2E6E6E', other:'#8a6d2f', leaseup:'#2f5f9a', ops:'#9aa7b4', crit:'#b3392c' };
+function gantt(rows, x, s){
+  var hold = Math.max(x.hold, x.stab + 1), pxm = Math.max(5, Math.min(14, Math.floor(640 / hold))), L = 250, rowH = 26, top = 44, W = L + hold * pxm + 24, H = top + rows.length * rowH + 12;
+  var X = function(m){ return L + (m - 1) * pxm; };
+  var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Development schedule Gantt chart, by month" style="max-width:none">';
+  for(var y = 1; y <= Math.ceil(hold / 12); y++){ var m0 = (y - 1) * 12 + 1, w = Math.min(12, hold - m0 + 1) * pxm; g += '<rect x="' + X(m0) + '" y="6" width="' + w + '" height="' + (H - 12) + '" fill="' + (y % 2 ? 'rgba(120,140,160,.07)' : 'transparent') + '"/><text x="' + (X(m0) + w / 2) + '" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ae-dim,#5a6877)">Year ' + y + '</text>'; }
+  var step = pxm >= 9 ? 1 : pxm >= 6 ? 3 : 6; for(var m = 1; m <= hold; m += step){ if(m === 1 || m % (step === 1 ? 3 : step) === 0 || step > 1) g += '<text x="' + (X(m) + pxm / 2) + '" y="36" text-anchor="middle" font-size="9" fill="var(--ae-dim,#5a6877)">' + m + '</text>'; }
+  g += '<line x1="' + L + '" x2="' + (W - 14) + '" y1="' + (top - 4) + '" y2="' + (top - 4) + '" stroke="var(--ae-line,#c9d1dc)"/>';
+  rows.forEach(function(r, i){ var y0 = top + i * rowH, cy = y0 + rowH / 2;
+    g += '<text x="8" y="' + (cy + 4) + '" font-size="12" fill="var(--ae-ink,#1b2733)" font-weight="' + (r.linked ? 400 : 600) + '">' + esc(String(r.name).slice(0, 36)) + '</text>';
+    g += '<line x1="' + L + '" x2="' + (W - 14) + '" y1="' + (y0 + rowH) + '" y2="' + (y0 + rowH) + '" stroke="var(--ae-line,#e1e6ec)" stroke-width=".5"/>';
+    if(r.milestone){ var cx = X(r.ES) + pxm / 2; g += '<path d="M' + cx + ',' + (cy - 8) + ' L' + (cx + 8) + ',' + cy + ' L' + cx + ',' + (cy + 8) + ' L' + (cx - 8) + ',' + cy + ' Z" fill="' + (r.critical ? COL.crit : '#1b2733') + '"><title>' + esc(r.name) + ': month ' + r.ES + '</title></path>'; }
+    else { var w2 = Math.max(pxm, (r.EF - r.ES + 1) * pxm); g += '<rect x="' + X(r.ES) + '" y="' + (cy - 7) + '" width="' + w2 + '" height="14" rx="2" fill="' + r.color + '"' + (r.critical ? ' stroke="' + COL.crit + '" stroke-width="2"' : '') + '><title>' + esc(r.name) + ': months ' + r.ES + ' to ' + r.EF + (r.float > 0 ? ' (float ' + r.float + ')' : '') + '</title></rect>'; }
+    if(r.float > 0 && !r.linked){ g += '<line x1="' + (X(r.EF) + pxm) + '" x2="' + (X(r.EF) + pxm + r.float * pxm) + '" y1="' + cy + '" y2="' + cy + '" stroke="var(--ae-dim,#8a97a5)" stroke-dasharray="2 2"/>'; } });
+  /* dependency lines: from the end of a predecessor to the start of its successor */
+  var idx = {}; rows.forEach(function(r, i){ if(r.id) idx[r.id] = i; });
+  rows.forEach(function(r, i){ (r.preds || []).forEach(function(p){ var j = idx[p.id]; if(j === undefined) return; var q = rows[j], x1 = X(q.EF) + pxm, y1 = top + j * rowH + rowH / 2, x2 = X(r.ES), y2 = top + i * rowH + rowH / 2, mx = Math.max(x1, x2 - 4);
+    g += '<path d="M' + x1 + ',' + y1 + ' H' + (x1 + 3) + ' V' + y2 + ' H' + x2 + '" fill="none" stroke="' + ((r.critical && q.critical) ? COL.crit : 'var(--ae-dim,#7d8b99)') + '" stroke-width="1" marker-end=""/>'; }); });
+  return g + '</svg>';
+}
+function rowsFor(s, sc, x){
+  var rows = sc.tasks.map(function(t){ return { id:t.id, name:t.name, ES:t.ES, EF:t.EF, float:t.float, critical:t.critical, milestone:t.milestone, preds:t.preds, color:COL[t.group] || COL.construction }; });
+  rows.push({ name:'Certificate of occupancy', ES:sc.co, EF:sc.co, milestone:true, critical:true, linked:true, float:0 });
+  if(sc.luMo > 0) rows.push({ id:'lu', name:'Lease-up (from the lease-up method)', ES:sc.co + 1, EF:sc.co + sc.luMo, critical:true, linked:true, float:0, color:COL.leaseup, preds:[] });
+  rows.push({ name:'Stabilised operations', ES:sc.stab, EF:Math.max(sc.stab, sc.hold), linked:true, float:0, color:COL.ops });
+  rows.push({ name:'Sale / exit', ES:sc.hold, EF:sc.hold, milestone:true, linked:true, float:0 });
+  return rows;
+}
+function phaseTasks(s, x){
+  var T = [], preMo = num(x.preMo), conMo = num(x.conMo);
+  if(preMo > 0) T.push({ id:'p1', name:'Pre-development', group:'predev', ES:1, EF:preMo, dur:preMo, float:0, critical:true, preds:[], milestone:false, startDate:monthStart(s, 1), endDate:monthEnd(s, preMo) });
+  if(conMo > 0) T.push({ id:'p2', name:'Construction', group:'construction', ES:preMo + 1, EF:preMo + conMo, dur:conMo, float:0, critical:true, preds:preMo > 0 ? [{ id:'p1', lag:0 }] : [], milestone:false, startDate:monthStart(s, preMo + 1), endDate:monthEnd(s, preMo + conMo) });
+  return T;
+}
+
+/* ------------------------------------------------------------------ the section on Dev Schedule ------------------------------------------------------------------ */
+var prev = RENDERERS['Dev Schedule'];
+RENDERERS['Dev Schedule'] = function(){
+  var o = typeof prev === 'function' ? prev.apply(this, arguments) : { main:'' }, s = bkLoad(); if(!o || typeof o.main !== 'string' || !isDev(s)) return o;
+  try {
+    var x = bkDevV09(), on = window.bkDevGanttOn(s), sc, tasks, warnings = [];
+    if(on){ sc = window.bkDevGanttSchedule(s, x); tasks = sc.tasks; warnings = sc.warnings; }
+    else { tasks = phaseTasks(s, x); sc = { tasks:tasks, co:x.co, luMo:x.luMo, stab:x.stab, hold:x.hold, conStart:x.preMo + 1, preMo:x.preMo, conMo:x.conMo }; }
+    var rows = rowsFor(s, sc, x), html;
+    var head = '<div class="ae-form" style="margin:0 0 8px"><label style="font-weight:600">Schedule</label> <select onchange="bkDevGanttMode(this.value)"><option value="phases"' + (on ? '' : ' selected') + '>Phase durations (pre-development, construction, lease-up)</option><option value="tasks"' + (on ? ' selected' : '') + '>Task schedule (overlaps, dependencies, critical path)</option></select></div>';
+    var chartBox = '<div class="tbl-wrap" style="margin-top:16px"><div style="padding:10px 12px"><b>Gantt chart, by month</b>' + head
+      + '<div style="overflow-x:auto" class="bk-scrollable">' + gantt(rows, x, s) + '</div>'
+      + '<div style="font-size:12px;margin-top:6px;opacity:.85"><span style="color:' + COL.crit + '">&#9632;</span> Critical path (no float) &nbsp; <span style="color:' + COL.construction + '">&#9632;</span> Construction &nbsp; <span style="color:' + COL.predev + '">&#9632;</span> Pre-development &nbsp; <span style="color:' + COL.leaseup + '">&#9632;</span> Lease-up &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float</span></div>'
+      + (on ? '' : '<div class="note-flag" style="margin-top:8px"><span>&#9432;</span><div><b>Drawn from the phase durations.</b> Choose <b>Task schedule</b> to break construction into overlapping tasks with dependencies. It starts as tasks that reproduce these phases exactly, so nothing moves until you edit them.</div></div>') + '</div></div>';
+    var table = '';
+    if(on){
+      var T = sc.tasks, hdr = '<tr><th class="rowlabel-h">#</th><th>Task</th><th>Group</th><th>Start no earlier than<br><small>month</small></th><th>or date<br><small>M/D/YYYY</small></th><th>Duration<br><small>months</small></th><th>Predecessors<br><small>e.g. 2, 3-2 (overlap 2)</small></th><th>Start</th><th>Finish</th><th>Float</th><th>Critical</th><th></th></tr>';
+      var body = T.map(function(t, i){ var raw = (s.devGantt.tasks[i] || {}), pr = t.preds.map(function(p){ var k = T.findIndex(function(q){ return q.id === p.id; }) + 1; return k + (p.lag ? (p.lag > 0 ? '+' : '') + p.lag : ''); }).join(', ');
+        return '<tr class="input"><td class="rowlabel">' + (i + 1) + '</td><td class="v"><input type="text" style="width:190px;text-align:left !important" value="' + esc(t.name) + '" onchange="bkDevGanttField(' + i + ',\'name\',this.value)"></td>'
+          + '<td class="v"><select onchange="bkDevGanttField(' + i + ',\'group\',this.value)">' + GROUPS.map(function(gp){ return '<option value="' + gp[0] + '"' + (t.group === gp[0] ? ' selected' : '') + '>' + gp[1] + '</option>'; }).join('') + '</select></td>'
+          + '<td class="v"><input type="number" step="1" min="1" style="width:70px" value="' + (has(raw.start) ? raw.start : '') + '" placeholder="auto" onchange="bkDevGanttField(' + i + ',\'start\',this.value)"></td>'
+          + '<td class="v"><input type="text" style="width:100px" value="' + esc(has(raw.start) ? monthStart(s, num(raw.start)).toLocaleDateString('en-US') : '') + '" placeholder="auto" onchange="bkDevGanttField(' + i + ',\'startDate\',this.value)"></td>'
+          + '<td class="v"><input type="number" step="1" min="1" style="width:70px" value="' + t.dur + '" onchange="bkDevGanttField(' + i + ',\'dur\',this.value)"></td>'
+          + '<td class="v"><input type="text" style="width:110px;text-align:left !important" value="' + esc(pr) + '" placeholder="none" onchange="bkDevGanttField(' + i + ',\'preds\',this.value)"></td>'
+          + '<td>' + t.ES + ' &middot; ' + fmtD(t.startDate) + '</td><td>' + t.EF + ' &middot; ' + fmtD(t.endDate) + '</td><td>' + t.float + '</td><td>' + (t.critical ? '<span class="status-chip fail">CRITICAL</span>' : '') + '</td>'
+          + '<td><button type="button" class="bk-btn" onclick="bkDevGanttRemove(' + i + ')">Remove</button></td></tr>'; }).join('');
+      var link = '<tr class="grandtotal"><td class="rowlabel" colspan="2">What the schedule drives</td><td colspan="10" data-bk-align="text">Pre-development ' + sc.preMo + ' months &middot; construction ' + sc.conMo + ' months (months ' + sc.conStart + ' to ' + sc.conEnd + ') &middot; certificate of occupancy month ' + sc.co + ' &middot; lease-up ' + sc.luMo + ' months &middot; stabilised month ' + sc.stab + '. The construction draws, facility and lease-up all move with these.</td></tr>';
+      table = '<div class="tbl-wrap" style="margin-top:12px"><div style="overflow-x:auto"><table class="fin bk-m-scroll" style="table-layout:auto !important;width:max-content !important;min-width:1180px !important;max-width:none !important"><caption>Tasks, dependencies and critical path</caption><thead>' + hdr + '</thead><tbody>' + body + link + '</tbody></table></div></div>'
+        + '<div style="margin:8px 0"><button type="button" class="bk-btn" onclick="bkDevGanttAdd()">+ Add task</button></div>'
+        + (warnings.length ? '<div class="note-flag"><span>&#9888;</span><div>' + warnings.map(esc).join('<br>') + '</div></div>' : '')
+        + '<div class="note-flag"><span>&#9432;</span><div>Months count from the analysis start (month 1 is the closing month). A predecessor links finish to start; <b>3-2</b> starts the task two months before task 3 finishes (an overlap) and <b>3+1</b> a month after. The critical path is the chain of tasks with no float to the certificate of occupancy. Pre-development and construction months are set from the first and last construction task; the lease-up months come from the lease-up method.</div></div>';
+    }
+    /* the quarterly bar picture this replaces */
+    o.main = o.main.replace(/<div class="tbl-wrap"[^>]*>\s*<table class="fin"[^>]*>\s*<caption>Phase Timeline - by quarter<\/caption>[\s\S]*?<\/table>\s*<\/div>\s*(?:<div class="note-flag"[^>]*><span>[^<]*<\/span><div>Drawn from the same phase months[^<]*<\/div><\/div>)?/, '');
+    o.main += chartBox + table;
+  } catch(e){ o.main += '<div class="note-flag"><span>&#9888;</span><div>Gantt chart error: ' + esc(e.message) + '</div></div>'; }
+  return o;
+};
 })();
 </script>
 </body>

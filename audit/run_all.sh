@@ -37,6 +37,8 @@ echo "== Section guide (Guide on: what, how to read, checks on this deal, next)"
 echo "== Layout guards (income-bar key, report text, print button, phone layout)"; node audit/layout_test.js index.html | tail -1
 echo "== Sponsor CF (one sponsor all-in return, dated like the summary)"; node audit/sponsor_test.js index.html | tail -1
 echo "== Residual land solve, draw curves, sources and uses (development)"; node audit/residual_curve_test.js index.html | tail -1
+echo "== Development lease-up by unit type (schedule, income, shortfall, funding, backward compatibility)"; node audit/devunits_test.js index.html "$REF" | tail -1
+echo "== Development Gantt (task schedule, critical path, drives the engine)"; node audit/devgantt_test.js index.html "$REF" | tail -1
 echo "== Fill rule (header fill vs key-metric fill, every sheet)"; node audit/fillrule_test.js index.html | tail -1
 echo "== Waterfall verification (per-hurdle IRR error checks, tier order, conservation, promote)"; node audit/wfcheck_test.js index.html | tail -1
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1

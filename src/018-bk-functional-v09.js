@@ -141,7 +141,7 @@ function bkDevV09(){
  const s=bkEnsureV06(), isDev=String(s.dealType||'').toLowerCase().includes('develop');
  const land=Number(s.landOverrideOn)?Number(s.residualLandValue||0):Number(s.purchasePrice||0);
  const gsf=Number(s.gsf||0), close=land*Number(s.closingPct||0), acq=land*bkAcqFeePct(s), pre=isDev?Number(s.predevCarry||0):0;
- const preMo=isDev?Math.max(0,Math.round(Number(s.predevMonths||0))):0, conMo=isDev?Math.max(0,Math.round(Number(s.constructionMonths||0))):0, luMo=isDev?Math.max(0,Math.round(Number(s.leaseupMonths||0))):0;
+ const preMo=isDev?Math.max(0,Math.round(Number(s.predevMonths||0))):0, conMo=isDev?Math.max(0,Math.round(Number(s.constructionMonths||0))):0, luMo=isDev?((typeof bkDevUnitOn==='function'&&bkDevUnitOn(s))?bkDevUnitLeaseupMonths(s):Math.max(0,Math.round(Number(s.leaseupMonths||0)))):0;
  const co=preMo+conMo, stab=Math.max(isDev?co+luMo:1,1), hold=Math.max(1,Math.round(Number(s.holdYears||5)*12));
  let hard=0,soft=0,hardLadder=null,softLadder=null,k=1;
  // Total cost (hard+soft) is an affine function of the calibration factor k (Development!C70-C75): the
@@ -232,6 +232,8 @@ function bkDevFundingV10(){
     sizes the commitment must stop there too, with or without a takeout; otherwise a no-takeout loan exceeds its LTC. */
  const payoff=Number(s.refiAtStab||0)?x.stab:x.hold, accr=Math.max(3,Math.round((Math.min(payoff,x.stab)-(x.preMo+1)+1)*.7)), intFac=Math.max(0,Number(s.conUtil||0))*rate*accr/12, U0=x.unlev+Number(s.lenderLegal||0), ltc=Number(s.conLTC||0), ltv=Number(s.conLTV||0);
  const commitLTC=ltc>0&&ltc*(feeFac+intFac)<1?ltc*U0/(1-ltc*(feeFac+intFac)):0,commitLTV=ltv>0?ltv*stabVal:Number.POSITIVE_INFINITY,commit=(()=>{const a=ltc>0?(commitLTC||0):Number.POSITIVE_INFINITY,raw=Math.min(a,commitLTV);return isFinite(raw)?Math.max(0,Math.floor(raw/1000)*1000):0;})(),upfront=commit*feeFac+Number(s.lenderLegal||0),estInt=commit*intFac,eqTarget=commit>0?Math.max(0,x.unlev+upfront+estInt-commit):9.9e14;
+ /* unit-level lease-up: the operating shortfall is funded in the months it actually occurs (the unit schedule's negative NOI), not spread evenly */
+ let leaseShares=null;if(typeof bkDevUnitOn==='function'&&bkDevUnitOn(s)&&x.leaseDef>0){const sf={};let tot=0;(x.leaseupRamp||[]).forEach(r=>{const v=Math.max(0,-Number(r.after||0));if(v>0){sf[r.mo]=v;tot+=v;}});if(tot>0){leaseShares={};Object.keys(sf).forEach(k=>{leaseShares[k]=sf[k]/tot;});}}
  let bal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
  for(let mo=1;mo<=x.hold;mo++){
    const land=mo===1?x.land+x.close+x.acq+x.pre:0;
@@ -240,7 +242,7 @@ function bkDevFundingV10(){
    const conShare=bkCurveShare(mo,LC.conStart,LC.conLen,s.softConMethod,s.softConSteepness);
    const luShare=x.luMo>0?bkCurveShare(mo,x.co+1,x.luMo,s.softLeaseMethod,1):0;
    let soft=x.soft*(.28*preShare+(.62+(x.preMo===0?.28:0))*conShare+.10*luShare);if(x.luMo===0&&mo===LC.closeoutMo)soft+=x.soft*.10;
-   let lease=x.leaseDef*bkCurveShare(mo,x.co+1,x.luMo,'Straight-Line',1),fees=mo===x.preMo+1?upfront:0;
+   let lease=x.leaseDef*(leaseShares?(leaseShares[mo]||0):bkCurveShare(mo,x.co+1,x.luMo,'Straight-Line',1)),fees=mo===x.preMo+1?upfront:0;
    cumHard+=hard;cumSoft+=soft;cumLease+=lease;cumFees+=fees;
    if(mo===LC.sweepMo){const rh=x.hard-cumHard,rs=x.soft-cumSoft,rl=x.leaseDef-cumLease,rf=upfront-cumFees;if(rh>.01)hard+=rh;if(rs>.01)soft+=rs;if(rl>.01)lease+=rl;if(rf>.01)fees+=rf;}
    const need=land+hard+soft+lease+fees;
