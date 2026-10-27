@@ -25507,5 +25507,106 @@ function start(){ addBtn(); var vp = document.getElementById('viewport'); if(vp)
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>
+<script id="bk-sectionguide">/* ===========================================================================
+   SECTION GUIDE. With the Guide switched on (header toggle), every section that is not part of the step-by-step input flow opens with a short guide:
+   what the section shows, how to read its key figures, the checks to make on THIS deal (calculated from the live model, never assumed), and the
+   sensible next step. Nothing here changes the deal or calculates a figure of its own; the checks read the engine and the credit policy.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof RENDERERS === 'undefined') return;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
+function M(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
+function P(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
+function X(v){ return !isFinite(v) ? '—' : v.toFixed(2) + 'x'; }
+function on(){ return typeof window.bkGuideActive === 'function' && window.bkGuideActive(); }
+function dev(s){ return /develop/i.test(String(s.dealType || '')); }
+
+/* the live figures a check may read, computed once per card and only if the section's checks ask for them */
+function ctx(){
+  var s = safe(function(){ return bkLoad(); }, {}) || {}, c = {}, get = function(k, f){ if(!(k in c)) c[k] = safe(f, null); return c[k]; };
+  return { s:s, dev:dev(s), pol:get('pol', function(){ return window.bkPolicy(); }) || {}, calc:function(){ return get('calc', function(){ return bkCalc(); }); }, mr:function(){ return get('mr', function(){ return window.bkInCase ? window.bkInCase(function(){ return bkMonthlyReturns(); }) : bkMonthlyReturns(); }); },
+    debt:function(){ return get('debt', function(){ return bkDebt(); }); }, cap:function(){ return get('cap', function(){ return window.bkDebtCapacity(); }); } };
+}
+var ok = function(t){ return { k:'ok', t:t }; }, warn = function(t){ return { k:'warn', t:t }; }, info = function(t){ return { k:'info', t:t }; };
+
+/* what each section is for, how to read it, what to check, and where to go next. Checks return [{k, t}]. */
+var G = {
+  'Operating Underwrite': { what:'The first-year operating statement: income, vacancy and loss, expenses and the resulting NOI.',
+    read:[['Effective gross income (EGI)', 'Rent and other income after vacancy and credit loss.'], ['NOI', 'EGI less operating expenses, before reserves and debt service.'], ['NOI after reserves', 'The figure debt coverage and the going-in cap rate are measured on.']],
+    checks:function(x){ var o = [], c = x.calc(), s = x.s; if(!c) return o; o.push(info('Expenses are ' + P(c.expenseRatio) + ' of EGI; NOI margin ' + P(c.noiMargin) + '.'));
+      if(!(num(s.mgmtPct) > 0)) o.push(warn('No management fee is charged. A buyer will normally pay one, even if you self-manage.')); if(!(num(s.reserves) > 0)) o.push(warn('No replacement reserves. NOI after reserves equals NOI, which flatters coverage.'));
+      if(!(num(s.vacancy) > 0)) o.push(warn('Vacancy is 0.00%. Check the rent roll for units that are not paying.')); return o; },
+    next:[['Debt', 'Size the loan on this NOI.'], ['Returns', 'See what the NOI earns on the equity.']] },
+  'Property CF': { what:'Annual cash flow for the hold: income, expenses, NOI, reserves and the sale.', read:[['NOI growth', 'Driven by rent growth against expense growth.'], ['Sale proceeds', 'Forward NOI divided by the exit cap rate, less sale costs.']],
+    checks:function(x){ var o = [], s = x.s; if(num(s.rentGrowth) > num(s.opexGrowth) + 0.02) o.push(warn('Rent grows ' + P(num(s.rentGrowth)) + ' a year against expenses at ' + P(num(s.opexGrowth)) + ': margins widen every year. Make sure that is deliberate.')); if(num(s.exitCap) < (x.calc() ? x.calc().noi / num(s.purchasePrice) : 0) - 0.0001) o.push(warn('The exit cap rate is below the going-in cap rate: the sale assumes the market improves.')); else o.push(ok('The exit cap rate is not below the going-in cap rate.')); return o; },
+    next:[['Returns', 'Equity returns on these cash flows.']] },
+  'Rent Roll': { what:'Unit-by-unit rent, status and lease dates. When a rent roll exists it is the source of revenue; the flat average rent is only a fallback.', read:[['In-place rent', 'What occupied units pay today.'], ['Market rent', 'What the unit would rent for; vacant units count at market.'], ['Loss to lease', 'The gap between market and in-place rent.']],
+    checks:function(x){ var rr = x.s.rentRoll || [], o = []; if(!rr.length){ o.push(warn('No rent roll. Revenue uses the flat average rent per unit, with no loss to lease or rollover.')); return o; } var vac = rr.filter(function(u){ return u.status !== 'Occupied'; }).length; o.push(info(rr.length + ' units; ' + vac + ' not occupied.')); return o; },
+    next:[['Operating Underwrite', 'See the income this rent roll produces.']] },
+  'Debt': { what:'Acquisition loan sizing: which limit binds (loan-to-value, loan-to-cost, DSCR or debt yield), the payment and the resulting structure.', read:[['Binding constraint', 'The lowest of the four limits sets the loan.'], ['DSCR', 'NOI after reserves divided by annual debt service.'], ['Debt yield', 'NOI divided by the loan.']],
+    checks:function(x){ var d = x.debt(), o = [], p = x.pol; if(!d || !(d.loan > 0)) return [info('Debt is off or no loan sizes; the returns are all-cash.')]; o.push(info('The loan is ' + M(d.loan) + ', bound by ' + d.binding + '; coupon ' + P(d.coupon) + ' (' + d.rateType + ').'));
+      if(num(p.minDSCR) > 0) o.push(d.dscr >= p.minDSCR - 1e-9 ? ok('Year-1 DSCR ' + X(d.dscr) + ' meets the policy minimum of ' + X(p.minDSCR) + '.') : warn('Year-1 DSCR ' + X(d.dscr) + ' is below the policy minimum of ' + X(p.minDSCR) + '.')); if(d.rateType === 'Floating') o.push(warn('The loan floats. Compare the structures on Financing Compare, including a rate cap.')); return o; },
+    next:[['Debt Capacity', 'Is this loan within house capacity?'], ['Financing Compare', 'Compare loan alternatives on their full economics.']] },
+  'Debt Schedule': { what:'Month by month loan balance, interest, principal and fees over the hold.', read:[['Balance at sale', 'What is repaid from the sale proceeds.']], checks:function(x){ var d = x.debt(), o = []; if(d && d.loan > 0) o.push(info('Balance at sale ' + M(d.debtAtSale) + ' (' + P(d.debtAtSale / d.loan) + ' of the original loan).')); return o; }, next:[['Financing Compare', 'See the dated cash flows and the all-in cost of the loan.']] },
+  'Debt Capacity': { what:'How much debt the house policy supports, by each limit, and the loan requested against it.', read:[['Binding limit', 'The lowest capacity: that is the most the policy allows.']],
+    checks:function(x){ var c = x.cap(), o = []; if(!c) return o; if(c.overage > 0) o.push(warn('The loan is ' + M(c.overage) + ' above capacity (' + M(c.capacity) + '). Resize it, or see what price would fix it on Deal Remedies.')); else o.push(ok('The loan is within capacity of ' + M(c.capacity) + '.')); return o; }, next:[['Deal Remedies', 'Quantify resizing the debt, price, rent and occupancy.']] },
+  'Refi / Recap': { what:'A refinance in a chosen year: the new loan, the cash out, and the effect on returns against holding the original loan.', read:[['Cash-out', 'New loan less the old balance and costs.']], checks:function(x){ return [info('The refinance reads the engine\'s own monthly schedule; it does not change the deal\'s returns.')]; }, next:[['Financing Compare', 'Compare a refinance with other structures.']] },
+  'Financing Lab': { what:'A what-if on buying today at a chosen cap rate and trying loan-to-value and rate combinations.', read:[['Grid', 'Each cell is a full engine re-run.']], checks:function(){ return [info('Nothing here changes the deal.')]; }, next:[['Financing Compare', 'Compare real loan alternatives on this deal.']] },
+  'Financing Compare': { what:'Loan alternatives compared on complete, dated economics: upfront costs, interest, fees, balloon and refinance, discounted at one disclosed rate.', read:[['PV financing cost', 'Interest, fees and penalties, discounted.'], ['All-in cost', 'The IRR of the loan\'s own cash flows.'], ['Reconciles', 'Levered cash flow must equal unlevered plus financing flows.']],
+    checks:function(x){ var o = []; o.push(info('Lowest financing cost is not the best investment: read each measure on its own.')); o.push(info('Tax effects are not modelled.')); return o; }, next:[['Returns', 'See the engine\'s returns for the base structure.']] },
+  'Returns': { what:'Monthly, dated equity cash flow, the levered IRR and multiple, and where the profit comes from.', read:[['Levered IRR', 'Annualised return on the equity, on dated monthly flows.'], ['Equity multiple', 'Total distributions over equity invested.'], ['Hurdle', 'The credit policy\'s target IRR.']],
+    checks:function(x){ var m = x.mr(), p = x.pol, o = []; if(!m) return o; if(num(p.targetIRR) > 0) o.push(m.irr >= p.targetIRR ? ok('Levered IRR ' + P(m.irr) + ' clears the ' + P(p.targetIRR) + ' target.') : warn('Levered IRR ' + P(m.irr) + ' is ' + ((p.targetIRR - m.irr) * 100).toFixed(2) + ' points below the ' + P(p.targetIRR) + ' target. See Deal Remedies for what it would take.'));
+      return o; },
+    next:[['Equity Waterfall', 'How the returns split between LP and GP.'], ['Sensitivity', 'How the return moves with exit cap and rent growth.']] },
+  'Equity Waterfall': { what:'The LP / GP split of cash flow through preferred return, catch-up and promote tiers.', read:[['Tier hurdles', 'Each tier opens once the LP has reached its IRR.'], ['Partner IRR', 'Return to each partner after the split.']], checks:function(x){ var s = x.s, o = []; var gp = num(s.gpShare); if(isFinite(gp) && (gp < 0 || gp > 1)) o.push(warn('The GP share must be between 0.00% and 100.00%.')); o.push(info('Hurdle accounts accrue monthly at each hurdle rate on the LP\'s own contributions.')); return o; }, next:[['Returns', 'Project-level returns before the split.']] },
+  'After-Tax': { what:'Returns after tax: depreciation, tax on operations and on sale.', read:[['Depreciation', 'Reduces taxable income; recaptured on sale.']], checks:function(){ return [info('Tax inputs are the deal\'s own assumptions; they are not investor-specific advice.')]; }, next:[['Returns', 'Compare with the before-tax return.']] },
+  'Probability-Weighted': { what:'Expected returns and the odds of losing money or missing the hurdle, weighting the downside, base and upside cases.', read:[['P(loss)', 'The chance the equity loses money.'], ['IRR of the expected cash flow', 'The honest expected return; a weighted average of IRRs is not.']], checks:function(x){ return [info('The three cases are coarse; the Monte Carlo spreads the main drivers for a smoother answer.')]; }, next:[['Sensitivity', 'Move one driver at a time.']] },
+  'Sensitivity': { what:'How the return moves when one assumption changes.', read:[['Each cell', 'A full engine re-run with that assumption changed.']], checks:function(){ return [info('Look for the assumption whose small change moves the return most; that is where the diligence belongs.')]; }, next:[['Pre-Offer Bid', 'Turn the thresholds into a maximum price.']] },
+  'Reverse Solve': { what:'Solve an input (price, rent, exit cap) for a target return.', read:[['Target', 'The return the solved input must reach.']], checks:function(){ return [info('A solved input is what the target requires, not a forecast.')]; }, next:[['Pre-Offer Bid', 'Solve the price against all your constraints at once.']] },
+  'Pre-Offer Bid': { what:'The maximum purchase price the deal supports under your constraints, found by re-running the engine at each price.', read:[['Binding constraint', 'The constraint that stops the price from going higher.'], ['Verified', 'The engine is re-run just below and just above the answer.']],
+    checks:function(x){ var o = [], s = x.s; if(!(num(s.purchasePrice) > 0)) o.push(warn('Enter a purchase price first.')); o.push(info('Switch constraints on or off, and add your proposed offer to see it beside the asking price and the maximum bid.')); return o; }, next:[['Deal Remedies', 'Compare debt, price, rent and occupancy side by side.']] },
+  'Deal Remedies': { what:'What it would take for a deal that fails the credit policy to pass: resize the debt, renegotiate the price, or improve rent and occupancy.', read:[['Resize debt', 'Additional equity, DSCR and returns at the smaller loan.'], ['Maximum price', 'The cut required, in dollars and per cent.']],
+    checks:function(x){ return [info('Required rent and occupancy are what the numbers require, not an assumption that they are achievable.')]; }, next:[['IC Memo', 'The committee view of the deal as it stands.']] },
+  'Credit Policy': { what:'The house limits and weights the credit gate tests every deal against.', read:[['HARD / SOFT', 'A hard exception blocks approval; soft ones are weighed.']], checks:function(x){ var o = []; if(x.s._policy && Object.keys(x.s._policy).length) o.push(warn('This deal has policy overrides. Say so in the memo.')); else o.push(ok('The deal uses the house defaults.')); return o; }, next:[['IC Memo', 'See the gate result.']] },
+  'IC Memo': { what:'The investment committee summary: the gate result, cushions, exceptions, risks and conditions.', read:[['Verdict', 'APPROVE, CONDITIONAL or DECLINE from the credit gate.']], checks:function(x){ var g = safe(function(){ return window.bkDealGatePeek && window.bkDealGatePeek(); }, null) || safe(function(){ return window.bkDealGate(); }, null), o = []; if(!g) return o; o.push((g.verdict === 'APPROVE' ? ok : g.verdict === 'DECLINE' ? warn : info)(g.verdict + ': ' + g.hard + ' hard and ' + g.soft + ' soft exceptions.')); return o; }, next:[['Deal Remedies', 'What would clear the exceptions.']] },
+  'Model Checks': { what:'Combinations of inputs that contradict each other or quietly create an accounting, tax or credit discrepancy.', read:[['ERROR', 'Fix before relying on the results.'], ['WARN', 'Review; acknowledge once you have.']], checks:function(){ return [info('Each finding says why it matters and where to fix it.')]; }, next:[['Deal Underwrite', 'Fix the inputs.']] },
+  'Sources & Uses': { what:'Where the money comes from and what it pays for, with a control check that they reconcile.', read:[['Sources less uses', 'Must be zero.']], checks:function(x){ var d = x.debt(), o = []; if(d && d.loan > 0) o.push(info('Loan ' + M(d.loan) + ' and equity ' + M(d.equity) + ' fund the uses.')); return o; }, next:[['Debt', 'Change the loan.']] },
+  'Import OM': { what:'Read an offering memorandum into a deal. Every figure is checked against the page it came from; what could not be read is asked for, not guessed.', read:[['Verified / Check / Low', 'How much the reading is trusted.']], checks:function(){ return [info('A price is taken only if it is an asking price; sold and assessed values are listed, never used.')]; }, next:[['Deal Underwrite', 'Review what was imported.']] },
+  'Import Rent Roll': { what:'Load a rent roll from a spreadsheet or PDF into the deal.', read:[['Mapping', 'Columns are matched to unit, rent, status and dates.']], checks:function(){ return [info('Check the unit count and total monthly rent against the source before creating the deal.')]; }, next:[['Rent Roll', 'Review the units.']] },
+  'Cash Flow Report': { what:'A printable cash flow report that reconciles to the engine.', read:[['Reconciliation', 'Totals tie to the engine\'s own cash flows.']], checks:function(){ return [info('Use Print / Save PDF for a clean copy of this section.')]; }, next:[['Returns', 'The same cash flows as returns.']] },
+  'Portfolio Dashboard': { what:'Saved deals side by side, from the same engine, one deal at a time on a scratch copy.', read:[['Each row', 'A saved snapshot; nothing is mixed across deals.']], checks:function(){ return [info('Add the active deal to the portfolio to include it.')]; }, next:[['Portfolio', 'Manage saved deals.']] }
+};
+var GROUP_DEFAULT = { what:'This section is part of the underwriting model. Every figure is read from the live deal.', read:[], checks:function(){ return []; }, next:[['Returns', 'See the headline returns.'], ['IC Memo', 'See the credit result.']] };
+
+function cardFor(sheet){
+  var g = G[sheet]; if(!g) return null; var x = ctx(), checks = safe(function(){ return g.checks(x); }, []) || [];
+  var mark = { ok:'#5d8a70', warn:'#b09254', info:'#8a97a5' };
+  return '<details class="bk-sg" open><summary><b>Guide</b> · ' + esc(sheet) + '</summary><div class="bk-sg-b">'
+    + '<div class="bk-sg-h">What this shows</div><p>' + esc(g.what) + '</p>'
+    + (g.read && g.read.length ? '<div class="bk-sg-h">How to read it</div><ul>' + g.read.map(function(r){ return '<li><b>' + esc(r[0]) + '</b> ' + esc(r[1]) + '</li>'; }).join('') + '</ul>' : '')
+    + (checks.length ? '<div class="bk-sg-h">Checks on this deal</div><ul class="bk-sg-c">' + checks.map(function(c){ return '<li><i style="background:' + mark[c.k] + '"></i>' + esc(c.t) + '</li>'; }).join('') + '</ul>' : '')
+    + (g.next && g.next.length ? '<div class="bk-sg-h">Next</div><div class="bk-sg-n">' + g.next.map(function(n){ return '<button type="button" class="bk-btn" onclick="showSheet(\'' + String(n[0]).replace(/'/g, "\\'") + '\')">' + esc(n[0]) + '</button> <span>' + esc(n[1]) + '</span>'; }).join('<br>') + '</div>' : '')
+    + '</div></details>';
+}
+var css = '.bk-sg{margin:0 0 14px;border:1px solid var(--ae-line,#cfd6dd);background:var(--ae-cell-ro,#f6f8fa);border-left:3px solid #7d93aa}.bk-sg>summary{cursor:pointer;padding:8px 12px;font-size:12.5px;list-style:none;color:var(--ae-ink,#1f2933)}.bk-sg>summary::-webkit-details-marker{display:none}.bk-sg>summary b{letter-spacing:.08em;text-transform:uppercase;font-size:11px;color:#5b6f84}'
+ + '.bk-sg-b{padding:0 14px 12px;font-size:13px;line-height:1.5}.bk-sg-b p{margin:2px 0 6px}.bk-sg-h{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:#6b7a89;font-weight:700;margin:10px 0 3px}.bk-sg-b ul{margin:0 0 0 18px;padding:0}.bk-sg-c{list-style:none;margin-left:0 !important}.bk-sg-c li{display:flex;gap:8px;align-items:flex-start;margin:3px 0}.bk-sg-c i{width:8px;height:8px;border-radius:50%;flex:0 0 8px;margin-top:6px}.bk-sg-n span{font-size:12.5px;opacity:.8;margin-left:6px}.bk-sg-n .bk-btn{margin:2px 0}@media print{.bk-sg{display:none !important}}';
+var st = document.createElement('style'); st.id = 'bk-sg-css'; st.textContent = css; document.head.appendChild(st);
+var queued = false;
+function paint(){ queued = false; var v = document.getElementById('viewport'); if(!v) return; var cur = safe(function(){ return currentSheet; }, ''), fr = v.querySelector('.sheet-frame');
+  var has = v.querySelector('.bk-sg'); if(!on() || !fr || cur === 'Guide' || cur === 'Home' || cur === 'Deal Underwrite'){ if(has) has.remove(); return; }
+  if(has && has.getAttribute('data-sh') === cur) return; if(has) has.remove();
+  var html = cardFor(cur); if(!html) return; var tb = fr.querySelector('.title-block'), box = document.createElement('div'); box.innerHTML = html; var el = box.firstChild; el.setAttribute('data-sh', cur);
+  var main = fr.querySelector('.main-col') || fr; if(tb && tb.nextSibling && tb.parentNode === main) main.insertBefore(el, tb.nextSibling); else main.insertBefore(el, main.firstChild); }
+function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(paint); } }
+window.bkSectionGuideSheets = function(){ return Object.keys(G); };
+window.bkSectionGuideHtml = cardFor;
+function start(){ var vp = document.getElementById('viewport'); if(vp) new MutationObserver(later).observe(vp, { childList:true, subtree:true }); later(); }
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+var tg = window.bkGuideToggle; if(typeof tg === 'function'){ window.bkGuideToggle = function(){ var r = tg.apply(this, arguments); setTimeout(later, 60); return r; }; }
+})();
+</script>
 </body>
 </html>
