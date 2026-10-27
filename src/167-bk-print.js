@@ -13,7 +13,7 @@ function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
 function P2(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 
-var CSS = '#bk-print-head,#bk-print-foot{display:none}'
+var CSS = '#bk-print-head,#bk-print-foot{display:none}.title-block{position:relative}.title-block .bk-print-btn{position:absolute;top:12px;right:128px;z-index:2}@media (max-width:760px){.title-block .bk-print-btn{position:static;margin:6px 0 0}}'
  + '@media print{'
  + 'html,body{background:#fff !important;color:#14202b !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
  + '.rail,.brand-bar,.tabnav,.tabnav-primary,.bk-flow,.bk-stepnav,.bk-case,.side-col,.title-block,.bk-dui,.pf-bar,.rp-bar,.bk-rail-toggle,#bk-sync-status,#bk-auth-gate,#pl-palette,#pl-modal,#pl-tip,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,#bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,select{display:none !important}'
@@ -84,7 +84,7 @@ var st = document.createElement('style'); st.id = 'bk-print-css'; st.textContent
 /* the button, on every section's header */
 var queued = false;
 function addBtn(){ queued = false; var v = document.getElementById('viewport'); if(!v) return;
-  [].forEach.call(v.querySelectorAll('.sheet-frame'), function(fr){ var tb = fr.querySelector('.title-block'); if(!tb || tb.querySelector('.bk-print-btn') || fr.querySelector('.pf-print')) return;
+  [].forEach.call(v.querySelectorAll('.sheet-frame'), function(fr){ var tb = fr.querySelector('.title-block'); if(!tb || tb.querySelector('.bk-print-btn') || fr.querySelector('.pf-print, .rp-bar')) return;
     var b = document.createElement('button'); b.type = 'button'; b.className = 'bk-btn bk-print-btn'; b.textContent = 'Print / Save PDF'; b.setAttribute('title', 'Print or save this section as a PDF'); b.onclick = function(){ window.bkPrintSection(); };
     var key = tb.querySelector('.bk-key-wrap'); if(key) tb.insertBefore(b, key); else tb.appendChild(b); }); }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(addBtn); } }

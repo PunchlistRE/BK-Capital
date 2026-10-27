@@ -85,11 +85,20 @@ function chartBridge(D){
 }
 /* Year 1: where each dollar of effective gross income goes */
 function chartDollar(D){
-  var y = D.Y[0], egi = y.egi || 1, parts = [['Taxes', -y.taxes, '#7A8FA6'], ['Insurance', -y.ins, '#98AABD'], ['Operating costs', -y.ctrl, '#B5C2D0'], ['Management', -y.mgmt, '#D0D9E2'], ['Reserves', y.res * -1, '#E6D9B8'], ['Net cash after reserves', y.noiAfter, COL.navy]], W = 760, Hh = 108, x = 0, g = '';
-  parts.forEach(function(p){ var w = Math.max(0, p[1]) / egi * W; if(w <= 0) return; g += '<rect x="' + x + '" y="24" width="' + w + '" height="38" fill="' + p[2] + '"><title>' + p[0] + ' ' + M(p[1]) + ' (' + P(p[1] / egi) + ' of EGI)</title></rect>';
-    if(w > 46) g += '<text x="' + (x + w / 2) + '" y="48" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (p[2] === COL.navy ? '#fff' : '#0e2a4a') + '">' + P(p[1] / egi, 0) + '</text>'; x += w; });
-  x = 0; parts.forEach(function(p, i){ var w = Math.max(0, p[1]) / egi * W; if(w <= 0) return; g += '<text x="' + (x + w / 2) + '" y="' + (i % 2 ? 92 : 80) + '" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".8">' + esc(p[0]) + '</text>'; x += w; });
+  /* The bar shows the split; a key under it names every part with its dollars and share, laid out in rows that never overlap, so no label has to sit under a narrow segment. */
+  var y = D.Y[0], egi = y.egi || 1, parts = [['Taxes', -y.taxes, '#7A8FA6'], ['Insurance', -y.ins, '#98AABD'], ['Operating costs', -y.ctrl, '#B5C2D0'], ['Management', -y.mgmt, '#D0D9E2'], ['Reserves', y.res * -1, '#E6D9B8'], ['Net cash after reserves', y.noiAfter, COL.navy]].filter(function(p){ return Math.max(0, p[1]) > 0; });
+  var W = 760, x = 0, g = '', cw = 6.1;
+  parts.forEach(function(p){ var w = Math.max(0, p[1]) / egi * W; g += '<rect x="' + x + '" y="24" width="' + w + '" height="38" fill="' + p[2] + '"><title>' + p[0] + ' ' + M(p[1]) + ' (' + P(p[1] / egi, 2) + ' of EGI)</title></rect>';
+    if(w >= 58) g += '<text x="' + (x + w / 2) + '" y="48" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (p[2] === COL.navy ? '#fff' : '#0e2a4a') + '">' + P(p[1] / egi, 2) + '</text>'; x += w; });
   g += '<text x="0" y="14" font-size="11" fill="currentColor" opacity=".7">Each $1 of Year-1 effective gross income (' + M(y.egi) + ')</text>';
+  /* the key: swatch, name, then dollars and share, wrapped into rows */
+  var gx = 0, row = 0, gap = 26, rowH = 34, top = 84;
+  parts.forEach(function(p){ var l1 = p[0], l2 = M(p[1]) + ' · ' + P(p[1] / egi, 2), iw = 16 + Math.max(l1.length * cw + 2, l2.length * cw) + gap;
+    if(gx > 0 && gx + iw - gap > W){ gx = 0; row++; }
+    var yy = top + row * rowH;
+    g += '<rect x="' + gx + '" y="' + (yy - 9) + '" width="10" height="10" rx="2" fill="' + p[2] + '"/><text x="' + (gx + 16) + '" y="' + yy + '" font-size="11" font-weight="600" fill="currentColor">' + esc(l1) + '</text><text x="' + (gx + 16) + '" y="' + (yy + 14) + '" font-size="10.5" fill="currentColor" opacity=".78">' + esc(l2) + '</text>';
+    gx += iw; });
+  var Hh = top + row * rowH + 26;
   return svgOpen(W, Hh, 'Where each dollar of income goes, Year 1') + g + '</svg>';
 }
 function gauge(D){

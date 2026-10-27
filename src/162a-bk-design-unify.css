@@ -111,3 +111,46 @@ html body #viewport .pl-home .pl-chips .status-chip.pass{ background:#e8efea; co
 html body #viewport .pl-home .pl-chips .status-chip.warn{ background:#f1ece0; color:#7E6428; }
 html body #viewport .pl-home .pl-chips .status-chip.fail{ background:#f1e4e2; color:#8C3B34; }
 html body #viewport .pl-home .pl-hero h2{ font-weight:600; }
+
+/* analysis panels written as cards (comparison, bid, remedies, waterfall checks): the same square panel as the tables */
+html body #viewport .bk-box{ border:1px solid var(--ae-line); border-radius:0; background:var(--ae-cell-ro); box-shadow:none; padding:12px 14px; margin:0 0 14px; }
+html body #viewport .bk-box > b:first-child, html body #viewport .bk-box > div:first-child > b:first-child{ font-size:13px; letter-spacing:.01em; }
+/* a status chip that has to wrap stays centred and reads as one label */
+html body #viewport .status-chip{ max-width:100%; white-space:normal; text-align:center; justify-content:center; line-height:1.25; }
+html body #viewport table.fin td.bk-col-chip .status-chip{ white-space:normal; }
+/* report tables share one column grid so figures line up from table to table */
+html body #viewport .rp .rp-tbl{ table-layout:fixed; }
+html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl th:first-child{ width:38%; }
+
+/* PHONE LAYOUT CLEAN-UP */
+@media (max-width:760px){
+  html body .brand-bar{ padding:8px 12px !important; gap:8px !important; flex-wrap:nowrap; overflow:hidden; }
+  html body .brand-bar .brand-mark{ flex:1 1 0; min-width:0; overflow:hidden; }
+  html body .brand-bar .brand-mark > div:last-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  html body .brand-bar .brand-mark .sub{ display:none; }
+  html body .brand-bar .brand-mark .word{ font-size:11.5px !important; letter-spacing:0 !important; }
+  html body .brand-bar .brand-mark .beta, html body .brand-bar .brand-mark .pill{ display:none !important; }
+  html body .brand-bar .pl-searchwrap{ flex:0 0 auto; gap:6px; }
+  html body .brand-bar #pl-guide-toggle{ padding:4px 8px; font-size:11px; }
+  html body .brand-bar .pl-search kbd, html body .brand-bar .pl-search .kbd{ display:none; }
+  html body .brand-bar .pl-user button{ padding:4px 8px; font-size:11px; }
+  /* stacked rows: a highlighted or total row is one light band with dark text, nothing boxed inside it */
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal,
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{ background:#e3e9f0 !important; color:#0e2a4a !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal td{ background:transparent !important; color:#0e2a4a !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td::before, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td::before{ color:#566a80 !important; background:transparent !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td:empty, html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip:not(:has(*)){ display:none !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip{ text-align:left !important; padding:2px 0 !important; }
+  /* analysis tables written as plain tables: each row becomes a block, each figure labelled with its column */
+  html body #viewport table.bk-stk, html body #viewport table.bk-stk tbody, html body #viewport table.bk-stk tr, html body #viewport table.bk-stk td{ display:block; width:100% !important; min-width:0 !important; box-sizing:border-box; }
+  html body #viewport table.bk-stk thead{ display:none; }
+  html body #viewport table.bk-stk tr{ padding:6px 0; border-bottom:1px solid var(--ae-line,#dbe1e7); }
+  html body #viewport table.bk-stk td{ border:0 !important; padding:1px 0 !important; text-align:left !important; white-space:normal !important; }
+  html body #viewport table.bk-stk td:first-child{ font-weight:600; }
+  html body #viewport table.bk-stk td[data-l]:not(:first-child)::before{ content:attr(data-l) ': '; font-size:11px; opacity:.65; font-weight:400; }
+  html body #viewport table.bk-stk td[colspan]{ font-weight:700; }
+  html body #viewport table.bk-stk td input{ width:100% !important; max-width:220px; }
+  html body #viewport .bk-box > div[style*="overflow-x"]{ overflow-x:visible !important; }
+  html body #viewport table.fin caption{ white-space:normal !important; line-height:1.3; }
+}
+
