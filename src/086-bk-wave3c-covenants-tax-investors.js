@@ -298,10 +298,14 @@ extend('Equity Waterfall','w3cHurdleBasis', function(o){
     '<tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr>',
       '<tr>'+lbl('Hurdle Basis')
       + '<td class="v"><select onchange="bkSetHurdleBasis(this.value)">'
-      +   '<option value="1"'+(basis==='2'?'':' selected')+'>IRR - compounding preferred return</option>'
+      +   '<option value="1"'+(basis==='2'||basis==='3'?'':' selected')+'>IRR - compounding preferred return</option>'
       +   '<option value="2"'+(basis==='2'?' selected':'')+'>Equity Multiple</option>'
+      +   '<option value="3"'+(basis==='3'?' selected':'')+'>IRR and Equity Multiple</option>'
       + '</select></td>'
       + txt('Which test each tier hurdle applies')+'<td class="v">'+chip('','INPUT')+'</td></tr>'
+    + (basis==='3' ? '<tr>'+lbl('IRR and Multiple Combine')
+      + '<td class="v"><select onchange="bkSetHurdleBoth(this.value)"><option value="all"'+(String(s.hurdleBoth)==='either'?'':' selected')+'>Both must be met</option><option value="either"'+(String(s.hurdleBoth)==='either'?' selected':'')+'>Either is enough</option></select></td>'
+      + txt('A tier opens when the LP has reached the IRR AND the multiple (or either, if set)')+'<td class="v">'+chip('','INPUT')+'</td></tr>' : '')
     + '<tr>'+lbl('Tier 1 Preferred Return')+val(pct(Number(s.pref)))+txt('Tier 1 hurdle rate')+'<td class="v">'+chip('','LINKED')+'</td></tr>'
     + '<tr>'+lbl('Tier 2 Hurdle')+val(pct(Number(s.hurdle2)))+txt('Second hurdle')+'<td class="v">'+chip('','LINKED')+'</td></tr>'
     + '<tr>'+lbl('Tier 3 Hurdle')+val(pct(Number(s.hurdle3)))+txt('Third hurdle')+'<td class="v">'+chip('','LINKED')+'</td></tr>'
@@ -312,7 +316,8 @@ extend('Equity Waterfall','w3cHurdleBasis', function(o){
       + '- it simply had no control. Switching the basis re-runs the same engine; it does not select a different one. '
       + 'Under the equity-multiple basis the tier hurdles are applied as multiples rather than as compounding annual rates.');
 });
-window.bkSetHurdleBasis = function(v){ setField('hurdleBasis', String(v)==='2' ? '2' : '1'); };
+window.bkSetHurdleBasis = function(v){ setField('hurdleBasis', String(v)==='2' ? '2' : String(v)==='3' ? '3' : '1'); };
+window.bkSetHurdleBoth = function(v){ setField('hurdleBoth', String(v)==='either' ? 'either' : 'all'); };
 
 /* =====================================================================
    E. SCENARIO DRIVER CONTROLS - all nine, on Sensitivity

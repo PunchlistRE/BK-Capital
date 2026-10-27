@@ -63,7 +63,7 @@ function page(inner, n, N, D, cover){
    by what counts against the hurdle, floored at zero), so its ending balance is the engine's b1 / b2 / b3 to the cent. */
 function waterfallPages(D, n, N){
   var w = safe(function(){ return window.bkInCase(function(){ return bkWaterfallV07(); }); }, null); if(!w || !w.rows || !w.rows.length) return [];
-  var s = w.s || D.s, x = w.x, R = w.rows, gs = Number(s.gpShare) || 0, lpS = 1 - gs, irrBasis = !(typeof window.bkWfBasis === 'function' && window.bkWfBasis(s) === 'EM');
+  var s = w.s || D.s, x = w.x, R = w.rows, gs = Number(s.gpShare) || 0, lpS = 1 - gs, irrBasis = !(typeof window.bkWfBasis === 'function' && /^(EM|BOTH)$/.test(window.bkWfBasis(s))), bothBasis = typeof window.bkWfBasis === 'function' && window.bkWfBasis(s) === 'BOTH', bothWord = String(s.hurdleBoth) === 'either' ? ' or ' : ' and ';
   var lpMode = safe(function(){ return bkConventions(s).cvHurdleBasis === 'lp'; }, false), mr = function(a){ return Math.pow(1 + (Number(a) || 0), 1 / 12) - 1; };
   var rate = [mr(s.pref), mr(s.hurdle2), mr(s.hurdle3)], yOf = function(i){ var r = x.rows[i]; return r && r.y ? r.y : Math.ceil((i + 1) / 12); };
   var H = 0; R.forEach(function(r, i){ H = Math.max(H, yOf(i)); });
@@ -88,7 +88,7 @@ function waterfallPages(D, n, N){
   function sec(t){ return '<tr class="sec"><td colspan="' + (IDX.length + 1) + '">' + t + '</td></tr>'; }
   var mul = function(a, f){ return a.map(function(v){ return v * f; }); }, add = function(a, b){ return a.map(function(v, j){ return v + b[j]; }); };
   var t2LP = Number(s.t2LP) || 0, t3LP = Number(s.t3LP) || 0, t4LP = Number(s.t4LP) || 0, cat = Number(s.gpCatchup) && Number(s.gpCatchupTarget) > 0;
-  var hl = irrBasis ? [P(Number(s.pref), 1) + ' preferred return', P(Number(s.hurdle2), 1) + ' IRR', P(Number(s.hurdle3), 1) + ' IRR'] : [X(Number(s.em1)) + ' multiple', X(Number(s.em2)) + ' multiple', X(Number(s.em3)) + ' multiple'];
+  var hl = irrBasis ? [P(Number(s.pref), 1) + ' preferred return', P(Number(s.hurdle2), 1) + ' IRR', P(Number(s.hurdle3), 1) + ' IRR'] : bothBasis ? [P(Number(s.pref), 1) + ' IRR' + bothWord + X(Number(s.em1)), P(Number(s.hurdle2), 1) + ' IRR' + bothWord + X(Number(s.em2)), P(Number(s.hurdle3), 1) + ' IRR' + bothWord + X(Number(s.em3))] : [X(Number(s.em1)) + ' multiple', X(Number(s.em2)) + ' multiple', X(Number(s.em3)) + ' multiple'];
   var hs = irrBasis ? [P(Number(s.pref), 1) + ' pref', P(Number(s.hurdle2), 1) + ' IRR', P(Number(s.hurdle3), 1) + ' IRR'] : hl;
   function tier(k, title, tArr, lpShare){ var a = acct[k];
     /* contributions are shown once (tier 1) unless equity also comes in after closing */

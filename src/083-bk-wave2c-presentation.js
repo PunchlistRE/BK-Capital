@@ -106,7 +106,7 @@ extend('Home','w2cModuleStatus', function(o){
   var isDev = String(s.dealType||'').toLowerCase()==='development';
   var refi  = !!(Number(s.refiAtMaturity) || Number(s.refiAtStab));
   var hasRR = Array.isArray(s.rentRoll) && s.rentRoll.length>0;
-  var basis = String(s.hurdleBasis||'1')==='2' ? 'Equity Multiple' : 'IRR';
+  var basis = String(s.hurdleBasis||'1')==='2' ? 'Equity Multiple' : String(s.hurdleBasis||'1')==='3' ? 'IRR and Equity Multiple' : 'IRR';
   function row(label, on, detail){
     return '<tr>'+lbl(label)+'<td class="v">'+chip(on?'pass':'', on?'ON':'OFF')+'</td>'+txt(detail)+'</tr>';
   }
