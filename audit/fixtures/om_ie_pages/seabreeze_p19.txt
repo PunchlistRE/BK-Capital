@@ -1,0 +1,44 @@
+Income & Expense
+I N C O M E S U M M A R Y   Trailing 12   $/Unit   %   Current   $/Unit   %   Pro Forma   $/Unit   %
+Gross Potential Rent   $1,211,400   $1,211,400
+Below Market Rent   -$277,783   -29.75%   $0   0.00%
+Gross Scheduled Rent   $933,617   $1,211,400
+Vacancy & Collection Loss   -$46,681   5.00%   -$60,570   5.00%
+Effective Rental Income   $825,843   $886,936   $1,150,830
+4002 Interest   $10,180   170   $0   0   $0   0
+4009 Miscellaneous Income   -$2,613   -44   $0   0   $0   0
+4010 Legal   $4,285   71   $0   0   $0   0
+4013 Processing Fee   $0   0   $0   0   $0   0
+4023 Cable / Internet Income   $12,136   202   $14,400   240   $14,400   240
+4400 Application Fees   $2,100   35   $1,800   30   $1,800   30
+4401 Late Fees   $4,358   73   $4,358   73   $4,358   73
+4402 NSF Fees   $600   10   $0   0   $0   0
+4404 Pet Fees   $2,350   39   $2,400   40   $2,400   40
+4408 Trash Income   $0   0   $0   0   $0   0
+4907 Parking   $9,898   165   $12,000   200   $12,000   200
+4001 Bad Debt   $0   0   $0   0   $0   0
+4202 Reimbursement Income   $267   4   $0   0   $0   0
+4000 Repair Fee   $55   1   $0   0   $0   0
+4403 Lock Out Fees   $50   1   $0   0   $0   0
+4407 Key Replacement Fee   $306   5   $0   0   $0   0
+4904 Laundry Facilities   $5,369   89   $5,369   89   $5,369   89
+Total Additional Income   $49,341   $822   $40,327   $672   $40,327   $672
+Effective Gross Income   $875,184   $927,263   $1,191,157
+E X P E N S E S U M M A R Y
+Property Management   $51,849   864   5.92%   $46,363   773   5.00%   $59,558   993   5.00%
+Real Estate Tax   $115,591   1,927   $144,738   2,412   $144,738   2,412
+Property Insurance   $77,346   1,289   $77,346   1,289   $77,346   1,289
+Electric   $12,195   203   $12,195   203   $12,195   203
+Heating Fuel   $7,182   120   $7,182   120   $7,182   120
+Water and Sewer   $24,199   403   $24,199   403   $24,199   403
+Trash Removal   $0   0   $0   0   $0   0
+Repairs and Maintenance   $24,569   409   $30,000   500   $30,000   500
+Landscaping/Snow Removal   $7,936   132   $7,936   132   $7,936   132
+Payroll   $71,030   1,184   $25,000   417   $25,000   417
+Contract Services   $20,221   337   $3,000   50   $3,000   50
+Professional and Legal   $13,750   229   $3,000   50   $3,000   50
+General and Administrative   $18,482   308   $3,000   50   $3,000   50
+Leasing and Advertising   $23,867   398   $3,000   50   $3,000   50
+Total Expense   $468,217   $7,804   53.50%   $386,960   $6,449   41.73%   $400,154   $6,669   33.59%
+Net Operating Income   $406,967   $540,304   $791,003
+Multifamily Property  |  For Sale   Seabreeze Apartments, Bridgeport, CT  |  19

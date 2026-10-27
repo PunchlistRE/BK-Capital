@@ -1,0 +1,33 @@
+Income & Expense - Inn
+I N C O M E S U M M A R Y   Current   $/Unit   %   Projected   $/Unit   %
+Gross Potential Rent   $1,098,000   $1,098,000
+Below Market Rent   -$119,149   -10.85%   $0   0.00%
+Gross Scheduled Rent   $978,851   $1,098,000
+Vacancy/Collections Loss   -$702,091   -71.73%   -$549,000   -50.00%
+Effective Rental Income   $276,760   $549,000
+House Charges   $21,936   $36,484
+Sales Tax   $30,444   $60,390
+CT Occupancy Tax   $52,380   $60,390
+Effective Gross Income   $329,140   $609,390
+E X P E N S E S U M M A R Y
+Real Estate Tax   $6,294   629   $12,000   1,200
+Property Insurance   $25,000   2,500   $25,000   2,500
+Electric   $8,113   811   $12,000   1,200
+Water and Sewer   $1,675   168   $3,350   335
+Trash Removal   $2,500   250   $2,500   250
+Repairs/Maintenance   $10,000   1,000   $10,000   1,000
+Landscaping/Snow Removal   $5,000   500   $5,000   500
+Cleaning   $26,000   2,600   $26,000   2,600
+Payroll   $39,000   3,900   $65,000   6,500
+Professional and Legal   $2,500   250   $2,500   250
+General and Administrative   $2,500   250   $10,000   1,000
+Advertising and Marketing   $5,000   500   $10,000   1,000
+CT Occupancy Tax   $30,444   3,044   $60,390   6,039
+Supplies   $6,274   627   $12,548   1,255
+Cable/Internet   $10,000   1,000   $10,000   1,000
+Linen   $17,297   1,730   $34,594   3,459
+Total Expense   $197,596   $19,760   60.03%   $300,882   $30,088   49.37%
+Net Operating Income   $131,543   $308,508
+ADR   $268   $300
+RevPar   $76   $150
+Boutique Hospitality Property  |  For Sale   Fife N Drum, Kent, CT  |  28

@@ -23351,34 +23351,63 @@ function parseOM(pages){
       mix.push({ type:label.replace(/^1BR$/i, '1 BR'), units:num(m[2]), cur:num(m[4]), high:m[5] ? num(m[5]) : null, pf:num(m[6]) }); }); break; }
   o.unitMix = mix; o.avgCur = avgCur; o.avgPf = avgPf;
   /* income and expense */
-  var ie = null; for(i = 0; i < txt.length; i++){ if(/OPERATING INCOME/i.test(txt[i]) && /OPERATING EXPENSES/i.test(txt[i])){ ie = txt[i]; src.income = i + 1; break; } }
+  /* Some OMs print letter-spaced section headings ("I N C O M E S U M M A R Y"). A run of five or more single capital letters
+     separated by single spaces AT THE START OF A LINE is closed up (heading detection only); a label inside a row, digits and
+     lower-case text are never touched. */
+  var deLS = function(t){ return String(t || '').replace(/^([ \t]*)((?:[A-Z] ){4,}[A-Z])(?![A-Za-z])/gm, function(m, pre, run){ return pre + run.replace(/ /g, ''); }); };
+  var IE_HEAD = function(t){ return (/OPERATING INCOME/i.test(t) && /OPERATING EXPENSES/i.test(t)) || (/INCOME ?SUMMARY/i.test(t) && /EXPENSE ?SUMMARY/i.test(t)); };
+  var ie = null; for(i = 0; i < txt.length; i++){ var nt = deLS(txt[i]); if(IE_HEAD(nt)){ ie = nt; src.income = i + 1; break; } }
   if(ie){
-    var sec = 'inc', I = { addl:[], exp:[] }, done = false;
-    ie.split(/\n/).forEach(function(line){ if(done || /^\s*FOR SALE/i.test(line)){ done = true; return; }
-      if(/^\s*ADDITIONAL INCOME/i.test(line)){ sec = 'add'; return; } if(/^\s*OPERATING EXPENSES/i.test(line)){ sec = 'exp'; return; }
+    var sec = 'inc', I = { addl:[], exp:[], aligned:[] }, done = false;
+    /* Which period columns the table has, in the order printed ("Trailing 12", "Current", "Pro Forma"). Read from the column
+       heading lines, before the first figure. The classic two-column layout (Current, Pro Forma) keeps the original reading. */
+    var LINES = ie.split(/\n/), hi0 = -1; LINES.forEach(function(l, q){ if(hi0 < 0 && (/INCOME ?SUMMARY/i.test(l) || /^\s*OPERATING INCOME/i.test(l))) hi0 = q; });
+    var SETS = [], PER = /(trailing\s*(?:12|twelve)(?:\s*months?)?|\bt-?12\b|\bttm\b|\bactuals?\b|\bhistorical\b)|(\bcurrent\b|\bin-?place\b|\bas-?is\b)|(pro\s*-?\s*forma|\bproforma\b|\bprojected\b|\bstabili[sz]ed\b|\byear\s*1\b)/ig;
+    for(var hq = Math.max(0, hi0); hq < Math.min(LINES.length, Math.max(0, hi0) + 3); hq++){ if(/\$\s?\d{2,}|\b\d{1,3},\d{3}\b/.test(LINES[hq])) break; var pm; PER.lastIndex = 0; while((pm = PER.exec(LINES[hq]))){ var pk = pm[1] ? 't12' : pm[2] ? 'cur' : 'pf'; if(SETS.indexOf(pk) < 0) SETS.push(pk); } }
+    var LEGACY = SETS.length < 2 || (SETS.length === 2 && SETS[0] === 'cur' && SETS[1] === 'pf');
+    /* a row's figures, assigned to the period columns. Rows may print fewer columns than the table has (a blank period); the
+       figures then belong to the LAST periods (right-aligned), which is recorded and checked against the page's own totals. */
+    var rowVals = function(money){ var N = SETS.length, n = money.length, w, k;
+      if(n === N){ w = 1; k = N; } else if(n === 2 * N){ w = 2; k = N; } else if(n < N){ w = 1; k = n; } else if(n % 2 === 0 && n / 2 < N){ w = 2; k = n / 2; } else { w = 1; k = N; }
+      var out = {}, off = N - k; for(var j = 0; j < k; j++) out[SETS[off + j]] = money[j * w]; out.__aligned = k < N; out.__k = k; return out; };
+    LINES.forEach(function(line){ if(done || /^\s*FOR SALE/i.test(line)){ done = true; return; }
+      if(/^\s*ADDITIONAL INCOME/i.test(line)){ sec = 'add'; return; } if(/^\s*OPERATING EXPENSES/i.test(line) || /^\s*EXPENSE ?SUMMARY/i.test(line)){ sec = 'exp'; return; }
       var re = /\(?\$?\s?\d[\d,]*(?:\.\d+)?\)?\s*%?/g, toks = [], m, cut = -1; while((m = re.exec(line))){ if(cut < 0) cut = m.index; var t = m[0].trim(); toks.push({ pct:/%$/.test(t), v:num(t.replace('%', '')), neg:/^\(/.test(t) }); }
-      if(cut < 0) return; var label = line.slice(0, cut).replace(/[\s:|]+$/, '').trim(); if(!label || /^(current|pro forma|%|\$ ?\/ ?unit)/i.test(label)) return;
+      if(cut < 0) return; var label = line.slice(0, cut).replace(/[\s:|]+$/, '').trim(); if(!label || /^(current|pro forma|%|\$ ?\/ ?unit)/i.test(label) || /SUMMARY\b/i.test(label)) return;
       var money = toks.filter(function(t){ return !t.pct; }).map(function(t){ return Math.abs(t.v); }), pcts = toks.filter(function(t){ return t.pct; }).map(function(t){ return t.v; });
       if(!money.length) return;
+      /* mk(fallback): the row's values per period. Legacy layouts return the original {cur, pf}; others carry every period found. */
+      var V = null, mk = function(fb){ return fb; };
+      if(!LEGACY){ V = rowVals(money); mk = function(fb){ var c = {}; SETS.forEach(function(s){ if(V[s] != null) c[s] = V[s]; }); return c; }; if(V.__aligned && /[A-Za-z]/.test(label) && !/^\d/.test(label)) I.aligned.push(label.replace(/[\s\-\u2013]+$/, '')); }
+      var vacOf = function(base){ if(LEGACY) return base; var c = mk(), idx = 0; SETS.forEach(function(s){ if(c[s] != null){ c[s + 'Pct'] = pcts[idx] != null ? pcts[idx] / 100 : null; idx++; } }); return c; };
       if(sec === 'inc'){
-        if(/gross potential/i.test(label)) I.gpr = { cur:money[0], pf:money[1] };
-        else if(/loss to lease|below market/i.test(label)) I.ltl = { cur:money[0], pf:money[1] };
-        else if(/gross scheduled/i.test(label)) I.gsr = { cur:money[0], pf:money[1] };
-        else if(/^vacancy/i.test(label)) I.vac = { cur:money[0], pf:money[1], curPct:pcts[0] != null ? pcts[0] / 100 : null, pfPct:pcts[1] != null ? pcts[1] / 100 : null };
-        else if(/effective rental/i.test(label)) I.eri = { cur:money[0], pf:money[1] };
-        else if(/effective gross/i.test(label)) I.egi = { cur:money[0], pf:money[1] };
-        else if(/net operating/i.test(label)) I.noi = { cur:money[0], pf:money[1] };
-        else if(/^total additional/i.test(label)) I.addTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] };
-        else if(/\$/.test(line) && !/^(total|below|loss)/i.test(label) && /^[A-Za-z]/.test(label) && money.length >= 2) I.addl.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : (money[1] != null && money.length > 2 ? money[1] : money[0]) });
-      } else if(/effective gross/i.test(label)) I.egi = { cur:money[0], pf:money[1] };
-      else if(/net operating/i.test(label)){ I.noi = { cur:money[0], pf:money[1] }; done = true; }
-      else if(sec === 'add'){ if(/^total/i.test(label)) I.addTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] }; else I.addl.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : money[0] }); }
-      else if(sec === 'exp'){ if(/^total/i.test(label)) I.expTot = { cur:money[0], pf:money[2] != null ? money[2] : money[1] }; else I.exp.push({ label:label, cur:money[0], pf:money[2] != null ? money[2] : money[0] }); }
+        if(/gross potential/i.test(label)) I.gpr = mk({ cur:money[0], pf:money[1] });
+        else if(/loss to lease|below market/i.test(label)) I.ltl = mk({ cur:money[0], pf:money[1] });
+        else if(/gross scheduled/i.test(label)) I.gsr = mk({ cur:money[0], pf:money[1] });
+        else if(/^vacancy/i.test(label)) I.vac = vacOf({ cur:money[0], pf:money[1], curPct:pcts[0] != null ? pcts[0] / 100 : null, pfPct:pcts[1] != null ? pcts[1] / 100 : null });
+        else if(/effective rental/i.test(label)) I.eri = mk({ cur:money[0], pf:money[1] });
+        else if(/effective gross/i.test(label)) I.egi = mk({ cur:money[0], pf:money[1] });
+        else if(/net operating/i.test(label)) I.noi = mk({ cur:money[0], pf:money[1] });
+        else if(/^total additional/i.test(label)) I.addTot = mk({ cur:money[0], pf:money[2] != null ? money[2] : money[1] });
+        else if(/\$/.test(line) && !/^(total|below|loss)/i.test(label) && /^[A-Za-z]/.test(label) && money.length >= 2) I.addl.push(Object.assign({ label:label }, mk({ cur:money[0], pf:money[2] != null ? money[2] : (money[1] != null && money.length > 2 ? money[1] : money[0]) })));
+      } else if(/effective gross/i.test(label)) I.egi = mk({ cur:money[0], pf:money[1] });
+      else if(/net operating/i.test(label)){ I.noi = mk({ cur:money[0], pf:money[1] }); done = true; }
+      else if(sec === 'add'){ if(/^total/i.test(label)) I.addTot = mk({ cur:money[0], pf:money[2] != null ? money[2] : money[1] }); else I.addl.push(Object.assign({ label:label }, mk({ cur:money[0], pf:money[2] != null ? money[2] : money[0] }))); }
+      else if(sec === 'exp'){ if(/^total/i.test(label)) I.expTot = mk({ cur:money[0], pf:money[2] != null ? money[2] : money[1] }); else I.exp.push(Object.assign({ label:label }, mk({ cur:money[0], pf:money[2] != null ? money[2] : money[0] }))); }
     });
-    if(!I.egi && I.eri){ I.egi = { cur:I.eri.cur + (I.addTot ? I.addTot.cur : 0), pf:I.eri.pf + (I.addTot ? I.addTot.pf : 0), derived:true }; }
-    if(!I.addTot && I.addl.length) I.addTot = { cur:I.addl.reduce(function(t, e){ return t + e.cur; }, 0), pf:I.addl.reduce(function(t, e){ return t + e.pf; }, 0) };
-    o.ie = I;
-    if(I.noi){ o.curNOI = o.curNOI || I.noi.cur; o.pfNOI = o.pfNOI || I.noi.pf; }
+    var PK = LEGACY ? ['cur', 'pf'] : SETS, sumP = function(a, p){ return a.reduce(function(t, e){ return t + (e[p] || 0); }, 0); };
+    if(!I.egi && I.eri){ I.egi = {}; PK.forEach(function(p){ I.egi[p] = (I.eri[p] || 0) + (I.addTot ? (I.addTot[p] || 0) : 0); }); I.egi.derived = true; }
+    if(!I.addTot && I.addl.length){ I.addTot = {}; PK.forEach(function(p){ I.addTot[p] = sumP(I.addl, p); }); }
+    /* the periods the table carries, and for each one whether the page's own figures hold together */
+    I.periods = PK.slice(); I.legacyColumns = LEGACY;
+    I.missing = []; PK.forEach(function(p){ var miss = I.exp.filter(function(e){ return e[p] == null; }).length; if(miss) I.missing.push({ period:p, lines:miss }); });
+    I.recon = {}; PK.forEach(function(p){ var C = [], near = function(a, b){ return Math.abs(a - b) <= Math.max(2, Math.abs(b) * 0.0005); }, push = function(id, label, a, b){ C.push({ id:id, label:label, a:a, b:b, ok:near(a, b) }); };
+      if(I.expTot && I.expTot[p] != null && I.exp.length && I.exp.every(function(e){ return e[p] != null; })) push('exp', 'Expense lines add to Total Expense', sumP(I.exp, p), I.expTot[p]);
+      if(I.egi && I.egi[p] != null && I.expTot && I.expTot[p] != null && I.noi && I.noi[p] != null) push('noi', 'Effective Gross Income less Total Expense equals NOI', I.egi[p] - I.expTot[p], I.noi[p]);
+      if(I.eri && I.eri[p] != null && I.addTot && I.addTot[p] != null && I.egi && I.egi[p] != null && !I.egi.derived) push('egi', 'Effective rental income plus other income equals Effective Gross Income', I.eri[p] + I.addTot[p], I.egi[p]);
+      if(C.length) I.recon[p] = C; });
+    o.ie = I; o.periods = PK.slice();
+    if(I.noi){ o.curNOI = o.curNOI || I.noi.cur; o.pfNOI = o.pfNOI || I.noi.pf; if(I.noi.t12 != null) o.t12NOI = I.noi.t12; }
   }
   if(!(o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length)) parseRR(txt, o);
   if(o.price && o.curNOI && !o.curCap) o.curCap = o.curNOI / o.price;
@@ -23524,8 +23553,16 @@ function buildDeal(om0, basis, fileName){
   var om = Object.assign({}, om0, { price:om0.price || S.mPrice || 0, units:om0.units || S.mUnits || 0 });
   if(!om.curCap && om.price && om.curNOI) om.curCap = om.curNOI / om.price;
   var I = om.ie, k = basis, u = om.units || 1, notes = [];
-  var gsr = basis === 'cur' ? (I.gsr ? I.gsr.cur : I.gpr && I.gpr.cur) : (I.gpr ? I.gpr.pf : I.gsr && I.gsr.pf), egi = I.egi ? I.egi[k] : null;
-  var vacPct = I.vac && I.vac[k + 'Pct'] != null ? I.vac[k + 'Pct'] : (I.vac && gsr ? I.vac[k] / gsr : 0.05);
+  /* a period the table does not have is an error, never a silent substitute for another column */
+  if(I && I.periods && I.periods.indexOf(basis) < 0) throw new Error('This OM\'s income and expense table has no ' + basis + ' column (it has: ' + I.periods.join(', ') + ').');
+  var useERI = false, gsr;
+  if(basis === 't12'){
+    /* a trailing-12 column often prints only the net rent: use what it prints, never another period's gross */
+    gsr = I.gsr && I.gsr.t12 != null ? I.gsr.t12 : (I.gpr && I.gpr.t12 != null ? I.gpr.t12 : null);
+    if(gsr == null && I.eri && I.eri.t12 != null){ gsr = I.eri.t12; useERI = true; }
+  } else gsr = basis === 'cur' ? (I.gsr ? I.gsr.cur : I.gpr && I.gpr.cur) : (I.gpr ? I.gpr.pf : I.gsr && I.gsr.pf);
+  var egi = I.egi ? I.egi[k] : null;
+  var vacPct = useERI ? 0 : I.vac && I.vac[k + 'Pct'] != null ? I.vac[k + 'Pct'] : (I.vac && gsr && isFinite(I.vac[k] / gsr) ? I.vac[k] / gsr : 0.05);
   var other = I.addTot ? I.addTot[k] : sumBy(I.addl, /./, k), ex = I.exp, sums = {};
   ex.forEach(function(e){ var c = catOf(e.label); sums[c] = (sums[c] || 0) + (e[k] || 0); });
   var mgmt = sums.mgmt || 0, taxes = sums.taxes || 0, ins = sums.insurance || 0, util = sums.utilities || 0, rm = sums.rm || 0, con = sums.contract || 0, pay = sums.payroll || 0, mkt = sums.marketing || 0, turn = sums.turnover || 0, excl = sums.exclude || 0, has = function(c){ return !!sums[c]; };
@@ -23534,7 +23571,7 @@ function buildDeal(om0, basis, fileName){
   var cap = om.curCap || (om.price && I.noi ? I.noi.cur / om.price : 0.06);
   var name = om.name || String(fileName || 'Imported deal').replace(/\.pdf$/i, '').replace(/\s*[-–—]\s*(offering memorandum|om|listing).*$/i, '').trim();
   var d = { dealId:'OM-' + slug(name), name:name, location:[om.city, om.state].filter(Boolean).join(', '), dealType:'Acquisition', propertyType:/multi/i.test(om.propertyType || 'Multifamily') ? 'Multifamily' : (om.propertyType || 'Multifamily'), status:'Pipeline', closing:'1/1/2027',
-    units:u, gsf:om.sf || 0, commercialArea:0, parking:om.parking || 0, siteArea:om.lotAcres || 0, purchasePrice:om.price, t12noi:om.curNOI || (I.noi && I.noi.cur) || 0,
+    units:u, gsf:om.sf || 0, commercialArea:0, parking:om.parking || 0, siteArea:om.lotAcres || 0, purchasePrice:om.price, t12noi:(I.noi && I.noi.t12 != null ? I.noi.t12 : (om.curNOI || (I.noi && I.noi.cur) || 0)),
     avgRent:Math.round(gsr / u / 12 * 100) / 100, otherIncomePerUnit:Math.round(other / u * 100) / 100, vacancy:Math.round(vacPct * 10000) / 10000, occupancy:Math.round((1 - vacPct) * 10000) / 10000, badDebtPct:0, mgmtPct:egi ? Math.round(mgmt / egi * 100000) / 100000 : 0.03,
     taxes:taxes, insurance:ins, utilities:util, rm:rm, contract:con, payroll:pay, turnover:turn, marketing:mkt, ga:ga, reserves:0,
     exitCap:Math.round(cap * 10000) / 10000, holdYears:5, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, commercialRentGrowth:0, closingCostsPct:0.02, saleCostPct:0.02, miscPerGSF:0 };
@@ -23557,6 +23594,11 @@ function buildDeal(om0, basis, fileName){
     if(om.misc && om.misc.length) notes.push('Other income from the rent roll: ' + om.misc.map(function(x){ return x.name + ' ' + $(x.amount * 12) + '/yr'; }).join(', ') + '.');
   }
   var tie = safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
+  var PN = { t12:'Trailing 12', cur:'Current', pf:'Pro Forma' };
+  if(I.periods && !I.legacyColumns) notes.push('The income and expense table has ' + I.periods.length + ' period columns (' + I.periods.map(function(p){ return PN[p]; }).join(', ') + '). This deal is underwritten on the ' + PN[basis] + ' column; the others are kept in the reconciliation below and are never substituted.');
+  if(useERI) notes.push('The Trailing 12 column prints Effective Rental Income and Effective Gross Income but no gross potential rent, so rent is the effective rental income and vacancy is 0% (vacancy and loss are already out of it).');
+  if(I.aligned && I.aligned.length && !I.legacyColumns) notes.push('Rows with fewer figures than period columns (' + I.aligned.slice(0, 5).join(', ') + (I.aligned.length > 5 ? ', …' : '') + ') were assigned to the last periods, because a blank earlier period prints nothing. Each period\'s totals are checked against the page below.');
+  if(I.missing && I.missing.some(function(x){ return x.period === basis; })) notes.push('Some expense lines have no ' + PN[basis] + ' figure on the page; they are counted as not stated, and the NOI tie-out shows whether the totals still agree.');
   if(!has('mgmt')) notes.push('The OM shows no management fee. Underwriting normally includes 3% to 5% of income for management, even when the owner self-manages. Set it on Deal Underwrite.');
   if(!has('rm')) notes.push('The OM shows no repairs and maintenance line. Add an allowance on Deal Underwrite.');
   if(!om0.price) notes.push('The OM does not state a price. The price above is the one you entered.');
@@ -23573,6 +23615,7 @@ function run(file, target){
     if(!NEEDMIN(om) && looksDev(info.pages)){ S.om = om; S.info = info; S.mode = 'dev'; S.dev = { om:parseDevOM(info.pages), taxBasis:'pf' }; S.result = true; S.busy = false; S.msg = 'Read ' + file.name + '.'; showSheet('Import OM'); return; }
     if(!NEEDMIN(om) && /land for development|available parcels|sites (?:are )?available/i.test(info.pages.join('\n')) && !om.price){ S.msg = 'Read ' + file.name + '. It is a land listing with no price, unit count or financials, so there is nothing to underwrite from it yet. Keep it with the deal in Deal Documents, and use Import OM again once you have a priced offering or a pro forma.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
     if(!NEEDMIN(om)){ S.msg = 'Read ' + file.name + ' but could not find an income and expense table with its net operating income (found: ' + [om.price && 'price', om.units && 'units', om.ie && om.ie.noi && 'NOI'].filter(Boolean).join(', ') + '). Use Import Deal for a T-12, or Source Ingestion for other layouts.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
+    if(om.periods && om.periods.indexOf(S.basis) < 0) S.basis = om.periods.indexOf('cur') >= 0 ? 'cur' : om.periods[0];
     S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mUnits = null; S.msg = 'Read ' + file.name + ' (' + (info.ocrError ? 'text layer; ' + info.ocrSkipped.length + ' picture page' + (info.ocrSkipped.length === 1 ? '' : 's') + ' skipped, the text recognition engine did not load' : info.method === 'text' ? 'text layer' : info.method === 'mixed' ? 'text layer, and page images read by text recognition' : (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images')) + (om.layout === 'rentroll' ? '; unit rent roll and expense list' + ((om.buildings || []).length > 1 ? ' for ' + om.buildings.length + ' buildings' : '') : '') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
 }
 window.bkOMRun = function(inp){ var f = inp && inp.files && inp.files[0]; if(!f) return; if(/\.(xlsx|xlsm|csv)$/i.test(f.name)){ S = { busy:true, msg:'', mode:'dev', result:null, basis:'cur', file:null, target:'new', dev:{ om:{}, taxBasis:'pf' } }; devRun(inp); return; } run(f, 'new'); };
@@ -23790,7 +23833,10 @@ function render(){
     if(need) body += box('<b>One thing the OM did not state.</b> Enter it to continue.<div style="margin-top:8px">' + need + '</div>');
     var basisBtn = function(k, t){ return '<button type="button" class="pl-hbtn' + (S.basis === k ? ' primary' : '') + '" onclick="bkOMBasis(\'' + k + '\')">' + t + '</button>'; };
     /* a rent-roll OM has no broker pro forma to switch to */
-    if(om.layout !== 'rentroll') body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Underwrite on</b>' + basisBtn('cur', 'In-place (current)') + basisBtn('pf', 'Broker pro forma') + '</div><div style="font-size:12px;opacity:.7;margin-top:6px">In-place uses current scheduled rents and today\'s expenses. The pro forma uses the rents the OM calls achievable' + (om.pfNOI ? ' (' + $(om.pfNOI) + ' NOI)' : '') + '.</div>');
+    var PLAB = { t12:['t12', 'Trailing 12'], cur:['cur', 'In-place (current)'], pf:['pf', 'Broker pro forma'] }, plist = (om.periods && !(I && I.legacyColumns) ? om.periods : ['cur', 'pf']);
+    if(om.layout !== 'rentroll') body += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin-right:6px">Underwrite on</b>' + plist.map(function(p){ return basisBtn(PLAB[p][0], PLAB[p][1]); }).join('') + '</div><div style="font-size:12px;opacity:.7;margin-top:6px">' + (plist.length > 2 ? 'This OM prints ' + plist.length + ' period columns: choose which one the deal is built from. ' : '') + 'In-place uses current scheduled rents and today\'s expenses. The pro forma uses the rents the OM calls achievable' + (om.pfNOI ? ' (' + $(om.pfNOI) + ' NOI)' : '') + '.' + (plist.indexOf('t12') >= 0 && om.t12NOI != null ? ' Trailing 12 NOI is ' + $(om.t12NOI) + '.' : '') + '</div>');
+    /* does each period's own page hold together? */
+    if(I && I.recon && Object.keys(I.recon).length){ var PNm = { t12:'Trailing 12', cur:'Current', pf:'Pro Forma' }; body += box('<b>Reconciliation to the OM page</b> <span style="font-size:12px;opacity:.7">(page ' + (s.income || '?') + '; each column checked against its own printed totals)</span><table style="width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums"><thead><tr><th style="text-align:left;padding:4px 8px">Period</th><th style="text-align:left;padding:4px 8px">Check</th><th style="text-align:right;padding:4px 8px">Computed</th><th style="text-align:right;padding:4px 8px">Printed</th><th style="padding:4px 8px"></th></tr></thead><tbody>' + Object.keys(I.recon).map(function(p){ return I.recon[p].map(function(c){ return '<tr><td style="padding:4px 8px">' + PNm[p] + '</td><td style="padding:4px 8px">' + esc(c.label) + '</td><td style="padding:4px 8px;text-align:right">' + $(c.a) + '</td><td style="padding:4px 8px;text-align:right">' + $(c.b) + '</td><td style="padding:4px 8px"><span class="status-chip ' + (c.ok ? 'pass' : 'warn') + '">' + (c.ok ? 'TIES' : 'DIFFERS') + '</span></td></tr>'; }).join(''); }).join('') + '</tbody></table>' + (Object.keys(I.recon).some(function(p){ return I.recon[p].some(function(c){ return !c.ok; }); }) ? '<div style="font-size:12px;opacity:.75;margin-top:6px">A check that DIFFERS means the page\'s own figures do not agree (a subtotal listed as a line, a mis-read figure, or a broker error). Nothing has been adjusted to make it agree: compare it with the OM page.</div>' : '')); }
     body += confBar(C);
     body += box('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>' + esc(d.name) + '</b><span style="opacity:.7">' + esc(d.location) + '</span>' + (b.tie == null ? '' : '<span class="status-chip ' + (ok ? 'pass' : 'warn') + '">' + (ok ? 'TIES TO OM NOI' : 'NOI DIFFERS') + ' · engine ' + $(b.tie) + ' vs OM ' + $(b.want) + '</span>') + '</div>'
       + '<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><thead><tr><th style="text-align:left;padding:5px 8px"></th><th style="text-align:right;padding:5px 8px">Value</th><th style="text-align:left;padding:5px 8px">Source</th><th style="text-align:left;padding:5px 8px">Confidence</th></tr></thead><tbody>'
@@ -24552,8 +24598,7 @@ html body #viewport .card, html body #viewport .bk-snap{ border:1px solid var(--
 html body #viewport .card-head, html body #viewport .bk-snap > .card-head{ background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-bottom:1px solid var(--ae-line) !important; padding:6px 10px !important; font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif !important; letter-spacing:.01em !important; text-transform:none !important; display:flex; align-items:center; gap:8px; }
 html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 /* the letter icon the decorator puts in each panel header (same square as the editor's) */
-html body #viewport i.ae-ic{ font-style:normal; display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; }
-html body #viewport .card-head i.ae-ic{ margin-right:0; }
+html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
 /* section jumps as a tab strip */
 html body #viewport .bk-dui{ display:flex; gap:1px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:thin; background:var(--ae-bg); border-bottom:1px solid var(--ae-line); padding:6px 4px 0; border-radius:0; box-shadow:none; }
 html body #viewport .bk-dui button{ flex:0 0 auto; white-space:nowrap; padding:6px 12px !important; background:var(--ae-head2) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:0 !important; color:var(--ae-dim) !important; font-size:12px !important; margin-bottom:-1px; box-shadow:none !important; }
@@ -24567,23 +24612,23 @@ html body .tabnav-primary{ gap:2px !important; align-items:flex-end; }
 html body .tabnav-primary .grp-btn{ display:inline-flex; align-items:center; gap:7px; padding:7px 12px 6px !important; background:var(--ae-tab) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:3px 3px 0 0 !important; color:var(--ae-dim) !important; font-weight:600 !important; }
 html body .tabnav-primary .grp-btn:hover{ color:var(--ae-ink) !important; }
 html body .tabnav-primary .grp-btn.active, html body .tabnav-primary .grp-btn.on, html body .tabnav-primary .bk-nav.active > .grp-btn{ background:var(--ae-tab-on) !important; color:var(--ae-ink) !important; border-top:2px solid var(--ae-accent) !important; padding-top:6px !important; }
-html body .tabnav-primary .grp-btn .sw{ width:16px !important; height:16px !important; border-radius:2px !important; color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; display:inline-block; flex:0 0 auto; }
+html body .tabnav-primary .grp-btn .sw{ width:16px !important; height:16px !important; border-radius:2px !important; display:inline-block; flex:0 0 auto; }
+html body .tabnav-primary .grp-btn .sw::before{ content:attr(data-ic); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; display:block; text-align:center; }
 
 /* COLLAPSIBLE SIDEBAR: the toggle sits in the rail header; collapsed, the rail is a slim strip of group letters */
 @media (min-width:901px){ html body .rail{ position:sticky; } }
 .bk-rail-toggle{ position:absolute; top:10px; right:8px; width:24px; height:24px; border:1px solid var(--ae-line); background:var(--ae-cell); color:var(--ae-dim); border-radius:2px; cursor:pointer; font:700 13px/20px system-ui,sans-serif; padding:0; z-index:2; }
 .bk-rail-toggle:hover{ color:var(--ae-ink); border-color:var(--ae-accent); }
-.rail i.rg-ic{ display:none; font-style:normal; }
 @media (min-width:901px){
   html.bk-rail-collapsed .rail{ width:52px !important; flex:0 0 52px !important; padding:44px 6px 12px !important; overflow-x:hidden; }
-  html.bk-rail-collapsed .rail .rail-head, html.bk-rail-collapsed .rail .bk-adv-head, html.bk-rail-collapsed .rail .rail-item, html.bk-rail-collapsed .rail .rail-foot, html.bk-rail-collapsed .rail #bk-sync-status, html.bk-rail-collapsed .rail .rail-group-label > :not(.rg-ic){ display:none !important; }
+  html.bk-rail-collapsed .rail .rail-head, html.bk-rail-collapsed .rail .bk-adv-head, html.bk-rail-collapsed .rail .rail-item, html.bk-rail-collapsed .rail .rail-foot, html.bk-rail-collapsed .rail #bk-sync-status, html.bk-rail-collapsed .rail .rail-group-label > *{ display:none !important; }
   html.bk-rail-collapsed .rail .bk-rail-toggle{ right:13px; }
   html.bk-rail-collapsed .rail .rail-group{ margin-top:6px !important; }
   html.bk-rail-collapsed .rail .rail-group-label{ justify-content:center; padding:0 !important; }
   html.bk-rail-collapsed .rail .rail-group-label::after{ display:none !important; }
-  html.bk-rail-collapsed .rail i.rg-ic{ display:inline-block; width:28px; height:28px; border-radius:2px; background:var(--rg-color, var(--ae-accent)); color:#fff; font:700 12px/28px Inter,system-ui,sans-serif; text-align:center; letter-spacing:0; cursor:pointer; opacity:.9; }
-  html.bk-rail-collapsed .rail .rail-group.has-active .rg-ic{ opacity:1; box-shadow:0 0 0 2px var(--ae-accent); }
-  html.bk-rail-collapsed .rail .rg-ic:hover{ opacity:1; }
+  html.bk-rail-collapsed .rail .rail-group-label::before{ content:attr(data-ic); display:block; width:28px; height:28px; border-radius:2px; background:var(--rg-color, var(--ae-accent)); color:#fff; font:700 12px/28px Inter,system-ui,sans-serif; text-align:center; letter-spacing:0; cursor:pointer; opacity:.9; }
+  html.bk-rail-collapsed .rail .rail-group.has-active .rail-group-label::before{ opacity:1; box-shadow:0 0 0 2px var(--ae-accent); }
+  html.bk-rail-collapsed .rail .rail-group-label:hover::before{ opacity:1; }
 }
 @media (max-width:900px){ .bk-rail-toggle{ display:none; } }
 </style>
@@ -24598,21 +24643,20 @@ function stored(){ try { return localStorage.getItem(KEY) === '1'; } catch(e){ r
 function setCollapsed(v){ html.classList.toggle('bk-rail-collapsed', !!v); store(v); var b = document.querySelector('.bk-rail-toggle'); if(b){ b.textContent = v ? '›' : '‹'; b.title = (v ? 'Expand' : 'Collapse') + ' the sidebar ([)'; b.setAttribute('aria-expanded', v ? 'false' : 'true'); } }
 window.bkRailCollapse = function(v){ setCollapsed(v === undefined ? !html.classList.contains('bk-rail-collapsed') : v); };
 function icons(root){
-  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.querySelector(':scope > i.ae-ic') || h.closest('.ae')) return; var i = document.createElement('i'); i.className = 'ae-ic'; i.setAttribute('aria-hidden', 'true'); i.textContent = letter(h.textContent); h.insertBefore(i, h.firstChild); });
-  [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn'), function(b){ var sw = b.querySelector('.sw'); if(!sw || sw.textContent) return; sw.textContent = letter(b.textContent); });
+  /* the letter is an attribute drawn by CSS (::before), so no text is added to the headers and nothing that reads them changes */
+  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
+  [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
 function rail(){
   var r = document.getElementById('rail'); if(!r) return;
   if(!r.querySelector('.bk-rail-toggle')){ var b = document.createElement('button'); b.type = 'button'; b.className = 'bk-rail-toggle'; b.onclick = function(){ window.bkRailCollapse(); }; r.insertBefore(b, r.firstChild); setCollapsed(html.classList.contains('bk-rail-collapsed')); }
   [].forEach.call(r.querySelectorAll('.rail-group'), function(g){ var lab = g.querySelector('.rail-group-label'); if(!lab) return;
     g.classList.toggle('has-active', !!g.querySelector('.rail-item.active'));
-    if(lab.querySelector('.rg-ic')) return; var it = g.querySelector('.rail-item'), name = (lab.querySelector('span') || lab).textContent;
-    /* an <i>, not a <span>: the rail code reads each group's name from the label's first span */
-    var i = document.createElement('i'); i.className = 'rg-ic'; i.textContent = letter(name); i.title = name;
-    if(it) i.style.setProperty('--rg-color', getComputedStyle(it).getPropertyValue('--gid-color') || '');
-    /* collapsed: a letter opens the sidebar on that group */
-    i.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true);
-    lab.insertBefore(i, lab.firstChild); });
+    var it = g.querySelector('.rail-item'), name = (lab.querySelector('span') || lab).textContent;
+    if(!lab.hasAttribute('data-ic')){ lab.setAttribute('data-ic', letter(name)); lab.title = name; if(it) lab.style.setProperty('--rg-color', getComputedStyle(it).getPropertyValue('--gid-color') || ''); }
+    if(!lab.__bkRg){ lab.__bkRg = 1;
+      /* collapsed: the group's letter opens the sidebar on that group */
+      lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
 function run(){ queued = false; var v = document.getElementById('viewport'); if(v) icons(v); rail(); }
