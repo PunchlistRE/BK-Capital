@@ -830,6 +830,11 @@
 "close": "</script>"
 },
 {
+"file": "166-bk-remedies.js",
+"open": "\n<script id=\"bk-remedies\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""

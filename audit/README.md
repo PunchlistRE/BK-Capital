@@ -164,3 +164,11 @@ The sheet reports the maximum bid, its gap to asking, the binding constraint (th
 
 **Test:** `prebid_test.js` runs the engine directly just below and above every reported bid (IRR, multiple, equity cap, downside IRR, LP IRR), re-derives the individual limits with a separate bisection, and covers the infeasible, unbounded, no-constraint and not-an-acquisition cases and that solving never modifies the deal.
 
+## Deal Remedies (`src/166-bk-remedies.js`, `remedies_test.js`)
+
+The Credit & IC group's **Deal Remedies** sheet quantifies what it would take for a deal that fails the credit policy to pass it, and compares four interventions side by side with the deal as underwritten. Everything is the engine's and the credit gate's (`bkDealGate`, the same gate as the IC Memo and Credit Policy sheets) run on scratch copies of the deal. "Pass" is selectable: no HARD exception, or no exception at all.
+
+1. **Resize debt** caps the engine's loan-to-value so the engine sizes the loan at or under a stated amount (default: the house debt capacity), and reports the additional equity, revised DSCR, debt yield, returns and multiple. 2. **Maximum price** is searched (coarse scan, then bisection to 0.05% of asking) by re-running the engine and the gate at each price, and reports the cut in dollars and per cent and what fails just above the answer. 3. **Rent required** raises every residential rent (rent roll in-place and market rents, or the average rent) until the gate passes. 4. **Occupancy required** lowers vacancy until the gate passes, or reports that even 100% occupancy does not. Where an intervention cannot pass, the best case tried is shown and the sheet says so. Required rent and occupancy are what the numbers require, not an assumption that they are achievable. The analysis runs on demand (each solve re-runs the gate dozens of times, about half a second each).
+
+**Test:** `remedies_test.js` re-checks every answer by running the engine and the gate directly at the reported value and just beyond it: the resized loan and the equity and DSCR identities, the maximum price (passes at the answer, fails just above, no passing price between it and asking), the rent increase (passes at the answer, a hard exception remains just below), the unreachable occupancy case, a user debt ceiling, a deal that already passes, and that the deal is never modified.
+
