@@ -7,7 +7,7 @@ const GROUPS = [
   {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor','Refi / Recap','Financing Lab','Financing Compare']},
   {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax','Probability-Weighted','Pre-Offer Bid']},
   {id:'biz', label:'Operating Business', color:'#6B4E71', sheets:['Business Model','Business Valuation','Sell vs Hold']},
-  {id:'credit', label:'Credit & IC', color:'#7A3E4D', sheets:['IC Memo','Debt Capacity','Credit Policy','Model Checks']},
+  {id:'credit', label:'Credit & IC', color:'#7A3E4D', sheets:['IC Memo','Debt Capacity','Credit Policy','Deal Remedies','Model Checks']},
   {id:'tools', label:'Tools', color:'#5B4B8A', sheets:['Sensitivity','Reverse Solve']},
   {id:'portfolio', label:'Portfolio & Investors', color:'#5A6B7A', sheets:['Portfolio','Investors','Investor Schedules','Liquidity','Portfolio Dashboard','Data Export']},
   {id:'monthly', label:'Monthly Engine', color:'#47507A', sheets:['Waterfall (M)','Sponsor CF','Lease Cohort CF','Portfolio M','Deal Vectors (M)','Ledger (M)']},
