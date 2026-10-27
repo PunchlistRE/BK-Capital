@@ -338,24 +338,38 @@ extend('Reverse Solve','w3bYoC', function(o){
 /* =====================================================================
    RESIDUAL LAND - a LIVE solve over the canonical engine
    ===================================================================== */
-extend('Residual Land','w3bResidualSolve', function(o){
-  var s = bkLoad();
-  var metricKey = String(s.rlvTargetMetric || 'Levered IRR');
-  var targetVal = Number(s.rlvTargetValue);
-  if(!isFinite(targetVal) || targetVal <= 0) targetVal = (/multiple|moic|equity/i.test(metricKey) ? 2.0 : 0.15);
-
-  var METRICS = {
+/* The solve itself, callable and testable: the land price (purchasePrice) at which the chosen metric reaches its target, searched on the canonical engine in a scratch copy
+   (nothing is written). opts.metric names the target ('Levered IRR' by default), opts.target is the value (a rate as a fraction, or a multiple).
+   Returns { metricKey, isMult, target, price, sol: {x, value, iterations, converged, why} }. */
+function rlvMetrics(){
+  return {
     'Unlevered IRR':          function(){ try { return bkAnnualCF().irr; } catch(e){ return NaN; } },
     'Unlevered MOIC':         function(){ try { return bkAnnualCF().moic; } catch(e){ return NaN; } },
     'Levered IRR':            function(){ try { return bkMonthlyReturns().irr; } catch(e){ return NaN; } },
     'Levered Equity Multiple':function(){ try { return bkMonthlyReturns().moic; } catch(e){ return NaN; } },
     'Development Yield on Cost': function(){ try { var st=bkLoad(); return (bkCalc().noi)/totalBasis(st); } catch(e){ return NaN; } }
   };
-  var metricFn = METRICS[metricKey] || METRICS['Levered IRR'];
+}
+function _o(k, v){ var o = {}; o[k] = v; return o; }
+window.bkResidualLandSolve = function(opts){
+  opts = opts || {}; var s = bkLoad(), METRICS = rlvMetrics();
+  var metricKey = METRICS[opts.metric || s.rlvTargetMetric] ? String(opts.metric || s.rlvTargetMetric) : 'Levered IRR';
+  var isMult = /multiple|moic|equity/i.test(metricKey);
+  var targetVal = Number(opts.target !== undefined ? opts.target : s.rlvTargetValue);
+  if(!isFinite(targetVal) || targetVal <= 0) targetVal = isMult ? 2.0 : 0.15;
+  /* the land the cost ladder uses is purchasePrice, or residualLandValue when the override is on: solve whichever one the engine reads */
+  var override = !!Number(s.landOverrideOn), field = override ? 'residualLandValue' : 'purchasePrice';
+  var price = Number(s[field])||0;
+  /* the metric can be undefined at a near-zero land price (an acquisition deal with no equity has no IRR): start the search at the first price that has one */
+  var lo = 1, hi = Math.max(price*3, price+1000000, 1000000), fin = function(x){ var m = bkRunWith(_o(field, x), function(){ return METRICS[metricKey](); }); return isFinite(m); };
+  if(price > 0 && !fin(lo)){ var cand = [0.02, 0.05, 0.1, 0.2, 0.35, 0.5]; for(var ci = 0; ci < cand.length; ci++){ if(fin(price*cand[ci])){ lo = price*cand[ci]; break; } } }
+  var sol = bkSolve(field, function(){ return METRICS[metricKey](); }, targetVal, { lo: lo, hi: hi, floor: lo, tol: 1e-6, maxIt: 70 });   /* floor: widening never goes below the first defined price */
+  return { metricKey:metricKey, isMult:isMult, target:targetVal, field:field, override:override, price:price, sol:sol, metricFn:METRICS[metricKey] };
+};
 
-  var price = Number(s.purchasePrice)||0;
-  var sol = bkSolve('purchasePrice', function(){ return metricFn(); }, targetVal,
-                    { lo: 1, hi: Math.max(price*3, price+1000000, 1000000), tol: 1e-6, maxIt: 70 });
+extend('Residual Land','w3bResidualSolve', function(o){
+  var s = bkLoad();
+  var R = window.bkResidualLandSolve(), metricKey = R.metricKey, targetVal = R.target, metricFn = R.metricFn, METRICS = rlvMetrics(), price = R.price, sol = R.sol;
 
   var stored = Number(s.residualLandValue)||0;
   var overrideOn = !!Number(s.landOverrideOn);
