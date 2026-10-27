@@ -25785,7 +25785,7 @@ var G = {
     next:[['Operating Underwrite', 'See the income this rent roll produces.']] },
   'Debt': { what:'Acquisition loan sizing: which limit binds (loan-to-value, loan-to-cost, DSCR or debt yield), the payment and the resulting structure.', read:[['Binding constraint', 'The lowest of the four limits sets the loan.'], ['DSCR', 'NOI after reserves divided by annual debt service.'], ['Debt yield', 'NOI divided by the loan.']],
     checks:function(x){ var d = x.debt(), o = [], p = x.pol; if(!d || !(d.loan > 0)) return [info('Debt is off or no loan sizes; the returns are all-cash.')]; o.push(info('The loan is ' + M(d.loan) + ', bound by ' + d.binding + '; coupon ' + P(d.coupon) + ' (' + d.rateType + ').'));
-      if(num(p.minDSCR) > 0) o.push(d.dscr >= p.minDSCR - 1e-9 ? ok('Year-1 DSCR ' + X(d.dscr) + ' meets the policy minimum of ' + X(p.minDSCR) + '.') : warn('Year-1 DSCR ' + X(d.dscr) + ' is below the policy minimum of ' + X(p.minDSCR) + '.')); if(d.rateType === 'Floating') o.push(warn('The loan floats. Compare the structures on Financing Compare, including a rate cap.')); return o; },
+      if(num(p.minDSCR) > 0) o.push(d.dscr >= p.minDSCR - 1e-9 ? ok('Year-1 DSCR ' + X(d.dscr) + ' meets the policy minimum of ' + X(p.minDSCR) + '.') : warn('Year-1 DSCR ' + X(d.dscr) + ' is below the policy minimum of ' + X(p.minDSCR) + '.')); var cp = x.cap(); if(cp && cp.overage > 0) o.push(warn('The loan is ' + M(cp.overage) + ' above the house capacity of ' + M(cp.capacity) + '. See Debt Capacity.')); if(d.rateType === 'Floating') o.push(warn('The loan floats. Compare the structures on Financing Compare, including a rate cap.')); return o; },
     next:[['Debt Capacity', 'Is this loan within house capacity?'], ['Financing Compare', 'Compare loan alternatives on their full economics.']] },
   'Debt Schedule': { what:'Month by month loan balance, interest, principal and fees over the hold.', read:[['Balance at sale', 'What is repaid from the sale proceeds.']], checks:function(x){ var d = x.debt(), o = []; if(d && d.loan > 0) o.push(info('Balance at sale ' + M(d.debtAtSale) + ' (' + P(d.debtAtSale / d.loan) + ' of the original loan).')); return o; }, next:[['Financing Compare', 'See the dated cash flows and the all-in cost of the loan.']] },
   'Debt Capacity': { what:'How much debt the house policy supports, by each limit, and the loan requested against it.', read:[['Binding limit', 'The lowest capacity: that is the most the policy allows.']],
@@ -25818,24 +25818,40 @@ var G = {
 };
 var GROUP_DEFAULT = { what:'This section is part of the underwriting model. Every figure is read from the live deal.', read:[], checks:function(){ return []; }, next:[['Returns', 'See the headline returns.'], ['IC Memo', 'See the credit result.']] };
 
+var OPEN_KEY = 'bk-sg-open';
+function isOpen(){ try { return localStorage.getItem(OPEN_KEY) !== '0'; } catch(e){ return true; } }
 function cardFor(sheet){
   var g = G[sheet]; if(!g) return null; var x = ctx(), checks = safe(function(){ return g.checks(x); }, []) || [];
-  var mark = { ok:'#5d8a70', warn:'#b09254', info:'#8a97a5' };
-  return '<details class="bk-sg" open><summary><b>Guide</b> · ' + esc(sheet) + '</summary><div class="bk-sg-b">'
-    + '<div class="bk-sg-h">What this shows</div><p>' + esc(g.what) + '</p>'
-    + (g.read && g.read.length ? '<div class="bk-sg-h">How to read it</div><ul>' + g.read.map(function(r){ return '<li><b>' + esc(r[0]) + '</b> ' + esc(r[1]) + '</li>'; }).join('') + '</ul>' : '')
-    + (checks.length ? '<div class="bk-sg-h">Checks on this deal</div><ul class="bk-sg-c">' + checks.map(function(c){ return '<li><i style="background:' + mark[c.k] + '"></i>' + esc(c.t) + '</li>'; }).join('') + '</ul>' : '')
-    + (g.next && g.next.length ? '<div class="bk-sg-h">Next</div><div class="bk-sg-n">' + g.next.map(function(n){ return '<button type="button" class="bk-btn" onclick="showSheet(\'' + String(n[0]).replace(/'/g, "\\'") + '\')">' + esc(n[0]) + '</button> <span>' + esc(n[1]) + '</span>'; }).join('<br>') + '</div>' : '')
-    + '</div></details>';
+  var rank = { warn:0, ok:1, info:2 }, sorted = checks.map(function(c, i){ return { c:c, i:i }; }).sort(function(a, b){ return (rank[a.c.k] - rank[b.c.k]) || (a.i - b.i); }).map(function(o){ return o.c; });
+  var nWarn = checks.filter(function(c){ return c.k === 'warn'; }).length, nOk = checks.filter(function(c){ return c.k === 'ok'; }).length;
+  var badge = nWarn ? '<span class="bk-sg-badge w">' + nWarn + (nWarn === 1 ? ' thing to review' : ' things to review') + '</span>' : (nOk ? '<span class="bk-sg-badge g">' + nOk + (nOk === 1 ? ' check passes' : ' checks pass') + '</span>' : '');
+  var ico = { ok:'&#10003;', warn:'!', info:'i' };
+  var left = '<div class="bk-sg-h">What this shows</div><p>' + esc(g.what) + '</p>'
+    + (g.read && g.read.length ? '<div class="bk-sg-h">How to read it</div><dl class="bk-sg-d">' + g.read.map(function(r){ return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('') + '</dl>' : '');
+  var right = (sorted.length ? '<div class="bk-sg-h">Checks on this deal</div><ul class="bk-sg-c">' + sorted.map(function(c){ return '<li class="' + c.k + '"><i>' + ico[c.k] + '</i><span>' + esc(c.t) + '</span></li>'; }).join('') + '</ul>' : '')
+    + (g.next && g.next.length ? '<div class="bk-sg-h">Next</div><div class="bk-sg-n">' + g.next.map(function(n){ return '<button type="button" onclick="showSheet(\'' + String(n[0]).replace(/'/g, "\\'") + '\')"><b>' + esc(n[0]) + ' &rarr;</b><span>' + esc(n[1]) + '</span></button>'; }).join('') + '</div>' : '');
+  return '<details class="bk-sg"' + (isOpen() ? ' open' : '') + '><summary><span><b>Guide</b> · ' + esc(sheet) + '</span>' + badge + '</summary><div class="bk-sg-b"><div class="bk-sg-grid"><div class="bk-sg-l">' + left + '</div><div class="bk-sg-r">' + right + '</div></div></div></details>';
 }
-var css = '.bk-sg{margin:0 0 14px;border:1px solid var(--ae-line,#cfd6dd);background:var(--ae-cell-ro,#f6f8fa);border-left:3px solid #7d93aa}.bk-sg>summary{cursor:pointer;padding:8px 12px;font-size:12.5px;list-style:none;color:var(--ae-ink,#1f2933)}.bk-sg>summary::-webkit-details-marker{display:none}.bk-sg>summary b{letter-spacing:.08em;text-transform:uppercase;font-size:11px;color:#5b6f84}'
- + '.bk-sg-b{padding:0 14px 12px;font-size:13px;line-height:1.5}.bk-sg-b p{margin:2px 0 6px}.bk-sg-h{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:#6b7a89;font-weight:700;margin:10px 0 3px}.bk-sg-b ul{margin:0 0 0 18px;padding:0}.bk-sg-c{list-style:none;margin-left:0 !important}.bk-sg-c li{display:flex;gap:8px;align-items:flex-start;margin:3px 0}.bk-sg-c i{width:8px;height:8px;border-radius:50%;flex:0 0 8px;margin-top:6px}.bk-sg-n span{font-size:12.5px;opacity:.8;margin-left:6px}.bk-sg-n .bk-btn{margin:2px 0}@media print{.bk-sg{display:none !important}}';
+var css = '.bk-sg{margin:0 0 14px;border:1px solid var(--ae-line,#cfd6dd);background:var(--ae-cell-ro,#f6f8fa);border-left:3px solid var(--ae-accent,#2f5f9a)}'
+ + '.bk-sg>summary{cursor:pointer;padding:9px 14px;font-size:12.5px;list-style:none;color:var(--ae-ink,#1f2933);display:flex;align-items:center;justify-content:space-between;gap:10px}.bk-sg>summary::-webkit-details-marker{display:none}'
+ + '.bk-sg>summary::after{content:"\\25BE";margin-left:auto;padding-left:8px;color:var(--ae-dim,#5a6877);transition:transform .15s}.bk-sg[open]>summary::after{transform:rotate(180deg)}.bk-sg>summary>span:first-child{letter-spacing:.02em}'
+ + '.bk-sg-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}.bk-sg-badge.w{background:rgba(176,130,40,.16);color:#8a6414}.bk-sg-badge.g{background:rgba(63,107,82,.16);color:#2f6b4a}'
+ + '.bk-sg-b{padding:2px 16px 14px;font-size:13px;line-height:1.5}.bk-sg-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:4px 28px}'
+ + '.bk-sg-b p{margin:2px 0 6px;color:var(--ae-ink,#1f2933)}.bk-sg-h{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ae-dim,#5a6877);font-weight:700;margin:12px 0 5px}.bk-sg-l .bk-sg-h:first-child,.bk-sg-r .bk-sg-h:first-child{margin-top:8px}'
+ + '.bk-sg-d{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 14px;margin:0}.bk-sg-d dt{font-weight:700;color:var(--ae-ink,#1f2933)}.bk-sg-d dd{margin:0;color:var(--ae-dim,#4d5b69)}'
+ + '.bk-sg-c{list-style:none;margin:0;padding:0;display:grid;gap:6px}.bk-sg-c li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px;align-items:start;padding:6px 9px;border:1px solid var(--ae-line,#cfd6dd);background:var(--ae-cell,#fff)}'
+ + '.bk-sg-c li i{font-style:normal;font-weight:800;font-size:11px;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;background:#8a97a5;margin-top:1px}'
+ + '.bk-sg-c li.ok i{background:#4f8a69}.bk-sg-c li.warn{border-left:3px solid #b08228;background:rgba(176,130,40,.09)}.bk-sg-c li.warn i{background:#b08228}'
+ + '.bk-sg-n{display:grid;gap:6px}.bk-sg-n button{display:grid;gap:1px;text-align:left;padding:7px 10px;border:1px solid var(--ae-line,#cfd6dd);background:var(--ae-cell,#fff);color:var(--ae-ink,#1f2933);font:inherit;cursor:pointer}.bk-sg-n button:hover{border-color:var(--ae-accent,#2f5f9a)}'
+ + '.bk-sg-n button b{font-size:12.5px;color:var(--ae-accent,#2f5f9a)}.bk-sg-n button span{font-size:12px;color:var(--ae-dim,#5a6877)}'
+ + '@media (max-width:760px){.bk-sg-grid{grid-template-columns:minmax(0,1fr)}.bk-sg-d{grid-template-columns:minmax(0,1fr)}.bk-sg-d dd{margin-bottom:4px}}'
+ + '@media print{.bk-sg{display:none !important}}';
 var st = document.createElement('style'); st.id = 'bk-sg-css'; st.textContent = css; document.head.appendChild(st);
 var queued = false;
 function paint(){ queued = false; var v = document.getElementById('viewport'); if(!v) return; var cur = safe(function(){ return currentSheet; }, ''), fr = v.querySelector('.sheet-frame');
   var has = v.querySelector('.bk-sg'); if(!on() || !fr || cur === 'Guide' || cur === 'Home' || cur === 'Deal Underwrite'){ if(has) has.remove(); return; }
   if(has && has.getAttribute('data-sh') === cur) return; if(has) has.remove();
-  var html = cardFor(cur); if(!html) return; var tb = fr.querySelector('.title-block'), box = document.createElement('div'); box.innerHTML = html; var el = box.firstChild; el.setAttribute('data-sh', cur);
+  var html = cardFor(cur); if(!html) return; var tb = fr.querySelector('.title-block'), box = document.createElement('div'); box.innerHTML = html; var el = box.firstChild; el.setAttribute('data-sh', cur); el.addEventListener('toggle', function(){ try { localStorage.setItem(OPEN_KEY, el.open ? '1' : '0'); } catch(e){} });
   var main = fr.querySelector('.main-col') || fr; if(tb && tb.nextSibling && tb.parentNode === main) main.insertBefore(el, tb.nextSibling); else main.insertBefore(el, main.firstChild); }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(paint); } }
 window.bkSectionGuideSheets = function(){ return Object.keys(G); };
