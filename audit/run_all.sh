@@ -24,6 +24,7 @@ echo "== editor engine support (growth curves, miscellaneous income, capital ite
 echo "== property editor (7 tabs, 29 sub-tabs, writes and conversions)"; node audit/editor_test.js index.html | tail -2
 echo "== reports (cash flow, valuation, tenant, audit; reconcile to the engine)"; node audit/reports_test.js index.html | tail -2
 echo "== commercial lease model (rollover branches, recoveries, TI/LC, editor, reports)"; node audit/lease_test.js index.html | tail -2
+echo "== lease model fixes (merged rollover, market defaults, general vacancy stress, bump anchor)"; node audit/lease_fix_test.js index.html "$REF" | tail -1
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1

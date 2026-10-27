@@ -141,12 +141,14 @@ window.bkCalc = function(){
   const netRes = gpr+vacancy+bad+ltl+concess;
   const other = Number(s.otherIncomePerUnit)*Number(s.units) + bkMiscIncomeAnnual(s);
 
-  /* with the commercial lease model on, retail income is the tenant schedule's first twelve months (vacancy is explicit in the schedule; only credit loss is a rate) */
+  /* with the commercial lease model on, retail income is the tenant schedule's first twelve months. Vacancy is explicit in
+     the schedule; the commercial vacancy rate applies only where it exceeds that scheduled vacancy, and credit loss is a rate. */
   const LM1 = (typeof bkLeaseOn==='function' && bkLeaseOn(s)) ? bkLeaseYear1(s) : null;
   const commercial = LM1 ? LM1.rent : useRR ? (applyMarket?rrs.commMarket:rrs.commInPlace)*12 : Number(s.commercialArea)*Number(s.commercialRent);
   const recovery = LM1 ? LM1.rec : useRR ? rrs.commRecoveries : Number(s.commercialArea)*Number(s.recovery);
   const commVacRate = LM1 ? LM1.creditLoss : Math.max(0,Math.min(1,Number(s.commercialVacancy)));
-  const commercialVac = -(commercial+recovery)*commVacRate;
+  // lease model: general vacancy in excess of the schedule's own vacancy (bkLeaseEval genVac), then credit loss on the rest
+  const commercialVac = LM1 ? -(LM1.genVac + (commercial+recovery-LM1.genVac)*commVacRate) : -(commercial+recovery)*commVacRate;
   const netComm = commercial+recovery+commercialVac;
 
   const egi = netRes+netComm+other;
