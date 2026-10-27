@@ -2508,7 +2508,9 @@ function bkDevMonthlyReturnsV12(){
  const LCR=bkDevLifecycleV13(x);
  const rampByMo={}; (x.leaseupRamp||[]).forEach(z=>rampByMo[z.mo]=z);
  // F12: one monthly NOI curve (operating months step by operating year; lease-up months read the ramp). Exit value = NOI of months H+1..H+12 on this same curve.
- const curveNOI=k=>k>=x.stab?noiAtYear(Math.max(1,Math.ceil((k-x.stab+1)/12)))/12:Number((rampByMo[k]||{after:0}).after||0);
+ /* tenant-level commercial leases (when on): the retail the lease schedule earns, in place of the retail inside the growth path, and its leasing capital */
+ const LH=(typeof bkDevLeaseHooks==='function')?bkDevLeaseHooks(s,x):null, leaseDelta=k=>LH?LH.delta(k):0, leaseCap=k=>LH?LH.cap(k):0;
+ const curveNOI=k=>k>=x.stab?noiAtYear(Math.max(1,Math.ceil((k-x.stab+1)/12)))/12+leaseDelta(k):Number((rampByMo[k]||{after:0}).after||0);
  for(let mo=1;mo<=months;mo++){
    const dt=bkMonthEnd(start,mo);   // V32.1: month-end
    const funding=x.months[mo-1]||{eq:0,overflow:0};
@@ -2517,7 +2519,7 @@ function bkDevMonthlyReturnsV12(){
    const ramp=rampByMo[mo];
    const opYear=Math.max(1,Math.ceil((mo-x.stab+1)/12));
    const annualNOI=isOperating?noiAtYear(opYear):0;
-   const noi=isOperating?annualNOI/12:((ramp&&!LCR.deficitFunded)?ramp.after:0);
+   const noi=isOperating?annualNOI/12+leaseDelta(mo):((ramp&&!LCR.deficitFunded)?ramp.after:0);
    const egiMo=isOperating?y1EGI/12:(ramp?ramp.egi:0);
    const assetFee=egiMo*Number(s.assetMgmtPct||0);
    const pd=permByMo[mo]||{payment:0,end:permBal}; let ds=Number(pd.payment||0); permBal=Number(pd.end===undefined?permBal:pd.end);
@@ -2526,8 +2528,9 @@ function bkDevMonthlyReturnsV12(){
    const refiEq=(mo===x.stab&&Number(s.refiAtStab||0))?Number(x.refiShortfall||0):0;
    let sale=0,payoff=0,grossSale=0,dispoFee=0;
    if(mo===months){let fwdExitNOI=0;for(let k=months+1;k<=months+12;k++)fwdExitNOI+=curveNOI(k);grossSale=fwdExitNOI/exitCap;sale=grossSale*(1-saleCost);dispoFee=grossSale*Number(s.dispositionFeePct||0);payoff=LCR.saleBeforeTakeout?Number((x.months[months-1]||{end:0}).end||0):permBal+(x.conHeldToSale?Number(x.conHeldBalance||0):0);}
-   const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff;
-   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale});
+   const leaseCapMo=leaseCap(mo);
+   const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo;
+   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale});
    values.push(cf);dates.push(dt);
  }
  const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=values.reduce((z,v)=>z+Math.max(0,v),0),contrib=values.reduce((z,v)=>z+Math.max(0,-v),0),moic=contrib?dist/contrib:0;
@@ -3343,7 +3346,11 @@ var DEF_POOL = ['taxes', 'insurance', 'utilities', 'rm', 'contract'];
 var FIXED_KEYS = ['taxes', 'insurance'], UNCAPPED_KEYS = ['taxes', 'insurance', 'utilities'];
 var REC_TYPES = ['NNN', 'Gross', 'BaseYear', 'Stop', 'Fixed'];
 window.BK_LEASE_POOL_KEYS = [['taxes', 'Real estate taxes'], ['insurance', 'Insurance'], ['utilities', 'Utilities'], ['rm', 'Repairs and maintenance'], ['contract', 'Contract services'], ['payroll', 'Payroll'], ['ga', 'General and administrative'], ['marketing', 'Marketing']];
-window.bkLeaseOn = function(s){ s = s || bkLoad(); return !!(s && s.commLeaseModel === true && Array.isArray(s.leases) && s.leases.length && !isDevDeal(s)); };
+/* A development deal's lease clock starts the month after completion: model month 1 is the first month of operations, so a lease start or end date is a calendar date and
+   a vacant suite leases up after its downtime counted from completion. An acquisition's month 1 is its closing month, as always. */
+function devShift(s){ return isDevDeal(s) ? Math.max(0, Math.round(num(s.predevMonths)) + Math.round(num(s.constructionMonths))) : 0; }
+window.bkLeaseDevShift = devShift;
+window.bkLeaseOn = function(s){ s = s || bkLoad(); return !!(s && s.commLeaseModel === true && Array.isArray(s.leases) && s.leases.length); };
 window.bkLeaseMarket = function(s){
   var M = Object.assign({ growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL, grossUp:1, grossVar:null, cpiForecast:0.025, cpiIndex:[] }, (s && s.leaseMkt) || {});
   if(!Array.isArray(M.recoverable)) M.recoverable = DEF_POOL;
@@ -3363,7 +3370,7 @@ function marketFactor(s, g){
 }
 var cache = { key:null, val:null };
 function build(s){
-  var cd = bkParseDealDate(s.closing, '2026-01-01'), cy = cd.getFullYear(), cm = cd.getMonth() + 1;
+  var cd0 = bkParseDealDate(s.closing, '2026-01-01'), sh = devShift(s), cd = sh ? new Date(cd0.getFullYear(), cd0.getMonth() + sh, 1) : cd0, cy = cd.getFullYear(), cm = cd.getMonth() + 1;
   var idx = function(d){ return (d.getFullYear() - cy) * 12 + (d.getMonth() + 1 - cm) + 1; };
   var n = Math.max(1, Math.min(15, Math.round(num(s.holdYears) || 10))), hold = n * 12, H = hold + 12;
   var mk = bkLeaseMarket(s), M = mk.M, RA = mk.RA, mf = marketFactor(s, M.g), segs = [], issues = [], tenants = [];
@@ -3435,7 +3442,7 @@ function build(s){
   return { segs:segs, tenants:tenants, issues:issues, hold:hold, H:H, bsf:bsf, M:M, mf:mf, idx:idx, closing:cd };
 }
 function struct(s){
-  var key = JSON.stringify([s.leases, s.leaseMkt, s.rolloverAssumptions, s.closing, s.holdYears, s.commercialRentGrowth, s.growthCurves && s.growthCurves.commercial, s.gsf, typeof bkConventions === 'function' ? bkConventions(s).cvRentGrowthStart : '', s.dealType]);
+  var key = JSON.stringify([devShift(s), s.leases, s.leaseMkt, s.rolloverAssumptions, s.closing, s.holdYears, s.commercialRentGrowth, s.growthCurves && s.growthCurves.commercial, s.gsf, typeof bkConventions === 'function' ? bkConventions(s).cvRentGrowthStart : '', s.dealType]);
   if(cache.key === key) return cache.val;
   var v = build(s); cache = { key:key, val:v }; return v;
 }
@@ -23073,7 +23080,7 @@ function pLease(s){
   safe(function(){ bkEnsureV16(); }, 0); s = bkLoad();
   var a = leaseList(s), on = s.commLeaseModel === true && a.length > 0, dev = isDev(s), M = bkLeaseMarket(s), RA = M.RA; M = M.M;
   var head = '<div class="ae-panel"><div class="ae-ph"><i>L</i>Commercial Lease Model</div><div class="ae-form"><label>Retail Income Comes From</label><div><select class="ae-sel" onchange="bkLeaseOnSet(this.value)"><option value="false"' + (on ? '' : ' selected') + '>Flat retail inputs (Revenues &gt; Commercial)</option><option value="true"' + (on ? ' selected' : '') + '>This tenant schedule</option></select></div>'
-    + (dev ? '<div class="note">The tenant schedule applies to acquisitions. A development uses its stabilized retail inputs.</div>' : '') + '</div><div class="ae-row">' + btn('Add a tenant', 'bkLeaseAdd()', true) + btn('Build tenants from the commercial rent roll', 'bkLeaseSeed()') + '</div></div>';
+    + (dev ? '<div class="note">For a development, month 1 of the tenant schedule is the month after completion: lease start and end dates are calendar dates, and a vacant suite leases up after its downtime counted from completion. From stabilisation the retail in the cash flow is what these tenants pay; before it, the lease-up ramp carries it.</div>' : '') + '</div><div class="ae-row">' + btn('Add a tenant', 'bkLeaseAdd()', true) + btn('Build tenants from the commercial rent roll', 'bkLeaseSeed()') + '</div></div>';
   var rows = a.map(function(L, i){ var occ = String(L.status) !== 'Vacant';
     return '<tr' + (i === pickT ? ' class="sel"' : '') + '><td>' + cellIn(i, 'tenant', L.tenant, 'text', 'w', 'Tenant') + '</td><td>' + cellIn(i, 'suite', L.suite, 'text', 'w', 'Suite') + '</td><td>' + cellIn(i, 'sf', L.sf, 'num') + '</td>'
       + '<td><select onchange="bkLeaseSet(' + i + ',\'status\',this.value)"><option' + (occ ? ' selected' : '') + '>Occupied</option><option' + (occ ? '' : ' selected') + '>Vacant</option></select></td>'
@@ -26124,7 +26131,7 @@ window.bkDevLeaseupRamp = function(s, co, stab, luMo){
   for(var j = 0; j < luMo; j++){
     var r = sc.months[Math.min(j, sc.months.length - 1)], f = Math.min(1, sc.stabTarget > 0 ? r.payOcc / sc.stabTarget : 0), share = byDel ? r.delShare : 1;
     var egi = c.egi * f / 12, mgmt = egi * mgmtPct, noi = egi - fixedAnnual * share / 12 - mgmt, after = noi - resAnnual * share / 12;
-    months.push({ mo:co + j, occ:r.occ, payOcc:r.payOcc, delivered:r.delivered, signed:r.signed, commenced:r.commenced, paying:r.paying, egi:egi, noi:noi, after:after });
+    months.push({ mo:co + j, f:f, occ:r.occ, payOcc:r.payOcc, delivered:r.delivered, signed:r.signed, commenced:r.commenced, paying:r.paying, egi:egi, noi:noi, after:after });
   }
   return { months:months, leaseDef:Math.max(0, -months.reduce(function(a, m){ return a + m.after; }, 0)) };
 };
@@ -26482,6 +26489,52 @@ var css = '.bk-pt-bar.bk-pt-showall{border-bottom:0;background:transparent;paddi
 var st = document.createElement('style'); st.id = 'bk-pt-css'; st.textContent = css; document.head.appendChild(st);
 function start(){ var vp = document.getElementById('viewport'); if(vp) new MutationObserver(later).observe(vp, { childList:true, subtree:true }); later(); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+<script id="bk-devleases">/* ===========================================================================
+   TENANT-LEVEL COMMERCIAL LEASES IN A DEVELOPMENT DEAL. With the commercial lease model switched on, a development deal's retail comes from the tenant schedule
+   (each tenant's rent, term, steps, recovery type, free rent, downtime, TI and LC), on a lease clock that starts the month after completion.
+   The development engine keeps its own stabilised-NOI path (grown at the NOI growth rate). The tenant schedule is added to it as a difference: from stabilisation,
+   each month's NOI is the growth path less the retail it assumes plus the retail the schedule actually earns (rent after free rent, recoveries, vacancy, credit
+   loss, less the management fee on that income). During lease-up the retail inside the ramp is replaced the same way. Tenant improvements and leasing
+   commissions are capital in the month they fall, and the exit value reads the same NOI. Nothing changes for a deal without a tenant schedule.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof window.bkLeaseOn !== 'function') return;
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+function isDev(s){ return /develop/i.test(String((s && s.dealType) || '')); }
+function leaseNet(LM, k){ var i = k - 1; if(i < 0 || i >= LM.rent.length) return 0; return (LM.rent[i] + LM.rec[i] - LM.genVac[i]) * (1 - LM.creditLoss); }
+
+/* the lease clock, evaluated once per call: LM (monthly schedule), costs, and the retail the stabilised path already contains */
+function ctx(s, x){
+  if(!isDev(s) || !window.bkLeaseOn(s)) return null;
+  var co = num(x.co) || (Math.round(num(s.predevMonths)) + Math.round(num(s.constructionMonths))), hold = Math.max(1, Math.round(num(s.holdYears) * 12)), N = Math.max(12, hold - co + 12);
+  var cv = typeof bkConventions === 'function' ? bkConventions(s) : {}, gE = cv.cvRentGrowthStart === 'month1' ? function(m){ return m / 12; } : function(m){ return Math.ceil(m / 12) - 1; };
+  var tg = num(s.taxGrowth), og = num(s.opexGrowth);
+  var LM = bkLeaseEval(s, N, { tax:function(y){ return Math.pow(1 + tg, y - 1); }, opex:function(m){ return Math.pow(1 + og, gE(m)); } }, true), LC = bkLeaseCosts(s, N), c = bkCalc();
+  return { s:s, x:x, co:co, LM:LM, LC:LC, base:num(c.netComm), mg:num(s.mgmtPct), g:num(s.noiGrowth || s.rentGrowth) };
+}
+window.bkDevLeaseHooks = function(s, x){
+  var C = ctx(s, x); if(!C) return null;
+  return {
+    /* NOI change from the tenant schedule in month mo (after stabilisation): schedule retail less the retail inside the growth path, net of the management fee */
+    delta:function(mo){ var k = mo - C.co; if(k < 1) return 0; var yr = Math.max(1, Math.ceil((mo - C.x.stab + 1) / 12)); return (leaseNet(C.LM, k) - C.base * Math.pow(1 + C.g, yr - 1) / 12) * (1 - C.mg); },
+    cap:function(mo){ var k = mo - C.co; if(k < 1 || k > C.LC.ti.length) return 0; return C.LC.ti[k - 1] + C.LC.lc[k - 1]; },
+    ctx:C
+  };
+};
+
+/* the lease-up ramp: the retail inside each month's income (the stabilised retail, scaled by the project's occupancy) is replaced by what the tenants pay */
+var prev = window.bkDevLeaseupRamp;
+window.bkDevLeaseupRamp = function(s, co, stab, luMo){
+  var r = prev(s, co, stab, luMo); if(!isDev(s) || !window.bkLeaseOn(s) || !r.months || !r.months.length) return r;
+  var C = ctx(s, { co:co, stab:stab, luMo:luMo }); if(!C) return r; var mg = C.mg;
+  r.months.forEach(function(m){ var k = m.mo - co, f = m.f !== undefined ? m.f : m.occ, d = (k >= 1 ? leaseNet(C.LM, k) : 0) - C.base * f / 12, dn = d * (1 - mg);
+    m.egi += d; m.noi += dn; m.after += dn; m.retail = k >= 1 ? leaseNet(C.LM, k) : 0; });
+  r.leaseDef = Math.max(0, -r.months.reduce(function(a, m){ return a + m.after; }, 0));
+  return r;
+};
 })();
 </script>
 </body>

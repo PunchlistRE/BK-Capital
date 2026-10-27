@@ -16,7 +16,11 @@ var DEF_POOL = ['taxes', 'insurance', 'utilities', 'rm', 'contract'];
 var FIXED_KEYS = ['taxes', 'insurance'], UNCAPPED_KEYS = ['taxes', 'insurance', 'utilities'];
 var REC_TYPES = ['NNN', 'Gross', 'BaseYear', 'Stop', 'Fixed'];
 window.BK_LEASE_POOL_KEYS = [['taxes', 'Real estate taxes'], ['insurance', 'Insurance'], ['utilities', 'Utilities'], ['rm', 'Repairs and maintenance'], ['contract', 'Contract services'], ['payroll', 'Payroll'], ['ga', 'General and administrative'], ['marketing', 'Marketing']];
-window.bkLeaseOn = function(s){ s = s || bkLoad(); return !!(s && s.commLeaseModel === true && Array.isArray(s.leases) && s.leases.length && !isDevDeal(s)); };
+/* A development deal's lease clock starts the month after completion: model month 1 is the first month of operations, so a lease start or end date is a calendar date and
+   a vacant suite leases up after its downtime counted from completion. An acquisition's month 1 is its closing month, as always. */
+function devShift(s){ return isDevDeal(s) ? Math.max(0, Math.round(num(s.predevMonths)) + Math.round(num(s.constructionMonths))) : 0; }
+window.bkLeaseDevShift = devShift;
+window.bkLeaseOn = function(s){ s = s || bkLoad(); return !!(s && s.commLeaseModel === true && Array.isArray(s.leases) && s.leases.length); };
 window.bkLeaseMarket = function(s){
   var M = Object.assign({ growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL, grossUp:1, grossVar:null, cpiForecast:0.025, cpiIndex:[] }, (s && s.leaseMkt) || {});
   if(!Array.isArray(M.recoverable)) M.recoverable = DEF_POOL;
@@ -36,7 +40,7 @@ function marketFactor(s, g){
 }
 var cache = { key:null, val:null };
 function build(s){
-  var cd = bkParseDealDate(s.closing, '2026-01-01'), cy = cd.getFullYear(), cm = cd.getMonth() + 1;
+  var cd0 = bkParseDealDate(s.closing, '2026-01-01'), sh = devShift(s), cd = sh ? new Date(cd0.getFullYear(), cd0.getMonth() + sh, 1) : cd0, cy = cd.getFullYear(), cm = cd.getMonth() + 1;
   var idx = function(d){ return (d.getFullYear() - cy) * 12 + (d.getMonth() + 1 - cm) + 1; };
   var n = Math.max(1, Math.min(15, Math.round(num(s.holdYears) || 10))), hold = n * 12, H = hold + 12;
   var mk = bkLeaseMarket(s), M = mk.M, RA = mk.RA, mf = marketFactor(s, M.g), segs = [], issues = [], tenants = [];
@@ -108,7 +112,7 @@ function build(s){
   return { segs:segs, tenants:tenants, issues:issues, hold:hold, H:H, bsf:bsf, M:M, mf:mf, idx:idx, closing:cd };
 }
 function struct(s){
-  var key = JSON.stringify([s.leases, s.leaseMkt, s.rolloverAssumptions, s.closing, s.holdYears, s.commercialRentGrowth, s.growthCurves && s.growthCurves.commercial, s.gsf, typeof bkConventions === 'function' ? bkConventions(s).cvRentGrowthStart : '', s.dealType]);
+  var key = JSON.stringify([devShift(s), s.leases, s.leaseMkt, s.rolloverAssumptions, s.closing, s.holdYears, s.commercialRentGrowth, s.growthCurves && s.growthCurves.commercial, s.gsf, typeof bkConventions === 'function' ? bkConventions(s).cvRentGrowthStart : '', s.dealType]);
   if(cache.key === key) return cache.val;
   var v = build(s); cache = { key:key, val:v }; return v;
 }

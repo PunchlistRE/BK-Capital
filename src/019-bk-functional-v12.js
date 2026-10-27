@@ -20,7 +20,9 @@ function bkDevMonthlyReturnsV12(){
  const LCR=bkDevLifecycleV13(x);
  const rampByMo={}; (x.leaseupRamp||[]).forEach(z=>rampByMo[z.mo]=z);
  // F12: one monthly NOI curve (operating months step by operating year; lease-up months read the ramp). Exit value = NOI of months H+1..H+12 on this same curve.
- const curveNOI=k=>k>=x.stab?noiAtYear(Math.max(1,Math.ceil((k-x.stab+1)/12)))/12:Number((rampByMo[k]||{after:0}).after||0);
+ /* tenant-level commercial leases (when on): the retail the lease schedule earns, in place of the retail inside the growth path, and its leasing capital */
+ const LH=(typeof bkDevLeaseHooks==='function')?bkDevLeaseHooks(s,x):null, leaseDelta=k=>LH?LH.delta(k):0, leaseCap=k=>LH?LH.cap(k):0;
+ const curveNOI=k=>k>=x.stab?noiAtYear(Math.max(1,Math.ceil((k-x.stab+1)/12)))/12+leaseDelta(k):Number((rampByMo[k]||{after:0}).after||0);
  for(let mo=1;mo<=months;mo++){
    const dt=bkMonthEnd(start,mo);   // V32.1: month-end
    const funding=x.months[mo-1]||{eq:0,overflow:0};
@@ -29,7 +31,7 @@ function bkDevMonthlyReturnsV12(){
    const ramp=rampByMo[mo];
    const opYear=Math.max(1,Math.ceil((mo-x.stab+1)/12));
    const annualNOI=isOperating?noiAtYear(opYear):0;
-   const noi=isOperating?annualNOI/12:((ramp&&!LCR.deficitFunded)?ramp.after:0);
+   const noi=isOperating?annualNOI/12+leaseDelta(mo):((ramp&&!LCR.deficitFunded)?ramp.after:0);
    const egiMo=isOperating?y1EGI/12:(ramp?ramp.egi:0);
    const assetFee=egiMo*Number(s.assetMgmtPct||0);
    const pd=permByMo[mo]||{payment:0,end:permBal}; let ds=Number(pd.payment||0); permBal=Number(pd.end===undefined?permBal:pd.end);
@@ -38,8 +40,9 @@ function bkDevMonthlyReturnsV12(){
    const refiEq=(mo===x.stab&&Number(s.refiAtStab||0))?Number(x.refiShortfall||0):0;
    let sale=0,payoff=0,grossSale=0,dispoFee=0;
    if(mo===months){let fwdExitNOI=0;for(let k=months+1;k<=months+12;k++)fwdExitNOI+=curveNOI(k);grossSale=fwdExitNOI/exitCap;sale=grossSale*(1-saleCost);dispoFee=grossSale*Number(s.dispositionFeePct||0);payoff=LCR.saleBeforeTakeout?Number((x.months[months-1]||{end:0}).end||0):permBal+(x.conHeldToSale?Number(x.conHeldBalance||0):0);}
-   const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff;
-   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale});
+   const leaseCapMo=leaseCap(mo);
+   const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo;
+   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale});
    values.push(cf);dates.push(dt);
  }
  const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=values.reduce((z,v)=>z+Math.max(0,v),0),contrib=values.reduce((z,v)=>z+Math.max(0,-v),0),moic=contrib?dist/contrib:0;

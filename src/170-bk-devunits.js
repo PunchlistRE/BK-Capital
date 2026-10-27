@@ -81,7 +81,7 @@ window.bkDevLeaseupRamp = function(s, co, stab, luMo){
   for(var j = 0; j < luMo; j++){
     var r = sc.months[Math.min(j, sc.months.length - 1)], f = Math.min(1, sc.stabTarget > 0 ? r.payOcc / sc.stabTarget : 0), share = byDel ? r.delShare : 1;
     var egi = c.egi * f / 12, mgmt = egi * mgmtPct, noi = egi - fixedAnnual * share / 12 - mgmt, after = noi - resAnnual * share / 12;
-    months.push({ mo:co + j, occ:r.occ, payOcc:r.payOcc, delivered:r.delivered, signed:r.signed, commenced:r.commenced, paying:r.paying, egi:egi, noi:noi, after:after });
+    months.push({ mo:co + j, f:f, occ:r.occ, payOcc:r.payOcc, delivered:r.delivered, signed:r.signed, commenced:r.commenced, paying:r.paying, egi:egi, noi:noi, after:after });
   }
   return { months:months, leaseDef:Math.max(0, -months.reduce(function(a, m){ return a + m.after; }, 0)) };
 };
