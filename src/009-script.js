@@ -5,7 +5,7 @@ const GROUPS = [
   {id:'propops', label:'Property Operations', color:'#163a62', sheets:['Operating Underwrite','Property CF']},
   {id:'dev', label:'Development', color:'#B0592A', sheets:['Development','Dev Schedule','Dev Draws','Residual Land']},
   {id:'debt', label:'Debt', color:'#2E6E6E', sheets:['Debt','Debt Schedule','Covenant Monitor','Refi / Recap','Financing Lab','Financing Compare']},
-  {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax','Probability-Weighted']},
+  {id:'returns', label:'Returns & Equity', color:'#3F6B4A', sheets:['Returns','Equity Waterfall','After-Tax','Probability-Weighted','Pre-Offer Bid']},
   {id:'biz', label:'Operating Business', color:'#6B4E71', sheets:['Business Model','Business Valuation','Sell vs Hold']},
   {id:'credit', label:'Credit & IC', color:'#7A3E4D', sheets:['IC Memo','Debt Capacity','Credit Policy','Model Checks']},
   {id:'tools', label:'Tools', color:'#5B4B8A', sheets:['Sensitivity','Reverse Solve']},
