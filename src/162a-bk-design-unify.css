@@ -25,7 +25,7 @@ html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 /* the letter icon the decorator puts in each panel header (same square as the editor's) */
 html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
 /* section jumps as a tab strip */
-html body #viewport .bk-dui{ display:flex; gap:1px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:thin; background:var(--ae-bg); border-bottom:1px solid var(--ae-line); padding:6px 4px 0; border-radius:0; box-shadow:none; }
+html body #viewport .bk-dui{ display:flex; gap:1px; flex-wrap:wrap; overflow-x:visible; scrollbar-width:thin; background:var(--ae-bg); border-bottom:1px solid var(--ae-line); padding:6px 4px 0; border-radius:0; box-shadow:none; }
 html body #viewport .bk-dui button{ flex:0 0 auto; white-space:nowrap; padding:6px 12px !important; background:var(--ae-head2) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:0 !important; color:var(--ae-dim) !important; font-size:12px !important; margin-bottom:-1px; box-shadow:none !important; }
 html body #viewport .bk-dui button:hover{ color:var(--ae-ink) !important; }
 html body #viewport .bk-dui button.on, html body #viewport .bk-dui button.active, html body #viewport .bk-dui button[aria-current]{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; font-weight:700 !important; border-top:2px solid var(--ae-accent) !important; padding-top:5px !important; }
@@ -56,3 +56,23 @@ html body .tabnav-primary .grp-btn .sw::before{ content:attr(data-ic); color:#ff
   html.bk-rail-collapsed .rail .rail-group-label:hover::before{ opacity:1; }
 }
 @media (max-width:900px){ .bk-rail-toggle{ display:none; } }
+
+/* ALIGNMENT AND DISPLAY CLEAN-UP */
+/* status chips are always centred in their column, header included (the decorator tags the column) */
+html body #viewport table.fin tr > .bk-col-chip.bk-col-chip.bk-col-chip{ text-align:center !important; padding-left:6px !important; padding-right:6px !important; }
+html body #viewport .bk-col-chip .status-chip{ margin:0 auto; }
+/* two-column label / value tables: the value column is the right 60%, its figures end at the cell's right edge, and text values wrap in a column wide enough to read */
+@media (min-width:761px){
+  html body #viewport table.fin.bk-vt2 tr > :nth-child(1){ width:40% !important; }
+  html body #viewport table.fin.bk-vt2 tr > :nth-child(2):not([colspan]){ width:60% !important; padding-right:10px !important; }
+}
+/* KPI strips: labels of one or two lines sit on a common baseline so the figures line up across tiles */
+html body #viewport .bk-kpi .l{ min-height:24px; display:flex; align-items:flex-end; line-height:1.25; }
+/* the sidebar's "Advanced" group label is a single line, with the full text on hover */
+.rail .bk-adv-head span:first-child{ letter-spacing:.08em; }
+/* a column header always takes its column's alignment (the decorator reads the cells' computed alignment and tags the header) */
+html body #viewport table.fin thead tr > th.bk-h-r.bk-h-r.bk-h-r, html body #viewport table.fin tr > th.bk-h-r.bk-h-r.bk-h-r{ text-align:right !important; }
+html body #viewport table.fin thead tr > th.bk-h-c.bk-h-c.bk-h-c, html body #viewport table.fin tr > th.bk-h-c.bk-h-c.bk-h-c{ text-align:center !important; }
+html body #viewport table.fin thead tr > th.bk-h-l.bk-h-l.bk-h-l, html body #viewport table.fin tr > th.bk-h-l.bk-h-l.bk-h-l{ text-align:left !important; }
+/* figures typed into a box end at the same edge as plain figures, so the header above sits on the same line */
+html body #viewport table.fin td[data-bk-kind="input-num"] input{ padding-right:0 !important; }
