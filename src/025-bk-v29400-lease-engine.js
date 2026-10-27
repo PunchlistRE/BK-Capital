@@ -218,10 +218,15 @@ window.bkLeaseSummary = function(s){
 };
 /* build tenants from the commercial rows of the unit rent roll (rents there are monthly dollars per suite) */
 window.bkLeaseFromRentRoll = function(s){
-  var rr = (Array.isArray(s.rentRoll) ? s.rentRoll : []).filter(function(u){ return u.tenantType === 'Commercial'; }), RA = bkLeaseMarket(s).RA;
+  var rr = (Array.isArray(s.rentRoll) ? s.rentRoll : []).filter(function(u){ return u.tenantType === 'Commercial'; }), MK = bkLeaseMarket(s), RA = MK.RA, M0 = MK.M;
   return rr.map(function(u){
     var sf = num(u.sf), occ = u.status === 'Occupied', psf = function(m){ return sf > 0 ? Math.round(num(m) * 12 / sf * 100) / 100 : 0; }, rec = psf(u.recovery);
     var L = { tenant:String(u.unitId || ''), suite:String(u.unitId || ''), sf:sf, status:occ ? 'Occupied' : 'Vacant', start:u.leaseStart || '', end:u.leaseEnd || '', rent:occ ? psf(u.inPlaceRent) : 0, bump:0, mkt:psf(u.marketRent), recType:!occ ? 'NNN' : rec > 0 ? 'Fixed' : 'Gross', recFixed:occ ? rec : 0 };
+    /* actual recovery terms from the rent roll, when it carries them: the structure, a base year, an expense stop, a pro rata share. What it does not carry keeps the earlier mapping. */
+    if(occ && REC_TYPES.indexOf(u.recType) >= 0){ L.recType = u.recType; if(u.recType !== 'Fixed') L.recFixed = 0; if(u.recType === 'Fixed' && !(rec > 0)) L.recFixed = 0; }
+    if(occ && has(u.baseYear) && num(u.baseYear) >= 1990){ L.baseYear = Math.round(num(u.baseYear)); if(!(REC_TYPES.indexOf(u.recType) >= 0)) L.recType = 'BaseYear'; }
+    if(occ && has(u.recStop) && num(u.recStop) > 0){ L.recStop = num(u.recStop); if(!(REC_TYPES.indexOf(u.recType) >= 0)) L.recType = 'Stop'; }
+    if(occ && has(u.recShare) && num(u.recShare) > 0 && num(u.recShare) <= 1 && (L.recType === 'NNN' || L.recType === 'BaseYear' || L.recType === 'Stop')){ L.recShares = {}; (M0.recoverable || DEF_POOL).forEach(function(k){ L.recShares[k] = num(u.recShare); }); }
     if(u.rolloverOverride && typeof u.rolloverOverride === 'object') L.over = Object.assign({}, u.rolloverOverride);
     return L;
   });

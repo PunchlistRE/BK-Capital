@@ -240,3 +240,7 @@ A full polish pass added: no sideways page overflow on any of the 77 sheets at 7
 ### Panel tabs
 
 A section with four or more panels opens as a tab strip, one tab per panel (like the Property editor); `paneltabs_test.js` (24 checks). Panels are hidden, never removed (the content is identical as tabs or all at once), a note stays with its panel, headline tiles and the notes / next-step bar stay outside, the last tab is remembered per section, "Show all" restores one page, a printed section carries every panel, and on a phone the strip is one scrolling row. Home, Deal Underwrite, the import pages and the Property editor are left alone. Under an automated browser (`navigator.webdriver`) panels start expanded unless a test sets `localStorage['bk-pt-all']='0'`, so the older tests that read whole pages are unchanged.
+
+### NNN terms from a rent roll
+
+`nnn_import_test.js` (9 checks). Import Rent Roll recognises recovery-structure columns (NNN, Gross, Base Year, Modified Gross, Expense Stop, Fixed), a base year, an expense stop ($/SF a year) and a pro rata share, and keeps them on the row; the commercial lease built from the row then uses them (a stated share becomes the tenant's share of every recoverable expense line; without one the area share applies). Structures it cannot read are left unset, never guessed. A rent roll without these columns imports exactly as before (checked against the reference build). Residential recoveries and percentage rent are not modelled.

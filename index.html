@@ -3545,10 +3545,15 @@ window.bkLeaseSummary = function(s){
 };
 /* build tenants from the commercial rows of the unit rent roll (rents there are monthly dollars per suite) */
 window.bkLeaseFromRentRoll = function(s){
-  var rr = (Array.isArray(s.rentRoll) ? s.rentRoll : []).filter(function(u){ return u.tenantType === 'Commercial'; }), RA = bkLeaseMarket(s).RA;
+  var rr = (Array.isArray(s.rentRoll) ? s.rentRoll : []).filter(function(u){ return u.tenantType === 'Commercial'; }), MK = bkLeaseMarket(s), RA = MK.RA, M0 = MK.M;
   return rr.map(function(u){
     var sf = num(u.sf), occ = u.status === 'Occupied', psf = function(m){ return sf > 0 ? Math.round(num(m) * 12 / sf * 100) / 100 : 0; }, rec = psf(u.recovery);
     var L = { tenant:String(u.unitId || ''), suite:String(u.unitId || ''), sf:sf, status:occ ? 'Occupied' : 'Vacant', start:u.leaseStart || '', end:u.leaseEnd || '', rent:occ ? psf(u.inPlaceRent) : 0, bump:0, mkt:psf(u.marketRent), recType:!occ ? 'NNN' : rec > 0 ? 'Fixed' : 'Gross', recFixed:occ ? rec : 0 };
+    /* actual recovery terms from the rent roll, when it carries them: the structure, a base year, an expense stop, a pro rata share. What it does not carry keeps the earlier mapping. */
+    if(occ && REC_TYPES.indexOf(u.recType) >= 0){ L.recType = u.recType; if(u.recType !== 'Fixed') L.recFixed = 0; if(u.recType === 'Fixed' && !(rec > 0)) L.recFixed = 0; }
+    if(occ && has(u.baseYear) && num(u.baseYear) >= 1990){ L.baseYear = Math.round(num(u.baseYear)); if(!(REC_TYPES.indexOf(u.recType) >= 0)) L.recType = 'BaseYear'; }
+    if(occ && has(u.recStop) && num(u.recStop) > 0){ L.recStop = num(u.recStop); if(!(REC_TYPES.indexOf(u.recType) >= 0)) L.recType = 'Stop'; }
+    if(occ && has(u.recShare) && num(u.recShare) > 0 && num(u.recShare) <= 1 && (L.recType === 'NNN' || L.recType === 'BaseYear' || L.recType === 'Stop')){ L.recShares = {}; (M0.recoverable || DEF_POOL).forEach(function(k){ L.recShares[k] = num(u.recShare); }); }
     if(u.rolloverOverride && typeof u.rolloverOverride === 'object') L.over = Object.assign({}, u.rolloverOverride);
     return L;
   });
@@ -21353,8 +21358,18 @@ var FIELDS = [
   ['market', 'Market rent', /(market|asking|pro\s*forma)/i],
   ['start', 'Lease start', /(lease\s*(from|start|begin)|^start|commenc|move[- ]?in)/i],
   ['end', 'Lease end', /(lease\s*(to|end|exp)|expir|^end|maturity)/i],
+  ['recType', 'Recovery structure', /((recover\w*|reimburs\w*|expense|lease)\s*(type|structure|basis|method)|^\s*(nnn\s*\/\s*gross|net\s*type)\s*$)/i],
+  ['baseYear', 'Base year', /base\s*year/i],
+  ['recStop', 'Expense stop ($/SF/yr)', /(expense\s*stop|\bstop\b)/i],
+  ['recShare', 'Pro rata share', /(pro[\s-]*rata|share\s*of\s*(expenses|nnn|cam|opex)|nnn\s*share|cam\s*share)/i],
   ['recovery', 'Recoveries (monthly)', /(recover|\bcam\b|\bnnn\b|reimburs)/i]
 ];
+/* a recovery structure as written in a rent roll, read as one of the lease model's types; anything else is left unset (never guessed) */
+function recTypeOf(t){ t = String(t == null ? '' : t).trim(); if(!t) return null;
+  if(/triple|\bnnn\b|\bnet\b(?!\s*(effective|rent))|pass[\s-]*through/i.test(t) && !/gross|modified|base/i.test(t)) return 'NNN';
+  if(/base\s*year/i.test(t)) return 'BaseYear'; if(/expense\s*stop|\bstop\b/i.test(t)) return 'Stop';
+  if(/modified\s*gross|\bmg\b/i.test(t)) return 'BaseYear';
+  if(/full\s*service|gross|\bfs\b|\bfsg\b/i.test(t)) return 'Gross'; if(/fixed|flat/i.test(t)) return 'Fixed'; return null; }
 var COMM = /retail|office|commercial|industrial|warehouse|storage|restaurant|medical|flex|suite\b/i;
 var S = { file:'', kind:'', rows:[], head:-1, map:{}, basis:'monthly', typeMode:'auto', fromPdf:false, msg:'', msgOk:false };
 function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -21381,7 +21396,7 @@ function detectHeader(rows){
 }
 function guessMap(hdr){
   var map = {}, used = {};
-  var order = ['unit', 'market', 'start', 'end', 'recovery', 'type', 'sf', 'tenant', 'status', 'inplace'];
+  var order = ['unit', 'market', 'start', 'end', 'recType', 'baseYear', 'recStop', 'recShare', 'recovery', 'type', 'sf', 'tenant', 'status', 'inplace'];
   order.forEach(function(k){ var f = FIELDS.filter(function(x){ return x[0] === k; })[0];
     for(var c = 0; c < hdr.length; c++){ if(used[c]) continue; var h = txt(hdr[c]); if(h && f[2].test(h)){ map[k] = c; used[c] = 1; break; } } });
   return map;
@@ -21400,7 +21415,7 @@ function parseUnits(){
     var vacant = /vacan|available|unrented|down|model/i.test(stx) || (/vacan/i.test(tenant)) || (!tenant && !/occup|current|notice|mtm|month|lease|renew|future/i.test(stx) && map.tenant != null && !stx);
     var occupied = !vacant;
     if(map.status != null && stx && /occup|current|notice|mtm|month|renew|future/i.test(stx)) occupied = true;
-    var inp = scale(num(get('inplace')), sf), mk = map.market != null ? scale(num(get('market')), sf) : null, rec = map.recovery != null ? (num(get('recovery')) || 0) : 0;
+    var inp = scale(num(get('inplace')), sf), mk = map.market != null ? scale(num(get('market')), sf) : null, rec = map.recovery != null ? (num(get('recovery')) || 0) : 0, rtx = map.recType != null ? txt(get('recType')) : '', rtype = map.recType != null ? recTypeOf(rtx) : (map.recovery != null ? recTypeOf(txt(get('recovery'))) : null);
     var comm = S.typeMode === 'Commercial' ? true : S.typeMode === 'Residential' ? false : (COMM.test(typ) || COMM.test(uid));
     var w = [];
     if(occupied && !(inp > 0)) w.push('occupied with no rent');
@@ -21410,7 +21425,7 @@ function parseUnits(){
     if(!(sf > 0)) w.push('no square feet');
     var ls = toDate(get('start')), le = toDate(get('end'));
     if(ls && le && le < ls) w.push('lease ends before it starts');
-    out.push({ unitId:uid, sf:sf, tenantType:comm ? 'Commercial' : 'Residential', status:occupied ? 'Occupied' : 'Vacant', inPlaceRent:Math.round(inp * 100) / 100, marketRent:Math.round(mk * 100) / 100, recovery:rec, leaseStart:ls, leaseEnd:le, _w:w });
+    out.push({ unitId:uid, sf:sf, tenantType:comm ? 'Commercial' : 'Residential', status:occupied ? 'Occupied' : 'Vacant', inPlaceRent:Math.round(inp * 100) / 100, marketRent:Math.round(mk * 100) / 100, recovery:rec, leaseStart:ls, leaseEnd:le, recType:rtype || undefined, baseYear:map.baseYear != null && num(get('baseYear')) >= 1990 ? Math.round(num(get('baseYear'))) : undefined, recStop:map.recStop != null && num(get('recStop')) > 0 ? num(get('recStop')) : undefined, recShare:(function(){ if(map.recShare == null) return undefined; var raw = txt(get('recShare')), v = parseFloat(String(raw).replace(/[%,\s]/g, '')); if(!(v > 0)) return undefined; return /%/.test(raw) || v > 1 ? Math.min(1, v / 100) : v; })(), _w:w });
   }
   if(dup) warn.push(dup + ' repeated unit row' + (dup === 1 ? '' : 's') + ' ignored (the first row of each unit is used; Yardi prints extra rows for charge detail).');
   if(map.market == null) warn.push('No market-rent column mapped: occupied units use their in-place rent as market (no loss to lease); vacant units have no rent.');
@@ -21453,7 +21468,7 @@ window.bkRRMap = function(k, v){ S.map[k] = v === '' ? null : +v; showSheet('Imp
 window.bkRROpt = function(k, v){ S[k] = v; showSheet('Import Rent Roll'); };
 window.bkRRApply = function(mode, setUnits){
   if(S.head < 0) return; var R = parseUnits(), s = bkLoad(); if(!s || !R.units.length) return;
-  var rows = R.units.map(function(u){ return { unitId:u.unitId, sf:u.sf, tenantType:u.tenantType, status:u.status, inPlaceRent:u.inPlaceRent, marketRent:u.marketRent, recovery:u.recovery, leaseStart:u.leaseStart, leaseEnd:u.leaseEnd }; });
+  var rows = R.units.map(function(u){ return { unitId:u.unitId, sf:u.sf, tenantType:u.tenantType, status:u.status, inPlaceRent:u.inPlaceRent, marketRent:u.marketRent, recovery:u.recovery, leaseStart:u.leaseStart, leaseEnd:u.leaseEnd, recType:u.recType, baseYear:u.baseYear, recStop:u.recStop, recShare:u.recShare }; });
   var old = Array.isArray(s.rentRoll) ? s.rentRoll : [];
   s.rentRoll = mode === 'add' ? old.concat(rows) : rows;
   s.revenueBasis = 'RENT ROLL'; var C = confRR(R); s._impRR = window.bkConf.stamp({}, C, S.file)._imp;
