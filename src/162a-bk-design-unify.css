@@ -259,3 +259,14 @@ html body #viewport .ae .ae-panel{ overflow-x:auto; }
 }
 /* a status chip may wrap between words, never inside one */
 html body #viewport .status-chip{ overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none; }
+
+/* ---- Property editor rows read as one block that belongs to the Property tab: the two rows (sections, then panels) share a tinted band with an accent spine and a
+   "PROPERTY EDITOR" label, so the third row is not mistaken for the top navigation's own Property / Market tabs. */
+html body #viewport .ae{ margin-top:6px }
+html body #viewport .ae-tabs{ background:var(--ae-head2); border:1px solid var(--ae-line); border-left:4px solid var(--ae-accent); border-bottom:0; padding:8px 8px 0 10px }
+html body #viewport .ae-tabs::before{ content:"PROPERTY EDITOR"; flex:0 0 100%; font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--ae-accent); padding:0 2px 7px }
+html body #viewport .ae-subs{ background:var(--ae-head2); border:1px solid var(--ae-line); border-left:4px solid var(--ae-accent); border-top:0; padding:8px 8px 0 10px }
+html body #viewport .ae-sub{ background:transparent; border-color:transparent; border-bottom:0 }
+html body #viewport .ae-sub:hover{ color:var(--ae-ink) }
+html body #viewport .ae-sub.on{ background:var(--ae-cell); border-color:var(--ae-line); border-top:2px solid var(--ae-accent) }
+html body #viewport .ae-body{ border-left:4px solid var(--ae-accent) }

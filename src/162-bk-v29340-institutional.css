@@ -176,6 +176,7 @@ html:not([data-theme="light"]) .gd-view{ color:#6fb4f2; }
 html:not([data-theme="light"]) .pl-hero h2{ font-size:22px; font-weight:700; letter-spacing:-.01em; }
 html:not([data-theme="light"]) .bk-dui button, html:not([data-theme="light"]) .bk-save{ border-radius:3px; }
 html:not([data-theme="light"]) #bk-auth-gate .bk-login-card, html:not([data-theme="light"]) #bk-auth-gate .card{ border-radius:2px; background:#1b2027; } html:not([data-theme="light"]) #bk-auth-gate button, html:not([data-theme="light"]) #bk-auth-gate input{ border-radius:3px; }
+html:not([data-theme="light"]) #bk-auth-gate h2{ color:#eef2f6; } html:not([data-theme="light"]) #bk-auth-gate p, html:not([data-theme="light"]) #bk-auth-gate #bk-auth-context{ color:#aab6c2 !important; } html:not([data-theme="light"]) #bk-auth-gate label{ color:#c4ccd4; } html:not([data-theme="light"]) #bk-auth-gate button{ background:#2f6fb5; border-color:#2f6fb5; color:#fff; }
 html:not([data-theme="light"]) input:not([type=checkbox]):not([type=radio]):not([type=range]), html:not([data-theme="light"]) select, html:not([data-theme="light"]) textarea{ color-scheme:dark; }
 html:not([data-theme="light"]) #viewport [style*="background:#eef2f6"]{ background:#14181d !important; border:1px solid var(--line); border-radius:2px !important; }
 html:not([data-theme="light"]) #viewport input[type=text], html:not([data-theme="light"]) #viewport input[type=number], html:not([data-theme="light"]) #viewport input:not([type]){ background:#14181d; color:#e3e8ed; border:1px solid #4a5560; border-radius:2px; }

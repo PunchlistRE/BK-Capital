@@ -875,6 +875,11 @@
 "close": "</script>"
 },
 {
+"file": "175-bk-theme.js",
+"open": "\n<script id=\"bk-theme\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
