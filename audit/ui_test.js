@@ -248,7 +248,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, require(path.join(__dirname, 'devdeal.js'))); await p.waitForTimeout(600);
   await p.evaluate(() => bkReportOpen()); await p.waitForTimeout(3000);
   const rdv = await p.evaluate(() => { const f = document.getElementById('pl-report-frame'); const d = f && f.contentDocument; if (!d) return null; const m = bkMonthlyReturns(); const t = d.body.innerText; const tots = [...d.querySelectorAll('tr.tot')].filter(r => /Total (sources|uses|project)/.test(r.innerText)).map(r => r.cells[1].innerText); return { pages: d.querySelectorAll('.page').length, irr: (m.irr * 100).toFixed(2) + '%', moic: m.moic.toFixed(2) + 'x', t, tots, nan: /NaN|undefined|\[object/.test(t) }; });
-  check('a development deal gets a seven-page summary', rdv && rdv.pages === 7 && !rdv.nan, JSON.stringify(rdv && { p: rdv.pages, nan: rdv.nan }));
+  check('a development deal (6-year hold) gets a seven-page summary plus one waterfall page for the sixth year (5 years a page)', rdv && rdv.pages === 8 && !rdv.nan, JSON.stringify(rdv && { p: rdv.pages, nan: rdv.nan }));
   check('the development summary shows the model\'s IRR and multiple', rdv && rdv.t.indexOf(rdv.irr) >= 0 && rdv.t.indexOf(rdv.moic) >= 0, rdv && (rdv.irr + ' ' + rdv.moic));
   check('development sources equal uses', rdv && rdv.tots.length === 2 && rdv.tots[0] === rdv.tots[1], rdv && JSON.stringify(rdv.tots));
   await p.evaluate(() => bkReportClose());

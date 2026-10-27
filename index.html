@@ -24784,12 +24784,19 @@ html:not([data-theme="light"]) .bk-save.warn{ background:#2d2818; color:#e8c46a;
 <style id="bk-design-unify-css">/* ONE DESIGN LANGUAGE. Every page takes the Property Editor's look: square panels with a header bar and a letter icon, grids with
    full cell borders and graded header rows, boxed input cells, tab strips for section jumps, and the editor's colour tokens
    (--ae-*), in light and dark. Loaded last so it settles the older layers; the editor itself (.ae) is untouched. */
+/* FILL RULE (engine-wide). Three fills, three jobs, never swapped:
+     HEADER  blue-grey (--bk-fill-head, --bk-fill-head2): names things. Panel title bars, column-heading rows, section-divider rows. A row that carries a value is never this colour.
+     KEY     gold (--bk-fill-key, with --bk-key-rule on the left edge): the answer. Grand totals and headline metrics (IRR, multiple, DSCR, NOI, loan, price...). Only on a row that carries values, never on a heading.
+     SUB     light neutral tint (--bk-fill-sub): a subtotal inside a table. Quieter than KEY, different from HEADER.
+   Everything else is no fill (cells), the editor's read-only tint (calculated), or a boxed field (inputs). audit/fillrule_test.js walks every sheet and fails on a value row filled as a header, or a heading filled as a key metric. */
+html body #viewport{ --bk-fill-head:var(--ae-head); --bk-fill-head2:var(--ae-head2); --bk-fill-key:var(--bk-key-fill); --bk-fill-sub:rgba(90,110,130,.07); }
 html body #viewport .tbl-wrap{ border:1px solid var(--ae-line) !important; border-radius:0 !important; background:var(--ae-cell-ro) !important; box-shadow:none !important; margin-bottom:12px; overflow-x:auto; }
 html body #viewport table.fin{ border-collapse:collapse !important; background:var(--ae-cell) !important; color:var(--ae-ink); font-variant-numeric:tabular-nums; border:0 !important; border-radius:0 !important; }
 html body #viewport table.fin caption{ caption-side:top; text-align:left !important; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-bottom:1px solid var(--ae-line); padding:6px 10px !important; font:700 13px/1.3 Inter,"Segoe UI",system-ui,sans-serif !important; letter-spacing:.01em !important; text-transform:none !important; }
 html body #viewport table.fin th{ background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border:1px solid var(--ae-line) !important; padding:5px 8px !important; font-weight:600 !important; font-size:12px !important; letter-spacing:0 !important; text-transform:none !important; }
 html body #viewport table.fin td{ border:1px solid var(--ae-line) !important; padding:5px 8px !important; background:var(--ae-cell); color:var(--ae-ink); }
-html body #viewport table.fin tr.subtotal td, html body #viewport table.fin tr.grandtotal td, html body #viewport table.fin tr.tot td{ background:var(--ae-head2) !important; font-weight:700; }
+html body #viewport table.fin tr.subtotal td{ background:var(--bk-fill-sub) !important; font-weight:700; }
+html body #viewport table.fin tr.grandtotal td, html body #viewport table.fin tr.tot td{ background:var(--bk-fill-key) !important; font-weight:700; }
 html body #viewport table.fin tr.sec td{ background:var(--ae-head) !important; font-weight:700; }
 html body #viewport table.fin td.neg{ color:#c0392b; }
 /* the cell-authority layer paints inputs, calculated cells and totals from these variables: point them at the editor's tokens */
@@ -25024,6 +25031,9 @@ html body #viewport table.fin.bk-mc button{ width:auto !important; min-width:0 !
   html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(3){ width:26% !important; }
   html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(4){ width:15% !important; }
 }
+/* the editor's total rows follow the same fill rule: a total is KEY, not HEADER */
+html body #viewport .ae-grid tr.tot td{ background:var(--bk-fill-key) !important; color:var(--bk-key-ink); box-shadow:none; }
+html body #viewport .ae-grid tr.tot td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */

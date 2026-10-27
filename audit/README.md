@@ -211,3 +211,17 @@ A fourth pass looked at 20 pages on desktop and fixed: crowded figures in the ca
 - The Sponsor CF page showed two different sponsor all-in XIRRs (the summary and the fee-income section; 45.91% against 46.98% on the audit deal). The fee-income section dated the closing equity at the first month-end; the summary dates it at closing, as the engine does. Both now use the closing date. `sponsor_test.js` (9 checks) fails on the old build (4 failures).
 - Sponsor CF layout: the four-column tables share one grid, status chips stay on one line, key totals take the gold key-metric band everywhere (grand totals; subtotals are a light tint), the annual table has equal year columns when every figure fits.
 - PDF summary: the annual cash flow and the distribution waterfall print in full dollars with a $ sign, 5 years a page (so a 10-year hold is two pages each). `summary_test.js` checks the pages, the $ signs, and that no figure is in thousands. The waterfall page's header boxes were tightened after the partner breakdown made a development deal's waterfall run into its footer.
+
+### Fill rule (engine-wide)
+
+Three fills, three jobs, never swapped. Defined once at the top of `src/162a-bk-design-unify.css` as `--bk-fill-head`, `--bk-fill-head2`, `--bk-fill-key` and `--bk-fill-sub`.
+
+| Role | Colour | Used for | Never on |
+|---|---|---|---|
+| **Header** | blue-grey (`--ae-head`, `--ae-head2`) | Names things: panel title bars, column-heading rows, section-divider rows | A row that carries a value |
+| **Key** | gold (`--bk-key-fill`, rule `--bk-key-rule` on the left edge) | The answer: grand totals and headline metrics (IRR, multiple, DSCR, NOI, loan, price) | A heading, caption or divider |
+| **Sub** | light neutral tint (`--bk-fill-sub`) | A subtotal inside a table: quieter than Key, different from Header | Headings |
+
+Everything else takes no fill: cells are plain, calculated cells use the editor's read-only tint, inputs are boxed fields. Status chips keep their own pass / warn / fail colours.
+
+For a new page: use `tr.grandtotal` (or `data-bk-emph="key"`) for the answer row, `tr.subtotal` for a subtotal, `tr.sec` / `tr.section` for a divider, and never set a background in the page itself. `fillrule_test.js` walks every sheet at 1280 px and 390 px and fails on a value row filled as a header or a heading filled as a key metric.
