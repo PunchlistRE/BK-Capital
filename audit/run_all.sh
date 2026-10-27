@@ -43,6 +43,7 @@ echo "== Panel tabs (long sections open as tabs; nothing removed; print carries 
 echo "== NNN terms from a rent roll (structure, base year, stop, share kept in the lease)"; node audit/nnn_import_test.js index.html "$REF" | tail -1
 echo "== Tenant-level commercial leases in a development deal (lease clock after completion, retail replaces the growth-path retail, TI/LC capital)"; node audit/devleases_test.js index.html "$REF" | tail -1
 echo "== Ask the guide (plain-words questions: every topic lands on a real page, tab, panel and field; quoted figures are the engine's; nothing written)"; node audit/guideask_test.js index.html | tail -1
+echo "== Day / night toggle (round header button, follows the device until chosen, whole app turns dark or light, sign-in card readable, fits a phone)"; node audit/theme_test.js index.html | tail -1
 echo "== Fill rule (header fill vs key-metric fill, every sheet)"; node audit/fillrule_test.js index.html | tail -1
 echo "== Waterfall verification (per-hurdle IRR error checks, tier order, conservation, promote)"; node audit/wfcheck_test.js index.html | tail -1
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1
