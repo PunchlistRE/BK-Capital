@@ -2730,12 +2730,14 @@ window.bkCalc = function(){
   const netRes = gpr+vacancy+bad+ltl+concess;
   const other = Number(s.otherIncomePerUnit)*Number(s.units) + bkMiscIncomeAnnual(s);
 
-  /* with the commercial lease model on, retail income is the tenant schedule's first twelve months (vacancy is explicit in the schedule; only credit loss is a rate) */
+  /* with the commercial lease model on, retail income is the tenant schedule's first twelve months. Vacancy is explicit in
+     the schedule; the commercial vacancy rate applies only where it exceeds that scheduled vacancy, and credit loss is a rate. */
   const LM1 = (typeof bkLeaseOn==='function' && bkLeaseOn(s)) ? bkLeaseYear1(s) : null;
   const commercial = LM1 ? LM1.rent : useRR ? (applyMarket?rrs.commMarket:rrs.commInPlace)*12 : Number(s.commercialArea)*Number(s.commercialRent);
   const recovery = LM1 ? LM1.rec : useRR ? rrs.commRecoveries : Number(s.commercialArea)*Number(s.recovery);
   const commVacRate = LM1 ? LM1.creditLoss : Math.max(0,Math.min(1,Number(s.commercialVacancy)));
-  const commercialVac = -(commercial+recovery)*commVacRate;
+  // lease model: general vacancy in excess of the schedule's own vacancy (bkLeaseEval genVac), then credit loss on the rest
+  const commercialVac = LM1 ? -(LM1.genVac + (commercial+recovery-LM1.genVac)*commVacRate) : -(commercial+recovery)*commVacRate;
   const netComm = commercial+recovery+commercialVac;
 
   const egi = netRes+netComm+other;
@@ -2997,7 +2999,8 @@ window.bkAnnualCF = function(){
     const ltl     = -_gprG*ltlPct;
     const concess = -_gprG*(m<=stabMonths ? concessLUPct : concessPct);
     const netRes = resRev+bad+ltl+concess;
-    const comm = LM ? (LM.rent[m-1] + LM.rec[m-1]) * (1 - LM.creditLoss) : (k_RetailAnn/12) * commOcc * commF(m);
+    // lease model: general vacancy in excess of the schedule's own vacancy comes off first (zero unless the rate exceeds it)
+    const comm = LM ? (LM.rent[m-1] + LM.rec[m-1] - LM.genVac[m-1]) * (1 - LM.creditLoss) : (k_RetailAnn/12) * commOcc * commF(m);
     const other = (k_OtherAnn/12) * otherF(m);
     const egi = netRes+comm+other;
     const opexGF = opexF(m);
@@ -3367,20 +3370,32 @@ function build(s){
       var term = kind === 'renew' ? termR : termN, free = kind === 'renew' ? freeR : freeN, rent0 = mkt * mf(a) * (kind === 'renew' ? num(M.renewPct) : 1), ti_ = (kind === 'renew' ? tiR : tiN) * sf * w, lc = (kind === 'renew' ? lcR : lcN) * aggRent(rent0, num(M.bump), term, free) * w;
       return base({ kind:kind, a:a, b:a + term - 1, w:w, rent0:rent0, bump:num(M.bump), free:free, fa:1, fb:1, base:a, ti:ti_, lc:lc, tiAt:a });
     };
+    /* Rollover. Every expiry splits into a renewal (weight p) and a re-lease after the downtime (1 - p), and each new
+       lease rolls again. Branches that reach the same expiry month - or start the same kind of lease in the same
+       month - are merged by adding their weights, so the work grows with the horizon, not with 2^(number of rolls).
+       Segment amounts are linear in the weight, so merging changes no result. */
     var roll = function(n0, w){
-      if(n0 > H || w < 1e-6) return;
-      var wr = w * p, wn = w - wr;
-      if(wr >= 1e-6){ var r = market(n0, wr, 'renew'); roll(r.b + 1, wr); }
-      if(wn >= 1e-6){ var a = n0 + down; if(a <= H){ var nw = market(a, wn, 'new'); roll(nw.b + 1, wn); } }
+      var rollW = {}, segW = { renew:{}, 'new':{} }, add = function(o, k, v){ o[k] = (o[k] || 0) + v; };
+      add(rollW, n0, w);
+      for(var m = n0; m <= H; m++){
+        var wm = rollW[m];
+        if(wm >= 1e-6){ var wr = wm * p, wn = wm - wr;
+          if(wr >= 1e-6) add(segW.renew, m, wr);
+          if(wn >= 1e-6 && m + down <= H) add(segW['new'], m + down, wn); }
+        ['renew', 'new'].forEach(function(kind){ var ws = segW[kind][m]; if(ws >= 1e-6){ var g = market(m, ws, kind); add(rollW, g.b + 1, ws); } });
+      }
     };
     var occupied = String(L.status) !== 'Vacant' && (rent > 0 || endD);
     if(!occupied){ var a0 = 1 + Math.max(0, Math.round(pick(ov.vacantMonths, down))); if(a0 <= H){ var v = market(a0, 1, 'new'); roll(v.b + 1, 1); } issues.push({ t:ti, level:'info', msg:'Vacant at closing: leases up after ' + (a0 - 1) + ' months at market.' }); return; }
     var ks = startD ? idx(startD) : -9999, E = endD ? idx(endD) : H + 9999;
+    /* annual bumps need a lease anniversary: without a start date they fall on closing anniversaries (month 13, 25, ...) */
+    var anchor = startD ? ks : 1;
+    if(!startD && num(L.bump) && !steps.length) issues.push({ t:ti, level:'check', msg:'No lease start date: annual bumps are assumed on closing anniversaries.' });
     if(!endD) issues.push({ t:ti, level:'check', msg:'No lease end date: the lease is assumed to run through the analysis.' });
     if(E < 1){ issues.push({ t:ti, level:'check', msg:'The lease ended before closing: treated as rolling at closing.' }); roll(1, 1); return; }
     var dim = endD ? new Date(endD.getFullYear(), endD.getMonth() + 1, 0).getDate() : 1, fb = endD ? endD.getDate() / dim : 1;
     var fa = 1; if(startD && ks >= 1){ var d1 = new Date(startD.getFullYear(), startD.getMonth() + 1, 0).getDate(); fa = (d1 - startD.getDate() + 1) / d1; }
-    base({ kind:'cur', a:ks, b:E, w:1, rent0:rent, steps:steps, bump:num(L.bump), ks:ks, free:0, fa:fa, fb:fb, base:Math.max(1, L.baseYear ? idx(new Date(Number(L.baseYear), 0, 1)) : ks), ti:0, lc:0, tiAt:0 });
+    base({ kind:'cur', a:ks, b:E, w:1, rent0:rent, steps:steps, bump:num(L.bump), ks:anchor, free:0, fa:fa, fb:fb, base:Math.max(1, L.baseYear ? idx(new Date(Number(L.baseYear), 0, 1)) : ks), ti:0, lc:0, tiAt:0 });
     roll(E + 1, 1);
   });
   return { segs:segs, tenants:tenants, issues:issues, hold:hold, H:H, bsf:bsf, M:M, mf:mf, idx:idx, closing:cd };
@@ -3392,7 +3407,9 @@ function struct(s){
 }
 function curRent(g, m){
   if(g.steps && g.steps.length){ var r = g.rent0; g.steps.forEach(function(x){ if(x.m <= m) r = x.r; }); return r; }
-  var nb = 0; if(g.bump) for(var a = g.ks + 12; a <= m; a += 12) if(a >= 2) nb++;
+  /* bumps fall on anniversaries ks+12, ks+24, ... that are in month 2 or later and on or before m (counted, not looped) */
+  if(!g.bump) return g.rent0;
+  var kmin = Math.max(1, Math.ceil((2 - g.ks) / 12)), kmax = Math.floor((m - g.ks) / 12), nb = Math.max(0, kmax - kmin + 1);
   return g.rent0 * Math.pow(1 + g.bump, nb);
 }
 /* Month-by-month result for months 1..months. fac = { tax(year), opex(month) } growth factors on the recoverable pool (identity for a Year 1 statement). detail adds per-tenant arrays. */
@@ -3417,7 +3434,18 @@ window.bkLeaseEval = function(s, months, fac, detail){
     if(g.tiAt >= 1 && g.tiAt <= months){ out.ti[g.tiAt - 1] += g.ti; out.lc[g.tiAt - 1] += g.lc; if(T) T.cost[g.tiAt - 1] += g.ti + g.lc; }
   });
   var tot = S.tenants.reduce(function(t, x){ return t + x.sf; }, 0) || 1;
-  out.occ = out.occ.map(function(v){ return v / tot; }); if(detail) out.byT.forEach(function(T, i){ var sf = S.tenants[i].sf; T.occ = T.occ.map(function(v){ return v / sf; }); });
+  out.occ = out.occ.map(function(v){ return v / tot; });
+  /* GENERAL VACANCY ALLOWANCE. The deal's commercial vacancy rate is a floor on retail vacancy, reduced by the vacancy the
+     tenant schedule already carries (downtime between leases, vacant suites): only the excess is an extra loss. This is
+     the conventional treatment, and it is what makes downside and sensitivity cases that raise the commercial vacancy
+     rate stress a lease-by-lease deal. Potential income is income from occupied space grossed up to 100% occupancy. */
+  var gv = Math.max(0, Math.min(1, num(s.commercialVacancy)));
+  out.genVac = out.occ.map(function(o, i){
+    if(!(gv > 0) || !(o > 0)) return 0;
+    var extra = gv - (1 - o); if(!(extra > 0)) return 0;
+    return extra * (out.rent[i] + out.free[i] + out.rec[i]) / o;
+  });
+  out.genVacRate = gv; if(detail) out.byT.forEach(function(T, i){ var sf = S.tenants[i].sf; T.occ = T.occ.map(function(v){ return v / sf; }); });
   out.creditLoss = Math.max(0, Math.min(1, num(S.M.creditLoss)));
   return out;
 };
@@ -3428,7 +3456,7 @@ window.bkLeaseCosts = function(s, months){
   return { ti:ti, lc:lc };
 };
 /* first-year statement for bkCalc: rent after free rent, recoveries on a flat pool */
-window.bkLeaseYear1 = function(s){ var e = bkLeaseEval(s, 12, null, false), t = function(a){ return a.reduce(function(x, v){ return x + v; }, 0); }; return { rent:t(e.rent), rec:t(e.rec), free:t(e.free), occ:t(e.occ) / 12, creditLoss:e.creditLoss }; };
+window.bkLeaseYear1 = function(s){ var e = bkLeaseEval(s, 12, null, false), t = function(a){ return a.reduce(function(x, v){ return x + v; }, 0); }; return { rent:t(e.rent), rec:t(e.rec), free:t(e.free), occ:t(e.occ) / 12, creditLoss:e.creditLoss, genVac:t(e.genVac) }; };
 /* summary used by the editor and the reports */
 window.bkLeaseSummary = function(s){
   s = s || bkLoad(); var S = struct(s), H = S.hold, tot = S.tenants.reduce(function(t, x){ return t + x.sf; }, 0), occ0 = 0, walt = 0, inpl = 0, mktv = 0, byYear = {};
@@ -22499,13 +22527,20 @@ function x2(n){ n = Number(n); return isFinite(n) ? n.toFixed(2) + 'x' : '-'; }
 function fmtIn(v, kind){ if(v === null || v === undefined || v === '') return ''; if(kind === 'text' || kind === 'month') return String(v); var n = Number(v); if(!isFinite(n)) return ''; if(kind === 'pct') return String(+(n * 100).toFixed(4)); return n.toLocaleString('en-US', { maximumFractionDigits:4 }); }
 function getPath(o, p){ var a = String(p).split('.'); for(var i = 0; i < a.length && o != null; i++) o = o[a[i]]; return o; }
 function setPath(o, p, v){ var a = String(p).split('.'); for(var i = 0; i < a.length - 1; i++){ var k = a[i], nx = a[i + 1]; if(o[k] == null || typeof o[k] !== 'object') o[k] = /^\d+$/.test(nx) ? [] : {}; o = o[k]; } o[a[a.length - 1]] = v; }
+/* 'unset' blank: clearing the box removes the saved value so the field falls back to its default, instead of saving 0 */
+var UNSET = { unset:true };
+function delPath(o, p){ var a = String(p).split('.'); for(var i = 0; i < a.length - 1 && o != null; i++) o = o[a[i]]; if(o != null && typeof o === 'object') delete o[a[a.length - 1]]; }
+/* fields where 0 or a negative number is not a meaningful entry: rejected, the box shows the value it had */
+var MIN_ONE = /^leaseMkt\.term(New|Renew)$/;
 function parse(kind, raw, blank){ var t = String(raw == null ? '' : raw).trim();
   if(kind === 'text' || kind === 'month') return t;
-  if(t === ''){ return blank === 'null' ? null : 0; }
+  if(t === ''){ return blank === 'unset' ? UNSET : blank === 'null' ? null : 0; }
   var n = Number(t.replace(/[$,%\s]/g, '')); if(!isFinite(n)) return undefined;
   return kind === 'pct' ? n / 100 : kind === 'int' ? Math.round(n) : n; }
 var cur = function(){ return typeof currentSheet !== 'undefined' ? currentSheet : 'Property'; };
-window.bkEdSet = function(path, kind, raw, blank){ var v = parse(kind, raw, blank); if(v === undefined) { showSheet(cur()); return; } var s = bkLoad(); setPath(s, path, v);
+window.bkEdSet = function(path, kind, raw, blank){ var v = parse(kind, raw, blank); if(v === undefined || (MIN_ONE.test(path) && v !== UNSET && !(v >= 1))) { showSheet(cur()); return; } var s = bkLoad();
+  if(v === UNSET){ delPath(s, path); bkSave(s); showSheet(cur()); return; }
+  setPath(s, path, v);
   if(path === 'vacancy') s.occupancy = 1 - v;
   if(path === 'acqFeePct') s.acquisitionFeePct = v; if(path === 'acquisitionFeePct') s.acqFeePct = v;
   bkSave(s); showSheet(cur()); };
@@ -22524,7 +22559,7 @@ function subOf(tab){ var t = TABS.filter(function(x){ return x.id === tab; })[0]
 window.bkEdSub = function(tab, id){ subs[tab] = id; try { localStorage.setItem(SUBKEY, JSON.stringify(subs)); } catch(e){} showSheet(tab); };
 window.bkEdGo = function(sheet, tab, id){ if(tab){ subs[tab] = id; try { localStorage.setItem(SUBKEY, JSON.stringify(subs)); } catch(e){} } showSheet(sheet); };
 /* ---------- building blocks ---------- */
-function inp(path, kind, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s, path); var id = 'ae-' + String(path).replace(/[^A-Za-z0-9]+/g, '-');
+function inp(path, kind, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s, path); if((v === undefined || v === null || v === '') && o.def !== undefined) v = o.def; var id = 'ae-' + String(path).replace(/[^A-Za-z0-9]+/g, '-');
   return '<input type="text" id="' + id + '" class="ae-in' + (kind === 'text' ? '' : ' num') + '" value="' + esc(fmtIn(v, kind)) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + ' autocomplete="off" onchange="bkEdSet(\'' + path + '\',\'' + kind + '\',this.value' + (o.blank ? ',\'' + o.blank + '\'' : '') + ')">'; }
 function sel(path, options, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s, path); if(v == null || v === '') v = o.def == null ? '' : o.def;
   return '<select class="ae-sel" onchange="bkEdSet(\'' + path + '\',\'text\',this.value)">' + options.map(function(op){ var val = Array.isArray(op) ? op[0] : op, lab = Array.isArray(op) ? op[1] : op; return '<option value="' + esc(val) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(lab) + '</option>'; }).join('') + '</select>'; }
@@ -22672,7 +22707,7 @@ window.bkLeaseSet = function(i, field, raw){ var s = bkLoad(), L = leaseList(s)[
   else L[field] = raw;
   bkSave(s); showSheet(cur()); };
 window.bkLeaseOver = function(i, field, raw, kind){ var s = bkLoad(), L = leaseList(s)[i]; if(!L) return; var t = String(raw).trim();
-  if(t === ''){ if(L.over){ delete L.over[field]; if(!Object.keys(L.over).length) delete L.over; } } else { var v = parse(kind, t); if(v === undefined){ showSheet(cur()); return; } L.over = L.over || {}; L.over[field] = v; }
+  if(t === ''){ if(L.over){ delete L.over[field]; if(!Object.keys(L.over).length) delete L.over; } } else { var v = parse(kind, t); if(v === undefined || (/^term(New|Renew)$/.test(field) && !(v >= 1))){ showSheet(cur()); return; } L.over = L.over || {}; L.over[field] = v; }
   bkSave(s); showSheet(cur()); };
 window.bkLeaseStep = function(i, j, field, raw){ var s = bkLoad(), L = leaseList(s)[i]; if(!L || !L.steps || !L.steps[j]) return; if(field === 'rent'){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } L.steps[j].rent = v; } else L.steps[j].month = raw; bkSave(s); showSheet(cur()); };
 window.bkLeaseStepAdd = function(i){ var s = bkLoad(), L = leaseList(s)[i]; if(!L) return; L.steps = Array.isArray(L.steps) ? L.steps : []; var c = safe(function(){ return bkParseDealDate(s.closing, '2027-01-01'); }, new Date()); L.steps.push({ month:(c.getFullYear() + 1) + '-' + String(c.getMonth() + 1).padStart(2, '0'), rent:num(L.rent) }); bkSave(s); showSheet(cur()); };
@@ -22706,13 +22741,19 @@ function pLease(s){
       R('Recoveries After the Lease Rolls', '<select class="ae-sel" onchange="bkLeaseSet(' + i + ',\'recRoll\',this.value)"><option value="">Same as today</option>' + [['NNN', 'NNN (pro rata)'], ['Gross', 'Gross'], ['BaseYear', 'Base year'], ['Fixed', 'Fixed $ / SF']].map(function(o){ return '<option value="' + o[0] + '"' + (L.recRoll === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>')])
       + '<div class="ae-panel"><div class="ae-ph"><i>S</i>Rent Steps (optional)</div><table class="ae-grid"><thead><tr><th>From</th><th>Rent ($ / SF / year)</th><th></th></tr></thead><tbody>' + (steps || '<tr><td class="c ro" colspan="3">No steps. The in-place rent grows by the annual bump on each lease anniversary.</td></tr>') + '</tbody></table><div class="ae-row">' + btn('Add a rent step', 'bkLeaseStepAdd(' + i + ')') + '</div></div>'; }
   function mi(path, kind, label, unit, blank){ return R(label, inp(path, kind, { s:s, blank:blank }), unit); }
+  /* Market Leasing inputs show the value the engine is actually using. When nothing is saved that is the default, labelled
+     as such; clearing a box goes back to the default rather than saving 0. */
+  function md(path, kind, label, unit){
+    var k = path.split('.')[1], src = path.indexOf('leaseMkt.') === 0 ? M : RA, saved = getPath(s, path), isDef = saved === undefined || saved === null || saved === '';
+    return R(label, inp(path, kind, { s:s, blank:'unset', def:src[k] }), unit + (isDef ? ' (default)' : ''));
+  }
   var pool = '<div class="ae-row" style="flex-wrap:wrap">' + window.BK_LEASE_POOL_KEYS.map(function(k){ return '<label style="margin-right:14px"><input type="checkbox"' + (M.recoverable.indexOf(k[0]) >= 0 ? ' checked' : '') + ' onchange="bkLeasePool(\'' + k[0] + '\',this.checked)"> ' + k[1] + '</label>'; }).join('') + '</div>';
   var mkt = form('Market Leasing Assumptions', 'M', [NOTE('Used when a lease expires and for vacant suites. Rolled leases start at market rent grown at the rate below.'),
-    R('Market Rent Growth', inp('leaseMkt.growth', 'pct', { s:s, blank:'null', ph:'Market > Inflation' }), '% a year (blank uses the commercial rent growth: ' + pct(num(s.commercialRentGrowth), 2) + ')'), mi('leaseMkt.bump', 'pct', 'Annual Bump on New Leases', '% on each anniversary'), mi('leaseMkt.renewPct', 'pct', 'Renewal Rent as % of Market', '%'),
-    mi('leaseMkt.termNew', 'int', 'New Lease Term', 'months'), mi('leaseMkt.termRenew', 'int', 'Renewal Lease Term', 'months'), mi('leaseMkt.freeNew', 'int', 'Free Rent, New Lease', 'months'), mi('leaseMkt.freeRenew', 'int', 'Free Rent, Renewal', 'months'),
-    mi('rolloverAssumptions.renewalProbability', 'pct', 'Renewal Probability', '%'), mi('rolloverAssumptions.downtimeMonths', 'int', 'Downtime if the Tenant Leaves', 'months'),
-    mi('rolloverAssumptions.tiNewPerSF', 'num', 'Tenant Improvements, New', '$ / SF'), mi('rolloverAssumptions.tiRenewalPerSF', 'num', 'Tenant Improvements, Renewal', '$ / SF'), mi('rolloverAssumptions.lcNewPct', 'pct', 'Commission, New', '% of rent over the term'), mi('rolloverAssumptions.lcRenewalPct', 'pct', 'Commission, Renewal', '% of rent over the term'),
-    mi('leaseMkt.creditLoss', 'pct', 'Credit Loss on Retail Income', '% of rent and recoveries'), R('Recoverable Expenses', pool, 'a tenant pays its share of these')]);
+    R('Market Rent Growth', inp('leaseMkt.growth', 'pct', { s:s, blank:'null', ph:'Market > Inflation' }), '% a year (blank uses the commercial rent growth: ' + pct(num(s.commercialRentGrowth), 2) + ')'), md('leaseMkt.bump', 'pct', 'Annual Bump on New Leases', '% on each anniversary'), md('leaseMkt.renewPct', 'pct', 'Renewal Rent as % of Market', '%'),
+    md('leaseMkt.termNew', 'int', 'New Lease Term', 'months'), md('leaseMkt.termRenew', 'int', 'Renewal Lease Term', 'months'), md('leaseMkt.freeNew', 'int', 'Free Rent, New Lease', 'months'), md('leaseMkt.freeRenew', 'int', 'Free Rent, Renewal', 'months'),
+    md('rolloverAssumptions.renewalProbability', 'pct', 'Renewal Probability', '%'), md('rolloverAssumptions.downtimeMonths', 'int', 'Downtime if the Tenant Leaves', 'months'),
+    md('rolloverAssumptions.tiNewPerSF', 'num', 'Tenant Improvements, New', '$ / SF'), md('rolloverAssumptions.tiRenewalPerSF', 'num', 'Tenant Improvements, Renewal', '$ / SF'), md('rolloverAssumptions.lcNewPct', 'pct', 'Commission, New', '% of rent over the term'), md('rolloverAssumptions.lcRenewalPct', 'pct', 'Commission, Renewal', '% of rent over the term'),
+    md('leaseMkt.creditLoss', 'pct', 'Credit Loss on Retail Income', '% of rent and recoveries'), R('Recoverable Expenses', pool, 'a tenant pays its share of these')]);
   var sum = '';
   if(a.length){ var S = safe(function(){ return bkLeaseSummary(s); }, null), c = calc(), cost = safe(function(){ var k = bkLeaseCosts(s, Math.round(num(s.holdYears) * 12)); return k.ti.reduce(function(t, v){ return t + v; }, 0) + k.lc.reduce(function(t, v){ return t + v; }, 0); }, 0), E = safe(function(){ return bkLeaseEval(s, 12, null, false); }, null);
     var exp = S ? Object.keys(S.byYear).sort(function(x, y){ return x - y; }).map(function(y){ return '<tr><td class="c">Year ' + y + '</td><td class="c r">' + Math.round(S.byYear[y]).toLocaleString('en-US') + '</td><td class="c r">' + (S.occSF ? pct(S.byYear[y] / S.occSF, 1) : '-') + '</td></tr>'; }).join('') : '';

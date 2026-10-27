@@ -132,7 +132,8 @@ window.bkAnnualCF = function(){
     const ltl     = -_gprG*ltlPct;
     const concess = -_gprG*(m<=stabMonths ? concessLUPct : concessPct);
     const netRes = resRev+bad+ltl+concess;
-    const comm = LM ? (LM.rent[m-1] + LM.rec[m-1]) * (1 - LM.creditLoss) : (k_RetailAnn/12) * commOcc * commF(m);
+    // lease model: general vacancy in excess of the schedule's own vacancy comes off first (zero unless the rate exceeds it)
+    const comm = LM ? (LM.rent[m-1] + LM.rec[m-1] - LM.genVac[m-1]) * (1 - LM.creditLoss) : (k_RetailAnn/12) * commOcc * commF(m);
     const other = (k_OtherAnn/12) * otherF(m);
     const egi = netRes+comm+other;
     const opexGF = opexF(m);
