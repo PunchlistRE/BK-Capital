@@ -32,6 +32,7 @@ echo "== Import OM, price and printed cap rate (asking vs sold vs assessed)"; no
 echo "== Financing Compare (complete dated financing economics, reconciled to the engine)"; node audit/fincompare_test.js index.html | tail -1
 echo "== Pre-Offer Bid (maximum supportable price, verified against the engine)"; node audit/prebid_test.js index.html | tail -1
 echo "== Deal Remedies (resize debt, maximum price, rent and occupancy required, through the credit gate)"; node audit/remedies_test.js index.html | tail -1
+echo "== Print / Save PDF for any section"; node audit/print_test.js index.html | tail -1
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1

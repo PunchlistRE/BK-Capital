@@ -835,6 +835,11 @@
 "close": "</script>"
 },
 {
+"file": "167-bk-print.js",
+"open": "\n<script id=\"bk-print\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
