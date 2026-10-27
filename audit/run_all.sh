@@ -25,6 +25,9 @@ echo "== property editor (7 tabs, 29 sub-tabs, writes and conversions)"; node au
 echo "== reports (cash flow, valuation, tenant, audit; reconcile to the engine)"; node audit/reports_test.js index.html | tail -2
 echo "== commercial lease model (rollover branches, recoveries, TI/LC, editor, reports)"; node audit/lease_test.js index.html | tail -2
 echo "== lease model fixes (merged rollover, market defaults, general vacancy stress, bump anchor)"; node audit/lease_fix_test.js index.html "$REF" | tail -1
+echo "== lease terms (CPI increases, expense stops, recovery caps, gross-up, stated recovery shares)"; node audit/lease_terms_test.js index.html | tail -1
+echo "== Import OM, rent-roll layout (unit rent roll + expense list, two-building offerings)"; node audit/om_rentroll_test.js index.html | tail -1
+echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
