@@ -10270,21 +10270,21 @@ function panel(){
       '<div class="tbl-wrap" style="margin-top:16px"><table class="fin">'
     + '<caption>Acquisition Debt Sizing Controls</caption>'
     + '<thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>'
-    + '<tr><td class="rowlabel" data-bk-align="text">Debt<span class="bk-sub">Global levered / unlevered switch</span></td>'
+    + '<tr class="input"><td class="rowlabel" data-bk-align="text">Debt<span class="bk-sub">Global levered / unlevered switch</span></td>'
     +   '<td class="v"><select onchange="bkSetDebtEnabled(this.value)">'
     +     '<option value="true"'  + (off?'':' selected') + '>On</option>'
     +     '<option value="false"' + (off?' selected':'') + '>Off - unlevered</option>'
     +   '</select></td>'
     +   '<td data-bk-align="text">-</td>'
     +   '<td>' + chip('', 'INPUT') + '</td></tr>'
-    + '<tr><td class="rowlabel" data-bk-align="text">Minimum Debt Yield - Origination<span class="bk-sub">Blank or 0 disables this constraint</span></td>'
+    + '<tr class="input"><td class="rowlabel" data-bk-align="text">Minimum Debt Yield - Origination<span class="bk-sub">Blank or 0 disables this constraint</span></td>'
     +   '<td class="v"><input type="number" step="0.01" style="width:118px"'
     +     ' value="' + (Number(s.acqDebtYield)>0 ? (Number(s.acqDebtYield)*100).toFixed(2) : '') + '"'
     +     ' placeholder="off"'
     +     ' onchange="bkSetAcqDebtYield(this.value)"></td>'
     +   '<td data-bk-align="text">%</td>'
     +   '<td>' + (Number(s.acqDebtYield)>0 ? chip('','INPUT') : chip('','NOT APPLIED')) + '</td></tr>'
-    + '<tr><td class="rowlabel" data-bk-align="text">Lender Tests Use<span class="bk-sub">NOI before or after replacement reserves (DSCR, and LTV on value)</span></td>'
+    + '<tr class="input"><td class="rowlabel" data-bk-align="text">Lender Tests Use<span class="bk-sub">NOI before or after replacement reserves (DSCR, and LTV on value)</span></td>'
     +   '<td class="v"><select onchange="bkSetLenderNoiBasis(this.value)">'
     +     '<option value=""'  + (s.lenderNoiBasis === 'after' ? '' : ' selected') + '>NOI before reserves</option>'
     +     '<option value="after"' + (s.lenderNoiBasis === 'after' ? ' selected' : '') + '>NOI after reserves</option>'
@@ -24921,6 +24921,8 @@ html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl 
   html body #viewport table.bk-stk td[data-l]:not(:first-child)::before{ content:attr(data-l) ': '; font-size:11px; opacity:.65; font-weight:400; }
   html body #viewport table.bk-stk td[colspan]{ font-weight:700; }
   html body #viewport table.bk-stk td input{ width:100% !important; max-width:220px; }
+  html body #viewport table.bk-stk td input:not([type=checkbox]):not([type=radio]), html body #viewport table.bk-stk td select, html body #viewport table.bk-m-stack td input:not([type=checkbox]):not([type=radio]), html body #viewport table.bk-m-stack td select{ border:1px solid var(--ae-line,#c9d1dc) !important; border-radius:6px; padding:6px 8px !important; background:var(--ae-card,#fff); color:inherit; min-height:34px; box-sizing:border-box; }
+  html body #viewport table.bk-stk td select{ width:100% !important; max-width:220px; }
   html body #viewport .bk-box > div[style*="overflow-x"]{ overflow-x:visible !important; }
   html body #viewport table.fin caption{ white-space:normal !important; line-height:1.3; }
 }
@@ -24937,6 +24939,15 @@ html body #viewport [style*="border-radius:8px"][style*="border:1px solid"]{ bor
 :root[data-theme="dark"]{ --bk-key-fill:rgba(184,137,43,.18); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32); }
 html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > :first-child{ box-shadow:inset 4px 0 0 var(--bk-key-rule); }
 
+
+/* cushion / delta cells never wrap their unit; scroll-table captions stay readable at the left edge */
+html body #viewport table.bk-sx-be td{ white-space:nowrap; }
+html body #viewport .tbl-wrap table.fin caption, html body #viewport table.bk-m-scroll caption{ position:sticky; left:0; max-width:calc(100vw - 56px); box-sizing:border-box; }
+
+/* file pickers: the native button takes the house button look */
+html body #viewport input[type=file]{ font:inherit; font-size:13px; color:var(--ae-ink); max-width:100%; }
+html body #viewport input[type=file]::file-selector-button{ font:inherit; font-weight:600; font-size:13px; padding:7px 14px; margin-right:10px; border:1px solid var(--ae-line); border-radius:6px; background:var(--ae-head,#eef2f7); color:var(--ae-ink); cursor:pointer; }
+html body #viewport input[type=file]::file-selector-button:hover{ border-color:var(--ae-accent); }
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */
