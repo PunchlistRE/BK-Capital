@@ -35,6 +35,7 @@ echo "== Deal Remedies (resize debt, maximum price, rent and occupancy required,
 echo "== Print / Save PDF for any section"; node audit/print_test.js index.html | tail -1
 echo "== Section guide (Guide on: what, how to read, checks on this deal, next)"; node audit/sectionguide_test.js index.html | tail -1
 echo "== Layout guards (income-bar key, report text, print button, phone layout)"; node audit/layout_test.js index.html | tail -1
+echo "== Sponsor CF (one sponsor all-in return, dated like the summary)"; node audit/sponsor_test.js index.html | tail -1
 echo "== Waterfall verification (per-hurdle IRR error checks, tier order, conservation, promote)"; node audit/wfcheck_test.js index.html | tail -1
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2

@@ -37,7 +37,8 @@ function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; 
 function val(t){ return '<td class="v">'+t+'</td>'; }
 function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
-  return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>'+caption+'</caption>'
+  var sp4 = /^(Sponsor Fee Income|Project Economics|Sponsor Economics - on)/.test(caption);   /* the sponsor page's four-column tables share one grid */
+  return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin'+(sp4?' bk-sp4':'')+'"><caption>'+caption+'</caption>'
        + '<thead>'+headHtml+'</thead><tbody>'+bodyHtml+'</tbody></table></div>';
 }
 function extend(sheet, tag, fn){
@@ -413,7 +414,7 @@ extend('Sponsor CF','invSponsorToggle', function(o){
   var fees = { devFee: e.devFee, cmFee: e.cmFee, hasDev: e.hasDev };
 
   var controls = wrapTable('Sponsor Fee Income - what counts as sponsor revenue',
-    '<tr><th class="rowlabel-h">Setting</th><th>Value</th><th style="text-align:left">Covers</th><th>Status</th></tr>',
+    '<tr><th class="rowlabel-h">Setting</th><th>Value</th><th style="text-align:left">Covers</th><th style="min-width:140px">Status</th></tr>',
       '<tr>'+lbl('Sponsor Fee Income Included')
       + '<td class="v"><select onchange="bkSetSponsorFeeIncome(this.value)">'
       +   '<option'+(e.includeOps?' selected':'')+'>Included</option>'
@@ -448,7 +449,7 @@ extend('Sponsor CF','invSponsorToggle', function(o){
   var x = null; try { x = bkMonthlyReturns(); } catch(err){}
 
   var project = wrapTable('Project Economics - unaffected by the toggle above',
-    '<tr><th class="rowlabel-h">Measure</th><th>Value</th><th style="text-align:left">Basis</th><th>Status</th></tr>',
+    '<tr><th class="rowlabel-h">Measure</th><th>Value</th><th style="text-align:left">Basis</th><th style="min-width:140px">Status</th></tr>',
       (devUnlev !== null
         ? '<tr>'+lbl('Development Cost - before financing')+val(money(devUnlev))
           + txt('Land, hard, soft and lease-up deficit. The development and CM fee are capitalised into this figure.')
@@ -468,7 +469,7 @@ extend('Sponsor CF','invSponsorToggle', function(o){
         + '<td class="v">'+chip('pass','FIXED')+'</td></tr>');
 
   var sponsor = wrapTable('Sponsor Economics - on the current setting',
-    '<tr><th class="rowlabel-h">Component</th><th>Amount</th><th style="text-align:left">Basis</th><th>Status</th></tr>',
+    '<tr><th class="rowlabel-h">Component</th><th>Amount</th><th style="text-align:left">Basis</th><th style="min-width:140px">Status</th></tr>',
       '<tr>'+lbl('GP Co-Investment Contributed')+val(money(-Math.abs(e.gpContrib)))+txt('Sponsor capital into the deal')+'<td></td></tr>'
     + '<tr>'+lbl('GP Distributions')+val(money(e.gpDist))+txt('Including promote')+'<td></td></tr>'
     + '<tr>'+lbl('&nbsp;&nbsp;of which Promote')+val(money(e.promote))+txt('Carried interest above the hurdles')+'<td></td></tr>'
@@ -485,7 +486,7 @@ extend('Sponsor CF','invSponsorToggle', function(o){
       + '<td class="v">'+chip('','SPONSOR SIDE')+'</td></tr>'
     + '<tr class="grandtotal">'+lbl('SPONSOR ALL-IN XIRR')+val(isFinite(e.sponsorXIRR)?pct(e.sponsorXIRR):'-')
       + txt('Co-invest + promote + fee income')
-      + '<td class="v">'+chip('pass','MOVES WITH THE TOGGLE')+'</td></tr>'
+      + '<td class="v">'+chip('pass','MOVES WITH TOGGLE')+'</td></tr>'
     + '<tr class="grandtotal">'+lbl('SPONSOR MOIC')+val(mult(e.sponsorMOIC))+txt('On GP contributed capital')+'<td></td></tr>');
 
   o.main = (o.main||'') + controls + project + sponsor

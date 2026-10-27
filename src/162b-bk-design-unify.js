@@ -32,6 +32,12 @@ function stkLabels(root){
 }
 /* a number cell is right-aligned, whatever column rule marked it left (set inline so no stylesheet order can undo it) */
 function numRight(root){ [].forEach.call(root.querySelectorAll('td.bk-a-num[data-bk-col="left"]'), function(td){ if(td.style.getPropertyValue('text-align') !== 'right') td.style.setProperty('text-align', 'right', 'important'); }); }
+/* an annual table (Year 1..5, Total) gets equal-width figure columns on a wide screen, so the columns of one table, and of the tables above and below it, share a rhythm */
+function yearCols(root){ [].forEach.call(root.querySelectorAll('table.fin:not(.bk-yrs):not([data-bk-yrs-no])'), function(t){ var h = t.tHead && t.tHead.rows[0]; if(!h || h.cells.length < 4 || h.cells.length > 8) return;
+  var ok = true; for(var i = 1; i < h.cells.length; i++){ if(!/^(year\s*\d+|y\d+|total|close|\d{4})$/i.test(h.cells[i].textContent.trim())){ ok = false; break; } }
+  if(!ok) return; t.classList.add('bk-yrs');
+  /* equal columns only when every figure still fits its column; otherwise the table keeps its natural widths */
+  if(window.innerWidth >= 761 && [].some.call(t.querySelectorAll('td,th'), function(c){ return c.scrollWidth > c.clientWidth + 1; })) { t.classList.remove('bk-yrs'); t.setAttribute('data-bk-yrs-no', '1'); } }); }
 /* a column that holds status chips is centred, header and cells alike */
 function chipCols(root){
   [].forEach.call(root.querySelectorAll('table'), function(t){
@@ -84,7 +90,7 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });
