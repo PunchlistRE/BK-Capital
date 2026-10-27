@@ -860,6 +860,11 @@
 "close": "</script>"
 },
 {
+"file": "172-bk-paneltabs.js",
+"open": "\n<script id=\"bk-paneltabs\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
