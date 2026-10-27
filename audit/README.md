@@ -199,3 +199,7 @@ Automated checks do not show that a page reads well, so each release gets a scre
 
 Second visual pass: Refi / Recap rows with a stray third cell stretched to 190px (every row of its two tables now has the note cell); number cells left-aligned by a column rule are right-aligned; columns of status chips (Result, Status) are centred with their header, even where a table rule forced left; editor percentage inputs show two decimals; key metrics (weighted IRR, equity multiple, totals that matter) are a warm gold band with a gold rule instead of the header's blue-grey; panels with an inline rounded border are square like the rest.
 
+
+### Third visual pass
+
+Reviewed on a 390 px phone and desktop: Property CF, Source Ingestion, Cash Flow Report, Returns, the Property editor tabs, Portfolio, Investors, Business Valuation, Debt, Covenant Monitor, Sensitivity and Rent Roll. Fixed what showed: the phone cash-flow report overprinted its columns (it now scrolls sideways), editor amount and select fields clipped their values, the Debt controls had an invisible field, scroll-table titles cut off mid-word, and the brand name was truncated. `layout_test.js` guards each of these. The PDF summary's waterfall page now shows what each partner received by kind (return of capital, preferred return, excess cash flow, promote).

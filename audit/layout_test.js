@@ -62,6 +62,18 @@ const A = require(path.join(__dirname, 'deal.js'));
   await show(m, 'Financing Compare', 1200);
   const fc = await m.evaluate(() => { const t = [...document.querySelectorAll('#viewport table.bk-stk')].find(x => /Initial loan proceeds/.test(x.textContent)); if (!t) return null; const r = [...t.rows].find(x => /Initial loan proceeds/.test(x.textContent)); const v = r.querySelector('td[data-l]'); return { value: v && v.textContent, visible: v && v.getBoundingClientRect().right <= window.innerWidth + 1 && v.getBoundingClientRect().left >= 0 }; });
   check('phone: the financing comparison shows each figure beside its alternative\'s name, inside the screen', fc && fc.visible && /\$/.test(fc.value), JSON.stringify(fc));
+  /* third visual pass */
+  await show(m, 'Cash Flow Report', 1200);
+  const cf = await m.evaluate(() => { const t = document.querySelector('#viewport .rp-tbl'); const td = t.querySelectorAll('tbody tr:not(.sec) td')[1]; return { tdw: td.offsetWidth, scroll: t.parentElement.scrollWidth > t.parentElement.clientWidth + 5 || t.offsetWidth > t.parentElement.clientWidth }; });
+  check('phone: the cash-flow report scrolls sideways with readable columns instead of overprinting them', cf.tdw >= 60 && cf.scroll, JSON.stringify(cf));
+  await show(m, 'Debt', 1200);
+  const di = await m.evaluate(() => { const i = document.querySelector('#viewport input[placeholder=off]'); const td = i.closest('td'), cs = getComputedStyle(td); return { box: cs.boxShadow !== 'none', row: !!i.closest('tr.input'), w: i.offsetWidth }; });
+  check('phone: the empty minimum-debt-yield field is a visible boxed input', di.box && di.row && di.w > 60, JSON.stringify(di));
+  await show(m, 'Expenses', 1300);
+  const ex = await m.evaluate(() => { const i = document.querySelector('.ae-grid td input.num'); return { w: i.offsetWidth, clipped: i.scrollWidth > i.clientWidth + 1 }; });
+  check('phone: expense amounts in the editor grid are not clipped', ex.w >= 90 && !ex.clipped, JSON.stringify(ex));
+  const br = await m.evaluate(() => { const w = document.querySelector('.brand-mark .word'); return { sw: w.scrollWidth, cw: w.clientWidth }; });
+  check('phone: the brand name is shown in full', br.sw <= br.cw + 1, JSON.stringify(br));
   check('phone: no page errors', m.errs.length === 0, m.errs.slice(0, 2).join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();

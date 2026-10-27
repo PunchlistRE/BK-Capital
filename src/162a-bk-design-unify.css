@@ -124,14 +124,23 @@ html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl 
 
 /* PHONE LAYOUT CLEAN-UP */
 @media (max-width:760px){
+  html body #viewport .tbl-wrap table.fin caption, html body #viewport table.bk-m-scroll caption{ width:calc(100vw - 26px) !important; box-sizing:border-box !important; }
+  /* editor grids scroll sideways; their fields keep a readable width instead of clipping the value */
+  html body #viewport .ae .ae-grid td select{ min-width:112px !important; }
+  html body #viewport .ae .ae-grid td input:not([type=checkbox]):not([type=radio]){ min-width:96px !important; }
+  html body .ae .ae-panel{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  /* wide report tables scroll sideways inside their wrapper instead of squeezing every column */
+  html body #viewport .rp .rp-tbl{ table-layout:auto; width:max-content; min-width:100%; }
+  html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl th:first-child{ width:auto; min-width:150px; position:sticky; left:0; background:var(--ae-cell,#fff); z-index:1; }
   html body .brand-bar{ padding:8px 12px !important; gap:8px !important; flex-wrap:nowrap; overflow:hidden; }
   html body .brand-bar .brand-mark{ flex:1 1 0; min-width:0; overflow:hidden; }
   html body .brand-bar .brand-mark > div:last-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   html body .brand-bar .brand-mark .sub{ display:none; }
-  html body .brand-bar .brand-mark .word{ font-size:11.5px !important; letter-spacing:0 !important; }
-  html body .brand-bar .brand-mark .beta, html body .brand-bar .brand-mark .pill{ display:none !important; }
-  html body .brand-bar .pl-searchwrap{ flex:0 0 auto; gap:6px; }
-  html body .brand-bar #pl-guide-toggle{ padding:4px 8px; font-size:11px; }
+  html body .brand-bar .brand-mark .word{ font-size:10px !important; letter-spacing:0 !important; }
+  html body .brand-bar .brand-mark svg, html body .brand-bar .brand-mark img{ width:24px !important; height:24px !important; }
+  html body .brand-bar .brand-mark .beta, html body .brand-bar .brand-mark .pill, html body .brand-bar .brand-mark .bk-beta{ display:none !important; }
+  html body .brand-bar .pl-searchwrap{ flex:0 0 auto; gap:4px; }
+  html body .brand-bar #pl-guide-toggle{ padding:3px 6px; font-size:10px; gap:4px; }
   html body .brand-bar .pl-search kbd, html body .brand-bar .pl-search .kbd{ display:none; }
   html body .brand-bar .pl-user button{ padding:4px 8px; font-size:11px; }
   /* stacked rows: a highlighted or total row is one light band with dark text, nothing boxed inside it */
