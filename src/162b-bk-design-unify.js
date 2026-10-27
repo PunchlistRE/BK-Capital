@@ -13,6 +13,18 @@ function icons(root){
   [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
   [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
+/* EVERY PERCENTAGE IS SHOWN WITH TWO DECIMALS ("12%" and "12.0%" both read 12.00%). One rule for every sheet, chart label, input unit and the PDF summary. */
+function pct2(str){ return String(str).replace(/(\d[\d,]*)(\.\d+)?(\s?%)(?![\w])/g, function(m, i, d, pc){ if(d && d.length === 3) return m; var n = parseFloat(i.replace(/,/g, '') + (d || '')); if(!isFinite(n)) return m; var f = n.toFixed(2); if(i.indexOf(',') >= 0) f = f.replace(/^(\d+)/, function(x){ return x.replace(/\B(?=(\d{3})+(?!\d))/g, ','); }); return f + pc; }); }
+window.bkPct2Text = pct2;
+window.bkPct2Html = function(html){ var inSkip = false; return String(html).split(/(<[^>]*>)/).map(function(seg){ if(seg.charAt(0) === '<'){ var m = /^<\s*(\/?)\s*(style|script)\b/i.exec(seg); if(m) inSkip = !m[1]; return seg; } return inSkip ? seg : pct2(seg); }).join(''); };
+function pctDom(root){
+  var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n, hits = [];
+  while((n = w.nextNode())){ if(n.nodeValue.indexOf('%') < 0) continue; var pe = n.parentNode; if(!pe || /^(SCRIPT|STYLE|TEXTAREA|OPTION)$/.test(pe.tagName) || pe.isContentEditable) continue; hits.push(n); }
+  hits.forEach(function(t){ var v = pct2(t.nodeValue); if(v !== t.nodeValue) t.nodeValue = v; });
+  [].forEach.call(root.querySelectorAll('input[type=text],input[type=number],input:not([type])'), function(el){ if(document.activeElement === el) return; var v = el.value; if(!v) return;
+    var unitPct = /%/.test(v) || (el.parentNode && [].some.call(el.parentNode.querySelectorAll(':scope > .bk-sfx'), function(x){ return x.textContent.trim() === '%'; }));
+    if(!unitPct) return; var nv = /%/.test(v) ? pct2(v) : (/^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v).toFixed(2) : v); if(nv !== v && el.type !== 'number') el.value = nv; else if(nv !== v && el.type === 'number'){ el.value = nv; } });
+}
 /* a column that holds status chips is centred, header and cells alike */
 function chipCols(root){
   [].forEach.call(root.querySelectorAll('table'), function(t){
@@ -65,10 +77,12 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); sfxSlots(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });
+/* the rail's groups are always open: a click on a group name does nothing (except in the collapsed strip, where it re-opens the sidebar) */
+document.addEventListener('click', function(e){ var t = e.target; if(!t || !t.closest) return; if(html.classList.contains('bk-rail-collapsed')) return; if(t.closest('#rail-groups .rail-group-label') || t.closest('.rail .bk-adv-head')){ e.stopPropagation(); e.preventDefault(); } }, true);
 var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz = setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 200); });
 function start(){ run(); var mo = new MutationObserver(later); ['viewport', 'rail'].forEach(function(id){ var el = document.getElementById(id); if(el) mo.observe(el, { childList:true, subtree:true }); }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

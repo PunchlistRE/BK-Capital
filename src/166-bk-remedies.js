@@ -15,7 +15,7 @@ function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(
 function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
 function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return v == null || !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
-function P(v, d){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
+function P(v){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 function X(v){ return v == null || !isFinite(v) ? '—' : v.toFixed(2) + 'x'; }
 function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
 function active(){ return typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal(); }

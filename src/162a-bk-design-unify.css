@@ -80,3 +80,34 @@ html body #viewport table.fin td.bk-has-sfx.bk-has-sfx > input.bk-sfx-in.bk-sfx-
 html body #viewport table.fin td > .bk-sfx{ display:inline-block; width:24px; box-sizing:border-box; padding-left:5px; text-align:left; white-space:nowrap; vertical-align:middle; }
 html body #viewport table.fin td:has(> .bk-sfx){ white-space:nowrap; }
 
+
+/* LEFT RAIL: every group is always open (no fold-out arrows); the sidebar still collapses to its strip of group letters */
+html body .rail .rail-group.pl-collapsed .rail-item, html body .rail .rail-group .rail-item{ display:flex !important; }
+html body .rail .rail-group-label::after{ display:none !important; }
+html body .rail .rail-group-label{ cursor:default !important; }
+html body .rail .rail-group.bk-adv-hidden{ display:block !important; }
+html body .rail .bk-adv-head{ cursor:default !important; }
+html body .rail .bk-adv-head span:last-child{ display:none !important; }
+html.bk-rail-collapsed body .rail .rail-group-label{ cursor:pointer !important; }
+
+/* OVERVIEW: a quiet, professional palette. Status is carried by a small marker and a muted tone, not by saturated colour fields. */
+html body #viewport .pl-home .pl-kpi .v{ font-weight:600; font-size:24px; color:var(--ae-ink,#1f2933); }
+html body #viewport .pl-home .pl-kpi.pass .v{ color:#3F6B52; } html body #viewport .pl-home .pl-kpi.warn .v{ color:#7E6428; } html body #viewport .pl-home .pl-kpi.fail .v{ color:#8C3B34; }
+html body #viewport .pl-home .pl-kpi{ border-radius:0; box-shadow:none; border-color:var(--ae-line,#cfd6dd); }
+html body #viewport .pl-home .pl-kpi:hover{ box-shadow:none; border-color:#7d8b99; }
+html body #viewport .pl-home .pl-next{ background:#243040; border-radius:0; border-left:3px solid #7d93aa; }
+html body #viewport .pl-home .pl-next .t{ color:#a9b8c8; }
+html body #viewport .pl-home .pl-btn{ background:#3b4f66; color:#fff; border-radius:2px; letter-spacing:.05em; font-weight:600; }
+html body #viewport .pl-home .pl-btn:hover{ background:#2f4156; }
+html body #viewport .pl-home .pl-next .pl-btn.ghost, html body #viewport .pl-home .pl-next button:not(.pl-btn){ border-radius:2px; }
+html body #viewport .pl-home .pl-check, html body #viewport .pl-home .pl-act, html body #viewport .pl-home .pl-deals{ border-radius:0; border-color:var(--ae-line,#cfd6dd); box-shadow:none; }
+html body #viewport .pl-home .pl-act:hover{ box-shadow:none; border-color:#7d8b99; }
+html body #viewport .pl-home .pl-row:hover{ background:rgba(90,105,120,.07); }
+html body #viewport .pl-home .pl-row .dot{ width:8px; height:8px; background:#9aa5b1; }
+html body #viewport .pl-home .pl-row.pass .dot{ background:#5d8a70; } html body #viewport .pl-home .pl-row.warn .dot{ background:#b09254; } html body #viewport .pl-home .pl-row.fail .dot{ background:#a65a53; }
+html body #viewport .pl-home .pl-step{ border-left-color:#7d93aa; background:rgba(90,105,120,.07); border-radius:0; }
+html body #viewport .pl-home .pl-chips .status-chip{ background:#eceff2; color:#46525f; border-radius:2px; }
+html body #viewport .pl-home .pl-chips .status-chip.pass{ background:#e8efea; color:#3F6B52; }
+html body #viewport .pl-home .pl-chips .status-chip.warn{ background:#f1ece0; color:#7E6428; }
+html body #viewport .pl-home .pl-chips .status-chip.fail{ background:#f1e4e2; color:#8C3B34; }
+html body #viewport .pl-home .pl-hero h2{ font-weight:600; }

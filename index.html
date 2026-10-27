@@ -22318,7 +22318,7 @@ function build(){
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Investment Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 
-window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, null); return /develop/i.test(String(s && s.dealType || '')) ? buildDev() : build(); };
+window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, null), h = /develop/i.test(String(s && s.dealType || '')) ? buildDev() : build(); return typeof window.bkPct2Html === 'function' ? window.bkPct2Html(h) : h; };
 window.bkReportClose = function(){ var e = document.getElementById('pl-report'); if(e) e.remove(); document.documentElement.style.overflow = ''; };
 window.bkReportPrint = function(){ var f = document.getElementById('pl-report-frame'); if(f && f.contentWindow){ f.contentWindow.focus(); f.contentWindow.print(); } };
 window.bkReportOpen = function(){ var go = function(){ return bkReportOpenNow(); }; return Promise.resolve(typeof window.bkDocsWarm === 'function' ? window.bkDocsWarm() : '').then(go, go); };
@@ -24787,6 +24787,37 @@ html body #viewport table.fin td.bk-has-sfx.bk-has-sfx > input.bk-sfx-in.bk-sfx-
 html body #viewport table.fin td > .bk-sfx{ display:inline-block; width:24px; box-sizing:border-box; padding-left:5px; text-align:left; white-space:nowrap; vertical-align:middle; }
 html body #viewport table.fin td:has(> .bk-sfx){ white-space:nowrap; }
 
+
+/* LEFT RAIL: every group is always open (no fold-out arrows); the sidebar still collapses to its strip of group letters */
+html body .rail .rail-group.pl-collapsed .rail-item, html body .rail .rail-group .rail-item{ display:flex !important; }
+html body .rail .rail-group-label::after{ display:none !important; }
+html body .rail .rail-group-label{ cursor:default !important; }
+html body .rail .rail-group.bk-adv-hidden{ display:block !important; }
+html body .rail .bk-adv-head{ cursor:default !important; }
+html body .rail .bk-adv-head span:last-child{ display:none !important; }
+html.bk-rail-collapsed body .rail .rail-group-label{ cursor:pointer !important; }
+
+/* OVERVIEW: a quiet, professional palette. Status is carried by a small marker and a muted tone, not by saturated colour fields. */
+html body #viewport .pl-home .pl-kpi .v{ font-weight:600; font-size:24px; color:var(--ae-ink,#1f2933); }
+html body #viewport .pl-home .pl-kpi.pass .v{ color:#3F6B52; } html body #viewport .pl-home .pl-kpi.warn .v{ color:#7E6428; } html body #viewport .pl-home .pl-kpi.fail .v{ color:#8C3B34; }
+html body #viewport .pl-home .pl-kpi{ border-radius:0; box-shadow:none; border-color:var(--ae-line,#cfd6dd); }
+html body #viewport .pl-home .pl-kpi:hover{ box-shadow:none; border-color:#7d8b99; }
+html body #viewport .pl-home .pl-next{ background:#243040; border-radius:0; border-left:3px solid #7d93aa; }
+html body #viewport .pl-home .pl-next .t{ color:#a9b8c8; }
+html body #viewport .pl-home .pl-btn{ background:#3b4f66; color:#fff; border-radius:2px; letter-spacing:.05em; font-weight:600; }
+html body #viewport .pl-home .pl-btn:hover{ background:#2f4156; }
+html body #viewport .pl-home .pl-next .pl-btn.ghost, html body #viewport .pl-home .pl-next button:not(.pl-btn){ border-radius:2px; }
+html body #viewport .pl-home .pl-check, html body #viewport .pl-home .pl-act, html body #viewport .pl-home .pl-deals{ border-radius:0; border-color:var(--ae-line,#cfd6dd); box-shadow:none; }
+html body #viewport .pl-home .pl-act:hover{ box-shadow:none; border-color:#7d8b99; }
+html body #viewport .pl-home .pl-row:hover{ background:rgba(90,105,120,.07); }
+html body #viewport .pl-home .pl-row .dot{ width:8px; height:8px; background:#9aa5b1; }
+html body #viewport .pl-home .pl-row.pass .dot{ background:#5d8a70; } html body #viewport .pl-home .pl-row.warn .dot{ background:#b09254; } html body #viewport .pl-home .pl-row.fail .dot{ background:#a65a53; }
+html body #viewport .pl-home .pl-step{ border-left-color:#7d93aa; background:rgba(90,105,120,.07); border-radius:0; }
+html body #viewport .pl-home .pl-chips .status-chip{ background:#eceff2; color:#46525f; border-radius:2px; }
+html body #viewport .pl-home .pl-chips .status-chip.pass{ background:#e8efea; color:#3F6B52; }
+html body #viewport .pl-home .pl-chips .status-chip.warn{ background:#f1ece0; color:#7E6428; }
+html body #viewport .pl-home .pl-chips .status-chip.fail{ background:#f1e4e2; color:#8C3B34; }
+html body #viewport .pl-home .pl-hero h2{ font-weight:600; }
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */
@@ -24802,6 +24833,18 @@ function icons(root){
   /* the letter is an attribute drawn by CSS (::before), so no text is added to the headers and nothing that reads them changes */
   [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
   [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
+}
+/* EVERY PERCENTAGE IS SHOWN WITH TWO DECIMALS ("12%" and "12.0%" both read 12.00%). One rule for every sheet, chart label, input unit and the PDF summary. */
+function pct2(str){ return String(str).replace(/(\d[\d,]*)(\.\d+)?(\s?%)(?![\w])/g, function(m, i, d, pc){ if(d && d.length === 3) return m; var n = parseFloat(i.replace(/,/g, '') + (d || '')); if(!isFinite(n)) return m; var f = n.toFixed(2); if(i.indexOf(',') >= 0) f = f.replace(/^(\d+)/, function(x){ return x.replace(/\B(?=(\d{3})+(?!\d))/g, ','); }); return f + pc; }); }
+window.bkPct2Text = pct2;
+window.bkPct2Html = function(html){ var inSkip = false; return String(html).split(/(<[^>]*>)/).map(function(seg){ if(seg.charAt(0) === '<'){ var m = /^<\s*(\/?)\s*(style|script)\b/i.exec(seg); if(m) inSkip = !m[1]; return seg; } return inSkip ? seg : pct2(seg); }).join(''); };
+function pctDom(root){
+  var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n, hits = [];
+  while((n = w.nextNode())){ if(n.nodeValue.indexOf('%') < 0) continue; var pe = n.parentNode; if(!pe || /^(SCRIPT|STYLE|TEXTAREA|OPTION)$/.test(pe.tagName) || pe.isContentEditable) continue; hits.push(n); }
+  hits.forEach(function(t){ var v = pct2(t.nodeValue); if(v !== t.nodeValue) t.nodeValue = v; });
+  [].forEach.call(root.querySelectorAll('input[type=text],input[type=number],input:not([type])'), function(el){ if(document.activeElement === el) return; var v = el.value; if(!v) return;
+    var unitPct = /%/.test(v) || (el.parentNode && [].some.call(el.parentNode.querySelectorAll(':scope > .bk-sfx'), function(x){ return x.textContent.trim() === '%'; }));
+    if(!unitPct) return; var nv = /%/.test(v) ? pct2(v) : (/^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v).toFixed(2) : v); if(nv !== v && el.type !== 'number') el.value = nv; else if(nv !== v && el.type === 'number'){ el.value = nv; } });
 }
 /* a column that holds status chips is centred, header and cells alike */
 function chipCols(root){
@@ -24855,10 +24898,12 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); sfxSlots(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });
+/* the rail's groups are always open: a click on a group name does nothing (except in the collapsed strip, where it re-opens the sidebar) */
+document.addEventListener('click', function(e){ var t = e.target; if(!t || !t.closest) return; if(html.classList.contains('bk-rail-collapsed')) return; if(t.closest('#rail-groups .rail-group-label') || t.closest('.rail .bk-adv-head')){ e.stopPropagation(); e.preventDefault(); } }, true);
 var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz = setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 200); });
 function start(){ run(); var mo = new MutationObserver(later); ['viewport', 'rail'].forEach(function(id){ var el = document.getElementById(id); if(el) mo.observe(el, { childList:true, subtree:true }); }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
@@ -24881,7 +24926,7 @@ function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(
 function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
 function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return v == null || !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
-function P(v, d){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
+function P(v){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 function X(v){ return v == null || !isFinite(v) ? '—' : v.toFixed(2) + 'x'; }
 function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
 function active(){ return typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal(); }
@@ -25058,7 +25103,7 @@ function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(
 function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
 function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return v == null || !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
-function P(v, d){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
+function P(v){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 function X(v){ return v == null || !isFinite(v) ? '—' : v.toFixed(2) + 'x'; }
 function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
 function active(){ return typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal(); }
@@ -25227,7 +25272,7 @@ function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(
 function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
 function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return v == null || !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
-function P(v, d){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
+function P(v){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 function X(v){ return v == null || !isFinite(v) ? '—' : v.toFixed(2) + 'x'; }
 function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
 function active(){ return typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal(); }
