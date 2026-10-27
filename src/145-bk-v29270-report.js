@@ -347,7 +347,7 @@ function build(){
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Investment Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 
-window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, null); return /develop/i.test(String(s && s.dealType || '')) ? buildDev() : build(); };
+window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, null), h = /develop/i.test(String(s && s.dealType || '')) ? buildDev() : build(); return typeof window.bkPct2Html === 'function' ? window.bkPct2Html(h) : h; };
 window.bkReportClose = function(){ var e = document.getElementById('pl-report'); if(e) e.remove(); document.documentElement.style.overflow = ''; };
 window.bkReportPrint = function(){ var f = document.getElementById('pl-report-frame'); if(f && f.contentWindow){ f.contentWindow.focus(); f.contentWindow.print(); } };
 window.bkReportOpen = function(){ var go = function(){ return bkReportOpenNow(); }; return Promise.resolve(typeof window.bkDocsWarm === 'function' ? window.bkDocsWarm() : '').then(go, go); };
