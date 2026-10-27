@@ -23,6 +23,17 @@ const A = require(path.join(__dirname, 'deal.js'));
   const rep = await p.evaluate(() => bkReportHTML());
   check('the PDF summary carries the same key (names, dollars, shares) and no one-decimal percentages in its text', /Net cash after reserves/.test(rep) && /· \d+\.\d\d%/.test(rep) && !/>[^<]*\b\d+\.\d%/.test(rep.replace(/<style[\s\S]*?<\/style>/g, '')));
 
+  /* the cash-flow report's figures never run into each other, and the spider chart's end labels are spaced */
+  await show(p, 'Cash Flow Report', 1000);
+  const crowd = await p.evaluate(() => [...document.querySelectorAll('#viewport .rp-tbl td')].filter(td => td.scrollWidth > td.clientWidth + 1).length);
+  check('cash-flow report (desktop): no figure is wider than its column', crowd === 0, crowd);
+  const tf = await p.evaluate(() => { const bg = q => getComputedStyle(document.querySelector('#viewport .rp-tbl ' + q)).backgroundColor; return { sec: bg('tr.sec td'), tot: bg('tr.tot td'), head: getComputedStyle(document.querySelector('#viewport .rp-tbl th')).backgroundColor }; });
+  check('cash-flow report: a key total row is not filled like a heading row', tf.tot !== tf.sec && tf.tot !== tf.head, JSON.stringify(tf));
+  await show(p, 'Sensitivity', 1500);
+  const sp = await p.evaluate(() => { const svg = [...document.querySelectorAll('#viewport svg')].find(s => /Spider chart/.test(s.getAttribute('aria-label') || '')); if (!svg) return null;
+    const t = [...svg.querySelectorAll('text.lbl')].map(e => e.getBoundingClientRect()).sort((a, b) => a.top - b.top); let min = 99; for (let i = 1; i < t.length; i++) min = Math.min(min, t[i].top - t[i - 1].top); return { n: t.length, min }; });
+  check('spider chart: end labels are at least 14 px apart', sp && sp.n > 3 && sp.min >= 14, JSON.stringify(sp));
+
   /* report pages: no literal entities, no mangled percentages */
   const texts = {}; for (const sh of ['Cash Flow Report', 'Valuation Report', 'Audit Report', 'Tenant Report']) { await show(p, sh, 900); texts[sh] = await p.evaluate(() => document.querySelector('#viewport').innerText); }
   check('report headers have no literal &middot; and use a real separator', Object.values(texts).every(t => !/&middot;|&amp;/.test(t)) && /Charlotte, NC · Multifamily/.test(texts['Cash Flow Report']));
@@ -64,7 +75,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('phone: the financing comparison shows each figure beside its alternative\'s name, inside the screen', fc && fc.visible && /\$/.test(fc.value), JSON.stringify(fc));
   /* third visual pass */
   await show(m, 'Cash Flow Report', 1200);
-  const cf = await m.evaluate(() => { const t = document.querySelector('#viewport .rp-tbl'); const td = t.querySelectorAll('tbody tr:not(.sec) td')[1]; return { tdw: td.offsetWidth, scroll: t.parentElement.scrollWidth > t.parentElement.clientWidth + 5 || t.offsetWidth > t.parentElement.clientWidth }; });
+  const cf = await m.evaluate(() => { const t = document.querySelector('#viewport .rp-tbl'); const td = t.querySelectorAll('tbody tr:not(.sec) td')[1]; return { tdw: td.offsetWidth, scroll: t.scrollWidth > t.clientWidth + 5 }; });
   check('phone: the cash-flow report scrolls sideways with readable columns instead of overprinting them', cf.tdw >= 60 && cf.scroll, JSON.stringify(cf));
   await show(m, 'Debt', 1200);
   const di = await m.evaluate(() => { const i = document.querySelector('#viewport input[placeholder=off]'); const td = i.closest('td'), cs = getComputedStyle(td); return { box: cs.boxShadow !== 'none', row: !!i.closest('tr.input'), w: i.offsetWidth }; });
@@ -74,6 +85,9 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('phone: expense amounts in the editor grid are not clipped', ex.w >= 90 && !ex.clipped, JSON.stringify(ex));
   const br = await m.evaluate(() => { const w = document.querySelector('.brand-mark .word'); return { sw: w.scrollWidth, cw: w.clientWidth }; });
   check('phone: the brand name is shown in full', br.sw <= br.cw + 1, JSON.stringify(br));
+  await show(m, 'Valuation Report', 1200);
+  const vw = await m.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: document.documentElement.clientWidth }));
+  check('phone: the valuation report does not widen the page (its tables scroll inside themselves)', vw.sw <= vw.w + 1, JSON.stringify(vw));
   check('phone: no page errors', m.errs.length === 0, m.errs.slice(0, 2).join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
