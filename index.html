@@ -20332,6 +20332,8 @@ var render = function(){
   var I = R.inputs, S = R.selected, B = R.base;
   var t = function(cap, head, body, extra){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>' + cap + '</caption>' + (head ? '<thead><tr>' + head + '</tr></thead>' : '') + '<tbody>' + body + '</tbody></table></div>' + (extra || ''); };
   var row = function(a, b, c){ return '<tr><td class="rowlabel">' + a + '</td><td class="v">' + b + '</td>' + (c !== undefined ? '<td data-bk-align="text">' + c + '</td>' : '') + '</tr>'; };
+  /* the position and sizing tables carry a note column on some rows: every row gets the third cell, so the columns line up and no row is squeezed */
+  var row3 = function(a, b, c){ return row(a, b, c === undefined ? '' : c); };
   var inRows = [['Refinance year (end of year)', inp('year', I.year, 60), 'Between 1 and ' + (R.holdYears - 1)], ['Appraisal cap rate', inp('appraisalCap', (I.appraisalCap * 100).toFixed(2)) + ' %', 'Value = trailing NOI / cap'],
     ['Maximum new loan LTV', inp('maxLTV', (I.maxLTV * 100).toFixed(1)) + ' %', ''], ['Minimum DSCR', X(I.minDSCR), 'Deal refinance DSCR (Inputs); edit under Credit Policy for the house minimum'],
     ['Minimum debt yield', inp('minDebtYield', (I.minDebtYield * 100).toFixed(2)) + ' %', 'Defaults to the house policy'], ['New loan coupon', inp('rate', (I.rate * 100).toFixed(2)) + ' %', ''],
@@ -20343,13 +20345,13 @@ var render = function(){
   else {
     var vc = /^REFINANCE/.test(R.verdict) ? 'pass' : /^TRADE/.test(R.verdict) ? 'warn' : 'fail';
     main += '<div class="note-flag" style="margin-top:12px"><span>' + (vc === 'pass' ? '&#10003;' : '&#9888;') + '</span><div><b>' + R.verdict.replace(/&/g, '&amp;') + '</b></div></div>'
-      + t('1. Position at Refinance', null, row('Refinance year', S.year) + row('Trailing NOI after reserves', $(S.noi)) + row('Existing senior balance', $(S.existingBalance)) + row('Value at appraisal cap', $(S.value)) + row('Existing LTV', P(S.existingLTV)))
-      + t('2. New Loan Sizing and Cash-Out', null, row('LTV constraint', $(S.capLTV)) + row('DSCR constraint', $(S.capDSCR)) + row('Debt-yield constraint', $(S.capDY))
+      + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing NOI after reserves', $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
+      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('DSCR constraint', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
         + '<tr class="grandtotal"><td class="rowlabel">New loan amount</td><td class="v">' + $(S.newLoan) + '</td><td data-bk-align="text">Binding: ' + S.binding + '</td></tr>'
-        + row('Refinance costs', $(-S.costs)) + row('Prepayment on existing loan', $(-S.prepay)) + row('Gross cash-out', $(S.grossCashOut))
+        + row3('Refinance costs', $(-S.costs)) + row3('Prepayment on existing loan', $(-S.prepay)) + row3('Gross cash-out', $(S.grossCashOut))
         + '<tr class="grandtotal"><td class="rowlabel">Net cash-out to equity</td><td class="v">' + $(S.netCashOut) + '</td><td data-bk-align="text">' + P(S.netCashOut / R.commonEquity) + ' of common equity</td></tr>'
-        + row('New annual debt service', $(S.newDS)) + row('Post-refinance DSCR', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row('Post-refinance debt yield', P(S.postDY)) + row('Post-refinance LTV', P(S.postLTV))
-        + row('New loan balance at exit', $(S.newBalanceAtExit)) + row('Exit prepayment on new loan', $(S.exitPenalty)));
+        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance DSCR', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
+        + row3('New loan balance at exit', $(S.newBalanceAtExit)) + row3('Exit prepayment on new loan', $(S.exitPenalty)));
   }
   var trows = R.timing.map(function(x){ var sel = S && x.year === S.year, peak = R.peak && x.year === R.peak.year;
     return '<tr' + (sel ? ' class="subtotal"' : '') + '><td class="rowlabel">' + x.year + (peak ? ' (peak)' : '') + '</td><td>' + $(x.noi) + '</td><td>' + $(x.value) + '</td><td>' + $(x.existingBalance) + '</td><td>' + $(x.newLoan) + '</td><td>' + $(x.netCashOut) + '</td><td>' + X(x.postDSCR) + '</td><td>' + x.binding + '</td><td>' + P(x.irr) + '</td><td>' + ((x.irr - B.irr) * 10000 >= 0 ? '+' : '') + Math.round((x.irr - B.irr) * 10000) + ' bps</td></tr>'; }).join('');
@@ -22822,7 +22824,7 @@ function has(v){ return v !== null && v !== undefined && v !== '' && isFinite(Nu
 function money(n, d){ n = Number(n); if(!isFinite(n)) return '-'; var a = Math.abs(n), b = a.toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 }); return n < 0 ? '($' + b + ')' : '$' + b; }
 function pct(n, d){ n = Number(n); return isFinite(n) ? (n * 100).toFixed(d == null ? 2 : d) + '%' : '-'; }
 function x2(n){ n = Number(n); return isFinite(n) ? n.toFixed(2) + 'x' : '-'; }
-function fmtIn(v, kind){ if(v === null || v === undefined || v === '') return ''; if(kind === 'text' || kind === 'month') return String(v); var n = Number(v); if(!isFinite(n)) return ''; if(kind === 'pct') return String(+(n * 100).toFixed(4)); return n.toLocaleString('en-US', { maximumFractionDigits:4 }); }
+function fmtIn(v, kind){ if(v === null || v === undefined || v === '') return ''; if(kind === 'text' || kind === 'month') return String(v); var n = Number(v); if(!isFinite(n)) return ''; if(kind === 'pct'){ var q = +(n * 100).toFixed(4), dp = (String(q).split('.')[1] || '').length; return q.toFixed(Math.max(2, dp)); } /* a percentage always shows two decimals (more only where the stored value has them) */ return n.toLocaleString('en-US', { maximumFractionDigits:4 }); }
 function getPath(o, p){ var a = String(p).split('.'); for(var i = 0; i < a.length && o != null; i++) o = o[a[i]]; return o; }
 function setPath(o, p, v){ var a = String(p).split('.'); for(var i = 0; i < a.length - 1; i++){ var k = a[i], nx = a[i + 1]; if(o[k] == null || typeof o[k] !== 'object') o[k] = /^\d+$/.test(nx) ? [] : {}; o = o[k]; } o[a[a.length - 1]] = v; }
 /* 'unset' blank: clearing the box removes the saved value so the field falls back to its default, instead of saving 0 */
@@ -24905,7 +24907,7 @@ html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl 
   html body .brand-bar .pl-user button{ padding:4px 8px; font-size:11px; }
   /* stacked rows: a highlighted or total row is one light band with dark text, nothing boxed inside it */
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal,
-  html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{ background:#e3e9f0 !important; color:#0e2a4a !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{ background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal td{ background:transparent !important; color:#0e2a4a !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td::before, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td::before{ color:#566a80 !important; background:transparent !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td:empty, html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip:not(:has(*)){ display:none !important; }
@@ -24922,6 +24924,18 @@ html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl 
   html body #viewport .bk-box > div[style*="overflow-x"]{ overflow-x:visible !important; }
   html body #viewport table.fin caption{ white-space:normal !important; line-height:1.3; }
 }
+
+/* a number cell is always right-aligned, even if a column rule marked it left */
+html body #viewport table.fin tbody td.bk-a-num[data-bk-col="left"]{ text-align:right !important; }
+
+/* panels written with an inline rounded border take the same square panel as the rest */
+html body #viewport [style*="border-radius:8px"][style*="border:1px solid"]{ border-radius:0 !important; box-shadow:none !important; }
+
+/* KEY METRICS (weighted IRR, equity multiple, totals that matter): a warm gold band with a gold rule, so they do not blend into the blue-grey header bands */
+:root{ --bk-key-fill:#F5EDD3; --bk-key-ink:#1f2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(184,137,43,.18); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32); } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(184,137,43,.18); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32); }
+html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > :first-child{ box-shadow:inset 4px 0 0 var(--bk-key-rule); }
 
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
@@ -24956,13 +24970,15 @@ function stkLabels(root){
   [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
     [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
 }
+/* a number cell is right-aligned, whatever column rule marked it left (set inline so no stylesheet order can undo it) */
+function numRight(root){ [].forEach.call(root.querySelectorAll('td.bk-a-num[data-bk-col="left"]'), function(td){ if(td.style.getPropertyValue('text-align') !== 'right') td.style.setProperty('text-align', 'right', 'important'); }); }
 /* a column that holds status chips is centred, header and cells alike */
 function chipCols(root){
   [].forEach.call(root.querySelectorAll('table'), function(t){
     var cols = {}; [].forEach.call(t.rows, function(r){ [].forEach.call(r.cells, function(c){ if(c.tagName === 'TH' || c.colSpan !== 1) return; var k = c.cellIndex, o = cols[k] || (cols[k] = { chip:0, other:0 }), ch = c.querySelector('.status-chip'), tx = c.textContent.trim();
       if(!tx) return; if(ch && tx === ch.textContent.trim()) o.chip++; else o.other++; }); });
     Object.keys(cols).forEach(function(k){ var o = cols[k]; if(!o.chip || o.chip < 0.6 * (o.chip + o.other)) return;
-      [].forEach.call(t.rows, function(r){ var c = r.cells[k]; if(c && c.colSpan === 1) c.classList.add('bk-col-chip'); }); });
+      [].forEach.call(t.rows, function(r){ var c = r.cells[k]; if(c && c.colSpan === 1){ c.classList.add('bk-col-chip'); if(c.style.getPropertyValue('text-align') !== 'center') c.style.setProperty('text-align', 'center', 'important'); if(c.tagName === 'TH'){ c.classList.remove('bk-h-l', 'bk-h-r'); c.classList.add('bk-h-c'); } } }); });
   });
 }
 /* a figure with a unit beside its box ("12.00 %"): the unit gets a fixed slot inside the cell, and every box in that column gets the same slot, so the figures end on one line and nothing spills across the column border */
@@ -24983,7 +24999,7 @@ function alignHeads(root){
   [].forEach.call(root.querySelectorAll('table.fin'), function(t){
     var heads = [].filter.call(t.rows, function(r){ return r.parentNode.tagName === 'THEAD' || (r.cells.length && [].every.call(r.cells, function(c){ return c.tagName === 'TH'; })); }); if(!heads.length) return;
     var body = [].filter.call(t.rows, function(r){ return heads.indexOf(r) < 0 && r.cells.length > 1; }).slice(0, 14); if(!body.length) return;
-    heads.forEach(function(hr){ [].forEach.call(hr.cells, function(th){ if(th.colSpan !== 1) return; var i = th.cellIndex, n = { l:0, r:0, c:0 }, tot = 0;
+    heads.forEach(function(hr){ [].forEach.call(hr.cells, function(th){ if(th.colSpan !== 1 || th.classList.contains('bk-col-chip')) return; var i = th.cellIndex, n = { l:0, r:0, c:0 }, tot = 0;
       body.forEach(function(r){ var td = r.cells[i]; if(!td || td.colSpan !== 1 || !td.textContent.trim() && !td.querySelector('input,select')) return; var a = getComputedStyle(td).textAlign; tot++; if(a === 'right' || a === 'end') n.r++; else if(a === 'center') n.c++; else n.l++; });
       if(tot < 2) return; var k = n.r >= n.c && n.r >= n.l ? 'r' : n.c >= n.l ? 'c' : 'l'; if(n[k] / tot < 0.6) return;
       ['bk-h-l', 'bk-h-r', 'bk-h-c'].forEach(function(c){ th.classList.remove(c); }); th.classList.add('bk-h-' + k);
@@ -25008,7 +25024,7 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });
@@ -25538,7 +25554,7 @@ function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
 function P2(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 
-var CSS = '#bk-print-head,#bk-print-foot{display:none}.title-block{position:relative}.title-block .bk-print-btn{position:absolute;top:12px;right:128px;z-index:2}@media (max-width:760px){.title-block .bk-print-btn{position:static;margin:6px 0 0}}'
+var CSS = '#bk-print-head,#bk-print-foot{display:none}.title-block{position:relative}.title-block .bk-print-btn{position:absolute;top:12px;right:128px;z-index:2}.title-block:not(:has(.bk-key-wrap)) .bk-print-btn{right:18px}@media (max-width:760px){.title-block .bk-print-btn{position:static;margin:6px 0 0}}'
  + '@media print{'
  + 'html,body{background:#fff !important;color:#14202b !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
  + '.rail,.brand-bar,.tabnav,.tabnav-primary,.bk-flow,.bk-stepnav,.bk-case,.side-col,.title-block,.bk-dui,.pf-bar,.rp-bar,.bk-rail-toggle,#bk-sync-status,#bk-auth-gate,#pl-palette,#pl-modal,#pl-tip,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,#bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,select{display:none !important}'

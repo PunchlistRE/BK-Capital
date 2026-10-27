@@ -11,7 +11,7 @@ function has(v){ return v !== null && v !== undefined && v !== '' && isFinite(Nu
 function money(n, d){ n = Number(n); if(!isFinite(n)) return '-'; var a = Math.abs(n), b = a.toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 }); return n < 0 ? '($' + b + ')' : '$' + b; }
 function pct(n, d){ n = Number(n); return isFinite(n) ? (n * 100).toFixed(d == null ? 2 : d) + '%' : '-'; }
 function x2(n){ n = Number(n); return isFinite(n) ? n.toFixed(2) + 'x' : '-'; }
-function fmtIn(v, kind){ if(v === null || v === undefined || v === '') return ''; if(kind === 'text' || kind === 'month') return String(v); var n = Number(v); if(!isFinite(n)) return ''; if(kind === 'pct') return String(+(n * 100).toFixed(4)); return n.toLocaleString('en-US', { maximumFractionDigits:4 }); }
+function fmtIn(v, kind){ if(v === null || v === undefined || v === '') return ''; if(kind === 'text' || kind === 'month') return String(v); var n = Number(v); if(!isFinite(n)) return ''; if(kind === 'pct'){ var q = +(n * 100).toFixed(4), dp = (String(q).split('.')[1] || '').length; return q.toFixed(Math.max(2, dp)); } /* a percentage always shows two decimals (more only where the stored value has them) */ return n.toLocaleString('en-US', { maximumFractionDigits:4 }); }
 function getPath(o, p){ var a = String(p).split('.'); for(var i = 0; i < a.length && o != null; i++) o = o[a[i]]; return o; }
 function setPath(o, p, v){ var a = String(p).split('.'); for(var i = 0; i < a.length - 1; i++){ var k = a[i], nx = a[i + 1]; if(o[k] == null || typeof o[k] !== 'object') o[k] = /^\d+$/.test(nx) ? [] : {}; o = o[k]; } o[a[a.length - 1]] = v; }
 /* 'unset' blank: clearing the box removes the saved value so the field falls back to its default, instead of saving 0 */

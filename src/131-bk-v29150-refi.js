@@ -114,6 +114,8 @@ var render = function(){
   var I = R.inputs, S = R.selected, B = R.base;
   var t = function(cap, head, body, extra){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>' + cap + '</caption>' + (head ? '<thead><tr>' + head + '</tr></thead>' : '') + '<tbody>' + body + '</tbody></table></div>' + (extra || ''); };
   var row = function(a, b, c){ return '<tr><td class="rowlabel">' + a + '</td><td class="v">' + b + '</td>' + (c !== undefined ? '<td data-bk-align="text">' + c + '</td>' : '') + '</tr>'; };
+  /* the position and sizing tables carry a note column on some rows: every row gets the third cell, so the columns line up and no row is squeezed */
+  var row3 = function(a, b, c){ return row(a, b, c === undefined ? '' : c); };
   var inRows = [['Refinance year (end of year)', inp('year', I.year, 60), 'Between 1 and ' + (R.holdYears - 1)], ['Appraisal cap rate', inp('appraisalCap', (I.appraisalCap * 100).toFixed(2)) + ' %', 'Value = trailing NOI / cap'],
     ['Maximum new loan LTV', inp('maxLTV', (I.maxLTV * 100).toFixed(1)) + ' %', ''], ['Minimum DSCR', X(I.minDSCR), 'Deal refinance DSCR (Inputs); edit under Credit Policy for the house minimum'],
     ['Minimum debt yield', inp('minDebtYield', (I.minDebtYield * 100).toFixed(2)) + ' %', 'Defaults to the house policy'], ['New loan coupon', inp('rate', (I.rate * 100).toFixed(2)) + ' %', ''],
@@ -125,13 +127,13 @@ var render = function(){
   else {
     var vc = /^REFINANCE/.test(R.verdict) ? 'pass' : /^TRADE/.test(R.verdict) ? 'warn' : 'fail';
     main += '<div class="note-flag" style="margin-top:12px"><span>' + (vc === 'pass' ? '&#10003;' : '&#9888;') + '</span><div><b>' + R.verdict.replace(/&/g, '&amp;') + '</b></div></div>'
-      + t('1. Position at Refinance', null, row('Refinance year', S.year) + row('Trailing NOI after reserves', $(S.noi)) + row('Existing senior balance', $(S.existingBalance)) + row('Value at appraisal cap', $(S.value)) + row('Existing LTV', P(S.existingLTV)))
-      + t('2. New Loan Sizing and Cash-Out', null, row('LTV constraint', $(S.capLTV)) + row('DSCR constraint', $(S.capDSCR)) + row('Debt-yield constraint', $(S.capDY))
+      + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing NOI after reserves', $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
+      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('DSCR constraint', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
         + '<tr class="grandtotal"><td class="rowlabel">New loan amount</td><td class="v">' + $(S.newLoan) + '</td><td data-bk-align="text">Binding: ' + S.binding + '</td></tr>'
-        + row('Refinance costs', $(-S.costs)) + row('Prepayment on existing loan', $(-S.prepay)) + row('Gross cash-out', $(S.grossCashOut))
+        + row3('Refinance costs', $(-S.costs)) + row3('Prepayment on existing loan', $(-S.prepay)) + row3('Gross cash-out', $(S.grossCashOut))
         + '<tr class="grandtotal"><td class="rowlabel">Net cash-out to equity</td><td class="v">' + $(S.netCashOut) + '</td><td data-bk-align="text">' + P(S.netCashOut / R.commonEquity) + ' of common equity</td></tr>'
-        + row('New annual debt service', $(S.newDS)) + row('Post-refinance DSCR', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row('Post-refinance debt yield', P(S.postDY)) + row('Post-refinance LTV', P(S.postLTV))
-        + row('New loan balance at exit', $(S.newBalanceAtExit)) + row('Exit prepayment on new loan', $(S.exitPenalty)));
+        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance DSCR', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
+        + row3('New loan balance at exit', $(S.newBalanceAtExit)) + row3('Exit prepayment on new loan', $(S.exitPenalty)));
   }
   var trows = R.timing.map(function(x){ var sel = S && x.year === S.year, peak = R.peak && x.year === R.peak.year;
     return '<tr' + (sel ? ' class="subtotal"' : '') + '><td class="rowlabel">' + x.year + (peak ? ' (peak)' : '') + '</td><td>' + $(x.noi) + '</td><td>' + $(x.value) + '</td><td>' + $(x.existingBalance) + '</td><td>' + $(x.newLoan) + '</td><td>' + $(x.netCashOut) + '</td><td>' + X(x.postDSCR) + '</td><td>' + x.binding + '</td><td>' + P(x.irr) + '</td><td>' + ((x.irr - B.irr) * 10000 >= 0 ? '+' : '') + Math.round((x.irr - B.irr) * 10000) + ' bps</td></tr>'; }).join('');
