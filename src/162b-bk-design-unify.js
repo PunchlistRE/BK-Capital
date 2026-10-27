@@ -16,9 +16,23 @@ function icons(root){
 /* a column that holds status chips is centred, header and cells alike */
 function chipCols(root){
   [].forEach.call(root.querySelectorAll('table'), function(t){
-    var idx = {}; [].forEach.call(t.rows, function(r){ [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && c.querySelector('.status-chip') && c.textContent.trim().length < 28) idx[c.cellIndex] = 1; }); });
-    var keys = Object.keys(idx); if(!keys.length) return;
-    [].forEach.call(t.rows, function(r){ keys.forEach(function(k){ var c = r.cells[k]; if(c && c.colSpan === 1 && !c.classList.contains('bk-col-chip') && (c.tagName === 'TH' || c.querySelector('.status-chip') || !c.textContent.trim())) c.classList.add('bk-col-chip'); }); });
+    var cols = {}; [].forEach.call(t.rows, function(r){ [].forEach.call(r.cells, function(c){ if(c.tagName === 'TH' || c.colSpan !== 1) return; var k = c.cellIndex, o = cols[k] || (cols[k] = { chip:0, other:0 }), ch = c.querySelector('.status-chip'), tx = c.textContent.trim();
+      if(!tx) return; if(ch && tx === ch.textContent.trim()) o.chip++; else o.other++; }); });
+    Object.keys(cols).forEach(function(k){ var o = cols[k]; if(!o.chip || o.chip < 0.6 * (o.chip + o.other)) return;
+      [].forEach.call(t.rows, function(r){ var c = r.cells[k]; if(c && c.colSpan === 1) c.classList.add('bk-col-chip'); }); });
+  });
+}
+/* a figure with a unit beside its box ("12.00 %"): the unit gets a fixed slot inside the cell, and every box in that column gets the same slot, so the figures end on one line and nothing spills across the column border */
+function sfxSlots(root){
+  var UNIT = /^\s*(%|x|bps|yrs?|years|mo|months|SF|psf|\$)\s*$/i;
+  var tailOf = function(inp){ var out = [], n = inp.nextSibling; while(n){ if(n.nodeType === 1 && (n.classList.contains('bk-sfx') || /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(n.tagName) || n.querySelector('input,select,textarea,button'))) break; if(n.nodeType === 3 || n.nodeType === 1) out.push(n); n = n.nextSibling; } return out; };
+  [].forEach.call(root.querySelectorAll('table.fin'), function(t){
+    var cols = {}; [].forEach.call(t.rows, function(r){ [].forEach.call(r.cells, function(c){ if(c.colSpan !== 1 || c.tagName === 'TH') return; var ip = c.querySelector(':scope > input:not([type=checkbox]):not([type=radio])'); if(!ip) return;
+      if(c.querySelector(':scope > .bk-sfx') || UNIT.test(tailOf(ip).map(function(n){ return n.textContent; }).join(''))) cols[c.cellIndex] = 1; }); });
+    Object.keys(cols).forEach(function(k){ [].forEach.call(t.rows, function(r){ var c = r.cells[k]; if(!c || c.colSpan !== 1 || c.querySelector(':scope > .bk-sfx')) return; var inp = c.querySelector(':scope > input:not([type=checkbox]):not([type=radio])'); if(!inp) return;
+      var tail = tailOf(inp), txt = tail.map(function(n){ return n.textContent; }).join(''); if(txt.trim() && !UNIT.test(txt)) return;
+      tail.forEach(function(n){ n.parentNode.removeChild(n); });
+      var sp = document.createElement('span'); sp.className = 'bk-sfx'; sp.textContent = txt.trim(); c.appendChild(sp); c.classList.add('bk-has-sfx'); inp.classList.add('bk-sfx-in'); }); });
   });
 }
 /* every column header takes the alignment of the cells under it: the dominant computed alignment of the column's body cells */
@@ -51,7 +65,7 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); sfxSlots(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });
