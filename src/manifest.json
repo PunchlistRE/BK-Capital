@@ -825,6 +825,11 @@
 "close": "</script>"
 },
 {
+"file": "165-bk-prebid.js",
+"open": "\n<script id=\"bk-prebid\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
