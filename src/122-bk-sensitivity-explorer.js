@@ -141,7 +141,7 @@ function tornado(rows, base, M){
 
 function spider(series, M, nSteps){
   // series: [{label, color, pts:[{k, v, show}]}], k in -nSteps..nSteps
-  var W = 760, L = 58, R = 128, top = 14, H = 300, bottom = 34;
+  var W = 760, L = 58, R = 156, top = 14, H = 300, bottom = 34;
   var vals = []; series.forEach(function(s){ s.pts.forEach(function(p){ if(isFinite(p.v)) vals.push(p.v); }); });
   if(!vals.length) return '<p class="bk-sx-sub">No finite results to chart.</p>';
   var ticks = niceTicks(Math.min.apply(null, vals), Math.max.apply(null, vals), 5);
@@ -168,9 +168,13 @@ function spider(series, M, nSteps){
     var last = pts[pts.length-1]; if(last) ends.push({ y:Y(last.v), label:s.label, color:s.color });
   });
   ends.sort(function(a,b){ return a.y - b.y; });
-  for(var i = 1; i < ends.length; i++){ if(ends[i].y - ends[i-1].y < 13) ends[i].y = ends[i-1].y + 13; }
-  var over = ends.length ? ends[ends.length-1].y - (H - bottom) : 0;
+  /* 17 px apart (the labels are 11 px): push down from the top, then back up from the bottom, so a crowded group spreads about its centre and stays inside the plot */
+  var GAP = 17, yMax = H - bottom;
+  for(var i = 1; i < ends.length; i++){ if(ends[i].y - ends[i-1].y < GAP) ends[i].y = ends[i-1].y + GAP; }
+  var over = ends.length ? ends[ends.length-1].y - yMax : 0;
   if(over > 0) ends.forEach(function(e){ e.y -= over; });
+  for(var j = ends.length - 2; j >= 0; j--){ if(ends[j+1].y - ends[j].y < GAP) ends[j].y = ends[j+1].y - GAP; }
+  ends.forEach(function(e){ e.y = Math.max(e.y, top + 4); });
   ends.forEach(function(e){ g += '<text x="'+(W-R+8)+'" y="'+(e.y+4)+'" class="lbl" style="font-size:11px"><tspan fill="'+e.color+'">&#9632;</tspan> '+esc(e.label)+'</text>'; });
   return g + '</svg>';
 }
