@@ -845,6 +845,11 @@
 "close": "</script>"
 },
 {
+"file": "169-bk-wfchecks.js",
+"open": "\n<script id=\"bk-wfchecks\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
