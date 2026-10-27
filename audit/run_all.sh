@@ -41,6 +41,7 @@ echo "== Development lease-up by unit type (schedule, income, shortfall, funding
 echo "== Development Gantt (task schedule, critical path, drives the engine)"; node audit/devgantt_test.js index.html "$REF" | tail -1
 echo "== Panel tabs (long sections open as tabs; nothing removed; print carries all)"; node audit/paneltabs_test.js index.html | tail -1
 echo "== NNN terms from a rent roll (structure, base year, stop, share kept in the lease)"; node audit/nnn_import_test.js index.html "$REF" | tail -1
+echo "== Tenant-level commercial leases in a development deal (lease clock after completion, retail replaces the growth-path retail, TI/LC capital)"; node audit/devleases_test.js index.html "$REF" | tail -1
 echo "== Fill rule (header fill vs key-metric fill, every sheet)"; node audit/fillrule_test.js index.html | tail -1
 echo "== Waterfall verification (per-hurdle IRR error checks, tier order, conservation, promote)"; node audit/wfcheck_test.js index.html | tail -1
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1

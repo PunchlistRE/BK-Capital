@@ -865,6 +865,11 @@
 "close": "</script>"
 },
 {
+"file": "173-bk-devleases.js",
+"open": "\n<script id=\"bk-devleases\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
