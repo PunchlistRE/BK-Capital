@@ -14,7 +14,7 @@ function icons(root){
   [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
 /* EVERY PERCENTAGE IS SHOWN WITH TWO DECIMALS ("12%" and "12.0%" both read 12.00%). One rule for every sheet, chart label, input unit and the PDF summary. */
-function pct2(str){ return String(str).replace(/(\d[\d,]*)(\.\d+)?(\s?%)(?![\w])/g, function(m, i, d, pc){ if(d && d.length === 3) return m; var n = parseFloat(i.replace(/,/g, '') + (d || '')); if(!isFinite(n)) return m; var f = n.toFixed(2); if(i.indexOf(',') >= 0) f = f.replace(/^(\d+)/, function(x){ return x.replace(/\B(?=(\d{3})+(?!\d))/g, ','); }); return f + pc; }); }
+function pct2(str){ return String(str).replace(/(?<![A-Za-z0-9_.])(\d[\d,]*)(\.\d+)?(\s?%)(?![\w])/g, function(m, i, d, pc){ if(d && d.length === 3) return m; var n = parseFloat(i.replace(/,/g, '') + (d || '')); if(!isFinite(n)) return m; var f = n.toFixed(2); if(i.indexOf(',') >= 0) f = f.replace(/^(\d+)/, function(x){ return x.replace(/\B(?=(\d{3})+(?!\d))/g, ','); }); return f + pc; }); }
 window.bkPct2Text = pct2;
 window.bkPct2Html = function(html){ var inSkip = false; return String(html).split(/(<[^>]*>)/).map(function(seg){ if(seg.charAt(0) === '<'){ var m = /^<\s*(\/?)\s*(style|script)\b/i.exec(seg); if(m) inSkip = !m[1]; return seg; } return inSkip ? seg : pct2(seg); }).join(''); };
 function pctDom(root){
@@ -24,6 +24,11 @@ function pctDom(root){
   [].forEach.call(root.querySelectorAll('input[type=text],input[type=number],input:not([type])'), function(el){ if(document.activeElement === el) return; var v = el.value; if(!v) return;
     var unitPct = /%/.test(v) || (el.parentNode && [].some.call(el.parentNode.querySelectorAll(':scope > .bk-sfx'), function(x){ return x.textContent.trim() === '%'; }));
     if(!unitPct) return; var nv = /%/.test(v) ? pct2(v) : (/^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v).toFixed(2) : v); if(nv !== v && el.type !== 'number') el.value = nv; else if(nv !== v && el.type === 'number'){ el.value = nv; } });
+}
+/* plain analysis tables (class bk-stk) label every figure with its column heading, so the phone layout can stack them */
+function stkLabels(root){
+  [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
+    [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
 }
 /* a column that holds status chips is centred, header and cells alike */
 function chipCols(root){
@@ -77,7 +82,7 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });

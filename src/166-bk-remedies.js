@@ -101,7 +101,7 @@ window.bkRemRun = function(done){
 window.bkRemSolve = function(){ var s = bkLoad(); if(!s || isDev(s)) return null; var P0 = plan(); P0.steps.forEach(function(st){ st[1](); }); P0.steps = null; return P0; };
 
 /* ------------------------------------------------------------------ the sheet */
-function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-bottom:14px">' + h + '</div>'; }
+function box(h){ return '<div class="bk-box">' + h + '</div>'; }
 function fv(f){ return f.type === 'pct' ? P(f.value, 2) + ' vs ' + (f.dir === '>=' ? '≥ ' : '≤ ') + P(f.threshold, 2) : f.type === 'x' ? X(f.value) + ' vs ' + (f.dir === '>=' ? '≥ ' : '≤ ') + X(f.threshold) : f.type === 'usd' ? M(f.value) + ' vs ≤ ' + M(f.threshold) : f.type === 'bps' ? Math.round(f.value) + ' vs ≥ ' + Math.round(f.threshold) + ' bps' : String(Math.round(f.value)); }
 function render(){
   var s = safe(function(){ return bkLoad(); }, null), hdr = { title:'Deal Remedies', crumbs:'Credit & IC', desc:'What it would take for this deal to clear the credit policy: debt, price, rent and occupancy, each solved with the real engine.', sidebar:'', meta:{ Property:s && s.name } };
@@ -134,7 +134,7 @@ function render(){
     + row('Average rent per unit per month', function(sn){ return M(sn.rent); }) + row('Occupancy', function(sn){ return P(1 - sn.vacancy, 1); })
     + row('Levered IRR', function(sn){ return P(sn.irr, 2); }, true) + row('LP IRR', function(sn){ return P(sn.lpIrr, 2); }) + row('Equity multiple', function(sn){ return X(sn.moic); }) + row('Profit', function(sn){ return M(sn.profit); })
     + row('Still failing', function(sn){ return sn.fails.length ? sn.fails.map(function(f){ return '<div style="font-size:11.5px;color:' + (f.sev === 'HARD' ? '#b42318' : '#b26a00') + '">' + esc(f.label.replace(/ \(.*/, '')) + ' (' + f.sev.toLowerCase() + ')</div>'; }).join('') : '<span style="color:#1a7f37;font-weight:700">None</span>'; });
-  var main = ctl + box('<b>Side by side</b><div style="overflow-x:auto;margin-top:8px"><table style="' + T + ';min-width:640px"><thead><tr><th style="' + cell + '"></th>' + cols.map(function(c){ return '<th style="' + cell + ';text-align:right">' + c.head + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table></div>');
+  var main = ctl + box('<b>Side by side</b><div style="overflow-x:auto;margin-top:8px"><table class="bk-stk" style="' + T + ';min-width:640px"><thead><tr><th style="' + cell + '"></th>' + cols.map(function(c){ return '<th style="' + cell + ';text-align:right">' + c.head + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table></div>');
   /* the answers in words, each with its numbers; the ones that do not exist are said plainly */
   var say = [];
   say.push(base.fails.length ? '<b>Today:</b> ' + esc(base.verdict) + ' with ' + base.hard + ' hard and ' + base.soft + ' soft exception' + (base.hard + base.soft === 1 ? '' : 's') + ': ' + base.fails.map(function(f){ return esc(f.label.replace(/ \(.*/, '')) + ' (' + fv(f) + ')'; }).join('; ') + '.' : '<b>Today:</b> the deal has no credit exceptions.');

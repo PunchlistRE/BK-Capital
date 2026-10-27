@@ -298,7 +298,7 @@ extend('Equity Waterfall','w3cHurdleBasis', function(o){
     '<tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr>',
       '<tr>'+lbl('Hurdle Basis')
       + '<td class="v"><select onchange="bkSetHurdleBasis(this.value)">'
-      +   '<option value="1"'+(basis==='2'||basis==='3'?'':' selected')+'>IRR - compounding preferred return</option>'
+      +   '<option value="1"'+(basis==='2'||basis==='3'?'':' selected')+'>IRR (compounding)</option>'
       +   '<option value="2"'+(basis==='2'?' selected':'')+'>Equity Multiple</option>'
       +   '<option value="3"'+(basis==='3'?' selected':'')+'>IRR and Equity Multiple</option>'
       + '</select></td>'
