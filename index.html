@@ -24552,8 +24552,7 @@ html body #viewport .card, html body #viewport .bk-snap{ border:1px solid var(--
 html body #viewport .card-head, html body #viewport .bk-snap > .card-head{ background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-bottom:1px solid var(--ae-line) !important; padding:6px 10px !important; font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif !important; letter-spacing:.01em !important; text-transform:none !important; display:flex; align-items:center; gap:8px; }
 html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 /* the letter icon the decorator puts in each panel header (same square as the editor's) */
-html body #viewport i.ae-ic{ font-style:normal; display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; }
-html body #viewport .card-head i.ae-ic{ margin-right:0; }
+html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
 /* section jumps as a tab strip */
 html body #viewport .bk-dui{ display:flex; gap:1px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:thin; background:var(--ae-bg); border-bottom:1px solid var(--ae-line); padding:6px 4px 0; border-radius:0; box-shadow:none; }
 html body #viewport .bk-dui button{ flex:0 0 auto; white-space:nowrap; padding:6px 12px !important; background:var(--ae-head2) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:0 !important; color:var(--ae-dim) !important; font-size:12px !important; margin-bottom:-1px; box-shadow:none !important; }
@@ -24567,23 +24566,23 @@ html body .tabnav-primary{ gap:2px !important; align-items:flex-end; }
 html body .tabnav-primary .grp-btn{ display:inline-flex; align-items:center; gap:7px; padding:7px 12px 6px !important; background:var(--ae-tab) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:3px 3px 0 0 !important; color:var(--ae-dim) !important; font-weight:600 !important; }
 html body .tabnav-primary .grp-btn:hover{ color:var(--ae-ink) !important; }
 html body .tabnav-primary .grp-btn.active, html body .tabnav-primary .grp-btn.on, html body .tabnav-primary .bk-nav.active > .grp-btn{ background:var(--ae-tab-on) !important; color:var(--ae-ink) !important; border-top:2px solid var(--ae-accent) !important; padding-top:6px !important; }
-html body .tabnav-primary .grp-btn .sw{ width:16px !important; height:16px !important; border-radius:2px !important; color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; display:inline-block; flex:0 0 auto; }
+html body .tabnav-primary .grp-btn .sw{ width:16px !important; height:16px !important; border-radius:2px !important; display:inline-block; flex:0 0 auto; }
+html body .tabnav-primary .grp-btn .sw::before{ content:attr(data-ic); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; display:block; text-align:center; }
 
 /* COLLAPSIBLE SIDEBAR: the toggle sits in the rail header; collapsed, the rail is a slim strip of group letters */
 @media (min-width:901px){ html body .rail{ position:sticky; } }
 .bk-rail-toggle{ position:absolute; top:10px; right:8px; width:24px; height:24px; border:1px solid var(--ae-line); background:var(--ae-cell); color:var(--ae-dim); border-radius:2px; cursor:pointer; font:700 13px/20px system-ui,sans-serif; padding:0; z-index:2; }
 .bk-rail-toggle:hover{ color:var(--ae-ink); border-color:var(--ae-accent); }
-.rail i.rg-ic{ display:none; font-style:normal; }
 @media (min-width:901px){
   html.bk-rail-collapsed .rail{ width:52px !important; flex:0 0 52px !important; padding:44px 6px 12px !important; overflow-x:hidden; }
-  html.bk-rail-collapsed .rail .rail-head, html.bk-rail-collapsed .rail .bk-adv-head, html.bk-rail-collapsed .rail .rail-item, html.bk-rail-collapsed .rail .rail-foot, html.bk-rail-collapsed .rail #bk-sync-status, html.bk-rail-collapsed .rail .rail-group-label > :not(.rg-ic){ display:none !important; }
+  html.bk-rail-collapsed .rail .rail-head, html.bk-rail-collapsed .rail .bk-adv-head, html.bk-rail-collapsed .rail .rail-item, html.bk-rail-collapsed .rail .rail-foot, html.bk-rail-collapsed .rail #bk-sync-status, html.bk-rail-collapsed .rail .rail-group-label > *{ display:none !important; }
   html.bk-rail-collapsed .rail .bk-rail-toggle{ right:13px; }
   html.bk-rail-collapsed .rail .rail-group{ margin-top:6px !important; }
   html.bk-rail-collapsed .rail .rail-group-label{ justify-content:center; padding:0 !important; }
   html.bk-rail-collapsed .rail .rail-group-label::after{ display:none !important; }
-  html.bk-rail-collapsed .rail i.rg-ic{ display:inline-block; width:28px; height:28px; border-radius:2px; background:var(--rg-color, var(--ae-accent)); color:#fff; font:700 12px/28px Inter,system-ui,sans-serif; text-align:center; letter-spacing:0; cursor:pointer; opacity:.9; }
-  html.bk-rail-collapsed .rail .rail-group.has-active .rg-ic{ opacity:1; box-shadow:0 0 0 2px var(--ae-accent); }
-  html.bk-rail-collapsed .rail .rg-ic:hover{ opacity:1; }
+  html.bk-rail-collapsed .rail .rail-group-label::before{ content:attr(data-ic); display:block; width:28px; height:28px; border-radius:2px; background:var(--rg-color, var(--ae-accent)); color:#fff; font:700 12px/28px Inter,system-ui,sans-serif; text-align:center; letter-spacing:0; cursor:pointer; opacity:.9; }
+  html.bk-rail-collapsed .rail .rail-group.has-active .rail-group-label::before{ opacity:1; box-shadow:0 0 0 2px var(--ae-accent); }
+  html.bk-rail-collapsed .rail .rail-group-label:hover::before{ opacity:1; }
 }
 @media (max-width:900px){ .bk-rail-toggle{ display:none; } }
 </style>
@@ -24598,21 +24597,20 @@ function stored(){ try { return localStorage.getItem(KEY) === '1'; } catch(e){ r
 function setCollapsed(v){ html.classList.toggle('bk-rail-collapsed', !!v); store(v); var b = document.querySelector('.bk-rail-toggle'); if(b){ b.textContent = v ? '›' : '‹'; b.title = (v ? 'Expand' : 'Collapse') + ' the sidebar ([)'; b.setAttribute('aria-expanded', v ? 'false' : 'true'); } }
 window.bkRailCollapse = function(v){ setCollapsed(v === undefined ? !html.classList.contains('bk-rail-collapsed') : v); };
 function icons(root){
-  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.querySelector(':scope > i.ae-ic') || h.closest('.ae')) return; var i = document.createElement('i'); i.className = 'ae-ic'; i.setAttribute('aria-hidden', 'true'); i.textContent = letter(h.textContent); h.insertBefore(i, h.firstChild); });
-  [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn'), function(b){ var sw = b.querySelector('.sw'); if(!sw || sw.textContent) return; sw.textContent = letter(b.textContent); });
+  /* the letter is an attribute drawn by CSS (::before), so no text is added to the headers and nothing that reads them changes */
+  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
+  [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
 function rail(){
   var r = document.getElementById('rail'); if(!r) return;
   if(!r.querySelector('.bk-rail-toggle')){ var b = document.createElement('button'); b.type = 'button'; b.className = 'bk-rail-toggle'; b.onclick = function(){ window.bkRailCollapse(); }; r.insertBefore(b, r.firstChild); setCollapsed(html.classList.contains('bk-rail-collapsed')); }
   [].forEach.call(r.querySelectorAll('.rail-group'), function(g){ var lab = g.querySelector('.rail-group-label'); if(!lab) return;
     g.classList.toggle('has-active', !!g.querySelector('.rail-item.active'));
-    if(lab.querySelector('.rg-ic')) return; var it = g.querySelector('.rail-item'), name = (lab.querySelector('span') || lab).textContent;
-    /* an <i>, not a <span>: the rail code reads each group's name from the label's first span */
-    var i = document.createElement('i'); i.className = 'rg-ic'; i.textContent = letter(name); i.title = name;
-    if(it) i.style.setProperty('--rg-color', getComputedStyle(it).getPropertyValue('--gid-color') || '');
-    /* collapsed: a letter opens the sidebar on that group */
-    i.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true);
-    lab.insertBefore(i, lab.firstChild); });
+    var it = g.querySelector('.rail-item'), name = (lab.querySelector('span') || lab).textContent;
+    if(!lab.hasAttribute('data-ic')){ lab.setAttribute('data-ic', letter(name)); lab.title = name; if(it) lab.style.setProperty('--rg-color', getComputedStyle(it).getPropertyValue('--gid-color') || ''); }
+    if(!lab.__bkRg){ lab.__bkRg = 1;
+      /* collapsed: the group's letter opens the sidebar on that group */
+      lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
 function run(){ queued = false; var v = document.getElementById('viewport'); if(v) icons(v); rail(); }
