@@ -1,0 +1,59 @@
+/* ONE DESIGN LANGUAGE. Every page takes the Property Editor's look: square panels with a header bar and a letter icon, grids with
+   full cell borders and graded header rows, boxed input cells, tab strips for section jumps, and the editor's colour tokens
+   (--ae-*), in light and dark. Loaded last so it settles the older layers; the editor itself (.ae) is untouched. */
+html body #viewport .tbl-wrap{ border:1px solid var(--ae-line) !important; border-radius:0 !important; background:var(--ae-cell-ro) !important; box-shadow:none !important; margin-bottom:12px; overflow-x:auto; }
+html body #viewport table.fin{ border-collapse:collapse !important; background:var(--ae-cell) !important; color:var(--ae-ink); font-variant-numeric:tabular-nums; border:0 !important; border-radius:0 !important; }
+html body #viewport table.fin caption{ caption-side:top; text-align:left !important; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-bottom:1px solid var(--ae-line); padding:6px 10px !important; font:700 13px/1.3 Inter,"Segoe UI",system-ui,sans-serif !important; letter-spacing:.01em !important; text-transform:none !important; }
+html body #viewport table.fin th{ background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border:1px solid var(--ae-line) !important; padding:5px 8px !important; font-weight:600 !important; font-size:12px !important; letter-spacing:0 !important; text-transform:none !important; }
+html body #viewport table.fin td{ border:1px solid var(--ae-line) !important; padding:5px 8px !important; background:var(--ae-cell); color:var(--ae-ink); }
+html body #viewport table.fin tr.subtotal td, html body #viewport table.fin tr.grandtotal td, html body #viewport table.fin tr.tot td{ background:var(--ae-head2) !important; font-weight:700; }
+html body #viewport table.fin tr.sec td{ background:var(--ae-head) !important; font-weight:700; }
+html body #viewport table.fin td.neg{ color:#c0392b; }
+/* the cell-authority layer paints inputs, calculated cells and totals from these variables: point them at the editor's tokens */
+html body #viewport{ --bk-in-fill:var(--ae-cell); --bk-in-ink:var(--ae-ink); --bk-in-line:transparent; --bk-calc-fill:var(--ae-cell-ro); --bk-total-fill:var(--ae-head2); --bk-total-ink:var(--ae-ink); }
+/* input cells: a boxed field, as in the editor */
+html body #viewport table.fin tr.input td.v{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; box-shadow:inset 0 0 0 1px var(--ae-accent); font-weight:600; }
+html body #viewport table.fin tr.input td.v *{ background:transparent !important; border-color:transparent !important; text-decoration:none !important; color:inherit !important; box-shadow:none !important; }
+html body #viewport table.fin td.v:has(select){ box-shadow:inset 0 0 0 1px var(--ae-accent); }
+html body #viewport table.fin tr.input td.v:hover{ box-shadow:inset 0 0 0 2px var(--ae-accent); }
+html body #viewport input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), html body #viewport select, html body #viewport textarea{ border:1px solid var(--ae-line); background:var(--ae-cell); color:var(--ae-ink); border-radius:0; }
+html body #viewport input:focus, html body #viewport select:focus, html body #viewport textarea:focus{ outline:2px solid var(--ae-accent); outline-offset:-1px; }
+/* cards and side panels: a panel with a header bar */
+html body #viewport .card, html body #viewport .bk-snap{ border:1px solid var(--ae-line) !important; border-radius:0 !important; background:var(--ae-cell-ro) !important; box-shadow:none !important; }
+html body #viewport .card-head, html body #viewport .bk-snap > .card-head{ background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-bottom:1px solid var(--ae-line) !important; padding:6px 10px !important; font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif !important; letter-spacing:.01em !important; text-transform:none !important; display:flex; align-items:center; gap:8px; }
+html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
+/* the letter icon the decorator puts in each panel header (same square as the editor's) */
+html body #viewport i.ae-ic{ font-style:normal; display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; }
+html body #viewport .card-head i.ae-ic{ margin-right:0; }
+/* section jumps as a tab strip */
+html body #viewport .bk-dui{ display:flex; gap:1px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:thin; background:var(--ae-bg); border-bottom:1px solid var(--ae-line); padding:6px 4px 0; border-radius:0; box-shadow:none; }
+html body #viewport .bk-dui button{ flex:0 0 auto; white-space:nowrap; padding:6px 12px !important; background:var(--ae-head2) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:0 !important; color:var(--ae-dim) !important; font-size:12px !important; margin-bottom:-1px; box-shadow:none !important; }
+html body #viewport .bk-dui button:hover{ color:var(--ae-ink) !important; }
+html body #viewport .bk-dui button.on, html body #viewport .bk-dui button.active, html body #viewport .bk-dui button[aria-current]{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; font-weight:700 !important; border-top:2px solid var(--ae-accent) !important; padding-top:5px !important; }
+/* buttons */
+html body #viewport .bk-btn, html body #viewport button.pl-hbtn{ border:1px solid var(--ae-line) !important; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-radius:2px !important; box-shadow:none !important; }
+html body #viewport .bk-btn.primary, html body #viewport button.pl-hbtn.primary{ background:var(--ae-accent) !important; border-color:var(--ae-accent) !important; color:#fff !important; }
+/* top navigation as editor tabs with letter icons */
+html body .tabnav-primary{ gap:2px !important; align-items:flex-end; }
+html body .tabnav-primary .grp-btn{ display:inline-flex; align-items:center; gap:7px; padding:7px 12px 6px !important; background:var(--ae-tab) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:3px 3px 0 0 !important; color:var(--ae-dim) !important; font-weight:600 !important; }
+html body .tabnav-primary .grp-btn:hover{ color:var(--ae-ink) !important; }
+html body .tabnav-primary .grp-btn.active, html body .tabnav-primary .grp-btn.on, html body .tabnav-primary .bk-nav.active > .grp-btn{ background:var(--ae-tab-on) !important; color:var(--ae-ink) !important; border-top:2px solid var(--ae-accent) !important; padding-top:6px !important; }
+html body .tabnav-primary .grp-btn .sw{ width:16px !important; height:16px !important; border-radius:2px !important; color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; display:inline-block; flex:0 0 auto; }
+
+/* COLLAPSIBLE SIDEBAR: the toggle sits in the rail header; collapsed, the rail is a slim strip of group letters */
+@media (min-width:901px){ html body .rail{ position:sticky; } }
+.bk-rail-toggle{ position:absolute; top:10px; right:8px; width:24px; height:24px; border:1px solid var(--ae-line); background:var(--ae-cell); color:var(--ae-dim); border-radius:2px; cursor:pointer; font:700 13px/20px system-ui,sans-serif; padding:0; z-index:2; }
+.bk-rail-toggle:hover{ color:var(--ae-ink); border-color:var(--ae-accent); }
+.rail i.rg-ic{ display:none; font-style:normal; }
+@media (min-width:901px){
+  html.bk-rail-collapsed .rail{ width:52px !important; flex:0 0 52px !important; padding:44px 6px 12px !important; overflow-x:hidden; }
+  html.bk-rail-collapsed .rail .rail-head, html.bk-rail-collapsed .rail .bk-adv-head, html.bk-rail-collapsed .rail .rail-item, html.bk-rail-collapsed .rail .rail-foot, html.bk-rail-collapsed .rail #bk-sync-status, html.bk-rail-collapsed .rail .rail-group-label > :not(.rg-ic){ display:none !important; }
+  html.bk-rail-collapsed .rail .bk-rail-toggle{ right:13px; }
+  html.bk-rail-collapsed .rail .rail-group{ margin-top:6px !important; }
+  html.bk-rail-collapsed .rail .rail-group-label{ justify-content:center; padding:0 !important; }
+  html.bk-rail-collapsed .rail .rail-group-label::after{ display:none !important; }
+  html.bk-rail-collapsed .rail i.rg-ic{ display:inline-block; width:28px; height:28px; border-radius:2px; background:var(--rg-color, var(--ae-accent)); color:#fff; font:700 12px/28px Inter,system-ui,sans-serif; text-align:center; letter-spacing:0; cursor:pointer; opacity:.9; }
+  html.bk-rail-collapsed .rail .rail-group.has-active .rg-ic{ opacity:1; box-shadow:0 0 0 2px var(--ae-accent); }
+  html.bk-rail-collapsed .rail .rg-ic:hover{ opacity:1; }
+}
+@media (max-width:900px){ .bk-rail-toggle{ display:none; } }
