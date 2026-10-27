@@ -29,6 +29,7 @@ echo "== lease terms (CPI increases, expense stops, recovery caps, gross-up, sta
 echo "== Import OM, rent-roll layout (unit rent roll + expense list, two-building offerings)"; node audit/om_rentroll_test.js index.html | tail -1
 echo "== Import OM, letter-spaced headings and period columns (Trailing 12 / Current / Pro Forma)"; node audit/om_columns_test.js index.html "$REF" | tail -1
 echo "== Import OM, price and printed cap rate (asking vs sold vs assessed)"; node audit/om_price_test.js index.html "$REF" | tail -1
+echo "== Financing Compare (complete dated financing economics, reconciled to the engine)"; node audit/fincompare_test.js index.html | tail -1
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
