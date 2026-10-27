@@ -10,7 +10,7 @@ html body #viewport table.fin tr.subtotal td, html body #viewport table.fin tr.g
 html body #viewport table.fin tr.sec td{ background:var(--ae-head) !important; font-weight:700; }
 html body #viewport table.fin td.neg{ color:#c0392b; }
 /* the cell-authority layer paints inputs, calculated cells and totals from these variables: point them at the editor's tokens */
-html body #viewport{ --bk-in-fill:var(--ae-cell); --bk-in-ink:var(--ae-ink); --bk-in-line:transparent; --bk-calc-fill:var(--ae-cell-ro); --bk-total-fill:var(--ae-head2); --bk-total-ink:var(--ae-ink); }
+html body #viewport{ --bk-in-fill:var(--ae-cell); --bk-in-ink:var(--ae-ink); --bk-in-line:transparent; --bk-calc-fill:var(--ae-cell-ro); --bk-total-fill:var(--bk-key-fill); --bk-total-ink:var(--bk-key-ink); }
 /* input cells: a boxed field, as in the editor */
 html body #viewport table.fin tr.input td.v{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; box-shadow:inset 0 0 0 1px var(--ae-accent); font-weight:600; }
 html body #viewport table.fin tr.input td.v *{ background:transparent !important; border-color:transparent !important; text-decoration:none !important; color:inherit !important; box-shadow:none !important; }
@@ -191,3 +191,34 @@ html body #viewport input[type=file]::file-selector-button:hover{ border-color:v
 /* report tables: the key totals (EGR, NOI, cash flow) take the gold key-metric band; the blue-grey fill is reserved for headings, so a total never reads as a header row */
 html body #viewport .rp .rp-tbl tr.tot td, html body #viewport .rp .rp-tbl tr.tot td:first-child{ background:var(--bk-key-fill) !important; color:var(--bk-key-ink); border-top:1px solid var(--bk-key-rule); border-bottom:2px solid var(--bk-key-rule); }
 html body #viewport .rp .rp-tbl tr.tot td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+
+/* totals: a grand total is a key metric (gold band, through --bk-total-fill above); a subtotal is only a lightly tinted, ruled row. The heading blue-grey stays on headings alone. */
+html body #viewport table.fin tbody tr.grandtotal > td, html body #viewport table.fin tbody tr.total > td{ border-top:1px solid var(--bk-key-rule) !important; border-bottom:1px solid var(--bk-key-rule) !important; }
+html body #viewport table.fin tbody tr.grandtotal > td:first-child, html body #viewport table.fin tbody tr.total > td:first-child{ box-shadow:inset 4px 0 0 var(--bk-key-rule); }
+html body #viewport table.fin tbody tr.grandtotal .status-chip, html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-key-line) !important; }
+html body #viewport table.fin tr.subtotal td{ background:rgba(90,110,130,.07) !important; border-top:1px solid var(--ae-line); }
+@media (prefers-color-scheme: dark){ html body #viewport table.fin tr.subtotal td{ background:rgba(160,180,200,.08) !important; } }
+/* status chips in a table never break into a stack of short lines */
+html body #viewport table.fin td.v > .status-chip, html body #viewport table.fin td.bk-col-chip > .status-chip{ white-space:nowrap; }
+
+@media (min-width:761px){
+  html body #viewport table.fin.bk-yrs{ table-layout:fixed; width:100%; }
+  html body #viewport table.fin.bk-yrs th:first-child, html body #viewport table.fin.bk-yrs td:first-child{ width:28%; }
+}
+
+/* Sponsor CF: the four-column tables (setting / value / basis / status) share one grid and one row height */
+@media (min-width:761px){
+  html body #viewport table.fin.bk-sp4{ table-layout:fixed !important; width:100% !important; }
+  html body #viewport table.fin.bk-sp4 tr > :nth-child(1){ width:28% !important; }
+  html body #viewport table.fin.bk-sp4 tr > :nth-child(2){ width:16% !important; }
+  html body #viewport table.fin.bk-sp4 tr > :nth-child(3){ width:32% !important; }
+  html body #viewport table.fin.bk-sp4 tr > :nth-child(4){ width:24% !important; }
+  html body #viewport table.fin.bk-sp4 .status-chip{ white-space:nowrap !important; }
+  html body #viewport table.fin.bk-sp4 tbody td{ height:40px; vertical-align:middle; white-space:normal; }
+  html body #viewport table.fin.bk-sp4 tbody td:nth-child(3){ font-size:12px; color:var(--ae-dim); font-weight:400; text-align:left; }
+  html body #viewport table.fin.bk-sp4 tbody tr.grandtotal td:nth-child(3){ color:var(--bk-key-ink); font-weight:400; }
+  html body #viewport table.fin.bk-sp4 th:nth-child(4), html body #viewport table.fin.bk-sp4 td:nth-child(4){ text-align:center; }
+}
+/* a long row label wraps instead of running into the next column */
+html body #viewport table.fin td.rowlabel{ white-space:normal; overflow-wrap:anywhere; }
+html body #viewport table.fin.bk-opstmt td.rowlabel, html body #viewport table.fin.bk-vt4 td{ white-space:normal !important; overflow-wrap:anywhere; }

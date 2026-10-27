@@ -476,7 +476,9 @@ window.bkSponsorEconomics = function(){
   });
   var dates = rows.map(function(r){ return r.dt; });
   var xirr = NaN;
-  try { xirr = bkXirr(rows.map(function(r){ return r.sponsorAll; }), dates); } catch(e){}
+  /* same dating as the Sponsor Economics Summary (bkSponsorV08): the closing equity, less the acquisition fee when it is counted, is dated the closing day, not the first month-end */
+  try { var w0 = base.w, eq0 = Number(w0 && w0.x && w0.x.rows[0] && w0.x.rows[0].eqDraw) || 0, closeAmt = -eq0 * (Number(s.gpShare) || 0) + (includeOps ? (Number(base.acqFee) || 0) : 0);
+    xirr = bkXirrClose(rows.map(function(r){ return r.sponsorAll; }), dates, w0 && w0.x && w0.x.closeDt, closeAmt); } catch(e){ try { xirr = bkXirr(rows.map(function(r){ return r.sponsorAll; }), dates); } catch(e2){} }
   var totalFeeIncome = rows.reduce(function(a, r){ return a + r.feeIncome; }, 0);
   var gpContrib = Number(base.gpContrib) || 0, gpDist = Number(base.gpDist) || 0;
 

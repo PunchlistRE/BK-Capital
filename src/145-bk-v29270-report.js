@@ -6,6 +6,8 @@
 'use strict';
 if(typeof window.bkProFormaKit !== 'object') return;
 var K = window.bkProFormaKit, M = K.M, F = K.F, P = K.P, X = K.X, esc = K.esc, sum = K.sum;
+/* annual statements print in full dollars: at most 5 year columns a page (plus Close on the first page), so no figure is cut or rounded to thousands */
+function yrChunks(H){ var o = []; for(var a = 1; a <= H; a += 5) o.push([a, Math.min(H, a + 4)]); return o.length ? o : [[1, H]]; }
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
 function num(v){ v = Number(v); return isFinite(v) ? v : null; }
 function logoMark(){ var el = document.querySelector('.brand-mark .glyph svg'); return el ? el.outerHTML.replace(/class="[^"]*"/, 'class="mk"') : ''; }
@@ -48,7 +50,7 @@ var CSS = '@page{size:8.5in 11in;margin:0}*{box-sizing:border-box}html,body{marg
  + 'th{background:#e8ecf0;color:#25313d;border-bottom:1px solid #aeb7c0}tr.sec td{background:#f1f3f5;color:#25313d}tr.sub td{background:#f6f7f9}tr.tot td{background:#eaeff4;color:#14283d;border-top:2px solid #25313d}tr.tot .neg{color:#B23A2C}.pill{border-radius:2px}.hm td,.hm th{border-radius:2px}.bar,.rng,.rng i{border-radius:1px}body{background:#d5d9de}.ck .k{min-height:2.4em}'
  + '.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kv td{font-size:9.5px;padding:3px 4px}.kv tr.tot td{font-size:9.5px}.bx .kv{margin-top:6px}'
  + '.cft{table-layout:fixed}.cft th,.cft td{font-size:8px;padding:2.6px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cft th:first-child,.cft td:first-child{width:1.62in}.cft td:first-child{padding-left:8px}.cft tr.sub td:first-child,.cft tr.tot td:first-child,.cft tr.sec td{padding-left:3px}'
- + '.cft tr.sec td{font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;padding-top:6px}.cft td.c0{background:#f6f7f9}.cft tr.sub td{font-weight:700}.cft tr.tot td{font-weight:800}.cft .neg{color:#B23A2C}.cc svg{max-height:2.25in}.mtx{margin-top:10px}.mtx td{color:#25313d}.rr td,.rr th{white-space:nowrap;font-size:9px;padding:3px 5px}.rrc{table-layout:fixed}.rrc td{overflow:hidden;text-overflow:ellipsis}.rrc td:first-child,.rrc th:first-child{width:50%}.wft th:first-child,.wft td:first-child{width:2.05in}.cft th{letter-spacing:.03em;text-overflow:clip}.drw th:first-child,.drw td:first-child{width:1.75in}.cft.dense td,.cft.dense th{font-size:7.2px;padding-left:2px;padding-right:2px}.cft.dense th:first-child,.cft.dense td:first-child{width:1.45in}.cft.short{width:auto;min-width:72%;table-layout:auto}.cft.short th:first-child,.cft.short td:first-child{width:2.6in}.cft.short th:not(:first-child),.cft.short td:not(:first-child){min-width:.95in}.drw tr.ph td{font-size:7px;color:#566a80;line-height:1.25;text-align:right}.drw tr.ph td:first-child{text-align:left}.wfh{margin-bottom:10px}.wfh .bx{padding:8px 10px}.wfh .kv td,.wfh .kv th{font-size:8.5px;padding:2.5px 4px;white-space:nowrap}.wft td,.wft th{padding-top:2.2px;padding-bottom:2.2px}';
+ + '.cft tr.sec td{font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;padding-top:6px}.cft td.c0{background:#f6f7f9}.cft tr.sub td{font-weight:700}.cft tr.tot td{font-weight:800}.cft .neg{color:#B23A2C}.cc svg{max-height:2.25in}.mtx{margin-top:10px}.mtx td{color:#25313d}.rr td,.rr th{white-space:nowrap;font-size:9px;padding:3px 5px}.rrc{table-layout:fixed}.rrc td{overflow:hidden;text-overflow:ellipsis}.rrc td:first-child,.rrc th:first-child{width:50%}.wft th:first-child,.wft td:first-child{width:2.05in}.cft th{letter-spacing:.03em;text-overflow:clip}.drw th:first-child,.drw td:first-child{width:1.75in}.cft.dense td,.cft.dense th{font-size:7.2px;padding-left:2px;padding-right:2px}.cft.dense th:first-child,.cft.dense td:first-child{width:1.45in}.cft.short{width:auto;min-width:72%;table-layout:auto}.cft.short th:first-child,.cft.short td:first-child{width:2.6in}.cft.short th:not(:first-child),.cft.short td:not(:first-child){min-width:.95in}.drw tr.ph td{font-size:7px;color:#566a80;line-height:1.25;text-align:right}.drw tr.ph td:first-child{text-align:left}.wfh{margin-bottom:10px}.wfh .bx{padding:8px 10px}.wfh .kv td,.wfh .kv th{font-size:8.5px;padding:2px 4px;white-space:nowrap}.wft td,.wft th{padding-top:1.8px;padding-bottom:1.8px}';
 
 function page(inner, n, N, D, cover){
   var s = D.s;
@@ -81,8 +83,8 @@ function waterfallPages(D, n, N){
       a.acc[y] += acc; a.con[y] += c; a.app[y] += beg + c + acc - end; a.end[y] = end; bal[k] = end; });
   });
   if(irrBasis) acct.forEach(function(a){ for(var y = 1; y <= H; y++) a.beg[y] = a.end[y - 1]; });
-  var big = H > 7, fm = function(v){ if(v == null || !isFinite(v)) return '—'; if(Math.abs(v) < 0.5) return '–'; var a = Math.abs(v), t = big ? (a / 1000).toLocaleString('en-US', { maximumFractionDigits:0 }) : Math.round(a).toLocaleString('en-US'); return v < 0 ? '(' + t + ')' : t; };
-  /* columns on this page: close + years, or for holds over 10 years one half of the years per page */
+  var big = false, fm = function(v){ if(v == null || !isFinite(v)) return '—'; if(Math.abs(v) < 0.5) return '–'; var a = Math.abs(v), t = big ? (a / 1000).toLocaleString('en-US', { maximumFractionDigits:0 }) : Math.round(a).toLocaleString('en-US'); return v < 0 ? '($' + t + ')' : '$' + t; };
+  /* columns on this page: close + years, 5 years a page */
   var IDX = [];
   function cr(label, arr, cls, sign){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>' + IDX.map(function(j){ var v = (sign || 1) * arr[j]; return '<td class="' + (j === 0 ? 'c0' : '') + (v < -0.5 ? ' neg' : '') + '">' + fm(v) + '</td>'; }).join('') + '</tr>'; }
   function sec(t){ return '<tr class="sec"><td colspan="' + (IDX.length + 1) + '">' + t + '</td></tr>'; }
@@ -114,7 +116,7 @@ function waterfallPages(D, n, N){
   var parts = (function(){ var m = safe(function(){ return window.bkWaterfallSummary ? window.bkWaterfallSummary({ w:w }) : null; }, null); if(!m) return ''; var d = function(v){ return Math.abs(v) < 0.5 ? '&mdash;' : F(v); };
     return [['Return of capital', 'roc'], [m.prefLabel || 'Preferred return', 'pref'], ['Excess cash flow', 'excess'], ['Promote', 'promote']].map(function(r){ return '<tr><td class="l">' + esc(r[0]) + '</td><td>' + d(m.lp[r[1]] || 0) + '</td><td>' + d(m.gp[r[1]] || 0) + '</td></tr>'; }).join(''); })();
   var res = '<table class="kv"><thead><tr><th>Results</th><th>LP</th><th>GP</th></tr></thead><tbody><tr><td class="l">Contributed</td><td>' + F(w.lp.contrib) + '</td><td>' + F(w.gp.contrib) + '</td></tr><tr><td class="l">Distributed</td><td>' + F(w.lp.dist) + '</td><td>' + F(w.gp.dist) + '</td></tr><tr><td class="l">Profit</td><td>' + F(prof(w.lp)) + '</td><td>' + F(prof(w.gp)) + '</td></tr>' + parts + '<tr><td class="l">IRR</td><td>' + P(w.lpIRR, 2) + '</td><td>' + P(w.gpIRR, 2) + '</td></tr><tr><td class="l">Equity multiple</td><td>' + X(w.lp.moic) + '</td><td>' + X(w.gp.moic) + '</td></tr><tr class="tot"><td>GP promote</td><td></td><td>' + F(w.promote) + '</td></tr></tbody></table>';
-  var ranges = H > 10 ? [[1, Math.ceil(H / 2)], [Math.ceil(H / 2) + 1, H]] : [[1, H]];
+  var ranges = yrChunks(H);
   return ranges.map(function(rg, ri){ IDX = (ri === 0 ? [0] : []); for(var y = rg[0]; y <= rg[1]; y++) IDX.push(y);
     return page('<h2>Distribution waterfall' + (ranges.length > 1 ? ' · years ' + rg[0] + '–' + rg[1] + (ri ? ' (continued)' : '') : '') + '</h2>' + (ri === 0 ? '<div class="g3 wfh"><div class="bx">' + struct + '</div><div class="bx">' + promo + '</div><div class="bx">' + res + '</div></div>' : '') + tblFor()
     + '<div class="note" style="margin-top:6px">' + (big ? 'Figures in thousands of dollars. ' : '') + (irrBasis ? 'Hurdle accounts accrue monthly at each hurdle rate on ' + (lpMode ? 'the LP\'s own contributions and are reduced only by what the LP receives, so a tier opens once the LP has reached that return' : 'total equity and are reduced by total distributions (deal-level hurdles)') + '. ' : 'Hurdles are equity multiples on the LP\'s contributions. ') + 'Close is the equity contributed at closing. Every figure is the engine\'s monthly waterfall rolled up by year.</div>', n + ri, N, D); });
@@ -172,7 +174,7 @@ function buildDev(){
   var D = { s:s, Y:Y, H:H, units:Number(s.units) || 0, eq:fund.equityTotal, m:m, pol:base.pol, tot:tot, irr:m.irr, moic:m.moic, price:Number(s.purchasePrice) || 0, caseName:safe(function(){ return bkHeadline().c || 'Base'; }, 'Base'), photo:safe(function(){ return window.bkDealPhotoURL(); }, '') };
   var caseName = D.caseName, hurdle = Number(D.pol.targetIRR) || 0.12, ok = isFinite(D.irr) && D.irr >= hurdle, sens = sensitivity();
   var lpRow = (gate.rows || []).filter(function(r){ return r.id === 'lpIRR'; })[0], spRow = (gate.rows || []).filter(function(r){ return r.id === 'devSpread'; })[0];
-  var stabNOI = tk.stabPointNOI || tk.noi, yoc = fund.unlev ? stabNOI / fund.unlev : null, stabMonth = fund.stab, N = 7 + (H > 10 ? 1 : 0), pages = [];
+  var stabNOI = tk.stabPointNOI || tk.noi, yoc = fund.unlev ? stabNOI / fund.unlev : null, stabMonth = fund.stab, N = 7 + (yrChunks(H).length - 1), pages = [];
   var vcol = /ADVANCE|APPROVE/i.test(gate.verdict || '') ? '#3FB27F' : /COND/i.test(gate.verdict || '') ? '#E2B04A' : '#E5604D';
   var date = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
   var loanDrawn = Math.max(0, (fund.levered || 0) - (fund.equityTotal || 0)), ltc = fund.levered ? loanDrawn / fund.levered : null;
@@ -237,7 +239,7 @@ function build(){
   var goingIn = price ? y1.noiAfter / price : null, yoc = basis ? y1.noiAfter / basis : null, hurdle = Number(D.pol.targetIRR) || 0.12, ok = isFinite(D.irr) && D.irr >= hurdle;
   var vcol = /ADVANCE|APPROVE/i.test(gate.verdict || '') ? '#3FB27F' : /COND/i.test(gate.verdict || '') ? '#E2B04A' : '#E5604D';
   var date = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
-  var N = 7 + (Y.length > 10 ? 2 : 0), pages = [];
+  var N = 7 + 2 * (yrChunks(Y.length).length - 1), pages = [];
   /* 1 cover */
   pages.push(page('<div class="in"><div class="lockup">' + LOCKUP + '</div>'
     + '<div class="kick">Punchlist Capital · Investment summary</div><h1>' + esc(s.name || 'Property') + '</h1><div class="loc">' + esc([s.location, s.propertyType, units ? units + ' units' : '', s.gsf ? Math.round(Number(s.gsf)).toLocaleString('en-US') + ' SF' : ''].filter(Boolean).join('  ·  ')) + '</div>'
@@ -302,9 +304,9 @@ function build(){
     + '<div class="g3 mt"><div class="bx"><div class="t">Financing</div>' + fin + '</div><div class="bx"><div class="t">Exit</div>' + exit + '</div><div class="bx"><div class="t">Returns</div>' + ret + '</div></div>'
     + comp + '<div class="bx mt"><div class="t">Where each dollar of income goes</div><div class="s">Year 1 effective gross income, split into what it pays for and what is left.</div>' + K.chartDollar(D) + '</div>', 3, N, D));
   /* 4 annual cash flow: every line, from closing to the sale; the columns add up to the engine's net cash flow to equity.
-     Holds over 10 years continue on a second page (the first half of the years, then the rest); short holds add a Total column. */
-  var big = H > 7, fm = function(v){ if(v == null || !isFinite(v)) return '—'; if(Math.abs(v) < 0.5) return '–'; var a = Math.abs(v), t = big ? (a / 1000).toLocaleString('en-US', { maximumFractionDigits:0 }) : Math.round(a).toLocaleString('en-US'); return v < 0 ? '(' + t + ')' : t; };
-  var ranges = H > 10 ? [[1, Math.ceil(H / 2)], [Math.ceil(H / 2) + 1, H]] : [[1, H]], withTot = H <= 7;
+     Figures are in full dollars, so holds over 5 years continue on further pages (5 years a page); short holds add a Total column. */
+  var big = false, fm = function(v){ if(v == null || !isFinite(v)) return '—'; if(Math.abs(v) < 0.5) return '–'; var a = Math.abs(v), t = big ? (a / 1000).toLocaleString('en-US', { maximumFractionDigits:0 }) : Math.round(a).toLocaleString('en-US'); return v < 0 ? '($' + t + ')' : '$' + t; };
+  var ranges = yrChunks(H), withTot = H <= 5;
   ranges.forEach(function(rg, ri){
     var CS = C.slice(rg[0] - 1, rg[1]), YS = Y.slice(rg[0] - 1, rg[1]), first = ri === 0, cols = CS.length + (first ? 1 : 0) + (withTot ? 1 : 0);
     var any = function(k){ return C.some(function(c){ return Math.abs(c[k] || 0) >= 0.5; }); };

@@ -25,18 +25,20 @@ const A = require(path.join(__dirname, 'deal.js'));
       return { html, H, close0, cf, cfads, intr, prin, ds, eq: D.equity, profit: m.dist - m.contrib }; }, deal);
     await doc.setContent(r.html); await doc.waitForTimeout(300);
     const pg = await doc.evaluate(() => { const num = s => { s = String(s || '').trim(); if (!s || s === '–' || s === '—') return 0; const n = Number(s.replace(/[$,()%x\s]/g, '')); return /^\(/.test(s) ? -n : n; };
-      const tbl = [...document.querySelectorAll('table.cft')][0], rows = {}; [...tbl.querySelectorAll('tbody tr')].forEach(tr => { const c = [...tr.cells].map(x => x.innerText); if (c.length > 2) rows[c[0]] = c.slice(1).map(num); });
-      const mrows = {}; [...document.querySelectorAll('table.mtx tbody tr')].forEach(tr => { const c = [...tr.cells].map(x => x.innerText); mrows[c[0]] = c.slice(2); });
-      const thousands = /\$ thousands/i.test(tbl.querySelector('th').innerText);
+      const tbls = [...document.querySelectorAll('table.cft:not(.mtx):not(.wft)')], tbl = tbls[0], rows = {}; tbls.forEach(t => [...t.querySelectorAll('tbody tr')].forEach(tr => { const c = [...tr.cells].map(x => x.innerText); if (c.length > 2) rows[c[0]] = (rows[c[0]] || []).concat(c.slice(1).map(num)); }));
+      const mrows = {}; [...document.querySelectorAll('table.mtx')].forEach((t, ti) => [...t.querySelectorAll('tbody tr')].forEach(tr => { const c = [...tr.cells].map(x => x.innerText); mrows[c[0]] = (mrows[c[0]] || []).concat(c.slice(ti === 0 ? 2 : 1)); }));
+      const thousands = /thousands/i.test(document.body.innerText.slice(0, 1e9)) && tbls.some(t => /\$ thousands/i.test(t.querySelector('th').innerText));
+      const dollars = tbls.every(t => [...t.querySelectorAll('tbody td')].filter(x => /\d/.test(x.innerText) && !/%|x$/.test(x.innerText.trim())).every(x => /^\(?\$/.test(x.innerText.trim())));
+      const perPage = tbls.map(t => t.querySelectorAll('thead th').length - 1);
       /* nothing on a page may reach its footer */
       const over = [...document.querySelectorAll('.page')].map((s, i) => { const ft = s.querySelector('.ft2'); if (!ft) return null; const top = ft.getBoundingClientRect().top; const bd = s.querySelector('.bd'); if (!bd) return null; const bottom = Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)); return bottom > top - 2 ? i + 1 : null; }).filter(Boolean);
-      return { pages: document.querySelectorAll('.page').length, rows, mrows, thousands, over, text: document.body.innerText }; });
-    /* holds of up to 7 years carry a Total column after the years */
+      return { pages: document.querySelectorAll('.page').length, rows, mrows, thousands, dollars, perPage, over, text: document.body.innerText }; });
+    /* holds of up to 5 years carry a Total column after the years */
     const totCol = {}; Object.keys(pg.rows).forEach(key => { if (pg.rows[key].length > r.H + 1) totCol[key] = pg.rows[key][r.H + 1]; pg.rows[key] = pg.rows[key].slice(0, r.H + 1); });
     Object.keys(pg.mrows).forEach(key => { pg.mrows[key] = pg.mrows[key].slice(0, r.H); });
-    const k = pg.thousands ? 1000 : 1, tol = pg.thousands ? 1.01 : 1.01, near = (a, b) => Math.abs(a * k - b) <= tol * k;
-    check(tag + ': seven pages', pg.pages === 7, pg.pages);
-    check(tag + ': ' + (r.H > 7 ? 'figures in $ thousands' : 'figures in whole dollars'), pg.thousands === (r.H > 7));
+    const k = 1, tol = 1.01, near = (a, b) => Math.abs(a * k - b) <= tol * k;
+    check(tag + ': ' + (7 + 2 * (Math.ceil(r.H / 5) - 1)) + ' pages (5 years a page, so the figures stay whole dollars)', pg.pages === 7 + 2 * (Math.ceil(r.H / 5) - 1), pg.pages);
+    check(tag + ': figures are whole dollars with a $ sign, never thousands; at most 5 year columns a page', !pg.thousands && pg.dollars && pg.perPage.every(n => n <= 7), JSON.stringify(pg.perPage));
     check(tag + ': every year\'s net cash flow to equity equals the engine\'s', pg.rows['Net cash flow to equity'].slice(1).every((v, i) => near(v, r.cf[i])), pg.rows['Net cash flow to equity'].slice(1).join(' '));
     check(tag + ': Close shows the equity invested at closing', near(pg.rows['Net cash flow to equity'][0], -r.close0) && near(pg.rows['Equity invested'][0], -r.close0));
     check(tag + ': cash flow after debt service equals the engine\'s', pg.rows['Cash flow after debt service'].slice(1).every((v, i) => near(v, r.cfads[i])));
@@ -48,15 +50,15 @@ const A = require(path.join(__dirname, 'deal.js'));
     const coc = pg.mrows['Cash-on-cash return'].map(x => Number(x.replace('%', '')) / 100);
     check(tag + ': cash-on-cash is cash flow after debt service over equity, not 0%', coc.every((v, i) => Math.abs(v - r.cfads[i] / r.eq) < 0.0006) && coc.some(v => v > 0), coc.join(' '));
     check(tag + ': nothing runs into a page footer', pg.over.length === 0, pg.over.join(','));
-    if (r.H <= 7) check(tag + ': the Total column is the sum of close and every year', ['Net cash flow to equity', 'Net operating income', 'Interest'].every(key => Math.abs(totCol[key] - pg.rows[key].reduce((s, v) => s + v, 0)) <= r.H + 1), JSON.stringify(totCol['Net cash flow to equity']));
+    if (r.H <= 5) check(tag + ': the Total column is the sum of close and every year', ['Net cash flow to equity', 'Net operating income', 'Interest'].every(key => Math.abs(totCol[key] - pg.rows[key].reduce((s, v) => s + v, 0)) <= r.H + 1), JSON.stringify(totCol['Net cash flow to equity']));
     check(tag + ': no NaN or undefined', !/NaN|undefined|\[object/.test(pg.text));
     if (/rent roll/.test(tag)) check(tag + ': the rent roll summary lists unit types and the commercial tenant', /Rent roll/i.test(pg.text) && /1 BR/.test(pg.text) && /2 BR/.test(pg.text) && /Corner Deli/.test(pg.text) && /12\/2029/.test(pg.text));
     check(tag + ': the cash flow sums to the deal\'s profit', Math.abs(pg.rows['Net cash flow to equity'].reduce((t, v) => t + v, 0) * k - r.profit) <= (r.H + 1) * k);
   }
   /* the distribution waterfall page, rebuilt from the engine's monthly waterfall */
   const readWf = () => doc.evaluate(() => { const num = s => { s = String(s || '').trim(); if (!s || s === '–' || s === '—') return 0; const n = Number(s.replace(/[$,()%x\s]/g, '')); return /^\(/.test(s) ? -n : n; };
-    const t = document.querySelector('table.wft'); if (!t) return null; const big = /thousands/i.test(t.querySelector('th').innerText); let sec = 'top'; const S = {};
-    [...t.querySelectorAll('tbody tr')].forEach(tr => { if (tr.classList.contains('sec')) { sec = tr.innerText.trim(); S[sec] = {}; return; } const c = [...tr.cells].map(x => x.innerText); (S[sec] = S[sec] || {})[c[0].replace(/\s*\(.*$/, '').trim()] = c.slice(1).map(num); });
+    const ts = [...document.querySelectorAll('table.wft')]; if (!ts.length) return null; const big = ts.some(t => /thousands/i.test(t.querySelector('th').innerText)); const S = {};
+    ts.forEach(t => { let sec = 'top'; [...t.querySelectorAll('tbody tr')].forEach(tr => { if (tr.classList.contains('sec')) { sec = tr.innerText.trim(); S[sec] = S[sec] || {}; return; } const c = [...tr.cells].map(x => x.innerText), key = c[0].replace(/\s*\(.*$/, '').trim(); (S[sec] = S[sec] || {})[key] = (S[sec][key] || []).concat(c.slice(1).map(num)); }); });
     return { S, big, pages: document.querySelectorAll('.page').length }; });
   for (const [tag, deal] of [['upside deal (every tier pays)', require(path.join(__dirname, 'dealB.js'))], ['upside deal, 10 years', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 10 })], ['development deal', require(path.join(__dirname, 'devdeal.js'))]]) {
     const w = await p.evaluate(d => { bkCreateNewDeal(d); const w = bkWaterfallV07(), last = w.rows[w.rows.length - 1]; return { html: bkReportHTML(), lp: w.lp, gp: w.gp, promote: w.promote, b: [last.b1, last.b2, last.b3], t: ['t1', 'catchup', 't2', 't3', 't4'].map(k => w.rows.reduce((s, r) => s + r[k], 0)), s: w.s }; }, deal);
@@ -80,7 +82,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   const F = await doc.evaluate(() => { const num = s => { s = String(s || '').trim(); if (!s || s === '–' || s === '—') return 0; return Number(s.replace(/[$,()%\s]/g, '')); }; const t = document.querySelector('table.drw'); if (!t) return null; const R = {};
     [...t.querySelectorAll('tbody tr')].forEach(tr => { const c = [...tr.cells].map(x => x.innerText); if (c.length > 2) R[c[0].trim()] = c.slice(1).map(num); }); return { R, pages: document.querySelectorAll('.page').length }; });
   const lastOf = a => a[a.length - 1], nearK = (a, b) => Math.abs(a * 1000 - b) <= 1000;
-  check('development: seven pages with a construction funding page', F && F.pages === 7);
+  check('development: a construction funding page, and 5-year waterfall pages (6-year hold)', F && F.pages === 7 + (Math.ceil(6 / 5) - 1));
   check('construction funding: total costs, equity, loan draws and capitalised interest equal the funding engine\'s', nearK(lastOf(F.R['Total costs']), fd.need) && nearK(lastOf(F.R['Construction loan draws']), fd.draw) && nearK(lastOf(F.R['Interest capitalised']), fd.ci) && nearK(lastOf(F.R['Equity']) + (F.R['Equity over plan'] ? lastOf(F.R['Equity over plan']) : 0), fd.eq));
   check('construction funding: every quarter\'s sources equal its costs', F.R['Total sources'].every((v, j) => Math.abs(v - F.R['Total costs'][j]) <= 1));
   check('construction funding: the loan rolls forward each quarter (beginning + draws + interest = ending)', F.R['Ending balance'].slice(0, -1).every((e, j) => Math.abs(F.R['Beginning balance'][j] + F.R['Draws'][j] + F.R['Interest capitalised'][j] - e) <= 2) && nearK(lastOf(F.R['Ending balance']), fd.end));
@@ -90,8 +92,8 @@ const A = require(path.join(__dirname, 'deal.js'));
   const dover = await doc.evaluate(() => [...document.querySelectorAll('.page')].map((s, i) => { const ft = s.querySelector('.ft2'), bd = s.querySelector('.bd'); if (!ft || !bd) return null; const top = ft.getBoundingClientRect().top; return Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) > top - 2 ? i + 1 : null; }).filter(Boolean));
   check('development summary: nothing runs into a page footer', dover.length === 0, dover.join(','));
   /* short and long holds: the right number of pages, and nothing clipped, overflowing or running into a footer */
-  for (const [nm, d, pages] of [['2-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 2 }), 7], ['15-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 15 }), 9],
-    ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 8], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 7]]) {
+  for (const [nm, d, pages] of [['2-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 2 }), 7], ['15-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 15 }), 11],
+    ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 9], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 7]]) {
     const html = await p.evaluate(d => { bkCreateNewDeal(d); return bkReportHTML(); }, d); await doc.setContent(html); await doc.waitForTimeout(300);
     const r = await doc.evaluate(() => { const P = [...document.querySelectorAll('.page')];
       return { n: P.length, over: P.map((s, i) => { const ft = s.querySelector('.ft2'), bd = s.querySelector('.bd'); if (!ft || !bd) return null; return Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) > ft.getBoundingClientRect().top - 2 ? i + 1 : null; }).filter(Boolean),
