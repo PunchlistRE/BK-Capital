@@ -147,7 +147,7 @@ function parseOM(pages){
   var IE_HEAD = function(t){ return (/OPERATING INCOME/i.test(t) && /OPERATING EXPENSES/i.test(t)) || (/INCOME ?SUMMARY/i.test(t) && /EXPENSE ?SUMMARY/i.test(t)); };
   var ie = null; for(i = 0; i < txt.length; i++){ var nt = deLS(txt[i]); if(IE_HEAD(nt)){ ie = nt; src.income = i + 1; break; } }
   if(ie){
-    var sec = 'inc', I = { addl:[], exp:[], aligned:[] }, done = false;
+    var sec = 'inc', sub = '', I = { addl:[], exp:[], aligned:[], twoFigure:[] }, done = false;
     /* Which period columns the table has, in the order printed ("Trailing 12", "Current", "Pro Forma"). Read from the column
        heading lines, before the first figure. The classic two-column layout (Current, Pro Forma) keeps the original reading. */
     var LINES = ie.split(/\n/), hi0 = -1; LINES.forEach(function(l, q){ if(hi0 < 0 && (/INCOME ?SUMMARY/i.test(l) || /^\s*OPERATING INCOME/i.test(l))) hi0 = q; });
@@ -159,26 +159,38 @@ function parseOM(pages){
     var rowVals = function(money){ var N = SETS.length, n = money.length, w, k;
       if(n === N){ w = 1; k = N; } else if(n === 2 * N){ w = 2; k = N; } else if(n < N){ w = 1; k = n; } else if(n % 2 === 0 && n / 2 < N){ w = 2; k = n / 2; } else { w = 1; k = N; }
       var out = {}, off = N - k; for(var j = 0; j < k; j++) out[SETS[off + j]] = money[j * w]; out.__aligned = k < N; out.__k = k; return out; };
+    /* The table's own unit divisor: rows that print amount, per-unit, amount, per-unit have amount / per-unit equal to the unit
+       count. It is used only to tell a two-figure other-income row (Current, Projected) from (amount, per-unit). */
+    var ratios = []; LINES.forEach(function(l){ var f = (l.match(/\$?\s?\d[\d,]*(?:\.\d+)?(?!\d*%)/g) || []).filter(function(x){ return !/%$/.test(x.trim()); }); var nums = f.map(function(x){ return num(x.replace('%', '')); }).filter(function(v){ return v > 0; });
+      if(/^[A-Za-z]/.test(l) && nums.length === 4 && nums[0] > nums[1] && nums[2] > nums[3] && !/%/.test(l)) ratios.push(nums[0] / nums[1]); });
+    ratios.sort(function(a, b){ return a - b; }); var UDIV = null; if(ratios.length >= 3){ var med = ratios[Math.floor(ratios.length / 2)]; if(ratios.filter(function(r){ return Math.abs(r - med) <= 0.02 * med; }).length >= Math.max(3, Math.ceil(ratios.length * 0.6))) UDIV = med; }
     LINES.forEach(function(line){ if(done || /^\s*FOR SALE/i.test(line)){ done = true; return; }
       if(/^\s*ADDITIONAL INCOME/i.test(line)){ sec = 'add'; return; } if(/^\s*OPERATING EXPENSES/i.test(line) || /^\s*EXPENSE ?SUMMARY/i.test(line)){ sec = 'exp'; return; }
       var re = /\(?\$?\s?\d[\d,]*(?:\.\d+)?\)?\s*%?/g, toks = [], m, cut = -1; while((m = re.exec(line))){ if(cut < 0) cut = m.index; var t = m[0].trim(); toks.push({ pct:/%$/.test(t), v:num(t.replace('%', '')), neg:/^\(/.test(t) }); }
       if(cut < 0) return; var label = line.slice(0, cut).replace(/[\s:|]+$/, '').trim(); if(!label || /^(current|pro forma|%|\$ ?\/ ?unit)/i.test(label) || /SUMMARY\b/i.test(label)) return;
       var money = toks.filter(function(t){ return !t.pct; }).map(function(t){ return Math.abs(t.v); }), pcts = toks.filter(function(t){ return t.pct; }).map(function(t){ return t.v; });
       if(!money.length) return;
+      /* "- Commercial" / "- Residential" in a label starts that sub-section; an unlabelled row (a vacancy allowance) belongs to the one before it */
+      if(sec === 'inc'){ if(/\bcommercial\b/i.test(label)) sub = 'comm'; else if(/\bresidential\b/i.test(label)) sub = 'res'; }
+      var put = function(key, val){ I[key] = val; if(sec === 'inc' && sub){ (I[sub] = I[sub] || {})[key] = val; } };
       /* mk(fallback): the row's values per period. Legacy layouts return the original {cur, pf}; others carry every period found. */
       var V = null, mk = function(fb){ return fb; };
       if(!LEGACY){ V = rowVals(money); mk = function(fb){ var c = {}; SETS.forEach(function(s){ if(V[s] != null) c[s] = V[s]; }); return c; }; if(V.__aligned && /[A-Za-z]/.test(label) && !/^\d/.test(label)) I.aligned.push(label.replace(/[\s\-\u2013]+$/, '')); }
       var vacOf = function(base){ if(LEGACY) return base; var c = mk(), idx = 0; SETS.forEach(function(s){ if(c[s] != null){ c[s + 'Pct'] = pcts[idx] != null ? pcts[idx] / 100 : null; idx++; } }); return c; };
       if(sec === 'inc'){
-        if(/gross potential/i.test(label)) I.gpr = mk({ cur:money[0], pf:money[1] });
-        else if(/loss to lease|below market/i.test(label)) I.ltl = mk({ cur:money[0], pf:money[1] });
-        else if(/gross scheduled/i.test(label)) I.gsr = mk({ cur:money[0], pf:money[1] });
-        else if(/^vacancy/i.test(label)) I.vac = vacOf({ cur:money[0], pf:money[1], curPct:pcts[0] != null ? pcts[0] / 100 : null, pfPct:pcts[1] != null ? pcts[1] / 100 : null });
-        else if(/effective rental/i.test(label)) I.eri = mk({ cur:money[0], pf:money[1] });
+        if(/gross potential/i.test(label)) put('gpr', mk({ cur:money[0], pf:money[1] }));
+        else if(/loss to lease|below market/i.test(label)) put('ltl', mk({ cur:money[0], pf:money[1] }));
+        else if(/gross scheduled/i.test(label)) put('gsr', mk({ cur:money[0], pf:money[1] }));
+        else if(/^vacancy/i.test(label)) put('vac', vacOf({ cur:money[0], pf:money[1], curPct:pcts[0] != null ? pcts[0] / 100 : null, pfPct:pcts[1] != null ? pcts[1] / 100 : null }));
+        else if(/effective rental/i.test(label)) put('eri', mk({ cur:money[0], pf:money[1] }));
         else if(/effective gross/i.test(label)) I.egi = mk({ cur:money[0], pf:money[1] });
         else if(/net operating/i.test(label)) I.noi = mk({ cur:money[0], pf:money[1] });
         else if(/^total additional/i.test(label)) I.addTot = mk({ cur:money[0], pf:money[2] != null ? money[2] : money[1] });
-        else if(/\$/.test(line) && !/^(total|below|loss)/i.test(label) && /^[A-Za-z]/.test(label) && money.length >= 2) I.addl.push(Object.assign({ label:label }, mk({ cur:money[0], pf:money[2] != null ? money[2] : (money[1] != null && money.length > 2 ? money[1] : money[0]) })));
+        else if(/\$/.test(line) && !/^(total|below|loss)/i.test(label) && /^[A-Za-z]/.test(label) && money.length >= 2){
+          var addP = money[2] != null ? money[2] : (money[1] != null && money.length > 2 ? money[1] : money[0]);
+          /* two figures: Current and Projected, unless the second is this table's own per-unit figure */
+          if(LEGACY && money.length === 2 && UDIV && Math.abs(money[1] - money[0] / UDIV) > Math.max(1, 0.02 * money[1])){ addP = money[1]; I.twoFigure.push(label); }
+          I.addl.push(Object.assign({ label:label }, mk({ cur:money[0], pf:addP }))); }
       } else if(/effective gross/i.test(label)) I.egi = mk({ cur:money[0], pf:money[1] });
       else if(/net operating/i.test(label)){ I.noi = mk({ cur:money[0], pf:money[1] }); done = true; }
       else if(sec === 'add'){ if(/^total/i.test(label)) I.addTot = mk({ cur:money[0], pf:money[2] != null ? money[2] : money[1] }); else I.addl.push(Object.assign({ label:label }, mk({ cur:money[0], pf:money[2] != null ? money[2] : money[0] }))); }
@@ -188,16 +200,29 @@ function parseOM(pages){
     if(!I.egi && I.eri){ I.egi = {}; PK.forEach(function(p){ I.egi[p] = (I.eri[p] || 0) + (I.addTot ? (I.addTot[p] || 0) : 0); }); I.egi.derived = true; }
     if(!I.addTot && I.addl.length){ I.addTot = {}; PK.forEach(function(p){ I.addTot[p] = sumP(I.addl, p); }); }
     /* the periods the table carries, and for each one whether the page's own figures hold together */
-    I.periods = PK.slice(); I.legacyColumns = LEGACY;
+    I.periods = PK.slice(); I.legacyColumns = LEGACY; I.udiv = UDIV;
     I.missing = []; PK.forEach(function(p){ var miss = I.exp.filter(function(e){ return e[p] == null; }).length; if(miss) I.missing.push({ period:p, lines:miss }); });
     I.recon = {}; PK.forEach(function(p){ var C = [], near = function(a, b){ return Math.abs(a - b) <= Math.max(2, Math.abs(b) * 0.0005); }, push = function(id, label, a, b){ C.push({ id:id, label:label, a:a, b:b, ok:near(a, b) }); };
       if(I.expTot && I.expTot[p] != null && I.exp.length && I.exp.every(function(e){ return e[p] != null; })) push('exp', 'Expense lines add to Total Expense', sumP(I.exp, p), I.expTot[p]);
       if(I.egi && I.egi[p] != null && I.expTot && I.expTot[p] != null && I.noi && I.noi[p] != null) push('noi', 'Effective Gross Income less Total Expense equals NOI', I.egi[p] - I.expTot[p], I.noi[p]);
       if(I.eri && I.eri[p] != null && I.addTot && I.addTot[p] != null && I.egi && I.egi[p] != null && !I.egi.derived) push('egi', 'Effective rental income plus other income equals Effective Gross Income', I.eri[p] + I.addTot[p], I.egi[p]);
       if(C.length) I.recon[p] = C; });
+    /* a table that carries a commercial and a residential rent build */
+    I.mixed = !!(I.comm && I.comm.gsr && I.res && I.res.gsr);
+    /* Component totals that disagree with the printed Effective Gross Income. Nothing is decided here: the printed figures stay
+       as the source's, the listed lines are kept as listed, and the combinations of lines that WOULD account for the printed
+       figure are shown so the user can decide. */
+    I.conflicts = {}; PK.forEach(function(p){ var rc = (I.recon[p] || []).filter(function(c){ return c.id === 'egi' && !c.ok; })[0]; if(!rc || !I.eri || I.eri[p] == null || !I.egi || I.egi[p] == null || !I.addl.length) return;
+      var implied = I.egi[p] - I.eri[p], lines = I.addl.filter(function(e){ return e[p] != null; }), matches = [];
+      if(lines.length <= 12){ for(var mask = 1; mask < (1 << lines.length); mask++){ var s = 0, names = []; for(var q = 0; q < lines.length; q++) if(mask & (1 << q)){ s += lines[q][p]; names.push(lines[q].label); } if(Math.abs(s - implied) <= 2 && names.length <= 4) matches.push(names); } }
+      I.conflicts[p] = { listed:lines.reduce(function(tt, e){ return tt + e[p]; }, 0), implied:implied, eri:I.eri[p], egi:I.egi[p], lines:lines.map(function(e){ return { label:e.label, value:e[p] }; }), matches:matches }; });
     o.ie = I; o.periods = PK.slice();
     if(I.noi){ o.curNOI = o.curNOI || I.noi.cur; o.pfNOI = o.pfNOI || I.noi.pf; if(I.noi.t12 != null) o.t12NOI = I.noi.t12; }
   }
+  /* every place the OM states a commercial area, so a conflicting statement is visible (the area changes $/SF, not income) */
+  o.commSFMentions = []; txt.forEach(function(pg, pi){ var add = function(sf, why){ sf = num(sf); if(sf >= 100 && sf < 500000) o.commSFMentions.push({ sf:sf, page:pi + 1, why:why }); }, m, re1 = /([\d,]{3,7})\s*(?:square|sq\.?)\s*f(?:oo|ee)?t[^.\n]{0,40}(?:street[- ]level|ground[- ]floor|retail|commercial)/ig, re2 = /commercial[^\n]{0,40}?(?:with|:)?\s*([\d,]{3,7})\s*(?:SF|sq)/ig;
+    while((m = re1.exec(pg))) add(m[1], 'stated in the description'); while((m = re2.exec(pg))) add(m[1], 'stated beside "Commercial"');
+    var inC = false; pg.split(/\n/).forEach(function(l){ if(/^\s*Commercial\s*$/i.test(l)) inC = true; else if(inC){ var r = /^(.{2,60}?)\s+(?:Ground Floor|Basement|\d+\w{0,2} Floor|Suite \w+|Unit \w+)\s+([\d,]{3,6})\s+\$[\d,]+\s+\$[\d,]+/i.exec(l); if(r) add(r[2], 'tenant table: ' + r[1].trim()); else if(/^\s*(total|residential)/i.test(l)) inC = false; } }); });
   if(!(o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length)) parseRR(txt, o);
   if(o.price && o.curNOI && !o.curCap) o.curCap = o.curNOI / o.price;
   return o;
@@ -352,7 +377,14 @@ function buildDeal(om0, basis, fileName){
   } else gsr = basis === 'cur' ? (I.gsr ? I.gsr.cur : I.gpr && I.gpr.cur) : (I.gpr ? I.gpr.pf : I.gsr && I.gsr.pf);
   var egi = I.egi ? I.egi[k] : null;
   var vacPct = useERI ? 0 : I.vac && I.vac[k + 'Pct'] != null ? I.vac[k + 'Pct'] : (I.vac && gsr && isFinite(I.vac[k] / gsr) ? I.vac[k] / gsr : 0.05);
-  var other = I.addTot ? I.addTot[k] : sumBy(I.addl, /./, k), ex = I.exp, sums = {};
+  var other = I.addTot ? I.addTot[k] : sumBy(I.addl, /./, k), ex = I.exp, sums = {}, needs = [], decisions = {};
+  /* component other-income lines that disagree with the printed EGI: the build waits for the user's decision */
+  var cf0 = I.conflicts && I.conflicts[k];
+  if(cf0){ var dec = (S.dec && S.dec[k]) || null;
+    if(!dec){ needs.push({ key:'otherIncome', why:'The OM\'s other-income lines (' + $(cf0.listed) + ') and its printed Effective Gross Income (which implies ' + $(cf0.implied) + ') disagree.' }); other = 0; }
+    else if(dec.mode === 'printed'){ other = cf0.implied; decisions.otherIncome = { mode:'printed', amount:other, note:'Other income = printed Effective Gross Income less effective rental income' }; }
+    else if(dec.mode === 'lines'){ other = cf0.listed; decisions.otherIncome = { mode:'lines', amount:other, note:'All listed other-income lines, as listed' }; }
+    else { var pk = (dec.picks || []); other = cf0.lines.filter(function(l){ return pk.indexOf(l.label) >= 0; }).reduce(function(tt, l){ return tt + l.value; }, 0); decisions.otherIncome = { mode:'pick', amount:other, lines:pk.slice(), note:'Lines chosen by the user' }; if(!pk.length) needs.push({ key:'otherIncome', why:'Choose which other-income lines to count.' }); } }
   ex.forEach(function(e){ var c = catOf(e.label); sums[c] = (sums[c] || 0) + (e[k] || 0); });
   var mgmt = sums.mgmt || 0, taxes = sums.taxes || 0, ins = sums.insurance || 0, util = sums.utilities || 0, rm = sums.rm || 0, con = sums.contract || 0, pay = sums.payroll || 0, mkt = sums.marketing || 0, turn = sums.turnover || 0, excl = sums.exclude || 0, has = function(c){ return !!sums[c]; };
   var lines = ex.map(function(e){ return { label:e.label, amount:e[k] || 0, cat:catOf(e.label), auto:autoCat(e.label), learned:!!window.bkLearn.get(e.label) }; });
@@ -382,9 +414,21 @@ function buildDeal(om0, basis, fileName){
     if(om.priceTypo) notes.push('The OM prints the price as "' + om.priceTypo + '"; it is read as ' + $(om.price) + '. Confirm it with the broker.');
     if(om.misc && om.misc.length) notes.push('Other income from the rent roll: ' + om.misc.map(function(x){ return x.name + ' ' + $(x.amount * 12) + '/yr'; }).join(', ') + '.');
   }
-  var tie = safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
+  /* mixed-use table: commercial rent and vacancy go to the engine's own commercial inputs. The area is the user's to state:
+     it changes $/SF, not the income. Recoveries are not printed in the table, so they stay 0. */
+  if(I.mixed && I.comm && I.comm.gsr && I.comm.gsr[k] != null){
+    var cg = I.comm.gsr[k], cvp = I.comm.vac && I.comm.vac[k + 'Pct'] != null ? I.comm.vac[k + 'Pct'] : (I.comm.vac && I.comm.vac[k] != null && cg ? I.comm.vac[k] / cg : 0);
+    if(!(S.mCommSF > 0)) needs.push({ key:'commSF', why:'The table has a commercial rent build (' + $(cg) + ' a year). Its area is needed to express that as rent per SF; the income is the same at any area.' });
+    d.commercialArea = S.mCommSF > 0 ? S.mCommSF : 0; d.commercialRent = S.mCommSF > 0 ? Math.round(cg / S.mCommSF * 1e6) / 1e6 : 0; d.recovery = 0; d.commercialVacancy = Math.round(cvp * 10000) / 10000; d.propertyType = 'Mixed-Use';
+    notes.push('Mixed use: residential rent ' + $(I.res.gsr[k]) + ' and commercial rent ' + $(cg) + ' a year are separate lines in the OM. Commercial rent' + (S.mCommSF > 0 ? ' is entered as ' + S.mCommSF.toLocaleString('en-US') + ' SF at $' + (cg / S.mCommSF).toFixed(2) + '/SF' : ' needs its area') + ' with the OM\'s ' + pct(cvp, 1) + ' allowance; expense recoveries are not printed and are 0.');
+  }
+  if(decisions.otherIncome) notes.push('Other income uses your decision: ' + decisions.otherIncome.note + ' (' + $(decisions.otherIncome.amount) + ' a year).');
+  d._omReported = { basis:k, noi:I.noi ? I.noi[k] : null, egi:I.egi ? I.egi[k] : null, effectiveRent:I.eri ? I.eri[k] : null, totalExpense:I.expTot ? I.expTot[k] : null };
+  if(Object.keys(decisions).length) d._omDecisions = decisions;
+  var tie = needs.length ? null : safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
   var PN = { t12:'Trailing 12', cur:'Current', pf:'Pro Forma' };
   if(I.periods && !I.legacyColumns) notes.push('The income and expense table has ' + I.periods.length + ' period columns (' + I.periods.map(function(p){ return PN[p]; }).join(', ') + '). This deal is underwritten on the ' + PN[basis] + ' column; the others are kept in the reconciliation below and are never substituted.');
+  if(I.twoFigure && I.twoFigure.length) notes.push('Other-income rows with two figures (' + I.twoFigure.slice(0, 4).join(', ') + (I.twoFigure.length > 4 ? ', …' : '') + ') are read as Current and Projected, because the second figure is not this table\'s own per-unit figure (amount ÷ ' + (I.udiv ? I.udiv.toFixed(1) : '?') + ' units).');
   if(useERI) notes.push('The Trailing 12 column prints Effective Rental Income and Effective Gross Income but no gross potential rent, so rent is the effective rental income and vacancy is 0% (vacancy and loss are already out of it).');
   if(I.aligned && I.aligned.length && !I.legacyColumns) notes.push('Rows with fewer figures than period columns (' + I.aligned.slice(0, 5).join(', ') + (I.aligned.length > 5 ? ', …' : '') + ') were assigned to the last periods, because a blank earlier period prints nothing. Each period\'s totals are checked against the page below.');
   if(I.missing && I.missing.some(function(x){ return x.period === basis; })) notes.push('Some expense lines have no ' + PN[basis] + ' figure on the page; they are counted as not stated, and the NOI tie-out shows whether the totals still agree.');
@@ -396,7 +440,7 @@ function buildDeal(om0, basis, fileName){
   if(basis === 'pf') notes.push('This uses the broker pro forma. It assumes every unit reaches the rents the OM calls achievable, so treat the returns as the broker case.');
   if(om.layout !== 'rentroll' && om.unitMix && om.unitMix.length) notes.push('Rents use the average across ' + om.unitMix.map(function(m){ return m.units + ' ' + m.type; }).join(' and ') + ' (a unit-level rent roll was not extracted).');
   if(I.ltl && I.ltl.cur && basis === 'cur') notes.push('The OM shows ' + $(I.ltl.cur) + ' a year of loss to lease. In-place rents are below the rents it calls achievable.');
-  return { deal:d, tie:tie, want:want, notes:notes, cap:cap, lines:lines };
+  return { deal:d, tie:tie, want:want, notes:notes, cap:cap, lines:lines, needs:needs };
 }
 function run(file, target){
   S = { busy:true, msg:'Starting...', mode:'om', result:null, basis:S.basis || 'cur', file:file, target:target || 'new' }; showSheet('Import OM');
@@ -405,23 +449,30 @@ function run(file, target){
     if(!NEEDMIN(om) && /land for development|available parcels|sites (?:are )?available/i.test(info.pages.join('\n')) && !om.price){ S.msg = 'Read ' + file.name + '. It is a land listing with no price, unit count or financials, so there is nothing to underwrite from it yet. Keep it with the deal in Deal Documents, and use Import OM again once you have a priced offering or a pro forma.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
     if(!NEEDMIN(om)){ S.msg = 'Read ' + file.name + ' but could not find an income and expense table with its net operating income (found: ' + [om.price && 'price', om.units && 'units', om.ie && om.ie.noi && 'NOI'].filter(Boolean).join(', ') + '). Use Import Deal for a T-12, or Source Ingestion for other layouts.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
     if(om.periods && om.periods.indexOf(S.basis) < 0) S.basis = om.periods.indexOf('cur') >= 0 ? 'cur' : om.periods[0];
-    S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mUnits = null; S.msg = 'Read ' + file.name + ' (' + (info.ocrError ? 'text layer; ' + info.ocrSkipped.length + ' picture page' + (info.ocrSkipped.length === 1 ? '' : 's') + ' skipped, the text recognition engine did not load' : info.method === 'text' ? 'text layer' : info.method === 'mixed' ? 'text layer, and page images read by text recognition' : (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images')) + (om.layout === 'rentroll' ? '; unit rent roll and expense list' + ((om.buildings || []).length > 1 ? ' for ' + om.buildings.length + ' buildings' : '') : '') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
+    S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mUnits = null; S.mCommSF = null; S.dec = {}; S.msg = 'Read ' + file.name + ' (' + (info.ocrError ? 'text layer; ' + info.ocrSkipped.length + ' picture page' + (info.ocrSkipped.length === 1 ? '' : 's') + ' skipped, the text recognition engine did not load' : info.method === 'text' ? 'text layer' : info.method === 'mixed' ? 'text layer, and page images read by text recognition' : (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images')) + (om.layout === 'rentroll' ? '; unit rent roll and expense list' + ((om.buildings || []).length > 1 ? ' for ' + om.buildings.length + ' buildings' : '') : '') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
 }
 window.bkOMRun = function(inp){ var f = inp && inp.files && inp.files[0]; if(!f) return; if(/\.(xlsx|xlsm|csv)$/i.test(f.name)){ S = { busy:true, msg:'', mode:'dev', result:null, basis:'cur', file:null, target:'new', dev:{ om:{}, taxBasis:'pf' } }; devRun(inp); return; } run(f, 'new'); };
 window.bkOMBasis = function(b){ S.basis = b; showSheet('Import OM'); };
+/* the user's decision on conflicting other income, per period: 'printed', 'lines' or 'pick' (with the lines chosen) */
+window.bkOMDecide = function(mode, label){ var k = S.basis; S.dec = S.dec || {}; var d0 = S.dec[k] || { mode:mode, picks:[] };
+  if(mode === 'pick'){ d0.mode = 'pick'; d0.picks = d0.picks || []; if(label !== undefined){ var q = d0.picks.indexOf(label); if(q >= 0) d0.picks.splice(q, 1); else d0.picks.push(label); } } else { d0.mode = mode; }
+  S.dec[k] = d0; showSheet('Import OM'); };
 window.bkOMManual = function(k, v){ v = parseFloat(String(v).replace(/[^0-9.]/g, '')); S[k] = isFinite(v) && v > 0 ? v : null; showSheet('Import OM'); };
 window.__bkOMDbg = { ocr:ocr, shrink:shrink, pageJpegs:pageJpegs, getWorker:getWorker };
 window.bkOMParse = parseOM; window.bkOMBuild = buildDeal; window.bkOMPageJpegs = pageJpegs;
 window.bkOMCreate = function(){ if(!S.om || !((S.om.price || S.mPrice) && (S.om.units || S.mUnits))) return; window.__bkOMLast = { sources:S.om.sources || null }; var b = buildDeal(S.om, S.basis, S.file && S.file.name), file = S.file, info = S.info;
+  if(b.needs && b.needs.length) return;   /* a decision the OM cannot make for you is still open */
   stampImp(b.deal, confOM(S.om, b, info, S.basis), S.file && S.file.name);
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
-  if(b.deal._imp){ var si = bkLoad(); si._imp = b.deal._imp; bkSave(si); }
+  /* the OM's printed figures and the user's decisions travel with the deal (bkCreateNewDeal keeps only the deal fields) */
+  if(b.deal._imp || b.deal._omReported || b.deal._omDecisions){ var si = bkLoad(); if(b.deal._imp) si._imp = b.deal._imp; if(b.deal._omReported) si._omReported = b.deal._omReported; if(b.deal._omDecisions) si._omDecisions = b.deal._omDecisions; bkSave(si); }
   var id = String(b.deal.dealId), jobs = [];
   if(file && typeof window.bkDocsAdd === 'function') jobs.push(window.bkDocsAdd('om', file, id));
   if(info && info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverPhoto(info.cover).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
   Promise.all(jobs).catch(function(){}).then(function(){ if(window.bkDocsInvalidate) window.bkDocsInvalidate(); if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Home'); }); };
 var KEEP = ['dealId', 'closing', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'commercialRentGrowth', 'closingCostsPct', 'saleCostPct', 'miscPerGSF'];
 window.bkOMApply = function(){ if(!S.om) return; var b = buildDeal(S.om, S.basis, S.file && S.file.name), cur = bkLoad(), nd = Object.assign({}, b.deal);
+  if(b.needs && b.needs.length) return;
   KEEP.forEach(function(k){ delete nd[k]; }); if(cur.name && !/^(untitled|-)?$/i.test(String(cur.name))){ delete nd.name; delete nd.location; }
   if(!window.confirm('Apply these figures to "' + (cur.name || 'this deal') + '"? Price, units, rents, other income, vacancy and every expense line are replaced. The previous values stay in Version History.')) return;
   if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before applying OM figures', true);
@@ -574,6 +625,8 @@ function confOM(om, b, info, basis){
   else { var spu = d.gsf / (d.units || 1); if(spu < 350 || spu > 2500) set('gsf', 'low', 'That is ' + Math.round(spu) + ' SF per unit, which is outside the usual range. The area or the unit count is misread.'); else set('gsf', ocr(s.sf) ? 'check' : 'verified', ocr(s.sf) ? 'Read from a page image; ' + Math.round(spu) + ' SF per unit is plausible.' : Math.round(spu) + ' SF per unit is plausible.'); }
   /* income and expenses */
   line('avgRent', d.avgRent, 'rent'); line('otherIncomePerUnit', d.otherIncomePerUnit, 'other income');
+  if(d._omDecisions && d._omDecisions.otherIncome) set('otherIncomePerUnit', 'check', 'The OM\'s other-income lines and printed EGI disagree. You decided: ' + d._omDecisions.otherIncome.note + '.');
+  (b.needs || []).forEach(function(x){ if(x.key === 'otherIncome') set('otherIncomePerUnit', 'low', x.why); });
   if(I.vac && (I.vac[basis + 'Pct'] != null || I.vac[basis] != null)) line('vacancy', d.vacancy, 'vacancy'); else if(I.noVacancy) set('vacancy', 'check', 'The OM\'s NOI has no vacancy allowance, so this starts at 0% to match it. Set your own.'); else set('vacancy', 'assumed', 'The OM shows no vacancy line; 5% is the app default.');
   if(om.ie && I.exp && I.exp.some(function(e){ return catOf(e.label) === 'mgmt'; })) line('mgmtPct', d.mgmtPct, 'management fee'); else set('mgmtPct', 'assumed', 'The OM shows no management fee; 3% of income is the app default.');
   [['taxes', 'taxes', 'taxes'], ['insurance', 'insurance', 'insurance'], ['rm', 'rm', 'repairs and maintenance']].forEach(function(r){ if(!d[r[0]]) set(r[0], 'low', 'No ' + r[2] + ' line was found in the OM, so this is $0.'); else line(r[0], d[r[0]], r[2]); });
@@ -618,7 +671,31 @@ function render(){
     var C = confOM(om, b, S.info, S.basis), cf = C.fields, need = '';
     if(!om.price) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-right:14px">Asking price (not found in the OM)<input type="text" value="' + (S.mPrice || '') + '" placeholder="e.g. 3,600,000" onchange="bkOMManual(\'mPrice\',this.value)" style="width:150px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
     if(!om.units) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Units (not found)<input type="text" value="' + (S.mUnits || '') + '" onchange="bkOMManual(\'mUnits\',this.value)" style="width:90px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
-    var ready = (om.price || S.mPrice) && (om.units || S.mUnits);
+    var ready = (om.price || S.mPrice) && (om.units || S.mUnits) && !(b.needs && b.needs.length);
+    var inS = 'padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right';
+    /* the commercial area: the OM's own statements are listed (never picked for you) and you enter the one you use */
+    if(b.needs && b.needs.some(function(x){ return x.key === 'commSF'; })){
+      var mm = om.commSFMentions || [], byV = {}; mm.forEach(function(x){ (byV[x.sf] = byV[x.sf] || []).push('p' + x.page); });
+      body += box('<b>Commercial area needed.</b> ' + esc(b.needs.filter(function(x){ return x.key === 'commSF'; })[0].why)
+        + (mm.length ? '<div style="margin-top:6px;font-size:12.5px">The OM states: ' + Object.keys(byV).map(function(v){ return '<button type="button" class="pl-hbtn" onclick="bkOMManual(\'mCommSF\',' + v + ')">' + Number(v).toLocaleString('en-US') + ' SF (' + byV[v].filter(function(x, i, a){ return a.indexOf(x) === i; }).join(', ') + ')</button>'; }).join(' ') + (Object.keys(byV).length > 1 ? ' <b>These differ</b>: choose the one you want to use.' : '') + '</div>' : '<div style="margin-top:6px;font-size:12.5px">The OM states no commercial area.</div>')
+        + '<div style="margin-top:8px"><label style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Commercial area (SF)<br><input type="text" value="' + (S.mCommSF || '') + '" onchange="bkOMManual(\'mCommSF\',this.value)" style="width:140px;' + inS + '"></label></div>'); }
+    /* conflicting other income: both sets of figures are shown as printed, and nothing is decided until you choose */
+    var cfl = I && I.conflicts && I.conflicts[S.basis];
+    if(cfl){ var dc = (S.dec && S.dec[S.basis]) || null, pickd = dc && dc.mode === 'pick' ? dc.picks : [];
+      var opt = function(m, title, sub, amt){ var on = dc && dc.mode === m; return '<div style="margin-top:6px"><button type="button" class="pl-hbtn' + (on ? ' primary' : '') + '" onclick="bkOMDecide(\'' + m + '\')">' + title + '</button> <span style="font-size:12.5px">' + sub + ' <b>' + amt + '</b></span></div>'; };
+      body += box('<b>Decision required: the OM\'s other income does not add up.</b> <span style="font-size:12px;opacity:.7">(' + ({ t12:'Trailing 12', cur:'Current', pf:'Pro Forma' }[S.basis]) + ' column, page ' + (s.income || '?') + ')</span>'
+        + '<table style="width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums"><tbody><tr><td style="padding:3px 8px">Effective rental income (printed)</td><td style="padding:3px 8px;text-align:right">' + $(cfl.eri) + '</td></tr>'
+        + cfl.lines.map(function(l){ return '<tr><td style="padding:3px 8px 3px 22px">' + esc(l.label) + '</td><td style="padding:3px 8px;text-align:right">' + $(l.value) + '</td></tr>'; }).join('')
+        + '<tr><td style="padding:3px 8px"><b>The lines add to</b></td><td style="padding:3px 8px;text-align:right"><b>' + $(cfl.listed) + '</b></td></tr>'
+        + '<tr><td style="padding:3px 8px">Effective Gross Income (printed)</td><td style="padding:3px 8px;text-align:right">' + $(cfl.egi) + '</td></tr>'
+        + '<tr><td style="padding:3px 8px"><b>So the printed figures imply other income of</b></td><td style="padding:3px 8px;text-align:right"><b>' + $(cfl.implied) + '</b></td></tr></tbody></table>'
+        + (cfl.matches.length ? '<div style="font-size:12.5px;margin-top:6px">Lines that would add to the implied figure: ' + cfl.matches.map(function(mm2){ return esc(mm2.join(' + ')); }).join('; or ') + '. ' + (cfl.matches.length > 1 ? 'More than one combination fits, so the figures alone cannot say which lines the broker counted.' : '') + '</div>' : '<div style="font-size:12.5px;margin-top:6px">No combination of the listed lines adds to the implied figure.</div>')
+        + '<div style="margin-top:8px"><b>What should the deal use?</b> Nothing is chosen for you.</div>'
+        + opt('printed', 'Use the printed totals', 'Other income = printed EGI less effective rental income:', $(cfl.implied))
+        + opt('lines', 'Use every listed line', 'Other income = the lines as listed:', $(cfl.listed))
+        + opt('pick', 'Choose the lines', 'Other income = the lines ticked below:', $(cfl.lines.filter(function(l){ return pickd.indexOf(l.label) >= 0; }).reduce(function(tt, l){ return tt + l.value; }, 0)))
+        + (dc && dc.mode === 'pick' ? '<div style="margin:6px 0 0 14px">' + cfl.lines.map(function(l){ return '<label style="display:block;font-size:12.5px"><input type="checkbox"' + (pickd.indexOf(l.label) >= 0 ? ' checked' : '') + ' onchange="bkOMDecide(\'pick\', ' + JSON.stringify(l.label).replace(/"/g, '&quot;') + ')"> ' + esc(l.label) + ' ' + $(l.value) + '</label>'; }).join('') + '</div>' : '')
+        + '<div style="font-size:12px;opacity:.75;margin-top:8px">Your choice is saved on the deal with the OM\'s printed figures, so the decision can be reviewed later.</div>'); }
     if(need) body += box('<b>One thing the OM did not state.</b> Enter it to continue.<div style="margin-top:8px">' + need + '</div>');
     var basisBtn = function(k, t){ return '<button type="button" class="pl-hbtn' + (S.basis === k ? ' primary' : '') + '" onclick="bkOMBasis(\'' + k + '\')">' + t + '</button>'; };
     /* a rent-roll OM has no broker pro forma to switch to */
@@ -631,7 +708,7 @@ function render(){
       + '<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><thead><tr><th style="text-align:left;padding:5px 8px"></th><th style="text-align:right;padding:5px 8px">Value</th><th style="text-align:left;padding:5px 8px">Source</th><th style="text-align:left;padding:5px 8px">Confidence</th></tr></thead><tbody>'
       + row('Purchase price (asking)', $(d.purchasePrice), s.price, '', cf.purchasePrice) + row(om.layout === 'rentroll' ? 'Apartments' : 'Units', d.units, s.units, '', cf.units) + row('Building area', d.gsf ? d.gsf.toLocaleString('en-US') + ' SF' : '—', s.sf, '', cf.gsf)
       + (om.layout === 'rentroll' ? row('Residential rent (year)', $(I.gsr.cur) + ' · ' + $(d.avgRent) + ' avg/mo', s.rentRoll, '', cf.avgRent) + (I.comm.cur ? row('Commercial rent (year)', $(I.comm.cur), s.rentRoll, '', cf.avgRent) : '') + row('Other income (year)', $(I.addTot.cur), s.rentRoll, '', cf.avgRent)
-        : row('Average monthly rent', $(d.avgRent), s.unitMix || s.income, '', cf.avgRent) + row('Other income per unit (year)', $(d.otherIncomePerUnit), s.income, '', cf.otherIncomePerUnit)) + row('Vacancy', pct(d.vacancy, 1), s.income, '', cf.vacancy) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', s.income, '', cf.mgmtPct)
+        : row('Average monthly rent', $(d.avgRent), s.unitMix || s.income, '', cf.avgRent) + (I.mixed ? row('Commercial rent (year)', d.commercialArea > 0 ? $(d.commercialArea * d.commercialRent) : 'area needed', s.income, '', cf.avgRent) : '') + row('Other income per unit (year)', $(d.otherIncomePerUnit), s.income, '', cf.otherIncomePerUnit)) + row('Vacancy', pct(d.vacancy, 1), s.income, '', cf.vacancy) + row('Management fee', pct(d.mgmtPct, 2) + ' of income', s.income, '', cf.mgmtPct)
       + row('Real estate taxes', $(d.taxes), s.income, '', cf.taxes) + row('Insurance', $(d.insurance), s.income, '', cf.insurance) + row('Utilities (electric, gas, water, trash)', $(d.utilities), s.income, '', cf.utilities) + row('Repairs and maintenance', $(d.rm), s.income, '', cf.rm) + row('Contract services and landscaping', $(d.contract), s.income, '', cf.contract) + (d.ga ? row('Other expenses', $(d.ga), s.income, '', cf.ga) : '')
       + row('Going-in cap rate on in-place NOI', pct(b.cap), s.noi, '', cf.t12noi) + row('Exit cap rate', pct(d.exitCap), '', 'assumed', cf.exitCap) + row('Replacement reserves', '$0', '', 'assumed', cf.reserves) + '</tbody></table>'
       + (om.yearBuilt || om.zoning ? '<div style="font-size:12px;opacity:.7;margin-top:8px">Also in the OM: ' + [om.yearBuilt && 'built ' + om.yearBuilt, om.lotAcres && om.lotAcres + ' acres', om.stories && om.stories + ' stories', om.parking && om.parking + ' parking spaces', om.zoning && 'zoned ' + om.zoning].filter(Boolean).join(', ') + '.</div>' : ''));

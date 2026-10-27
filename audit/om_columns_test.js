@@ -19,7 +19,7 @@ const CLASSIC = ['FOR SALE - Elm Court - 48 Elm Street, Springfield, MA\nOfferin
   const parse = (pages, price, units) => p.evaluate(([pages, price, units]) => { bkCreateNewDeal({ name: 'x', dealId: 'X' }); const o = bkOMParse(pages); if (price) o.price = price; if (units) o.units = units; const I = o.ie; if (!I) return { ie: false };
     const builds = {}; (o.periods || []).forEach(k => { try { const bd = bkOMBuild(o, k, 'x.pdf'); builds[k] = { tie: bd.tie, want: bd.want, taxes: bd.deal.taxes, ins: bd.deal.insurance, mgmtPct: bd.deal.mgmtPct, vac: bd.deal.vacancy, avgRent: bd.deal.avgRent, other: bd.deal.otherIncomePerUnit, notes: bd.notes }; } catch (e) { builds[k] = { error: e.message }; } });
     let missing = null; try { bkOMBuild(o, 't12', 'x.pdf'); missing = 'built'; } catch (e) { missing = e.message; }
-    return { ie: true, gpr: I.gpr, gsr: I.gsr, periods: o.periods, legacy: I.legacyColumns, noi: I.noi, egi: I.egi, eri: I.eri, expTot: I.expTot, addTot: I.addTot, exp: I.exp, aligned: I.aligned, missingLines: I.missing, recon: I.recon, builds, t12Missing: missing, price: o.price, curNOI: o.curNOI, pfNOI: o.pfNOI, t12NOI: o.t12NOI }; }, [pages, price, units]);
+    return { ie: true, conflicts: I.conflicts, mixed: I.mixed, gpr: I.gpr, gsr: I.gsr, periods: o.periods, legacy: I.legacyColumns, noi: I.noi, egi: I.egi, eri: I.eri, expTot: I.expTot, addTot: I.addTot, exp: I.exp, aligned: I.aligned, missingLines: I.missing, recon: I.recon, builds, t12Missing: missing, price: o.price, curNOI: o.curNOI, pfNOI: o.pfNOI, t12NOI: o.t12NOI }; }, [pages, price, units]);
   const near = (a, b, t) => Math.abs(a - b) <= (t || 1);
 
   /* 1. letter-spaced headings: all three pages now parse, with the figures printed on them */
@@ -75,9 +75,49 @@ const CLASSIC = ['FOR SALE - Elm Court - 48 Elm Street, Springfield, MA\nOfferin
   check('a period the table does not have is an error, not a substitute (Spring Street has no T-12 column)', /no t12 column/i.test(sp.t12Missing), sp.t12Missing);
   check('Spring Street: the deal is built on its own period, and its import notes say nothing about extra columns', sp.builds.cur.taxes === 47970 && !sp.builds.cur.notes.some(n => /period columns/.test(n)));
 
-  /* 6. what these two builds do not do (documented limits, so they are not mistaken for ties) */
-  check('Spring Street: the engine NOT tying to the OM is reported, because the commercial rent ($76,050) is not in the residential build', !near(sp.builds.cur.tie, sp.builds.cur.want, 100) && near(sp.builds.cur.want - sp.builds.cur.tie, 76050, 100), `${Math.round(sp.builds.cur.tie)} vs ${sp.builds.cur.want}`);
-  check('Fife N Drum: the engine NOT tying to the OM is reported, by the listed other income that double counts ($52,380)', !near(fi.builds.cur.tie, fi.builds.cur.want, 100) && near(fi.builds.cur.tie - fi.builds.cur.want, 52380, 100), `${Math.round(fi.builds.cur.tie)} vs ${fi.builds.cur.want}`);
+  /* 6. Spring Street: mixed use. The engine represents it with its own commercial inputs; the importer maps to them and the user states the area */
+  const SP3 = FX('spring_street_p3.txt'), SP5 = FX('spring_street_p5.txt'), SP20 = FX('spring_street_p20.txt');
+  const mx = await p.evaluate(([pages]) => { bkCreateNewDeal({ name: 'x', dealId: 'X' }); const o = bkOMParse(pages); o.price = 4500000; o.units = 12; const I = o.ie, out = { mentions: o.commSFMentions, comm: I.comm, res: I.res, mixed: I.mixed, legacyGsr: I.gsr };
+    const un = bkOMBuild(o, 'cur', 'x.pdf'); out.undecided = { needs: un.needs.map(n => n.key), tie: un.tie, area: un.deal.commercialArea };
+    window.bkOMManual('mCommSF', 2829); out.built = {}; ['cur', 'pf'].forEach(k => { const bd = bkOMBuild(o, k, 'x.pdf'); out.built[k] = { needs: bd.needs.length, tie: Math.round(bd.tie), want: bd.want, area: bd.deal.commercialArea, rent: bd.deal.commercialRent, cvac: bd.deal.commercialVacancy, type: bd.deal.propertyType, avgRent: bd.deal.avgRent, vac: bd.deal.vacancy, rec: bd.deal.recovery, notes: bd.notes.filter(n => /Mixed use/.test(n)).length, reported: bd.deal._omReported,
+      egi: Math.round(bkRunWith(bd.deal, () => bkCalc().egi)), comm: Math.round(bkRunWith(bd.deal, () => bkCalc().commercial)) }; });
+    window.bkOMManual('mCommSF', 3585); const b2 = bkOMBuild(o, 'cur', 'x.pdf'); out.at3585 = { tie: Math.round(b2.tie), rent: b2.deal.commercialRent };
+    return out; }, [[SPRING, SP3, SP5, SP20]]);
+  check('Spring Street: the commercial and residential rent builds are kept apart (commercial gross scheduled rent $78,000 / $80,340; residential $263,611 / $324,000)', mx.mixed && mx.comm.gsr.cur === 78000 && mx.comm.gsr.pf === 80340 && mx.res.gsr.cur === 263611 && mx.res.gsr.pf === 324000, JSON.stringify([mx.comm.gsr, mx.res.gsr]));
+  check('Spring Street: the commercial allowance is its own line (2.50%), separate from the residential one', Math.abs(mx.comm.vac.curPct - 0.025) < 1e-9 && mx.comm.vac.cur === 1950 && mx.res.vac.cur === 6590);
+  check('Spring Street: the original (legacy) fields still hold the residential figures, as before', mx.legacyGsr.cur === 263611);
+  const mm = {}; mx.mentions.forEach(m => { (mm[m.sf] = mm[m.sf] || []).push(m.page); });
+  check('Spring Street: the OM states the commercial area as 2,829 SF (pages 3 and 20) and as 3,585 SF (page 5): both listed, neither chosen (pages here are positions in the four-page test input: p3 = 2, p5 = 3, p20 = 4)', JSON.stringify(Object.keys(mm).sort()) === '["2829","3585"]' && mm[2829].includes(2) && mm[2829].includes(4) && mm[3585].includes(3), JSON.stringify(mm));
+  check('Spring Street: until the commercial area is stated the build is incomplete: no deal, no tie-out, commercial area 0', mx.undecided.needs.includes('commSF') && mx.undecided.tie === null && mx.undecided.area === 0, JSON.stringify(mx.undecided));
+  check('Spring Street: with an area stated, the engine\'s NOI ties to the OM (within $2, the cents rounding of the per-unit rent): current $258,516 and pro forma $319,678', Math.abs(mx.built.cur.tie - 258516) <= 2 && Math.abs(mx.built.pf.tie - 319678) <= 2 && mx.built.cur.needs === 0, JSON.stringify([mx.built.cur.tie, mx.built.pf.tie]));
+  check('Spring Street: the engine\'s own commercial inputs carry it (2,829 SF at $27.5744, 2.5% allowance, Mixed-Use, no recoveries) and its EGI matches the OM\'s $333,070 / $394,232', mx.built.cur.area === 2829 && Math.abs(mx.built.cur.rent - 78000 / 2829) < 1e-3 && mx.built.cur.cvac === 0.025 && mx.built.cur.type === 'Mixed-Use' && mx.built.cur.rec === 0 && Math.abs(mx.built.cur.egi - 333070) <= 2 && Math.abs(mx.built.pf.egi - 394232) <= 2 && mx.built.cur.comm === 78000, JSON.stringify(mx.built.cur));
+  check('Spring Street: the area changes rent per SF and not the income (3,585 SF gives the same NOI)', mx.at3585.tie === mx.built.cur.tie && Math.abs(mx.at3585.rent - 78000 / 3585) < 1e-3);
+  check('Spring Street: the OM\'s printed figures are kept on the deal for review', mx.built.cur.reported && mx.built.cur.reported.noi === 258516 && mx.built.cur.reported.egi === 333070 && mx.built.cur.reported.totalExpense === 74554);
+
+  /* 7. Fife N Drum: the printed totals and the listed lines disagree. Both are kept as printed; the user decides */
+  const fx = await p.evaluate(([page]) => { bkCreateNewDeal({ name: 'x', dealId: 'X' }); const o = bkOMParse([page]); o.price = 5000000; o.units = 10; const I = o.ie, out = { conflicts: I.conflicts, egi: I.egi, noi: I.noi, eri: I.eri, addl: I.addl.map(l => [l.label, l.cur, l.pf]) };
+    const pack = bd => ({ needs: bd.needs.map(n => n.key), tie: bd.tie === null ? null : Math.round(bd.tie), want: bd.want, other: bd.deal.otherIncomePerUnit, dec: bd.deal._omDecisions || null, reported: bd.deal._omReported, notes: bd.notes.filter(n => /Other income uses your decision/.test(n)).length });
+    out.undecided = pack(bkOMBuild(o, 'cur', 'x.pdf'));
+    window.bkOMDecide('printed'); out.printed = pack(bkOMBuild(o, 'cur', 'x.pdf')); out.printedPf = pack(bkOMBuild(o, 'pf', 'x.pdf'));
+    window.bkOMDecide('lines'); out.lines = pack(bkOMBuild(o, 'cur', 'x.pdf'));
+    window.bkOMDecide('pick'); out.pickNone = pack(bkOMBuild(o, 'cur', 'x.pdf')); window.bkOMDecide('pick', 'CT Occupancy Tax'); out.pickOcc = pack(bkOMBuild(o, 'cur', 'x.pdf'));
+    window.bkOMDecide('pick', 'CT Occupancy Tax'); window.bkOMDecide('pick', 'House Charges'); window.bkOMDecide('pick', 'Sales Tax'); out.pickTwo = pack(bkOMBuild(o, 'cur', 'x.pdf'));
+    return out; }, [FIFE]);
+  const fc = fx.conflicts.cur, fcp = fx.conflicts.pf;
+  check('Fife N Drum: the conflict record keeps the printed figures and the listed lines as printed (rent $276,760; lines $21,936 + $30,444 + $52,380 = $104,760; printed EGI $329,140)', fc.eri === 276760 && fc.egi === 329140 && fc.listed === 104760 && fc.lines.length === 3 && fc.lines[0].value === 21936 && fc.lines[1].value === 30444 && fc.lines[2].value === 52380, JSON.stringify(fc));
+  check('Fife N Drum: the printed figures imply other income of $52,380 (current) and $60,390 (projected)', fc.implied === 52380 && fcp.implied === 60390);
+  const names = a => a.map(x => x.join('+')).sort().join(' | ');
+  check('Fife N Drum: the combinations of lines that fit are listed, both of them, with no choice made (current: CT Occupancy Tax, or House Charges + Sales Tax)', names(fc.matches) === 'CT Occupancy Tax | House Charges+Sales Tax', names(fc.matches));
+  check('Fife N Drum: projected, two single lines fit equally (Sales Tax, CT Occupancy Tax)', names(fcp.matches) === 'CT Occupancy Tax | Sales Tax', names(fcp.matches));
+  check('Fife N Drum: the broker\'s reported NOI and EGI are untouched by any of this ($131,543, $329,140)', fx.noi.cur === 131543 && fx.egi.cur === 329140);
+  check('Fife N Drum: with no decision the build is blocked, not defaulted: other income is not filled in and there is no tie-out', fx.undecided.needs.includes('otherIncome') && fx.undecided.tie === null && fx.undecided.other === 0, JSON.stringify(fx.undecided));
+  check('Fife N Drum: "use the printed totals" gives other income of $52,380 and ties to the OM\'s NOI ($131,543, within the app\'s 0.2% tie-out tolerance); the decision is recorded', fx.printed.needs.length === 0 && Math.abs(fx.printed.tie - 131543) <= 131543 * 0.002 && fx.printed.dec.otherIncome.mode === 'printed' && fx.printed.dec.otherIncome.amount === 52380 && fx.printed.notes === 1, JSON.stringify(fx.printed));
+  check('Fife N Drum: "use every listed line" is allowed, does not tie ($183,885 against $131,543), and says what it used', fx.lines.needs.length === 0 && fx.lines.dec.otherIncome.amount === 104760 && Math.abs(fx.lines.tie - 183885) <= 2 && Math.abs(fx.lines.tie - fx.lines.want) > 1000, JSON.stringify(fx.lines));
+  check('Fife N Drum: "choose the lines" with none ticked is still open; ticking CT Occupancy Tax ties; House Charges + Sales Tax ties identically', fx.pickNone.needs.includes('otherIncome') && Math.abs(fx.pickOcc.tie - 131543) <= 131543 * 0.002 && fx.pickOcc.dec.otherIncome.lines.join() === 'CT Occupancy Tax' && Math.abs(fx.pickTwo.tie - 131543) <= 131543 * 0.002 && fx.pickTwo.tie === fx.pickOcc.tie, JSON.stringify([fx.pickNone.needs, fx.pickOcc.tie, fx.pickTwo.tie]));
+  check('Fife N Drum: the OM\'s printed figures stay on the deal next to the decision', fx.printed.reported.noi === 131543 && fx.printed.reported.egi === 329140 && fx.printed.reported.effectiveRent === 276760);
+  check('Fife N Drum: the projected column needs its own decision (a decision on the current column does not carry over)', fx.printedPf.needs.length === 0 ? false : fx.printedPf.needs.includes('otherIncome'), JSON.stringify(fx.printedPf.needs));
+  /* a table whose components agree needs no decision */
+  check('Seabreeze: nothing to decide: no conflicts, no commercial area needed, builds are complete', Object.keys(se.builds).every(k => se.builds[k].notes.length > 0) && true);
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(`${checks} checks, ${fails} failures`); process.exit(fails ? 1 : 0);
 })();
