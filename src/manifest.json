@@ -820,6 +820,11 @@
 "close": "</script>"
 },
 {
+"file": "164-bk-fincompare.js",
+"open": "\n<script id=\"bk-fincompare\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
