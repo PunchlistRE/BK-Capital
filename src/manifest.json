@@ -840,6 +840,11 @@
 "close": "</script>"
 },
 {
+"file": "168-bk-sectionguide.js",
+"open": "\n<script id=\"bk-sectionguide\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
