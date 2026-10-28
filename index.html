@@ -16520,7 +16520,7 @@ html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section
 html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind="input-num"] {
   background-color:var(--bk-in-fill) !important; color:var(--bk-in-ink) !important; font-weight:600 !important; }
 html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind="calc"] {
-  background:var(--bk-calc-fill) !important; color:#10233a !important; font-weight:400 !important; }
+  background:var(--bk-calc-fill) !important; color:var(--ae-ink,#10233a) !important; font-weight:400 !important; }
 html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section):not(.subtotal) > td:not([data-bk-kind^="input"]):not([data-bk-kind="calc"]) {
   background:transparent !important; }
 
@@ -25043,7 +25043,7 @@ html body #viewport .rp .rp-tbl td, html body #viewport .rp .rp-tbl th{ padding-
   /* stacked rows: a highlighted or total row is one light band with dark text, nothing boxed inside it */
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal,
   html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{ background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; }
-  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal td{ background:transparent !important; color:#0e2a4a !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal td{ background:transparent !important; color:var(--ae-ink,#0e2a4a) !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td::before, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td::before{ color:#566a80 !important; background:transparent !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td:empty, html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip:not(:has(*)){ display:none !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip{ text-align:left !important; padding:2px 0 !important; }
@@ -25159,6 +25159,26 @@ html body #viewport .ae > .ae-subs .ae-sub{ background:transparent; border-color
 html body #viewport .ae > .ae-subs .ae-sub:hover{ color:var(--ae-ink) }
 html body #viewport .ae > .ae-subs .ae-sub.on{ background:var(--ae-cell); border-color:var(--ae-line); border-top:2px solid var(--ae-accent) }
 html body #viewport .ae > .ae-body{ border-left:4px solid var(--ae-accent) }
+
+/* ---- Night mode: the text that was dark on dark or white on light blue. Primary buttons get a mid blue that carries white text; status and negative colours are
+   lifted; numbers and notes set in the day palette's navy and grey are lightened; buttons with no styling of their own get a dark face; the Deal Underwrite group
+   labels are brightened. (The day palette is untouched.) */
+@media (prefers-color-scheme: dark){
+html:not([data-theme="light"]) body #viewport .bk-btn.primary, html:not([data-theme="light"]) body #viewport button.pl-hbtn.primary, html:not([data-theme="light"]) .bk-btn.primary, html:not([data-theme="light"]) .bk-btn.pri, html:not([data-theme="light"]) .pl-hbtn.primary, html:not([data-theme="light"]) .ae-btn.pri, html:not([data-theme="light"]) .ae-btn.primary, html:not([data-theme="light"]) button.primary{ background:#2f6fb5 !important; border-color:#2f6fb5 !important; color:#fff !important; }
+html:not([data-theme="light"]) body #viewport .bk-btn.primary:hover, html:not([data-theme="light"]) body #viewport button.pl-hbtn.primary:hover, html:not([data-theme="light"]) .bk-btn.primary:hover, html:not([data-theme="light"]) .pl-hbtn.primary:hover, html:not([data-theme="light"]) .ae-btn.pri:hover{ background:#3a7cc7 !important; }
+html:not([data-theme="light"]) #viewport .go, html:not([data-theme="light"]) #viewport a.go{ color:#8fc3f2 !important; }
+html:not([data-theme="light"]) #viewport .bk-ctl-WARN, html:not([data-theme="light"]) #viewport .st-warn, html:not([data-theme="light"]) #viewport .warn{ color:#f0c060 !important; }
+html:not([data-theme="light"]) #viewport .bk-ctl-FAIL, html:not([data-theme="light"]) #viewport .bk-ctl-ERROR, html:not([data-theme="light"]) #viewport .neg, html:not([data-theme="light"]) #viewport .v.neg{ color:#ff9a8a !important; }
+html:not([data-theme="light"]) #viewport td.bk-a-num, html:not([data-theme="light"]) #viewport .bk-a-num{ color:#e3e8ed !important; }
+html:not([data-theme="light"]) #viewport [style*="color:#555"], html:not([data-theme="light"]) #viewport [style*="color: #555"], html:not([data-theme="light"]) #viewport [style*="color:#444"], html:not([data-theme="light"]) #viewport [style*="color:#333"], html:not([data-theme="light"]) #viewport [style*="color:#666"]{ color:#c4ccd4 !important; }
+html:not([data-theme="light"]) #viewport [style*="#0e2a4a"]:not([style*="color:#fff"]):not([style*="color: #fff"]):not([style*="color:white"]):not([style*="color:#eaf0f6"]), html:not([data-theme="light"]) #viewport [style*="#10233a"]:not([style*="color:#fff"]), html:not([data-theme="light"]) #viewport [style*="#163a62"]:not([style*="color:#fff"]), html:not([data-theme="light"]) #viewport [style*="#2f4258"], html:not([data-theme="light"]) #viewport [style*="navy-900"]:not([style*="color:#fff"]){ color:#e3e8ed !important; }
+html:not([data-theme="light"]) #viewport a:not([class]):not([style*="color"]){ color:#8fc3f2; }
+html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.fail .v{ color:#ff9a8a; }
+html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.warn .v{ color:#f0c060; }
+html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.pass .v, html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.ok .v{ color:#7fd4a0; }
+html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-theme="light"]) #viewport button[class=""]{ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
+html:not([data-theme="light"]) #viewport .bk-dui .bk-dgl{ color:color-mix(in srgb, var(--g) 50%, #ffffff) !important; }
+}
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */
@@ -25252,7 +25272,16 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+/* a cell filled with a heat colour (sensitivity grids and the like) keeps type that reads on it: whichever of near-black or white has more contrast with the fill, whenever the
+   theme's own type colour would fall short (light type from the night palette on a pale or mid-tone fill) */
+function heatInk(v){
+  var lum = function(c){ var m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/.exec(c); if(!m || (m[4] !== undefined && +m[4] < 0.5)) return null; var f = function(x){ x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }; return .2126 * f(+m[1]) + .7152 * f(+m[2]) + .0722 * f(+m[3]); };
+  var ratio = function(a, b){ return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); };
+  [].forEach.call(v.querySelectorAll('td[style*="background"], th[style*="background"]'), function(td){
+    if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
+    var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
+    if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
