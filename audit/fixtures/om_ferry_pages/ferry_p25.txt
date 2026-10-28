@@ -1,0 +1,26 @@
+Income & Expense
+I N C O M E S U M M A R Y   Current   Per Unit   %   Pro Forma   Per Unit   %
+Gross Scheduled Rent- Commercial   $18,300   $18,300
+Vacancy & Collection Loss   -$915   5.00%   -$915   5.00%
+Effective Rental Income - Commercial   $17,385   $17,385
+Gross Potential Rent - Residential   $177,600   $177,600
+Below Market Rents   -$16,404
+Gross Scheduled Rent - Residential   $161,196   $177,600
+Vacancy & Collection Loss   -$16,120   10.00%   -$17,760   10.00%
+Effective Rental Income - Residential   $145,076   $159,840
+Effective Rental Income - Total   $162,461   $177,225
+Total Additional Income   -   $8,400
+Gargage   -   $8,400   $12.00
+Effective Gross Income   $162,461   $185,625
+E X P E N S E S U M M A R Y
+Property Management   $8,123   $11.60   5.00%   $9,281   $13.26   5.00%
+Real Estate Tax   $11,131   $15.90   $19,237.05   $27.48
+Property Insurance   $8,123   $11.60   $8,123   $11.60
+Electric   $7,800   $11.14   $7,800   $11.14
+Heating Fuel   $3,000   $4.29   $3,000   $4.29
+Water and Sewer   $3,500   $5.00   $3,500   $5.00
+Repairs and Maintenance   $7,000   $10.00   $7,000   $10.00
+Landscaping/Snow Removal   $2,500   $3.57   $2,500   $3.57
+Total Expense   $51,177   $73.11   31.50%   $60,441   $86.34   32.56%
+Net Operating Income   $111,284   $125,184
+Mixed-Use Property  |  For Sale   32 Ferry Street, New Haven, CT  |  25

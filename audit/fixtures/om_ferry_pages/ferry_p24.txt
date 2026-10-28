@@ -1,0 +1,12 @@
+Commercial Rent Roll
+Tenant   SF   Monthly Rent   Annual Rent   Current Rent/SF
+Laundromat   700   $1,525   $18,300   $26.14
+Total   700   $1,525   $18,300   $26.14
+Residential Unit Mix
+Unit Type   # of Units   Current   High Achieved   Pro Forma
+1 BD   2   $1,568   $1,585   $1,650
+Room   10   $1,030   $1,400   $1,150
+Annual Total   12   $161,196   $206,040   $177,600
+Average   $1,119   $1,431   $1,233
+Unit Type
+Mixed-Use Property  |  For Sale   32 Ferry Street, New Haven, CT  |  24
