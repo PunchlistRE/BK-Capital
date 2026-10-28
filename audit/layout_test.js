@@ -92,6 +92,15 @@ const A = require(path.join(__dirname, 'deal.js'));
   await show(m, 'Valuation Report', 1200);
   const vw = await m.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: document.documentElement.clientWidth }));
   check('phone: the valuation report does not widen the page (its tables scroll inside themselves)', vw.sw <= vw.w + 1, JSON.stringify(vw));
+  /* Deal Underwrite: the section index is grouped and labelled, every name is distinct, and the section being read is marked */
+  const d = await open(1280); await show(d, 'Deal Underwrite');
+  const du = await d.evaluate(() => { const bar = document.querySelector('#viewport .bk-dui'); if (!bar) return null; const btns = [...bar.querySelectorAll('button[data-bk-jump]')], names = btns.map(b => b.textContent.trim()), r = bar.getBoundingClientRect();
+    return { groups: [...bar.querySelectorAll('.bk-dgl')].map(x => x.textContent.trim()), n: btns.length, dup: names.length - new Set(names).size, on: bar.querySelectorAll('button.on').length, h: Math.round(r.height), pos: getComputedStyle(bar).position, first: btns[0].classList.contains('on'), targets: btns.every(b => document.getElementById(b.getAttribute('data-bk-jump'))) }; });
+  check('Deal Underwrite index: grouped under labels, every name distinct, one section marked, every link has a target', du && du.groups.length >= 6 && du.n >= 18 && du.dup === 0 && du.on === 1 && du.first && du.targets, JSON.stringify(du));
+  check('Deal Underwrite index: a normal block (not pinned over the form) and not a tall wall', du && du.pos !== 'sticky' && du.pos !== 'fixed' && du.h < 300, JSON.stringify(du));
+  await d.evaluate(async () => { const t = document.getElementById(document.querySelectorAll('#viewport .bk-dui button[data-bk-jump]')[6].getAttribute('data-bk-jump')); t.scrollIntoView(); window.scrollBy(0, -170); await new Promise(r => setTimeout(r, 500)); });
+  const du2 = await d.evaluate(() => { const on = [...document.querySelectorAll('#viewport .bk-dui button.on')]; return { n: on.length, name: on[0] && on[0].textContent.trim() }; });
+  check('Deal Underwrite index: scrolling to a section marks that section', du2.n === 1 && du2.name !== 'Identity', JSON.stringify(du2)); await d.close();
   check('phone: no page errors', m.errs.length === 0, m.errs.slice(0, 2).join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
