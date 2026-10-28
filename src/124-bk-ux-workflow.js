@@ -247,6 +247,23 @@ function decorateNotes(frame){
 }
 
 /* ---------------------------------------------------------------- 3. Deal Underwrite */
+/* mark the section being read in the Deal Underwrite index */
+var spyOn = false;
+function duSpy(main){
+  if(spyOn) { return; } spyOn = true;
+  var tick = false;
+  function mark(){ tick = false;
+    var bar = document.querySelector('#viewport .bk-dui'); if(!bar){ return; }
+    var btns = [].slice.call(bar.querySelectorAll('button[data-bk-jump]')), cur = null, edge = 190;   /* just under the pinned header and case bar */
+    btns.forEach(function(b){ var el = document.getElementById(b.getAttribute('data-bk-jump')); if(el && el.getBoundingClientRect().top <= edge) cur = b; });
+    if(!cur) cur = btns[0];
+    btns.forEach(function(b){ b.classList.toggle('on', b === cur); if(b === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); }); }
+  function later(){ if(!tick){ tick = true; (window.requestAnimationFrame || setTimeout)(mark); } }
+  document.addEventListener('scroll', later, { capture:true, passive:true }); window.addEventListener('resize', later);
+  new MutationObserver(function(){ if(document.querySelector('#viewport .bk-dui:not([data-bk-spy])')){ var b = document.querySelector('#viewport .bk-dui'); b.setAttribute('data-bk-spy', '1'); later(); } }).observe(document.getElementById('viewport') || document.body, { childList:true, subtree:true });
+  later();
+}
+
 var REQ_KEYS = { size:'units', revenue:'avgRent' };
 function decorateUnderwrite(frame){
   var main = frame.querySelector('.main-col'); if(!main || main.querySelector('.bk-dui')) return;
@@ -257,14 +274,26 @@ function decorateUnderwrite(frame){
   var req = '<div class="bk-req"><b>Required inputs: ' + done + ' of ' + total + '</b><span class="bar"><i style="width:' + (total ? Math.round(done/total*100) : 0) + '%"></i></span>'
     + (r.missing.length ? '<span>Missing:</span>' + r.missing.map(function(m){ return '<button type="button" data-bk-jump-key="' + esc(REQ_KEYS[m.key] || m.key) + '">' + esc(m.label) + '</button>'; }).join('')
                          : '<span style="color:#1F7A45;font-weight:600">All required inputs entered</span>') + '</div>';
-  var caps = [];
+  /* The section index: every panel on this long page, grouped under a coloured label and named in a few words (three panels were all called "Development"),
+     with the section you are reading marked as you scroll. */
+  var DUG = [['Setup', '#2f6fb5', /^(Identity|Ownership|Program)\b/], ['Income & costs', '#2e7d5b', /^(Source Economics|Operating Assumptions)/], ['Exit', '#a8641c', /^(Exit & Hold|Growth & Sale)/],
+    ['Financing', '#2e6e6e', /^(Acquisition Debt|Permanent|Construction Facility|Debt Maturity|Audit-Fixed|What Each Debt)/], ['Partnership', '#7a4a8c', /^(JV Structure|Sponsor Economics)/],
+    ['Development', '#b0592a', /^Development\b/], ['Tax & rules', '#6a7480', /^(After-Tax|Underwriting Cases|Underwriting Conventions)/]];
+  var SHORT = [[/^Operating Assumptions/, 'Operating'], [/^Source Economics/, 'Source economics'], [/^Growth & Sale/, 'Growth & sale'], [/^Permanent/, 'Permanent debt'], [/^Construction Facility/, 'Construction loan'], [/^Debt Maturity/, 'Maturity & refi'],
+    [/^Audit-Fixed/, 'Risk inputs'], [/^What Each Debt/, 'Constraint basis'], [/^JV Structure/, 'JV & fees'], [/^Underwriting Cases/, 'Cases'], [/^Underwriting Conventions/, 'Conventions'], [/^Exit & Hold/, 'Exit & hold']];
+  var groups = DUG.map(function(g){ return { name:g[0], color:g[1], rx:g[2], items:[] }; }), other = { name:'Other', color:'#6a7480', items:[] };
   main.querySelectorAll('.tbl-wrap').forEach(function(w, i){
     var cap = w.querySelector('caption'); if(!cap) return;
     var id = 'bk-du-' + i; w.id = id;
-    var miss = !!w.querySelector('tr.bk-req-missing');
-    caps.push('<button type="button" data-bk-jump="' + id + '" class="' + (miss ? 'miss' : '') + '">' + esc(cap.textContent.replace(/\s+-\s+.*$/, '').trim()) + '</button>');
+    var full = cap.textContent.replace(/\s+/g, ' ').trim(), head = full.replace(/\s+-\s+.*$/, '').trim(), tail = (full.match(/\s+-\s+(.*)$/) || [])[1] || '', short = head;
+    if(/^Development\b/.test(head)) short = /Hard Cost/i.test(tail) ? 'Hard costs' : /Soft Cost/i.test(tail) ? 'Soft costs' : 'Program & budget';
+    else SHORT.forEach(function(sh){ if(sh[0].test(head)) short = sh[1]; });
+    var miss = !!w.querySelector('tr.bk-req-missing'), g = groups.filter(function(x){ return x.rx.test(head); })[0] || other;
+    g.items.push('<button type="button" data-bk-jump="' + id + '" class="' + (miss ? 'miss' : '') + '" title="' + esc(full) + '">' + esc(short) + '</button>');
   });
+  var caps = groups.concat([other]).filter(function(g){ return g.items.length; }).map(function(g){ return '<div class="bk-dg" style="--g:' + g.color + '"><span class="bk-dgl">' + esc(g.name) + '</span>' + g.items.join('') + '</div>'; });
   main.insertAdjacentHTML('afterbegin', '<div class="bk-dui" role="navigation" aria-label="Deal Underwrite sections">' + caps.join('') + '</div>' + req);
+  duSpy(main);
   // fields changed this session
   var base = U.baseline && U.baseline.id === dealKey() ? U.baseline.s : null;
   if(base){

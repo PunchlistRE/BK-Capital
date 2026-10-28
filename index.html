@@ -18778,6 +18778,23 @@ function decorateNotes(frame){
 }
 
 /* ---------------------------------------------------------------- 3. Deal Underwrite */
+/* mark the section being read in the Deal Underwrite index */
+var spyOn = false;
+function duSpy(main){
+  if(spyOn) { return; } spyOn = true;
+  var tick = false;
+  function mark(){ tick = false;
+    var bar = document.querySelector('#viewport .bk-dui'); if(!bar){ return; }
+    var btns = [].slice.call(bar.querySelectorAll('button[data-bk-jump]')), cur = null, edge = 190;   /* just under the pinned header and case bar */
+    btns.forEach(function(b){ var el = document.getElementById(b.getAttribute('data-bk-jump')); if(el && el.getBoundingClientRect().top <= edge) cur = b; });
+    if(!cur) cur = btns[0];
+    btns.forEach(function(b){ b.classList.toggle('on', b === cur); if(b === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); }); }
+  function later(){ if(!tick){ tick = true; (window.requestAnimationFrame || setTimeout)(mark); } }
+  document.addEventListener('scroll', later, { capture:true, passive:true }); window.addEventListener('resize', later);
+  new MutationObserver(function(){ if(document.querySelector('#viewport .bk-dui:not([data-bk-spy])')){ var b = document.querySelector('#viewport .bk-dui'); b.setAttribute('data-bk-spy', '1'); later(); } }).observe(document.getElementById('viewport') || document.body, { childList:true, subtree:true });
+  later();
+}
+
 var REQ_KEYS = { size:'units', revenue:'avgRent' };
 function decorateUnderwrite(frame){
   var main = frame.querySelector('.main-col'); if(!main || main.querySelector('.bk-dui')) return;
@@ -18788,14 +18805,26 @@ function decorateUnderwrite(frame){
   var req = '<div class="bk-req"><b>Required inputs: ' + done + ' of ' + total + '</b><span class="bar"><i style="width:' + (total ? Math.round(done/total*100) : 0) + '%"></i></span>'
     + (r.missing.length ? '<span>Missing:</span>' + r.missing.map(function(m){ return '<button type="button" data-bk-jump-key="' + esc(REQ_KEYS[m.key] || m.key) + '">' + esc(m.label) + '</button>'; }).join('')
                          : '<span style="color:#1F7A45;font-weight:600">All required inputs entered</span>') + '</div>';
-  var caps = [];
+  /* The section index: every panel on this long page, grouped under a coloured label and named in a few words (three panels were all called "Development"),
+     with the section you are reading marked as you scroll. */
+  var DUG = [['Setup', '#2f6fb5', /^(Identity|Ownership|Program)\b/], ['Income & costs', '#2e7d5b', /^(Source Economics|Operating Assumptions)/], ['Exit', '#a8641c', /^(Exit & Hold|Growth & Sale)/],
+    ['Financing', '#2e6e6e', /^(Acquisition Debt|Permanent|Construction Facility|Debt Maturity|Audit-Fixed|What Each Debt)/], ['Partnership', '#7a4a8c', /^(JV Structure|Sponsor Economics)/],
+    ['Development', '#b0592a', /^Development\b/], ['Tax & rules', '#6a7480', /^(After-Tax|Underwriting Cases|Underwriting Conventions)/]];
+  var SHORT = [[/^Operating Assumptions/, 'Operating'], [/^Source Economics/, 'Source economics'], [/^Growth & Sale/, 'Growth & sale'], [/^Permanent/, 'Permanent debt'], [/^Construction Facility/, 'Construction loan'], [/^Debt Maturity/, 'Maturity & refi'],
+    [/^Audit-Fixed/, 'Risk inputs'], [/^What Each Debt/, 'Constraint basis'], [/^JV Structure/, 'JV & fees'], [/^Underwriting Cases/, 'Cases'], [/^Underwriting Conventions/, 'Conventions'], [/^Exit & Hold/, 'Exit & hold']];
+  var groups = DUG.map(function(g){ return { name:g[0], color:g[1], rx:g[2], items:[] }; }), other = { name:'Other', color:'#6a7480', items:[] };
   main.querySelectorAll('.tbl-wrap').forEach(function(w, i){
     var cap = w.querySelector('caption'); if(!cap) return;
     var id = 'bk-du-' + i; w.id = id;
-    var miss = !!w.querySelector('tr.bk-req-missing');
-    caps.push('<button type="button" data-bk-jump="' + id + '" class="' + (miss ? 'miss' : '') + '">' + esc(cap.textContent.replace(/\s+-\s+.*$/, '').trim()) + '</button>');
+    var full = cap.textContent.replace(/\s+/g, ' ').trim(), head = full.replace(/\s+-\s+.*$/, '').trim(), tail = (full.match(/\s+-\s+(.*)$/) || [])[1] || '', short = head;
+    if(/^Development\b/.test(head)) short = /Hard Cost/i.test(tail) ? 'Hard costs' : /Soft Cost/i.test(tail) ? 'Soft costs' : 'Program & budget';
+    else SHORT.forEach(function(sh){ if(sh[0].test(head)) short = sh[1]; });
+    var miss = !!w.querySelector('tr.bk-req-missing'), g = groups.filter(function(x){ return x.rx.test(head); })[0] || other;
+    g.items.push('<button type="button" data-bk-jump="' + id + '" class="' + (miss ? 'miss' : '') + '" title="' + esc(full) + '">' + esc(short) + '</button>');
   });
+  var caps = groups.concat([other]).filter(function(g){ return g.items.length; }).map(function(g){ return '<div class="bk-dg" style="--g:' + g.color + '"><span class="bk-dgl">' + esc(g.name) + '</span>' + g.items.join('') + '</div>'; });
   main.insertAdjacentHTML('afterbegin', '<div class="bk-dui" role="navigation" aria-label="Deal Underwrite sections">' + caps.join('') + '</div>' + req);
+  duSpy(main);
   // fields changed this session
   var base = U.baseline && U.baseline.id === dealKey() ? U.baseline.s : null;
   if(base){
@@ -24855,10 +24884,15 @@ html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 /* the letter icon the decorator puts in each panel header (same square as the editor's) */
 html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
 /* section jumps as a tab strip */
-html body #viewport .bk-dui{ display:flex; gap:1px; flex-wrap:wrap; overflow-x:visible; scrollbar-width:thin; background:var(--ae-bg); border-bottom:1px solid var(--ae-line); padding:6px 4px 0; border-radius:0; box-shadow:none; }
-html body #viewport .bk-dui button{ flex:0 0 auto; white-space:nowrap; padding:6px 12px !important; background:var(--ae-head2) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:0 !important; color:var(--ae-dim) !important; font-size:12px !important; margin-bottom:-1px; box-shadow:none !important; }
-html body #viewport .bk-dui button:hover{ color:var(--ae-ink) !important; }
-html body #viewport .bk-dui button.on, html body #viewport .bk-dui button.active, html body #viewport .bk-dui button[aria-current]{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; font-weight:700 !important; border-top:2px solid var(--ae-accent) !important; padding-top:5px !important; }
+/* Deal Underwrite index: grouped jump links, not tabs. A coloured label per group, plain names, and the section you are reading filled in. */
+html body #viewport .bk-dui{ position:static; display:flex; flex-direction:column; align-items:stretch; gap:2px; overflow-x:visible; background:var(--ae-bg); border:1px solid var(--ae-line); border-radius:0; padding:8px 10px; box-shadow:none; }
+html body #viewport .bk-dui .bk-dg{ display:flex; flex-wrap:wrap; align-items:center; gap:2px 2px; border-left:3px solid var(--g,#6a7480); padding-left:8px; }
+html body #viewport .bk-dui .bk-dgl{ flex:0 0 112px; margin-right:4px; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--g,#6a7480); }
+html body #viewport .bk-dui button{ flex:0 0 auto; white-space:nowrap; padding:3px 9px !important; background:transparent !important; border:1px solid transparent !important; border-radius:12px !important; color:var(--ae-ink) !important; font-size:12px !important; margin:0; box-shadow:none !important; }
+html body #viewport .bk-dui button:hover{ border-color:var(--g,var(--ae-line)) !important; text-decoration:none; }
+html body #viewport .bk-dui .bk-dg button:hover{ border-color:var(--g) !important; }
+html body #viewport .bk-dui button.miss{ color:#d9534f !important; font-weight:700 !important; }
+html body #viewport .bk-dui .bk-dg button.on{ background:var(--g) !important; border-color:var(--g) !important; color:#fff !important; font-weight:700 !important; }
 /* buttons */
 html body #viewport .bk-btn, html body #viewport button.pl-hbtn{ border:1px solid var(--ae-line) !important; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-radius:2px !important; box-shadow:none !important; }
 html body #viewport .bk-btn.primary, html body #viewport button.pl-hbtn.primary{ background:var(--ae-accent) !important; border-color:var(--ae-accent) !important; color:#fff !important; }
