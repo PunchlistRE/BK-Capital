@@ -33,6 +33,7 @@ echo "== Financing Compare (complete dated financing economics, reconciled to th
 echo "== Pre-Offer Bid (maximum supportable price, verified against the engine)"; node audit/prebid_test.js index.html | tail -1
 echo "== Deal Remedies (resize debt, maximum price, rent and occupancy required, through the credit gate)"; node audit/remedies_test.js index.html | tail -1
 echo "== Print / Save PDF for any section"; node audit/print_test.js index.html | tail -1
+echo "== Print fits any number of years (Cash Flow Report: 3 to 25 year holds, real PDFs, nothing clipped)"; node audit/print_years_test.js index.html | tail -1
 echo "== Section guide (Guide on: what, how to read, checks on this deal, next)"; node audit/sectionguide_test.js index.html | tail -1
 echo "== Layout guards (income-bar key, report text, print button, phone layout)"; node audit/layout_test.js index.html | tail -1
 echo "== Sponsor CF (one sponsor all-in return, dated like the summary)"; node audit/sponsor_test.js index.html | tail -1
