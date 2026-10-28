@@ -23450,7 +23450,7 @@ function parseRR(txt, o){
 /* PRICE AND CAP RATE. Every price-like figure in the OM is collected with what it is (an asking price, a sold price, an assessed
    value, a loan balance), where it came from and how it was found. Only an unambiguous ASKING price becomes the deal's price; a
    sold or assessed value is never taken as one. Two different asking prices leave the price unset for the user to choose. */
-var PR_MONEY = '\\$\\s?(\\d{1,3}\\.\\d{3},\\d{3}|\\d{1,3}(?:,\\d{3}){2,}|\\d{6,})(?![\\d,]*\\s*%)';
+var PR_MONEY = '\\$\\s?(\\d{1,3}\\.\\d{3},\\d{3}|\\d{1,3}(?:,\\d{3}){1,}|\\d{6,})(?![\\d,]*\\s*%)';
 function prVal(s){ s = String(s || ''); var ty = /^(\d{1,3})\.(\d{3}),(\d{3})$/.exec(s); if(ty) return { v:Number(ty[1] + ty[2] + ty[3]), typo:'$' + s }; var v = parseFloat(s.replace(/,/g, '')); return isFinite(v) ? { v:v } : null; }
 function prKind(label, pageText){
   var s = String(label || '').toLowerCase(), soldCtx = /\b(sold|sale date|sale type|comp status|research complete|last sale)\b/i.test(pageText);
@@ -23473,6 +23473,10 @@ function findPrices(txt){
       /* B: the label on a line of its own, the figure on one of the next two ("Price to Sell:" then "$6,250,000") */
       var lb = /(price\s*to\s*sell|asking\s*price(?:\s*for[^:\n]*)?|offering\s*price|list(?:ing)?\s*price|purchase\s*price|sale\s*price)\s*:?\s*$/i.exec(line);
       if(lb){ var nxt = [L[li + 1], L[li + 2]].filter(Boolean).join('  '), rm = new RegExp(PR_MONEY).exec(nxt); if(rm){ var pv2 = prVal(rm[1]), k2 = prKind(lb[1], pg); if(k2 && pv2 && pv2.v >= 100000) add({ value:pv2.v, kind:k2, page:pi + 1, label:lb[1].replace(/\s+/g, ' ').trim(), method:'figure on the line after its label', typo:pv2.typo || null, snippet:(line + ' / ' + (L[li + 1] || '')).trim().slice(0, 110) }); } }
+      /* D: a row of labels with the figures in the row beneath, in the same order ("Listing Price   Total Rentable SF" over "$775,000   4,047") */
+      var cellsD = line.trim().split(/\s{2,}/);
+      if(cellsD.length >= 2 && cellsD.length <= 6){ var pj = -1; cellsD.forEach(function(c, q){ if(pj < 0 && /^(?:asking|offering|list(?:ing)?|purchase|guidance)\s+price$|^price$/i.test(c.trim())) pj = q; });
+        if(pj >= 0){ var valsD = (L[li + 1] || '').trim().split(/\s{2,}/); if(valsD.length === cellsD.length){ var dmx = new RegExp('^' + PR_MONEY).exec(valsD[pj]); if(dmx){ var pvD = prVal(dmx[1]), kD = prKind(cellsD[pj], pg); if(kD && pvD && pvD.v >= 100000) add({ value:pvD.v, kind:kD, page:pi + 1, label:cellsD[pj].trim().toLowerCase(), method:'figure under its label', typo:pvD.typo || null, snippet:(line.trim() + ' / ' + (L[li + 1] || '').trim()).slice(0, 110) }); } } } }
       /* C: a spaced-letter heading with several labels ("P R I C E  C A P R A T E"), the figures on the next line in the same order */
       if(/^\s*(?:[A-Z] ){3,}[A-Z](?:\s{2,}(?:[A-Z] ){2,}[A-Z])*\s*$/.test(line)){ var hs = line.trim().split(/\s{2,}/).map(function(g){ return g.replace(/ /g, '').toUpperCase(); }), pi2 = -1; hs.forEach(function(w, q){ if(/^(ASKING|OFFERING|LIST|LISTING)?PRICE$/.test(w)) pi2 = q; });
         if(pi2 >= 0){ var vals = (L[li + 1] || '').trim().split(/\s{2,}/); if(vals.length === hs.length){ var cm = new RegExp('^' + PR_MONEY).exec(vals[pi2]); if(cm){ var pv3 = prVal(cm[1]); if(pv3 && pv3.v >= 100000) add({ value:pv3.v, kind:'asking', page:pi + 1, label:hs[pi2].toLowerCase(), method:'column heading and its figure', typo:pv3.typo || null, snippet:(line.trim() + ' / ' + (L[li + 1] || '').trim()).slice(0, 110) }); } } } } }); });
@@ -23520,7 +23524,7 @@ function parseOM(pages){
   var CRT = findCapRates(txt); if(CRT.cur != null || CRT.pf != null){ o.capPrinted = true; o.capRates = CRT; if(CRT.cur != null) o.curCap = CRT.cur; if(CRT.pf != null) o.pfCap = CRT.pf; }
   o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/Total\s+Units\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/(\d{1,4})\s*[- ]?\s*units?\b/i, 1, 'units'));
   o.sf = num(find(/\bTotal\s+\d{1,4}\s+Units\s+([\d,]{4,})\s*SF/i, 1, 'sf')) || num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf'))
-    || num(find(/([\d,]{4,})\s*Total\s*SF\b/i, 1, 'sf')) || (function(){ var bm = /Building\s*SF\s+([\d,]{3,})\s*SF(?:\s*\|\s*([\d,]{3,})\s*SF)?/i.exec(all); return bm ? num(bm[1]) + (bm[2] ? num(bm[2]) : 0) : null; })() || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
+    || num(find(/([\d,]{4,})\s*Total\s*SF\b/i, 1, 'sf')) || (function(){ var bm = /Building\s*SF\s+([\d,]{3,})\s*SF(?:\s*\|\s*([\d,]{3,})\s*SF)?/i.exec(all); return bm ? num(bm[1]) + (bm[2] ? num(bm[2]) : 0) : null; })() || num(find(/\bTotal\s+(?:Rentable\s+|Building\s+|Gross\s+)?SF\s*:?\s+([\d,]{4,})\b/i, 1, 'sf')) || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
   o.yearBuilt = num(find(/YEAR BUILT\s+(\d{4})/i, 1, 'yearBuilt'));
   o.lotAcres = num(find(/LOT SIZE[^\n]{0,30}?([\d.]+)\s*Acres/i, 1, 'lot')) || num(find(/\b(\d?\.\d+)\s*Acres/i, 1));
   o.stories = num(find(/STORIES\s+(\d+)/i, 1));
@@ -23529,9 +23533,19 @@ function parseOM(pages){
   o.propertyType = find(/PROPERTY TYPE\s+(Multi-?family|Mixed[- ]Use|Retail|Office|Industrial|Student Housing|Senior Housing)/i, 1);
   /* unit mix */
   var mix = [], avgCur = null, avgPf = null;
-  for(i = 0; i < txt.length; i++){ if(!/Unit\s*Mix/i.test(txt[i]) || !/UNIT TYPE/i.test(txt[i])) continue; src.unitMix = i + 1;
-    txt[i].split(/\n/).forEach(function(line){ var m = /^\s*(.*?[A-Za-z].*?)\s+(\d{1,3})\s+([\d.]+)\s*%\s+\$([\d,]+)\s+(?:\$([\d,]+)\s+)?\$([\d,]+)\s*$/.exec(line);
-      if(!m) return; var label = m[1].trim(); if(/^total/i.test(label)){ avgCur = num(m[4]); avgPf = num(m[6]); return; }
+  for(i = 0; i < txt.length; i++){ if(!/Unit\s*Mix/i.test(txt[i]) || !/UNIT TYPE|FLOOR\s*PLAN/i.test(txt[i])) continue; src.unitMix = i + 1;
+    var hdr = null, hdrAt = -1; txt[i].split(/\n/).forEach(function(l, lq){ var hm = /^\s*(?:Unit\s*Type|Floor\s*Plan|Unit\s*Types?)\s{2,}(.+)$/i.exec(l); if(!hdr && hm){ var cl = hm[1].trim().split(/\s{2,}/).map(function(nm){ return /pro\s*-?\s*forma|projected/i.test(nm) ? 'pf' : /\b(?:high|achiev|market|asking)/i.test(nm) ? 'high' : /current|in-?place|actual/i.test(nm) ? 'cur' : /\bsf\b|sq/i.test(nm) ? 'sf' : /#|units?/i.test(nm) ? 'units' : 'x'; }); if(cl.indexOf('units') >= 0 && cl.indexOf('cur') >= 0){ hdr = cl; hdrAt = lq; } } });
+    txt[i].split(/\n/).forEach(function(line, lq){ var m = /^\s*(.*?[A-Za-z].*?)\s+(\d{1,3})\s+([\d.]+)\s*%\s+\$([\d,]+)\s+(?:\$([\d,]+)\s+)?\$([\d,]+)\s*$/.exec(line);
+      if(!m){
+        /* No percent column: read the row by the table's own column headings ("Unit Type   # of Units   SF   Current Rent   Highest Achieved   Pro Forma Rent"), so a square-foot column is
+           not mistaken for the unit count. Its totals are an annual row (skipped) and an Average row. */
+        if(!hdr || lq <= hdrAt) return; var parts = line.trim().split(/\s{2,}/), lab = parts[0], vals = parts.slice(1);
+        if(/^(?:annual\s+)?total/i.test(lab) || !/[A-Za-z]/.test(lab) || !vals.length || !vals.every(function(v){ return /^\$?\s?[\d,]+(?:\.\d+)?$/.test(v); })) return;
+        var isAvg = /^average/i.test(lab), cols = hdr; if(isAvg){ var noU = hdr.filter(function(c){ return c !== 'units'; }), noUS = noU.filter(function(c){ return c !== 'sf'; }); cols = vals.length === hdr.length ? hdr : vals.length === noU.length ? noU : vals.length === noUS.length ? noUS : hdr; } if(vals.length !== cols.length) return;
+        var rec = {}; cols.forEach(function(c, q){ if(c !== 'x') rec[c] = num(vals[q]); });
+        if(isAvg){ avgCur = rec.cur || null; avgPf = rec.pf || null; return; }
+        if(rec.units > 0 && rec.units < 1000 && rec.cur > 0) mix.push({ type:lab.replace(/^1BR$/i, '1 BR'), units:rec.units, cur:rec.cur, high:rec.high || null, pf:rec.pf || rec.cur, sf:rec.sf || null }); return; }
+      var label = m[1].trim(); if(/^total/i.test(label)){ avgCur = num(m[4]); avgPf = num(m[6]); return; }
       mix.push({ type:label.replace(/^1BR$/i, '1 BR'), units:num(m[2]), cur:num(m[4]), high:m[5] ? num(m[5]) : null, pf:num(m[6]) }); }); break; }
   o.unitMix = mix; o.avgCur = avgCur; o.avgPf = avgPf;
   /* income and expense */
@@ -23568,6 +23582,14 @@ function parseOM(pages){
       /* "- Commercial" / "- Residential" in a label starts that sub-section; an unlabelled row (a vacancy allowance) belongs to the one before it */
       if(sec === 'inc'){ if(/\bcommercial\b/i.test(label)) sub = 'comm'; else if(/\bresidential\b/i.test(label)) sub = 'res'; }
       var put = function(key, val){ I[key] = val; if(sec === 'inc' && sub){ (I[sub] = I[sub] || {})[key] = val; } };
+      /* A printed dash in the Current column ("Garage   -   $8,400   $12.00") is a nil, not a missing cell: the figures after it belong to the Pro Forma column. Without this the
+         Pro Forma amount slid into Current and the page's own other income looked like it did not add up. */
+      var dashLead = /(?:\s+[-\u2013\u2014])+\s*$/.exec(label);
+      if(dashLead){ label = label.slice(0, dashLead.index).trim();
+        if(LEGACY && sec !== 'exp' && /^(?:total additional|[A-Za-z])/.test(label) && !/net operating|effective|gross|^vacancy|loss to lease|below market/i.test(label)){
+          I.nil = (I.nil || 0) + 1; var nilV = { cur:0, pf:money[0], nilCur:true };
+          if(/^total additional/i.test(label)) I.addTot = nilV; else I.addl.push(Object.assign({ label:label }, nilV)); return; }
+        if(LEGACY && sec === 'exp' && /^[A-Za-z]/.test(label)){ I.nil = (I.nil || 0) + 1; var nilE = { cur:0, pf:money[0], nilCur:true }; if(/^total/i.test(label)) I.expTot = nilE; else I.exp.push(Object.assign({ label:label }, nilE)); return; } }
       /* mk(fallback): the row's values per period. Legacy layouts return the original {cur, pf}; others carry every period found. */
       var V = null, mk = function(fb){ return fb; };
       if(!LEGACY){ V = rowVals(money); mk = function(fb){ var c = {}; SETS.forEach(function(s){ if(V[s] != null) c[s] = V[s]; }); return c; }; if(V.__aligned && /[A-Za-z]/.test(label) && !/^\d/.test(label)) I.aligned.push(label.replace(/[\s\-\u2013]+$/, '')); }
@@ -23617,6 +23639,9 @@ function parseOM(pages){
   /* every place the OM states a commercial area, so a conflicting statement is visible (the area changes $/SF, not income) */
   o.commSFMentions = []; txt.forEach(function(pg, pi){ var add = function(sf, why){ sf = num(sf); if(sf >= 100 && sf < 500000) o.commSFMentions.push({ sf:sf, page:pi + 1, why:why }); }, m, re1 = /([\d,]{3,7})\s*(?:square|sq\.?)\s*f(?:oo|ee)?t[^.\n]{0,40}(?:street[- ]level|ground[- ]floor|retail|commercial)/ig, re2 = /commercial[^\n]{0,40}?(?:with|:)?\s*([\d,]{3,7})\s*(?:SF|sq)/ig;
     while((m = re1.exec(pg))) add(m[1], 'stated in the description'); while((m = re2.exec(pg))) add(m[1], 'stated beside "Commercial"');
+    /* a commercial rent roll table headed Tenant / SF / Rent: its Total row (or, with no total, each tenant's SF) */
+    if(/^\s*Tenant\s+SF\b/im.test(pg)){ var rows = [], tot = null; pg.split(/\n/).forEach(function(l){ var r = /^\s*(.{2,60}?)\s+([\d,]{3,6})\s+\$[\d,]+(?:\.\d+)?\s+\$[\d,]+/.exec(l); if(!r || /^tenant\b/i.test(r[1])) return; if(/^total\b/i.test(r[1].trim())) tot = r; else rows.push(r); });
+      if(tot) add(tot[2], 'commercial rent roll total'); else rows.forEach(function(r){ add(r[2], 'commercial rent roll: ' + r[1].trim()); }); }
     var inC = false; pg.split(/\n/).forEach(function(l){ if(/^\s*Commercial\s*$/i.test(l)) inC = true; else if(inC){ var r = /^(.{2,60}?)\s+(?:Ground Floor|Basement|\d+\w{0,2} Floor|Suite \w+|Unit \w+)\s+([\d,]{3,6})\s+\$[\d,]+\s+\$[\d,]+/i.exec(l); if(r) add(r[2], 'tenant table: ' + r[1].trim()); else if(/^\s*(total|residential)/i.test(l)) inC = false; } }); });
   if(!(o.ie && o.ie.noi && o.ie.exp && o.ie.exp.length)) parseRR(txt, o);
   if(o.price && o.curNOI && !o.curCap) o.curCap = o.curNOI / o.price;
@@ -23822,7 +23847,10 @@ function buildDeal(om0, basis, fileName){
   if(decisions.otherIncome) notes.push('Other income uses your decision: ' + decisions.otherIncome.note + ' (' + $(decisions.otherIncome.amount) + ' a year).');
   d._omReported = { basis:k, noi:I.noi ? I.noi[k] : null, egi:I.egi ? I.egi[k] : null, effectiveRent:I.eri ? I.eri[k] : null, totalExpense:I.expTot ? I.expTot[k] : null };
   if(Object.keys(decisions).length) d._omDecisions = decisions;
-  var tie = needs.length ? null : safe(function(){ return window.bkRunWith(d, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
+  /* Only the commercial area outstanding: the income is the same at any area, so the NOI tie-out can still run on a stand-in area. The deal itself is not created until the area is chosen. */
+  var onlyArea = needs.length && needs.every(function(x){ return x.key === 'commSF'; }), dTie = d;
+  if(onlyArea && I.comm && I.comm.gsr && I.comm.gsr[k] > 0){ dTie = Object.assign({}, d, { commercialArea:1000, commercialRent:I.comm.gsr[k] / 1000 }); }
+  var tie = needs.length && !(onlyArea && dTie !== d) ? null : safe(function(){ return window.bkRunWith(dTie, function(){ return bkCalc().noi; }); }, null), want = I.noi ? I.noi[k] : null;
   var PN = { t12:'Trailing 12', cur:'Current', pf:'Pro Forma' };
   if(I.periods && !I.legacyColumns) notes.push('The income and expense table has ' + I.periods.length + ' period columns (' + I.periods.map(function(p){ return PN[p]; }).join(', ') + '). This deal is underwritten on the ' + PN[basis] + ' column; the others are kept in the reconciliation below and are never substituted.');
   if(I.twoFigure && I.twoFigure.length) notes.push('Other-income rows with two figures (' + I.twoFigure.slice(0, 4).join(', ') + (I.twoFigure.length > 4 ? ', …' : '') + ') are read as Current and Projected, because the second figure is not this table\'s own per-unit figure (amount ÷ ' + (I.udiv ? I.udiv.toFixed(1) : '?') + ' units).');
@@ -23839,6 +23867,8 @@ function buildDeal(om0, basis, fileName){
   if(I.ltl && I.ltl.cur && basis === 'cur') notes.push('The OM shows ' + $(I.ltl.cur) + ' a year of loss to lease. In-place rents are below the rents it calls achievable.');
   return { deal:d, tie:tie, want:want, notes:notes, cap:cap, lines:lines, needs:needs };
 }
+/* the commercial area when the OM states one figure, however many times (the income is the same at any area; it only sets rent per SF). Two different figures leave it for you. */
+function autoCommSF(om){ var v = {}; ((om && om.commSFMentions) || []).forEach(function(x){ v[x.sf] = 1; }); var k = Object.keys(v); return k.length === 1 ? Number(k[0]) : null; }
 function run(file, target){
   S = { busy:true, msg:'Starting...', mode:'om', result:null, basis:S.basis || 'cur', file:file, target:target || 'new' }; showSheet('Import OM');
   return readOM(file).then(function(info){ var om = parseOM(info.pages); S.info = info; window.__bkOMState = S;
@@ -23846,7 +23876,7 @@ function run(file, target){
     if(!NEEDMIN(om) && /land for development|available parcels|sites (?:are )?available/i.test(info.pages.join('\n')) && !om.price){ S.msg = 'Read ' + file.name + '. It is a land listing with no price, unit count or financials, so there is nothing to underwrite from it yet. Keep it with the deal in Deal Documents, and use Import OM again once you have a priced offering or a pro forma.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
     if(!NEEDMIN(om)){ S.msg = 'Read ' + file.name + ' but could not find an income and expense table with its net operating income (found: ' + [om.price && 'price', om.units && 'units', om.ie && om.ie.noi && 'NOI'].filter(Boolean).join(', ') + '). Use Import Deal for a T-12, or Source Ingestion for other layouts.'; S.busy = false; S.result = null; S.om = om; showSheet('Import OM'); return; }
     if(om.periods && om.periods.indexOf(S.basis) < 0) S.basis = om.periods.indexOf('cur') >= 0 ? 'cur' : om.periods[0];
-    S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mPriceFrom = null; S.mUnits = null; S.mCommSF = null; S.dec = {}; S.msg = 'Read ' + file.name + ' (' + (info.ocrError ? 'text layer; ' + info.ocrSkipped.length + ' picture page' + (info.ocrSkipped.length === 1 ? '' : 's') + ' skipped, the text recognition engine did not load' : info.method === 'text' ? 'text layer' : info.method === 'mixed' ? 'text layer, and page images read by text recognition' : (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images')) + (om.layout === 'rentroll' ? '; unit rent roll and expense list' + ((om.buildings || []).length > 1 ? ' for ' + om.buildings.length + ' buildings' : '') : '') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
+    S.om = om; S.info = info; S.result = true; S.busy = false; S.mPrice = null; S.mPriceFrom = null; S.mUnits = null; S.mCommSF = autoCommSF(om); S.dec = {}; S.msg = 'Read ' + file.name + ' (' + (info.ocrError ? 'text layer; ' + info.ocrSkipped.length + ' picture page' + (info.ocrSkipped.length === 1 ? '' : 's') + ' skipped, the text recognition engine did not load' : info.method === 'text' ? 'text layer' : info.method === 'mixed' ? 'text layer, and page images read by text recognition' : (info.cached ? 'text recognised from page images earlier on this computer' : 'text recognised from page images')) + (om.layout === 'rentroll' ? '; unit rent roll and expense list' + ((om.buildings || []).length > 1 ? ' for ' + om.buildings.length + ' buildings' : '') : '') + ').'; showSheet('Import OM'); }).catch(function(e){ S.busy = false; S.result = null; S.msg = (e && e.message) || String(e); showSheet('Import OM'); });
 }
 window.bkOMRun = function(inp){ var f = inp && inp.files && inp.files[0]; if(!f) return; if(/\.(xlsx|xlsm|csv)$/i.test(f.name)){ S = { busy:true, msg:'', mode:'dev', result:null, basis:'cur', file:null, target:'new', dev:{ om:{}, taxBasis:'pf' } }; devRun(inp); return; } run(f, 'new'); };
 window.bkOMBasis = function(b){ S.basis = b; showSheet('Import OM'); };
@@ -24029,7 +24059,9 @@ function confOM(om, b, info, basis){
   else if(om.layout === 'rentroll'){ var spaces = d.units + (om.commSpaces || 0); if(om.unitsOM && spaces === om.unitsOM) set('units', 'verified', d.units + ' apartments in the rent roll' + (om.commSpaces ? ' plus ' + om.commSpaces + ' commercial spaces' : '') + ' = the ' + om.unitsOM + ' units the OM states.'); else set('units', 'check', 'Counted from the rent roll: ' + d.units + ' apartments' + (om.commSpaces ? ' and ' + om.commSpaces + ' commercial spaces' : '') + (om.unitsOM ? '; the OM states ' + om.unitsOM + ' units.' : '.')); }
   else set('units', 'check', ocr(s.units) ? 'Read from a page image with no unit mix to check it against.' : 'No unit mix table to check it against.');
   if(!d.gsf) set('gsf', 'low', 'No building area found.');
-  else { var spu = d.gsf / (d.units || 1); if(spu < 350 || spu > 2500) set('gsf', 'low', 'That is ' + Math.round(spu) + ' SF per unit, which is outside the usual range. The area or the unit count is misread.'); else set('gsf', ocr(s.sf) ? 'check' : 'verified', ocr(s.sf) ? 'Read from a page image; ' + Math.round(spu) + ' SF per unit is plausible.' : Math.round(spu) + ' SF per unit is plausible.'); }
+  else { var cSF = (om.commSFMentions && om.commSFMentions[0] && om.commSFMentions[0].sf) || 0, rSF = cSF && cSF < d.gsf ? d.gsf - cSF : d.gsf, spu = rSF / (d.units || 1), roomy = (om.unitMix || []).some(function(r){ return /\b(room|sro|studio|micro)\b/i.test(r.type); });
+    /* the building area includes the shop; a rooming house legitimately averages well under 350 SF a unit */
+    if(spu < (roomy ? 150 : 350) || spu > 2500) set('gsf', 'low', 'That is ' + Math.round(spu) + ' SF per unit' + (cSF ? ' after taking out the ' + cSF.toLocaleString('en-US') + ' SF commercial space' : '') + ', which is outside the usual range. The area or the unit count is misread.'); else set('gsf', ocr(s.sf) ? 'check' : 'verified', ocr(s.sf) ? 'Read from a page image; ' + Math.round(spu) + ' SF per unit is plausible.' : Math.round(spu) + ' SF per unit is plausible.'); }
   /* income and expenses */
   line('avgRent', d.avgRent, 'rent'); line('otherIncomePerUnit', d.otherIncomePerUnit, 'other income');
   if(d._omDecisions && d._omDecisions.otherIncome) set('otherIncomePerUnit', 'check', 'The OM\'s other-income lines and printed EGI disagree. You decided: ' + d._omDecisions.otherIncome.note + '.');
