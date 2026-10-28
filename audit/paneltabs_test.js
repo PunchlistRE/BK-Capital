@@ -58,6 +58,10 @@ const A = require(path.join(__dirname, 'deal.js'));
   const m = await open(390, '0'); await show(m, 'Debt');
   const ph = await m.evaluate(() => { const bar = document.querySelector('#viewport .bk-pt-bar'), cs = getComputedStyle(bar); return { h: Math.round(bar.getBoundingClientRect().height), wrap: cs.flexWrap, ox: cs.overflowX, scroll: bar.scrollWidth > bar.clientWidth, page: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1 }; });
   check('phone: the tab strip is one scrolling row (it does not wrap into a tall block), and the page does not scroll sideways', ph.h < 60 && ph.wrap === 'nowrap' && ph.scroll && ph.page, JSON.stringify(ph));
+  /* the "PROPERTY EDITOR" label and accent spine belong to the Property editor's own rows, not to a section's panel tabs */
+  await show(p, 'Debt'); const lab1 = await p.evaluate(() => { const bar = document.querySelector('#viewport .bk-pt-bar'); return bar ? { c: getComputedStyle(bar, '::before').content, spine: getComputedStyle(bar).borderLeftWidth } : null; });
+  await show(p, 'Valuation'); const lab2 = await p.evaluate(() => { const bar = document.querySelector('#viewport .ae > .ae-tabs'); return bar ? { c: getComputedStyle(bar, '::before').content, spine: getComputedStyle(bar).borderLeftWidth, pt: !!document.querySelector('#viewport .bk-pt-bar') } : null; });
+  check('the PROPERTY EDITOR label is on the editor rows only, not on a section\'s panel tabs', lab1 && !/PROPERTY EDITOR/.test(lab1.c) && lab1.spine !== '4px' && lab2 && /PROPERTY EDITOR/.test(lab2.c) && lab2.spine === '4px' && !lab2.pt, JSON.stringify([lab1, lab2]));
   check('no page errors', p.errs.length === 0 && m.errs.length === 0, p.errs.concat(m.errs).slice(0, 2).join(' | '));
   await b.close(); console.log(checks + ' checks, ' + fails + ' failures'); process.exit(fails ? 1 : 0);
 })();
