@@ -32,7 +32,7 @@ html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section
 html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind="input-num"] {
   background-color:var(--bk-in-fill) !important; color:var(--bk-in-ink) !important; font-weight:600 !important; }
 html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind="calc"] {
-  background:var(--bk-calc-fill) !important; color:#10233a !important; font-weight:400 !important; }
+  background:var(--bk-calc-fill) !important; color:var(--ae-ink,#10233a) !important; font-weight:400 !important; }
 html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section):not(.subtotal) > td:not([data-bk-kind^="input"]):not([data-bk-kind="calc"]) {
   background:transparent !important; }
 

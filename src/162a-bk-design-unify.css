@@ -159,7 +159,7 @@ html body #viewport .rp .rp-tbl td, html body #viewport .rp .rp-tbl th{ padding-
   /* stacked rows: a highlighted or total row is one light band with dark text, nothing boxed inside it */
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal,
   html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{ background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; }
-  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal td{ background:transparent !important; color:#0e2a4a !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal td{ background:transparent !important; color:var(--ae-ink,#0e2a4a) !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total td::before, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal td::before{ color:#566a80 !important; background:transparent !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td:empty, html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip:not(:has(*)){ display:none !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip{ text-align:left !important; padding:2px 0 !important; }
@@ -275,3 +275,23 @@ html body #viewport .ae > .ae-subs .ae-sub{ background:transparent; border-color
 html body #viewport .ae > .ae-subs .ae-sub:hover{ color:var(--ae-ink) }
 html body #viewport .ae > .ae-subs .ae-sub.on{ background:var(--ae-cell); border-color:var(--ae-line); border-top:2px solid var(--ae-accent) }
 html body #viewport .ae > .ae-body{ border-left:4px solid var(--ae-accent) }
+
+/* ---- Night mode: the text that was dark on dark or white on light blue. Primary buttons get a mid blue that carries white text; status and negative colours are
+   lifted; numbers and notes set in the day palette's navy and grey are lightened; buttons with no styling of their own get a dark face; the Deal Underwrite group
+   labels are brightened. (The day palette is untouched.) */
+@media (prefers-color-scheme: dark){
+html:not([data-theme="light"]) body #viewport .bk-btn.primary, html:not([data-theme="light"]) body #viewport button.pl-hbtn.primary, html:not([data-theme="light"]) .bk-btn.primary, html:not([data-theme="light"]) .bk-btn.pri, html:not([data-theme="light"]) .pl-hbtn.primary, html:not([data-theme="light"]) .ae-btn.pri, html:not([data-theme="light"]) .ae-btn.primary, html:not([data-theme="light"]) button.primary{ background:#2f6fb5 !important; border-color:#2f6fb5 !important; color:#fff !important; }
+html:not([data-theme="light"]) body #viewport .bk-btn.primary:hover, html:not([data-theme="light"]) body #viewport button.pl-hbtn.primary:hover, html:not([data-theme="light"]) .bk-btn.primary:hover, html:not([data-theme="light"]) .pl-hbtn.primary:hover, html:not([data-theme="light"]) .ae-btn.pri:hover{ background:#3a7cc7 !important; }
+html:not([data-theme="light"]) #viewport .go, html:not([data-theme="light"]) #viewport a.go{ color:#8fc3f2 !important; }
+html:not([data-theme="light"]) #viewport .bk-ctl-WARN, html:not([data-theme="light"]) #viewport .st-warn, html:not([data-theme="light"]) #viewport .warn{ color:#f0c060 !important; }
+html:not([data-theme="light"]) #viewport .bk-ctl-FAIL, html:not([data-theme="light"]) #viewport .bk-ctl-ERROR, html:not([data-theme="light"]) #viewport .neg, html:not([data-theme="light"]) #viewport .v.neg{ color:#ff9a8a !important; }
+html:not([data-theme="light"]) #viewport td.bk-a-num, html:not([data-theme="light"]) #viewport .bk-a-num{ color:#e3e8ed !important; }
+html:not([data-theme="light"]) #viewport [style*="color:#555"], html:not([data-theme="light"]) #viewport [style*="color: #555"], html:not([data-theme="light"]) #viewport [style*="color:#444"], html:not([data-theme="light"]) #viewport [style*="color:#333"], html:not([data-theme="light"]) #viewport [style*="color:#666"]{ color:#c4ccd4 !important; }
+html:not([data-theme="light"]) #viewport [style*="#0e2a4a"]:not([style*="color:#fff"]):not([style*="color: #fff"]):not([style*="color:white"]):not([style*="color:#eaf0f6"]), html:not([data-theme="light"]) #viewport [style*="#10233a"]:not([style*="color:#fff"]), html:not([data-theme="light"]) #viewport [style*="#163a62"]:not([style*="color:#fff"]), html:not([data-theme="light"]) #viewport [style*="#2f4258"], html:not([data-theme="light"]) #viewport [style*="navy-900"]:not([style*="color:#fff"]){ color:#e3e8ed !important; }
+html:not([data-theme="light"]) #viewport a:not([class]):not([style*="color"]){ color:#8fc3f2; }
+html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.fail .v{ color:#ff9a8a; }
+html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.warn .v{ color:#f0c060; }
+html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.pass .v, html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.ok .v{ color:#7fd4a0; }
+html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-theme="light"]) #viewport button[class=""]{ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
+html:not([data-theme="light"]) #viewport .bk-dui .bk-dgl{ color:color-mix(in srgb, var(--g) 50%, #ffffff) !important; }
+}
