@@ -29,7 +29,7 @@ echo "== lease terms (CPI increases, expense stops, recovery caps, gross-up, sta
 echo "== Import OM, rent-roll layout (unit rent roll + expense list, two-building offerings)"; node audit/om_rentroll_test.js index.html | tail -1
 echo "== Import OM, letter-spaced headings and period columns (Trailing 12 / Current / Pro Forma)"; node audit/om_columns_test.js index.html "$REF" | tail -1
 echo "== Import OM, price and printed cap rate (asking vs sold vs assessed)"; node audit/om_price_test.js index.html "$REF" | tail -1
-echo "== Import OM, 32 Ferry / 45-47 Spring Street layouts (price tile, sub-$1M prices, dash column, unit mix by heading, stated commercial area)"; node audit/om_ferry_test.js index.html | tail -1
+echo "== Import OM, 32 Ferry / 45-47 Spring Street layouts (price tile, sub-\$1M prices, dash column, unit mix by heading, stated commercial area)"; node audit/om_ferry_test.js index.html | tail -1
 echo "== Financing Compare (complete dated financing economics, reconciled to the engine)"; node audit/fincompare_test.js index.html | tail -1
 echo "== Pre-Offer Bid (maximum supportable price, verified against the engine)"; node audit/prebid_test.js index.html | tail -1
 echo "== Deal Remedies (resize debt, maximum price, rent and occupancy required, through the credit gate)"; node audit/remedies_test.js index.html | tail -1
