@@ -12,6 +12,27 @@ var st = document.createElement('style'); st.id = 'bk-casenote-css'; st.textCont
 var FOLLOW = ['Cash Flow Report', 'Valuation Report', 'After-Tax'], BASE_ONLY = ['IC Memo', 'Deal Remedies', 'Pre-Offer Bid', 'Sell vs Hold'];
 function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
 function caseNow(){ try { return String(bkLoad().scenarioCase || 'Base'); } catch(e){ return 'Base'; } }
+
+/* what a case does, in words, from the deltas actually on the deal (used for the header buttons' hover text) */
+window.bkCaseSummary = function(s, c){
+  if(c !== 'Upside' && c !== 'Downside') return 'Base: the deal exactly as entered.';
+  var up = c === 'Upside', k = up ? 'up' : 'down', sg = function(v){ return v > 0 ? '+' : '−'; }, pc = function(v){ return sg(v) + Math.abs(v * 100).toFixed(2) + '%'; }, n = function(key){ var v = Number(s[k + key]); return isFinite(v) ? v : 0; }, parts = [], v;
+  if((v = n('ExitCapDelta'))) parts.push('exit cap ' + pc(v)); if((v = n('RentGrowthDelta'))) parts.push('rent growth ' + pc(v)); if((v = n('DebtRateDelta'))) parts.push('loan rate ' + pc(v));
+  if((v = n('VacancyDelta'))) parts.push('vacancy ' + pc(v)); if((v = n('OpexVariance'))) parts.push('operating expenses ' + pc(v));
+  if((v = n('HardCostVariance'))) parts.push('hard-cost contingency ' + pc(v)); if((v = n('SoftCostVariance'))) parts.push('soft-cost contingency ' + pc(v));
+  if((v = n('ConstructionMoDelta'))) parts.push('construction ' + sg(v) + Math.abs(v) + ' months'); if((v = n('AbsorptionFactor'))) parts.push('lease-up ' + (v > 0 ? 'slower by ' : 'faster by ') + Math.abs(v * 100).toFixed(0) + '%');
+  return c + ': ' + (parts.length ? parts.join(', ') : 'no changes set') + '.';
+};
+/* A development's Downside with nothing about construction in it is not a downside: a new development starts with +5 points of hard-cost contingency, 3 extra months of construction and a
+   lease-up 25% slower (Upside: lease-up 10% faster). Acquisitions, and every deal that already exists, are left exactly as they are; all of it is editable on Sensitivity. */
+var DEV_CASE = { downHardCostVariance:0.05, downConstructionMoDelta:3, downAbsorptionFactor:0.25, upAbsorptionFactor:-0.10 };
+var cnd = window.bkCreateNewDeal;
+if(typeof cnd === 'function' && !cnd.__bkCases){
+  var wrappedCnd = function(d){ var r = cnd.apply(this, arguments);
+    try { var s = bkLoad(); if(s && /develop/i.test(String(s.dealType || ''))){ var given = d || {}, changed = false; Object.keys(DEV_CASE).forEach(function(key){ if(!(Number(s[key]) || 0) && !(key in given)){ s[key] = DEV_CASE[key]; changed = true; } }); if(changed) bkSave(s); } } catch(e){}
+    return r; };
+  wrappedCnd.__bkCases = true; window.bkCreateNewDeal = wrappedCnd; try { bkCreateNewDeal = wrappedCnd; } catch(e){}
+}
 FOLLOW.forEach(function(name){
   var fn = RENDERERS[name]; if(typeof fn !== 'function' || fn.__bkCasePage) return;
   var wrapped = function(){ var c = caseNow(); if(c === 'Base') return fn.apply(this, arguments); var self = this, args = arguments;

@@ -35,6 +35,20 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   const d = await open(D); const Ed = await eng(d);
   check('development: Upside > Base > Downside', Ed.Upside.irr > Ed.Base.irr && Ed.Base.irr > Ed.Downside.irr, [Ed.Upside.irr, Ed.Base.irr, Ed.Downside.irr].map(pc).join(' / '));
 
+  /* ---- the definitions are visible, and a development's Downside has construction risk in it ---- */
+  const tips = await p.evaluate(() => [...document.querySelectorAll('[data-bk-case]')].reduce((o, e) => (o[e.getAttribute('data-bk-case')] = e.title, o), {}));
+  check('hovering a case button says what it does, from the deltas on the deal', /exactly as entered/.test(tips.Base) && /exit cap \+1\.00%/.test(tips.Downside) && /rent growth \u22121\.00%/.test(tips.Downside) && /loan rate \+1\.00%/.test(tips.Downside) && /exit cap \u22120\.50%/.test(tips.Upside), JSON.stringify(tips));
+  check('the control names every page that follows the case, including the reports', await p.evaluate(() => /Cash Flow Report/.test(document.querySelector('.bk-case').title) && /Valuation Report/.test(document.querySelector('.bk-case').title) && /never change/.test(document.querySelector('.bk-case').title)));
+  const t = await open(A);   /* a separate page: creating other deals must not replace the one under test */
+  const dv = await t.evaluate(([D]) => { bkCreateNewDeal(D); const s = bkLoad(), a = bkScenarioOverrides(s, 'Downside'), u = bkScenarioOverrides(s, 'Upside'); return { dm: s.downConstructionMoDelta, hc: s.downHardCostVariance, ab: s.downAbsorptionFactor, ua: s.upAbsorptionFactor, cm: a.constructionMonths, base: s.constructionMonths, lu: a.leaseupMonths, lub: s.leaseupMonths, ulu: u.leaseupMonths, hcOv: a.hardContPct, tip: window.bkCaseSummary(s, 'Downside') }; }, [D]);
+  check('a new development starts with construction risk in its Downside: +3 months, +5 points of hard-cost contingency, lease-up 25% slower (Upside 10% faster)', dv.dm === 3 && dv.hc === 0.05 && dv.ab === 0.25 && dv.ua === -0.1 && dv.cm === dv.base + 3 && dv.lu === Math.round(dv.lub * 1.25) && dv.ulu === Math.round(dv.lub * 0.9), JSON.stringify(dv));
+  check('and the hover text says so', /construction \+3 months/.test(dv.tip) && /hard-cost contingency \+5\.00%/.test(dv.tip) && /lease-up slower by 25%/.test(dv.tip), dv.tip);
+  const keep = await t.evaluate(([D]) => { bkCreateNewDeal(Object.assign({}, D, { downConstructionMoDelta: 6 })); const s = bkLoad(); return [s.downConstructionMoDelta, s.downHardCostVariance]; }, [D]);
+  check('a development created with its own value for a driver keeps it (6 months stays 6)', keep[0] === 6, JSON.stringify(keep));
+  const acq = await t.evaluate(([A]) => { bkCreateNewDeal(A); const s = bkLoad(); return ['downHardCostVariance', 'downConstructionMoDelta', 'downAbsorptionFactor', 'upAbsorptionFactor', 'downVacancyDelta', 'downOpexVariance'].map(k => Number(s[k]) || 0); }, [A]);
+  check('an acquisition is left exactly as it was: the six extra drivers stay at zero', acq.every(v => v === 0), JSON.stringify(acq));
+  await t.close();
+
   /* ---- non-destructive ---- */
   await pickCase(p, 'Base'); for (const sh of ['Returns', 'Debt', 'Cash Flow Report', 'Valuation Report', 'After-Tax', 'Equity Waterfall']) await show(p, sh);   /* some pages seed their own defaults the first time they open; that is not the case switch */
   const snap0 = await p.evaluate(() => { const s = JSON.parse(JSON.stringify(bkLoad())); ['_undo', '_provenance'].forEach(k => delete s[k]); return JSON.stringify(s); });

@@ -351,8 +351,8 @@ extend('Sensitivity','w3cDrivers', function(o){
   o.main = (o.main||'') + wrapTable('Scenario Drivers - Downside and Upside deltas against Base',
       '<tr><th class="rowlabel-h">Driver</th><th>Downside</th><th>Base</th><th>Upside</th>'
       + '<th style="text-align:left">Effect</th><th>Status</th></tr>', body)
-    + note('&#9432;','All nine workbook drivers are now present. The three that existed are unchanged; the six added default to zero, so '
-      + 'Base and both existing cases produce exactly the figures they did before until you set one. A driver reading INERT is not a '
+    + note('&#9432;','All nine workbook drivers are here. The three original ones (exit cap, rent growth, loan rate) have standard values. The other six default to zero on an acquisition, '
+      + 'so Base and both cases move only on those three until you set one; a new development starts with construction risk in its Downside (hard-cost contingency, extra months, slower lease-up). A driver reading INERT is not a '
       + 'broken control - it is a delta of zero.');
 });
 window.bkSetScenarioDriver = function(key, v, kind){
