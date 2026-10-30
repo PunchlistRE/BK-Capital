@@ -189,7 +189,8 @@ function decorateTopNav(frame){
 function snapshotCard(){
   if(!hasDeal()) return '';
   var r = readiness(), s = bkLoad();
-  var head = '<div class="card bk-snap"><div class="card-head">Deal Snapshot' + (String(s.scenarioCase || 'Base') !== 'Base' ? '<span class="bk-snap-case">' + esc(String(s.scenarioCase).toUpperCase()) + ' CASE</span>' : '') + '</div>';
+  var head = '<div class="card bk-snap"><div class="card-head">Deal Snapshot' + (String(s.scenarioCase || 'Base') !== 'Base' ? '<span class="bk-snap-case">' + esc(String(s.scenarioCase).toUpperCase()) + ' CASE</span>' : '') + '</div>'
+    + (String(s.scenarioCase || 'Base') !== 'Base' && typeof window.bkCaseSummary === 'function' ? '<div class="bk-snap-what">' + esc(window.bkCaseSummary(s, String(s.scenarioCase))) + '</div>' : '');
   if(!r || !r.canCalculate){
     var n = r ? r.missing.length : 0;
     return head + '<div class="metric-list"><div class="metric-row"><span class="k">Status</span><span class="v">' + (window.bkReadinessChip ? window.bkReadinessChip() : '') + '</span></div></div>'
