@@ -47,6 +47,22 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   check('a development created with its own value for a driver keeps it (6 months stays 6)', keep[0] === 6, JSON.stringify(keep));
   const acq = await t.evaluate(([A]) => { bkCreateNewDeal(A); const s = bkLoad(); return ['downHardCostVariance', 'downConstructionMoDelta', 'downAbsorptionFactor', 'upAbsorptionFactor', 'downVacancyDelta', 'downOpexVariance'].map(k => Number(s[k]) || 0); }, [A]);
   check('an acquisition is left exactly as it was: the six extra drivers stay at zero', acq.every(v => v === 0), JSON.stringify(acq));
+  /* transparency: the panel on Deal Underwrite, the line under the Deal Snapshot, and where the development defaults came from */
+  const pan = await t.evaluate(async ([D, A]) => { const out = {}; const view = async () => { showSheet('Deal Underwrite'); await new Promise(r => setTimeout(r, 900)); const e = document.querySelector('.bk-casepanel'); const n = [...document.querySelectorAll('.bk-casenote2')].map(x => x.innerText); return { rows: e ? [...e.querySelectorAll('tbody tr')].map(r => r.innerText.replace(/\s+/g, ' ')) : null, notes: n, btn: !!document.querySelector('.bk-casenote2 button[onclick*="bkCaseApplyDevDefaults"]') }; };
+    bkCreateNewDeal(A); out.acq = await view();
+    bkCreateNewDeal(D); out.auto = await view();
+    { const s = bkLoad(); s.downConstructionMoDelta = 6; bkSave(s); } out.edited = await view();
+    { const s = bkLoad(); ['downHardCostVariance', 'downConstructionMoDelta', 'downAbsorptionFactor', 'upAbsorptionFactor'].forEach(k => { s[k] = 0; }); delete s._caseDefaults; bkSave(s); } out.none = await view();
+    document.querySelector('.bk-casenote2 button').click(); await new Promise(r => setTimeout(r, 900)); out.applied = await view(); out.after = ['downHardCostVariance', 'downConstructionMoDelta', 'downAbsorptionFactor', 'upAbsorptionFactor'].map(k => bkLoad()[k]);
+    { const s = bkLoad(); s.scenarioCase = 'Downside'; bkSave(s); showSheet('Returns'); await new Promise(r => setTimeout(r, 900)); out.snap = (document.querySelector('.bk-snap-what') || { innerText: '' }).innerText; s.scenarioCase = 'Base'; bkSave(s); showSheet('Returns'); await new Promise(r => setTimeout(r, 900)); out.snapBase = !!document.querySelector('.bk-snap-what'); }
+    return out; }, [D, A]);
+  check('Deal Underwrite shows "What each case changes": Base, Upside and Downside each in words', pan.acq.rows && pan.acq.rows.length === 3 && /Base.*exactly as entered/i.test(pan.acq.rows[0]) && /Upside.*exit cap/i.test(pan.acq.rows[1]) && /Downside.*exit cap \+1\.00%/i.test(pan.acq.rows[2]) && pan.acq.rows.some(r => /SELECTED/.test(r)), JSON.stringify(pan.acq.rows));
+  check('an acquisition shows no development note and no button', pan.acq.notes.length === 0 && !pan.acq.btn, JSON.stringify(pan.acq.notes));
+  check('a new development says the construction risk was SET AUTOMATICALLY and states the numbers (+5 points, +3 months, 25% slower; Upside 10% faster)', pan.auto.notes.length === 1 && /Set automatically/.test(pan.auto.notes[0]) && /\+5 points of hard-cost contingency/.test(pan.auto.notes[0]) && /\+3 months of construction/.test(pan.auto.notes[0]) && /lease-up 25(\.00)?% slower/.test(pan.auto.notes[0]) && /Upside: lease-up 10(\.00)?% faster/.test(pan.auto.notes[0]) && /Downside.*construction \+3 months/.test(pan.auto.rows[2]), JSON.stringify(pan.auto.notes));
+  check('once you change one, it says EDITED BY YOU instead', pan.edited.notes.length === 1 && /Edited by you/.test(pan.edited.notes[0]), JSON.stringify(pan.edited.notes));
+  check('a development with none of it set (an older deal) is warned, with a button, and nothing is changed until it is pressed', /no construction risk/.test(pan.none.notes[0]) && pan.none.btn && /Nothing changes until you press it/.test(pan.none.notes[0]));
+  check('pressing the button applies the standard stress, and the note then says where it came from', pan.after.join() === '0.05,3,0.25,-0.1' && /Set automatically/.test(pan.applied.notes[0]) && !pan.applied.btn, JSON.stringify([pan.after, pan.applied.notes]));
+  check('under the Deal Snapshot a non-Base case is explained in words, and Base shows no such line', /Downside: exit cap \+1\.00%/.test(pan.snap) && /construction \+3 months/.test(pan.snap) && pan.snapBase === false, pan.snap);
   await t.close();
 
   /* ---- non-destructive ---- */
