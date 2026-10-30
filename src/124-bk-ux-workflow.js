@@ -122,8 +122,8 @@ function flowBar(sheet){
     return (i ? '<span class="bk-step-sep"></span>' : '') + '<button type="button" class="bk-step ' + cls + '" data-bk-step="' + i + '" title="' + esc(o.tip || '') + '"><span class="n">' + mark + '</span>' + x.label + '</button>';
   }).join('');
   var c = String(s.scenarioCase || 'Base');
-  var caseCtl = hasDeal() ? '<span class="bk-case" title="Analysis case for Operating Underwrite, Property CF, Debt, Debt Schedule, Covenant Monitor, Returns and Equity Waterfall. Edit the case deltas on Sensitivity or Deal Underwrite.">Case <span class="bk-seg">'
-    + ['Downside','Base','Upside'].map(function(n){ return '<button type="button" data-bk-case="' + n + '" aria-pressed="' + (c === n) + '">' + n + '</button>'; }).join('') + '</span></span>' : '';
+  var caseCtl = hasDeal() ? '<span class="bk-case" title="The case the output pages show: Operating Underwrite, Property CF, Debt, Debt Schedule, Covenant Monitor, Returns, Equity Waterfall, After-Tax, the Cash Flow Report and the Valuation Report. It is a view; the deal itself never changes. Hover a button for what it does; edit the deltas on Sensitivity or Deal Underwrite.">Case <span class="bk-seg">'
+    + ['Downside','Base','Upside'].map(function(n){ var tip = typeof window.bkCaseSummary === 'function' ? window.bkCaseSummary(s, n) : ''; return '<button type="button" data-bk-case="' + n + '" aria-pressed="' + (c === n) + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + n + '</button>'; }).join('') + '</span></span>' : '';
   var sv = saveStatus(), changed = changedCount();
   var undo = hasDeal() ? '<button type="button" class="bk-btn" data-bk-undo="1" title="Undo last change (Ctrl+Z)"' + (U.stack.length ? '' : ' disabled') + '>&#8630; Undo</button>'
     + '<button type="button" class="bk-btn" data-bk-redo="1" title="Redo (Ctrl+Shift+Z)"' + (U.redo.length ? '' : ' disabled') + '>&#8631;</button>' : '';
