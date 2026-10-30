@@ -17328,10 +17328,10 @@ boot();
     var line = function(n){ return (isFinite(n) && Math.abs(n) >= 0.5) ? fm(n) : DASH; };
     var tot  = function(n){ return isFinite(n) ? fm(n) : DASH; };
     var gpr = Number(c.gpr) || 0;
-    var pg = function(n){ if(!(gpr > 0) || !isFinite(n) || Math.abs(n) < 0.5) return DASH; var v = Math.abs(n) / gpr * 100; return n < 0 ? '(' + v.toFixed(1) + '%)' : v.toFixed(1) + '%'; };
-    var pgTot = function(n){ return (gpr > 0 && isFinite(n)) ? (n / gpr * 100).toFixed(1) + '%' : DASH; };
+    var pg = function(n){ if(!(gpr > 0) || !isFinite(n) || Math.abs(n) < 0.5) return DASH; var v = Math.abs(n) / gpr * 100; return n < 0 ? '(' + v.toFixed(2) + '%)' : v.toFixed(2) + '%'; };
+    var pgTot = function(n){ return (gpr > 0 && isFinite(n)) ? (n / gpr * 100).toFixed(2) + '%' : DASH; };
     var row = function(label, a, p, b, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + label + '</td><td>' + a + '</td><td>' + p + '</td><td>' + (b || '') + '</td></tr>'; };
-    var egi = Number(c.egi) || 0, ratio = egi ? c.total / egi : 0, margin = egi ? c.noi / egi : 0, pct1 = function(x){ return (x * 100).toFixed(1) + '%'; };
+    var egi = Number(c.egi) || 0, ratio = egi ? c.total / egi : 0, margin = egi ? c.noi / egi : 0, pct1 = function(x){ return (x * 100).toFixed(2) + '%'; };
     var reserves = Number(s.reserves) || 0;
     var rows = ''
       + row('Gross Potential Rent - Residential', line(c.gpr), gpr > 0 ? '100.0%' : DASH, '')
@@ -21927,7 +21927,8 @@ function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
 function M(v, d){ if(v == null || !isFinite(v)) return '—'; var a = Math.abs(v); var t = a >= 1e6 && d !== 0 ? '$' + (a / 1e6).toFixed(2) + 'M' : '$' + Math.round(a).toLocaleString('en-US'); return v < 0 ? '(' + t + ')' : t; }
 function F(v){ if(v == null || !isFinite(v)) return '—'; var a = Math.abs(v), t = '$' + Math.round(a).toLocaleString('en-US'); return v < 0 ? '(' + t + ')' : (Math.round(v) === 0 ? '–' : t); }
-function P(v, d){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(d == null ? 1 : d) + '%'; }
+/* two decimals (a one-decimal figure was padded to two by the page's percent formatting, which read as 14.30% for a true 14.35%); 0 stays whole, for probabilities */
+function P(v, d){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(d === 0 ? 0 : 2) + '%'; }
 function X(v){ return (v == null || !isFinite(v)) ? '—' : v.toFixed(2) + 'x'; }
 function sum(a){ return a.reduce(function(t, v){ return t + (Number(v) || 0); }, 0); }
 var COL = { navy:'#163a62', gold:'#E3A72F', up:'var(--sx-up,#2E6EB8)', dn:'var(--sx-dn,#C0392B)', ok:'#2E8B57', ink:'currentColor', grid:'rgba(120,120,120,.22)' };
@@ -24327,7 +24328,7 @@ function reviewScreen(secs, s, g){
   var unconf = g.assumed.filter(function(k){ return !g.confirmed[k]; });
   var k = safe(function(){ return window.bkProFormaKit && bkProFormaKit.build(); }, null), gate = safe(function(){ return bkDealGate(); }, null), conf = safe(function(){ return window.bkConflicts ? window.bkConflicts().filter(function(c){ return c.level !== 'INFO' && !c.acknowledged; }) : []; }, []);
   var h = '<div class="gd"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Last step</div><h1>Review</h1><p class="sub">Here is where the deal stands and what is still open.</p>' + progress(secs, s, g);
-  if(k) h += '<div class="gd-card"><div class="gd-res" style="font-size:14px"><span>Levered IRR <b>' + (isFinite(k.irr) ? (k.irr * 100).toFixed(1) + '%' : '—') + '</b></span><span>Multiple <b>' + (isFinite(k.moic) ? k.moic.toFixed(2) + 'x' : '—') + '</b></span>' + (k.Y && k.Y[0] && k.Y[0].dscr ? '<span>Year-1 coverage <b>' + k.Y[0].dscr.toFixed(2) + 'x</b></span>' : '') + (gate ? '<span>Credit gate <b>' + esc(gate.verdict) + '</b></span>' : '') + '</div></div>';
+  if(k) h += '<div class="gd-card"><div class="gd-res" style="font-size:14px"><span>Levered IRR <b>' + (isFinite(k.irr) ? (k.irr * 100).toFixed(2) + '%' : '—') + '</b></span><span>Multiple <b>' + (isFinite(k.moic) ? k.moic.toFixed(2) + 'x' : '—') + '</b></span>' + (k.Y && k.Y[0] && k.Y[0].dscr ? '<span>Year-1 coverage <b>' + k.Y[0].dscr.toFixed(2) + 'x</b></span>' : '') + (gate ? '<span>Credit gate <b>' + esc(gate.verdict) + '</b></span>' : '') + '</div></div>';
   var open = [];
   skipped.forEach(function(sec){ open.push('<li><b>' + esc(sec.title) + '</b> was skipped. <a href="#" onclick="bkGuideGo(\'' + sec.id + '\');return false">Go back</a></li>'); });
   todo.forEach(function(sec){ open.push('<li><b>' + esc(sec.title) + '</b> has not been done. <a href="#" onclick="bkGuideGo(\'' + sec.id + '\');return false">Do it</a></li>'); });
@@ -26941,6 +26942,32 @@ var queued = false; function later(){ if(queued) return; queued = true; (window.
 function start(){ paint(); if(document.body) new MutationObserver(later).observe(document.body, { childList:true, subtree:true }); if(window.matchMedia) safe(function(){ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){ if(!stored()) { paint(); redraw(); } }); }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 setTimeout(paint, 300);
+})();
+</script>
+<script id="bk-casepages">/* ===========================================================================
+   THE SELECTED CASE ON EVERY OUTPUT PAGE. The header's Base / Upside / Downside control is a non-destructive VIEW: the deal's own assumptions never change, the page is drawn
+   on a scratch copy with the case's deltas applied. Seven pages did this (Returns, Debt, Debt Schedule, Equity Waterfall, Operating Underwrite, Property CF, Covenant Monitor).
+   The Cash Flow Report, the Valuation Report and After-Tax did not: they showed Base figures under a "Case: Downside" label, and a Downside report printed from them carried Base
+   numbers. They now follow the case the same way. A page that deliberately judges the Base case (the investment-committee memo, deal remedies, the pre-offer bid, sell versus hold)
+   says so at the top whenever another case is selected, so it can't be read as the selected case.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof window.bkInCase !== 'function') return;
+var st = document.createElement('style'); st.id = 'bk-casenote-css'; st.textContent = '.bk-casenote{margin:0 0 12px;padding:9px 12px;border:1px solid var(--line,#c5ced7);border-left:4px solid #d9a02f;background:var(--surface,#fff);color:var(--ink-900,#14202b);font-size:12.5px;line-height:1.45}@media print{.bk-casenote{border-color:#999}}'; document.head.appendChild(st);
+var FOLLOW = ['Cash Flow Report', 'Valuation Report', 'After-Tax'], BASE_ONLY = ['IC Memo', 'Deal Remedies', 'Pre-Offer Bid', 'Sell vs Hold'];
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function caseNow(){ try { return String(bkLoad().scenarioCase || 'Base'); } catch(e){ return 'Base'; } }
+FOLLOW.forEach(function(name){
+  var fn = RENDERERS[name]; if(typeof fn !== 'function' || fn.__bkCasePage) return;
+  var wrapped = function(){ var c = caseNow(); if(c === 'Base') return fn.apply(this, arguments); var self = this, args = arguments;
+    return window.bkInCase(function(){ var o = fn.apply(self, args); if(o){ o.meta = Object.assign({}, o.meta || {}, { Scenario:c }); o.desc = (o.desc ? o.desc + ' ' : '') + 'Scenario view: ' + c + '. Base assumptions remain unchanged.'; } return o; }); };
+  wrapped.__bkCasePage = true; RENDERERS[name] = wrapped; });
+BASE_ONLY.forEach(function(name){
+  var fn = RENDERERS[name]; if(typeof fn !== 'function' || fn.__bkCasePage) return;
+  var wrapped = function(){ var o = fn.apply(this, arguments), c = caseNow(); if(c === 'Base' || !o || typeof o.main !== 'string') return o;
+    o.main = '<div class="bk-casenote" role="note"><b>This page judges the Base case.</b> The case selected in the header is ' + esc(c) + '. Its figures are on Returns, Debt, the Cash Flow Report and the Valuation Report; switch the case to Base to match this page.</div>' + o.main; return o; };
+  wrapped.__bkCasePage = true; RENDERERS[name] = wrapped; });
 })();
 </script>
 </body>
