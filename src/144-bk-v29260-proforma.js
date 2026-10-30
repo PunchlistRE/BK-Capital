@@ -9,7 +9,8 @@ function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
 function M(v, d){ if(v == null || !isFinite(v)) return '—'; var a = Math.abs(v); var t = a >= 1e6 && d !== 0 ? '$' + (a / 1e6).toFixed(2) + 'M' : '$' + Math.round(a).toLocaleString('en-US'); return v < 0 ? '(' + t + ')' : t; }
 function F(v){ if(v == null || !isFinite(v)) return '—'; var a = Math.abs(v), t = '$' + Math.round(a).toLocaleString('en-US'); return v < 0 ? '(' + t + ')' : (Math.round(v) === 0 ? '–' : t); }
-function P(v, d){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(d == null ? 1 : d) + '%'; }
+/* two decimals (a one-decimal figure was padded to two by the page's percent formatting, which read as 14.30% for a true 14.35%); 0 stays whole, for probabilities */
+function P(v, d){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(d === 0 ? 0 : 2) + '%'; }
 function X(v){ return (v == null || !isFinite(v)) ? '—' : v.toFixed(2) + 'x'; }
 function sum(a){ return a.reduce(function(t, v){ return t + (Number(v) || 0); }, 0); }
 var COL = { navy:'#163a62', gold:'#E3A72F', up:'var(--sx-up,#2E6EB8)', dn:'var(--sx-dn,#C0392B)', ok:'#2E8B57', ink:'currentColor', grid:'rgba(120,120,120,.22)' };

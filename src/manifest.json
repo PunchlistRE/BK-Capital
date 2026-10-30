@@ -880,6 +880,11 @@
 "close": "</script>"
 },
 {
+"file": "176-bk-casepages.js",
+"open": "\n<script id=\"bk-casepages\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""

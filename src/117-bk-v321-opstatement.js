@@ -17,10 +17,10 @@
     var line = function(n){ return (isFinite(n) && Math.abs(n) >= 0.5) ? fm(n) : DASH; };
     var tot  = function(n){ return isFinite(n) ? fm(n) : DASH; };
     var gpr = Number(c.gpr) || 0;
-    var pg = function(n){ if(!(gpr > 0) || !isFinite(n) || Math.abs(n) < 0.5) return DASH; var v = Math.abs(n) / gpr * 100; return n < 0 ? '(' + v.toFixed(1) + '%)' : v.toFixed(1) + '%'; };
-    var pgTot = function(n){ return (gpr > 0 && isFinite(n)) ? (n / gpr * 100).toFixed(1) + '%' : DASH; };
+    var pg = function(n){ if(!(gpr > 0) || !isFinite(n) || Math.abs(n) < 0.5) return DASH; var v = Math.abs(n) / gpr * 100; return n < 0 ? '(' + v.toFixed(2) + '%)' : v.toFixed(2) + '%'; };
+    var pgTot = function(n){ return (gpr > 0 && isFinite(n)) ? (n / gpr * 100).toFixed(2) + '%' : DASH; };
     var row = function(label, a, p, b, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + label + '</td><td>' + a + '</td><td>' + p + '</td><td>' + (b || '') + '</td></tr>'; };
-    var egi = Number(c.egi) || 0, ratio = egi ? c.total / egi : 0, margin = egi ? c.noi / egi : 0, pct1 = function(x){ return (x * 100).toFixed(1) + '%'; };
+    var egi = Number(c.egi) || 0, ratio = egi ? c.total / egi : 0, margin = egi ? c.noi / egi : 0, pct1 = function(x){ return (x * 100).toFixed(2) + '%'; };
     var reserves = Number(s.reserves) || 0;
     var rows = ''
       + row('Gross Potential Rent - Residential', line(c.gpr), gpr > 0 ? '100.0%' : DASH, '')
