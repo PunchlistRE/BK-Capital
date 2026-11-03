@@ -1,0 +1,700 @@
+{
+ "assumptions": [
+  "Other income of $175 is paid by occupied units only (95% of 120); vacancy 5% and occupancy 95% are one assumption, not two deductions.",
+  "Soft cost not given a month by the workbook (1.375%) is swept into month 26 and reported, not dropped.",
+  "Predevelopment $750,000 is spread evenly over months 0-2; land and $250,000 closing at month 0; reserves per the workbook (operating/lease-up $750,000 at month 26, the other $1,250,000 at month 0).",
+  "Interest accrues on the opening balance each month and is capitalised through month 48 (not paid from operations); the lease-up NOI is distributed after the operating reserve.",
+  "Unused commitment fee = 0.50% a year on the undrawn part of the $27.3M initial principal through month 26 (lender convention not given); paid by equity.",
+  "The $750,000 debt-service/interest reserve is cash held, not spent (interest is capitalised), and is returned at sale; its funding overlaps the capitalised interest line."
+ ],
+ "findings": [
+  "Hard-cost categories sum to $24,950,000, not the $25,000,000 stated (short $50,000). The $42M budget is therefore $41,950,000 by line items.",
+  "The workbook soft-cost draw % column sums to 0.98625, so $68,750 of soft cost has no month.",
+  "Weighted average rent from the unit mix is $3,310.00, not the $3,302 stated in the OM and workbook.",
+  "Unit areas in the workbook add to 105,900 SF, not the 112,800 SF rentable area stated (-6.1%).",
+  "Stabilised NOI from the rent roll and expense inputs is $3,582,781, $632,781 (+21.5%) above the $2,950,000 target. Not plugged. At 5.00% the difference is $12,655,616 of sale value.",
+  "Capitalised interest to month 48 is $6,248,147; the loan reaches $33,498,147 against a $34,000,000 ceiling (under). Equity forced above the $14,700,000 threshold: $0. All-in cost incl. financing is higher than the $42M budget by $6,678,384."
+ ],
+ "budget": {
+  "hard": 24950000,
+  "soft": 5000000,
+  "cont": 2000000,
+  "pre": 750000,
+  "land": 7000000,
+  "closing": 250000,
+  "reserves": 2000000,
+  "total": 41950000
+ },
+ "rent": {
+  "gpr": 4766400,
+  "monthly": 397200.0,
+  "weighted_avg": 3310.0,
+  "unit_sf": 105900,
+  "rent_psf": 3.7507082152974505
+ },
+ "noi": {
+  "gpr": 4766400,
+  "vacancy_loss": 238320.0,
+  "rent_eff": 4528080.0,
+  "other_income": 239400.0,
+  "egi": 4767480.0,
+  "fixed_opex": 994000,
+  "mgmt": 190699.2,
+  "opex": 1184699.2,
+  "noi": 3582780.8,
+  "reserves": 36000,
+  "cfads": 3546780.8,
+  "target": 2950000,
+  "variance": 632780.7999999998
+ },
+ "uses_before_financing": 41950000.0,
+ "debt": {
+  "commit_initial": 27300000,
+  "ceiling": 34000000,
+  "origination_fee": 273000.0,
+  "capitalised_interest": 6248147.442924239,
+  "unused_fees": 157236.69740284843,
+  "balance_m48": 33498147.44292423,
+  "peak": 33498147,
+  "principal_draws": 27250000,
+  "facility_shortfall": 0.0,
+  "headroom": 501852.5570757687,
+  "schedule": [
+   {
+    "m": 0,
+    "need": 8950000,
+    "eq": 8950000,
+    "draw": 0,
+    "cap_int": 0,
+    "bal": 0
+   },
+   {
+    "m": 1,
+    "need": 486036,
+    "eq": 486036,
+    "draw": 0,
+    "cap_int": 0,
+    "bal": 0
+   },
+   {
+    "m": 2,
+    "need": 733066,
+    "eq": 733066,
+    "draw": 0,
+    "cap_int": 0,
+    "bal": 0
+   },
+   {
+    "m": 3,
+    "need": 748113,
+    "eq": 748113,
+    "draw": 0,
+    "cap_int": 0,
+    "bal": 0
+   },
+   {
+    "m": 4,
+    "need": 1013161,
+    "eq": 1013161,
+    "draw": 0,
+    "cap_int": 0,
+    "bal": 0
+   },
+   {
+    "m": 5,
+    "need": 1278209,
+    "eq": 1278209,
+    "draw": 0,
+    "cap_int": 0,
+    "bal": 0
+   },
+   {
+    "m": 6,
+    "need": 1543257,
+    "eq": 1491415,
+    "draw": 51842,
+    "cap_int": 0,
+    "bal": 51842
+   },
+   {
+    "m": 7,
+    "need": 1802054,
+    "eq": 0,
+    "draw": 1802054,
+    "cap_int": 313,
+    "bal": 1854209
+   },
+   {
+    "m": 8,
+    "need": 2067102,
+    "eq": 0,
+    "draw": 2067102,
+    "cap_int": 11203,
+    "bal": 3932514
+   },
+   {
+    "m": 9,
+    "need": 2067102,
+    "eq": 0,
+    "draw": 2067102,
+    "cap_int": 23759,
+    "bal": 6023375
+   },
+   {
+    "m": 10,
+    "need": 2067102,
+    "eq": 0,
+    "draw": 2067102,
+    "cap_int": 36391,
+    "bal": 8126868
+   },
+   {
+    "m": 11,
+    "need": 2067102,
+    "eq": 0,
+    "draw": 2067102,
+    "cap_int": 49100,
+    "bal": 10243070
+   },
+   {
+    "m": 12,
+    "need": 2067102,
+    "eq": 0,
+    "draw": 2067102,
+    "cap_int": 61885,
+    "bal": 12372058
+   },
+   {
+    "m": 13,
+    "need": 2067102,
+    "eq": 0,
+    "draw": 2067102,
+    "cap_int": 74748,
+    "bal": 14513907
+   },
+   {
+    "m": 14,
+    "need": 2049084,
+    "eq": 0,
+    "draw": 2049084,
+    "cap_int": 87688,
+    "bal": 16650680
+   },
+   {
+    "m": 15,
+    "need": 2031066,
+    "eq": 0,
+    "draw": 2031066,
+    "cap_int": 100598,
+    "bal": 18782344
+   },
+   {
+    "m": 16,
+    "need": 1766018,
+    "eq": 0,
+    "draw": 1766018,
+    "cap_int": 113477,
+    "bal": 20661839
+   },
+   {
+    "m": 17,
+    "need": 1500971,
+    "eq": 0,
+    "draw": 1500971,
+    "cap_int": 124832,
+    "bal": 22287641
+   },
+   {
+    "m": 18,
+    "need": 1235923,
+    "eq": 0,
+    "draw": 1235923,
+    "cap_int": 134654,
+    "bal": 23658218
+   },
+   {
+    "m": 19,
+    "need": 970875,
+    "eq": 0,
+    "draw": 970875,
+    "cap_int": 142935,
+    "bal": 24772029
+   },
+   {
+    "m": 20,
+    "need": 705827,
+    "eq": 0,
+    "draw": 705827,
+    "cap_int": 149664,
+    "bal": 25627520
+   },
+   {
+    "m": 21,
+    "need": 458798,
+    "eq": 0,
+    "draw": 458798,
+    "cap_int": 154833,
+    "bal": 26241151
+   },
+   {
+    "m": 22,
+    "need": 390048,
+    "eq": 0,
+    "draw": 390048,
+    "cap_int": 158540,
+    "bal": 26789739
+   },
+   {
+    "m": 23,
+    "need": 390048,
+    "eq": 0,
+    "draw": 390048,
+    "cap_int": 161855,
+    "bal": 27341641
+   },
+   {
+    "m": 24,
+    "need": 390048,
+    "eq": 0,
+    "draw": 390048,
+    "cap_int": 165189,
+    "bal": 27896878
+   },
+   {
+    "m": 25,
+    "need": 143018,
+    "eq": 0,
+    "draw": 143018,
+    "cap_int": 168544,
+    "bal": 28208440
+   },
+   {
+    "m": 26,
+    "need": 961768,
+    "eq": 0,
+    "draw": 961768,
+    "cap_int": 170426,
+    "bal": 29340634
+   },
+   {
+    "m": 27,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 177266,
+    "bal": 29517900
+   },
+   {
+    "m": 28,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 178337,
+    "bal": 29696238
+   },
+   {
+    "m": 29,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 179415,
+    "bal": 29875652
+   },
+   {
+    "m": 30,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 180499,
+    "bal": 30056151
+   },
+   {
+    "m": 31,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 181589,
+    "bal": 30237740
+   },
+   {
+    "m": 32,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 182686,
+    "bal": 30420427
+   },
+   {
+    "m": 33,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 183790,
+    "bal": 30604217
+   },
+   {
+    "m": 34,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 184900,
+    "bal": 30789117
+   },
+   {
+    "m": 35,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 186018,
+    "bal": 30975135
+   },
+   {
+    "m": 36,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 187141,
+    "bal": 31162276
+   },
+   {
+    "m": 37,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 188272,
+    "bal": 31350548
+   },
+   {
+    "m": 38,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 189410,
+    "bal": 31539958
+   },
+   {
+    "m": 39,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 190554,
+    "bal": 31730512
+   },
+   {
+    "m": 40,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 191705,
+    "bal": 31922217
+   },
+   {
+    "m": 41,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 192863,
+    "bal": 32115080
+   },
+   {
+    "m": 42,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 194029,
+    "bal": 32309109
+   },
+   {
+    "m": 43,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 195201,
+    "bal": 32504310
+   },
+   {
+    "m": 44,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 196380,
+    "bal": 32700690
+   },
+   {
+    "m": 45,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 197567,
+    "bal": 32898257
+   },
+   {
+    "m": 46,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 198760,
+    "bal": 33097017
+   },
+   {
+    "m": 47,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 199961,
+    "bal": 33296978
+   },
+   {
+    "m": 48,
+    "need": 0,
+    "eq": 0,
+    "draw": 0,
+    "cap_int": 201169,
+    "bal": 33498147
+   }
+  ]
+ },
+ "operations": {
+  "27": -5539,
+  "28": 54682,
+  "29": 71888,
+  "30": 89094,
+  "31": 106300,
+  "32": 123506,
+  "33": 140712,
+  "34": 157918,
+  "35": 175123,
+  "36": 192329,
+  "37": 209535,
+  "38": 226741,
+  "39": 243947,
+  "40": 261153,
+  "41": 278359,
+  "42": 295565,
+  "43": 295565,
+  "44": 295565,
+  "45": 295565,
+  "46": 295565,
+  "47": 295565,
+  "48": 295565
+ },
+ "exit": {
+  "noi": 3582780.8,
+  "gross": 71655615.99999999,
+  "selling": 1433112.3199999998,
+  "net": 70222503.67999999,
+  "payoff": 33498147.44292423,
+  "unused_reserves": 1994461.0666666667,
+  "cash_to_equity": 38718817.30374243,
+  "gross_at_target_noi": 59000000.0,
+  "net_at_target": 57820000.0
+ },
+ "equity": {
+  "initial": 9234375.0,
+  "total_calls": 15130236.697402848,
+  "extra_calls": 157236.69740284843
+ },
+ "returns": {
+  "levered_irr": 0.3177944138815233,
+  "moic": 2.849860221363487,
+  "profit": 27988823.006339587
+ },
+ "equity_flows": [
+  [
+   0,
+   -9234375.0
+  ],
+  [
+   1,
+   -497411.03603603604
+  ],
+  [
+   2,
+   -744440.739006333
+  ],
+  [
+   3,
+   -759488.459994648
+  ],
+  [
+   4,
+   -1024536.1809829632
+  ],
+  [
+   5,
+   -1289583.901971278
+  ],
+  [
+   6,
+   -1502768.081200012
+  ],
+  [
+   7,
+   -10602.543214625517
+  ],
+  [
+   8,
+   -9741.250687568758
+  ],
+  [
+   9,
+   -8879.958160511998
+  ],
+  [
+   10,
+   -8018.665633455237
+  ],
+  [
+   11,
+   -7157.373106398477
+  ],
+  [
+   12,
+   -6296.0805793417185
+  ],
+  [
+   13,
+   -5434.788052284958
+  ],
+  [
+   14,
+   -4581.003032735705
+  ],
+  [
+   15,
+   -3734.7255206939612
+  ],
+  [
+   16,
+   -2998.884559064014
+  ],
+  [
+   17,
+   -2373.480147845865
+  ],
+  [
+   18,
+   -1858.5122870395148
+  ],
+  [
+   19,
+   -1453.980976644961
+  ],
+  [
+   20,
+   -1159.886216662208
+  ],
+  [
+   21,
+   -968.7204995837436
+  ],
+  [
+   22,
+   -806.2006158386109
+  ],
+  [
+   23,
+   -643.6807320934814
+  ],
+  [
+   24,
+   -481.16084834835027
+  ],
+  [
+   25,
+   -421.5700075075093
+  ],
+  [
+   26,
+   -20.833333333333336
+  ],
+  [
+   27,
+   0.0
+  ],
+  [
+   28,
+   54681.86666666667
+  ],
+  [
+   29,
+   71887.80952380951
+  ],
+  [
+   30,
+   89093.75238095238
+  ],
+  [
+   31,
+   106299.69523809521
+  ],
+  [
+   32,
+   123505.63809523809
+  ],
+  [
+   33,
+   140711.58095238096
+  ],
+  [
+   34,
+   157917.5238095238
+  ],
+  [
+   35,
+   175123.46666666662
+  ],
+  [
+   36,
+   192329.40952380956
+  ],
+  [
+   37,
+   209535.35238095242
+  ],
+  [
+   38,
+   226741.29523809522
+  ],
+  [
+   39,
+   243947.2380952381
+  ],
+  [
+   40,
+   261153.18095238094
+  ],
+  [
+   41,
+   278359.12380952376
+  ],
+  [
+   42,
+   295565.06666666665
+  ],
+  [
+   43,
+   295565.06666666665
+  ],
+  [
+   44,
+   295565.06666666665
+  ],
+  [
+   45,
+   295565.06666666665
+  ],
+  [
+   46,
+   295565.06666666665
+  ],
+  [
+   47,
+   295565.06666666665
+  ],
+  [
+   48,
+   39014382.3704091
+  ]
+ ]
+}
