@@ -133,6 +133,27 @@ function readiness(){
 }
 window.bkDealReadiness = readiness;
 
+/* ---------------------------------------------------------------- one source for "required" and for a field's status
+   The REQUIRED marker on a row, the Status chip beside it, the "Required inputs: n of m" bar, the Home count and the guide all read the requirements above, through these two
+   functions, so they cannot disagree. A requirement is mapped to the row (field key) that satisfies it; a requirement that any of several rows can satisfy (building size,
+   revenue basis) is shown on its main row. */
+var ROW_OF = { size:'units', revenue:'avgRent', devCost:'sourceConstruction' };
+function rowKey(reqKey){ return ROW_OF[reqKey] || reqKey; }
+window.bkRequiredRows = function(){
+  var out = { core:{}, invest:{} }, r = readiness(); if(!r || r.state === 'NO DEAL') return out;
+  r.missing.forEach(function(m){ out.core[rowKey(m.key)] = m.label; });
+  var s = bkLoad(); r.investMissing.forEach(function(m){ if(m.key === 'debt'){ out.invest.acqRate = out.invest.acqAmort = m.label; } else out.invest[rowKey(m.key)] = m.label; });
+  return out;
+};
+/* state: missing (required and blank), needed (required for an investment-ready deal, blank), template (pre-filled from an assumption template, not yet yours), ok */
+window.bkFieldStatus = function(key){
+  var rr = window.bkRequiredRows();
+  if(Object.prototype.hasOwnProperty.call(rr.core, key)) return { state:'missing', label:'MISSING', cls:'fail', tip:'Required to calculate returns: ' + rr.core[key] };
+  if(Object.prototype.hasOwnProperty.call(rr.invest, key)) return { state:'needed', label:'NEEDED', cls:'warn', tip:'Needed before the deal is investment-ready: ' + rr.invest[key] };
+  try { var s = bkLoad(), t = s._template; if(t && t.values && Object.prototype.hasOwnProperty.call(t.values, key) && s[key] === t.values[key]) return { state:'template', label:'TEMPLATE', cls:'warn', tip:'Pre-filled from the assumption template; edit it to make it yours' }; } catch(e){}
+  return { state:'ok', label:'OK', cls:'pass', tip:'' };
+};
+
 /* ---------------------------------------------------------------- presentation */
 function esc(v){ return (typeof bkEsc==='function') ? bkEsc(v) : String(v==null?'':v); }
 window.bkReadinessChip = function(){

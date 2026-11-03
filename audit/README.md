@@ -12,6 +12,8 @@ Run everything: `PLAYWRIGHT_MODULE=<path> CHROMIUM_PATH=<chrome> audit/run_all.s
 | `conventions_run.js` + `conventions_test.py` | Every underwriting-convention setting against the independent model (748 checks). |
 | `dev_scope_test.js` | Acquisition conventions never touch development deals. |
 | `persistence_test.js`, `ui_test.js` | Saved values survive; the controls drive the engine. |
+| `required_status_test.js` | The REQUIRED marker, the Status chip, the progress bar, Home and the guide agree on what is missing; non-applicable tables read N/A. |
+| `undo_test.js` | Undo / Redo cover every store, restore byte for byte, are labelled, and ask first when a change moves the model drastically. |
 
 ## Reproducing a result
 Every deal is a complete input set in `deals/index.js` (or `real/real_deals.json`). `bkCreateNewDeal(deal)` then the engine
