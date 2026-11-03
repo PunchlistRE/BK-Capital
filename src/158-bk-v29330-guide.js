@@ -53,7 +53,7 @@ var SRC = { purchasePrice:'price', units:'units', gsf:'sf', avgRent:'unitMix', n
 function srcPage(g, k){ if(!g.from || !g.from.pages) return null; var key = SRC[k] || 'income'; return g.from.pages[key] || g.from.pages.income || null; }
 function money0(n){ return '$' + Math.round(n).toLocaleString('en-US'); }
 function cur(s, fl){ return Object.prototype.hasOwnProperty.call(st.draft, fl.k) ? st.draft[fl.k] : s[fl.k]; }
-function missing(sec, s){ return sec.fields.filter(function(fl){ if(!fl.req) return false; var v = s[fl.k]; return fl.t === 'text' ? !String(v || '').trim() : !(Number(v) > 0); }); }
+function missing(sec, s){ var rr = typeof window.bkRequiredRows === 'function' ? window.bkRequiredRows().core : {}; return sec.fields.filter(function(fl){ if(Object.prototype.hasOwnProperty.call(rr, fl.k)) return true; if(!fl.req) return false; var v = s[fl.k]; return fl.t === 'text' ? !String(v || '').trim() : !(Number(v) > 0); }); }
 function status(sec, s, g){ if(g.skipped[sec.id]) return 'skipped'; var m = missing(sec, s).length; if(g.done[sec.id]) return m ? 'partial' : 'done'; return m ? 'todo' : 'filled'; }
 
 

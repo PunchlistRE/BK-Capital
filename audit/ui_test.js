@@ -73,7 +73,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.click('#viewport button[onclick="bkApplyStandardConventions()"]'); await p.waitForTimeout(150);
   s = await verify('legacy deal after Apply');
   check('Apply standard: all five now STANDARD', s.panel.slice(0, 5).every(r => r.status === 'STANDARD') && !s.banner);
-  await p.evaluate(() => window.bkUndo()); await p.waitForTimeout(150);
+  await p.evaluate(() => window.bkUndo({ confirmed: true })); await p.waitForTimeout(150);
   s = await state();
   check('Undo restores the legacy methodology', s.cv.isLegacy, JSON.stringify(s.cv.legacyFields));
   // 4. readiness: GP outside 0-100% is a FAIL control and the deal is not decision-grade

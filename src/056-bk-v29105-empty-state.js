@@ -262,7 +262,7 @@ function liveHome(){
 
   /* Deal-data completeness is counted, not asserted. */
   var REQUIRED = ['dealId','name','location','propertyType','units','gsf','purchasePrice','exitCap','holdYears'];
-  var missing = REQUIRED.filter(function(k){
+  var missing = (typeof window.bkDealReadiness === 'function' ? window.bkDealReadiness().missing.map(function(m){ return m.key; }) : REQUIRED).filter(function(k){ if(typeof window.bkDealReadiness === 'function') return true;
     var v = s ? s[k] : undefined;
     if(v === undefined || v === null || v === '' || (typeof v === 'number' && !isFinite(v))) return true;
     /* Economic readiness is stricter than JavaScript finiteness. A zero acquisition

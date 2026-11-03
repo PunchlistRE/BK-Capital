@@ -117,7 +117,7 @@ function bkVal(key,fmt){const s=bkLoad(),v=s[key];
 }
 function bkInput(label,key,unit,fmt='num'){const a=(fmt==='text')?((key==='closing')?'num':'text'):'num'; return `<tr class="input" data-bk-key="${key}" data-bk-fmt="${fmt}"><td class="rowlabel" data-bk-align="text">${label}</td><td class="v" data-bk-align="${a}">${bkVal(key,fmt)}</td><td data-bk-align="text">${unit||''}</td><td data-bk-align="text">${bkTemplateChip(key)}</td></tr>`}
 /* V32.1: a value that was pre-filled from an assumption template (not entered for this property) is labelled as such until it is edited. */
-function bkTemplateChip(key){try{const s=bkLoad(),t=s._template;if(t&&t.values&&Object.prototype.hasOwnProperty.call(t.values,key)&&s[key]===t.values[key])return '<span class="status-chip warn">TEMPLATE</span>';}catch(e){}return '<span class="status-chip pass">OK</span>';}
+function bkTemplateChip(key){try{if(typeof window.bkFieldStatus==='function'){const f=window.bkFieldStatus(key);return '<span class="status-chip '+f.cls+'"'+(f.tip?' title="'+f.tip.replace(/"/g,'&quot;')+'"':'')+'>'+f.label+'</span>';}}catch(e){}try{const s=bkLoad(),t=s._template;if(t&&t.values&&Object.prototype.hasOwnProperty.call(t.values,key)&&s[key]===t.values[key])return '<span class="status-chip warn">TEMPLATE</span>';}catch(e){}return '<span class="status-chip pass">OK</span>';}
 // V29 Deal Underwrite input-control audit: three small, additive helpers that replicate the
 // EXACT safe dropdown pattern already used by Revenue Basis / Rent Applied Basis (a plain <select
 // onchange="bkSetField(...)">, deliberately NOT class="input" data-bk-key=... + td.v, so bkWire()'s
@@ -126,7 +126,8 @@ function bkTemplateChip(key){try{const s=bkLoad(),t=s._template;if(t&&t.values&&
 function bkSelect(label,key,options,unit){
   const s=bkLoad(); const cur=s[key];
   const opts=options.map(([val,txt])=>`<option value="${bkEsc(val)}" ${String(cur)===String(val)?'selected':''}>${bkEsc(txt)}</option>`).join('');
-  return `<tr><td class="rowlabel">${label}</td><td class="v"><select onchange="bkSetField('${key}',this.value)">${opts}</select></td><td style="text-align:left">${unit||''}</td><td><span class="status-chip pass">OK</span></td></tr>`;
+  const blank=(cur===undefined||cur===null||cur===''||!options.some(([val])=>String(cur)===String(val)))?'<option value="" selected>Select\u2026</option>':'';
+  return `<tr data-bk-key="${key}"><td class="rowlabel">${label}</td><td class="v"><select onchange="bkSetField('${key}',this.value)">${blank}${opts}</select></td><td style="text-align:left">${unit||''}</td><td data-bk-align="text">${bkTemplateChip(key)}</td></tr>`;
 }
 // Yes/No toggle for a field the engine already reads as a truthy/falsy 1-or-0 number (GP Catch-Up,
 // Refinance at Stabilization) -- was previously a numeric bkInput requiring the user to know that

@@ -125,8 +125,8 @@ function flowBar(sheet){
   var caseCtl = hasDeal() ? '<span class="bk-case" title="The case the output pages show: Operating Underwrite, Property CF, Debt, Debt Schedule, Covenant Monitor, Returns, Equity Waterfall, After-Tax, the Cash Flow Report and the Valuation Report. It is a view; the deal itself never changes. Hover a button for what it does; edit the deltas on Sensitivity or Deal Underwrite.">Case <span class="bk-seg">'
     + ['Downside','Base','Upside'].map(function(n){ var tip = typeof window.bkCaseSummary === 'function' ? window.bkCaseSummary(s, n) : ''; return '<button type="button" data-bk-case="' + n + '" aria-pressed="' + (c === n) + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + n + '</button>'; }).join('') + '</span></span>' : '';
   var sv = saveStatus(), changed = changedCount();
-  var undo = hasDeal() ? '<button type="button" class="bk-btn" data-bk-undo="1" title="Undo last change (Ctrl+Z)"' + (U.stack.length ? '' : ' disabled') + '>&#8630; Undo</button>'
-    + '<button type="button" class="bk-btn" data-bk-redo="1" title="Redo (Ctrl+Shift+Z)"' + (U.redo.length ? '' : ' disabled') + '>&#8631;</button>' : '';
+  var undo = (hasDeal() || U.stack.length || U.redo.length) ? '<button type="button" class="bk-btn" data-bk-undo="1" title="' + esc(U.stack.length ? 'Undo: ' + U.stack[U.stack.length - 1].label + ' (Ctrl+Z)' : 'Nothing to undo') + '"' + (U.stack.length ? '' : ' disabled') + '>&#8630; Undo</button>'
+    + '<button type="button" class="bk-btn" data-bk-redo="1" title="' + esc(U.redo.length ? 'Redo: ' + U.redo[U.redo.length - 1].label + ' (Ctrl+Shift+Z)' : 'Nothing to redo') + '"' + (U.redo.length ? '' : ' disabled') + '>&#8631;</button>' : '';
   return '<div class="bk-flow"><button type="button" class="bk-btn bk-menu-btn" data-bk-menu="1">&#9776; Sheets</button><div class="bk-steps" role="navigation" aria-label="Underwriting workflow">' + steps + '</div>'
     + '<div class="bk-flow-right">' + caseCtl + '<span class="bk-save ' + sv[0] + '" title="' + (changed ? changed + ' field' + (changed > 1 ? 's' : '') + ' changed this session' : 'No changes this session') + '">' + esc(sv[1]) + (changed ? ' · ' + changed + ' changed' : '') + '</span>' + undo + '</div></div>';
 }
@@ -269,8 +269,15 @@ var REQ_KEYS = { size:'units', revenue:'avgRent' };
 function decorateUnderwrite(frame){
   var main = frame.querySelector('.main-col'); if(!main || main.querySelector('.bk-dui')) return;
   var r = readiness(); if(!r || r.state === 'NO DEAL') return;
-  var missKeys = r.missing.map(function(m){ return REQ_KEYS[m.key] || m.key; });
+  var missKeys = typeof window.bkRequiredRows === 'function' ? Object.keys(window.bkRequiredRows().core) : r.missing.map(function(m){ return REQ_KEYS[m.key] || m.key; });
   main.querySelectorAll('tr[data-bk-key]').forEach(function(tr){ tr.classList.toggle('bk-req-missing', missKeys.indexOf(tr.getAttribute('data-bk-key')) > -1); });
+  /* Rows that do not apply to this kind of deal say so: the development tables on an acquisition, the acquisition-only conventions on a development. A row whose field is also
+     used in a table that does apply (building area) is left alone. */
+  (function(){ var dev = isDev(bkLoad()), NA_DEV = /^(Development\b|Construction Facility|Permanent \/ Stabilized Debt)/, NA_ACQ = /Acquisition Deals Only/, shared = {}, na = [];
+    main.querySelectorAll('.tbl-wrap').forEach(function(w){ var c = w.querySelector('caption'); if(!c) return; var t = c.textContent.replace(/\s+/g, ' ').trim(), notApplies = dev ? NA_ACQ.test(t) : NA_DEV.test(t);
+      if(notApplies) na.push(w); else w.querySelectorAll('tr[data-bk-key]').forEach(function(tr){ shared[tr.getAttribute('data-bk-key')] = 1; }); });
+    na.forEach(function(w){ w.setAttribute('data-bk-na', '1'); w.querySelectorAll('tbody tr').forEach(function(tr){ var k = tr.getAttribute('data-bk-key'); if(k && shared[k]) return; var chip = tr.querySelector('.status-chip'), td = chip && chip.closest('td'); if(!td) return;
+      td.innerHTML = '<span class="status-chip na" title="' + (dev ? 'Applies to acquisition deals only' : 'Applies to development deals only') + '">N/A</span>'; tr.classList.add('bk-na'); tr.classList.remove('bk-req-missing'); }); }); })();
   var total = r.missing.length + r.met.length, done = r.met.length;
   var req = '<div class="bk-req"><b>Required inputs: ' + done + ' of ' + total + '</b><span class="bar"><i style="width:' + (total ? Math.round(done/total*100) : 0) + '%"></i></span>'
     + (r.missing.length ? '<span>Missing:</span>' + r.missing.map(function(m){ return '<button type="button" data-bk-jump-key="' + esc(REQ_KEYS[m.key] || m.key) + '">' + esc(m.label) + '</button>'; }).join('')
@@ -308,15 +315,25 @@ function decorateUnderwrite(frame){
   }
 }
 
-/* ---------------------------------------------------------------- 6. save / undo */
-var U = { stack:[], redo:[], baseline:null, busy:false, rendering:0 };
+/* ---------------------------------------------------------------- 6. save / undo
+   UNDO AND REDO FOR EVERY FUNCTION. Every change to anything the app keeps for you (the open deal, the portfolio, the investor registry, master properties, source packages and
+   approvals, tenant approvals, property aliases, saved templates, the importer's learned wording) is seen where it is written, so no function has to remember to register itself: a
+   change made in one go (one click, one import) is one step, and Undo / Redo put every one of those stores back exactly as it was, or exactly as it became. Writes the app makes on
+   its own (a page filling in a missing default, the cloud sync pulling a copy down) are not steps. Fifty steps are kept. Each step has a plain-words label, shown on the button.
+   Before an Undo or Redo that would change the model drastically is carried out, the person is told what it will change and asked to confirm (see drastic()). */
+var U = { stack:[], redo:[], baseline:null, busy:false, rendering:0, quiet:0 };
+var TRACKED = [(typeof BK_STORE !== 'undefined') ? BK_STORE : 'bkcapital.cre.v02', 'bkcapital.cre.portfolio.v01', 'bkcapital.cre.investors.v01', 'bkcapital.master.properties.v01', 'bkcapital.source.staging.v02', 'bkcapital.source.approvals.v02',
+  'bkcapital.tenant.approvals.v01', 'bkcapital.property.aliases.v01', 'bkcapital.templates.v1', 'bkcapital.learn.rules.v1', 'bkcapital.learn.rules.v1.rm', 'bkcapital.learn.log.v1'];
+var DEAL_KEY = TRACKED[0], NAMES = { 'bkcapital.cre.portfolio.v01':'the portfolio', 'bkcapital.cre.investors.v01':'the investor registry', 'bkcapital.master.properties.v01':'master properties', 'bkcapital.source.staging.v02':'the source package', 'bkcapital.source.approvals.v02':'source approvals',
+  'bkcapital.tenant.approvals.v01':'tenant approvals', 'bkcapital.property.aliases.v01':'property aliases', 'bkcapital.templates.v1':'saved templates', 'bkcapital.learn.rules.v1':'learned expense wording', 'bkcapital.learn.rules.v1.rm':'learned expense wording', 'bkcapital.learn.log.v1':'learned expense wording' };
 function dealKey(){ try { var s = bkLoad(); return String(s.dealId || s.name || ''); } catch(e){ return ''; } }
-function storeKey(){ return (typeof BK_STORE !== 'undefined') ? BK_STORE : 'bkcapital.cre.v02'; }
-function rawDeal(){ try { return localStorage.getItem(storeKey()); } catch(e){ return null; } }
+function rawDeal(){ try { return localStorage.getItem(DEAL_KEY); } catch(e){ return null; } }
+function snap(){ var o = {}; TRACKED.forEach(function(k){ try { o[k] = localStorage.getItem(k); } catch(e){ o[k] = null; } }); return o; }
+function sameSnap(a, b){ return TRACKED.every(function(k){ return a[k] === b[k]; }); }
 function ensureBaseline(){
   if(!hasDeal()) return;
   var k = dealKey();
-  if(!U.baseline || U.baseline.id !== k){ U.baseline = { id:k, s:bkLoad() }; U.stack = []; U.redo = []; }
+  if(!U.baseline || U.baseline.id !== k){ U.baseline = { id:k, s:bkLoad() }; }   /* the steps are kept: opening another deal is itself a step you can undo */
 }
 function changedCount(){
   if(!hasDeal() || !U.baseline || U.baseline.id !== dealKey()) return 0;
@@ -324,30 +341,117 @@ function changedCount(){
   Object.keys(Object.assign({}, a, b)).forEach(function(k){ if(k.charAt(0) !== '_' && JSON.stringify(a[k]) !== JSON.stringify(b[k])) n++; });
   return n;
 }
-var innerSave = window.bkSave;
-function trackedSave(d){
-  var before = rawDeal(), out = innerSave.apply(this, arguments), after = rawDeal();
-  if(after === before) return out;
-  if(U.rendering){
-    /* a renderer filling a missing default is not a user edit: no undo step, and a field that
-       was blank in the session baseline takes the filled value so it is not reported as changed */
-    if(U.baseline && U.baseline.id === dealKey()){ var now = bkLoad(), b = U.baseline.s;
-      Object.keys(now).forEach(function(k){ if(b[k] === undefined) b[k] = now[k]; }); }
-    return out;
-  }
-  if(!U.busy && before !== null){ U.stack.push(before); if(U.stack.length > 50) U.stack.shift(); U.redo = []; }
-  return out;
+
+/* ---- words for a step ---- */
+var FLABEL = { exitCap:'Exit cap', purchasePrice:'Purchase price', holdYears:'Hold period', avgRent:'Average rent', vacancy:'Vacancy', rentGrowth:'Rent growth', opexGrowth:'Expense growth', acqLTV:'Max LTV', acqLTC:'Max LTC', acqRate:'Loan rate', acqAmort:'Amortisation', acqDSCR:'Min DSCR',
+  units:'Units', gsf:'Building area', closing:'Closing date', name:'Name', dealId:'Deal ID', location:'Location', propertyType:'Property type', dealType:'Deal type', scenarioCase:'Case', gpShare:'GP share', pref:'Preferred return', saleCostPct:'Cost of sale', mgmtPct:'Management fee',
+  constructionMonths:'Construction months', predevMonths:'Pre-development months', leaseupMonths:'Lease-up months', conLTC:'Construction loan LTC', conRate:'Construction loan rate', taxes:'Real estate taxes', insurance:'Insurance', reserves:'Reserves', rentRoll:'Rent roll', devGantt:'Development schedule',
+  investors:'Investors', leases:'Tenant leases', devUnits:'Unit lease-up', _template:'Assumption template', _conv:'Conventions' };
+function pretty(k){ return FLABEL[k] || String(k).replace(/^_+/, '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, function(c){ return c.toUpperCase(); }); }
+function fv(k, v){ if(v === undefined || v === null || v === '') return 'blank'; if(typeof v === 'number'){ if(/Pct|Rate|Cap|Growth|acqLTV|acqLTC|Share|^pref|hurdle|Vacancy|vacancy|Delta|Variance|Factor|LTC|LTV/.test(k) && Math.abs(v) <= 1.5) return (v * 100).toFixed(2) + '%'; return Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-US') : String(Math.round(v * 1e4) / 1e4); }
+  if(typeof v === 'string') return v.length > 26 ? v.slice(0, 25) + '…' : v; if(typeof v === 'boolean') return v ? 'on' : 'off'; return '(changed)'; }
+function parse(raw){ try { return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
+function describe(a, b){
+  var parts = [], da = parse(a[DEAL_KEY]), db = parse(b[DEAL_KEY]);
+  if(a[DEAL_KEY] !== b[DEAL_KEY]){
+    if(!da && db) parts.push('Open deal “' + (db.name || db.dealId || 'untitled') + '”');
+    else if(da && !db) parts.push('Remove deal “' + (da.name || da.dealId || 'untitled') + '”');
+    else if(da && db && String(da.dealId || '') !== String(db.dealId || '') && String(da.name || '') !== String(db.name || '')) parts.push('Switch to deal “' + (db.name || db.dealId || 'untitled') + '”');
+    else if(da && db){ var ks = Object.keys(Object.assign({}, da, db)).filter(function(k){ return JSON.stringify(da[k]) !== JSON.stringify(db[k]); }), vis = ks.filter(function(k){ return k.charAt(0) !== '_'; }), use = vis.length ? vis : ks;
+      var one = function(k){ var x = da[k], y = db[k], simple = function(v){ return v === undefined || v === null || typeof v !== 'object'; }; return simple(x) && simple(y) ? pretty(k) + ' ' + fv(k, x) + ' → ' + fv(k, y) : pretty(k); };
+      parts.push(use.length <= 2 ? use.map(one).join('; ') : use.slice(0, 2).map(function(k){ return pretty(k); }).join(', ') + ' and ' + (use.length - 2) + ' more'); } }
+  TRACKED.slice(1).forEach(function(k){ if(a[k] !== b[k]){ var n = NAMES[k]; if(parts.indexOf(n) < 0 && parts.indexOf('Changes to ' + n) < 0) parts.push('Changes to ' + n); } });
+  var out = parts.join('; '); return out || 'Change';
 }
-window.bkSave = trackedSave;
-function restore(raw){
-  if(raw == null) return;
+
+/* ---- seeing every write ---- */
+var rawSet = Storage.prototype.setItem, rawRem = Storage.prototype.removeItem, batch = null;
+function noHist(raw){ var o = parse(raw); if(!o) return raw; delete o._history; return JSON.stringify(o); }
+function onlyHistory(a, b){ return TRACKED.every(function(k){ return k === DEAL_KEY ? noHist(a[k]) === noHist(b[k]) : a[k] === b[k]; }); }
+function closeBatch(){ var bt = batch; batch = null; if(!bt) return; var after = snap(); if(sameSnap(bt.before, after) || U.busy) return;
+  /* the deal's own change log is bookkeeping: it rides along with the step before it instead of being a step of its own */
+  if(onlyHistory(bt.before, after)){ var top = U.stack[U.stack.length - 1]; if(top && onlyHistory(top.after, bt.before)) top.after = after; return; }
+  U.stack.push({ before:bt.before, after:after, label:describe(bt.before, after), at:Date.now() }); if(U.stack.length > 50) U.stack.shift(); U.redo = []; }
+function recording(k){ return U.busy ? false : !U.rendering && !U.quiet && TRACKED.indexOf(k) >= 0 && !(window.BK_SYNC && window.BK_SYNC.suspend > 0); }
+function afterRenderWrite(k){
+  /* a renderer filling a missing default is not a user edit: no step, and a field that was blank in the session baseline takes the filled value so it is not reported as changed */
+  if(k === DEAL_KEY && U.baseline && U.baseline.id === dealKey()){ var now = bkLoad(), b = U.baseline.s; Object.keys(now).forEach(function(x){ if(b[x] === undefined) b[x] = now[x]; }); }
+}
+Storage.prototype.setItem = function(k, v){
+  var mine = this === window.localStorage && TRACKED.indexOf(k) >= 0, rec = mine && recording(k), before = rec && !batch ? snap() : null;
+  var r = rawSet.apply(this, arguments);
+  if(before){ batch = { before:before }; Promise.resolve().then(closeBatch); } if(mine && U.rendering) afterRenderWrite(k); return r; };
+Storage.prototype.removeItem = function(k){
+  var mine = this === window.localStorage && TRACKED.indexOf(k) >= 0, rec = mine && recording(k), before = rec && !batch ? snap() : null;
+  var r = rawRem.apply(this, arguments);
+  if(before){ batch = { before:before }; Promise.resolve().then(closeBatch); } return r; };
+window.bkUndoQuiet = function(fn){ U.quiet++; try { return fn(); } finally { U.quiet--; } };   /* for the app's own housekeeping writes */
+function restore(target){
   U.busy = true;
-  try { innerSave(JSON.parse(raw)); } finally { U.busy = false; }
-  rerender();
+  try { TRACKED.forEach(function(k){ var v = target[k]; if(v === null || v === undefined) rawRem.call(window.localStorage, k); else rawSet.call(window.localStorage, k, v); }); } finally { U.busy = false; }
+  U.baseline = null; ensureBaseline(); rerender();
 }
-function undo(){ if(!U.stack.length) return; var now = rawDeal(); var prev = U.stack.pop(); U.redo.push(now); restore(prev); }
-function redo(){ if(!U.redo.length) return; var now = rawDeal(); var nxt = U.redo.pop(); U.stack.push(now); restore(nxt); }
+
+/* ---- is it drastic? the engine is run on both states; nothing is saved ---- */
+function withState(st, fn){   /* the deal is put in storage for a moment, the engine reads it exactly as the app does, and the real one is put back; nothing renders and nothing is recorded */
+  var real = rawDeal(), was = U.busy; U.busy = true;
+  try { rawSet.call(window.localStorage, DEAL_KEY, JSON.stringify(st)); return fn(bkLoad()); }
+  finally { try { if(real === null) rawRem.call(window.localStorage, DEAL_KEY); else rawSet.call(window.localStorage, DEAL_KEY, real); } catch(e){} U.busy = was; } }
+function metrics(raw){
+  var st = parse(raw); if(!st) return null;
+  return withState(st, function(s){ var m = { id:String(s.dealId || ''), name:String(s.name || ''), type:String(s.dealType || ''), price:num0(s.purchasePrice) }, rd = null;
+    try { rd = window.bkDealReadiness ? window.bkDealReadiness() : null; } catch(e){} m.state = rd ? rd.state : ''; m.calc = !!(rd && rd.canCalculate);
+    if(m.calc){ try { var r = bkMonthlyReturns(), d = bkDebt(), c = bkCalc(); m.irr = r.irr; m.moic = r.moic; m.equity = num0(d.equity); m.loan = num0(d.loan); m.noi = num0(c.noi); } catch(e){ m.calc = false; } }
+    return m; });
+}
+function num0(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+var THRESH = { irr:0.01, rel:0.10 };   /* a point of levered IRR; a tenth of price, NOI, loan or equity */
+function drastic(target){
+  var cur = snap(), lines = [], flag = false, a = metrics(cur[DEAL_KEY]), b = metrics(target[DEAL_KEY]), mo = function(v){ return '$' + Math.round(v).toLocaleString('en-US'); };
+  if(cur[DEAL_KEY] !== target[DEAL_KEY]){
+    if(a && !b){ flag = true; lines.push('There will be no open deal: “' + (a.name || a.id || 'untitled') + '” is taken away.'); }
+    else if(!a && b){ flag = true; lines.push('“' + (b.name || b.id || 'untitled') + '” becomes the open deal.'); }
+    else if(a && b){
+      if((a.id !== b.id) && (a.name !== b.name)){ flag = true; lines.push('It switches the open deal from “' + (a.name || a.id) + '” to “' + (b.name || b.id) + '”.'); }
+      if(a.type !== b.type){ flag = true; lines.push('The deal type changes from ' + (a.type || 'blank') + ' to ' + (b.type || 'blank') + '.'); }
+      if(a.calc !== b.calc){ flag = true; lines.push(b.calc ? 'Results that are withheld now (' + a.state + ') will show again.' : 'The deal becomes ' + b.state + ' and its results are withheld.'); }
+      if(a.calc && b.calc){
+        if(isFinite(a.irr) && isFinite(b.irr) && Math.abs(a.irr - b.irr) >= THRESH.irr){ flag = true; lines.push('Levered IRR goes from ' + (a.irr * 100).toFixed(2) + '% to ' + (b.irr * 100).toFixed(2) + '% (' + (b.irr >= a.irr ? '+' : '−') + (Math.abs(b.irr - a.irr) * 100).toFixed(2) + ' points).'); }
+        [['price', 'Purchase price'], ['noi', 'Year-1 NOI'], ['loan', 'The loan'], ['equity', 'Equity required']].forEach(function(p){ var x = a[p[0]], y = b[p[0]], base = Math.max(Math.abs(x), 1); if(Math.abs(y - x) / base >= THRESH.rel && Math.abs(y - x) > 1000){ flag = true; lines.push(p[1] + ' goes from ' + mo(x) + ' to ' + mo(y) + ' (' + (y >= x ? '+' : '−') + Math.round(Math.abs(y - x) / base * 100) + '%).'); } });
+      } } }
+  var cp = parse(cur['bkcapital.cre.portfolio.v01']) || [], tp = parse(target['bkcapital.cre.portfolio.v01']) || [], ci = parse(cur['bkcapital.cre.investors.v01']) || [], ti = parse(target['bkcapital.cre.investors.v01']) || [];
+  if(Array.isArray(cp) && Array.isArray(tp) && tp.length < cp.length){ flag = true; lines.push('It removes ' + (cp.length - tp.length) + ' saved deal' + (cp.length - tp.length === 1 ? '' : 's') + ' from the portfolio.'); }
+  if(Array.isArray(ci) && Array.isArray(ti) && ti.length < ci.length){ flag = true; lines.push('It removes ' + (ci.length - ti.length) + ' investor' + (ci.length - ti.length === 1 ? '' : 's') + ' from the registry.'); }
+  return flag ? lines : null;
+}
+
+/* ---- the buttons, the question and the confirmation ---- */
+function toast(txt, redoable){
+  var t = document.getElementById('bk-undo-toast'); if(!t){ t = document.createElement('div'); t.id = 'bk-undo-toast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
+  t.innerHTML = esc(txt) + (redoable ? ' <button type="button" data-bk-redo="1">Redo</button>' : ''); t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('on'); }, 5000); }
+function ask(kind, step, lines, go){
+  closeAsk(); var o = document.createElement('div'); o.id = 'bk-undo-ask'; o.setAttribute('role', 'alertdialog'); o.setAttribute('aria-label', 'Confirm ' + kind);
+  o.innerHTML = '<div class="box"><h3>' + (kind === 'undo' ? 'Undo' : 'Redo') + ' this? It changes the model a lot.</h3><div class="step">' + esc(step.label) + '</div><ul>' + lines.map(function(l){ return '<li>' + esc(l) + '</li>'; }).join('') + '</ul><div class="btns"><button type="button" class="bk-btn" data-ask="cancel">Cancel</button><button type="button" class="bk-btn primary" data-ask="go">' + (kind === 'undo' ? 'Undo anyway' : 'Redo anyway') + '</button></div></div>';
+  document.body.appendChild(o); o._go = go; var c = o.querySelector('[data-ask="cancel"]'); if(c) c.focus(); }
+function closeAsk(){ var o = document.getElementById('bk-undo-ask'); if(o) o.remove(); }
+function perform(kind, step, target){
+  if(kind === 'undo'){ U.stack.pop(); U.redo.push(step); } else { U.redo.pop(); U.stack.push(step); }
+  restore(target); toast((kind === 'undo' ? 'Undone: ' : 'Redone: ') + step.label, kind === 'undo');
+}
+function go(kind, opts){
+  var from = kind === 'undo' ? U.stack : U.redo; if(!from.length) return false;
+  var step = from[from.length - 1], target = kind === 'undo' ? step.before : step.after, lines = opts && opts.confirmed ? null : safeDrastic(target);
+  if(lines){ ask(kind, step, lines, function(){ perform(kind, step, target); }); return false; }
+  perform(kind, step, target); return true;
+}
+function safeDrastic(t){ try { return drastic(t); } catch(e){ window.__dErr = e.stack; return null; } }
+function undo(opts){ return go('undo', opts); }
+function redo(opts){ return go('redo', opts); }
 window.bkUndo = undo; window.bkRedo = redo;
+window.bkUndoState = function(){ return { undo:U.stack.map(function(x){ return x.label; }), redo:U.redo.map(function(x){ return x.label; }), pending:!!document.getElementById('bk-undo-ask') }; };
+window.bkUndoSnapshot = snap;
+document.addEventListener('click', function(e){ var t = e.target && e.target.closest ? e.target.closest('#bk-undo-ask [data-ask]') : null; if(!t) return; var o = document.getElementById('bk-undo-ask'), fn = o && o._go; closeAsk(); if(t.getAttribute('data-ask') === 'go' && fn) fn(); }, true);
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && document.getElementById('bk-undo-ask')){ e.preventDefault(); e.stopPropagation(); closeAsk(); } }, true);
 
 /* ---------------------------------------------------------------- 7. Returns KPI tiles */
 (function(){
@@ -437,7 +541,7 @@ document.addEventListener('keydown', function(e){
   var a = document.activeElement;
   var editing = a && (a.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName));
   if(e.key === 'Escape'){ document.querySelectorAll('.bk-more.open,.bk-key-wrap.open').forEach(function(m){ m.classList.remove('open'); }); return; }
-  if(editing || !(e.ctrlKey || e.metaKey) || String(e.key).toLowerCase() !== 'z' || !hasDeal()) return;
+  if(editing || !(e.ctrlKey || e.metaKey) || String(e.key).toLowerCase() !== 'z') return;
   e.preventDefault(); if(e.shiftKey) redo(); else undo();
 });
 /* live save status: repaint the chip whenever the sync layer repaints its own status */
@@ -446,7 +550,7 @@ setInterval(function(){
   var sv = saveStatus(), n = changedCount(), txt = sv[1] + (n ? ' · ' + n + ' changed' : '');
   if(chip.textContent !== txt){ chip.textContent = txt; chip.className = 'bk-save ' + sv[0]; }
   var ub = document.querySelector('#viewport [data-bk-undo]'), rb = document.querySelector('#viewport [data-bk-redo]');
-  if(ub) ub.disabled = !U.stack.length; if(rb) rb.disabled = !U.redo.length;
+  if(ub){ ub.disabled = !U.stack.length; ub.title = U.stack.length ? 'Undo: ' + U.stack[U.stack.length - 1].label + ' (Ctrl+Z)' : 'Nothing to undo'; } if(rb){ rb.disabled = !U.redo.length; rb.title = U.redo.length ? 'Redo: ' + U.redo[U.redo.length - 1].label + ' (Ctrl+Shift+Z)' : 'Nothing to redo'; }
 }, 1000);
 
 window.bkUxRefresh = refreshFlow;

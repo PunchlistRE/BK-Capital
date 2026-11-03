@@ -54,5 +54,7 @@ echo "== Waterfall verification (per-hurdle IRR error checks, tier order, conser
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
+echo "== Required marker and Status chip agree (one source, N/A on non-applicable tables)"; node audit/required_status_test.js index.html | tail -1
+echo "== Undo / Redo for every function (all stores, exact, labelled, drastic-change confirmation)"; node audit/undo_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"
