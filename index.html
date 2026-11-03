@@ -25895,6 +25895,7 @@ function unfit(){ [].forEach.call(document.querySelectorAll('table.bk-print-clon
   [].forEach.call(document.querySelectorAll('table.bk-print-fit'), function(t){ t.classList.remove('bk-print-fit'); t.style.removeProperty('font-size'); }); }
 var pageStyle = null;
 function prepare(){
+  if(document.documentElement.classList.contains('bk-sr-open')) return;   /* the schedule summary prints its own pages */
   cleanup();
   var fr = document.querySelector('#viewport .sheet-frame') || document.getElementById('viewport'); if(!fr) return;
   var head = document.createElement('div'); head.id = 'bk-print-head'; head.innerHTML = headHtml(); fr.insertBefore(head, fr.firstChild);
@@ -26467,34 +26468,96 @@ window.bkDevGanttAdd = function(){ var s = bkLoad(), g = s.devGantt = Object.ass
 window.bkDevGanttRemove = function(i){ var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}), T = g.tasks || [], id = T[i] && T[i].id; g.tasks = T.filter(function(t, k){ return k !== i; }).map(function(t){ return Object.assign({}, t, { preds:(t.preds || []).filter(function(p){ return p.id !== id; }) }); }); if(!g.tasks.length) g.mode = 'phases'; save(s); };
 
 /* ------------------------------------------------------------------ the chart ------------------------------------------------------------------ */
-var COL = { predev:'#7a8da1', construction:'#2E6E6E', other:'#8a6d2f', leaseup:'#2f5f9a', ops:'#9aa7b4', crit:'#b3392c' };
-function gantt(rows, x, s){
-  var hold = Math.max(x.hold, x.stab + 1), pxm = Math.max(5, Math.min(14, Math.floor(640 / hold))), L = 250, rowH = 26, top = 44, W = L + hold * pxm + 24, H = top + rows.length * rowH + 12;
-  var X = function(m){ return L + (m - 1) * pxm; };
-  var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Development schedule Gantt chart, by month" style="max-width:none">';
-  for(var y = 1; y <= Math.ceil(hold / 12); y++){ var m0 = (y - 1) * 12 + 1, w = Math.min(12, hold - m0 + 1) * pxm; g += '<rect x="' + X(m0) + '" y="6" width="' + w + '" height="' + (H - 12) + '" fill="' + (y % 2 ? 'rgba(120,140,160,.07)' : 'transparent') + '"/><text x="' + (X(m0) + w / 2) + '" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ae-dim,#5a6877)">Year ' + y + '</text>'; }
-  var step = pxm >= 9 ? 1 : pxm >= 6 ? 3 : 6; for(var m = 1; m <= hold; m += step){ if(m === 1 || m % (step === 1 ? 3 : step) === 0 || step > 1) g += '<text x="' + (X(m) + pxm / 2) + '" y="36" text-anchor="middle" font-size="9" fill="var(--ae-dim,#5a6877)">' + m + '</text>'; }
-  g += '<line x1="' + L + '" x2="' + (W - 14) + '" y1="' + (top - 4) + '" y2="' + (top - 4) + '" stroke="var(--ae-line,#c9d1dc)"/>';
-  rows.forEach(function(r, i){ var y0 = top + i * rowH, cy = y0 + rowH / 2;
-    g += '<text x="8" y="' + (cy + 4) + '" font-size="12" fill="var(--ae-ink,#1b2733)" font-weight="' + (r.linked ? 400 : 600) + '">' + esc(String(r.name).slice(0, 36)) + '</text>';
-    g += '<line x1="' + L + '" x2="' + (W - 14) + '" y1="' + (y0 + rowH) + '" y2="' + (y0 + rowH) + '" stroke="var(--ae-line,#e1e6ec)" stroke-width=".5"/>';
-    if(r.milestone){ var cx = X(r.ES) + pxm / 2; g += '<path d="M' + cx + ',' + (cy - 8) + ' L' + (cx + 8) + ',' + cy + ' L' + cx + ',' + (cy + 8) + ' L' + (cx - 8) + ',' + cy + ' Z" fill="' + (r.critical ? COL.crit : '#1b2733') + '"><title>' + esc(r.name) + ': month ' + r.ES + '</title></path>'; }
-    else { var w2 = Math.max(pxm, (r.EF - r.ES + 1) * pxm); g += '<rect x="' + X(r.ES) + '" y="' + (cy - 7) + '" width="' + w2 + '" height="14" rx="2" fill="' + r.color + '"' + (r.critical ? ' stroke="' + COL.crit + '" stroke-width="2"' : '') + '><title>' + esc(r.name) + ': months ' + r.ES + ' to ' + r.EF + (r.float > 0 ? ' (float ' + r.float + ')' : '') + '</title></rect>'; }
-    if(r.float > 0 && !r.linked){ g += '<line x1="' + (X(r.EF) + pxm) + '" x2="' + (X(r.EF) + pxm + r.float * pxm) + '" y1="' + cy + '" y2="' + cy + '" stroke="var(--ae-dim,#8a97a5)" stroke-dasharray="2 2"/>'; } });
-  /* dependency lines: from the end of a predecessor to the start of its successor */
-  var idx = {}; rows.forEach(function(r, i){ if(r.id) idx[r.id] = i; });
-  rows.forEach(function(r, i){ (r.preds || []).forEach(function(p){ var j = idx[p.id]; if(j === undefined) return; var q = rows[j], x1 = X(q.EF) + pxm, y1 = top + j * rowH + rowH / 2, x2 = X(r.ES), y2 = top + i * rowH + rowH / 2, mx = Math.max(x1, x2 - 4);
-    g += '<path d="M' + x1 + ',' + y1 + ' H' + (x1 + 3) + ' V' + y2 + ' H' + x2 + '" fill="none" stroke="' + ((r.critical && q.critical) ? COL.crit : 'var(--ae-dim,#7d8b99)') + '" stroke-width="1" marker-end=""/>'; }); });
+var COL = { predev:'#7a8da1', construction:'#2E6E6E', other:'#8a6d2f', leaseup:'#2f5f9a', ops:'#9aa7b4', crit:'#b3392c', ms:'#1b2733' };
+function dtx(d){ return d.toLocaleDateString('en-US', { month:'short', year:'numeric' }); }
+function monthsText(n){ return n + (n === 1 ? ' month' : ' months'); }
+
+/* The chart. Calendar years and month numbers across the top, the three milestones flagged above the grid, a band for each section (pre-development, construction, other tasks, lease-up and
+   operations), the task number and name on the left, each bar labelled with its duration, float as a dashed tail, dependencies as arrows, the critical path outlined in red.
+   o.print draws it in fixed colours for paper; o.W is the width in drawing units (it scales to the space it is put in). */
+function ganttSvg(rows, sc, s, o){
+  o = o || {}; var P = !!o.print, uid = 'ga' + (o.id || Math.floor(Math.random() * 1e6));
+  var ink = P ? '#1b2733' : 'var(--ae-ink,#1b2733)', dim = P ? '#6b7a89' : 'var(--ae-dim,#7d8b99)', line = P ? '#d3dae2' : 'var(--ae-line,#dfe5ec)', band = 'rgba(120,140,160,' + (P ? '.10' : '.07') + ')', sec = P ? '#eaeff4' : 'rgba(120,140,160,.15)';
+  var hold = Math.max(num(sc.hold), num(sc.stab) + 1, 12), maxName = rows.reduce(function(m, r){ return Math.max(m, String(r.name || '').length + (r.idx ? 3 : 0)); }, 12), Lw = Math.max(200, Math.min(330, Math.round(maxName * 6.7) + 36));
+  var W0 = o.W || 1000, Cw = W0 - Lw - 22, pxm = Math.max(2.2, Cw / hold), W = Lw + hold * pxm + 22, secH = 22, rowH = 27, topY = 112;
+  var X = function(m){ return Lw + (m - 1) * pxm; };
+  /* section structure: a header row before the first row of each section */
+  var items = [], lastSec = null; rows.forEach(function(r){ if(r.sec !== lastSec){ items.push({ header:r.sec }); lastSec = r.sec; } items.push(r); });
+  var y = topY; items.forEach(function(it){ it.y = y; it.h = it.header ? secH : rowH; y += it.h; }); var H = y + 14;
+  var g = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Development schedule Gantt chart, by month" style="display:block;max-width:100%;height:auto;font-family:inherit"><defs>'
+    + '<marker id="' + uid + 'a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="' + dim + '"/></marker><marker id="' + uid + 'c" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="' + COL.crit + '"/></marker></defs>';
+  /* phase strip */
+  var segs = [['Pre-development', 1, num(sc.preMo), COL.predev], ['Construction', num(sc.preMo) + 1, num(sc.co), COL.construction], ['Lease-up', num(sc.co) + 1, num(sc.stab) - 1 > num(sc.co) ? num(sc.stab) - 1 : num(sc.co), COL.leaseup], ['Stabilised operations', num(sc.stab), hold, COL.ops]];
+  if(num(sc.luMo) <= 0) segs.splice(2, 1);
+  segs.forEach(function(sg){ if(sg[2] < sg[1]) return; var x0 = X(sg[1]), w = (sg[2] - sg[1] + 1) * pxm; g += '<rect x="' + x0 + '" y="6" width="' + w + '" height="18" fill="' + sg[3] + '" opacity=".92"><title>' + esc(sg[0]) + ': months ' + sg[1] + ' to ' + sg[2] + '</title></rect>';
+    var cnt = sg[0] === 'Lease-up' ? num(sc.luMo) : (sg[2] - sg[1] + 1), full = sg[0] + ' · ' + cnt + ' mo', short = sg[0].replace('Pre-development', 'Pre-dev').replace('Stabilised operations', 'Stabilised') + ' · ' + cnt;
+    if(w > full.length * 6.4 + 10) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">' + esc(full) + '</text>'; else if(w > short.length * 6.4 + 8) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">' + esc(short) + '</text>'; });
+  g += '<text x="' + (Lw - 10) + '" y="19" text-anchor="end" font-size="10.5" font-weight="700" fill="' + dim + '" letter-spacing=".06em">PHASES</text>';
+  /* milestone flags (Closing is month 1) */
+  var ms = [['Certificate of occupancy', num(sc.co), COL.crit], ['Stabilised', num(sc.stab), COL.leaseup], ['Sale / exit', num(sc.hold), COL.ms]].filter(function(m){ return m[1] > 0; }).sort(function(a, b){ return a[1] - b[1]; });
+  ms.forEach(function(m, i){ var mx = X(m[1]) + pxm / 2, txt = m[0] + ' \u00b7 ' + dtx(monthEnd(s, m[1])), w = txt.length * 5.8 + 10, ty = 40 + (i % 2) * 14;
+    var anchor = mx + w / 2 > W - 4 ? 'end' : mx - w / 2 < Lw ? 'start' : 'middle'; g += '<text x="' + (anchor === 'end' ? mx + 4 : anchor === 'start' ? mx - 4 : mx) + '" y="' + ty + '" text-anchor="' + anchor + '" font-size="10.5" font-weight="700" fill="' + m[2] + '">' + esc(txt) + '</text>'; m.push(mx); });
+  /* calendar years, then month numbers */
+  var yearY = 72, monthY = 88, yr0 = 1, curY = monthStart(s, 1).getFullYear(), shade = 0;
+  for(var m = 1; m <= hold + 1; m++){ var yy = m <= hold ? monthStart(s, m).getFullYear() : null; if(yy !== curY){ var w = (m - yr0) * pxm, x0 = X(yr0); g += '<rect x="' + x0 + '" y="' + yearY + '" width="' + w + '" height="14" fill="' + sec + '" opacity="' + (shade % 2 ? '.55' : '1') + '"/>';
+      if(w > 26) g += '<text x="' + (x0 + w / 2) + '" y="' + (yearY + 11) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + ink + '">' + curY + '</text>'; shade++; yr0 = m; curY = yy; } }
+  var step = pxm >= 13 ? 1 : pxm >= 6 ? 3 : pxm >= 3.4 ? 6 : 12;
+  for(var mm = 1; mm <= hold; mm++){ if((mm - 1) % step === 0 || mm === hold){ if(step > 1 && mm !== 1 && mm === hold && hold - ((hold - 1) - ((hold - 1) % step)) < step * 0.6 && (hold - 1) % step !== 0) continue; g += '<text x="' + (X(mm) + pxm / 2) + '" y="' + (monthY + 11) + '" text-anchor="middle" font-size="9.5" fill="' + dim + '">' + mm + '</text>'; } }
+  g += '<text x="' + (Lw - 10) + '" y="' + (yearY + 11) + '" text-anchor="end" font-size="10.5" font-weight="700" fill="' + dim + '" letter-spacing=".06em">YEAR</text><text x="' + (Lw - 10) + '" y="' + (monthY + 11) + '" text-anchor="end" font-size="10.5" font-weight="700" fill="' + dim + '" letter-spacing=".06em">MONTH</text>';
+  /* alternating year bands and quarter lines behind the rows */
+  var by0 = 1, bcur = monthStart(s, 1).getFullYear(), bs = 0; for(var q = 1; q <= hold + 1; q++){ var qy = q <= hold ? monthStart(s, q).getFullYear() : null; if(qy !== bcur){ if(bs % 2 === 0) g += '<rect x="' + X(by0) + '" y="' + topY + '" width="' + ((q - by0) * pxm) + '" height="' + (H - topY - 14) + '" fill="' + band + '"/>'; bs++; by0 = q; bcur = qy; } }
+  /* rows */
+  items.forEach(function(it){
+    if(it.header){ g += '<rect x="6" y="' + it.y + '" width="' + (W - 12) + '" height="' + it.h + '" fill="' + sec + '" opacity=".75"/><text x="12" y="' + (it.y + 15) + '" font-size="10.5" font-weight="700" fill="' + ink + '" letter-spacing=".08em">' + esc(String(it.header).toUpperCase()) + '</text>'; return; }
+    var cy = it.y + it.h / 2, nm = String(it.name || ''), lim = Math.floor((Lw - 34) / 6.5), shown = nm.length > lim ? nm.slice(0, lim - 1) + '…' : nm;
+    g += '<line x1="6" x2="' + (W - 6) + '" y1="' + (it.y + it.h) + '" y2="' + (it.y + it.h) + '" stroke="' + line + '" stroke-width=".6"/>';
+    if(it.idx) g += '<text x="12" y="' + (cy + 4) + '" font-size="10.5" fill="' + dim + '">' + it.idx + '</text>';
+    g += '<text x="' + (it.idx ? 30 : 12) + '" y="' + (cy + 4) + '" font-size="12" fill="' + ink + '" font-weight="' + (it.linked ? 400 : 600) + '">' + esc(shown) + (shown !== nm ? '<title>' + esc(nm) + '</title>' : '') + '</text>';
+    if(it.critical && !it.linked) g += '<rect x="6" y="' + (cy - 7) + '" width="3" height="14" fill="' + COL.crit + '"/>';
+    var dates = dtx(monthStart(s, it.ES)) + (it.EF > it.ES ? ' to ' + dtx(monthEnd(s, it.EF)) : '');
+    if(it.milestone){ var cx = X(it.ES) + pxm / 2; g += '<path d="M' + cx + ',' + (cy - 8) + ' L' + (cx + 8) + ',' + cy + ' L' + cx + ',' + (cy + 8) + ' L' + (cx - 8) + ',' + cy + ' Z" fill="' + (it.critical ? COL.crit : COL.ms) + '"><title>' + esc(it.name) + ': ' + esc(dtx(monthEnd(s, it.ES))) + ' (month ' + it.ES + ')</title></path>';
+      var left = cx + 70 > W; g += '<text x="' + (left ? cx - 13 : cx + 13) + '" y="' + (cy + 4) + '" text-anchor="' + (left ? 'end' : 'start') + '" font-size="10.5" fill="' + dim + '">' + esc(dtx(monthEnd(s, it.ES))) + '</text>'; return; }
+    var bw = Math.max(pxm, (it.EF - it.ES + 1) * pxm), bx = X(it.ES), dur = it.EF - it.ES + 1;
+    g += '<rect x="' + bx + '" y="' + (cy - 8) + '" width="' + bw + '" height="16" rx="2.5" fill="' + (it.color || COL.construction) + '"' + (it.critical ? ' stroke="' + COL.crit + '" stroke-width="2"' : '') + '><title>' + esc(it.name) + ': ' + esc(dates) + ' · months ' + it.ES + ' to ' + it.EF + ' · ' + dur + (dur === 1 ? ' month' : ' months') + (it.float > 0 && !it.linked ? ' · float ' + it.float : '') + (it.critical ? ' · critical path' : '') + '</title></rect>';
+    if(bw >= 34) g += '<text x="' + (bx + bw / 2) + '" y="' + (cy + 4) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">' + dur + ' mo</text>';
+    else g += '<text x="' + (bx + bw + 5) + '" y="' + (cy + 4) + '" font-size="10.5" fill="' + dim + '">' + dur + ' mo</text>';
+    if(it.float > 0 && !it.linked){ var fx = bx + bw; g += '<line x1="' + fx + '" x2="' + (fx + it.float * pxm) + '" y1="' + cy + '" y2="' + cy + '" stroke="' + dim + '" stroke-dasharray="3 2"/><text x="' + (fx + it.float * pxm + 4) + '" y="' + (cy + 4) + '" font-size="10" fill="' + dim + '">+' + it.float + '</text>'; } });
+  /* milestone lines through the grid */
+  ms.forEach(function(m){ var mx = m[3]; g += '<line x1="' + mx + '" x2="' + mx + '" y1="' + (yearY + 14) + '" y2="' + (H - 14) + '" stroke="' + m[2] + '" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>'; });
+  /* dependency arrows */
+  var pos = {}; items.forEach(function(it){ if(it.id) pos[it.id] = it; });
+  items.forEach(function(it){ (it.preds || []).forEach(function(pr){ var q = pos[pr.id]; if(!q || it.header) return; var x1 = X(q.EF) + pxm, y1 = q.y + q.h / 2, x2 = X(it.ES), y2 = it.y + it.h / 2, crit = it.critical && q.critical, elbow = Math.min(x1 + 6, Math.max(x1 + 2, x2 - 6));
+    g += '<path d="M' + x1 + ',' + y1 + ' H' + elbow + ' V' + y2 + ' H' + (x2 - 1) + '" fill="none" stroke="' + (crit ? COL.crit : dim) + '" stroke-width="' + (crit ? 1.3 : 1) + '" marker-end="url(#' + uid + (crit ? 'c' : 'a') + ')"/>'; }); });
   return g + '</svg>';
 }
+function legendHtml(P){ var c = function(col){ return '<span style="display:inline-block;width:10px;height:10px;background:' + col + ';margin-right:4px;vertical-align:-1px"></span>'; }; return '<div class="bk-gs-legend" style="font-size:' + (P ? 10.5 : 12) + 'px;margin-top:6px;opacity:.9"><span style="display:inline-block;width:10px;height:10px;border:2px solid ' + COL.crit + ';margin-right:4px;vertical-align:-3px"></span>Critical path (no float) &nbsp; ' + c(COL.predev) + 'Pre-development &nbsp; ' + c(COL.construction) + 'Construction &nbsp; ' + c(COL.other) + 'Other task &nbsp; ' + c(COL.leaseup) + 'Lease-up &nbsp; ' + c(COL.ops) + 'Stabilised operations &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float (months of slack)</span> &nbsp; &#8594; dependency</div>'; }
 function rowsFor(s, sc, x){
-  var rows = sc.tasks.map(function(t){ return { id:t.id, name:t.name, ES:t.ES, EF:t.EF, float:t.float, critical:t.critical, milestone:t.milestone, preds:t.preds, color:COL[t.group] || COL.construction }; });
-  rows.push({ name:'Certificate of occupancy', ES:sc.co, EF:sc.co, milestone:true, critical:true, linked:true, float:0 });
-  if(sc.luMo > 0) rows.push({ id:'lu', name:'Lease-up (from the lease-up method)', ES:sc.co + 1, EF:sc.co + sc.luMo, critical:true, linked:true, float:0, color:COL.leaseup, preds:[] });
-  rows.push({ name:'Stabilised operations', ES:sc.stab, EF:Math.max(sc.stab, sc.hold), linked:true, float:0, color:COL.ops });
-  rows.push({ name:'Sale / exit', ES:sc.hold, EF:sc.hold, milestone:true, linked:true, float:0 });
+  var rows = [], secName = { predev:'Pre-development', construction:'Construction', other:'Other tasks' }, order = ['predev', 'construction', 'other'];
+  order.forEach(function(gp){ sc.tasks.forEach(function(t, i){ if((t.group || 'construction') !== gp) return; rows.push({ id:t.id, idx:i + 1, sec:secName[gp], name:t.name, ES:t.ES, EF:t.EF, float:t.float, critical:t.critical, milestone:t.milestone, preds:t.preds, color:COL[t.group] || COL.construction, group:t.group }); }); });
+  rows.push({ sec:'Lease-up and operations', name:'Certificate of occupancy', ES:sc.co, EF:sc.co, milestone:true, critical:true, linked:true, float:0 });
+  if(sc.luMo > 0) rows.push({ id:'lu', sec:'Lease-up and operations', name:'Lease-up (from the lease-up method)', ES:sc.co + 1, EF:sc.co + sc.luMo, critical:true, linked:true, float:0, color:COL.leaseup, preds:[] });
+  rows.push({ sec:'Lease-up and operations', name:'Stabilised operations', ES:sc.stab, EF:Math.max(sc.stab, sc.hold), linked:true, float:0, color:COL.ops });
+  rows.push({ sec:'Lease-up and operations', name:'Sale / exit', ES:sc.hold, EF:sc.hold, milestone:true, linked:true, float:0 });
   return rows;
 }
+/* everything the page and the printed summary draw from, in one place */
+window.bkDevGanttModel = function(s){
+  s = s || bkLoad(); if(!isDev(s)) return null; var x = bkDevV09(), on = window.bkDevGanttOn(s), sc, warnings = [];
+  if(on){ sc = window.bkDevGanttSchedule(s, x); warnings = sc.warnings || []; }
+  else { var ph = phaseTasks(s, x); sc = { tasks:ph, co:x.co, luMo:x.luMo, stab:x.stab, hold:x.hold, conStart:x.preMo + 1, preMo:x.preMo, conMo:x.conMo }; }
+  return { s:s, x:x, on:on, sc:sc, warnings:warnings, rows:rowsFor(s, sc, x), svg:ganttSvg, legend:legendHtml, monthStart:function(m){ return monthStart(s, m); }, monthEnd:function(m){ return monthEnd(s, m); }, fmt:dtx };
+};
+function tilesHtml(M){
+  var sc = M.sc, s = M.s, crit = sc.tasks.filter(function(t){ return t.critical; }).length, T = function(k, v, sub){ return '<div class="bk-gs-tile"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (sub ? '<div class="d">' + esc(sub) + '</div>' : '') + '</div>'; };
+  return '<div class="bk-gs-tiles">' + T('To stabilisation', monthsText(sc.stab), dtx(monthStart(s, 1)) + ' to ' + dtx(monthEnd(s, sc.stab)))
+    + T('Pre-development', monthsText(sc.preMo || 0), sc.preMo ? dtx(monthStart(s, 1)) + ' to ' + dtx(monthEnd(s, sc.preMo)) : 'none')
+    + T('Construction', monthsText(sc.conMo || 0), sc.conMo ? dtx(monthStart(s, sc.preMo + 1)) + ' to ' + dtx(monthEnd(s, sc.co)) : 'none')
+    + T('Certificate of occupancy', dtx(monthEnd(s, sc.co)), 'month ' + sc.co)
+    + T('Lease-up', monthsText(sc.luMo || 0), sc.luMo ? dtx(monthStart(s, sc.co + 1)) + ' to ' + dtx(monthEnd(s, sc.stab)) : 'none')
+    + T('Stabilised', dtx(monthStart(s, sc.stab)), 'month ' + sc.stab)
+    + T(M.on ? 'Critical tasks' : 'Schedule from', M.on ? crit + ' of ' + sc.tasks.length : 'phase durations', M.on ? 'zero float to the CO' : 'switch to a task schedule for float') + '</div>'; }
+var css = document.createElement('style'); css.id = 'bk-gs-css'; css.textContent = '.bk-gs-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}.bk-gs-tile{border:1px solid var(--ae-line,#d3dae2);padding:7px 10px;background:var(--ae-cell-ro,transparent)}.bk-gs-tile .k{font-size:10px;letter-spacing:.09em;text-transform:uppercase;opacity:.7;font-weight:700}.bk-gs-tile .v{font-size:16px;font-weight:700;margin:2px 0}.bk-gs-tile .d{font-size:11px;opacity:.75}.bk-gs-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px}'; document.head.appendChild(css);
+
 function phaseTasks(s, x){
   var T = [], preMo = num(x.preMo), conMo = num(x.conMo);
   if(preMo > 0) T.push({ id:'p1', name:'Pre-development', group:'predev', ES:1, EF:preMo, dur:preMo, float:0, critical:true, preds:[], milestone:false, startDate:monthStart(s, 1), endDate:monthEnd(s, preMo) });
@@ -26507,14 +26570,12 @@ var prev = RENDERERS['Dev Schedule'];
 RENDERERS['Dev Schedule'] = function(){
   var o = typeof prev === 'function' ? prev.apply(this, arguments) : { main:'' }, s = bkLoad(); if(!o || typeof o.main !== 'string' || !isDev(s)) return o;
   try {
-    var x = bkDevV09(), on = window.bkDevGanttOn(s), sc, tasks, warnings = [];
-    if(on){ sc = window.bkDevGanttSchedule(s, x); tasks = sc.tasks; warnings = sc.warnings; }
-    else { tasks = phaseTasks(s, x); sc = { tasks:tasks, co:x.co, luMo:x.luMo, stab:x.stab, hold:x.hold, conStart:x.preMo + 1, preMo:x.preMo, conMo:x.conMo }; }
-    var rows = rowsFor(s, sc, x), html;
+    var M = window.bkDevGanttModel(s), x = M.x, on = M.on, sc = M.sc, tasks = sc.tasks, warnings = M.warnings, rows = M.rows, html;
     var head = '<div class="ae-form" style="margin:0 0 8px"><label style="font-weight:600">Schedule</label> <select onchange="bkDevGanttMode(this.value)"><option value="phases"' + (on ? '' : ' selected') + '>Phase durations (pre-development, construction, lease-up)</option><option value="tasks"' + (on ? ' selected' : '') + '>Task schedule (overlaps, dependencies, critical path)</option></select></div>';
     var chartBox = '<div class="tbl-wrap" style="margin-top:16px"><div style="padding:10px 12px"><b>Gantt chart, by month</b>' + head
-      + '<div style="overflow-x:auto" class="bk-scrollable">' + gantt(rows, x, s) + '</div>'
-      + '<div style="font-size:12px;margin-top:6px;opacity:.85"><span style="color:' + COL.crit + '">&#9632;</span> Critical path (no float) &nbsp; <span style="color:' + COL.construction + '">&#9632;</span> Construction &nbsp; <span style="color:' + COL.predev + '">&#9632;</span> Pre-development &nbsp; <span style="color:' + COL.leaseup + '">&#9632;</span> Lease-up &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float</span></div>'
+      + tilesHtml(M) + '<div class="bk-gs-bar"><button type="button" class="bk-btn primary" onclick="bkDevScheduleReport()">Schedule summary (PDF)</button><span style="font-size:12px;opacity:.8">A full printable summary: key dates, the Gantt chart, the task schedule, the funding timeline and what a delay costs.</span></div>'
+      + '<div>' + ganttSvg(rows, sc, s, { id:'pg' }) + '</div>'
+      + legendHtml(false)
       + (on ? '' : '<div class="note-flag" style="margin-top:8px"><span>&#9432;</span><div><b>Drawn from the phase durations.</b> Choose <b>Task schedule</b> to break construction into overlapping tasks with dependencies. It starts as tasks that reproduce these phases exactly, so nothing moves until you edit them.</div></div>') + '</div></div>';
     var table = '';
     if(on){
@@ -27016,6 +27077,154 @@ BASE_ONLY.forEach(function(name){
   var wrapped = function(){ var o = fn.apply(this, arguments), c = caseNow(); if(c === 'Base' || !o || typeof o.main !== 'string') return o;
     o.main = '<div class="bk-casenote" role="note"><b>This page judges the Base case.</b> The case selected in the header is ' + esc(c) + '. Its figures are on Returns, Debt, the Cash Flow Report and the Valuation Report; switch the case to Base to match this page.</div>' + o.main; return o; };
   wrapped.__bkCasePage = true; RENDERERS[name] = wrapped; });
+})();
+</script>
+<script id="bk-devschedulereport">/* ===========================================================================
+   DEVELOPMENT SCHEDULE SUMMARY (PDF). A full, printable account of the schedule: the dates and critical path on a cover page, the Gantt chart, the task table, how the schedule
+   lines up with the money (the monthly funding and who pays), and what a delay costs. It opens as a preview in the app, the same pages that print, with Print / Save PDF
+   (letter, landscape). Every figure is read from the engine's own calls (the schedule, bkDevV09, bkDevFundingV10, bkMonthlyReturns); the delay table re-runs the engine with the
+   schedule changed, it does not estimate. The schedule shown is the deal as entered (Base): a selected case is a view and is mentioned, not applied.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof window.bkDevGanttModel !== 'function') return;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+function money(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
+function mil(v){ return !isFinite(v) ? '—' : '$' + (v / 1e6).toFixed(2) + 'M'; }
+function pc(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
+function mo(n){ return n + (n === 1 ? ' month' : ' months'); }
+var W = 979, H = 736, NAVY = '#14283d', GOLD = '#b8892b', GREY = '#6b7a89', LINE = '#d3dae2', BG = '#f3f6f9';
+
+var CSS = '#bk-sr{position:fixed;inset:0;z-index:2300;background:#58636f;overflow:auto;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:' + NAVY + '}'
+ + '#bk-sr .sr-bar{position:sticky;top:0;z-index:2;display:flex;gap:10px;align-items:center;padding:10px 16px;background:#14283d;color:#fff}#bk-sr .sr-bar b{font-size:14px}#bk-sr .sr-bar .sp{flex:1}'
+ + '#bk-sr .sr-btn{font:inherit;font-weight:600;font-size:13px;padding:7px 14px;border-radius:5px;border:1px solid #6b7f94;background:transparent;color:#fff;cursor:pointer}#bk-sr .sr-btn.pri{background:#2f6fb5;border-color:#2f6fb5}'
+ + '#bk-sr .sr-pages{padding:18px 0 40px;transform-origin:top center}'
+ + '#bk-sr .sr-page{position:relative;box-sizing:border-box;width:' + W + 'px;height:' + H + 'px;margin:0 auto 18px;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.35);padding:0;overflow:hidden;display:flex;flex-direction:column}'
+ + '#bk-sr .sr-h{display:flex;align-items:center;justify-content:space-between;padding:12px 26px 9px;border-bottom:2px solid ' + NAVY + '}#bk-sr .sr-h .br{display:flex;align-items:center;gap:9px}#bk-sr .sr-h .br svg{width:30px;height:30px}#bk-sr .sr-h b{display:block;font-size:13px;line-height:1.1}#bk-sr .sr-h span{font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:' + GREY + '}#bk-sr .sr-h .rt{text-align:right;font-size:9.5px;color:' + GREY + ';line-height:1.4}'
+ + '#bk-sr .sr-body{flex:1;padding:14px 26px 6px;overflow:hidden}#bk-sr .sr-f{display:flex;justify-content:space-between;padding:6px 26px 9px;border-top:1px solid ' + LINE + ';font-size:8.5px;color:' + GREY + '}'
+ + '#bk-sr h1{font-size:23px;margin:2px 0 1px;letter-spacing:-.01em}#bk-sr h2{font-size:15px;margin:0 0 3px;letter-spacing:-.005em}#bk-sr h3{font-size:10.5px;margin:12px 0 5px;letter-spacing:.09em;text-transform:uppercase;color:' + NAVY + '}#bk-sr .sub{font-size:11px;color:' + GREY + ';margin-bottom:8px}'
+ + '#bk-sr .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}#bk-sr .tile{border:1px solid ' + LINE + ';border-top:3px solid ' + NAVY + ';padding:7px 10px;background:' + BG + '}#bk-sr .tile .k{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:' + GREY + ';font-weight:700}#bk-sr .tile .v{font-size:17px;font-weight:700;margin:2px 0}#bk-sr .tile .d{font-size:9.5px;color:' + GREY + '}'
+ + '#bk-sr table{width:100%;border-collapse:collapse;font-size:10px}#bk-sr th{background:' + NAVY + ';color:#fff;text-align:left;font-weight:600;padding:5px 7px;font-size:9.5px}#bk-sr th.r,#bk-sr td.r{text-align:right}#bk-sr td{padding:4px 7px;border-bottom:1px solid ' + LINE + '}#bk-sr tr.tot td{font-weight:700;background:' + BG + ';border-top:1px solid ' + NAVY + '}'
+ + '#bk-sr .cols{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}#bk-sr ol{margin:0;padding-left:18px;font-size:10.5px;line-height:1.55}#bk-sr .note{font-size:9.5px;color:' + GREY + ';line-height:1.5;margin-top:6px}#bk-sr li{margin-bottom:3px}'
+ + '#bk-sr .crit{color:#b3392c;font-weight:700}#bk-sr .chip{display:inline-block;padding:1px 6px;border-radius:2px;font-size:8.5px;font-weight:700;letter-spacing:.05em}#bk-sr .chip.c{background:#b3392c;color:#fff}'
+ + '@media print{html.bk-sr-open body>*:not(#bk-sr){display:none !important}html.bk-sr-open,html.bk-sr-open body{background:#fff !important;height:auto !important;overflow:visible !important}#bk-sr{position:static !important;inset:auto !important;background:#fff !important;overflow:visible !important}#bk-sr .sr-bar{display:none !important}#bk-sr .sr-pages{padding:0 !important;zoom:1 !important}#bk-sr .sr-page{margin:0 !important;box-shadow:none !important;break-after:page;page-break-after:always}#bk-sr .sr-page:last-child{break-after:auto;page-break-after:auto}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
+
+function logo(){ return safe(function(){ var g = document.querySelector('.brand-mark .glyph svg'); return g ? g.outerHTML.replace(/id="(pl[a-z]+\d)"/g, 'id="sr$1"').replace(/url\(#(pl[a-z]+\d)\)/g, 'url(#sr$1)') : ''; }, ''); }
+function page(body, s, title){ return '<section class="sr-page"><header class="sr-h"><div class="br">' + logo() + '<div><b>Punchlist Capital</b><span>Real Estate Investments</span></div></div><div class="rt"><b style="font-size:11px;color:' + NAVY + '">' + esc(s.name || 'Untitled') + '</b><br>Development schedule summary · ' + esc(title) + '</div></header><div class="sr-body">' + body + '</div><footer class="sr-f"><span>Punchlist Capital · Beta · ' + esc(s.name || '') + ' · figures from the underwriting model; check against your own</span><span>Page {{P}} of {{N}}</span></footer></section>'; }
+
+/* ---- pieces ---- */
+function tiles(M){ var sc = M.sc, s = M.s, d = M.fmt, ms = M.monthStart, me = M.monthEnd, crit = sc.tasks.filter(function(t){ return t.critical; }).length;
+  var T = function(k, v, sub){ return '<div class="tile"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div><div class="d">' + esc(sub || '') + '</div></div>'; };
+  return '<div class="tiles">' + T('To stabilisation', mo(sc.stab), d(ms(1)) + ' to ' + d(me(sc.stab))) + T('Pre-development', mo(sc.preMo || 0), sc.preMo ? d(ms(1)) + ' to ' + d(me(sc.preMo)) : 'none') + T('Construction', mo(sc.conMo || 0), sc.conMo ? d(ms(sc.preMo + 1)) + ' to ' + d(me(sc.co)) : 'none') + T('Certificate of occupancy', d(me(sc.co)), 'month ' + sc.co)
+    + T('Lease-up', mo(sc.luMo || 0), sc.luMo ? d(ms(sc.co + 1)) + ' to ' + d(me(sc.stab)) : 'none') + T('Stabilised', d(ms(sc.stab)), 'month ' + sc.stab) + T('Sale / exit', d(me(sc.hold)), 'month ' + sc.hold + ' · ' + (sc.hold / 12).toFixed(1) + ' years') + T(M.on ? 'Critical tasks' : 'Schedule from', M.on ? crit + ' of ' + sc.tasks.length : 'phase durations', M.on ? 'zero float to the CO' : 'a task schedule gives float') + '</div>'; }
+function phaseBar(M){ var sc = M.sc, s = M.s, hold = Math.max(sc.hold, sc.stab + 1), w = 927, X = function(m){ return 1 + (m - 1) / hold * w; }, d = M.fmt, me = M.monthEnd;
+  var segs = [['Pre-development', 1, sc.preMo, '#7a8da1'], ['Construction', sc.preMo + 1, sc.co, '#2E6E6E'], ['Lease-up', sc.co + 1, Math.max(sc.co, sc.stab - 1), '#2f5f9a'], ['Stabilised operations', sc.stab, hold, '#9aa7b4']].filter(function(g){ return g[2] >= g[1] && g[2] > 0; }), svg = '<svg viewBox="0 0 930 66" width="100%" style="display:block"><title>Phases by month</title>';
+  segs.forEach(function(g){ var x0 = X(g[1]), w2 = X(g[2] + 1) - x0; svg += '<rect x="' + x0 + '" y="2" width="' + w2 + '" height="26" fill="' + g[3] + '"/>'; var nm = g[0] === 'Pre-development' && w2 < 120 ? 'Pre-dev' : g[0]; if(w2 > nm.length * 6.6 + 10) svg += '<text x="' + (x0 + w2 / 2) + '" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">' + esc(nm) + '</text>'; else if(w2 > 18) svg += '<text x="' + (x0 + w2 / 2) + '" y="19" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">' + (g[2] - g[1] + 1) + '</text>';
+    svg += '<text x="' + (x0 + 2) + '" y="43" font-size="9.5" fill="' + NAVY + '" font-weight="700">' + esc(d(M.monthStart(g[1]))) + '</text><text x="' + (x0 + 2) + '" y="55" font-size="9" fill="' + GREY + '">' + (g[0] === 'Lease-up' ? sc.luMo : g[2] - g[1] + 1) + ' mo · M' + g[1] + (g[2] > g[1] ? '–' + (g[0] === 'Lease-up' ? sc.stab : g[2]) : '') + '</text>'; });
+  return svg + '</svg>'; }
+function moneyTiles(M){ var f = fundingData(M), dr = M.delay, base = dr && dr[0] && dr[0].r, one = dr && dr[1] && dr[1].r; if(!f || !base) return '';
+  var T = function(k, v, sub){ return '<div class="tile" style="border-top-color:' + GOLD + '"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div><div class="d">' + esc(sub || '') + '</div></div>'; }, ltc = num(f.levered) ? num(f.commit) / num(f.levered) : null;
+  return '<div class="tiles" style="margin-top:0">' + T('All-in project cost', mil(f.levered), 'including capitalised interest and fees') + T('Equity required', mil(f.equityTotal), num(f.levered) ? pc(num(f.equityTotal) / num(f.levered)) + ' of cost' : '') + T('Construction loan', mil(f.commit), ltc != null ? pc(ltc) + ' of cost · ' + pc(num(f.rate)) : '') + T('Levered IRR / multiple', pc(base.irr) + ' · ' + (isFinite(base.moic) ? base.moic.toFixed(2) + 'x' : '—'), one ? 'a month of construction delay: ' + ((one.irr - base.irr) * 1e4 >= 0 ? '+' : '−') + Math.abs(Math.round((one.irr - base.irr) * 1e4)) + ' bps' : 'as underwritten') + '</div>'; }
+function cover(M){ var s = M.s, sc = M.sc, d = M.fmt, ms = M.monthStart, me = M.monthEnd, units = num(s.units), gsf = num(s.gsf);
+  var crit = sc.tasks.filter(function(t){ return t.critical; }).sort(function(a, b){ return a.ES - b.ES; });
+  var capN = 7, more = crit.length > capN + 1 ? crit.length - capN : 0, shown = more ? crit.slice(0, capN) : crit, path = shown.map(function(t){ return '<li><b>' + esc(t.name) + '</b> <span style="color:' + GREY + '">' + esc(d(ms(t.ES))) + ' – ' + esc(d(me(t.EF))) + ' · ' + t.dur + ' mo</span></li>'; }).join('') + (more ? '<li style="color:' + GREY + '">and ' + more + ' more critical tasks, in the task table</li>' : '') + '<li><b>Certificate of occupancy</b> <span style="color:' + GREY + '">' + esc(d(me(sc.co))) + ' · month ' + sc.co + '</span></li>' + (sc.luMo > 0 ? '<li><b>Lease-up</b> <span style="color:' + GREY + '">' + mo(sc.luMo) + ' · to stabilisation ' + esc(d(ms(sc.stab))) + '</span></li>' : '');
+  var floats = sc.tasks.filter(function(t){ return !t.critical && t.float > 0; });
+  var dates = [['Closing (analysis starts)', 1, ms(1)], ['Pre-development ends', sc.preMo, sc.preMo ? me(sc.preMo) : null], ['Construction starts', sc.preMo + 1, ms(sc.preMo + 1)], ['Certificate of occupancy', sc.co, me(sc.co)], ['Lease-up starts', sc.co + 1, ms(sc.co + 1)], ['Stabilised', sc.stab, ms(sc.stab)], ['Sale / exit', sc.hold, me(sc.hold)]].filter(function(r){ return r[2]; });
+  var dt = '<table><thead><tr><th>Milestone</th><th>Date</th><th class="r">Month</th><th class="r">Years from closing</th></tr></thead><tbody>' + dates.map(function(r){ return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(M.fmt(r[2])) + '</td><td class="r">' + r[1] + '</td><td class="r">' + ((r[1] - 1) / 12).toFixed(1) + '</td></tr>'; }).join('') + '</tbody></table>';
+  return '<h1>' + esc(s.name || 'Untitled') + '</h1><div class="sub">' + esc([s.location, s.propertyType, units ? units + ' units' : '', gsf ? Math.round(gsf).toLocaleString('en-US') + ' SF' : '', 'Closing ' + (s.closing || '')].filter(Boolean).join('  ·  ')) + '</div>' + tiles(M) + moneyTiles(M)
+    + '<h3>The schedule at a glance</h3>' + phaseBar(M) + '<div class="cols" style="margin-top:6px"><div><h3 style="margin-top:6px">Critical path</h3><ol>' + path + '</ol>' + (floats.length ? '<div class="note"><b>With float:</b> ' + floats.slice(0, 6).map(function(t){ return esc(t.name) + ' (' + t.float + ' mo)'; }).join('; ') + (floats.length > 6 ? '; and ' + (floats.length - 6) + ' more' : '') + '. These can slip by their float without moving the certificate of occupancy.</div>' : (M.on ? '<div class="note">Every task is on the critical path: any slip moves the certificate of occupancy.</div>' : '<div class="note">The schedule is drawn from the phase durations; switch Dev Schedule to a task schedule to see float and the critical path.</div>')) + '</div><div><h3 style="margin-top:6px">Key dates</h3>' + dt + '</div></div>'; }
+function ganttPages(M){
+  var rows = M.rows, chunks = [], cur = [], h = 0, sec = null, BUDGET = 400;
+  rows.forEach(function(r){ var add = 27 + (r.sec !== sec ? 22 : 0); if(cur.length && h + add > BUDGET){ chunks.push(cur); cur = []; h = 0; sec = null; add = 27 + 22; } cur.push(r); h += add; sec = r.sec; });
+  if(cur.length) chunks.push(cur);
+  if(chunks.length > 1 && chunks[chunks.length - 1].length < 3){ var tail = chunks.pop(); chunks[chunks.length - 1] = chunks[chunks.length - 1].concat(tail); }
+  return chunks.map(function(ch, k){ return '<h2>Schedule (Gantt chart)' + (chunks.length > 1 ? ' (' + (k + 1) + ' of ' + chunks.length + ')' : '') + '</h2><div class="sub">Months count from closing. Red outline: the critical path; dashed tails: float. Dates are month ends.' + (chunks.length > 1 ? ' The task rows are split over ' + chunks.length + ' pages; the dates line up.' : '') + '</div>' + M.svg(ch, M.sc, M.s, { print:true, W:931, id:'sr' + k }) + M.legend(true); });
+}
+function predText(M, t){ var T = M.sc.tasks; return (t.preds || []).map(function(p){ var k = T.findIndex(function(q){ return q.id === p.id; }); return (k + 1) + (p.lag ? (p.lag > 0 ? ' +' : ' ') + p.lag : ''); }).join(', ') || '—'; }
+function taskRows(M){
+  var d = M.fmt, ms = M.monthStart, me = M.monthEnd, sc = M.sc, rows = sc.tasks.map(function(t, i){ return { n:i + 1, name:t.name, grp:{ predev:'Pre-development', construction:'Construction', other:'Other' }[t.group] || (t.group || ''), s:t.ES, e:t.EF, dur:t.dur || (t.EF - t.ES + 1), fl:t.float, pr:predText(M, t), crit:t.critical }; });
+  rows.push({ n:'', name:'Certificate of occupancy', grp:'Milestone', s:sc.co, e:sc.co, dur:1, fl:0, pr:'—', crit:true, linked:true });
+  if(sc.luMo > 0) rows.push({ n:'', name:'Lease-up (from the lease-up method)', grp:'Lease-up', s:sc.co + 1, e:sc.co + sc.luMo, dur:sc.luMo, fl:0, pr:'—', crit:true, linked:true });
+  rows.push({ n:'', name:'Stabilised operations', grp:'Operations', s:sc.stab, e:Math.max(sc.stab, sc.hold), dur:Math.max(sc.stab, sc.hold) - sc.stab + 1, fl:0, pr:'—', linked:true }, { n:'', name:'Sale / exit', grp:'Milestone', s:sc.hold, e:sc.hold, dur:1, fl:0, pr:'—', linked:true });
+  return rows.map(function(r){ return '<tr><td>' + r.n + '</td><td' + (r.crit ? ' class="crit"' : '') + '>' + esc(r.name) + '</td><td>' + esc(r.grp) + '</td><td>' + esc(d(ms(r.s))) + ' <span style="color:' + GREY + '">M' + r.s + '</span></td><td>' + esc(d(me(r.e))) + ' <span style="color:' + GREY + '">M' + r.e + '</span></td><td class="r">' + r.dur + '</td><td class="r">' + (r.linked ? '—' : r.fl) + '</td><td>' + esc(r.pr) + '</td><td>' + (r.crit ? '<span class="chip c">CRITICAL</span>' : '') + '</td></tr>'; });
+}
+function tablePages(M){ var rows = taskRows(M), per = 15, out = [], head = '<thead><tr><th>#</th><th>Task</th><th>Group</th><th>Start</th><th>Finish</th><th class="r">Months</th><th class="r">Float</th><th>Predecessors</th><th></th></tr></thead>';
+  for(var i = 0; i < rows.length; i += per) out.push('<h2>Task schedule' + (rows.length > per ? ' (' + (Math.floor(i / per) + 1) + ' of ' + Math.ceil(rows.length / per) + ')' : '') + '</h2><div class="sub">Predecessors are task numbers; a number with + or − is a lag or an overlap in months (finish to start). Float is the months a task can slip without moving the certificate of occupancy.</div><table>' + head + '<tbody>' + rows.slice(i, i + per).join('') + '</tbody></table>' + (i + per >= rows.length ? '<div class="note">' + (M.on ? 'The first construction task’s start sets the pre-development months and the span of the construction tasks sets the construction months; the draw curves, the construction facility, the certificate of occupancy and the lease-up all move with them. The lease-up period comes from the lease-up method.' : 'Drawn from the phase durations entered on the deal.') + '</div>' : ''));
+  return out; }
+/* ---- funding ---- */
+function fundingData(M){ var f = safe(function(){ return bkDevFundingV10(); }, null); return f && f.months ? f : null; }
+function barChart(months, W2, H2, upTo){
+  var L = 54, B = 22, T = 8, pw = W2 - L - 8, ph = H2 - B - T, n = Math.min(upTo, months.length), keys = [['land', 'Land and closing', '#8a6d2f'], ['hard', 'Hard costs', '#2E6E6E'], ['soft', 'Soft and pre-development', '#7a8da1'], ['fin', 'Fees, lease-up costs', '#2f5f9a']], tot = [], mx = 0;
+  for(var i = 0; i < n; i++){ var r = months[i], v = { land:num(r.land), hard:num(r.hard), soft:num(r.soft), fin:num(r.fees) + num(r.lease) }; tot.push(v); mx = Math.max(mx, v.land + v.hard + v.soft + v.fin); }
+  mx = mx || 1; var step = Math.pow(10, Math.floor(Math.log10(mx))), top = Math.ceil(mx / step) * step, bw = pw / n, svg = '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" width="100%" style="display:block"><title>Monthly funding requirement</title>';
+  for(var k = 0; k <= 4; k++){ var yv = top * k / 4, y = T + ph - ph * k / 4; svg += '<line x1="' + L + '" x2="' + (W2 - 8) + '" y1="' + y + '" y2="' + y + '" stroke="' + LINE + '"/><text x="' + (L - 5) + '" y="' + (y + 3) + '" text-anchor="end" font-size="8.5" fill="' + GREY + '">$' + (yv / 1e6).toFixed(1) + 'M</text>'; }
+  tot.forEach(function(v, i){ var y = T + ph, x = L + i * bw; keys.forEach(function(kk){ var h = v[kk[0]] / top * ph; if(h > 0){ y -= h; svg += '<rect x="' + (x + 0.5) + '" y="' + y + '" width="' + Math.max(1, bw - 1) + '" height="' + h + '" fill="' + kk[2] + '"/>'; } }); if((i + 1) % (n > 40 ? 6 : 3) === 0 || i === 0) svg += '<text x="' + (x + bw / 2) + '" y="' + (H2 - 8) + '" text-anchor="middle" font-size="8.5" fill="' + GREY + '">' + (i + 1) + '</text>'; });
+  return { svg:svg + '</svg>', legend:keys }; }
+function cumChart(months, W2, H2, upTo, marks){
+  var L = 54, B = 22, T = 8, pw = W2 - L - 8, ph = H2 - B - T, n = Math.min(upTo, months.length), eq = [], loan = [], mx = 0, ce = 0;
+  for(var i = 0; i < n; i++){ ce += num(months[i].eq) + num(months[i].overflow); eq.push(ce); loan.push(num(months[i].end)); mx = Math.max(mx, ce + num(months[i].end)); }
+  mx = mx || 1; var step = Math.pow(10, Math.floor(Math.log10(mx))), top = Math.ceil(mx / step) * step, X = function(i){ return L + (i + 0.5) * pw / n; }, Y = function(v){ return T + ph - v / top * ph; }, svg = '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" width="100%" style="display:block"><title>Cumulative funding</title>';
+  for(var k = 0; k <= 4; k++){ var y = T + ph - ph * k / 4; svg += '<line x1="' + L + '" x2="' + (W2 - 8) + '" y1="' + y + '" y2="' + y + '" stroke="' + LINE + '"/><text x="' + (L - 5) + '" y="' + (y + 3) + '" text-anchor="end" font-size="8.5" fill="' + GREY + '">$' + (top * k / 4 / 1e6).toFixed(0) + 'M</text>'; }
+  var pe = '', pl = ''; for(var j = 0; j < n; j++){ pe += (j ? ' L' : 'M') + X(j) + ',' + Y(eq[j]); pl += (j ? ' L' : 'M') + X(j) + ',' + Y(eq[j] + loan[j]); }
+  svg += '<path d="' + pl + ' L' + X(n - 1) + ',' + Y(eq[n - 1]) + ' ' + eq.map(function(v, j){ return 'L' + X(n - 1 - j) + ',' + Y(eq[n - 1 - j]); }).join(' ') + ' Z" fill="#2f5f9a" opacity=".82"/><path d="' + pe + ' L' + X(n - 1) + ',' + Y(0) + ' L' + X(0) + ',' + Y(0) + ' Z" fill="#8a6d2f" opacity=".85"/>';
+  (marks || []).forEach(function(m){ if(m[1] > n) return; var x = X(m[1] - 1); svg += '<line x1="' + x + '" x2="' + x + '" y1="' + T + '" y2="' + (T + ph) + '" stroke="' + m[2] + '" stroke-dasharray="4 3"/><text x="' + (x + 3) + '" y="' + (T + 10 + (m[3] || 0)) + '" font-size="9" font-weight="700" fill="' + m[2] + '">' + esc(m[0]) + '</text>'; });
+  for(var q = 0; q < n; q++) if((q + 1) % (n > 40 ? 6 : 3) === 0 || q === 0) svg += '<text x="' + X(q) + '" y="' + (H2 - 8) + '" text-anchor="middle" font-size="8.5" fill="' + GREY + '">' + (q + 1) + '</text>';
+  return svg + '</svg>'; }
+function fundingPage(M){
+  var f = fundingData(M), sc = M.sc, d = M.fmt; if(!f) return '<h2>Schedule and funding</h2><div class="sub">The funding timeline is not available for this deal.</div>';
+  var upTo = Math.min(f.months.length, sc.stab + 2), bar = barChart(f.months, 931, 150, upTo), sum = function(a, b, k){ var t = 0; for(var i = Math.max(1, a); i <= Math.min(b, f.months.length); i++){ var r = f.months[i - 1]; t += k === 'eq' ? num(r.eq) + num(r.overflow) : num(r[k]); } return t; };
+  var ph = [['Pre-development', 1, sc.preMo], ['Construction', sc.preMo + 1, sc.co], ['Lease-up', sc.co + 1, sc.stab]].filter(function(p){ return p[2] >= p[1] && p[2] > 0; }), allU = 0, allE = 0, allL = 0, allI = 0;
+  var rows = ph.map(function(p){ var u = sum(p[1], p[2], 'need'), e = sum(p[1], p[2], 'eq'), l = sum(p[1], p[2], 'loanDraw'), ci = sum(p[1], p[2], 'capInt'); allU += u; allE += e; allL += l; allI += ci; return '<tr><td>' + esc(p[0]) + '</td><td>' + esc(d(M.monthStart(p[1]))) + ' – ' + esc(d(M.monthEnd(p[2]))) + '</td><td class="r">' + money(u) + '</td><td class="r">' + money(e) + '</td><td class="r">' + money(l) + '</td><td class="r">' + money(ci) + '</td></tr>'; }).join('');
+  var firstLoan = f.months.findIndex(function(r){ return num(r.loanDraw) > 0; }) + 1, eqDone = 0; f.months.forEach(function(r, i){ if(num(r.eq) + num(r.overflow) > 1) eqDone = i + 1; });
+  var marks = [['CO', sc.co, '#b3392c', 0], ['Stabilised', sc.stab, '#14283d', 12]], ev = [['Last equity contribution', eqDone], ['First construction-loan draw', firstLoan], ['Certificate of occupancy', sc.co], ['Stabilisation (the permanent loan takes out construction)', sc.stab]].filter(function(e){ return e[1] > 0; });
+  return '<h2>Schedule and funding</h2><div class="sub">When the money goes out, and who pays. Months count from closing.</div><h3 style="margin-top:6px">Monthly funding requirement</h3>' + bar.svg + '<div class="note" style="margin:2px 0 4px">' + bar.legend.map(function(k){ return '<span style="display:inline-block;width:9px;height:9px;background:' + k[2] + ';margin-right:3px"></span>' + esc(k[1]); }).join(' &nbsp; ') + '</div>'
+    + '<h3 style="margin-top:6px">Cumulative funding: equity and construction loan</h3>' + cumChart(f.months, 931, 150, upTo, marks) + '<div class="note" style="margin:2px 0 4px"><span style="display:inline-block;width:9px;height:9px;background:#8a6d2f;margin-right:3px"></span>Equity &nbsp; <span style="display:inline-block;width:9px;height:9px;background:#2f5f9a;margin-right:3px"></span>Construction loan balance (with capitalised interest)</div>'
+    + '<div class="cols" style="grid-template-columns:1.6fr 1fr;margin-top:2px"><div><table><thead><tr><th>Phase</th><th>Dates</th><th class="r">Uses</th><th class="r">Equity</th><th class="r">Loan draws</th><th class="r">Interest capitalised</th></tr></thead><tbody>' + rows + '<tr class="tot"><td>Through stabilisation</td><td></td><td class="r">' + money(allU) + '</td><td class="r">' + money(allE) + '</td><td class="r">' + money(allL) + '</td><td class="r">' + money(allI) + '</td></tr></tbody></table></div><div><table><thead><tr><th>Funding event</th><th class="r">Month</th><th class="r">Date</th></tr></thead><tbody>' + ev.map(function(e){ return '<tr><td>' + esc(e[0]) + '</td><td class="r">' + e[1] + '</td><td class="r" style="white-space:nowrap">' + esc(d(M.monthEnd(e[1]))) + '</td></tr>'; }).join('') + '</tbody></table></div></div>'; }
+/* ---- what a delay costs (the engine is re-run, nothing is estimated) ---- */
+function delayRows(M){
+  var x0 = M.x, con = Math.round(num(M.s.constructionMonths) || x0.conMo), lu = Math.round(x0.luMo), run = function(ov){ return safe(function(){ return window.bkRunWith(ov, function(){ var x = bkDevV09(), f = bkDevFundingV10(), m = bkMonthlyReturns(); return { co:x.co, stab:x.stab, irr:m.irr, moic:m.moic, eq:num(f.equityTotal), ci:num(f.actualCapInt), profit:num(m.dist) - num(m.contrib) }; }); }, null); };
+  var sc = [['As underwritten', {}]]; [1, 3, 6].forEach(function(k){ sc.push(['Construction +' + k + (k === 1 ? ' month' : ' months'), { constructionMonths:con + k }]); });
+  if(lu > 0){ sc.push(['Lease-up 25% slower', { leaseupMonths:Math.round(lu * 1.25) }]); sc.push(['Lease-up 50% slower', { leaseupMonths:Math.round(lu * 1.5) }]); sc.push(['Construction +3 months and lease-up 25% slower', { constructionMonths:con + 3, leaseupMonths:Math.round(lu * 1.25) }]); }
+  var out = sc.map(function(r){ return { name:r[0], r:run(r[1]) }; }); return out; }
+function delayPage(M){
+  var rows = M.delay || delayRows(M), base = rows[0] && rows[0].r, d = M.fmt, s = M.s; if(!base) return '<h2>What a delay costs</h2><div class="sub">The delay runs are not available for this deal.</div>';
+  var body = rows.map(function(row, i){ var r = row.r; if(!r) return ''; var dI = (r.irr - base.irr) * 1e4; return '<tr' + (i === 0 ? ' class="tot"' : '') + '><td>' + esc(row.name) + '</td><td class="r">' + esc(d(M.monthEnd(r.co))) + '</td><td class="r">' + esc(d(M.monthStart(r.stab))) + '</td><td class="r">' + pc(r.irr) + '</td><td class="r">' + (i ? (dI >= 0 ? '+' : '−') + Math.abs(Math.round(dI)) + ' bps' : '—') + '</td><td class="r">' + (isFinite(r.moic) ? r.moic.toFixed(2) + 'x' : '—') + '</td><td class="r">' + money(r.eq) + '</td><td class="r">' + money(r.ci) + '</td></tr>'; }).join('');
+  var one = rows[1] && rows[1].r, line = one ? 'Each month of construction delay costs about <b>' + Math.abs(Math.round((one.irr - base.irr) * 1e4)) + ' bps</b> of levered IRR and about <b>' + money(one.ci - base.ci) + '</b> of capitalised interest on this deal' + (one.eq - base.eq > 10000 ? ', and raises the equity required by <b>' + money(one.eq - base.eq) + '</b>' : '') + '.' : '';
+  var dn = ['downConstructionMoDelta', 'downAbsorptionFactor', 'downHardCostVariance'].some(function(k){ return num(s[k]) !== 0; });
+  return '<h2>What a delay costs</h2><div class="sub">The engine is re-run for each row with only the schedule item named changed; everything else is as underwritten.</div><table><thead><tr><th>Scenario</th><th class="r">Certificate of occupancy</th><th class="r">Stabilised</th><th class="r">Levered IRR</th><th class="r">vs as underwritten</th><th class="r">Multiple</th><th class="r">Equity required</th><th class="r">Interest capitalised</th></tr></thead><tbody>' + body + '</tbody></table><div class="note" style="font-size:11px;color:' + NAVY + ';margin-top:8px">' + line + '</div>'
+    + (dn ? '<div class="note">The Downside case on this deal already carries a schedule stress (' + esc([num(s.downConstructionMoDelta) ? 'construction +' + num(s.downConstructionMoDelta) + ' months' : '', num(s.downAbsorptionFactor) ? 'lease-up ' + (num(s.downAbsorptionFactor) > 0 ? 'slower' : 'faster') + ' by ' + Math.abs(Math.round(num(s.downAbsorptionFactor) * 100)) + '%' : '', num(s.downHardCostVariance) ? 'hard-cost contingency +' + Math.round(num(s.downHardCostVariance) * 100) + ' points' : ''].filter(Boolean).join(', ')) + '), set on Deal Underwrite under “What each case changes”. The rows above show the same kinds of delay one at a time.</div>' : '') + notes(M); }
+function notes(M){ var s = M.s, x = M.x, units = safe(function(){ return typeof window.bkDevUnitOn === 'function' && window.bkDevUnitOn(s); }, false);
+  var curves = [['Hard costs', s.hardCurveMethod, s.hardCurveSteepness], ['Soft costs during construction', s.softConMethod, s.softConSteepness], ['Soft costs before construction', s.softPreMethod], ['Soft costs during lease-up', s.softLeaseMethod]].filter(function(c){ return c[1]; }).map(function(c){ return c[0] + ': ' + c[1] + (c[2] && /s-?curve/i.test(c[1]) ? ' (steepness ' + c[2] + ')' : ''); }).join('; ');
+  return '<h3>Basis</h3><ul style="margin:0;padding-left:18px;font-size:10px;line-height:1.6"><li>' + (M.on ? 'The schedule is a <b>task schedule</b>: tasks with start, duration and finish-to-start dependencies; a forward and a backward pass give each task its dates, float and whether it is critical.' : 'The schedule is drawn from the <b>phase durations</b> entered on the deal (pre-development, construction, lease-up).') + '</li><li>Months count from the closing month (month 1). Dates are month ends; the certificate of occupancy is the end of its month.</li>'
+    + '<li>The schedule drives the model: pre-development and construction months, the draw curves' + (curves ? ' (' + esc(curves) + ')' : '') + ', the construction facility, the certificate of occupancy and the start of lease-up.</li><li>Lease-up is ' + (units ? 'built <b>by unit type</b> from the unit mix' : 'a <b>simple ramp</b>') + ' and runs ' + mo(Math.round(x.luMo)) + ' from the certificate of occupancy to stabilisation.</li><li>The schedule shown is the deal as entered. A selected case (Upside, Downside) is a view of the returns and does not move these dates.</li></ul>'
+    + '<div class="note" style="margin-top:8px">Prepared ' + new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) + '. Beta: figures come from the underwriting model; check them against your own before relying on them.</div>'; }
+
+/* ---- assembling ---- */
+function build(s){
+  var M = window.bkDevGanttModel(s); if(!M) return null; M.delay = delayRows(M); var pages = [], title = function(t){ return t; };
+  pages.push(page(cover(M), s, 'Summary'));
+  ganttPages(M).forEach(function(g){ pages.push(page(g, s, 'Gantt chart')); });
+  tablePages(M).forEach(function(t){ pages.push(page(t, s, 'Task schedule')); });
+  pages.push(page(fundingPage(M), s, 'Schedule and funding'));
+  pages.push(page(delayPage(M), s, 'What a delay costs'));
+  var N = pages.length; return pages.map(function(p, i){ return p.replace('{{P}}', String(i + 1)).replace('{{N}}', String(N)); });
+}
+window.bkDevScheduleReportPages = function(s){ s = s || bkLoad(); return build(s); };
+window.bkDevScheduleReportClose = function(){ var o = document.getElementById('bk-sr'); if(o) o.remove(); ['bk-sr-page'].forEach(function(id){ var e = document.getElementById(id); if(e) e.remove(); }); document.documentElement.classList.remove('bk-sr-open'); document.removeEventListener('keydown', onKey, true); };
+function onKey(e){ if(e.key === 'Escape'){ e.preventDefault(); window.bkDevScheduleReportClose(); } }
+window.bkDevScheduleReportPrint = function(){ window.print(); };
+window.bkDevScheduleReport = function(){
+  var s = bkLoad(); if(!/develop/i.test(String(s.dealType || ''))) return; window.bkDevScheduleReportClose();
+  var pages = build(s); if(!pages) return;
+  var st = document.getElementById('bk-sr-css'); if(!st){ st = document.createElement('style'); st.id = 'bk-sr-css'; st.textContent = CSS; document.head.appendChild(st); }
+  var pg = document.createElement('style'); pg.id = 'bk-sr-page'; pg.textContent = '@page{size:letter landscape;margin:0.4in}'; document.head.appendChild(pg);
+  var o = document.createElement('div'); o.id = 'bk-sr'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-label', 'Development schedule summary');
+  o.innerHTML = '<div class="sr-bar"><b>Development schedule summary</b><span style="opacity:.75;font-size:12px">' + pages.length + ' pages · letter, landscape</span><span class="sp"></span><button type="button" class="sr-btn pri" onclick="bkDevScheduleReportPrint()">Print / Save PDF</button><button type="button" class="sr-btn" onclick="bkDevScheduleReportClose()">Close</button></div><div class="sr-pages">' + pages.join('') + '</div>';
+  document.body.appendChild(o); document.documentElement.classList.add('bk-sr-open'); document.addEventListener('keydown', onKey, true);
+  var z = Math.min(1, (window.innerWidth - 24) / (W + 4)); if(z < 1) o.querySelector('.sr-pages').style.zoom = String(z);
+};
 })();
 </script>
 </body>

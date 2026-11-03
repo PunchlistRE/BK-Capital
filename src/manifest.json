@@ -885,6 +885,11 @@
 "close": "</script>"
 },
 {
+"file": "177-bk-devschedule-report.js",
+"open": "\n<script id=\"bk-devschedulereport\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""

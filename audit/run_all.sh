@@ -41,6 +41,7 @@ echo "== Sponsor CF (one sponsor all-in return, dated like the summary)"; node a
 echo "== Residual land solve, draw curves, sources and uses (development)"; node audit/residual_curve_test.js index.html | tail -1
 echo "== Development lease-up by unit type (schedule, income, shortfall, funding, backward compatibility)"; node audit/devunits_test.js index.html "$REF" | tail -1
 echo "== Development Gantt (task schedule, critical path, drives the engine)"; node audit/devgantt_test.js index.html "$REF" | tail -1
+echo "== Gantt chart and its printable schedule summary (calendar chart, milestones, arrows, 5-page PDF cover/Gantt/tasks/funding/delay, engine tie-outs, real PDF)"; node audit/devschedule_report_test.js index.html | tail -1
 echo "== Panel tabs (long sections open as tabs; nothing removed; print carries all)"; node audit/paneltabs_test.js index.html | tail -1
 echo "== NNN terms from a rent roll (structure, base year, stop, share kept in the lease)"; node audit/nnn_import_test.js index.html "$REF" | tail -1
 echo "== Tenant-level commercial leases in a development deal (lease clock after completion, retail replaces the growth-path retail, TI/LC capital)"; node audit/devleases_test.js index.html "$REF" | tail -1
