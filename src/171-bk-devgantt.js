@@ -112,34 +112,96 @@ window.bkDevGanttAdd = function(){ var s = bkLoad(), g = s.devGantt = Object.ass
 window.bkDevGanttRemove = function(i){ var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}), T = g.tasks || [], id = T[i] && T[i].id; g.tasks = T.filter(function(t, k){ return k !== i; }).map(function(t){ return Object.assign({}, t, { preds:(t.preds || []).filter(function(p){ return p.id !== id; }) }); }); if(!g.tasks.length) g.mode = 'phases'; save(s); };
 
 /* ------------------------------------------------------------------ the chart ------------------------------------------------------------------ */
-var COL = { predev:'#7a8da1', construction:'#2E6E6E', other:'#8a6d2f', leaseup:'#2f5f9a', ops:'#9aa7b4', crit:'#b3392c' };
-function gantt(rows, x, s){
-  var hold = Math.max(x.hold, x.stab + 1), pxm = Math.max(5, Math.min(14, Math.floor(640 / hold))), L = 250, rowH = 26, top = 44, W = L + hold * pxm + 24, H = top + rows.length * rowH + 12;
-  var X = function(m){ return L + (m - 1) * pxm; };
-  var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Development schedule Gantt chart, by month" style="max-width:none">';
-  for(var y = 1; y <= Math.ceil(hold / 12); y++){ var m0 = (y - 1) * 12 + 1, w = Math.min(12, hold - m0 + 1) * pxm; g += '<rect x="' + X(m0) + '" y="6" width="' + w + '" height="' + (H - 12) + '" fill="' + (y % 2 ? 'rgba(120,140,160,.07)' : 'transparent') + '"/><text x="' + (X(m0) + w / 2) + '" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ae-dim,#5a6877)">Year ' + y + '</text>'; }
-  var step = pxm >= 9 ? 1 : pxm >= 6 ? 3 : 6; for(var m = 1; m <= hold; m += step){ if(m === 1 || m % (step === 1 ? 3 : step) === 0 || step > 1) g += '<text x="' + (X(m) + pxm / 2) + '" y="36" text-anchor="middle" font-size="9" fill="var(--ae-dim,#5a6877)">' + m + '</text>'; }
-  g += '<line x1="' + L + '" x2="' + (W - 14) + '" y1="' + (top - 4) + '" y2="' + (top - 4) + '" stroke="var(--ae-line,#c9d1dc)"/>';
-  rows.forEach(function(r, i){ var y0 = top + i * rowH, cy = y0 + rowH / 2;
-    g += '<text x="8" y="' + (cy + 4) + '" font-size="12" fill="var(--ae-ink,#1b2733)" font-weight="' + (r.linked ? 400 : 600) + '">' + esc(String(r.name).slice(0, 36)) + '</text>';
-    g += '<line x1="' + L + '" x2="' + (W - 14) + '" y1="' + (y0 + rowH) + '" y2="' + (y0 + rowH) + '" stroke="var(--ae-line,#e1e6ec)" stroke-width=".5"/>';
-    if(r.milestone){ var cx = X(r.ES) + pxm / 2; g += '<path d="M' + cx + ',' + (cy - 8) + ' L' + (cx + 8) + ',' + cy + ' L' + cx + ',' + (cy + 8) + ' L' + (cx - 8) + ',' + cy + ' Z" fill="' + (r.critical ? COL.crit : '#1b2733') + '"><title>' + esc(r.name) + ': month ' + r.ES + '</title></path>'; }
-    else { var w2 = Math.max(pxm, (r.EF - r.ES + 1) * pxm); g += '<rect x="' + X(r.ES) + '" y="' + (cy - 7) + '" width="' + w2 + '" height="14" rx="2" fill="' + r.color + '"' + (r.critical ? ' stroke="' + COL.crit + '" stroke-width="2"' : '') + '><title>' + esc(r.name) + ': months ' + r.ES + ' to ' + r.EF + (r.float > 0 ? ' (float ' + r.float + ')' : '') + '</title></rect>'; }
-    if(r.float > 0 && !r.linked){ g += '<line x1="' + (X(r.EF) + pxm) + '" x2="' + (X(r.EF) + pxm + r.float * pxm) + '" y1="' + cy + '" y2="' + cy + '" stroke="var(--ae-dim,#8a97a5)" stroke-dasharray="2 2"/>'; } });
-  /* dependency lines: from the end of a predecessor to the start of its successor */
-  var idx = {}; rows.forEach(function(r, i){ if(r.id) idx[r.id] = i; });
-  rows.forEach(function(r, i){ (r.preds || []).forEach(function(p){ var j = idx[p.id]; if(j === undefined) return; var q = rows[j], x1 = X(q.EF) + pxm, y1 = top + j * rowH + rowH / 2, x2 = X(r.ES), y2 = top + i * rowH + rowH / 2, mx = Math.max(x1, x2 - 4);
-    g += '<path d="M' + x1 + ',' + y1 + ' H' + (x1 + 3) + ' V' + y2 + ' H' + x2 + '" fill="none" stroke="' + ((r.critical && q.critical) ? COL.crit : 'var(--ae-dim,#7d8b99)') + '" stroke-width="1" marker-end=""/>'; }); });
+var COL = { predev:'#7a8da1', construction:'#2E6E6E', other:'#8a6d2f', leaseup:'#2f5f9a', ops:'#9aa7b4', crit:'#b3392c', ms:'#1b2733' };
+function dtx(d){ return d.toLocaleDateString('en-US', { month:'short', year:'numeric' }); }
+function monthsText(n){ return n + (n === 1 ? ' month' : ' months'); }
+
+/* The chart. Calendar years and month numbers across the top, the three milestones flagged above the grid, a band for each section (pre-development, construction, other tasks, lease-up and
+   operations), the task number and name on the left, each bar labelled with its duration, float as a dashed tail, dependencies as arrows, the critical path outlined in red.
+   o.print draws it in fixed colours for paper; o.W is the width in drawing units (it scales to the space it is put in). */
+function ganttSvg(rows, sc, s, o){
+  o = o || {}; var P = !!o.print, uid = 'ga' + (o.id || Math.floor(Math.random() * 1e6));
+  var ink = P ? '#1b2733' : 'var(--ae-ink,#1b2733)', dim = P ? '#6b7a89' : 'var(--ae-dim,#7d8b99)', line = P ? '#d3dae2' : 'var(--ae-line,#dfe5ec)', band = 'rgba(120,140,160,' + (P ? '.10' : '.07') + ')', sec = P ? '#eaeff4' : 'rgba(120,140,160,.15)';
+  var hold = Math.max(num(sc.hold), num(sc.stab) + 1, 12), maxName = rows.reduce(function(m, r){ return Math.max(m, String(r.name || '').length + (r.idx ? 3 : 0)); }, 12), Lw = Math.max(200, Math.min(330, Math.round(maxName * 6.7) + 36));
+  var W0 = o.W || 1000, Cw = W0 - Lw - 22, pxm = Math.max(2.2, Cw / hold), W = Lw + hold * pxm + 22, secH = 22, rowH = 27, topY = 112;
+  var X = function(m){ return Lw + (m - 1) * pxm; };
+  /* section structure: a header row before the first row of each section */
+  var items = [], lastSec = null; rows.forEach(function(r){ if(r.sec !== lastSec){ items.push({ header:r.sec }); lastSec = r.sec; } items.push(r); });
+  var y = topY; items.forEach(function(it){ it.y = y; it.h = it.header ? secH : rowH; y += it.h; }); var H = y + 14;
+  var g = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Development schedule Gantt chart, by month" style="display:block;max-width:100%;height:auto;font-family:inherit"><defs>'
+    + '<marker id="' + uid + 'a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="' + dim + '"/></marker><marker id="' + uid + 'c" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="' + COL.crit + '"/></marker></defs>';
+  /* phase strip */
+  var segs = [['Pre-development', 1, num(sc.preMo), COL.predev], ['Construction', num(sc.preMo) + 1, num(sc.co), COL.construction], ['Lease-up', num(sc.co) + 1, num(sc.stab) - 1 > num(sc.co) ? num(sc.stab) - 1 : num(sc.co), COL.leaseup], ['Stabilised operations', num(sc.stab), hold, COL.ops]];
+  if(num(sc.luMo) <= 0) segs.splice(2, 1);
+  segs.forEach(function(sg){ if(sg[2] < sg[1]) return; var x0 = X(sg[1]), w = (sg[2] - sg[1] + 1) * pxm; g += '<rect x="' + x0 + '" y="6" width="' + w + '" height="18" fill="' + sg[3] + '" opacity=".92"><title>' + esc(sg[0]) + ': months ' + sg[1] + ' to ' + sg[2] + '</title></rect>';
+    var cnt = sg[0] === 'Lease-up' ? num(sc.luMo) : (sg[2] - sg[1] + 1), full = sg[0] + ' · ' + cnt + ' mo', short = sg[0].replace('Pre-development', 'Pre-dev').replace('Stabilised operations', 'Stabilised') + ' · ' + cnt;
+    if(w > full.length * 6.4 + 10) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">' + esc(full) + '</text>'; else if(w > short.length * 6.4 + 8) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">' + esc(short) + '</text>'; });
+  g += '<text x="' + (Lw - 10) + '" y="19" text-anchor="end" font-size="10.5" font-weight="700" fill="' + dim + '" letter-spacing=".06em">PHASES</text>';
+  /* milestone flags (Closing is month 1) */
+  var ms = [['Certificate of occupancy', num(sc.co), COL.crit], ['Stabilised', num(sc.stab), COL.leaseup], ['Sale / exit', num(sc.hold), COL.ms]].filter(function(m){ return m[1] > 0; }).sort(function(a, b){ return a[1] - b[1]; });
+  ms.forEach(function(m, i){ var mx = X(m[1]) + pxm / 2, txt = m[0] + ' \u00b7 ' + dtx(monthEnd(s, m[1])), w = txt.length * 5.8 + 10, ty = 40 + (i % 2) * 14;
+    var anchor = mx + w / 2 > W - 4 ? 'end' : mx - w / 2 < Lw ? 'start' : 'middle'; g += '<text x="' + (anchor === 'end' ? mx + 4 : anchor === 'start' ? mx - 4 : mx) + '" y="' + ty + '" text-anchor="' + anchor + '" font-size="10.5" font-weight="700" fill="' + m[2] + '">' + esc(txt) + '</text>'; m.push(mx); });
+  /* calendar years, then month numbers */
+  var yearY = 72, monthY = 88, yr0 = 1, curY = monthStart(s, 1).getFullYear(), shade = 0;
+  for(var m = 1; m <= hold + 1; m++){ var yy = m <= hold ? monthStart(s, m).getFullYear() : null; if(yy !== curY){ var w = (m - yr0) * pxm, x0 = X(yr0); g += '<rect x="' + x0 + '" y="' + yearY + '" width="' + w + '" height="14" fill="' + sec + '" opacity="' + (shade % 2 ? '.55' : '1') + '"/>';
+      if(w > 26) g += '<text x="' + (x0 + w / 2) + '" y="' + (yearY + 11) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + ink + '">' + curY + '</text>'; shade++; yr0 = m; curY = yy; } }
+  var step = pxm >= 13 ? 1 : pxm >= 6 ? 3 : pxm >= 3.4 ? 6 : 12;
+  for(var mm = 1; mm <= hold; mm++){ if((mm - 1) % step === 0 || mm === hold){ if(step > 1 && mm !== 1 && mm === hold && hold - ((hold - 1) - ((hold - 1) % step)) < step * 0.6 && (hold - 1) % step !== 0) continue; g += '<text x="' + (X(mm) + pxm / 2) + '" y="' + (monthY + 11) + '" text-anchor="middle" font-size="9.5" fill="' + dim + '">' + mm + '</text>'; } }
+  g += '<text x="' + (Lw - 10) + '" y="' + (yearY + 11) + '" text-anchor="end" font-size="10.5" font-weight="700" fill="' + dim + '" letter-spacing=".06em">YEAR</text><text x="' + (Lw - 10) + '" y="' + (monthY + 11) + '" text-anchor="end" font-size="10.5" font-weight="700" fill="' + dim + '" letter-spacing=".06em">MONTH</text>';
+  /* alternating year bands and quarter lines behind the rows */
+  var by0 = 1, bcur = monthStart(s, 1).getFullYear(), bs = 0; for(var q = 1; q <= hold + 1; q++){ var qy = q <= hold ? monthStart(s, q).getFullYear() : null; if(qy !== bcur){ if(bs % 2 === 0) g += '<rect x="' + X(by0) + '" y="' + topY + '" width="' + ((q - by0) * pxm) + '" height="' + (H - topY - 14) + '" fill="' + band + '"/>'; bs++; by0 = q; bcur = qy; } }
+  /* rows */
+  items.forEach(function(it){
+    if(it.header){ g += '<rect x="6" y="' + it.y + '" width="' + (W - 12) + '" height="' + it.h + '" fill="' + sec + '" opacity=".75"/><text x="12" y="' + (it.y + 15) + '" font-size="10.5" font-weight="700" fill="' + ink + '" letter-spacing=".08em">' + esc(String(it.header).toUpperCase()) + '</text>'; return; }
+    var cy = it.y + it.h / 2, nm = String(it.name || ''), lim = Math.floor((Lw - 34) / 6.5), shown = nm.length > lim ? nm.slice(0, lim - 1) + '…' : nm;
+    g += '<line x1="6" x2="' + (W - 6) + '" y1="' + (it.y + it.h) + '" y2="' + (it.y + it.h) + '" stroke="' + line + '" stroke-width=".6"/>';
+    if(it.idx) g += '<text x="12" y="' + (cy + 4) + '" font-size="10.5" fill="' + dim + '">' + it.idx + '</text>';
+    g += '<text x="' + (it.idx ? 30 : 12) + '" y="' + (cy + 4) + '" font-size="12" fill="' + ink + '" font-weight="' + (it.linked ? 400 : 600) + '">' + esc(shown) + (shown !== nm ? '<title>' + esc(nm) + '</title>' : '') + '</text>';
+    if(it.critical && !it.linked) g += '<rect x="6" y="' + (cy - 7) + '" width="3" height="14" fill="' + COL.crit + '"/>';
+    var dates = dtx(monthStart(s, it.ES)) + (it.EF > it.ES ? ' to ' + dtx(monthEnd(s, it.EF)) : '');
+    if(it.milestone){ var cx = X(it.ES) + pxm / 2; g += '<path d="M' + cx + ',' + (cy - 8) + ' L' + (cx + 8) + ',' + cy + ' L' + cx + ',' + (cy + 8) + ' L' + (cx - 8) + ',' + cy + ' Z" fill="' + (it.critical ? COL.crit : COL.ms) + '"><title>' + esc(it.name) + ': ' + esc(dtx(monthEnd(s, it.ES))) + ' (month ' + it.ES + ')</title></path>';
+      var left = cx + 70 > W; g += '<text x="' + (left ? cx - 13 : cx + 13) + '" y="' + (cy + 4) + '" text-anchor="' + (left ? 'end' : 'start') + '" font-size="10.5" fill="' + dim + '">' + esc(dtx(monthEnd(s, it.ES))) + '</text>'; return; }
+    var bw = Math.max(pxm, (it.EF - it.ES + 1) * pxm), bx = X(it.ES), dur = it.EF - it.ES + 1;
+    g += '<rect x="' + bx + '" y="' + (cy - 8) + '" width="' + bw + '" height="16" rx="2.5" fill="' + (it.color || COL.construction) + '"' + (it.critical ? ' stroke="' + COL.crit + '" stroke-width="2"' : '') + '><title>' + esc(it.name) + ': ' + esc(dates) + ' · months ' + it.ES + ' to ' + it.EF + ' · ' + dur + (dur === 1 ? ' month' : ' months') + (it.float > 0 && !it.linked ? ' · float ' + it.float : '') + (it.critical ? ' · critical path' : '') + '</title></rect>';
+    if(bw >= 34) g += '<text x="' + (bx + bw / 2) + '" y="' + (cy + 4) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">' + dur + ' mo</text>';
+    else g += '<text x="' + (bx + bw + 5) + '" y="' + (cy + 4) + '" font-size="10.5" fill="' + dim + '">' + dur + ' mo</text>';
+    if(it.float > 0 && !it.linked){ var fx = bx + bw; g += '<line x1="' + fx + '" x2="' + (fx + it.float * pxm) + '" y1="' + cy + '" y2="' + cy + '" stroke="' + dim + '" stroke-dasharray="3 2"/><text x="' + (fx + it.float * pxm + 4) + '" y="' + (cy + 4) + '" font-size="10" fill="' + dim + '">+' + it.float + '</text>'; } });
+  /* milestone lines through the grid */
+  ms.forEach(function(m){ var mx = m[3]; g += '<line x1="' + mx + '" x2="' + mx + '" y1="' + (yearY + 14) + '" y2="' + (H - 14) + '" stroke="' + m[2] + '" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>'; });
+  /* dependency arrows */
+  var pos = {}; items.forEach(function(it){ if(it.id) pos[it.id] = it; });
+  items.forEach(function(it){ (it.preds || []).forEach(function(pr){ var q = pos[pr.id]; if(!q || it.header) return; var x1 = X(q.EF) + pxm, y1 = q.y + q.h / 2, x2 = X(it.ES), y2 = it.y + it.h / 2, crit = it.critical && q.critical, elbow = Math.min(x1 + 6, Math.max(x1 + 2, x2 - 6));
+    g += '<path d="M' + x1 + ',' + y1 + ' H' + elbow + ' V' + y2 + ' H' + (x2 - 1) + '" fill="none" stroke="' + (crit ? COL.crit : dim) + '" stroke-width="' + (crit ? 1.3 : 1) + '" marker-end="url(#' + uid + (crit ? 'c' : 'a') + ')"/>'; }); });
   return g + '</svg>';
 }
+function legendHtml(P){ var c = function(col){ return '<span style="display:inline-block;width:10px;height:10px;background:' + col + ';margin-right:4px;vertical-align:-1px"></span>'; }; return '<div class="bk-gs-legend" style="font-size:' + (P ? 10.5 : 12) + 'px;margin-top:6px;opacity:.9"><span style="display:inline-block;width:10px;height:10px;border:2px solid ' + COL.crit + ';margin-right:4px;vertical-align:-3px"></span>Critical path (no float) &nbsp; ' + c(COL.predev) + 'Pre-development &nbsp; ' + c(COL.construction) + 'Construction &nbsp; ' + c(COL.other) + 'Other task &nbsp; ' + c(COL.leaseup) + 'Lease-up &nbsp; ' + c(COL.ops) + 'Stabilised operations &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float (months of slack)</span> &nbsp; &#8594; dependency</div>'; }
 function rowsFor(s, sc, x){
-  var rows = sc.tasks.map(function(t){ return { id:t.id, name:t.name, ES:t.ES, EF:t.EF, float:t.float, critical:t.critical, milestone:t.milestone, preds:t.preds, color:COL[t.group] || COL.construction }; });
-  rows.push({ name:'Certificate of occupancy', ES:sc.co, EF:sc.co, milestone:true, critical:true, linked:true, float:0 });
-  if(sc.luMo > 0) rows.push({ id:'lu', name:'Lease-up (from the lease-up method)', ES:sc.co + 1, EF:sc.co + sc.luMo, critical:true, linked:true, float:0, color:COL.leaseup, preds:[] });
-  rows.push({ name:'Stabilised operations', ES:sc.stab, EF:Math.max(sc.stab, sc.hold), linked:true, float:0, color:COL.ops });
-  rows.push({ name:'Sale / exit', ES:sc.hold, EF:sc.hold, milestone:true, linked:true, float:0 });
+  var rows = [], secName = { predev:'Pre-development', construction:'Construction', other:'Other tasks' }, order = ['predev', 'construction', 'other'];
+  order.forEach(function(gp){ sc.tasks.forEach(function(t, i){ if((t.group || 'construction') !== gp) return; rows.push({ id:t.id, idx:i + 1, sec:secName[gp], name:t.name, ES:t.ES, EF:t.EF, float:t.float, critical:t.critical, milestone:t.milestone, preds:t.preds, color:COL[t.group] || COL.construction, group:t.group }); }); });
+  rows.push({ sec:'Lease-up and operations', name:'Certificate of occupancy', ES:sc.co, EF:sc.co, milestone:true, critical:true, linked:true, float:0 });
+  if(sc.luMo > 0) rows.push({ id:'lu', sec:'Lease-up and operations', name:'Lease-up (from the lease-up method)', ES:sc.co + 1, EF:sc.co + sc.luMo, critical:true, linked:true, float:0, color:COL.leaseup, preds:[] });
+  rows.push({ sec:'Lease-up and operations', name:'Stabilised operations', ES:sc.stab, EF:Math.max(sc.stab, sc.hold), linked:true, float:0, color:COL.ops });
+  rows.push({ sec:'Lease-up and operations', name:'Sale / exit', ES:sc.hold, EF:sc.hold, milestone:true, linked:true, float:0 });
   return rows;
 }
+/* everything the page and the printed summary draw from, in one place */
+window.bkDevGanttModel = function(s){
+  s = s || bkLoad(); if(!isDev(s)) return null; var x = bkDevV09(), on = window.bkDevGanttOn(s), sc, warnings = [];
+  if(on){ sc = window.bkDevGanttSchedule(s, x); warnings = sc.warnings || []; }
+  else { var ph = phaseTasks(s, x); sc = { tasks:ph, co:x.co, luMo:x.luMo, stab:x.stab, hold:x.hold, conStart:x.preMo + 1, preMo:x.preMo, conMo:x.conMo }; }
+  return { s:s, x:x, on:on, sc:sc, warnings:warnings, rows:rowsFor(s, sc, x), svg:ganttSvg, legend:legendHtml, monthStart:function(m){ return monthStart(s, m); }, monthEnd:function(m){ return monthEnd(s, m); }, fmt:dtx };
+};
+function tilesHtml(M){
+  var sc = M.sc, s = M.s, crit = sc.tasks.filter(function(t){ return t.critical; }).length, T = function(k, v, sub){ return '<div class="bk-gs-tile"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (sub ? '<div class="d">' + esc(sub) + '</div>' : '') + '</div>'; };
+  return '<div class="bk-gs-tiles">' + T('To stabilisation', monthsText(sc.stab), dtx(monthStart(s, 1)) + ' to ' + dtx(monthEnd(s, sc.stab)))
+    + T('Pre-development', monthsText(sc.preMo || 0), sc.preMo ? dtx(monthStart(s, 1)) + ' to ' + dtx(monthEnd(s, sc.preMo)) : 'none')
+    + T('Construction', monthsText(sc.conMo || 0), sc.conMo ? dtx(monthStart(s, sc.preMo + 1)) + ' to ' + dtx(monthEnd(s, sc.co)) : 'none')
+    + T('Certificate of occupancy', dtx(monthEnd(s, sc.co)), 'month ' + sc.co)
+    + T('Lease-up', monthsText(sc.luMo || 0), sc.luMo ? dtx(monthStart(s, sc.co + 1)) + ' to ' + dtx(monthEnd(s, sc.stab)) : 'none')
+    + T('Stabilised', dtx(monthStart(s, sc.stab)), 'month ' + sc.stab)
+    + T(M.on ? 'Critical tasks' : 'Schedule from', M.on ? crit + ' of ' + sc.tasks.length : 'phase durations', M.on ? 'zero float to the CO' : 'switch to a task schedule for float') + '</div>'; }
+var css = document.createElement('style'); css.id = 'bk-gs-css'; css.textContent = '.bk-gs-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}.bk-gs-tile{border:1px solid var(--ae-line,#d3dae2);padding:7px 10px;background:var(--ae-cell-ro,transparent)}.bk-gs-tile .k{font-size:10px;letter-spacing:.09em;text-transform:uppercase;opacity:.7;font-weight:700}.bk-gs-tile .v{font-size:16px;font-weight:700;margin:2px 0}.bk-gs-tile .d{font-size:11px;opacity:.75}.bk-gs-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px}'; document.head.appendChild(css);
+
 function phaseTasks(s, x){
   var T = [], preMo = num(x.preMo), conMo = num(x.conMo);
   if(preMo > 0) T.push({ id:'p1', name:'Pre-development', group:'predev', ES:1, EF:preMo, dur:preMo, float:0, critical:true, preds:[], milestone:false, startDate:monthStart(s, 1), endDate:monthEnd(s, preMo) });
@@ -152,14 +214,12 @@ var prev = RENDERERS['Dev Schedule'];
 RENDERERS['Dev Schedule'] = function(){
   var o = typeof prev === 'function' ? prev.apply(this, arguments) : { main:'' }, s = bkLoad(); if(!o || typeof o.main !== 'string' || !isDev(s)) return o;
   try {
-    var x = bkDevV09(), on = window.bkDevGanttOn(s), sc, tasks, warnings = [];
-    if(on){ sc = window.bkDevGanttSchedule(s, x); tasks = sc.tasks; warnings = sc.warnings; }
-    else { tasks = phaseTasks(s, x); sc = { tasks:tasks, co:x.co, luMo:x.luMo, stab:x.stab, hold:x.hold, conStart:x.preMo + 1, preMo:x.preMo, conMo:x.conMo }; }
-    var rows = rowsFor(s, sc, x), html;
+    var M = window.bkDevGanttModel(s), x = M.x, on = M.on, sc = M.sc, tasks = sc.tasks, warnings = M.warnings, rows = M.rows, html;
     var head = '<div class="ae-form" style="margin:0 0 8px"><label style="font-weight:600">Schedule</label> <select onchange="bkDevGanttMode(this.value)"><option value="phases"' + (on ? '' : ' selected') + '>Phase durations (pre-development, construction, lease-up)</option><option value="tasks"' + (on ? ' selected' : '') + '>Task schedule (overlaps, dependencies, critical path)</option></select></div>';
     var chartBox = '<div class="tbl-wrap" style="margin-top:16px"><div style="padding:10px 12px"><b>Gantt chart, by month</b>' + head
-      + '<div style="overflow-x:auto" class="bk-scrollable">' + gantt(rows, x, s) + '</div>'
-      + '<div style="font-size:12px;margin-top:6px;opacity:.85"><span style="color:' + COL.crit + '">&#9632;</span> Critical path (no float) &nbsp; <span style="color:' + COL.construction + '">&#9632;</span> Construction &nbsp; <span style="color:' + COL.predev + '">&#9632;</span> Pre-development &nbsp; <span style="color:' + COL.leaseup + '">&#9632;</span> Lease-up &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float</span></div>'
+      + tilesHtml(M) + '<div class="bk-gs-bar"><button type="button" class="bk-btn primary" onclick="bkDevScheduleReport()">Schedule summary (PDF)</button><span style="font-size:12px;opacity:.8">A full printable summary: key dates, the Gantt chart, the task schedule, the funding timeline and what a delay costs.</span></div>'
+      + '<div>' + ganttSvg(rows, sc, s, { id:'pg' }) + '</div>'
+      + legendHtml(false)
       + (on ? '' : '<div class="note-flag" style="margin-top:8px"><span>&#9432;</span><div><b>Drawn from the phase durations.</b> Choose <b>Task schedule</b> to break construction into overlapping tasks with dependencies. It starts as tasks that reproduce these phases exactly, so nothing moves until you edit them.</div></div>') + '</div></div>';
     var table = '';
     if(on){

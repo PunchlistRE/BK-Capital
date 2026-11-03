@@ -94,6 +94,7 @@ function unfit(){ [].forEach.call(document.querySelectorAll('table.bk-print-clon
   [].forEach.call(document.querySelectorAll('table.bk-print-fit'), function(t){ t.classList.remove('bk-print-fit'); t.style.removeProperty('font-size'); }); }
 var pageStyle = null;
 function prepare(){
+  if(document.documentElement.classList.contains('bk-sr-open')) return;   /* the schedule summary prints its own pages */
   cleanup();
   var fr = document.querySelector('#viewport .sheet-frame') || document.getElementById('viewport'); if(!fr) return;
   var head = document.createElement('div'); head.id = 'bk-print-head'; head.innerHTML = headHtml(); fr.insertBefore(head, fr.firstChild);
