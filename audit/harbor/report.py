@@ -13,27 +13,27 @@ for t in ['The workbook places predevelopment costs at months −3 to −1 and c
           '“Hard-cost contingency” in the OM budget is $2.0M; the brief says contingency is separate from hard costs. Treated as separate.',
           '5% vacancy and 95% occupancy are one assumption; applying both would double-count. Treated as one.',
           'The $750,000 debt-service/interest reserve and capitalised interest both pay for interest. Funding both is a double-count risk.',
-          'The brief does not say who earns the preferred return (LP only per Tier 2, or LP and GP) or what the 50% catch-up runs to.',
+          'The brief does not say who earns the preferred return or what the 50% catch-up runs to. Entered as: preferred return to the LP only (capital back first), and a 50% catch-up until the GP holds 20% of profit distributed; change `prefHolder` / `gpCatchupTarget` in `deal.js` if the intent differs.',
           'BK Capital\'s defaults charge a 1% asset-management fee and a 0.5% disposition fee that the brief does not mention. They are switched off for Harbor Point in `deal.js` and the default is flagged here.']: w('- ' + t)
 w('')
-w('## 2. Results (BK Capital, after stages A and B)\n')
+w('## 2. Results (BK Capital, with the brief\'s facility, contingency register, reserves and waterfall)\n')
 w('| Item | Value | Note |\n|---|---:|---|')
-for r in [('Cost before financing', m(B['unlev']), 'hard $26.95M = $24.95M of lines + $2.0M contingency; soft $5.00M'), ('Total uses = total sources', '%s' % m(B['unlev'] + B['upfront'] + B['capInt'] + B['excess']), 'incl. fees, capitalised interest and interest equity pays beyond the commitment'),
-          ('Construction facility', m(B['commit']), 'sized by LTC on all-in cost; not the $27.3M / $34M of the brief'), ('Equity requirement', m(B['equityTotal']), 'brief: $14.973M initial; the rest is cost and interest beyond the commitment'),
+for r in [('Cost before financing', m(B['unlev']), 'hard $24.95M + contingency register $2.0M + soft $5.00M + land, closing and predevelopment'), ('Total uses = total sources', '%s' % m(B['unlev'] + B['upfront'] + B['capInt'] + B['excess'] + B['unusedFees'] + B['reserveFunded']), 'incl. loan fee, unused-commitment fees, capitalised interest, interest equity pays beyond the ceiling and the $2.0M reserves'),
+          ('Construction facility', m(B['commit']), 'fixed commitment as in the brief; balance incl. capitalised interest peaks at %s against the $34M ceiling' % m(B['peakDebt'])), ('Equity requirement', m(B['equityTotal']), 'brief: $14.7M equity first plus the 1% fee, unused fees and reserves, and any cost the commitment does not fund'),
           ('Stabilised NOI (before reserves)', m(B['stabNOI']), 'brief target $2.95M; variance %s' % m(B['stabNOI'] - 2950000)), ('Gross sale, month 48', m(B['grossSale']), 'next-12-months NOI after reserves / 5.00%'),
           ('Levered IRR / multiple', '%s / %s' % (p(B['irr']), x(B['moic'])), 'multiple = distributions / contributions, both gross'), ('Unlevered IRR / multiple', '%s / %s' % (p(B['uIRR']), x(B['uMOIC'])), 'independent of financing'),
-          ('LP IRR / multiple', '%s / %s' % (p(B['lpIRR']), x(B['lpMOIC'])), 'hurdles tested on the LP\'s dated cash flows'), ('GP IRR / multiple', '%s / %s' % (p(B['gpIRR']), x(B['gpMOIC'])), 'GP promote %s' % m(B['promote'])),
+          ('LP IRR / multiple', '%s / %s' % (p(B['lpIRR']), x(B['lpMOIC'])), 'hurdles tested on the LP\'s dated cash flows; preferred return to the LP only'), ('GP IRR / multiple', '%s / %s' % (p(B['gpIRR']), x(B['gpMOIC'])), 'GP promote %s; 50%% catch-up to a 20%% promote' % m(B['promote'])),
           ('Credit gate', R['gate']['status'], R['gate']['action'][:160])]: w('| %s | %s | %s |' % r)
 w('')
-w('## 3. Resolving the two builds (33.95% vs 31.8%)\n')
-w('The 33.95% reported at the start was BK Capital\'s first run. The first build from the brief gave 31.78%. The difference is accounted for in three parts, with a residual that is stated, not plugged.\n')
+w('## 3. Resolving the two builds\n')
+w('Historical context (the 33.95% and 33.09% below are from stages A and B, before the gap closure; current figures are in section 2). The 33.95% reported at the start was BK Capital\'s first run. The first build from the brief gave 31.78%. The difference is accounted for in three parts, with a residual that is stated, not plugged.\n')
 w('**a) Corrections to BK Capital (stages A and B).** Equity now pays the $1.22M of interest that accrues after the loan commitment is full (the returns cash flow had left it out) — about −1.2 points; the 1% asset-management and 0.5% disposition fees the brief never specified were removed — about +0.35 points. 33.95% → 33.09%.\n')
 w('**b) BK Capital against a second, independent model.** `reference2.py` rebuilds the cost ladder, S-curves, facility sizing, funding loop, operating cash flow, sale, dated IRR and the LP/GP waterfall from the raw inputs. It matches the engine to the dollar on 23 figures: cost, facility, capitalised interest, equity, sale, payoff, levered and unlevered IRR, multiple, LP and GP IRR and distributions, and promote. So the engine does what it says; what remains is a difference in assumptions.\n')
 w('**c) Walking BK Capital\'s assumptions to the brief\'s, one at a time** (independent model with switches, levered IRR):\n')
 w('| Step | Levered IRR |\n|---|---:|')
 for s in W: w('| %s | %s |' % (s['step'], p(s['irr'])))
 w('')
-w('Capitalising interest to the sale changes nothing here because the commitment is already full by stabilisation; interest after that is paid by equity either way.\n')
+w('Capitalising interest to the sale, the fixed facility, reserves, contingency and the waterfall are no longer steps: BK Capital now models them (section 2), and the independent model reproduces them without switches.\n')
 w('The walk ends at %s against the first build\'s %s. The remaining %.2f points are not isolated: the first build uses the workbook\'s monthly cost percentages instead of BK Capital\'s S-curves and a slightly different timeline convention. Nothing has been plugged to close it.\n' % (p(W[-1]['irr']), p(F['returns']['levered_irr']), (W[-1]['irr'] - F['returns']['levered_irr']) * 100))
 w('## 4. Model integrity (`bkIntegrity`)\n')
 w('%s. Hard = the figures do not tie; warn = they tie but something material is true; n/a = does not apply.\n' % R['integrity']['text'])
@@ -42,10 +42,7 @@ for c in R['integrity']['checks']: w('| %s | %s | %s |' % (c[2], c[3].upper() if
 w('')
 w('## 5. What BK Capital cannot do yet (stated, not approximated)\n')
 for t in ['**Cost lines.** 13 hard trades and 16 soft lines, each a $/GSF or % rate, versus 16 hard and 19 soft dollar categories. Merged: enclosure accessories into envelope; mechanical, plumbing, electrical and fire into one MEP line; architecture, structural, MEP engineering and interior design into A&E; temporary utilities and miscellaneous into “Entitlement, Zoning & Community”.',
-          '**Contingency tracking** (original / allocated / change orders / used / remaining / forecast): not modelled; contingency is a % layer inside hard cost.',
-          '**Initial reserves** ($2.0M in four buckets) and their release at sale: not modelled.',
-          '**Fixed facility.** A fixed $27.3M principal, $34M ceiling, “equity funds the first $14.7M” and an unused-commitment fee cannot be entered; the commitment is derived from LTC.',
-          '**Waterfall.** The catch-up is “100% to the GP until it holds X% of profit” (set to 20%), not a 50% catch-up rate. The preferred return is earned by LP and GP pari passu, not LP only. Hurdle accounts compound at the annual rate on actual days / 365.',
+          '**Waterfall.** A catch-up rate below 100% and an LP-only preferred return apply only when hurdles are tested on the LP\'s flows (the setting used here); under total-equity hurdles the model warns that they are not applied. Hurdle accounts compound at the annual rate on actual days / 365.',
           '**Lease-up shortfall.** Negative cash in the early lease-up months is not in the funding ledger (the deficit is netted over the whole lease-up); the partners fund it as extra contributions.',
           '**Refinance-and-hold.** The refinance case still sells at the horizon; it does not hold the asset.',
           '**Stated-NOI target.** A broker\'s NOI is not an input, so the variance against it is reported here, not in the model.']: w('- ' + t)
@@ -58,7 +55,10 @@ for t in ['Deal Snapshot showed the acquisition loan on a development deal — *
           'Development hurdles were tested on total equity only — **option added (stage B)**: `Hurdle Test - Development Deals`, default unchanged.',
           'Credit gate said “APPROVE — NO MATERIAL EXCEPTIONS” with failed checks standing — **fixed (stage B)**: model failures give HOLD; model warnings cap the gate at CONDITIONAL and are named.',
           'PDF omits DSCR, debt yield, LTV, break-evens, unit mix, lease-up schedule, financing and refinance analysis, sensitivities, combined downside — **open (stage C)**.',
-          'Model Checks sheet reports 0 errors / 0 warnings; the new integrity findings are not yet on it — **open**.']: w('- ' + t)
+          'Model Checks sheet reports 0 errors / 0 warnings; the new integrity findings are not yet on it — **fixed (stage C)**.',
+          'Fixed facility (commitment, ceiling, equity-first, unused fee, capitalise to exit), contingency register, initial reserves, 50% catch-up rate and LP-only preferred return were not modelled — **added (gap closure)**, reconciled to the dollar by `reference2.py` and tested in `audit/harbor_gaps_test.js`.',
+          'Interest paid from the interest reserve was still charged to equity in the returns cash flow — **fixed (gap closure)**, found by the independent model on a tightened-ceiling variant.',
+          '**Harbor fixture error, found during gap closure:** from stage C on, the waterfall inputs in `deal.js` were commented out, so the Harbor Point PDFs and reports produced since then ran on BK Capital\'s default waterfall (50/50, 7% / 10% / 15%) rather than the brief\'s. LP IRR, GP IRR, promote and the dashboard Net LP IRR in those documents were wrong; levered and unlevered project figures were not affected. **Fixed**, with a test that every fixture input reaches the loaded deal.']: w('- ' + t)
 w('')
 w('## 7. Refinance alternative (month 43, 65% LTV, 6.25%, 30-yr, 1% fee)\n')
 r = R['refi']
@@ -72,5 +72,5 @@ for name, rs in R['sens'].items():
     w('')
 w('Delays extend the hold by the same number of months. Cost overrun applies to hard cost including contingency.\n')
 w('## 9. Conclusion\n')
-w('The engine now reconciles: sources equal uses, interest ties month by month, the IRR hurdles replay to their rates, and an independent model matches to the dollar. The headline return is %s levered, %s unlevered. It stays CONDITIONAL, not approved, because equity pays interest beyond the facility commitment and costs exceed what the commitment funds. What the model still cannot do is in section 5; those are the limits of what it can tell an investment committee about this deal.' % (p(B['irr']), p(B['uIRR'])))
+w('The engine now reconciles: sources equal uses, interest ties month by month, the IRR hurdles replay to their rates, and an independent model matches to the dollar. The headline return is %s levered, %s unlevered; the LP earns %s and the GP %s. The credit gate reads %s. What the model still cannot do is in section 5; those are the limits of what it can tell an investment committee about this deal.' % (p(B['irr']), p(B['uIRR']), p(B['lpIRR']), p(B['gpIRR']), R['gate']['verdict']))
 open(H + 'REPORT.md', 'w').write('\n'.join(o)); print(len(o))

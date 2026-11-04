@@ -13,7 +13,7 @@ const { chromium } = require('playwright'); const path = require('path'); const 
       const bal = (t.conHeldToSale ? t.conHeldBalance : (t.permDebtAtSale || 0));
       Object.assign(o, { grossSale: last.grossSale, netSale: last.sale - last.dispoFee, payoff: last.payoff, profit: m.dist - m.contrib, contrib: m.contrib, dist: m.dist, uIRR: m.u && m.u.irr, uMOIC: m.u && m.u.moic, irr: m.irr, moic: m.moic,
         lpIRR: w && w.lp.irr, gpIRR: w && w.gp.irr, lpMOIC: w && w.lp.moic, gpMOIC: w && w.gp.moic, lpContrib: w && w.lp.contributed, gpContrib: w && w.gp.contributed, lpDist: w && w.lp.dist, gpDist: w && w.gp.dist, promote: w && w.gp.promote, lpPref: w && w.lp.pref, lpRoc: w && w.lp.roc, lpProfit: w && w.lp.profit, gpProfit: w && w.gp.profit,
-        commit: f.commit, capInt: f.actualCapInt, upfront: f.upfrontFees, overflowEquity: f.overflowTotal, equityTotal: f.equityTotal, peakDebt: Math.max.apply(null, f.months.map(z => z.end)), levered: f.levered,
+        commit: f.commit, capInt: f.actualCapInt, upfront: f.upfrontFees, overflowEquity: f.overflowTotal, equityTotal: f.equityTotal, peakDebt: Math.max.apply(null, f.months.map(z => z.end)), levered: f.levered, unusedFees: f.unusedFees, reserveFunded: f.reserveFunded, rsvIntUsed: f.rsvIntUsed, contSpend: f.cont && f.cont.spend,
         dscr: ds12 ? noi12 / ds12 : null, noi12, ds12, breakEvenSale: (last.payoff + m.contrib - opDist) / (1 - Number(s.saleCostPct || 0)), hold: f.hold, stab: f.stab, excess: f.months.reduce((a, z) => a + (z.excess || 0), 0), unlev: f.unlev, hardTotal: f.hard, softTotal: f.soft, stabNOI: bkCalc().noi, capHeadroom: null, shortfall: f.overflowTotal });
     } catch (e) { o.err = e.message; } return o; };
     R.base = metrics();

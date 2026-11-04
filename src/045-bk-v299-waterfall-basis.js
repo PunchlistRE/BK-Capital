@@ -9,6 +9,8 @@
   BK_BASE.em3 = BK_BASE.em3===undefined ? 4.05 : BK_BASE.em3;
   BK_BASE.promoteSplit = BK_BASE.promoteSplit===undefined ? 0 : BK_BASE.promoteSplit; // 1 = separate promote splits for operating cash and for sale / refinance proceeds (t2LPs..t4LPs)
   BK_BASE.devHurdleBasis = BK_BASE.devHurdleBasis===undefined ? 'deal' : BK_BASE.devHurdleBasis; // development deals: 'deal' = hurdle accounts on total equity (legacy), 'lp' = on the LP's own dated cash flows
+  BK_BASE.gpCatchupRate = BK_BASE.gpCatchupRate===undefined ? 0 : BK_BASE.gpCatchupRate; // GP's share of the catch-up tier: 0 = the legacy 100% catch-up
+  BK_BASE.prefHolder = BK_BASE.prefHolder===undefined ? 'both' : BK_BASE.prefHolder; // 'both' = the preferred return is paid pro rata to LP and GP; 'lp' = capital back first, then the preferred return to the LP only
   BK_BASE.hurdleBoth = BK_BASE.hurdleBoth===undefined ? 'all' : BK_BASE.hurdleBoth; // basis 3 only: 'all' = both tests must be met, 'either' = one is enough
 
   function bkWfBasis(s){ var b=String(s.hurdleBasis); return b==='2' ? 'EM' : b==='3' ? 'BOTH' : 'IRR'; }
@@ -22,6 +24,8 @@
       o.main += `<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Waterfall Hurdle Basis</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>
         ${bkSelect('Hurdle Basis','hurdleBasis',[['1','IRR'],['2','Equity Multiple'],['3','IRR and Equity Multiple']])}
         ${bkSelect('Hurdle Test - Development Deals','devHurdleBasis',[['deal','Total equity (legacy)'],['lp','LP cash flows (dated)']])}
+        ${bkInput('GP Catch-Up Rate (GP Share of the Catch-Up Tier; Blank = 100%)','gpCatchupRate','%','pct')}
+        ${bkSelect('Preferred Return Paid To','prefHolder',[['both','LP and GP pro rata'],['lp','LP only (capital back first)']])}
         ${bkSelect('IRR and Multiple Hurdles Combine','hurdleBoth',[['all','Both must be met'],['either','Either is enough']])}
         ${bkInput('Tier 1 Hurdle - Equity Multiple','em1','x')}
         ${bkInput('Tier 2 Hurdle - Equity Multiple','em2','x')}

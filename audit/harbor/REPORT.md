@@ -16,28 +16,28 @@ These are errors or inconsistencies in the brief, OM or workbook. They are carri
 - “Hard-cost contingency” in the OM budget is $2.0M; the brief says contingency is separate from hard costs. Treated as separate.
 - 5% vacancy and 95% occupancy are one assumption; applying both would double-count. Treated as one.
 - The $750,000 debt-service/interest reserve and capitalised interest both pay for interest. Funding both is a double-count risk.
-- The brief does not say who earns the preferred return (LP only per Tier 2, or LP and GP) or what the 50% catch-up runs to.
+- The brief does not say who earns the preferred return or what the 50% catch-up runs to. Entered as: preferred return to the LP only (capital back first), and a 50% catch-up until the GP holds 20% of profit distributed; change `prefHolder` / `gpCatchupTarget` in `deal.js` if the intent differs.
 - BK Capital's defaults charge a 1% asset-management fee and a 0.5% disposition fee that the brief does not mention. They are switched off for Harbor Point in `deal.js` and the default is flagged here.
 
-## 2. Results (BK Capital, after stages A and B)
+## 2. Results (BK Capital, with the brief's facility, contingency register, reserves and waterfall)
 
 | Item | Value | Note |
 |---|---:|---|
-| Cost before financing | $39.95M | hard $26.95M = $24.95M of lines + $2.0M contingency; soft $5.00M |
-| Total uses = total sources | $44.64M | incl. fees, capitalised interest and interest equity pays beyond the commitment |
-| Construction facility | $28.07M | sized by LTC on all-in cost; not the $27.3M / $34M of the brief |
-| Equity requirement | $16.57M | brief: $14.973M initial; the rest is cost and interest beyond the commitment |
+| Cost before financing | $39.95M | hard $24.95M + contingency register $2.0M + soft $5.00M + land, closing and predevelopment |
+| Total uses = total sources | $48.00M | incl. loan fee, unused-commitment fees, capitalised interest, interest equity pays beyond the ceiling and the $2.0M reserves |
+| Construction facility | $27.30M | fixed commitment as in the brief; balance incl. capitalised interest peaks at $32.85M against the $34M ceiling |
+| Equity requirement | $15.15M | brief: $14.7M equity first plus the 1% fee, unused fees and reserves, and any cost the commitment does not fund |
 | Stabilised NOI (before reserves) | $3.59M | brief target $2.95M; variance $644,877 |
 | Gross sale, month 48 | $72.25M | next-12-months NOI after reserves / 5.00% |
-| Levered IRR / multiple | 33.09% / 2.71x | multiple = distributions / contributions, both gross |
+| Levered IRR / multiple | 32.30% / 2.86x | multiple = distributions / contributions, both gross |
 | Unlevered IRR / multiple | 22.32% / 1.86x | independent of financing |
-| LP IRR / multiple | 26.77% / 2.27x | hurdles tested on the LP's dated cash flows |
-| GP IRR / multiple | 69.76% / 6.63x | GP promote $6.57M |
-| Credit gate | CONDITIONAL — 2 MODEL WARNINGS | The credit gates pass, but 2 model warnings stand: Interest accrues beyond the loan commitment; Costs exceed what equity plus the commitment can fund. Approval  |
+| LP IRR / multiple | 26.25% / 2.39x | hurdles tested on the LP's dated cash flows; preferred return to the LP only |
+| GP IRR / multiple | 67.46% / 7.06x | GP promote $6.37M; 50% catch-up to a 20% promote |
+| Credit gate | APPROVE — NO MATERIAL EXCEPTIONS | Proceed to close on the selected structure; satisfy the conditions precedent. |
 
-## 3. Resolving the two builds (33.95% vs 31.8%)
+## 3. Resolving the two builds
 
-The 33.95% reported at the start was BK Capital's first run. The first build from the brief gave 31.78%. The difference is accounted for in three parts, with a residual that is stated, not plugged.
+Historical context (the 33.95% and 33.09% below are from stages A and B, before the gap closure; current figures are in section 2). The 33.95% reported at the start was BK Capital's first run. The first build from the brief gave 31.78%. The difference is accounted for in three parts, with a residual that is stated, not plugged.
 
 **a) Corrections to BK Capital (stages A and B).** Equity now pays the $1.22M of interest that accrues after the loan commitment is full (the returns cash flow had left it out) — about −1.2 points; the 1% asset-management and 0.5% disposition fees the brief never specified were removed — about +0.35 points. 33.95% → 33.09%.
 
@@ -47,55 +47,53 @@ The 33.95% reported at the start was BK Capital's first run. The first build fro
 
 | Step | Levered IRR |
 |---|---:|
-| BK Capital as modelled (independent model, no switches) | 33.09% |
-| Other income paid by occupied units only, as the brief says (BK charges all 120 units) | 32.88% |
-| Exit value on stabilised NOI before reserves (the reference build's simplification; BK uses next-12-months NOI after reserves, with growth) | 32.61% |
-| Interest capitalised to the sale with no current-pay (BK stops capitalising at stabilisation, then pays interest from cash flow) | 32.61% |
-| The workbook's lease-up occupancy ramp (BK derives a straight-line ramp from the lease-up months) | 33.50% |
-| $2.0M initial reserves funded, lease-up shortfalls paid from them, balance released at sale (BK has no reserves) | 31.82% |
-| Fixed $27.3M facility, $34M ceiling, $14.7M equity first, $273k fee, 0.5% unused fee (BK sizes the loan by LTC on all-in cost) | 32.44% |
+| BK Capital as modelled (independent model, no switches) | 32.30% |
+| Other income paid by occupied units only, as the brief says (BK charges all 120 units) | 32.10% |
+| Exit value on stabilised NOI before reserves (the reference build's simplification; BK uses next-12-months NOI after reserves, with growth) | 31.83% |
+| The workbook's lease-up occupancy ramp (BK derives a straight-line ramp from the lease-up months) | 32.64% |
 
-Capitalising interest to the sale changes nothing here because the commitment is already full by stabilisation; interest after that is paid by equity either way.
+Capitalising interest to the sale, the fixed facility, reserves, contingency and the waterfall are no longer steps: BK Capital now models them (section 2), and the independent model reproduces them without switches.
 
-The walk ends at 32.44% against the first build's 31.78%. The remaining 0.66 points are not isolated: the first build uses the workbook's monthly cost percentages instead of BK Capital's S-curves and a slightly different timeline convention. Nothing has been plugged to close it.
+The walk ends at 32.64% against the first build's 31.78%. The remaining 0.86 points are not isolated: the first build uses the workbook's monthly cost percentages instead of BK Capital's S-curves and a slightly different timeline convention. Nothing has been plugged to close it.
 
 ## 4. Model integrity (`bkIntegrity`)
 
-0 failed, 2 warnings, 21 passed, 0 not applicable. Hard = the figures do not tie; warn = they tie but something material is true; n/a = does not apply.
+0 failed, 0 warnings, 27 passed, 0 not applicable. Hard = the figures do not tie; warn = they tie but something material is true; n/a = does not apply.
 
 | Check | Result | Detail |
 |---|---|---|
-| Hard and soft cost totals equal the sum of their lines | pass | Hard lines $26,950,000 vs total $26,950,000; soft lines $5,000,000 vs total $5,000,000. |
-| Cost before financing equals land + closing + acquisition fee + pre-development + hard + soft + lease-up deficit | pass | $39,950,000 vs $39,950,000. |
-| Total sources equal total uses | pass | Uses $44,641,091 (cost $39,950,000 + fees $280,670 + capitalised interest $3,185,837 + interest paid by equity beyond the commitment $1,224,583); sources $44,641,091 (draws $24,881,163 + capitalised i |
-| Every month's cost is paid by equity or a loan draw (debt draws follow costs) | pass | Costs $40,230,670 = equity $15,349,507 + draws $24,881,163 ($0 difference). |
-| Capitalised interest equals the opening balance x rate / 12 each month, and the balance rolls forward | pass | Interest accrued $4,410,421 = capitalised $3,185,837 + paid by equity beyond the commitment $1,224,583; closing balance $28,067,000. |
-| The loan balance never exceeds the commitment | pass | Peak balance $28,067,000 vs commitment $28,067,000. |
-| The debt repaid at sale equals the outstanding balance | pass | Repaid $28,067,000 vs outstanding $28,067,000 (construction loan held to sale). |
+| Hard and soft cost totals equal the sum of their lines | pass | Hard lines $24,950,000 vs total $24,950,000; soft lines $5,000,000 vs total $5,000,000. |
+| Cost before financing equals land + closing + acquisition fee + pre-development + hard + soft + lease-up deficit + contingency forecast usage | pass | $39,950,000 vs $39,950,000. |
+| Total sources equal total uses | pass | Uses $47,999,586 (cost $39,950,000 + fees $273,000 + unused-commitment fees $180,868 + reserves funded $2,000,000 + capitalised interest $5,595,718 + interest paid beyond the commitment $0); sources $ |
+| Every month's cost is paid by equity or a loan draw (debt draws follow costs) | pass | Costs $42,403,868 = equity $15,153,868 + draws $27,250,000 ($0 difference). |
+| Capitalised interest equals the opening balance x rate / 12 each month, and the balance rolls forward | pass | Interest accrued $5,595,718 = capitalised $5,595,718 + paid by equity beyond the commitment $0; closing balance $32,845,718. |
+| The loan balance (principal plus capitalised interest) never exceeds the facility ceiling | pass | Peak balance $32,845,718 vs ceiling $34,000,000. |
+| Principal drawn never exceeds the fixed commitment | pass | Principal drawn $27,250,000 vs commitment $27,300,000. |
+| Equity funds the first $14,700,000 of cost before the loan is drawn | pass | First draw in month 11 after $14,700,000 of equity. |
+| The unused-commitment fee equals the rate x the undrawn commitment, month by month | pass | Recomputed $180,868 vs $180,868 (0.50% a year on the undrawn commitment until completion, paid by equity). |
+| The origination fee equals the fee rate x the commitment and is paid by equity | pass | $273,000 vs $273,000. |
+| The debt repaid at sale equals the outstanding balance | pass | Repaid $32,845,718 vs outstanding $32,845,718 (construction loan held to sale). |
 | Net sale proceeds equal the gross sale value less selling costs | pass | Gross $72,245,199 x (1 - 2.00%) = $70,800,295 vs $70,800,295. |
-| The equity charged in the returns cash flow equals the equity in the funding ledger | pass | Returns $16,574,091 vs ledger $16,574,091. |
-| LP + GP contributions equal total contributions: the equity ledger plus any operating shortfall the partners fund | pass | LP $15,104,211 + GP $1,678,246 = $16,782,457; equity called $16,574,091 + operating shortfall $208,366 = $16,782,457. |
+| The equity charged in the returns cash flow equals the equity in the funding ledger | pass | Returns $15,153,868 vs ledger $15,153,868. |
+| Contingency drawn equals the register's forecast usage, and the final variance equals original less forecast | pass | Drawn $2,000,000 vs forecast $2,000,000; original $2,000,000, change orders $0, used $0, remaining $2,000,000, final variance $0. |
+| Reserves funded equal the register; what is used plus what is released at sale equals what was funded | pass | Funded $2,000,000 (register $2,000,000); used for operating shortfalls $208,366, for interest $0, released at sale $1,791,634. |
+| LP + GP contributions equal total contributions: the equity ledger plus any operating shortfall the partners fund | pass | LP $13,638,481 + GP $1,515,387 = $15,153,868; equity called $15,153,868 + operating shortfall $0 = $15,153,868. |
 | Unlevered IRR and multiple are calculated | pass | Unlevered IRR 22.32%, 1.86x. |
-| Interest accrues beyond the loan commitment | WARN | $1,224,583 of interest accrues after the commitment is full and is paid by equity. Either the commitment is too small for the plan or the interest reserve is short. |
-| Costs exceed what equity plus the commitment can fund | WARN | $235,294 of costs are funded by equity over the planned amount ($15,114,213). |
-| Levered IRR equals an independent XIRR of the dated cash flows | pass | Engine 33.09% vs independent 33.09%. |
-| Equity multiple equals total distributions / total contributions | pass | Distributions $45,473,327 / contributions $16,782,457 = 2.7096x vs engine 2.7096x. |
+| Levered IRR equals an independent XIRR of the dated cash flows | pass | Engine 32.30% vs independent 32.30%. |
+| Equity multiple equals total distributions / total contributions | pass | Distributions $43,334,100 / contributions $15,153,868 = 2.8596x vs engine 2.8596x. |
 | Tier 1 · preferred return | pass | Reached: the replayed IRR is 8.00%, 0.0 bps from the 8.00% hurdle. |
 | Tier 2 hurdle | pass | Reached: the replayed IRR is 12.00%, 0.0 bps from the 12.00% hurdle. |
 | Tier 3 hurdle | pass | Reached: the replayed IRR is 18.00%, 0.0 bps from the 18.00% hurdle. |
 | Tiers are paid in order | pass | No tier received cash while a tier below it was still owed. |
-| Every dollar is distributed once | pass | Distributable $45,473,327; paid through the tiers $45,473,327; to LP and GP $45,473,327; the engine's own distributions $45,473,327. Contributions $16,782,457 vs $16,782,457 to the partners. |
-| Promote is the GP's excess over its pro-rata share | pass | GP distributions $11,120,252 less its pro-rata share $4,547,333 = $6,572,919; promote reported $6,572,919. |
-| Distribution categories add to each partner's distributions | pass | LP $34,353,075 = capital $15,104,211 + preferred return $4,479,746 + excess $14,769,118; GP $11,120,252 = capital $1,678,246 + preferred return $497,750 + excess $2,371,337 + promote $6,572,919; capit |
-| LP IRR equals an independent XIRR of the dated LP cash flows | pass | Engine 26.77% vs independent 26.77%. |
+| Every dollar is distributed once | pass | Distributable $43,334,100; paid through the tiers $43,334,100; to LP and GP $43,334,100; the engine's own distributions $43,334,100. Contributions $15,153,868 vs $15,153,868 to the partners. |
+| Promote is the GP's excess over its pro-rata share | pass | GP distributions $10,699,640 less its pro-rata share $4,333,410 = $6,366,230; promote reported $6,366,230. |
+| Distribution categories add to each partner's distributions | pass | LP $32,634,460 = capital $13,189,745 + preferred return $4,487,358 + excess $14,957,357; GP $10,699,640 = capital $1,465,527 + preferred return $498,595 + excess $2,369,287 + promote $6,366,230; capit |
+| LP IRR equals an independent XIRR of the dated LP cash flows | pass | Engine 26.25% vs independent 26.25%. |
 
 ## 5. What BK Capital cannot do yet (stated, not approximated)
 
 - **Cost lines.** 13 hard trades and 16 soft lines, each a $/GSF or % rate, versus 16 hard and 19 soft dollar categories. Merged: enclosure accessories into envelope; mechanical, plumbing, electrical and fire into one MEP line; architecture, structural, MEP engineering and interior design into A&E; temporary utilities and miscellaneous into “Entitlement, Zoning & Community”.
-- **Contingency tracking** (original / allocated / change orders / used / remaining / forecast): not modelled; contingency is a % layer inside hard cost.
-- **Initial reserves** ($2.0M in four buckets) and their release at sale: not modelled.
-- **Fixed facility.** A fixed $27.3M principal, $34M ceiling, “equity funds the first $14.7M” and an unused-commitment fee cannot be entered; the commitment is derived from LTC.
-- **Waterfall.** The catch-up is “100% to the GP until it holds X% of profit” (set to 20%), not a 50% catch-up rate. The preferred return is earned by LP and GP pari passu, not LP only. Hurdle accounts compound at the annual rate on actual days / 365.
+- **Waterfall.** A catch-up rate below 100% and an LP-only preferred return apply only when hurdles are tested on the LP's flows (the setting used here); under total-equity hurdles the model warns that they are not applied. Hurdle accounts compound at the annual rate on actual days / 365.
 - **Lease-up shortfall.** Negative cash in the early lease-up months is not in the funding ledger (the deficit is netted over the whole lease-up); the partners fund it as extra contributions.
 - **Refinance-and-hold.** The refinance case still sells at the horizon; it does not hold the asset.
 - **Stated-NOI target.** A broker's NOI is not an input, so the variance against it is reported here, not in the model.
@@ -112,13 +110,16 @@ The walk ends at 32.44% against the first build's 31.78%. The remaining 0.66 poi
 - Development hurdles were tested on total equity only — **option added (stage B)**: `Hurdle Test - Development Deals`, default unchanged.
 - Credit gate said “APPROVE — NO MATERIAL EXCEPTIONS” with failed checks standing — **fixed (stage B)**: model failures give HOLD; model warnings cap the gate at CONDITIONAL and are named.
 - PDF omits DSCR, debt yield, LTV, break-evens, unit mix, lease-up schedule, financing and refinance analysis, sensitivities, combined downside — **open (stage C)**.
-- Model Checks sheet reports 0 errors / 0 warnings; the new integrity findings are not yet on it — **open**.
+- Model Checks sheet reports 0 errors / 0 warnings; the new integrity findings are not yet on it — **fixed (stage C)**.
+- Fixed facility (commitment, ceiling, equity-first, unused fee, capitalise to exit), contingency register, initial reserves, 50% catch-up rate and LP-only preferred return were not modelled — **added (gap closure)**, reconciled to the dollar by `reference2.py` and tested in `audit/harbor_gaps_test.js`.
+- Interest paid from the interest reserve was still charged to equity in the returns cash flow — **fixed (gap closure)**, found by the independent model on a tightened-ceiling variant.
+- **Harbor fixture error, found during gap closure:** from stage C on, the waterfall inputs in `deal.js` were commented out, so the Harbor Point PDFs and reports produced since then ran on BK Capital's default waterfall (50/50, 7% / 10% / 15%) rather than the brief's. LP IRR, GP IRR, promote and the dashboard Net LP IRR in those documents were wrong; levered and unlevered project figures were not affected. **Fixed**, with a test that every fixture input reaches the loaded deal.
 
 ## 7. Refinance alternative (month 43, 65% LTV, 6.25%, 30-yr, 1% fee)
 
 | Permanent loan | Construction payoff | Fee | Net cash-out | Annual debt service | DSCR | Debt yield | LTV | Residual value |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| $46.85M | $28.07M | $468,500 | $18.31M | $3.46M | 1.04x | 7.69% | 65.00% | $72.08M |
+| $46.85M | $31.84M | $468,500 | $14.54M | $3.46M | 1.04x | 7.69% | 65.00% | $72.08M |
 
 A 65% LTV loan on this NOI runs at about 1.04x DSCR; a 1.25x DSCR test would give a smaller loan. This case still sells at the horizon.
 
@@ -128,72 +129,72 @@ A 65% LTV loan on this NOI runs at about 1.04x DSCR; a 1.25x DSCR test would giv
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 4.50% | $80.27M | $36.56M | 39.08% | 31.39% | 81.46% | 2.59x | $1.46M | $3.19M |
-| 4.75% | $76.05M | $32.42M | 36.02% | 29.02% | 75.58% | 2.42x | $1.46M | $3.19M |
-| 5.00% | $72.25M | $28.69M | 33.09% | 26.77% | 69.76% | 2.27x | $1.46M | $3.19M |
-| 5.25% | $68.80M | $25.32M | 30.28% | 24.63% | 63.96% | 2.14x | $1.46M | $3.19M |
-| 5.50% | $65.68M | $22.25M | 27.57% | 22.60% | 58.13% | 2.02x | $1.46M | $3.19M |
-| 5.75% | $62.82M | $19.46M | 24.94% | 20.65% | 52.23% | 1.91x | $1.46M | $3.19M |
-| 6.00% | $60.20M | $16.89M | 22.39% | 18.79% | 46.20% | 1.81x | $1.46M | $3.19M |
+| 4.50% | $80.27M | $36.05M | 38.21% | 30.81% | 79.03% | 2.74x | $0 | $5.60M |
+| 4.75% | $76.05M | $31.91M | 35.20% | 28.47% | 73.22% | 2.56x | $0 | $5.60M |
+| 5.00% | $72.25M | $28.18M | 32.30% | 26.25% | 67.46% | 2.39x | $0 | $5.60M |
+| 5.25% | $68.80M | $24.81M | 29.52% | 24.14% | 61.70% | 2.24x | $0 | $5.60M |
+| 5.50% | $65.68M | $21.74M | 26.83% | 22.13% | 55.90% | 2.11x | $0 | $5.60M |
+| 5.75% | $62.82M | $18.95M | 24.22% | 20.20% | 50.00% | 1.99x | $0 | $5.60M |
+| 6.00% | $60.20M | $16.38M | 21.69% | 18.36% | 43.93% | 1.87x | $0 | $5.60M |
 
 **Average rent**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| $2800 | $58.65M | $14.59M | 19.86% | 16.80% | 40.81% | 1.70x | $1.46M | $3.19M |
-| $3000 | $63.98M | $20.12M | 25.50% | 21.07% | 53.56% | 1.93x | $1.46M | $3.19M |
-| $3310 | $72.25M | $28.69M | 33.09% | 26.77% | 69.76% | 2.27x | $1.46M | $3.19M |
-| $3500 | $77.31M | $33.95M | 37.22% | 29.95% | 77.88% | 2.48x | $1.46M | $3.19M |
-| $3700 | $82.64M | $39.48M | 41.23% | 33.09% | 85.45% | 2.70x | $1.46M | $3.19M |
+| $2800 | $58.65M | $14.07M | 19.18% | 16.31% | 38.91% | 1.76x | $0 | $5.60M |
+| $3000 | $63.98M | $19.61M | 24.79% | 20.62% | 51.34% | 2.02x | $0 | $5.60M |
+| $3310 | $72.25M | $28.18M | 32.30% | 26.25% | 67.46% | 2.39x | $0 | $5.60M |
+| $3500 | $77.31M | $33.44M | 36.38% | 29.39% | 75.49% | 2.62x | $0 | $5.60M |
+| $3700 | $82.64M | $38.97M | 40.32% | 32.48% | 82.95% | 2.87x | $0 | $5.60M |
 
 **Construction cost**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| +0% | $72.25M | $28.69M | 33.09% | 26.77% | 69.76% | 2.27x | $1.46M | $3.19M |
-| +5% | $72.25M | $27.06M | 31.11% | 25.25% | 65.78% | 2.17x | $1.51M | $3.30M |
-| +10% | $72.25M | $25.43M | 29.15% | 23.77% | 61.72% | 2.08x | $1.55M | $3.41M |
-| +15% | $72.25M | $23.79M | 27.22% | 22.32% | 57.58% | 1.99x | $1.60M | $3.52M |
-| +20% | $72.25M | $22.16M | 25.30% | 20.90% | 53.31% | 1.90x | $1.65M | $3.63M |
+| +0% | $72.25M | $28.18M | 32.30% | 26.25% | 67.46% | 2.39x | $0 | $5.60M |
+| +5% | $72.25M | $26.70M | 30.53% | 24.89% | 64.03% | 2.23x | $1.29M | $5.74M |
+| +10% | $72.25M | $25.30M | 28.54% | 23.37% | 60.06% | 2.09x | $2.63M | $5.81M |
+| +15% | $72.25M | $23.91M | 26.54% | 21.86% | 55.88% | 1.97x | $3.97M | $5.86M |
+| +20% | $72.25M | $22.53M | 24.57% | 20.40% | 51.54% | 1.87x | $5.31M | $5.91M |
 
 **Interest rate**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| +0 bps | $72.25M | $28.69M | 33.09% | 26.77% | 69.76% | 2.27x | $1.46M | $3.19M |
-| +100 bps | $72.25M | $27.94M | 32.26% | 26.13% | 68.12% | 2.22x | $1.64M | $3.63M |
-| +200 bps | $72.25M | $27.18M | 31.43% | 25.49% | 66.45% | 2.17x | $1.82M | $4.08M |
-| +300 bps | $72.25M | $26.41M | 30.58% | 24.85% | 64.73% | 2.12x | $1.99M | $4.54M |
+| +0 bps | $72.25M | $28.18M | 32.30% | 26.25% | 67.46% | 2.39x | $0 | $5.60M |
+| +100 bps | $72.25M | $27.32M | 31.61% | 25.73% | 66.05% | 2.36x | $0 | $6.45M |
+| +200 bps | $72.25M | $26.45M | 30.90% | 25.18% | 64.57% | 2.32x | $0 | $6.75M |
+| +300 bps | $72.25M | $25.57M | 30.14% | 24.61% | 63.02% | 2.22x | $704,567 | $6.78M |
 
 **Construction delay**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 months | $72.25M | $28.69M | 33.09% | 26.77% | 69.76% | 2.27x | $1.46M | $3.19M |
-| 3 months | $72.25M | $28.46M | 30.70% | 25.04% | 63.60% | 2.27x | $1.46M | $3.41M |
-| 6 months | $72.25M | $28.24M | 28.58% | 23.51% | 58.20% | 2.27x | $1.46M | $3.63M |
-| 12 months | $72.25M | $27.78M | 25.02% | 20.95% | 49.17% | 2.26x | $1.46M | $4.08M |
+| 0 months | $72.25M | $28.18M | 32.30% | 26.25% | 67.46% | 2.39x | $0 | $5.60M |
+| 3 months | $72.25M | $27.88M | 29.93% | 24.54% | 61.40% | 2.39x | $0 | $5.88M |
+| 6 months | $72.25M | $27.58M | 27.84% | 23.03% | 56.08% | 2.39x | $0 | $6.16M |
+| 12 months | $72.25M | $26.97M | 24.31% | 20.49% | 47.18% | 2.39x | $0 | $6.74M |
 
 **Lease-up delay**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 months | $72.25M | $28.69M | 33.09% | 26.77% | 69.76% | 2.27x | $1.46M | $3.19M |
-| 3 months | $72.25M | $28.50M | 30.53% | 24.92% | 63.19% | 2.25x | $1.74M | $3.40M |
-| 6 months | $72.25M | $28.30M | 28.28% | 23.29% | 57.46% | 2.23x | $2.03M | $3.63M |
-| 12 months | $72.25M | $27.90M | 24.52% | 20.59% | 47.97% | 2.19x | $2.60M | $4.08M |
+| 0 months | $72.25M | $28.18M | 32.30% | 26.25% | 67.46% | 2.39x | $0 | $5.60M |
+| 3 months | $72.25M | $27.90M | 29.93% | 24.55% | 61.31% | 2.39x | $0 | $6.19M |
+| 6 months | $72.25M | $27.61M | 27.84% | 23.04% | 55.94% | 2.39x | $0 | $6.75M |
+| 12 months | $72.25M | $27.02M | 24.34% | 20.53% | 47.02% | 2.35x | $517,975 | $6.79M |
 
 **Combined**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1. Cost +10%, rent -5%, cap +50 bps | $61.67M | $14.81M | 19.26% | 16.29% | 39.71% | 1.67x | $1.55M | $3.41M |
-| 2. Cost +15%, rate +200 bps, 6-mo construction delay | $72.25M | $21.47M | 21.77% | 18.42% | 43.58% | 1.89x | $1.97M | $5.14M |
-| 3. Rent -10%, lease-up +6 mo, cap +100 bps | $52.85M | $8.68M | 11.27% | 9.45% | 24.48% | 1.40x | $2.03M | $3.63M |
-| 4. Cost +20%, rate +300 bps, rent -10%, cap +100 bps | $52.85M | $45,085 | 0.07% | 0.07% | 0.07% | 1.00x | $2.25M | $5.18M |
+| 1. Cost +10%, rent -5%, cap +50 bps | $61.67M | $14.68M | 18.78% | 15.96% | 38.40% | 1.68x | $2.63M | $5.81M |
+| 2. Cost +15%, rate +200 bps, 6-mo construction delay | $72.25M | $21.29M | 21.38% | 18.18% | 42.37% | 1.86x | $4.97M | $6.70M |
+| 3. Rent -10%, lease-up +6 mo, cap +100 bps | $52.85M | $7.99M | 10.65% | 9.87% | 16.95% | 1.48x | $0 | $6.75M |
+| 4. Cost +20%, rate +300 bps, rent -10%, cap +100 bps | $52.85M | $268,203 | 0.40% | 0.44% | -0.00% | 1.01x | $6.51M | $6.70M |
 
 Delays extend the hold by the same number of months. Cost overrun applies to hard cost including contingency.
 
 ## 9. Conclusion
 
-The engine now reconciles: sources equal uses, interest ties month by month, the IRR hurdles replay to their rates, and an independent model matches to the dollar. The headline return is 33.09% levered, 22.32% unlevered. It stays CONDITIONAL, not approved, because equity pays interest beyond the facility commitment and costs exceed what the commitment funds. What the model still cannot do is in section 5; those are the limits of what it can tell an investment committee about this deal.
+The engine now reconciles: sources equal uses, interest ties month by month, the IRR hurdles replay to their rates, and an independent model matches to the dollar. The headline return is 32.30% levered, 22.32% unlevered; the LP earns 26.25% and the GP 67.46%. The credit gate reads APPROVE. What the model still cannot do is in section 5; those are the limits of what it can tell an investment committee about this deal.

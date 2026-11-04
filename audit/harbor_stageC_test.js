@@ -19,7 +19,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
 
   /* 1 pages and headings */
   const HEAD = ['Dashboard', 'Summary of investment', 'Returns and what they rest on', 'Budget and funding', 'Construction funding', 'Unit economics, operations and lease-up', 'Financing and debt metrics', 'Performance and sensitivity', 'What breaks the deal', 'Combined downside cases', 'Single-variable sensitivities', 'Credit decision', 'Impact to portfolio', 'Model integrity and limits'];
-  for (const [tag, deal, expectPages] of [['Harbor Point', H, 14], ['audit development deal, 4 years', Object.assign({}, V, { holdYears: 4 }), 14], ['audit development deal, 15 years', Object.assign({}, V, { holdYears: 15 }), 16], ['acquisition deal', A, 8]]) {
+  for (const [tag, deal, expectPages] of [['Harbor Point', H, 15], ['audit development deal, 4 years', Object.assign({}, V, { holdYears: 4 }), 15], ['audit development deal, 15 years', Object.assign({}, V, { holdYears: 15 }), 17], ['acquisition deal', A, 8]]) {
     const p = await open(deal); const t0 = Date.now(); const q = await view(p); const ms = Date.now() - t0; const r = await layout(q);
     check(tag + ': ' + expectPages + ' pages, numbered in order', r.n === expectPages && r.numbered, r.n);
     check(tag + ': nothing overflows, runs wide, is clipped, or prints NaN / undefined', !r.over.length && !r.wide.length && !r.clip && !r.bad, JSON.stringify({ over: r.over, wide: r.wide, clip: r.clip, bad: r.bad }));

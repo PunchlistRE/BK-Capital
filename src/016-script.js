@@ -19,11 +19,20 @@ function bkWfTiming(x){
  return { eq0, f:(rate,i)=>Math.pow(1+Number(rate||0),days[i]/365), closing:(con,i)=>i===0?Math.min(con,eq0):0 };
 }
 window.bkWfTiming=bkWfTiming;
+/* GP catch-up. Rate unset (or 100%): the GP takes everything after the preferred return until its promote is the target share of profit (the legacy rule). Rate below 100%: the catch-up tier is split, the GP taking that
+   share and the LP the rest, until the GP's promote (its excess over its pro-rata share) is the target share of the profit distributed so far. */
+function bkWfCatch(s, rem1, pre, cumProm, gs){
+  if(!Number(s.gpCatchup)) return { C:0, r:1 };
+  const tg=Number(s.gpCatchupTarget)||0, r0=Number(s.gpCatchupRate||0), r=(r0>0&&r0<1)?r0:1;
+  if(r>=1) return { C:Math.min(rem1,Math.max(0,(tg*pre-cumProm)/(1-tg))), r:1 };
+  const den=r-gs-tg; return { C:den>0?Math.min(rem1,Math.max(0,(tg*pre-cumProm)/den)):rem1, r:r };
+}
+window.bkWfCatch=bkWfCatch;
 function bkWaterfallV07(opts){
  const x=(opts&&opts.x)?opts.x:bkMonthlyReturns(),s=(opts&&opts.s)?opts.s:x.s,n=x.rows.length;
  const mr=a=>Math.pow(1+Number(a||0),1/12)-1;
  const r1=mr(s.pref),r2=mr(s.hurdle2),r3=mr(s.hurdle3), TM=bkWfTiming(x);
- let b1=0,b2=0,b3=0,cumCon=0,cumDist=0,cumProm=0;
+ let b1=0,b2=0,b3=0,cumCon=0,cumDist=0,cumProm=0,capRet=0;
  const rows=[];
  /* CONVENTION cvHurdleBasis. 'lp': every hurdle account accrues on the LP's own contributions and is
     reduced only by what the LP actually receives, so a tier opens only once the LP has reached that
@@ -39,39 +48,43 @@ function bkWaterfallV07(opts){
      const lc=con*lpS, gs=Number(s.gpShare||0);
      const clc=TM.closing(con,i)*lpS;
      let a1=(b1+clc)*TM.f(s.pref,i)+(lc-clc), a2=(b2+clc)*TM.f(s.hurdle2,i)+(lc-clc), a3=(b3+clc)*TM.f(s.hurdle3,i)+(lc-clc);
-     // Tier 1: pari passu until the LP's preferred-return account is cleared
-     const t1=lpS>0?Math.min(dist,a1/lpS):dist, lp1=t1*lpS;
+     // Tier 1: pari passu until the LP's preferred-return account is cleared. With the preferred return paid to the LP only, tier 1 first returns capital to everyone pro rata,
+     // then pays the LP's remaining preferred return (100% to the LP).
+     const lpOnly=String(s.prefHolder||'both')==='lp';
+     let t1,t1b=0,lp1,gpT1;
+     if(lpOnly){ const K=Math.max(0,cumCon+con-capRet), t1a=Math.min(dist,K), lp1a=t1a*lpS, a1r=Math.max(0,a1-lp1a); t1b=Math.min(dist-t1a,a1r); t1=t1a+t1b; lp1=lp1a+t1b; gpT1=t1a*gs; capRet+=t1a; }
+     else { t1=lpS>0?Math.min(dist,a1/lpS):dist; lp1=t1*lpS; gpT1=t1*gs; }
      cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
      const rem1=Math.max(0,dist-t1);
-     const catchup=Number(s.gpCatchup)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(1-Number(s.gpCatchupTarget)))):0;
+     const cu=bkWfCatch(s,rem1,preCatchProfit,cumProm,gs), catchup=cu.C, lpCU=(1-cu.r)*catchup, gpCU=cu.r*catchup;
      // Tier 2 / 3: the deal's own split until the LP's own account for that hurdle is cleared
-     const need2=Math.max(0,a2-lp1), t2=Number(s.t2LP)>0?Math.min(Math.max(0,dist-t1-catchup),need2/Number(s.t2LP)):0, lp2=t2*Number(s.t2LP);
-     const need3=Math.max(0,a3-lp1-lp2), t3=Number(s.t3LP)>0?Math.min(Math.max(0,dist-t1-catchup-t2),need3/Number(s.t3LP)):0, lp3=t3*Number(s.t3LP);
+     const need2=Math.max(0,a2-lp1-lpCU), t2=Number(s.t2LP)>0?Math.min(Math.max(0,dist-t1-catchup),need2/Number(s.t2LP)):0, lp2=t2*Number(s.t2LP);
+     const need3=Math.max(0,a3-lp1-lpCU-lp2), t3=Number(s.t3LP)>0?Math.min(Math.max(0,dist-t1-catchup-t2),need3/Number(s.t3LP)):0, lp3=t3*Number(s.t3LP);
      const t4=Math.max(0,dist-t1-catchup-t2-t3), lp4=t4*Number(s.t4LP);
-     const lpRecv=lp1+lp2+lp3+lp4;
+     const lpRecv=lp1+lpCU+lp2+lp3+lp4;
      b1=Math.max(0,a1-lpRecv); b2=Math.max(0,a2-lpRecv); b3=Math.max(0,a3-lpRecv);
      const lpCon=-con*lpS, gpCon=-con*gs;
-     const lpDist=lpRecv, gpDist=t1*gs+catchup+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
-     const promote=Math.max(0,gpDist-gs*(t1+catchup+t2+t3+t4));
+     const lpDist=lpRecv, gpDist=gpT1+gpCU+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
+     const promote=lpOnly?gpDist-gs*(t1+catchup+t2+t3+t4):Math.max(0,gpDist-gs*(t1+catchup+t2+t3+t4));
      cumProm+=promote; cumDist+=t1+catchup+t2+t3+t4;
-     rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
+     rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,t1b,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpT1:lp1,gpT1,lpCU,gpCU,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
      continue;
    }
    const cl=TM.closing(con,i), beg1=b1, req1=(beg1+cl)*TM.f(s.pref,i)+(con-cl), t1=Math.min(dist,req1); b1=req1-t1;
    cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
    const rem1=Math.max(0,dist-t1);
-   const catchup=Number(s.gpCatchup)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(1-Number(s.gpCatchupTarget)))):0;
+   const cu=bkWfCatch(s,rem1,preCatchProfit,cumProm,Number(s.gpShare||0)), catchup=cu.C;
    const beg2=b2,req2=(beg2+cl)*TM.f(s.hurdle2,i)+(con-cl);
    const t2=Math.min(Math.max(0,dist-t1-catchup),Math.max(0,req2-t1-catchup)); b2=Math.max(0,req2-t1-catchup-t2);
    const beg3=b3,req3=(beg3+cl)*TM.f(s.hurdle3,i)+(con-cl);
    const t3=Math.min(Math.max(0,dist-t1-catchup-t2),Math.max(0,req3-t1-catchup-t2)); b3=Math.max(0,req3-t1-catchup-t2-t3);
    const t4=Math.max(0,dist-t1-catchup-t2-t3);
    const lpCon=-con*(1-Number(s.gpShare)), gpCon=-con*Number(s.gpShare);
-   const lpDist=t1*(1-Number(s.gpShare))+t2*Number(s.t2LP)+t3*Number(s.t3LP)+t4*Number(s.t4LP);
-   const gpDist=t1*Number(s.gpShare)+catchup+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
+   const lpDist=t1*(1-Number(s.gpShare))+(1-cu.r)*catchup+t2*Number(s.t2LP)+t3*Number(s.t3LP)+t4*Number(s.t4LP);
+   const gpDist=t1*Number(s.gpShare)+cu.r*catchup+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
    const promote=Math.max(0,gpDist-Number(s.gpShare)*(t1+catchup+t2+t3+t4));
    cumProm+=promote; cumDist+=t1+catchup+t2+t3+t4;
-   rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
+   rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpT1:t1*(1-Number(s.gpShare)),gpT1:t1*Number(s.gpShare),lpCU:(1-cu.r)*catchup,gpCU:cu.r*catchup,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
  }
  const lpVals=rows.map(r=>r.lpCF),gpVals=rows.map(r=>r.gpCF),dates=rows.map(r=>r.dt);
  const _eq0=Number(x.rows[0]&&x.rows[0].eqDraw)||0,_gs=Number(s.gpShare||0);

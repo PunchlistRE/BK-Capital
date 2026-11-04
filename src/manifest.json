@@ -890,6 +890,11 @@
 "close": "</script>"
 },
 {
+"file": "180-bk-devbudget.js",
+"open": "\n<script id=\"bk-devbudget\">",
+"close": "</script>"
+},
+{
 "file": "178-bk-integrity.js",
 "open": "\n<script id=\"bk-integrity\">",
 "close": "</script>"
