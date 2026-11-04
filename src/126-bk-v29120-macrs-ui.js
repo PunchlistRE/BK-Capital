@@ -74,7 +74,7 @@ function benefit(){
     ['Present value of those savings @ ' + pc(b.discount, 1), n0(b.pvTaxSavings), ''],
     ['Extra tax at sale (more recapture)', n0(-b.extraSaleTax), 'Short-life depreciation recaptures as ordinary income'],
     ['Net nominal benefit', n0(b.netNominalBenefit), 'Savings less extra sale tax less fee'],
-    ['After-tax IRR with / without cost seg', pc(b.irrWith) + ' / ' + pc(b.irrWithout), 'Under the “' + (b.lossMode === 'usable' ? 'losses usable' : 'losses suspended') + '” setting; the realised benefit depends on it']
+    ['After-tax IRR with / without cost seg', pc(b.irrWith) + ' / ' + pc(b.irrWithout), 'Under the “' + (b.lossMode === 'usable' ? 'losses usable' : 'losses suspended') + '” setting; the realized benefit depends on it']
   ].map(function(r, i){ return '<tr' + (i === 8 ? ' class="grandtotal"' : '') + '><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td><td data-bk-align="text">' + r[2] + '</td></tr>'; }).join('');
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>What Cost Segregation Adds - Versus Straight-Line on the Same Basis</caption><tbody>' + rows + '</tbody></table></div>';
 }

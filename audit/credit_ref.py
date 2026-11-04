@@ -41,7 +41,7 @@ def check(s, policy=None, ic=None, gate_cfg=None):
     caps = {
         'Loan-to-value': value * p['maxLTV'], 'Loan-to-cost': cost * p['maxLTC'],
         'DSCR, actual rate, amortizing': pv(coupon, years, noi1 / p['minDSCR']), 'DSCR, stressed rate, amortizing': pv(stressed, years, noi1 / p['minDSCR']),
-        'DSCR, interest-only, actual rate': noi1 / p['minDSCR'] / coupon, 'Debt yield, underwriting NOI': noi1 / p['minDebtYield'], 'Debt yield, stabilised NOI': noi3 / p['minDebtYield']}
+        'DSCR, interest-only, actual rate': noi1 / p['minDSCR'] / coupon, 'Debt yield, underwriting NOI': noi1 / p['minDebtYield'], 'Debt yield, stabilized NOI': noi3 / p['minDebtYield']}
     capacity = min(caps.values()); binding = [k for k, v in caps.items() if v == capacity][0]
     out = dict(caps=caps, capacity=capacity, binding=binding, requested=loan, overage=loan - capacity, headroom=sorted(caps.values())[1] - capacity,
                dscr=noi1 / ds, debtYield=noi1 / loan, ltv=loan / value, ltc=loan / cost, stressedDscr=noi1 / annual_ds(stressed, years, loan),

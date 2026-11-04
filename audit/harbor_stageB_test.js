@@ -1,6 +1,6 @@
 // Harbor Point regressions, stage B: validation and credit controls.
 //  1 waterfall hurdles replay to their rates on the LP's dated cash flows (half a basis point)    2 contributions are gross and tie: LP + GP = equity ledger + operating shortfall
-//  3 capitalised interest, sources = uses, draws, payoff, sale, IRR and multiple are independently recomputed and FAIL VISIBLY when the engine is tampered with
+//  3 capitalized interest, sources = uses, draws, payoff, sale, IRR and multiple are independently recomputed and FAIL VISIBLY when the engine is tampered with
 //  4 the credit gate follows the validation: hard failures cannot be approved, warnings cannot read "no material exceptions"
 //  5 a second, independent model (audit/harbor/reference2.py, written from the raw inputs) matches the engine to the dollar
 //   node audit/harbor_stageB_test.js index.html
@@ -35,7 +35,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
 
   /* 3 validation fails visibly when the engine is tampered with */
   const MUT = {
-    'capitalised interest overstated in one month': () => { const o = window.bkDevFundingV10; window.bkDevFundingV10 = function () { const f = o.apply(this, arguments); f.months = f.months.map(z => z.mo === 12 ? Object.assign({}, z, { capInt: z.capInt + 5000 }) : z); return f; }; },
+    'capitalized interest overstated in one month': () => { const o = window.bkDevFundingV10; window.bkDevFundingV10 = function () { const f = o.apply(this, arguments); f.months = f.months.map(z => z.mo === 12 ? Object.assign({}, z, { capInt: z.capInt + 5000 }) : z); return f; }; },
     'a loan draw that no cost needs': () => { const o = window.bkDevFundingV10; window.bkDevFundingV10 = function () { const f = o.apply(this, arguments); f.months = f.months.map(z => z.mo === 9 ? Object.assign({}, z, { loanDraw: z.loanDraw + 20000 }) : z); return f; }; },
     'equity requirement that does not match the cash flow': () => { const o = window.bkDevFundingV10; window.bkDevFundingV10 = function () { const f = o.apply(this, arguments); f.equityTotal += 25000; return f; }; },
     'sale proceeds that do not equal value less costs': () => { const o = window.bkMonthlyReturns; window.bkMonthlyReturns = function () { const m = o.apply(this, arguments); m.rows = m.rows.map((r, i) => i === m.rows.length - 1 ? Object.assign({}, r, { sale: r.sale + 40000 }) : r); return m; }; },
@@ -45,7 +45,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
     'a waterfall that pays the LP too much': () => { const o = window.bkWaterfallV07; window.bkWaterfallV07 = function () { const w = o.apply(this, arguments); w.rows = w.rows.map((r, i) => i === w.rows.length - 1 ? Object.assign({}, r, { lpDist: r.lpDist + 100000 }) : r); return w; }; },
     'LP contributions that do not add up': () => { const o = window.bkWaterfallV07; window.bkWaterfallV07 = function () { const w = o.apply(this, arguments); w.lp = Object.assign({}, w.lp, { contrib: w.lp.contrib + 50000 }); return w; }; },
   };
-  const WANT = { 'capitalised interest overstated in one month': 'capint', 'a loan draw that no cost needs': 'draws', 'equity requirement that does not match the cash flow': 'eqret', 'sale proceeds that do not equal value less costs': 'sale', 'debt repaid at sale that is not the outstanding balance': 'payoff', 'a reported IRR that the cash flows do not produce': 'irr', 'an equity multiple that is not distributions over contributions': 'moic', 'a waterfall that pays the LP too much': 'wf_', 'LP contributions that do not add up': 'contrib' };
+  const WANT = { 'capitalized interest overstated in one month': 'capint', 'a loan draw that no cost needs': 'draws', 'equity requirement that does not match the cash flow': 'eqret', 'sale proceeds that do not equal value less costs': 'sale', 'debt repaid at sale that is not the outstanding balance': 'payoff', 'a reported IRR that the cash flows do not produce': 'irr', 'an equity multiple that is not distributions over contributions': 'moic', 'a waterfall that pays the LP too much': 'wf_', 'LP contributions that do not add up': 'contrib' };
   { const p = await open(H); const clean = await p.evaluate(() => { const g = bkIntegrity(); return { hard: g.hard.length, ids: g.checks.map(c => c.id), text: g.text }; });
     check('Harbor Point: an untouched engine has no failed integrity check', clean.hard === 0, clean.text); await p.close();
     for (const name of Object.keys(MUT)) { const q = await open(H); const r = await q.evaluate((src) => { eval('(' + src + ')')(); const g = bkIntegrity(), gate = bkDealGate(); return { hard: g.hard.map(c => c.id), verdict: gate.verdict, status: gate.status }; }, MUT[name].toString());

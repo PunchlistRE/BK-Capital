@@ -10,7 +10,7 @@
    * bkDebtCapacity()    the largest senior loan the property supports under
                          each constraint - LTV, LTC, DSCR at the coupon, DSCR at
                          a STRESSED coupon, interest-only DSCR, debt yield on
-                         underwriting and stabilised NOI - the binding one,
+                         underwriting and stabilized NOI - the binding one,
                          headroom to the next, overage versus the loan the
                          engine sized, a leverage ladder, and the highest coupon
                          at which DSCR still holds the minimum.
@@ -116,11 +116,11 @@ function debtCapacity(){
   var rows = [
     ['Loan-to-value',                         'Value x maximum LTV',                     value * p.maxLTV],
     ['Loan-to-cost',                          'Cost basis x maximum LTC',                cost * p.maxLTC],
-    ['DSCR, actual rate, amortizing',         'NOI / minimum DSCR, capitalised',         pvAnnuity(coupon, years, noi / p.minDSCR)],
+    ['DSCR, actual rate, amortizing',         'NOI / minimum DSCR, capitalized',         pvAnnuity(coupon, years, noi / p.minDSCR)],
     ['DSCR, stressed rate, amortizing',       'NOI / minimum DSCR at coupon + stress',   pvAnnuity(stressed, years, noi / p.minDSCR)],
     ['DSCR, interest-only, actual rate',      'NOI / minimum DSCR / coupon',             coupon > 0 ? noi / p.minDSCR / coupon : Infinity],
     ['Debt yield, underwriting NOI',          'NOI / minimum debt yield',                noi / p.minDebtYield],
-    ['Debt yield, stabilised NOI',            'Year-3 NOI / minimum debt yield',         stab / p.minDebtYield]
+    ['Debt yield, stabilized NOI',            'Year-3 NOI / minimum debt yield',         stab / p.minDebtYield]
   ].map(function(r){ return { name:r[0], basis:r[1], max:r[2], ltv:value > 0 ? r[2] / value : 0, vsRequest:r[2] - req }; });
   var min = Math.min.apply(null, rows.map(function(r){ return r.max; }));
   var binding = rows.filter(function(r){ return r.max === min; })[0];

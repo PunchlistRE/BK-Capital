@@ -36,7 +36,7 @@
 
    NOT MODELLED (stated, not hidden): Sec. 179, state decoupling from bonus,
    Sec. 1231 look-back, NIIT, AMT, passive-loss limits other than full
-   suspension, capitalised closing costs in the depreciable basis (the canonical
+   suspension, capitalized closing costs in the depreciable basis (the canonical
    definition - price less land plus capex - is kept), and replacement-reserve
    spend as capital (reserves are treated as deductible, as the legacy engine did).
    =========================================================================== */

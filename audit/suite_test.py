@@ -60,7 +60,7 @@ for d in data['deals']:
             close(f'{tag} cushion: exit cap cushion (bps)', cu['exitCapCushionBps'] if cu['exitCapCushionBps'] != 'NaN' else float('nan'), ref['exitCapCushion'] if ref['exitCapCushion'] is not None else float('nan'), 1e-4)
             close(f'{tag} cushion: downside IRR', cu['irrDownside'], ref['irrDown'], 1e-6); close(f'{tag} cushion: upside IRR', cu['irrUpside'], ref['irrUp'], 1e-6)
             close(f'{tag} cushion: break-even occupancy', cu['breakEvenOccupancy'], ref['beOcc'], 1e-7)
-            close(f'{tag} cushion: NOI tolerance Y1', cu['noiTolerance1'], ref['noiTol1'], 1e-7); close(f'{tag} cushion: NOI tolerance stabilised', cu['noiTolerance3'], ref['noiTol3'], 1e-7)
+            close(f'{tag} cushion: NOI tolerance Y1', cu['noiTolerance1'], ref['noiTol1'], 1e-7); close(f'{tag} cushion: NOI tolerance stabilized', cu['noiTolerance3'], ref['noiTol3'], 1e-7)
             close(f'{tag} cushion: break-even rent', cu['breakEvenRent'], ref['beRent'], 1e-3); close(f'{tag} cushion: rent cushion', cu['rentCushion'], ref['rentCush'], 1e-7)
             for row in cr['rows']:
                 if row['id'] in ref['gate']: close(f"{tag} gate {row['id']}: result", row['result'], ref['gate'][row['id']], 0)

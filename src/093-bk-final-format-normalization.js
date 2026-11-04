@@ -60,7 +60,7 @@ var RE_MONEY_ANY  = /^\(?\$[\d,]/;
 // Headers that name a monetary quantity outright. Deliberately a CLOSED list of
 // unambiguous terms - generic headers are excluded below because those columns
 // routinely mix dollars with ratios row by row and no column rule can tell them apart.
-var RE_MONEY_HEAD = /(^|\b)(noi|egi|interest|principal|balance|debt service|cash flow|contribution|distribution|available|catch-up|promote|amount|draw|funding|cumulative|unreturned|proceeds|payoff|revenue|expense|reserves?|hurdle account|tier \d|lp cf|gp cf|net equity cf|capitalised interest|capitalized interest|asset fee|loan funding|peak balance|total debt)(\b|$)/i;
+var RE_MONEY_HEAD = /(^|\b)(noi|egi|interest|principal|balance|debt service|cash flow|contribution|distribution|available|catch-up|promote|amount|draw|funding|cumulative|unreturned|proceeds|payoff|revenue|expense|reserves?|hurdle account|tier \d|lp cf|gp cf|net equity cf|capitalized interest|capitalized interest|asset fee|loan funding|peak balance|total debt)(\b|$)/i;
 var RE_NOT_MONEY_HEAD = /(^|\b)(mo|month|date|year|period|units?|sf|count|rate|ratio|dscr|yield|factor|steepness|prob|downtime|status|check|metric|line item|field|type|total|value|variance|result|share)(\b|$)|%/i;
 
 function fmtMoneyFromBare(txt){

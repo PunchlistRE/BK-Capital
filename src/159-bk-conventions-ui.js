@@ -37,7 +37,7 @@ var DEF = [
     opts:[['afterVacancy','Rent after vacancy'],['gross','Gross potential rent'],['legacy','Legacy (statement gross, monthly after vacancy)']],
     why:{ afterVacancy:'Standard. Vacancy is deducted first, then bad debt on the rent actually billed. Operating Underwrite, monthly cash flow, valuation, sale and sensitivities all use it.',
           gross:'Bad debt on gross potential rent everywhere. Use only if the underwriting policy specifies a gross basis.',
-          legacy:'Original behaviour: Operating Underwrite charges gross rent while the monthly cash flow charges rent after vacancy, so Year-1 NOI differs between them.' } }
+          legacy:'Original behavior: Operating Underwrite charges gross rent while the monthly cash flow charges rent after vacancy, so Year-1 NOI differs between them.' } }
 ];
 
 function statusChip(s, k){

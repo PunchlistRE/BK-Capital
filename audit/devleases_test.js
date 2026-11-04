@@ -1,5 +1,5 @@
-// Tenant-level commercial leases in a development deal. The lease clock starts the month after completion; the schedule's retail replaces the retail inside the stabilised
-// NOI path from stabilisation, replaces it inside the lease-up ramp, and its TI and LC are capital in the month they fall. A development without a tenant schedule is unchanged.
+// Tenant-level commercial leases in a development deal. The lease clock starts the month after completion; the schedule's retail replaces the retail inside the stabilized
+// NOI path from stabilization, replaces it inside the lease-up ramp, and its TI and LC are capital in the month they fall. A development without a tenant schedule is unchanged.
 //   node audit/devleases_test.js index.html [reference.html]
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');
 const DEV = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(__dirname, 'deal.js'));
@@ -35,13 +35,13 @@ const LEASES = [
   const mv = await p.evaluate(() => { const r1 = bkRunWith({ constructionMonths: 24 }, () => bkLeaseEval(bkLoad(), 40, null, true).rent.slice(0, 14).map(v => Math.round(v))); return r1; });
   check('lengthening construction by 6 months moves the same calendar dates 6 lease months earlier: the salon\'s 1/1/2029 start is now before the clock starts (it is already paying in lease month 1) and the cafe starts in month 1', mv[0] > 3750 && mv[0] === mv[5], mv.join(','));
 
-  /* ---- 3. stabilised income ---- */
+  /* ---- 3. stabilized income ---- */
   const calc = await p.evaluate(() => { const c = bkCalc(), LM = bkLeaseEval(bkLoad(), 12, null, false), t = a => a.reduce((x, y) => x + y, 0); return { commercial: c.commercial, rec: c.recovery, rentY1: t(LM.rent), recY1: t(LM.rec), noi: c.noi }; });
-  check('stabilised retail rent and recoveries in the deal\'s first-year statement are the tenant schedule\'s first twelve months (after completion)', Math.abs(calc.commercial - calc.rentY1) < 1e-6 && Math.abs(calc.rec - calc.recY1) < 1e-6 && calc.commercial > 0 && calc.rec > 0, JSON.stringify(calc));
+  check('stabilized retail rent and recoveries in the deal\'s first-year statement are the tenant schedule\'s first twelve months (after completion)', Math.abs(calc.commercial - calc.rentY1) < 1e-6 && Math.abs(calc.rec - calc.recY1) < 1e-6 && calc.commercial > 0 && calc.rec > 0, JSON.stringify(calc));
   const rec = await p.evaluate(() => { const LM = bkLeaseEval(bkLoad(), 24, null, true); return { gross: LM.byT[1].rec.reduce((a, v) => a + v, 0), nnn: LM.byT[0].rec.reduce((a, v) => a + v, 0) }; });
   check('NNN recoveries work in a development: the NNN tenant recovers a share of the expense pool, the gross tenant recovers nothing', rec.nnn > 0 && rec.gross === 0, JSON.stringify(rec));
   const wl = await ev(SNAP);
-  check('the schedule changes the deal\'s return and stabilised NOI', wl.irr !== base.irr && wl.noi > base.noi, (base.irr * 100).toFixed(2) + '% → ' + (wl.irr * 100).toFixed(2) + '%');
+  check('the schedule changes the deal\'s return and stabilized NOI', wl.irr !== base.irr && wl.noi > base.noi, (base.irr * 100).toFixed(2) + '% → ' + (wl.irr * 100).toFixed(2) + '%');
 
   /* ---- 4. the development cash flow ---- */
   const noiChk = await p.evaluate(() => { const s = bkLoad(), x = bkDevV09(), m = bkMonthlyReturns(), c = bkCalc(), N = 50, tg = +s.taxGrowth || 0, og = +s.opexGrowth || 0, cvS = bkConventions(s).cvRentGrowthStart, gE = mo => cvS === 'month1' ? mo / 12 : Math.ceil(mo / 12) - 1;
@@ -49,7 +49,7 @@ const LEASES = [
     let worst = 0, n = 0; for (let mo = x.stab; mo <= x.stab + 30 && mo <= m.rows.length; mo++) { const yr = Math.max(1, Math.ceil((mo - x.stab + 1) / 12)), k = mo - x.co;
       const growth = ((baseNOI + reserves0) * Math.pow(1 + g, yr - 1) - reserves0 * Math.pow(1 + og, yr - 1)) / 12, lease = (LM.rent[k - 1] + LM.rec[k - 1] - LM.genVac[k - 1]) * (1 - LM.creditLoss), want = growth + (lease - c.netComm * Math.pow(1 + g, yr - 1) / 12) * (1 - (+s.mgmtPct || 0)); worst = Math.max(worst, Math.abs(m.rows[mo - 1].noi - want)); n++; }
     return { worst, n }; });
-  check('from stabilisation each month\'s NOI = the growth path less the retail it assumes plus what the tenants pay (net of the management fee): independent recomputation matches to the cent', noiChk.n >= 24 && noiChk.worst < 0.01, JSON.stringify(noiChk));
+  check('from stabilization each month\'s NOI = the growth path less the retail it assumes plus what the tenants pay (net of the management fee): independent recomputation matches to the cent', noiChk.n >= 24 && noiChk.worst < 0.01, JSON.stringify(noiChk));
   const ramp = await p.evaluate(() => { const s = bkLoad(), x = bkDevV09(), c = bkCalc(), LM = bkLeaseEval(s, 40, { tax: y => Math.pow(1 + (+s.taxGrowth || 0), y - 1), opex: mo => Math.pow(1 + (+s.opexGrowth || 0), bkConventions(s).cvRentGrowthStart === 'month1' ? mo / 12 : Math.ceil(mo / 12) - 1) }, true); let worst = 0;
     x.leaseupRamp.forEach(r => { const k = r.mo - x.co, net = k >= 1 ? (LM.rent[k - 1] + LM.rec[k - 1] - LM.genVac[k - 1]) * (1 - LM.creditLoss) : 0, resid = (c.egi - c.netComm) * r.occ / 12; worst = Math.max(worst, Math.abs(r.egi - resid - net)); });
     return { worst, n: x.leaseupRamp.length, first: Math.round(x.leaseupRamp[0].egi), lu: x.luMo }; });

@@ -33,7 +33,7 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   check('the Gantt sheet is present and has width', pg && pg.wide > 300);
   check('the summary chart scales to its space (viewBox) rather than a fixed size', pg && /^0 0 \d+ \d+$/.test(pg.vb));
   check('every task name is on the chart, with its number', E.names.every(n => pg.texts.some(t => t.t.indexOf(n.slice(0, 20)) === 0)) && E.names.every((n, i) => pg.texts.some(t => t.t === String(i + 1))));
-  check('the calendar years are across the top and the three milestones are flagged with their dates', ['2027', '2028', '2029', '2030', '2031', '2032'].every(y => pg.texts.some(t => t.t === y)) && pg.texts.some(t => /^Certificate of occupancy · /.test(t.t)) && pg.texts.some(t => /^Stabilised · /.test(t.t)) && pg.texts.some(t => /^Sale \/ exit · /.test(t.t)) && pg.texts.some(t => t.t.endsWith(E.coDate)), JSON.stringify(pg.texts.filter(t => / · /.test(t.t))));
+  check('the calendar years are across the top and the three milestones are flagged with their dates', ['2027', '2028', '2029', '2030', '2031', '2032'].every(y => pg.texts.some(t => t.t === y)) && pg.texts.some(t => /^Certificate of occupancy · /.test(t.t)) && pg.texts.some(t => /^Stabilized · /.test(t.t)) && pg.texts.some(t => /^Sale \/ exit · /.test(t.t)) && pg.texts.some(t => t.t.endsWith(E.coDate)), JSON.stringify(pg.texts.filter(t => / · /.test(t.t))));
   const flags = pg.texts.filter(t => / · (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$/.test(t.t) && t.y < 60);
   check('the milestone flags do not sit on top of each other', flags.length === 3 && !flags.some((a, i) => flags.some((c, j) => j > i && Math.abs(a.y - c.y) < 10 && Math.abs(a.x - c.x) < 150)), JSON.stringify(flags));
   check('each duration is labelled on its bar ("6 mo"), and the dependency arrows match the task links (' + E.npreds + ')', pg.texts.some(t => t.t === '6 mo') && pg.arrows === E.npreds, 'arrows ' + pg.arrows);
@@ -47,19 +47,19 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   check('every page says "Page i of N"', rp.foot.every((f, i) => f.indexOf('Page ' + (i + 1) + ' of ' + rp.n) >= 0));
   check('nothing runs off the bottom of any page', rp.over.every(v => v <= 1), rp.over.join());
   const cover = rp.text[0];
-  check('cover: months to stabilisation, the certificate of occupancy date and the key-date months are the engine\'s (' + E.stab + ' months, CO month ' + E.co + ')', new RegExp(E.stab + ' months').test(cover) && cover.includes(E.coDate) && new RegExp('Certificate of occupancy\\s+\\w{3} \\d{4}\\s+' + E.co + '\\s').test(cover.replace(/\n/g, ' ')) && new RegExp('Stabilised\\s+\\w{3} \\d{4}\\s+' + E.stab + '\\s').test(cover.replace(/\n/g, ' ')) && new RegExp('Sale / exit\\s+\\w{3} \\d{4}\\s+' + E.hold + '\\s').test(cover.replace(/\n/g, ' ')), cover.slice(0, 120).replace(/\n/g, ' '));
+  check('cover: months to stabilization, the certificate of occupancy date and the key-date months are the engine\'s (' + E.stab + ' months, CO month ' + E.co + ')', new RegExp(E.stab + ' months').test(cover) && cover.includes(E.coDate) && new RegExp('Certificate of occupancy\\s+\\w{3} \\d{4}\\s+' + E.co + '\\s').test(cover.replace(/\n/g, ' ')) && new RegExp('Stabilized\\s+\\w{3} \\d{4}\\s+' + E.stab + '\\s').test(cover.replace(/\n/g, ' ')) && new RegExp('Sale / exit\\s+\\w{3} \\d{4}\\s+' + E.hold + '\\s').test(cover.replace(/\n/g, ' ')), cover.slice(0, 120).replace(/\n/g, ' '));
   check('cover: levered IRR and multiple are the engine\'s (' + pc(E.irr) + ')', cover.includes(pc(E.irr)) && cover.includes(E.moic.toFixed(2) + 'x'));
   check('cover: all-in cost, equity and the construction loan are the funding engine\'s', cover.includes('$' + (E.levered / 1e6).toFixed(2) + 'M') && cover.includes('$' + (E.equity / 1e6).toFixed(2) + 'M') && cover.includes('$' + (E.commit / 1e6).toFixed(2) + 'M'));
   check('cover: the critical path lists the critical tasks in order, then the CO and the lease-up', E.names.every(n => cover.includes(n)) && cover.indexOf(E.names[0]) < cover.indexOf(E.names[E.names.length - 1]) && /Certificate of occupancy/.test(cover) && /Lease-up/.test(cover));
   const tbl = rp.text.slice(1 + ganttPages, 1 + ganttPages + Math.ceil(rows / 15)).join('\n');
   check('task table: every task, its predecessors and CRITICAL on each critical row', E.names.every(n => tbl.includes(n)) && (tbl.match(/CRITICAL/g) || []).length >= E.ncrit && /\t\d+ -\d+\t/.test(tbl));
   const fund = rp.text[rp.n - 2].replace(/\n/g, ' ');
-  const need = fund.match(/Through stabilisation\s+\$([\d,]+)\s+\$([\d,]+)\s+\$([\d,]+)\s+\$([\d,]+)/);
-  check('funding: uses through stabilisation equal the engine\'s monthly need, and equity + loan draws = uses', need && Math.abs(+need[1].replace(/,/g, '') - Math.round(E.needStab)) <= 1 && Math.abs(+need[2].replace(/,/g, '') + +need[3].replace(/,/g, '') - +need[1].replace(/,/g, '')) <= 2, need && need.slice(1).join(' | '));
+  const need = fund.match(/Through stabilization\s+\$([\d,]+)\s+\$([\d,]+)\s+\$([\d,]+)\s+\$([\d,]+)/);
+  check('funding: uses through stabilization equal the engine\'s monthly need, and equity + loan draws = uses', need && Math.abs(+need[1].replace(/,/g, '') - Math.round(E.needStab)) <= 1 && Math.abs(+need[2].replace(/,/g, '') + +need[3].replace(/,/g, '') - +need[1].replace(/,/g, '')) <= 2, need && need.slice(1).join(' | '));
   const dl = rp.text[rp.n - 1].replace(/\n/g, ' ');
   check('delay table: as underwritten is the engine\'s IRR (' + pc(E.base.irr) + ') and +3 months is an independent engine run (' + pc(E.d3.irr) + ', CO month ' + E.d3.co + ')', dl.includes('As underwritten') && dl.includes(pc(E.base.irr)) && dl.includes(pc(E.d3.irr)) && dl.includes(pc(E.d1.irr)) && E.d3.co === E.co + 3 && dl.includes(money(E.d3.eq)), dl.slice(0, 160));
   check('delay table: more delay always costs more IRR (monotonic) and the sentence names the cost of one month', E.d1.irr < E.base.irr && E.d3.irr < E.d1.irr && /Each month of construction delay costs about \d+ bps/.test(dl));
-  check('the summary is white paper, not themed (hard-coded colours)', /rgb\(255, 255, 255\)/.test(rp.bg));
+  check('the summary is white paper, not themed (hard-coded colors)', /rgb\(255, 255, 255\)/.test(rp.bg));
 
   /* ---- a real PDF ---- */
   await p.emulateMedia({ media: 'print' }); const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bksr-')), f = path.join(tmp, 'schedule.pdf');
@@ -67,7 +67,7 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   const info = execFileSync('pdfinfo', [f]).toString(), txt = execFileSync('pdftotext', ['-layout', f, '-']).toString();
   const pages = +(/Pages:\s+(\d+)/.exec(info) || [])[1], size = (/Page size:\s+([\d.]+) x ([\d.]+)/.exec(info) || []);
   check('the PDF has exactly the summary\'s pages (' + rp.n + ') on letter landscape (792 x 612 pt)', pages === rp.n && Math.round(+size[1]) === 792 && Math.round(+size[2]) === 612, info.match(/Pages:.*|Page size:.*/g).join(' / '));
-  check('the PDF carries the title, every task, the dates and "Page 1 of ' + rp.n + '", and none of the application', /Development schedule summary/.test(txt) && E.names.every(n => txt.includes(n)) && txt.includes('Page 1 of ' + rp.n) && txt.includes(E.coDate) && !/Deal Snapshot|Local only|Colour key|Undo/.test(txt));
+  check('the PDF carries the title, every task, the dates and "Page 1 of ' + rp.n + '", and none of the application', /Development schedule summary/.test(txt) && E.names.every(n => txt.includes(n)) && txt.includes('Page 1 of ' + rp.n) && txt.includes(E.coDate) && !/Deal Snapshot|Local only|Color key|Undo/.test(txt));
   check('printing did not add the generic print header (the summary prints its own pages)', await p.evaluate(() => !document.getElementById('bk-print-head')));
   await p.emulateMedia({ media: 'screen' });
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);

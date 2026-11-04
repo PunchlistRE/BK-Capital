@@ -115,7 +115,7 @@ var st = document.createElement('style'); st.id = 'bk-print-css'; st.textContent
 var queued = false;
 function addBtn(){ queued = false; var v = document.getElementById('viewport'); if(!v) return;
   [].forEach.call(v.querySelectorAll('.sheet-frame'), function(fr){ var tb = fr.querySelector('.title-block'); if(!tb || tb.querySelector('.bk-print-btn') || fr.querySelector('.pf-print, .rp-bar')) return;
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'bk-btn bk-print-btn'; b.textContent = 'Print / Save PDF'; b.setAttribute('title', 'Print or save this section as a PDF'); b.onclick = function(){ window.bkPrintSection(); };
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'bk-btn bk-print-btn'; b.textContent = 'Print / PDF'; b.setAttribute('title', 'Print or save this section as a PDF'); b.onclick = function(){ window.bkPrintSection(); };
     var key = tb.querySelector('.bk-key-wrap'); if(key) tb.insertBefore(b, key); else tb.appendChild(b); }); }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(addBtn); } }
 function start(){ addBtn(); var vp = document.getElementById('viewport'); if(vp) new MutationObserver(later).observe(vp, { childList:true, subtree:true }); }

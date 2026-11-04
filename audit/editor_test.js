@@ -19,7 +19,7 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   await fresh(A);
   check('the Property Editor is a navigation group of seven sheets right after Overview', await p.evaluate(() => { const g = GROUPS[1]; return g.id === 'editor' && g.sheets.join() === 'Property,Market,Revenues,Expenses,Tenants,Investment,Valuation' && NAV_TABS[1].id === 'editor'; }));
   await p.evaluate(() => showSheet('Property')); await p.waitForTimeout(200);
-  await p.click('.bk-ribbon .rb-b:has-text("Expenses")'); await p.waitForTimeout(250);
+  await p.click('.bk-ribbon .rb-t:has-text("Expenses")'); await p.waitForTimeout(250);
   check('clicking a tab opens that sheet, and a sub-tab choice is remembered', await p.evaluate(() => currentSheet === 'Expenses') && (await p.click('.ae-sub:has-text("Capital")'), await p.waitForTimeout(250), await p.evaluate(() => { showSheet('Market'); showSheet('Expenses'); return document.querySelector('.ae-sub.on').textContent === 'Capital'; })));
   /* Property */
   await go('Property', 'desc'); await set('ae-name', 'Editor Test Court'); check('Property > Description writes the property name', (await st()).name === 'Editor Test Court');

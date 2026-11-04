@@ -43,7 +43,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   const edit = await p.evaluate(async () => { const i = document.querySelector('#viewport input[placeholder=off]'); i.value = '9.5'; i.dispatchEvent(new Event('change')); await new Promise(r => setTimeout(r, 900)); return Number(bkLoad().acqDebtYield); });
   check('a field in a tab still edits the deal', Math.abs(edit - 0.095) < 1e-9, edit);
 
-  /* ---- behaviour ---- */
+  /* ---- behavior ---- */
   await show(p, 'Debt'); await p.evaluate(() => bkPanelTabsOpen(/Debt Sizing/));
   await p.evaluate(() => document.querySelector('#viewport .bk-pt-bar .ae-tab.on').focus()); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(150); st = await state(p);
   check('the arrow keys move between tabs', st.on === 1, st.on);

@@ -30,7 +30,7 @@ const CLASSIC = ['FOR SALE - Elm Court - 48 Elm Street, Springfield, MA\nOfferin
   check('Fife N Drum: 16 expense lines, totals $197,596 and $300,882', fi.exp.length === 16 && fi.expTot.cur === 197596 && fi.expTot.pf === 300882, fi.exp.length);
   check('Seabreeze: the table is found, NOI $406,967 T-12, $540,304 current, $791,003 pro forma', se.ie && se.noi.t12 === 406967 && se.noi.cur === 540304 && se.noi.pf === 791003, JSON.stringify(se.noi));
 
-  /* 2. normalisation does not touch other layouts */
+  /* 2. normalization does not touch other layouts */
   const cl = await parse(CLASSIC);
   /* the original reading of a two-figure expense row is amount + $/unit (so pro forma = current); that is kept, not "fixed" here */
   check('a conventional-heading, two-column statement reads as before', cl.ie && cl.legacy && cl.noi.cur === 290000 && cl.noi.pf === 308000 && cl.exp.length === 2 && cl.exp[0].label === 'Real Estate Taxes' && cl.exp[0].cur === 40000 && cl.exp[0].pf === 40000, JSON.stringify(cl.exp[0]));

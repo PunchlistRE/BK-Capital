@@ -224,7 +224,7 @@ function explorer(s){
     + tRows.map(function(r){ return '<tr><td>'+esc(r.label)+'</td><td>'+esc(r.loShow)+'</td><td>'+esc(M.fmt(r.lo))+'</td><td>'+esc(r.hiShow)+'</td><td>'+esc(M.fmt(r.hi))+'</td><td>'+esc(M.rate ? (r.swing*10000).toFixed(0)+' bps' : r.swing.toFixed(2)+'x')+'</td></tr>'; }).join('')
     + '</tbody></table></details></div>';
 
-  // ---- spider: +/-2 steps per visible driver; colour follows the driver, never its rank
+  // ---- spider: +/-2 steps per visible driver; color follows the driver, never its rank
   var hide = Array.isArray(p.hide) ? p.hide : [];
   var COLORS = D.map(function(_, i){ return 'var(--s'+(i+1)+')'; });
   var series = [];

@@ -1,7 +1,7 @@
 /* ===========================================================================
    DEVELOPMENT SCHEDULE AS A GANTT. Tasks with a start and a duration in months, overlaps, and finish-to-start dependencies with a lead or lag. A forward and a
-   backward pass give each task its earliest and latest dates, its float and whether it is on the critical path. The critical path runs to stabilisation:
-   the construction tasks feed the certificate of occupancy, lease-up follows it, and stabilised operations follow lease-up.
+   backward pass give each task its earliest and latest dates, its float and whether it is on the critical path. The critical path runs to stabilization:
+   the construction tasks feed the certificate of occupancy, lease-up follows it, and stabilized operations follow lease-up.
    What the engine supports, the schedule drives: the first construction task's start sets the pre-development months, and the span of the construction tasks
    sets the construction months, so the draw curves, the construction facility, the certificate of occupancy and the lease-up all move with the tasks. The lease-up
    period itself still comes from the lease-up method (simple ramp or unit types), so it is shown as a linked row, not edited here.
@@ -45,8 +45,8 @@ window.bkDevGanttSchedule = function(s, ov){
   var x = ov || (typeof bkDevV09 === 'function' ? bkDevV09() : { luMo:0, hold:60 });
   var preMo = cons.length ? Math.max(0, conStart - 1) : num(x.preMo), conMo = cons.length ? conEnd - conStart + 1 : num(x.conMo), co = cons.length ? conEnd : num(x.co), luMo = num(x.luMo), stab = co + luMo, hold = Math.max(1, Math.round(num(x.hold) || num(s.holdYears) * 12));
   if(cons.length && pre.some(function(t){ return t.EF >= conStart; }) && false) warnings.push('');
-  if(stab > hold) warnings.push('Stabilisation (month ' + stab + ') falls after the end of the analysis (month ' + hold + '). Lengthen the hold or shorten the schedule.');
-  /* backward pass to stabilisation: construction tasks must finish by the certificate of occupancy; pre-development tasks without a successor must finish before construction starts */
+  if(stab > hold) warnings.push('Stabilization (month ' + stab + ') falls after the end of the analysis (month ' + hold + '). Lengthen the hold or shorten the schedule.');
+  /* backward pass to stabilization: construction tasks must finish by the certificate of occupancy; pre-development tasks without a successor must finish before construction starts */
   var finish = Math.max(co + luMo, T.reduce(function(a, t){ return Math.max(a, t.EF); }, 0)), project = cons.length ? co : finish;
   var LF = {}, LS = {};
   (function(){ var rev = order.slice().reverse(); rev.forEach(function(t){ var lf = Infinity; t.succ.forEach(function(sc){ if(LS[sc.id] !== undefined) lf = Math.min(lf, LS[sc.id] - 1 - sc.lag); });
@@ -140,7 +140,7 @@ window.bkDevGanttAdd = function(){ var s = bkLoad(), g = s.devGantt = Object.ass
 window.bkDevGanttRemove = function(i){ var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}), T = g.tasks || [], id = T[i] && T[i].id; g.tasks = T.filter(function(t, k){ return k !== i; }).map(function(t){ return Object.assign({}, t, { preds:(t.preds || []).filter(function(p){ return p.id !== id; }) }); }); if(!g.tasks.length) g.mode = 'phases'; save(s); };
 
 /* ------------------------------------------------------------------ the chart ------------------------------------------------------------------ */
-/* the Punchlist colour scale: slate violet, olive gold (dark to light), cream with a gold outline */
+/* the Punchlist color scale: slate violet, olive gold (dark to light), cream with a gold outline */
 var COL = { predev:'#8a8fb0', construction:'#8c7a28', other:'#a99136', leaseup:'#c9b25f', ops:'#efe6cb', opsLine:'#c4a94a', crit:'#b3392c', ms:'#1b2733' };
 function onCol(c){ var h = String(c).replace('#', ''), r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16), L = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; return L > 0.62 ? '#4a3f12' : '#fff'; }
 function dtx(d){ return d.toLocaleDateString('en-US', { month:'short', year:'numeric' }); }
@@ -148,7 +148,7 @@ function monthsText(n){ return n + (n === 1 ? ' month' : ' months'); }
 
 /* The chart. Calendar years and month numbers across the top, the three milestones flagged above the grid, a band for each section (pre-development, construction, other tasks, lease-up and
    operations), the task number and name on the left, each bar labelled with its duration, float as a dashed tail, dependencies as arrows, the critical path outlined in red.
-   o.print draws it in fixed colours for paper; o.W is the width in drawing units (it scales to the space it is put in). */
+   o.print draws it in fixed colors for paper; o.W is the width in drawing units (it scales to the space it is put in). */
 function ganttSvg(rows, sc, s, o){
   o = o || {}; var P = !!o.print, uid = 'ga' + (o.id || Math.floor(Math.random() * 1e6));
   var ink = P ? '#1b2733' : 'var(--ae-ink,#1b2733)', dim = P ? '#6b7a89' : 'var(--ae-dim,#7d8b99)', line = P ? '#d3dae2' : 'var(--ae-line,#dfe5ec)', band = 'rgba(120,140,160,' + (P ? '.10' : '.07') + ')', sec = P ? '#eaeff4' : 'rgba(120,140,160,.15)';
@@ -161,14 +161,14 @@ function ganttSvg(rows, sc, s, o){
   var g = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Development schedule Gantt chart, by month" style="display:block;max-width:100%;height:auto;font-family:inherit"><defs>'
     + '<marker id="' + uid + 'a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="' + dim + '"/></marker><marker id="' + uid + 'c" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="' + COL.crit + '"/></marker></defs>';
   /* phase strip */
-  var segs = [['Pre-development', 1, num(sc.preMo), COL.predev], ['Construction', num(sc.preMo) + 1, num(sc.co), COL.construction], ['Lease-up', num(sc.co) + 1, num(sc.stab) - 1 > num(sc.co) ? num(sc.stab) - 1 : num(sc.co), COL.leaseup], ['Stabilised operations', num(sc.stab), hold, COL.ops]];
+  var segs = [['Pre-development', 1, num(sc.preMo), COL.predev], ['Construction', num(sc.preMo) + 1, num(sc.co), COL.construction], ['Lease-up', num(sc.co) + 1, num(sc.stab) - 1 > num(sc.co) ? num(sc.stab) - 1 : num(sc.co), COL.leaseup], ['Stabilized operations', num(sc.stab), hold, COL.ops]];
   if(num(sc.luMo) <= 0) segs.splice(2, 1);
   segs.forEach(function(sg){ if(sg[2] < sg[1]) return; var x0 = X(sg[1]), w = (sg[2] - sg[1] + 1) * pxm; g += '<rect x="' + x0 + '" y="6" width="' + w + '" height="18" fill="' + sg[3] + '"' + (sg[3] === COL.ops ? ' stroke="' + COL.opsLine + '" stroke-width="1.2"' : '') + ' opacity=".95"><title>' + esc(sg[0]) + ': months ' + sg[1] + ' to ' + sg[2] + '</title></rect>';
-    var cnt = sg[0] === 'Lease-up' ? num(sc.luMo) : (sg[2] - sg[1] + 1), full = sg[0] + ' · ' + cnt + ' mo', short = sg[0].replace('Pre-development', 'Pre-dev').replace('Stabilised operations', 'Stabilised') + ' · ' + cnt;
+    var cnt = sg[0] === 'Lease-up' ? num(sc.luMo) : (sg[2] - sg[1] + 1), full = sg[0] + ' · ' + cnt + ' mo', short = sg[0].replace('Pre-development', 'Pre-dev').replace('Stabilized operations', 'Stabilized') + ' · ' + cnt;
     if(w > full.length * 6.4 + 10) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="' + onCol(sg[3]) + '">' + esc(full) + '</text>'; else if(w > short.length * 6.4 + 8) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="10" font-weight="700" fill="' + onCol(sg[3]) + '">' + esc(short) + '</text>'; });
   g += '<text x="' + (Lw - 10) + '" y="19" text-anchor="end" font-size="10.5" font-weight="700" fill="' + dim + '" letter-spacing=".06em">PHASES</text>';
   /* milestone flags (Closing is month 1) */
-  var ms = [['Certificate of occupancy', num(sc.co), COL.crit], ['Stabilised', num(sc.stab), COL.leaseup], ['Sale / exit', num(sc.hold), COL.ms]].filter(function(m){ return m[1] > 0; }).sort(function(a, b){ return a[1] - b[1]; });
+  var ms = [['Certificate of occupancy', num(sc.co), COL.crit], ['Stabilized', num(sc.stab), COL.leaseup], ['Sale / exit', num(sc.hold), COL.ms]].filter(function(m){ return m[1] > 0; }).sort(function(a, b){ return a[1] - b[1]; });
   ms.forEach(function(m, i){ var mx = X(m[1]) + pxm / 2, txt = m[0] + ' \u00b7 ' + dtx(monthEnd(s, m[1])), w = txt.length * 5.8 + 10, ty = 40 + (i % 2) * 14;
     var anchor = mx + w / 2 > W - 4 ? 'end' : mx - w / 2 < Lw ? 'start' : 'middle'; g += '<text x="' + (anchor === 'end' ? mx + 4 : anchor === 'start' ? mx - 4 : mx) + '" y="' + ty + '" text-anchor="' + anchor + '" font-size="10.5" font-weight="700" fill="' + m[2] + '">' + esc(txt) + '</text>'; m.push(mx); });
   /* calendar years, then month numbers */
@@ -205,7 +205,7 @@ function ganttSvg(rows, sc, s, o){
   return g + '</svg>';
 }
 /* The schedule as a sheet, in the style of a project-management Gantt: a grey band for each phase with its summary bar in dark green, each task beneath it with a light green bar, the task's start, end and months in columns on the left, a month
-   grid across the top with the calendar year above it, milestone call-outs, and a vertical line at the certificate of occupancy and at stabilisation. It draws the same rows the chart does; it adds no schedule of its own. */
+   grid across the top with the calendar year above it, milestone call-outs, and a vertical line at the certificate of occupancy and at stabilization. It draws the same rows the chart does; it adds no schedule of its own. */
 var GX = { crit:'#b3392c', band:'#c9ced8', head:'#cfd3db', sum:'#00b050', task:'#92d050', cell:'#f1f3f6', cellAlt:'#e6e9ee', line:'#b9bfca', ink:'#10213a', ms:'#2f7d32' };
 function ganttSheet(M, o){
   o = o || {}; var s = M.s, sc = M.sc, rows = M.rows, N = Math.max(sc.hold || 0, sc.stab || 0, 12), cw = N > 72 ? 11 : N > 48 ? 14 : 18, y0 = startYear(s);
@@ -236,17 +236,17 @@ function ganttSheet(M, o){
     g.rows.forEach(function(r){ n++; var ms = r.milestone ? { m:r.ES, label:r.name + ': ' + dtx(monthEnd(s, r.ES)) } : null, dur = r.EF - r.ES + 1;
       h += '<tr>' + tdl(r.idx ? String(r.idx) : '', 'center') + tdl((r.milestone ? '&#9670; ' : '') + esc(r.name), 'left') + tdl(r.ES ? esc(dtx(monthStart(s, r.ES))) : '', 'right') + tdl(r.EF ? esc(dtx(monthEnd(s, r.EF))) : '', 'right') + tdl(r.milestone ? '' : String(dur), 'right') + tdl(predText(r), 'left')
         + cellsFor(r.milestone ? null : { a:r.ES, b:r.EF, col:GX.task }, ms, false, !!r.critical && !r.milestone) + '</tr>'; }); });
-  h += '</tbody></table></div><div style="font-size:11px;opacity:.8;margin-top:5px"><span style="display:inline-block;width:14px;height:9px;background:' + GX.sum + ';margin-right:4px"></span>Phase &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';margin-right:4px"></span>Task &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';border:2px solid ' + GX.crit + ';box-sizing:border-box;margin-right:4px"></span>Critical path &nbsp; <span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilisation</div>';
+  h += '</tbody></table></div><div style="font-size:11px;opacity:.8;margin-top:5px"><span style="display:inline-block;width:14px;height:9px;background:' + GX.sum + ';margin-right:4px"></span>Phase &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';margin-right:4px"></span>Task &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';border:2px solid ' + GX.crit + ';box-sizing:border-box;margin-right:4px"></span>Critical path &nbsp; <span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilization</div>';
   return h;
 }
 function startYear(s){ return startDate(s).getFullYear(); }
-function legendHtml(P){ var c = function(col){ return '<span style="display:inline-block;width:10px;height:10px;background:' + col + ';' + (col === COL.ops ? 'outline:1px solid ' + COL.opsLine + ';outline-offset:-1px;' : '') + 'margin-right:4px;vertical-align:-1px"></span>'; }; return '<div class="bk-gs-legend" style="font-size:' + (P ? 10.5 : 12) + 'px;margin-top:6px;opacity:.9"><span style="display:inline-block;width:10px;height:10px;border:2px solid ' + COL.crit + ';margin-right:4px;vertical-align:-3px"></span>Critical path (no float) &nbsp; ' + c(COL.predev) + 'Pre-development &nbsp; ' + c(COL.construction) + 'Construction &nbsp; ' + c(COL.other) + 'Other task &nbsp; ' + c(COL.leaseup) + 'Lease-up &nbsp; ' + c(COL.ops) + 'Stabilised operations &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float (months of slack)</span> &nbsp; &#8594; dependency</div>'; }
+function legendHtml(P){ var c = function(col){ return '<span style="display:inline-block;width:10px;height:10px;background:' + col + ';' + (col === COL.ops ? 'outline:1px solid ' + COL.opsLine + ';outline-offset:-1px;' : '') + 'margin-right:4px;vertical-align:-1px"></span>'; }; return '<div class="bk-gs-legend" style="font-size:' + (P ? 10.5 : 12) + 'px;margin-top:6px;opacity:.9"><span style="display:inline-block;width:10px;height:10px;border:2px solid ' + COL.crit + ';margin-right:4px;vertical-align:-3px"></span>Critical path (no float) &nbsp; ' + c(COL.predev) + 'Pre-development &nbsp; ' + c(COL.construction) + 'Construction &nbsp; ' + c(COL.other) + 'Other task &nbsp; ' + c(COL.leaseup) + 'Lease-up &nbsp; ' + c(COL.ops) + 'Stabilized operations &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float (months of slack)</span> &nbsp; &#8594; dependency</div>'; }
 function rowsFor(s, sc, x){
   var rows = [], secName = { predev:'Pre-development', construction:'Construction', other:'Other tasks' }, order = ['predev', 'construction', 'other'];
   order.forEach(function(gp){ sc.tasks.forEach(function(t, i){ if((t.group || 'construction') !== gp) return; rows.push({ id:t.id, idx:i + 1, sec:secName[gp], name:t.name, ES:t.ES, EF:t.EF, float:t.float, critical:t.critical, milestone:t.milestone, preds:t.preds, color:COL[t.group] || COL.construction, group:t.group }); }); });
   rows.push({ sec:'Lease-up and operations', name:'Certificate of occupancy', ES:sc.co, EF:sc.co, milestone:true, critical:true, linked:true, float:0 });
   if(sc.luMo > 0) rows.push({ id:'lu', sec:'Lease-up and operations', name:'Lease-up (from the lease-up method)', ES:sc.co + 1, EF:sc.co + sc.luMo, critical:true, linked:true, float:0, color:COL.leaseup, preds:[] });
-  rows.push({ sec:'Lease-up and operations', name:'Stabilised operations', ES:sc.stab, EF:Math.max(sc.stab, sc.hold), linked:true, float:0, color:COL.ops });
+  rows.push({ sec:'Lease-up and operations', name:'Stabilized operations', ES:sc.stab, EF:Math.max(sc.stab, sc.hold), linked:true, float:0, color:COL.ops });
   rows.push({ sec:'Lease-up and operations', name:'Sale / exit', ES:sc.hold, EF:sc.hold, milestone:true, linked:true, float:0 });
   return rows;
 }
@@ -263,12 +263,12 @@ window.bkDevGanttModel = function(s){
 };
 function tilesHtml(M){
   var sc = M.sc, s = M.s, crit = sc.tasks.filter(function(t){ return t.critical; }).length, T = function(k, v, sub){ return '<div class="bk-gs-tile"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (sub ? '<div class="d">' + esc(sub) + '</div>' : '') + '</div>'; };
-  return '<div class="bk-gs-tiles">' + T('To stabilisation', monthsText(sc.stab), dtx(monthStart(s, 1)) + ' to ' + dtx(monthEnd(s, sc.stab)))
+  return '<div class="bk-gs-tiles">' + T('To stabilization', monthsText(sc.stab), dtx(monthStart(s, 1)) + ' to ' + dtx(monthEnd(s, sc.stab)))
     + T('Pre-development', monthsText(sc.preMo || 0), sc.preMo ? dtx(monthStart(s, 1)) + ' to ' + dtx(monthEnd(s, sc.preMo)) : 'none')
     + T('Construction', monthsText(sc.conMo || 0), sc.conMo ? dtx(monthStart(s, sc.preMo + 1)) + ' to ' + dtx(monthEnd(s, sc.co)) : 'none')
     + T('Certificate of occupancy', dtx(monthEnd(s, sc.co)), 'month ' + sc.co)
     + T('Lease-up', monthsText(sc.luMo || 0), sc.luMo ? dtx(monthStart(s, sc.co + 1)) + ' to ' + dtx(monthEnd(s, sc.stab)) : 'none')
-    + T('Stabilised', dtx(monthStart(s, sc.stab)), 'month ' + sc.stab)
+    + T('Stabilized', dtx(monthStart(s, sc.stab)), 'month ' + sc.stab)
     + T(M.on ? 'Critical tasks' : 'Schedule from', M.on ? crit + ' of ' + sc.tasks.length : 'phase durations', M.on ? 'zero float to the CO' : 'switch to a task schedule for float') + '</div>'; }
 var css = document.createElement('style'); css.id = 'bk-gs-css'; css.textContent = '.bk-gs-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}.bk-gs-tile{border:1px solid var(--ae-line,#d3dae2);padding:7px 10px;background:var(--ae-cell-ro,transparent)}.bk-gs-tile .k{font-size:10px;letter-spacing:.09em;text-transform:uppercase;opacity:.7;font-weight:700}.bk-gs-tile .v{font-size:16px;font-weight:700;margin:2px 0}.bk-gs-tile .d{font-size:11px;opacity:.75}.bk-gs-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px}'; document.head.appendChild(css);
 
@@ -302,7 +302,7 @@ RENDERERS['Dev Schedule'] = function(){
           + '<td class="v"><input type="text" style="width:110px;text-align:left !important" value="' + esc(pr) + '" placeholder="none" onchange="bkDevGanttField(' + i + ',\'preds\',this.value)"></td>'
           + '<td>' + t.ES + ' &middot; ' + fmtD(t.startDate) + '</td><td>' + t.EF + ' &middot; ' + fmtD(t.endDate) + '</td><td>' + t.float + '</td><td>' + (t.critical ? '<span class="status-chip fail">CRITICAL</span>' : '') + '</td>'
           + '<td><button type="button" class="bk-btn" onclick="bkDevGanttRemove(' + i + ')">Remove</button></td></tr>'; }).join('');
-      var link = '<tr class="grandtotal"><td class="rowlabel" colspan="2">What the schedule drives</td><td colspan="10" data-bk-align="text">Pre-development ' + sc.preMo + ' months &middot; construction ' + sc.conMo + ' months (months ' + sc.conStart + ' to ' + sc.conEnd + ') &middot; certificate of occupancy month ' + sc.co + ' &middot; lease-up ' + sc.luMo + ' months &middot; stabilised month ' + sc.stab + '. The construction draws, facility and lease-up all move with these.</td></tr>';
+      var link = '<tr class="grandtotal"><td class="rowlabel" colspan="2">What the schedule drives</td><td colspan="10" data-bk-align="text">Pre-development ' + sc.preMo + ' months &middot; construction ' + sc.conMo + ' months (months ' + sc.conStart + ' to ' + sc.conEnd + ') &middot; certificate of occupancy month ' + sc.co + ' &middot; lease-up ' + sc.luMo + ' months &middot; stabilized month ' + sc.stab + '. The construction draws, facility and lease-up all move with these.</td></tr>';
       table = '<div class="tbl-wrap" style="margin-top:12px"><div style="overflow-x:auto"><table class="fin bk-m-scroll" style="table-layout:auto !important;width:max-content !important;min-width:1180px !important;max-width:none !important"><caption>Tasks, dependencies and critical path</caption><thead>' + hdr + '</thead><tbody>' + body + link + '</tbody></table></div></div>'
         + '<div style="margin:8px 0"><button type="button" class="bk-btn" onclick="bkDevGanttAdd()">+ Add task</button></div>'
         + (warnings.length ? '<div class="note-flag"><span>&#9888;</span><div>' + warnings.map(esc).join('<br>') + '</div></div>' : '')

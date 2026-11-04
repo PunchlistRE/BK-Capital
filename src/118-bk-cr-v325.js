@@ -412,7 +412,7 @@ try{
         + '<tr class="grandtotal">'+CR.lbl('PEAK TOTAL DEBT OUTSTANDING')+CR.val(M(peak))+CR.val('Month '+peakMo)+'<td class="v">'+CR.chip('pass','TIES EVERY MONTH')+'</td></tr>');
       var body = mo.map(function(z,i){ var e = Number(z.end)||0, ci = Number(z.capInt)||0, ds = Number((rowsD[i]||{}).ds)||0;
         return '<tr'+(e?'':' style="opacity:.55"')+'>'+CR.lbl(String(i+1))+CR.val('-')+CR.val(e?M(e):'-')+CR.val('-')+CR.val(M(e))+CR.val(ds?M(ds):'-')+CR.val(ci?M(ci):'-')+'</tr>'; }).join('');
-      var tbl = CR.table('Total Debt - all facilities, monthly, all '+mo.length+' periods','<tr><th class="rowlabel-h">Mo</th><th>Acquisition Loan</th><th>Construction Facility</th><th>Permanent Loan</th><th>TOTAL DEBT</th><th>Cash Debt Service</th><th>Capitalised Interest</th></tr>', body);
+      var tbl = CR.table('Total Debt - all facilities, monthly, all '+mo.length+' periods','<tr><th class="rowlabel-h">Mo</th><th>Acquisition Loan</th><th>Construction Facility</th><th>Permanent Loan</th><th>TOTAL DEBT</th><th>Cash Debt Service</th><th>Capitalized Interest</th></tr>', body);
       if(j0>=0) m = m.slice(0,j0) + recon + tbl + m.slice(k0);
     }
     o.main = m;

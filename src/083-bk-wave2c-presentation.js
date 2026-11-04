@@ -6,7 +6,7 @@
    completeness items that need no engine change. Still exposure only: every
    figure comes from a canonical engine output or from data already in state.
 
-   NOT in scope here, deliberately: the app-wide formatting normalisation. That
+   NOT in scope here, deliberately: the app-wide formatting normalization. That
    was sequenced to follow functional parity and functional parity is not
    complete. Everything rendered here follows the interim convention.
    =========================================================================== */

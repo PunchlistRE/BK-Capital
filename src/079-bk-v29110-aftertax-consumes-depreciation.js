@@ -95,7 +95,7 @@ window.bkAfterTaxV18 = function(){
                 accumDepr:accumDepr, taxableIncome:taxableIncome, taxDue:taxDue, lossCF:lossCF });
   }
 
-  /* Sale-year tax. Total acquisition basis still includes capitalised closing
+  /* Sale-year tax. Total acquisition basis still includes capitalized closing
      costs (u.initial) - depreciation runs off the building basis, but the
      basis recovered at sale is what the buyer actually paid in. */
   var totalBasis = base.totalBasis;

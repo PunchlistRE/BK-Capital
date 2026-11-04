@@ -112,7 +112,7 @@ html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,syste
 .bk-ribbon .rb-g:first-child{ flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
 .bk-ribbon .rb-g:not(:first-child){ flex:0 0 auto; }
 /* the ribbon carries Print and Colour key on wide screens, so the copies beside the page title go */
-@media (min-width:901px){ html body #viewport .title-block .bk-print-btn, html body #viewport .title-block .bk-key-wrap > button{ display:none; } }
+@media (min-width:901px){ html body #viewport .title-block .bk-print-btn{ display:none; } }
 
 /* Phones have no side-by-side cells, so an input keeps its box outline there. */
 @media (max-width:760px){ html body #viewport table.fin tr.input td.v{ box-shadow:inset 0 0 0 1px var(--bk-in-line) !important; } }
@@ -192,3 +192,31 @@ html body .tabnav .grp-btn.on{ border-color:#fff !important; box-shadow:inset 0 
 html body #viewport .ae-tab:not(.on), html body #viewport .ae-sub:not(.on), html body #viewport .ae-subs button:not(.on), html body #viewport .bk-dt:not(.on){ border:1px solid var(--ae-line) !important; background:var(--ae-cell-ro) !important; }
 html body #viewport .ae-tab:not(.on):hover, html body #viewport .ae-subs button:not(.on):hover, html body #viewport .bk-dui.bk-tabs .bk-dt:not(.on):hover{ background:var(--ae-sel) !important; border-color:var(--bk-navy-2) !important; }
 html body #viewport .ae-subs{ gap:3px; }
+
+/* ===== Header: one path to every page. Section tabs on top; the section's pages as plain sub-tabs under them; three commands at the right. Flat, no boxes, no captions. ===== */
+html body .bk-ribbon{ display:flex !important; flex-direction:row; align-items:stretch; flex-wrap:nowrap; gap:12px; padding:0 12px; min-height:38px; background:var(--ae-cell); border-bottom:1px solid var(--ae-line); overflow:visible; }
+html body .bk-ribbon .rb-tabs{ display:flex; align-items:stretch; flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
+html body .bk-ribbon .rb-t{ flex:0 0 auto; border:0; border-bottom:2px solid transparent; background:transparent; padding:0 12px; font:500 13px/36px Inter,"Segoe UI",system-ui,sans-serif; color:var(--ae-ink); opacity:.78; cursor:pointer; white-space:nowrap; }
+html body .bk-ribbon .rb-t:hover{ opacity:1; border-bottom-color:var(--ae-line); }
+html body .bk-ribbon .rb-t.on{ opacity:1; font-weight:650; color:var(--bk-navy); border-bottom-color:var(--bk-navy); }
+html body .bk-ribbon .rb-t:focus-visible, html body .bk-ribbon .rb-c:focus-visible{ outline:2px solid var(--bk-navy-2); outline-offset:-2px; }
+html body .bk-ribbon .rb-sep{ flex:0 0 1px; align-self:center; height:16px; background:var(--ae-line); margin:0 6px; }
+html body .bk-ribbon .rb-cmds{ display:flex; align-items:center; gap:2px; flex:0 0 auto; margin-left:auto; }
+html body .bk-ribbon .rb-c{ display:inline-flex; align-items:center; gap:6px; border:1px solid transparent; background:transparent; padding:5px 10px; font:500 12.5px/1.2 Inter,"Segoe UI",system-ui,sans-serif; color:var(--ae-ink); cursor:pointer; white-space:nowrap; }
+html body .bk-ribbon .rb-c:hover{ border-color:var(--ae-line); background:var(--ae-sel); }
+html body .bk-ribbon .rb-c svg{ width:15px; height:15px; stroke:var(--bk-navy-2); fill:none; stroke-width:1.6; }
+@media (max-width:900px){ html body .bk-ribbon .rb-c span{ display:none; } html body .bk-ribbon{ gap:4px; padding:0 6px; } }
+@media print{ html body .bk-ribbon{ display:none !important; } }
+/* workflow steps: plain, clickable text with the status mark; the current step is underlined, like the sub-tabs */
+html body .bk-flow .bk-step{ border:0 !important; background:transparent !important; border-radius:0 !important; height:30px; padding:0 8px !important; cursor:pointer; color:var(--ae-ink) !important; box-shadow:none; }
+html body .bk-flow .bk-step:hover{ box-shadow:inset 0 -2px 0 var(--ae-line); }
+html body .bk-flow .bk-step.cur, html body .bk-flow .bk-step[aria-current]{ background:transparent !important; color:var(--bk-navy) !important; font-weight:700; box-shadow:inset 0 -2px 0 var(--bk-navy) !important; }
+html body .bk-flow .bk-step.cur .n{ background:var(--bk-navy) !important; color:#fff !important; }
+/* year-by-year rate grid: names on one line, regular row height */
+html body .ae-grid.ae-curves th:first-child, html body .ae-grid.ae-curves td:first-child{ white-space:nowrap; width:1%; min-width:170px; }
+html[data-theme="dark"] body .bk-ribbon .rb-t.on, html[data-theme="dark"] body .bk-flow .bk-step.cur, html[data-theme="dark"] body .bk-flow .bk-step[aria-current]{ color:#9fcdf5 !important; border-bottom-color:#9fcdf5; box-shadow:inset 0 -2px 0 #9fcdf5 !important; }
+html[data-theme="dark"] body .bk-ribbon .rb-t.on{ box-shadow:none !important; }
+html[data-theme="dark"] body .bk-flow .bk-step.cur .n{ background:#9fcdf5 !important; color:#0b1622 !important; }
+html[data-theme="dark"] body .bk-ribbon .rb-c svg{ stroke:#9fcdf5; }
+@media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on, html:not([data-theme="light"]) body .bk-flow .bk-step.cur{ color:#9fcdf5 !important; border-bottom-color:#9fcdf5; } html:not([data-theme="light"]) body .bk-flow .bk-step.cur{ box-shadow:inset 0 -2px 0 #9fcdf5 !important; } html:not([data-theme="light"]) body .bk-flow .bk-step.cur .n{ background:#9fcdf5 !important; color:#0b1622 !important; } html:not([data-theme="light"]) body .bk-ribbon .rb-c svg{ stroke:#9fcdf5; } }
+html body .bk-nogp{ color:var(--ae-ink); opacity:.6; font-style:italic; }

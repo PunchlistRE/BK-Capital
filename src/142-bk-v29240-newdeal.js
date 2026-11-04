@@ -57,7 +57,7 @@ window.bkClearInputsGo = function(){
   try { if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before clearing all inputs', true); } catch(e){}
   var h = safe(function(){ return bkLoad()._history; }, null);
   closeModal();
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, dealType:s.dealType, analysisType:s.analysisType, blankStructure:true });   /* the kind of analysis is kept (a Development stays a Development); everything about the property and its terms is removed */
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, dealType:s.dealType, analysisType:s.analysisType, blankStructure:true, clearAll:true });   /* the kind of analysis is kept (a Development stays a Development); everything about the property and its terms is removed */
   /* the cleared deal keeps the record of what it was: its version history comes with it */
   if(h) safe(function(){ var n = bkLoad(); n._history = h; bkSave(n); });
 };
@@ -65,7 +65,8 @@ window.bkClearInputsGo = function(){
 RENDERERS['Home'] = function(){
   var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
   var has = active(); if(!has) return o;
-  var bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New analysis</button><button type="button" class="pl-hbtn" onclick="showSheet(\'Import\')">Import OM</button>' + (has ? '<button type="button" class="pl-hbtn" onclick="bkReportOpen()" style="border-color:#3E9AE6;color:#12609f;font-weight:700">Create PDF summary</button>' : '') + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
+  /* New analysis and Import are on the bar above; the deal page adds the investor PDF summary and Clear inputs */
+  var bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkReportOpen()">Create PDF summary</button><button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button></div>';
   return Object.assign({}, o, { main:o.main.replace('<div class="pl-home">', '<div class="pl-home">' + bar) });
 };
 if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}

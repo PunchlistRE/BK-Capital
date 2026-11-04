@@ -10,7 +10,7 @@ R.addRules([
   X('readiness', 'Required inputs are present (nothing missing is treated as zero)', 'readiness'), X('conflicts', 'Inputs do not contradict each other', 'conflicts'),
   X('credit', 'Credit gate: failed checks hold the decision', 'credit'),
   X('budget', 'Hard and soft cost totals equal their lines', 'integrity:budget'), X('unlev', 'Cost before financing adds up', 'integrity:unlev'), X('su', 'Sources equal uses', 'integrity:su'),
-  X('draws', 'Every month\'s cost is funded', 'integrity:draws'), X('capint', 'Capitalised interest rolls forward', 'integrity:capint'), X('facility', 'The balance never exceeds the facility', 'integrity:facility'),
+  X('draws', 'Every month\'s cost is funded', 'integrity:draws'), X('capint', 'Capitalized interest rolls forward', 'integrity:capint'), X('facility', 'The balance never exceeds the facility', 'integrity:facility'),
   X('fixed', 'Principal stays within a fixed facility', 'integrity:fixed'), X('payoff', 'Debt repaid at sale equals the balance', 'integrity:payoff'), X('sale', 'Net sale equals gross less costs', 'integrity:sale'),
   X('eqret', 'Equity in returns equals the funding ledger', 'integrity:eqret'), X('contrib', 'LP + GP contributions tie', 'integrity:contrib'), X('unlev_irr', 'Unlevered returns are calculated', 'integrity:unlev_irr'),
   X('irr', 'Levered IRR equals an independent XIRR', 'integrity:irr'), X('moic', 'Multiple = distributions / contributions', 'integrity:moic'), X('waterfall', 'Hurdles replay, tiers in order, every dollar once', 'waterfall'),

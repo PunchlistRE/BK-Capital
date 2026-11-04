@@ -36,7 +36,7 @@ var POLICY_ROWS = [
   ['targetIRR', 'Target gross levered IRR', 'pct'], ['targetEM', 'Target gross equity multiple', 'x'], ['targetLpIRR', 'Target net LP IRR', 'pct'], ['targetLpEM', 'Target net LP equity multiple', 'x'],
   ['minDSCR', 'Minimum DSCR', 'x'], ['minDebtYield', 'Minimum debt yield', 'pct'], ['maxLTV', 'Maximum senior LTV', 'pct'], ['maxLTC', 'Maximum senior LTC', 'pct'],
   ['stressBps', 'Stressed underwriting rate premium (bps)', 'n'], ['minGoingInCap', 'Minimum going-in cap rate', 'pct'], ['minDevSpreadBps', 'Minimum development spread (bps)', 'n'],
-  ['maxBreakEvenOcc', 'Maximum break-even economic occupancy', 'pct'], ['minNOITolerance', 'Minimum stabilised NOI decline tolerance', 'pct'], ['minRentCushion', 'Minimum rent cushion vs. break-even', 'pct'],
+  ['maxBreakEvenOcc', 'Maximum break-even economic occupancy', 'pct'], ['minNOITolerance', 'Minimum stabilized NOI decline tolerance', 'pct'], ['minRentCushion', 'Minimum rent cushion vs. break-even', 'pct'],
   ['maxHighRisks', 'Maximum high or critical risks', 'n'], ['maxDebtOverage', 'Maximum debt overage vs. supportable debt ($)', 'usd'],
   ['advanceScore', 'Gate score to APPROVE', 'pct'], ['conditionalScore', 'Gate score for CONDITIONAL', 'pct'], ['exitCapStressBps', 'Exit-cap stress for upside / downside IRR (bps)', 'n']
 ];
@@ -92,8 +92,8 @@ register('Debt Capacity', function(){
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Binding Capacity</caption><tbody>'
       + '<tr><td class="rowlabel">Binding constraint</td><td class="v">' + c.binding.name + '</td></tr><tr><td class="rowlabel">Headroom to the next-tightest constraint</td><td class="v">' + $(c.headroom) + '</td></tr>'
       + '<tr class="grandtotal"><td class="rowlabel">Debt overage / (unused capacity) vs. request</td><td class="v">' + $(c.overage) + '</td></tr></tbody></table></div>'
-      + table('Proceeds Ladder - Tested Leverage Range', th(['Target LTV', 'Loan', 'LTC', 'Annual debt service', 'DSCR', 'Stabilised DSCR', 'vs. minimum']), ladder) + rate
-      + note('Capacity uses <b>house policy</b> limits (Credit Policy), which can be tighter than the loan terms the deal was underwritten with. The stressed-rate test sizes the loan as if the coupon were ' + p.stressBps + ' bps higher, so the loan still works if rates move. Year-3 NOI is the stabilised NOI.'),
+      + table('Proceeds Ladder - Tested Leverage Range', th(['Target LTV', 'Loan', 'LTC', 'Annual debt service', 'DSCR', 'Stabilized DSCR', 'vs. minimum']), ladder) + rate
+      + note('Capacity uses <b>house policy</b> limits (Credit Policy), which can be tighter than the loan terms the deal was underwritten with. The stressed-rate test sizes the loan as if the coupon were ' + p.stressBps + ' bps higher, so the loan still works if rates move. Year-3 NOI is the stabilized NOI.'),
     sidebar: side([['Supportable debt', $(c.capacity)], ['Requested', $(c.requested)], ['Overage', $(c.overage)], ['Binding', c.binding.name]], 'Debt Capacity') };
 });
 
@@ -123,7 +123,7 @@ register('IC Memo', function(){
   ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>'; }).join('') : '<tr><td class="rowlabel">Financing</td><td class="v">n/a for this deal</td></tr>';
   var cush = c ? [
     ['Year-1 break-even economic occupancy', P(c.breakEvenOccupancy), 'Occupancy at which NOI covers debt service'], ['Occupancy cushion', B(c.occupancyCushionBps), 'Underwritten occupancy over break-even'],
-    ['Year-1 / stabilised NOI decline tolerance', P(c.noiTolerance1, 1) + ' / ' + P(c.noiTolerance3, 1), 'NOI fall before DSCR reaches the minimum'], ['Break-even rent (per unit per month)', c.breakEvenRent ? $(c.breakEvenRent) : 'n/a', 'Rent at which DSCR equals the minimum'],
+    ['Year-1 / stabilized NOI decline tolerance', P(c.noiTolerance1, 1) + ' / ' + P(c.noiTolerance3, 1), 'NOI fall before DSCR reaches the minimum'], ['Break-even rent (per unit per month)', c.breakEvenRent ? $(c.breakEvenRent) : 'n/a', 'Rent at which DSCR equals the minimum'],
     ['Rent cushion vs. break-even', P(c.rentCushion, 1), 'Underwritten rent over break-even rent'],
     ['Break-even exit cap at target IRR', c.exitCapBreakeven == null ? (c.exitCapBound ? c.exitCapBound + ' ' + P(Number(s.exitCap) + c.exitCapCushionBps / 10000) : 'n/a') : P(c.exitCapBreakeven), 'Exit cap at which levered IRR equals the target'],
     ['Exit cap cushion', (c.exitCapBound ? c.exitCapBound + ' ' : '') + B(c.exitCapCushionBps), 'Positive: room for the cap rate to widen']

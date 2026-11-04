@@ -9,14 +9,14 @@ const GUIDE_ACQ = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
   ['price', [['purchasePrice', 1, 'Purchase price'], ['closingCostsPct', 1, 'Closing costs, % of price'], ['closing', 0, 'Closing date']]],
   ['income', [['avgRent', 1, 'Average rent per unit, per month'], ['otherIncomePerUnit', 0, 'Other income per unit, per year'], ['vacancy', 1, 'Vacancy']]],
   ['expenses', [['taxes', 1, 'Real estate taxes, per year'], ['insurance', 1, 'Insurance, per year'], ['utilities', 0, 'Utilities the owner pays, per year'], ['rm', 1, 'Repairs and maintenance, per year'], ['mgmtPct', 1, 'Management fee, % of income'], ['payroll', 0, 'On-site payroll, per year'], ['contract', 0, 'Contract services (landscaping, snow, pest), per year'], ['ga', 0, 'General, admin and other, per year'], ['reserves', 0, 'Replacement reserves, per year']]],
-  ['debt', [['debtEnabled', 0, 'Use acquisition debt'], ['acqLTV', 1, 'Loan-to-value, max'], ['acqRate', 1, 'Interest rate'], ['acqAmort', 0, 'Amortisation, years'], ['acqIO', 0, 'Interest-only years'], ['acqOrigFee', 0, 'Origination fee, %']]],
+  ['debt', [['debtEnabled', 0, 'Use acquisition debt'], ['acqLTV', 1, 'Loan-to-value, max'], ['acqRate', 1, 'Interest rate'], ['acqAmort', 0, 'Amortization, years'], ['acqIO', 0, 'Interest-only years'], ['acqOrigFee', 0, 'Origination fee, %']]],
   ['sources', []],
   ['partners', [['gpShare', 0, 'GP / sponsor equity share'], ['pref', 0, 'Preferred return'], ['hurdle2', 0, 'Second hurdle (IRR)'], ['hurdle3', 0, 'Third hurdle (IRR)'], ['t2LP', 0, 'LP share above the preferred return'], ['t3LP', 0, 'LP share above the second hurdle'], ['t4LP', 0, 'LP share above the third hurdle']]],
   ['exit', [['holdYears', 1, 'Hold period, years'], ['exitCap', 1, 'Exit cap rate'], ['rentGrowth', 0, 'Annual rent growth'], ['opexGrowth', 0, 'Annual expense growth'], ['saleCostPct', 0, 'Cost of sale, % of price']]]];
 const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, state'], ['units', 1, 'Residential units'], ['gsf', 0, 'Gross building area, SF']]],
   ['land', [['purchasePrice', 1, 'Land price'], ['sourceConstruction', 1, 'Construction budget (hard + soft)'], ['closing', 0, 'Closing date'], ['predevMonths', 0, 'Pre-development, months'], ['constructionMonths', 1, 'Construction, months'], ['leaseupMonths', 0, 'Lease-up, months']]],
   GUIDE_ACQ[2], GUIDE_ACQ[3],
-  ['debt', [['conLTC', 1, 'Construction loan, % of cost'], ['conRate', 1, 'Construction loan rate'], ['permRate', 0, 'Permanent loan rate'], ['permAmort', 0, 'Permanent amortisation, years']]],
+  ['debt', [['conLTC', 1, 'Construction loan, % of cost'], ['conRate', 1, 'Construction loan rate'], ['permRate', 0, 'Permanent loan rate'], ['permAmort', 0, 'Permanent amortization, years']]],
   GUIDE_ACQ[5], GUIDE_ACQ[6], GUIDE_ACQ[7]];
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined }); const p = await b.newPage({ viewport: { width: 1360, height: 900 } }); const errs = []; p.on('pageerror', e => errs.push(e.message));

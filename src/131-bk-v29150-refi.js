@@ -119,7 +119,7 @@ var render = function(){
   var inRows = [['Refinance year (end of year)', inp('year', I.year, 60), 'Between 1 and ' + (R.holdYears - 1)], ['Appraisal cap rate', inp('appraisalCap', (I.appraisalCap * 100).toFixed(2)) + ' %', 'Value = trailing NOI / cap'],
     ['Maximum new loan LTV', inp('maxLTV', (I.maxLTV * 100).toFixed(1)) + ' %', ''], ['Minimum DSCR', X(I.minDSCR), 'Deal refinance DSCR (Inputs); edit under Credit Policy for the house minimum'],
     ['Minimum debt yield', inp('minDebtYield', (I.minDebtYield * 100).toFixed(2)) + ' %', 'Defaults to the house policy'], ['New loan coupon', inp('rate', (I.rate * 100).toFixed(2)) + ' %', ''],
-    ['New loan amortisation (years)', inp('amort', I.amort, 60), ''], ['Refinance costs', inp('costsPct', (I.costsPct * 100).toFixed(2)) + ' %', 'Of the new loan'],
+    ['New loan amortization (years)', inp('amort', I.amort, 60), ''], ['Refinance costs', inp('costsPct', (I.costsPct * 100).toFixed(2)) + ' %', 'Of the new loan'],
     ['Prepayment / defeasance on existing loan', inp('prepayPct', (I.prepayPct * 100).toFixed(2)) + ' %', 'Of the existing balance'], ['Exit prepayment on new loan', inp('exitPenaltyPct', (I.exitPenaltyPct * 100).toFixed(2)) + ' %', 'Of the balance at sale']]
     .map(function(r){ return row(r[0], r[1], r[2]); }).join('');
   var main = t('Refinance Assumptions', '<th class="rowlabel-h">Assumption</th><th>Value</th><th style="text-align:left">Note</th>', inRows);

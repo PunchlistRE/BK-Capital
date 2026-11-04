@@ -41,7 +41,7 @@ const jsonOut = process.argv.includes('--json') ? process.argv[process.argv.inde
     rows.forEach(r => { const rel = (a, e) => Math.abs(a / e - 1), dp = (a, e) => Math.abs(a - e);
       if (r.type === 'Acquisition') { if (rel(r.y1NOI, r.expY1) > 0.001) fail(r.id, 'Y1 NOI', pc(r.y1NOI, r.expY1)); if (rel(r.loan, r.expLoan) > 0.001) fail(r.id, 'loan', pc(r.loan, r.expLoan)); if (rel(r.eq, r.expEq) > 0.002) fail(r.id, 'equity', pc(r.eq, r.expEq));
         if (dp(r.unlevIRR, r.expUnlevIRR) > 0.002) fail(r.id, 'unlevered IRR', pp(r.unlevIRR, r.expUnlevIRR)); if (dp(r.levIRR, r.expLevIRR) > 0.004) fail(r.id, 'levered IRR', pp(r.levIRR, r.expLevIRR)); if (rel(r.levMOIC, r.expLevMOIC) > 0.02) fail(r.id, 'levered multiple', pc(r.levMOIC, r.expLevMOIC)); }
-      else { if (rel(r.y1NOI, r.expY1) > 0.005) fail(r.id, 'stabilised NOI', pc(r.y1NOI, r.expY1)); if (rel(r.levCost, r.expLevCost) > 0.03) fail(r.id, 'levered cost', pc(r.levCost, r.expLevCost)); } });
+      else { if (rel(r.y1NOI, r.expY1) > 0.005) fail(r.id, 'stabilized NOI', pc(r.y1NOI, r.expY1)); if (rel(r.levCost, r.expLevCost) > 0.03) fail(r.id, 'levered cost', pc(r.levCost, r.expLevCost)); } });
     console.log(bad ? bad + ' tie-out check(s) failed' : 'tie-out checks passed (' + rows.filter(r => r.type === 'Acquisition').length + ' acquisition deals within tolerance, ' + rows.filter(r => r.type !== 'Acquisition').length + ' development deals within the looser bound)');
     await b.close(); process.exit(bad ? 1 : 0);
   }

@@ -16,14 +16,14 @@
    What is genuinely NEW, and why it is not an invented convention:
      - the six missing scenario drivers are added the SAME way the three existing
        ones work (an up/down delta consumed by bkScenarioOverrides), default 0 so
-       Base behaviour and every existing figure are unchanged until a user sets one
+       Base behavior and every existing figure are unchanged until a user sets one
      - the tax reassessment estimator uses the workbook's stated formula
        (Operating Underwrite C37:C40) and is DISPLAY ONLY - it never overwrites
        the entered tax, exactly as the workbook's own C40 falls back to the input
 
    DELIBERATELY NOT RESOLVED - see the blocker list in the report:
      - sponsor fee treatment (workbook books the development and CM fee as income
-       AND cost; this engine capitalises them only). Reconciling that is a policy
+       AND cost; this engine capitalizes them only). Reconciling that is a policy
        choice, so it is documented, not invented.
    =========================================================================== */
 (function(){
@@ -155,8 +155,8 @@ window.bkCovenantMonthlyT12 = function(){
 
   var covDSCR = Number(s.acqDSCR)||0, covDY = Number(s.minDebtYield)||0, covLev = Number(s.acqLTC)||0;
   var basis = Number(s.purchasePrice)||0;
-  // Stabilisation: a development deal stabilises at the engine's stab month; an
-  // acquisition is stabilised from month 1. Sale is the final modelled month.
+  // Stabilization: a development deal stabilizes at the engine's stab month; an
+  // acquisition is stabilized from month 1. Sale is the final modelled month.
   var stabMo = 1;
   try { if(String(s.dealType||'').toLowerCase()==='development' && typeof bkDevV09==='function'){
           var dv = bkDevV09(); if(dv && dv.isDev) stabMo = Math.max(1, Number(dv.stab)||1); } } catch(e){}
@@ -218,11 +218,11 @@ extend('Covenant Monitor','w3cT12', function(o){
     + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(t.maxLev)?pct(t.maxLev):'-')
         + txt('Debt balance &divide; acquisition basis')+'</tr>'
     + '<tr>'+lbl('Months Inside the Covenant Period')+val(intf(t.tested))
-        + txt('Stabilised, twelve months of history, before sale, debt outstanding')+'</tr>'
+        + txt('Stabilized, twelve months of history, before sale, debt outstanding')+'</tr>'
     + '<tr>'+lbl('Months on Watch')+val(intf(t.watch))+txt('Below a set covenant')+'</tr>'
     + '<tr class="grandtotal">'+lbl('OVERALL MONTHLY COVENANT STATUS')
         + '<td class="v">'+chip(t.watch?'warn':(t.tested?'pass':''), t.status)+'</td>'
-        + txt('Stabilisation at month '+intf(t.stabMo)+'; sale at month '+intf(t.saleMo))+'</tr>');
+        + txt('Stabilization at month '+intf(t.stabMo)+'; sale at month '+intf(t.saleMo))+'</tr>');
 
   o.main = (o.main||'') + summary
     + wrapTable('Monthly Covenant Test - trailing twelve months, all '+t.rows.length+' periods', head, body)

@@ -320,7 +320,7 @@ window.bkSourceFindings = function(){
       severity:'REVIEW',
       subject:'SPRR.pdf page 1, Investment Summary "Trailing-12 NOI $507,780"',
       finding:'This NOI is not derivable from the cash flow statement on pages 2-4. It equals the '
-            + 'annualised rent roll times (1 - 55.34%), i.e. 1,137,042 - 629,262. The 629,262 expense '
+            + 'annualized rent roll times (1 - 55.34%), i.e. 1,137,042 - 629,262. The 629,262 expense '
             + 'figure does not appear on pages 1-4; the package is 4 of 24 pages.',
       effect :'The headline NOI is rent-roll-derived, not GL-derived, and the two bases differ.',
       action :'Held REVIEW. The remaining 20 pages would settle it. Not used as a T-12 NOI input.' },

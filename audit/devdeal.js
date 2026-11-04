@@ -1,6 +1,6 @@
 // Realistic ground-up multifamily development: 150 units / 150,000 GSF, $5.5M land, ~$31M total budget
 // (≈ $190/GSF hard + soft), 6 months pre-development, 18 months construction, 14 months lease-up,
-// 65% LTC construction loan at 7.5%, exit 5.25%. Stabilised yield on cost lands near 6.4%.
+// 65% LTC construction loan at 7.5%, exit 5.25%. Stabilized yield on cost lands near 6.4%.
 module.exports = Object.assign({}, require(__dirname + '/deal.js'), {
   dealId: 'TEST-DEV', name: 'Audit Test Development', dealType: 'Development', closing: '1/1/2027',
   units: 150, gsf: 150000, avgRent: 2050, otherIncomePerUnit: 1500, vacancy: 0.06, purchasePrice: 5500000,

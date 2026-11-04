@@ -80,10 +80,10 @@ window.bkAnnualCF = function(){
   const opexGrowth = Number(s.opexGrowth), taxGrowth = Number(s.taxGrowth), mgmtPct = Number(s.mgmtPct);
 
   // FINAL WAVE - loss-to-lease and concession rates, read once. The workbook switches the
-  // concession rate at stabilisation (SYS_CF G42: IF(m<=k_Stab, g_concess_lu, g_concess)).
+  // concession rate at stabilization (SYS_CF G42: IF(m<=k_Stab, g_concess_lu, g_concess)).
   // bkAnnualCF's month 1 IS the first month of operations, so the lease-up window is the
   // deal's own lease-up period counted from that month; an acquisition with no lease-up
-  // period has a zero-length window and uses the stabilised rate throughout, which is the
+  // period has a zero-length window and uses the stabilized rate throughout, which is the
   // same answer the workbook gives for k_Stab = 1.
   const ltlPct       = Number(s.lossToLeasePct)||0;
   const concessPct   = Number(s.concessionPct)||0;
@@ -122,7 +122,7 @@ window.bkAnnualCF = function(){
     const opYear = Math.ceil(m/12);
     const resRev = (k_GPR/12) * resOcc * rentF(m);
     // CONVENTION cvBadDebtBasis: 'gross' charges gross potential rent; 'afterVacancy' and the legacy
-    // monthly behaviour charge rent after vacancy (the legacy expression is kept literally).
+    // monthly behavior charge rent after vacancy (the legacy expression is kept literally).
     const bad = _cv.cvBadDebtBasis==='gross' ? -((k_GPR/12) * rentF(m))*badDebtPct : -resRev*badDebtPct;
     // Applied to GROSS potential rent, exactly as the workbook does, using the same
     // expression the vacancy split below already uses so the parts still sum to the whole.
@@ -203,7 +203,7 @@ window.bkAnnualCF = function(){
   // in_exit_basis defaults to "NOI After Reserves" -- Havard's actual Excel setting; the app has
   // no separate toggle for this yet, so that default is used unconditionally).
   let fwdSum=0;
-  /* exitNoiBasis (optional): 'before' prices the sale on forward NOI before replacement reserves; blank = after reserves (the original behaviour). */
+  /* exitNoiBasis (optional): 'before' prices the sale on forward NOI before replacement reserves; blank = after reserves (the original behavior). */
   const exitBefore = s.exitNoiBasis === 'before';
   for(let mm=holdMonths+1; mm<=holdMonths+12; mm++){ const r_ = monthNOI(mm); fwdSum += exitBefore ? r_.noiBeforeReserves : r_.noi; }
   const terminalNOI = fwdSum;

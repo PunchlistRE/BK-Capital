@@ -42,7 +42,7 @@ window.bkRolloverFor = function(unit, s){
 window.bkLeaseRolloverMonth = function(leaseEndStr, closingStr){
   if(!leaseEndStr) return null;
   const end = bkParseDealDate(leaseEndStr,null), close = bkParseDealDate(closingStr,'2026-01-01');
-  // bkParseDealDate returns null (not an Invalid Date) for an unrecognised string, which is
+  // bkParseDealDate returns null (not an Invalid Date) for an unrecognized string, which is
   // the same "cannot be determined" outcome this guard already produced -- so an unparseable
   // lease end still yields null here rather than a guessed rollover month.
   if(!end || !close || isNaN(end.getTime()) || isNaN(close.getTime())) return null;

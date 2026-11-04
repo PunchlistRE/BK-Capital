@@ -208,7 +208,7 @@ const BK_EXPORT_REGISTRY = [
   {key:'rentroll', label:'Rent Roll', desc:'Unit-level rent roll as entered on the Rent Roll sheet.', builder:bkExportRentRoll},
   {key:'annualcf', label:'Annual Property CF', desc:'Annual unlevered NOI and sale proceeds (Property CF sheet).', builder:bkExportAnnualCF},
   {key:'monthlycf', label:'Monthly Property CF', desc:'Monthly dated levered cash flow (Returns sheet).', builder:bkExportMonthlyCF},
-  {key:'debt', label:'Debt Schedule', desc:'Full monthly loan amortisation (Debt Schedule sheet).', builder:bkExportDebtSchedule},
+  {key:'debt', label:'Debt Schedule', desc:'Full monthly loan amortization (Debt Schedule sheet).', builder:bkExportDebtSchedule},
   {key:'waterfall', label:'Waterfall / LP-GP CF', desc:'Monthly hurdle waterfall (Equity Waterfall and Waterfall (M) sheets).', builder:bkExportWaterfall},
   {key:'sponsor', label:'Sponsor CF', desc:'GP fees, co-investment and promote (Sponsor CF sheet).', builder:bkExportSponsorCF},
   {key:'investors', label:'Investor Schedules', desc:'Per-investor monthly cash flow and summary (Investor Registry x deal commitments).', builder:function(){ return window.bkExportInvestorSchedules(); }},

@@ -15,7 +15,7 @@ const FX = f => path.join(__dirname, 'fixtures', 'import_hub', f);
 
   /* ---- navigation: one Import entry, the four old ones are gone from the rail and the ribbon ---- */
   let p = await open(); await p.evaluate(() => showSheet('Import')); await p.waitForTimeout(500);
-  const nav = await p.evaluate(() => ({ cur: currentSheet, rail: [...document.querySelectorAll('.rail-item')].map(e => e.dataset.sheet), rib: [...document.querySelectorAll('.bk-ribbon .rb-g:first-child .rb-b')].map(e => e.innerText.trim().replace(/\n/g, ' ')) }));
+  const nav = await p.evaluate(() => ({ cur: currentSheet, rail: [...document.querySelectorAll('.rail-item')].map(e => e.dataset.sheet), rib: [...document.querySelectorAll('.bk-ribbon .rb-tabs .rb-t')].map(e => e.innerText.trim().replace(/\n/g, ' ')) }));
   check('one Import entry in the sidebar and ribbon; Import OM / Import Deal / Import Rent Roll / Source Ingestion are not listed', nav.rail.includes('Import') && !['Import OM', 'Import Deal', 'Import Rent Roll', 'Source Ingestion'].some(n => nav.rail.includes(n)) && nav.rib.includes('Import'), JSON.stringify(nav.rib));
   /* ---- a layout the reader has never seen: labels in column C, values in column F, units in a note column; a separate rent schedule with its own headings ---- */
   await upload(p, FX('elm_street_model.xlsx')); let g = await picks(p);
@@ -24,7 +24,7 @@ const FX = f => path.join(__dirname, 'fixtures', 'import_hub', f);
   check('LTV 65% from "Debt: LTV"; rate 6.25% from "Coupon on senior loan"; amortization 30 years', /65\.00%/.test((g['Loan-to-value'] || {}).v) && /6\.25%/.test((g['Loan interest rate'] || {}).v) && /30/.test((g['Loan amortization (years)'] || {}).v), JSON.stringify([g['Loan-to-value'], g['Loan interest rate'], g['Loan amortization (years)']]));
   check('hold 5 years from "Years held"; rent growth 2.50%; sale costs 1.50%; vacancy 6.00%; management fee 3.50% from "Mgmt fee"', /5/.test((g['Hold period (years)'] || {}).v) && /2\.50%/.test((g['Annual rent growth'] || {}).v) && /1\.50%/.test((g['Cost of sale (%)'] || {}).v) && /6\.00%/.test((g['Vacancy and credit loss (%)'] || {}).v) && /3\.50%/.test((g['Management fee (% of income)'] || {}).v));
   check('unit-weighted average rent $2,171 from a table headed Apt Type / # / SF / Rent $/mo, and its 48 units agree with the stated 48 (Verified)', /2,171/.test((g['Average monthly rent / unit'] || {}).v) && /Verified/i.test((g['Units'] || {}).c), JSON.stringify([g['Average monthly rent / unit'], g['Units']]));
-  check('"Resale rate" is not guessed: it is listed as not recognised, and net rentable area is used for building size only as a Low fallback', !g['Exit cap rate'] && /Low/i.test((g['Gross building area (SF)'] || {}).c));
+  check('"Resale rate" is not guessed: it is listed as not recognized, and net rentable area is used for building size only as a Low fallback', !g['Exit cap rate'] && /Low/i.test((g['Gross building area (SF)'] || {}).c));
   /* ---- teaching ---- */
   const taught = await p.evaluate(() => { const row = [...document.querySelectorAll('details table tbody tr')].find(r => /resale rate/i.test(r.children[0].textContent)); if (!row) return false; const s = row.querySelector('select'); s.value = 'exitCap'; s.dispatchEvent(new Event('change')); return true; }); await p.waitForTimeout(600);
   g = await picks(p); check('teaching "Resale rate" = Exit cap rate maps it at once (5.75%)', taught && /5\.75%/.test((g['Exit cap rate'] || {}).v), JSON.stringify(g['Exit cap rate']));

@@ -15,10 +15,10 @@
    CRITICAL LIMITATION, REPORTED NOT PAPERED OVER: Property Summary contains NO
    Deal ID, NO Property ID, NO address, and NO Yardi property code. The ONLY
    identifier real data supports is the PROPERTY NAME. The crosswalk is therefore
-   name-keyed, with normalisation limited to harmless presentation differences
+   name-keyed, with normalization limited to harmless presentation differences
    (case, punctuation, whitespace, the known Harvard/Havard spelling variant).
    No fuzzy matching is used, and a name that does not match exactly after
-   normalisation resolves to nothing rather than to a best guess.
+   normalization resolves to nothing rather than to a best guess.
 
    Yardi Trailing-12 (March 2026).xlsx - 1 sheet, 190 rows. Its own section
    headers name the properties in scope:
@@ -43,7 +43,7 @@
 
 var MASTER_KEY = 'bkcapital.master.properties.v01';
 
-/* ---------------------------------------------------------------- normalisation */
+/* ---------------------------------------------------------------- normalization */
 /* Harmless presentation differences only. Never used to grant write authority. */
 function normName(v){
   return String(v == null ? '' : v)
@@ -127,7 +127,7 @@ window.bkHpmParsePropertySummary = function(rows){
      crosswalk ambiguous, so it is surfaced rather than silently de-duplicated */
   var seen = {};
   out.owned.forEach(function(p){
-    if(seen[p.normName]) out.errors.push('Duplicate property name after normalisation: '+p.propertyName);
+    if(seen[p.normName]) out.errors.push('Duplicate property name after normalization: '+p.propertyName);
     seen[p.normName] = true;
   });
   return out;

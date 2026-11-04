@@ -6,8 +6,8 @@ def run(inputs, sw):
     json.dump(inputs, open(H + '/_in.json', 'w')); r = json.loads(subprocess.check_output(['python3', H + '/reference2.py', H + '/_in.json', json.dumps(sw)])); os.remove(H + '/_in.json'); return r
 steps = [('BK Capital as modelled (independent model, no switches)', {}, {}),
          ('Other income paid by occupied units only, as the brief says (BK charges all 120 units)', {'otherIncomePerUnit': 1995}, {}),
-         ('Exit value on stabilised NOI before reserves (the reference build\'s simplification; BK uses next-12-months NOI after reserves, with growth)', {}, {'exit_stab': 1}),
-         ('Interest capitalised to the sale with no current-pay (BK stops capitalising at stabilisation, then pays interest from cash flow)', {}, {'cap_to_exit': 1}),
+         ('Exit value on stabilized NOI before reserves (the reference build\'s simplification; BK uses next-12-months NOI after reserves, with growth)', {}, {'exit_stab': 1}),
+         ('Interest capitalized to the sale with no current-pay (BK stops capitalising at stabilization, then pays interest from cash flow)', {}, {'cap_to_exit': 1}),
          ('The workbook\'s lease-up occupancy ramp (BK derives a straight-line ramp from the lease-up months)', {}, {'wb_ramp': 1}),
          ('$2.0M initial reserves funded, lease-up shortfalls paid from them, balance released at sale (BK has no reserves)', {}, {'reserves': 1}),
          ('Fixed $27.3M facility, $34M ceiling, $14.7M equity first, $273k fee, 0.5% unused fee (BK sizes the loan by LTC on all-in cost)', {}, {'fixed_facility': 1})]

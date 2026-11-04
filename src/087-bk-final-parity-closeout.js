@@ -24,7 +24,7 @@
    NOT CLOSED, and why - these are in the blocker list, not quietly dropped:
      - SPCF-01 sponsor fee treatment (the workbook books the development and
        construction-management fee as sponsor income AND project cost; this
-       engine capitalises them only). Reconciling the two is a policy choice.
+       engine capitalizes them only). Reconciling the two is a policy choice.
      - DEV-05 construction cost calibration (k-factor): a budget-mode/benchmark
        calibration the engine has no field for. New economics, not exposure.
      - INV-01/02, CC-01, PF-01/05, PDB-01, LDG-01: each needs a data-model
@@ -122,7 +122,7 @@ extend('Operating Underwrite','fRevenueBuild', function(o){
 
   var body = ''
     + '<tr>'+lbl('Gross Potential Rent - Residential')+val(money(gpr))
-      + txt('Annualised, from the canonical revenue source')+'<td class="v">'+chip('','ENGINE')+'</td></tr>'
+      + txt('Annualized, from the canonical revenue source')+'<td class="v">'+chip('','ENGINE')+'</td></tr>'
     + '<tr>'+lbl('Less: Vacancy')+val(money(c.vacancy))+txt('Gross potential rent &times; vacancy rate')+'<td></td></tr>'
     + '<tr>'+lbl('Less: Bad Debt / Credit Loss')+val(money(c.bad))+txt(bkConventions(bkLoad()).cvBadDebtBasis==='afterVacancy' ? 'Bad debt rate &times; rent after vacancy' : 'Bad debt rate &times; gross potential rent')+'<td></td></tr>'
     + '<tr>'+lbl('Loss to Lease - underwriting deduction')
@@ -131,7 +131,7 @@ extend('Operating Underwrite','fRevenueBuild', function(o){
       + txt('% of gross potential rent - workbook Operating Underwrite C8')
       + '<td class="v">'+chip('','INPUT %')+'</td></tr>'
     + '<tr>'+lbl('Less: Loss to Lease')+val(money(c.ltl))+txt('Gross potential rent &times; the rate above')+'<td></td></tr>'
-    + '<tr>'+lbl('Concessions - stabilised')
+    + '<tr>'+lbl('Concessions - stabilized')
       + '<td class="v"><input type="number" step="0.01" style="width:100px" value="'+((Number(s.concessionPct)||0)*100).toFixed(2)+'"'
       + ' onchange="bkSetConcession(this.value)"></td>'
       + txt('% of gross potential rent - workbook Operating Underwrite C9')
@@ -142,17 +142,17 @@ extend('Operating Underwrite','fRevenueBuild', function(o){
           ? ((Number(s.concessionPct)||0)*100).toFixed(2) : ((Number(s.concessionLeaseUpPct)||0)*100).toFixed(2))+'"'
       + ' onchange="bkSetConcessionLeaseUp(this.value)"></td>'
       + txt('Applied for the first '+intf(Math.max(0,Math.round(Number(s.leaseupMonths)||0)))
-            +' month(s) of operations; blank follows the stabilised rate')
+            +' month(s) of operations; blank follows the stabilized rate')
       + '<td class="v">'+chip('','INPUT %')+'</td></tr>'
     + '<tr>'+lbl('Less: Concessions')+val(money(c.concess))+txt('Year 1, at the rate in force')+'<td></td></tr>'
     + '<tr class="grandtotal">'+lbl('NET RESIDENTIAL INCOME')+val(money(c.netRes))
       + txt('GPR less vacancy, losses and concessions')
       + '<td class="v">'+chip('pass','TO EGI')+'</td></tr>'
-    + '<tr>'+lbl('Commercial Base Rent')+val(money(c.commercial))+txt('Annualised')+'<td></td></tr>'
+    + '<tr>'+lbl('Commercial Base Rent')+val(money(c.commercial))+txt('Annualized')+'<td></td></tr>'
     + '<tr>'+lbl('Commercial Recoveries')+val(money(c.recovery))+txt('Reimbursed operating expenses')+'<td></td></tr>'
     + '<tr>'+lbl('Less: Commercial Vacancy')+val(money(c.commercialVac))+txt('Base rent plus recoveries &times; commercial vacancy')+'<td></td></tr>'
     + '<tr class="grandtotal">'+lbl('NET COMMERCIAL INCOME')+val(money(c.netComm))+txt('')+'<td></td></tr>'
-    + '<tr>'+lbl('Other Income')+val(money(c.other))+txt('Per unit, annualised')+'<td></td></tr>'
+    + '<tr>'+lbl('Other Income')+val(money(c.other))+txt('Per unit, annualized')+'<td></td></tr>'
     + '<tr class="grandtotal">'+lbl('EFFECTIVE GROSS INCOME')+val(money(c.egi))+txt('')
       + '<td class="v">'+chip('pass','ENGINE')+'</td></tr>';
 
@@ -285,7 +285,7 @@ extend('Debt Schedule','fTotalDebt', function(o){
     rows.push({ m:i+1, a:a, c:c, p:pm, tot:tot, ds:ap+pp, ci:ci });
   }
   var head = '<tr><th class="rowlabel-h">Mo</th><th>Acquisition Loan</th><th>Construction Facility</th>'
-           + '<th>Permanent Loan</th><th>TOTAL DEBT</th><th>Cash Debt Service</th><th>Capitalised Interest</th></tr>';
+           + '<th>Permanent Loan</th><th>TOTAL DEBT</th><th>Cash Debt Service</th><th>Capitalized Interest</th></tr>';
   var body = rows.map(function(r){
     return '<tr'+(r.tot?'':' style="opacity:.55"')+'>'+lbl(String(r.m))
       + val(money0(r.a)) + val(money0(r.c)) + val(money0(r.p))
@@ -317,7 +317,7 @@ extend('Debt Schedule','fTotalDebt', function(o){
     + note('&#9432;','Every column is read from the facility&rsquo;s own canonical schedule - the acquisition debt schedule, '
       + 'the construction funding schedule and the permanent takeout - and the total is their sum. Nothing is re-amortised '
       + 'here. A facility that does not apply to this deal shows NOT APPLICABLE rather than a row of zeros pretending to be a schedule. '
-      + 'Capitalised construction interest is shown in its own column because it is not cash debt service and must not be added to it.');
+      + 'Capitalized construction interest is shown in its own column because it is not cash debt service and must not be added to it.');
 });
 
 /* =====================================================================
@@ -335,14 +335,14 @@ extend('Reverse Solve','fVerdict', function(o){
   // through to the ACQUISITION basis formula built on purchasePrice. Yield on cost
   // was therefore being measured against the land price rather than the project
   // cost. The engine's own fields are `unlev` (all-in cost before financing) and
-  // `levered` (unlev plus capitalised interest, fees and overflow), which is the
+  // `levered` (unlev plus capitalized interest, fees and overflow), which is the
   // basis a yield-on-cost is quoted on. Caught by the investor-wave verification
   // printing a project cost of $0; the Final-wave control only checked that the
   // verdict flipped with the exit cap, which it did, for the wrong reason.
   // Which figure is "total development cost" matters, so it is resolved in one
   // place and LABELLED rather than left to chance. bkDevV09() carries `unlev` -
   // all-in cost before financing. bkDevFundingV10() carries `levered`, which is
-  // that same figure plus capitalised interest and loan fees, and that is the
+  // that same figure plus capitalized interest and loan fees, and that is the
   // basis a yield on cost is normally quoted on. Prefer levered, fall back to
   // unlevered, and say which one was used.
   function bkDevTotalCost(dv){
@@ -351,7 +351,7 @@ extend('Reverse Solve','fVerdict', function(o){
     try { if(typeof bkDevFundingV10 === 'function'){ var f = bkDevFundingV10();
             if(f && f.isDev) lev = Number(f.levered); } } catch(e){}
     var un = Number(dv.unlev);
-    if(isFinite(lev) && lev > 0) return { cost: lev, basis: 'all-in, including capitalised interest and loan fees',
+    if(isFinite(lev) && lev > 0) return { cost: lev, basis: 'all-in, including capitalized interest and loan fees',
                                           unlev: isFinite(un) ? un : null };
     if(isFinite(un) && un > 0) return { cost: un, basis: 'all-in before financing costs', unlev: un };
     return null;
@@ -417,7 +417,7 @@ extend('Home','fValuation', function(o){
 
   o.main = (o.main||'') + wrapTable('Valuation Conclusion',
     '<tr><th class="rowlabel-h">Basis</th><th>Value</th><th style="text-align:left">Method</th><th>Status</th></tr>',
-      '<tr>'+lbl('Direct Capitalisation')+val(isFinite(directCap)?money(directCap):'-')
+      '<tr>'+lbl('Direct Capitalization')+val(isFinite(directCap)?money(directCap):'-')
         + txt('Year '+intf(basisYear)+' NOI after reserves &divide; exit cap '+pct(Number(s.exitCap)))
         + '<td class="v">'+chip(method!=='DCF'?'pass':'', method!=='DCF'?'SELECTED':'')+'</td></tr>'
     + '<tr>'+lbl('Discounted Cash Flow')+val(isFinite(dcf)?money(dcf):'-')
@@ -425,7 +425,7 @@ extend('Home','fValuation', function(o){
         + '<td class="v">'+chip(method==='DCF'?'pass':'', method==='DCF'?'SELECTED':'')+'</td></tr>'
     + '<tr class="grandtotal">'+lbl('CONCLUDED VALUE')+val(isFinite(concluded)?money(concluded):'-')
         + txt('On the '+esc(method)+' basis')+'<td class="v">'+chip('pass','LIVE')+'</td></tr>')
-    + note('&#9432;','<b>Reported here, controlled on Returns.</b> The method, discount rate and capitalisation basis year are set on the '
+    + note('&#9432;','<b>Reported here, controlled on Returns.</b> The method, discount rate and capitalization basis year are set on the '
       + 'Returns page and this readout follows them, so there is one place to change the answer and one answer to change. Both methods '
       + 'are computed on every render from the same monthly engine.');
 });

@@ -49,7 +49,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   let lo = 0, hi = 1; for (let k = 0; k < 100; k++) { const mid = (lo + hi) / 2; (pvf(flows, mid) > 0 ? hi = mid : lo = mid); }
   check('A: the all-in cost of the loan equals the independent IRR of its flows', near(a.allIn, lo, 1e-6), (a.allIn * 100).toFixed(4) + '% vs ' + (lo * 100).toFixed(4) + '%');
   check('A: the all-in cost is above the stated 6.75% coupon (fees and monthly compounding are in it)', a.allIn > 0.0675 + 0.002, (a.allIn * 100).toFixed(3));
-  check('A: stressed DSCR = DSCR NOI less 10% over amortising debt service', near(a.sd, a.dscrNoi * 0.9 / (a.pmtAm * 12), 1e-9) && near(a.pmtAm, pmt, 0.01), a.sd.toFixed(4));
+  check('A: stressed DSCR = DSCR NOI less 10% over amortizing debt service', near(a.sd, a.dscrNoi * 0.9 / (a.pmtAm * 12), 1e-9) && near(a.pmtAm, pmt, 0.01), a.sd.toFixed(4));
 
   /* 3. every alternative reconciles to the engine: levered cash flow = unlevered cash flow + financing cash flows, in every month */
   D.res.forEach(r => check(r.id + ': financing cash flows reconcile to the engine\'s levered less unlevered cash flow in all 60 months', r.rec && r.diff < 1, r.diff));

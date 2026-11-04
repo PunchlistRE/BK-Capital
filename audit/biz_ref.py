@@ -40,7 +40,7 @@ def dcf(b, P, case=None, rate=None, g=None, mult=None, comp=None, tv=None, tv_di
     base_rate = wacc(b['rate']) if case == 'base' else c['rate']
     rate = base_rate if rate is None else rate; g = c['g'] if g is None else g; mult = c['mult'] if mult is None else mult; comp0 = c['comp'] if comp is None else comp
     tv_method = d['tvMethod'] if tv is None else tv
-    ann_prev = P['years'][0]['revenue'] * 2                        # 2025A annualised
+    ann_prev = P['years'][0]['revenue'] * 2                        # 2025A annualized
     rows = []
     for k in range(5):
         y = P['years'][k + 1]; rev = y['revenue'] * c['rev'][k]; opex = y['opex']
