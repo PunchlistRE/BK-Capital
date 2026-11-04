@@ -3395,11 +3395,13 @@ function devShift(s){ return isDevDeal(s) ? Math.max(0, Math.round(num(s.predevM
 window.bkLeaseDevShift = devShift;
 window.bkLeaseOn = function(s){ s = s || bkLoad(); return !!(s && s.commLeaseModel === true && Array.isArray(s.leases) && s.leases.length); };
 window.bkLeaseMarket = function(s){
-  var M = Object.assign({ growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL, grossUp:1, grossVar:null, cpiForecast:0.025, cpiIndex:[] }, (s && s.leaseMkt) || {});
-  if(!Array.isArray(M.recoverable)) M.recoverable = DEF_POOL;
+  var blankMkt = !!(s && s.leaseMkt && s.leaseMkt._blank);   /* a deal started blank or cleared: nothing is assumed until it is entered (no bump, no free rent, leases run to the end of the analysis, no recoverable expenses ticked) */
+  var M = Object.assign(blankMkt ? { growth:null, bump:0, termNew:1200, termRenew:1200, freeNew:0, freeRenew:0, renewPct:1, creditLoss:0, recoverable:[], grossUp:1, grossVar:null, cpiForecast:0, cpiIndex:[] } : { growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL, grossUp:1, grossVar:null, cpiForecast:0.025, cpiIndex:[] }, (s && s.leaseMkt) || {});
+  if(!Array.isArray(M.recoverable)) M.recoverable = blankMkt ? [] : DEF_POOL;
   if(!Array.isArray(M.cpiIndex)) M.cpiIndex = [];
   M.g = has(M.growth) ? Number(M.growth) : num(s && s.commercialRentGrowth);
   var RA = Object.assign((s && s.rolloverAssumptions && typeof s.rolloverAssumptions === 'object') ? { renewalProbability:0, downtimeMonths:0, tiNewPerSF:0, tiRenewalPerSF:0, lcNewPct:0, lcRenewalPct:0 } : { renewalProbability:0.65, downtimeMonths:6, tiNewPerSF:20, tiRenewalPerSF:5, lcNewPct:0.06, lcRenewalPct:0.03 }, (s && s.rolloverAssumptions) || {});   /* a deal's own assumptions: whatever is blank is none; only a deal with no assumptions object at all falls back to the old defaults */
+  M._blank = blankMkt;
   return { M:M, RA:RA };
 };
 /* growth of market rent: the same rule as the engine's other streams (continuous monthly, or a step each year from year 2), with optional year-by-year rates */
@@ -7652,7 +7654,7 @@ window.bkClearTemplateValues = function(){
    (blankStructure:true). The named template still applies to programmatic callers, so every saved deal and every audit deck keeps its own terms. With no GP, the LP takes every tier. */
 window.bkCreateNewDeal = function(opts){
   opts = opts || {};
-  if(opts.blankStructure){ var given = opts; opts = Object.assign({ gpShare:0, t2LP:1, t3LP:1, t4LP:1, rolloverAssumptions:{} }, opts, { template:'Blank' }); ['closingCostsPct', 'closingPct', 'saleCostPct', 'acqFeePct', 'acquisitionFeePct'].forEach(function(k){ if(given[k] === undefined || given[k] === null || given[k] === '') delete opts[k]; }); }   /* terms the caller supplies (an import) are kept; only what nobody supplied starts empty */
+  if(opts.blankStructure){ var given = opts; opts = Object.assign({ gpShare:0, t2LP:1, t3LP:1, t4LP:1, rolloverAssumptions:{}, leaseMkt:{ _blank:1 } }, opts, { template:'Blank' }); ['closingCostsPct', 'closingPct', 'saleCostPct', 'acqFeePct', 'acquisitionFeePct'].forEach(function(k){ if(given[k] === undefined || given[k] === null || given[k] === '') delete opts[k]; }); }   /* terms the caller supplies (an import) are kept; only what nobody supplied starts empty */
   var blank = {
     dealId       : opts.dealId       || '',
     name         : opts.name         || '',
@@ -24242,7 +24244,8 @@ function pLease(s){
      as such; clearing a box goes back to the default rather than saving 0. */
   function md(path, kind, label, unit){
     var k = path.split('.')[1], src = path.indexOf('leaseMkt.') === 0 ? M : RA, saved = getPath(s, path), isDef = saved === undefined || saved === null || saved === '';
-    return R(label, inp(path, kind, { s:s, blank:'unset', def:src[k] }), unit + (isDef ? ' (default)' : ''));
+    var blankDeal = !!(M && M._blank);   /* a blank or cleared deal assumes nothing: the box stays empty until a value is typed */
+    return R(label, inp(path, kind, { s:s, blank:'unset', def:blankDeal ? undefined : src[k] }), unit + (isDef ? (blankDeal ? ' (blank: none assumed)' : ' (default)') : ''));
   }
   var pool = '<div class="ae-row" style="flex-wrap:wrap">' + window.BK_LEASE_POOL_KEYS.map(function(k){ return '<label style="margin-right:14px"><input type="checkbox"' + (M.recoverable.indexOf(k[0]) >= 0 ? ' checked' : '') + ' onchange="bkLeasePool(\'' + k[0] + '\',this.checked)"> ' + k[1] + '</label>'; }).join('') + '</div>';
   var mkt = form('Market Leasing Assumptions', 'M', [NOTE('Used when a lease expires and for vacant suites. Rolled leases start at market rent grown at the rate below.'),

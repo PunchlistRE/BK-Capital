@@ -22,11 +22,13 @@ function devShift(s){ return isDevDeal(s) ? Math.max(0, Math.round(num(s.predevM
 window.bkLeaseDevShift = devShift;
 window.bkLeaseOn = function(s){ s = s || bkLoad(); return !!(s && s.commLeaseModel === true && Array.isArray(s.leases) && s.leases.length); };
 window.bkLeaseMarket = function(s){
-  var M = Object.assign({ growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL, grossUp:1, grossVar:null, cpiForecast:0.025, cpiIndex:[] }, (s && s.leaseMkt) || {});
-  if(!Array.isArray(M.recoverable)) M.recoverable = DEF_POOL;
+  var blankMkt = !!(s && s.leaseMkt && s.leaseMkt._blank);   /* a deal started blank or cleared: nothing is assumed until it is entered (no bump, no free rent, leases run to the end of the analysis, no recoverable expenses ticked) */
+  var M = Object.assign(blankMkt ? { growth:null, bump:0, termNew:1200, termRenew:1200, freeNew:0, freeRenew:0, renewPct:1, creditLoss:0, recoverable:[], grossUp:1, grossVar:null, cpiForecast:0, cpiIndex:[] } : { growth:null, bump:0.03, termNew:60, termRenew:60, freeNew:3, freeRenew:0, renewPct:1, creditLoss:0, recoverable:DEF_POOL, grossUp:1, grossVar:null, cpiForecast:0.025, cpiIndex:[] }, (s && s.leaseMkt) || {});
+  if(!Array.isArray(M.recoverable)) M.recoverable = blankMkt ? [] : DEF_POOL;
   if(!Array.isArray(M.cpiIndex)) M.cpiIndex = [];
   M.g = has(M.growth) ? Number(M.growth) : num(s && s.commercialRentGrowth);
   var RA = Object.assign((s && s.rolloverAssumptions && typeof s.rolloverAssumptions === 'object') ? { renewalProbability:0, downtimeMonths:0, tiNewPerSF:0, tiRenewalPerSF:0, lcNewPct:0, lcRenewalPct:0 } : { renewalProbability:0.65, downtimeMonths:6, tiNewPerSF:20, tiRenewalPerSF:5, lcNewPct:0.06, lcRenewalPct:0.03 }, (s && s.rolloverAssumptions) || {});   /* a deal's own assumptions: whatever is blank is none; only a deal with no assumptions object at all falls back to the old defaults */
+  M._blank = blankMkt;
   return { M:M, RA:RA };
 };
 /* growth of market rent: the same rule as the engine's other streams (continuous monthly, or a step each year from year 2), with optional year-by-year rates */

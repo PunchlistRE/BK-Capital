@@ -253,7 +253,8 @@ function pLease(s){
      as such; clearing a box goes back to the default rather than saving 0. */
   function md(path, kind, label, unit){
     var k = path.split('.')[1], src = path.indexOf('leaseMkt.') === 0 ? M : RA, saved = getPath(s, path), isDef = saved === undefined || saved === null || saved === '';
-    return R(label, inp(path, kind, { s:s, blank:'unset', def:src[k] }), unit + (isDef ? ' (default)' : ''));
+    var blankDeal = !!(M && M._blank);   /* a blank or cleared deal assumes nothing: the box stays empty until a value is typed */
+    return R(label, inp(path, kind, { s:s, blank:'unset', def:blankDeal ? undefined : src[k] }), unit + (isDef ? (blankDeal ? ' (blank: none assumed)' : ' (default)') : ''));
   }
   var pool = '<div class="ae-row" style="flex-wrap:wrap">' + window.BK_LEASE_POOL_KEYS.map(function(k){ return '<label style="margin-right:14px"><input type="checkbox"' + (M.recoverable.indexOf(k[0]) >= 0 ? ' checked' : '') + ' onchange="bkLeasePool(\'' + k[0] + '\',this.checked)"> ' + k[1] + '</label>'; }).join('') + '</div>';
   var mkt = form('Market Leasing Assumptions', 'M', [NOTE('Used when a lease expires and for vacant suites. Rolled leases start at market rent grown at the rate below.'),
