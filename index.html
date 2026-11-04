@@ -23284,7 +23284,18 @@ function build(){
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Investment Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 
-window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, null), h = /develop/i.test(String(s && s.dealType || '')) ? buildDev() : build(); return typeof window.bkPct2Html === 'function' ? window.bkPct2Html(h) : h; };
+/* A deal may carry a fixture label (s._fixture = { id, summary, terms[], pending[] }): the report then names the fixture on the cover with its financing and waterfall assumptions, repeats the identifier in every footer and puts it in the document title (the PDF's title metadata), so the cover page cannot be separated from the report without losing it. Display only: it reads nothing from and changes nothing in the engine. */
+function fixtureLabel(h, fx){
+  if(!fx || !fx.id) return h;
+  var li = function(a){ return (a || []).map(function(x){ return '<li style="margin:1px 0">' + esc(x) + '</li>'; }).join(''); };
+  var block = '<div style="position:absolute;z-index:2;left:.8in;right:.8in;top:5.05in;border:1px solid rgba(255,255,255,.35);background:rgba(8,26,48,.82);padding:9px 12px;font-size:8.6px;line-height:1.35;color:#dfe9f4"><div style="font-size:13px;font-weight:800;letter-spacing:.06em;color:#fff">' + esc(fx.id) + '</div>'
+    + (fx.summary ? '<div style="margin-top:2px;color:#b9cbe0">' + esc(fx.summary) + '</div>' : '') + '<div style="display:flex;gap:18px;margin-top:5px"><div style="flex:1.2"><b style="letter-spacing:.08em">FINANCING AND WATERFALL ASSUMPTIONS</b><ul style="margin:2px 0 0 13px;padding:0">' + li(fx.terms) + '</ul></div>'
+    + ((fx.pending || []).length ? '<div style="flex:1;border-left:1px solid rgba(255,255,255,.3);padding-left:12px"><b style="letter-spacing:.08em;color:#ffd27a">ASSUMPTIONS PENDING DEAL-TEAM CONFIRMATION</b><div style="color:#ffd27a">Not established deal terms.</div><ul style="margin:2px 0 0 13px;padding:0">' + li(fx.pending) + '</ul></div>' : '') + '</div></div>';
+  h = h.replace(/(<section class="page cover[^"]*">[\s\S]*?)(<\/section>)/, function(m, a, b){ return a + block + b; });
+  h = h.replace(/ case · Page /g, ' case · ' + esc(fx.id) + ' · Page ');
+  return h.replace(/<title>([^<]*)<\/title>/, function(m, x){ return '<title>' + x + ' [' + esc(fx.id) + ']</title>'; });
+}
+window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, null), h = /develop/i.test(String(s && s.dealType || '')) ? buildDev() : build(); h = fixtureLabel(h, s && s._fixture); return typeof window.bkPct2Html === 'function' ? window.bkPct2Html(h) : h; };
 window.bkReportClose = function(){ var e = document.getElementById('pl-report'); if(e) e.remove(); document.documentElement.style.overflow = ''; };
 window.bkReportPrint = function(){ var f = document.getElementById('pl-report-frame'); if(f && f.contentWindow){ f.contentWindow.focus(); f.contentWindow.print(); } };
 window.bkReportOpen = function(){ var go = function(){ return bkReportOpenNow(); }; return Promise.resolve(typeof window.bkDocsWarm === 'function' ? window.bkDocsWarm() : '').then(go, go); };
