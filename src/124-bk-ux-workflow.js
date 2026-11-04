@@ -62,7 +62,7 @@ function headline(){
 /* ---------------------------------------------------------------- 1. workflow */
 var STEPS = [
   { id:'setup', label:'Setup',      sheets:['Home'] },
-  { id:'inputs', label:'Inputs',    sheets:['Deal Underwrite','Rent Roll','Source Ingestion','Depreciation','Source Data'] },
+  { id:'inputs', label:'Inputs',    sheets:['Deal Underwrite','Rent Roll','Import','Depreciation','Source Data'] },
   { id:'ops', label:'Operations',   sheets:['Operating Underwrite','Property CF'] },
   { id:'debt', label:'Debt',        sheets:['Debt','Debt Schedule','Covenant Monitor'] },
   { id:'returns', label:'Returns',  sheets:['Returns','Equity Waterfall','After-Tax'] },
@@ -540,7 +540,7 @@ function ribbon(frame, sheet){
   var h = '<div class="bk-ribbon" role="toolbar" aria-label="Commands">';
   h += '<div class="rb-g active"><div class="rb-row">' + sheets.map(function(n){ return rbBtn(RB_SHEET[n] || ic, n, 'data-goto-sheet2="' + esc(n) + '"', n === sheet); }).join('') + '</div><div class="rb-cap">' + esc(g ? g.label : 'Sheets') + '</div></div>';
   h += '<div class="rb-g"><div class="rb-row">'
-    + rbBtn('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + rbBtn('up', 'Import OM', 'data-goto-sheet2="Import OM"')
+    + rbBtn('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + rbBtn('up', 'Import', 'data-goto-sheet2="Import"')
     + rbBtn('trash', 'Clear inputs', 'onclick="showSheet(\'Home\');setTimeout(function(){if(window.bkClearInputsDialog)bkClearInputsDialog();},50)"') + rbBtn('print', 'Print / Save PDF', 'onclick="bkPrintSection()"')
     + '</div><div class="rb-cap">Deal</div></div>';
   h += '<div class="rb-g"><div class="rb-row">'

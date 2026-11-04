@@ -179,3 +179,16 @@ html body #viewport .status-chip[data-bk-chip="optional"]{ background:transparen
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; } :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; } }
 :root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; }
 :root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; }
+/* the Import tab shows the older readers' pages, so their own upload boxes (replaced by the one at the top) are hidden */
+html body #viewport div:has(> input#bkOMFile), html body #viewport div:has(> input#bkImportFile), html body #viewport div:has(> input#bkRRFile){ display:none; }
+
+/* CLICKABLE LOOK: every tab and ribbon button has a visible edge at rest (not only on hover), so it reads as a button. The open one is joined to the page below it. */
+html body .tabnav .grp-btn{ border:1px solid rgba(255,255,255,.32) !important; border-bottom:0 !important; background:rgba(255,255,255,.07) !important; margin-right:3px; }
+html body .tabnav .grp-btn:hover{ background:rgba(255,255,255,.16) !important; border-color:rgba(255,255,255,.55) !important; }
+html body .tabnav .grp-btn.on{ border-color:#fff !important; box-shadow:inset 0 3px 0 var(--ae-accent) !important; }
+.bk-ribbon .rb-b{ border:1px solid var(--ae-line); background:var(--ae-cell-ro); margin:0 1px 2px; box-shadow:0 1px 0 rgba(14,42,74,.08); }
+.bk-ribbon .rb-b:hover{ background:var(--ae-sel); border-color:var(--bk-navy-2); }
+.bk-ribbon .rb-b.on{ background:var(--ae-cell); border-color:var(--bk-navy-2); border-bottom-color:var(--ae-cell); box-shadow:inset 0 2px 0 var(--bk-key-rule); }
+html body #viewport .ae-tab:not(.on), html body #viewport .ae-sub:not(.on), html body #viewport .ae-subs button:not(.on), html body #viewport .bk-dt:not(.on){ border:1px solid var(--ae-line) !important; background:var(--ae-cell-ro) !important; }
+html body #viewport .ae-tab:not(.on):hover, html body #viewport .ae-subs button:not(.on):hover, html body #viewport .bk-dui.bk-tabs .bk-dt:not(.on):hover{ background:var(--ae-sel) !important; border-color:var(--bk-navy-2) !important; }
+html body #viewport .ae-subs{ gap:3px; }

@@ -829,6 +829,7 @@ function buildDevDeal(dev){
 function devRun(inp){ var f = inp && inp.files && inp.files[0]; if(!f) return; S.devFile = f; S.busy = true; S.msg = 'Reading ' + f.name + '...'; showSheet('Import OM');
   Promise.resolve(window.bkImportParseFile(f)).then(function(parsed){ var pf = parseDevPF(parsed); if(!pf.noi || !pf.rent.length || !pf.exp.length) throw new Error('Could not find the rental income table, operating expenses and net operating income in ' + f.name + '. This importer reads a one-sheet development pro forma (unit types with rents, other income, expenses, NOI).'); S.dev = S.dev || { om:{} }; S.dev.pf = pf; S.dev.taxBasis = S.dev.taxBasis || 'pf'; S.mode = 'dev'; S.result = true; S.busy = false; S.msg = 'Read ' + f.name + '.'; showSheet('Import OM'); })
     .catch(function(e){ S.busy = false; S.msg = (e && e.message) || String(e); showSheet('Import OM'); }); }
+window.bkOMPageText = function(file){ return readOMPdfjs(file).then(function(info){ return info.pages || []; }); };
 window.bkOMDevPF = devRun; window.bkOMDevTax = function(b){ if(S.dev){ S.dev.taxBasis = b; showSheet('Import OM'); } };
 window.bkOMDevCreate = function(){ if(!S.dev || !S.dev.pf) return; var b = buildDevDeal(S.dev), id = String(b.deal.dealId), files = [S.file, S.devFile].filter(Boolean);
   stampImp(b.deal, confDev(S.dev, b, S.info), S.devFile && S.devFile.name);

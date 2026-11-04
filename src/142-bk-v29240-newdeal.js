@@ -31,7 +31,7 @@ window.bkNewDealDialog = function(id){
     + (a ? '<input type="hidden" id="pl-an" value="' + a.id + '">' : '<label class="f" for="pl-an">Analysis</label><select id="pl-an" class="left">' + analysisOptions('acquisition') + '</select>')
     + '<label class="f" for="pl-nm">Name</label><input type="text" id="pl-nm" class="left" placeholder="e.g. 14 Main Street" autocomplete="off">'
     + '<label class="chk"><input type="checkbox" id="pl-guide"> <span>Guide me step by step</span></label>'
-    + '<div class="pl-from"><span>Or start from a document</span><div><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import OM\')">Listing summary</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import OM\')">Offering memorandum</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import Deal\')">T-12</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import Rent Roll\')">Rent roll</button></div></div>'
+    + '<div class="pl-from"><span>Or start from a document</span><div><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import\')">Listing summary</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import\')">Offering memorandum</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import\')">T-12</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import\')">Rent roll</button></div></div>'
     + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create</button></div>');
   var nm = document.getElementById('pl-nm'); if(nm){ nm.focus(); nm.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); bkNewDealGo(); } }); }
 };
@@ -44,7 +44,7 @@ window.bkNewDealGo = function(){
   if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
 window.bkNewDealFrom = function(sheet){ snapshot(); closeModal(); showSheet(sheet); };
-window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import Deal'); };
+window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import'); };
 
 window.bkClearInputsDialog = function(){
   var s = safe(function(){ return bkLoad(); }, {}), was = [s.name, s.location].filter(Boolean).join(' · ');
@@ -65,7 +65,7 @@ window.bkClearInputsGo = function(){
 RENDERERS['Home'] = function(){
   var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
   var has = active(); if(!has) return o;
-  var bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New analysis</button><button type="button" class="pl-hbtn" onclick="showSheet(\'Import OM\')">Import OM</button>' + (has ? '<button type="button" class="pl-hbtn" onclick="bkReportOpen()" style="border-color:#3E9AE6;color:#12609f;font-weight:700">Create PDF summary</button>' : '') + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
+  var bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New analysis</button><button type="button" class="pl-hbtn" onclick="showSheet(\'Import\')">Import OM</button>' + (has ? '<button type="button" class="pl-hbtn" onclick="bkReportOpen()" style="border-color:#3E9AE6;color:#12609f;font-weight:700">Create PDF summary</button>' : '') + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
   return Object.assign({}, o, { main:o.main.replace('<div class="pl-home">', '<div class="pl-home">' + bar) });
 };
 if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}

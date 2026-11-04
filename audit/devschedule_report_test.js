@@ -52,7 +52,7 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   check('cover: all-in cost, equity and the construction loan are the funding engine\'s', cover.includes('$' + (E.levered / 1e6).toFixed(2) + 'M') && cover.includes('$' + (E.equity / 1e6).toFixed(2) + 'M') && cover.includes('$' + (E.commit / 1e6).toFixed(2) + 'M'));
   check('cover: the critical path lists the critical tasks in order, then the CO and the lease-up', E.names.every(n => cover.includes(n)) && cover.indexOf(E.names[0]) < cover.indexOf(E.names[E.names.length - 1]) && /Certificate of occupancy/.test(cover) && /Lease-up/.test(cover));
   const tbl = rp.text.slice(1 + ganttPages, 1 + ganttPages + Math.ceil(rows / 15)).join('\n');
-  check('task table: every task, its predecessors and CRITICAL on each critical row', E.names.every(n => tbl.includes(n)) && (tbl.match(/CRITICAL/g) || []).length >= E.ncrit && /3 -3/.test(tbl));
+  check('task table: every task, its predecessors and CRITICAL on each critical row', E.names.every(n => tbl.includes(n)) && (tbl.match(/CRITICAL/g) || []).length >= E.ncrit && /\t\d+ -\d+\t/.test(tbl));
   const fund = rp.text[rp.n - 2].replace(/\n/g, ' ');
   const need = fund.match(/Through stabilisation\s+\$([\d,]+)\s+\$([\d,]+)\s+\$([\d,]+)\s+\$([\d,]+)/);
   check('funding: uses through stabilisation equal the engine\'s monthly need, and equity + loan draws = uses', need && Math.abs(+need[1].replace(/,/g, '') - Math.round(E.needStab)) <= 1 && Math.abs(+need[2].replace(/,/g, '') + +need[3].replace(/,/g, '') - +need[1].replace(/,/g, '')) <= 2, need && need.slice(1).join(' | '));

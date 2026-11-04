@@ -437,10 +437,10 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await setv('purchasePrice', '1,200,000'); await setv('sourceConstruction', '8,000,000'); await setv('constructionMonths', '18'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
   await setv('avgRent', '1,900'); await setv('vacancy', '5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
   await setv('taxes', '120,000'); await setv('insurance', '40,000'); await setv('rm', '30,000'); await setv('mgmtPct', '3'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
-  await setv('conLTC', '65'); await setv('conRate', '7.5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
+  await setv('conLTC', '65'); await setv('conRate', '7.5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400); /* the guide now has a sources-and-uses review step and a partnership step before the exit step; the partnership is left blank, so the deal stays all-LP */ await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300);
   await setv('holdYears', '6'); await setv('exitCap', '5.75'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(600);
   const dv2 = await p.evaluate(() => { const s = bkLoad(), m = bkMonthlyReturns(); return { t: s.dealType, done: Object.keys(s._guide.done).length, price: s.purchasePrice, src: s.sourceConstruction, ltc: s.conLTC, exit: s.exitCap, irrOk: isFinite(m.irr) && m.irr !== 0, h: document.querySelector('.gd h1').innerText }; });
-  check('a development deal can be built through the guide, step by step, and runs in the engine', dv2.t === 'Development' && dv2.done === 6 && dv2.price === 1200000 && dv2.src === 8000000 && dv2.ltc === 0.65 && dv2.exit === 0.0575 && dv2.irrOk && /Review/.test(dv2.h), JSON.stringify(dv2));
+  check('a development deal can be built through the guide, step by step, and runs in the engine', dv2.t === 'Development' && dv2.done === 8 && dv2.price === 1200000 && dv2.src === 8000000 && dv2.ltc === 0.65 && dv2.exit === 0.0575 && dv2.irrOk && /Review/.test(dv2.h), JSON.stringify(dv2));
   await p.evaluate(() => bkGuideOff()); await p.waitForTimeout(300);
   // 21. Header sign-in / sign-out (last: signing out clears the page)
   p.on('dialog', d => d.accept());

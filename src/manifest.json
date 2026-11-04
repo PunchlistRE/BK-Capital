@@ -945,6 +945,11 @@
 "close": "</script>"
 },
 {
+"file": "183-bk-import-hub.js",
+"open": "\n<script id=\"bk-import-hub\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"
