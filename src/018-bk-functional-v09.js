@@ -137,6 +137,46 @@ function bkDevSoftCostLadder(s,gsf,hardTotal,price,kScale){
   const total=softSubtotal+devFee+contingency;
   return{lines,softSubtotal,devFee,contingency,total};
 }
+/* ---- Development budget by $ per SF, or by line items in dollars. ONE budget feeds the totals the funding, Sources & Uses, Debt and Returns already read (hard, soft, contingency inside hard, FF&E inside soft);
+   a line item carries its own start month, length and curve, and the monthly cash it spends is what the draw schedule and the Gantt show. ---- */
+const BK_RATE_PRESETS=[['Steep (9)',9],['Moderately Steep (7)',7],['Moderate (5)',5],['Moderately Flat (3)',3],['Flat (1)',1]];
+const BK_BUDGET_CLASSES=[['hard','Hard cost'],['cont','Contingency'],['soft','Soft cost'],['ffe','FF&E']];
+function bkDevBudgetRows(s,gsf,units){
+  const mode=String(s.devBudgetMode||'').toUpperCase(), n=v=>{v=Number(v);return isFinite(v)?v:0};
+  if(mode==='PSF'){
+    const hard=gsf*n(s.hardPsf), cont=hard*n(s.hardContPct), soft=gsf*n(s.softPsf), ffe=units*n(s.ffePerUnit);
+    return [{id:'psf-hard',cls:'hard',name:'Hard costs ($ per GSF)',amount:hard},{id:'psf-cont',cls:'cont',name:'Hard cost contingency',amount:cont},{id:'psf-soft',cls:'soft',name:'Soft costs ($ per GSF)',amount:soft},{id:'psf-ffe',cls:'ffe',name:'FF&E ($ per unit)',amount:ffe}].filter(r=>r.amount>0).map(r=>Object.assign({start:null,len:null,method:null,rate:null},r));
+  }
+  const ok=new Set(['hard','cont','soft','ffe']), blank=v=>v===''||v==null;
+  return (Array.isArray(s.budgetLines)?s.budgetLines:[]).map((l,i)=>({l,i})).filter(o=>o.l&&n(o.l.amount)>0).map(o=>{const l=o.l,i=o.i;return {id:String(l.id||('b'+(i+1))),idx:i,cls:ok.has(l.cls)?l.cls:'hard',name:String(l.name||('Line '+(i+1))),amount:n(l.amount),start:blank(l.start)?null:Math.max(1,Math.round(n(l.start))),len:blank(l.len)?null:Math.max(1,Math.round(n(l.len))),method:blank(l.method)?null:String(l.method),rate:blank(l.rate)?null:n(l.rate)};});
+}
+/* the hard / soft ladders the rest of the app reads, built from those rows (contingency stays inside hard, FF&E inside soft) */
+function bkDevBudgetBuild(s,gsf,units){
+  const rows=bkDevBudgetRows(s,gsf,units), sum=c=>rows.filter(r=>r.cls===c).reduce((t,r)=>t+r.amount,0);
+  const hardSub=sum('hard'), cont=sum('cont'), softSub=sum('soft')+sum('ffe');
+  return {rows,
+    hard:{lines:rows.filter(r=>r.cls==='hard').map(r=>({name:r.name,rate:gsf?r.amount/gsf:0,total:r.amount})),tradeSubtotal:hardSub,gc:0,contractorFee:0,riskBonds:0,contingency:cont,total:hardSub+cont},
+    soft:{lines:rows.filter(r=>r.cls==='soft'||r.cls==='ffe').map(r=>({name:r.name,basis:r.cls==='ffe'?'FF&E':'Line',rate:gsf?r.amount/gsf:0,total:r.amount})),softSubtotal:softSub,devFee:0,contingency:0,total:softSub}};
+}
+/* Where each line sits in time. A line with no start or length follows the schedule: hard and contingency the construction window (so they move with the Gantt), soft cost from the first month to
+   completion, FF&E the last three construction months. The curve is the line's own, else the deal's hard or soft cost curve. Returns each line's resolved window and its cash by month. */
+function bkDevBudgetPlan(x,s){
+  const rows=x.budgetRows||[], LC=bkDevLifecycleV13(x), byMo={hard:{},soft:{},all:{}}, out=[], n=v=>{v=Number(v);return isFinite(v)?v:0};
+  rows.forEach(r=>{
+    const side=(r.cls==='hard'||r.cls==='cont')?'hard':'soft'; let start=r.start, len=r.len;
+    if(start==null||len==null){
+      if(side==='hard'){ if(start==null)start=LC.conStart; if(len==null)len=LC.conLen; }
+      else if(r.cls==='ffe'){ const L=Math.min(3,LC.conLen); if(start==null)start=LC.conStart+LC.conLen-L; if(len==null)len=L; }
+      else { if(start==null)start=1; if(len==null)len=Math.max(1,x.co); }
+    }
+    const method=r.method||(side==='hard'?s.hardCurveMethod:(r.cls==='ffe'?'Straight-Line':s.softConMethod))||'Straight-Line';
+    const rate=r.rate!=null?r.rate:(side==='hard'?n(s.hardCurveSteepness)||7:n(s.softConSteepness)||5), monthly={};
+    for(let mo=start;mo<start+len;mo++){ const sh=bkCurveShare(mo,start,len,method,rate); if(sh>0){ const v=r.amount*sh; monthly[mo]=v; byMo[side][mo]=(byMo[side][mo]||0)+v; byMo.all[mo]=(byMo.all[mo]||0)+v; } }
+    out.push(Object.assign({},r,{side,start,len,end:start+len-1,method,rate,monthly}));
+  });
+  return {rows:out,hard:byMo.hard,soft:byMo.soft,all:byMo.all,LC};
+}
+window.bkDevBudgetPlan=bkDevBudgetPlan;window.BK_RATE_PRESETS=BK_RATE_PRESETS;window.BK_BUDGET_CLASSES=BK_BUDGET_CLASSES;
 /* Contingency register: the hard-cost contingency in the budget tracked as original / allocated / change orders (used) / remaining / forecast. Change orders and expected further use draw it down; use beyond the original is an overrun added to hard cost, and (when release is 'saved') what is not used is taken out of cost. With no register the contingency is spent in full, as before. */
 window.bkContingencyStats=function(s,original){const c=(s&&s.contingency&&typeof s.contingency==='object')?s.contingency:null;if(!c)return null;const sum=a=>(Array.isArray(a)?a:[]).reduce((t,r)=>t+(Number(r&&r.amount)||0),0);const alloc=sum(c.allocations),used=sum(c.changeOrders),more=Math.max(0,Number(c.forecastMore)||0),forecast=used+more,remaining=original-used,fRemaining=original-forecast,over=Math.max(0,-fRemaining),saved=c.release==='saved'?Math.max(0,fRemaining):0;return{original,allocated:alloc,unallocated:original-alloc,used,remaining,more,forecast,forecastRemaining:fRemaining,overrun:over,saved,release:c.release==='saved'?'saved':'spent',adj:over-saved};};
 function bkDevV09(){
@@ -156,7 +196,10 @@ function bkDevV09(){
    const sf=bkDevSoftCostLadder(s,gsf,h.total,land,kk);
    return {hard:h,soft:sf,total:h.total+sf.total};
  }
- if(isDev){
+ let budgetRows=null;const bmode=String(s.devBudgetMode||'').toUpperCase();
+ if(isDev&&(bmode==='LINES'||bmode==='PSF')){
+   const b=bkDevBudgetBuild(s,gsf,Number(s.units||0)); hard=b.hard.total; soft=b.soft.total; hardLadder=b.hard; softLadder=b.soft; budgetRows=b.rows; k=1;
+ } else if(isDev){
    if(String(s.devBudgetMode).toUpperCase()==='SOURCE' && Number(s.sourceConstruction)>0){
      const c0=costAtK(0), c1=costAtK(1), target=Number(s.sourceConstruction);
      k=(c1.total-c0.total)!==0 ? (target-c0.total)/(c1.total-c0.total) : 1;
@@ -169,7 +212,7 @@ function bkDevV09(){
  const ramp=isDev?bkDevLeaseupRamp(s,co,stab,luMo):{months:[],leaseDef:0};
  const leaseDef=ramp.leaseDef, unlev=land+close+acq+pre+hard+soft+leaseDef;
  const phases=[['Pre-Development',preMo?1:'-',preMo||'-',preMo],['Construction',conMo?preMo+1:'-',conMo?co:'-',conMo],['Certificate of Occupancy',isDev&&co?co:'-',isDev&&co?co:'-',isDev&&co?1:0],['Lease-Up / Absorption',luMo?co+1:(isDev?'-':1),luMo?stab:(isDev?'-':1),luMo],['Stabilized Operations',stab,hold,Math.max(0,hold-stab+1)],['Sale / Exit',hold,hold,1]];
- return{s,isDev,land,close,acq,pre,hard,soft,hardLadder,softLadder,contReg,calibK:k,leaseDef,leaseupRamp:ramp.months,unlev,preMo,conMo,luMo,co,stab,hold,phases};
+ return{s,isDev,land,close,acq,pre,hard,soft,hardLadder,softLadder,budgetRows,budgetMode:bmode,contReg,calibK:k,leaseDef,leaseupRamp:ramp.months,unlev,preMo,conMo,luMo,co,stab,hold,phases};
 }
 const _dealV09=sheetDealUnderwrite;sheetDealUnderwrite=function(){const o=_dealV09();o.main+=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Development - Workbook Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkSelect('Development Budget Mode','devBudgetMode',[['SOURCE','SOURCE'],['PARAMETRIC','PARAMETRIC']])}${bkInput('Gross Building Area','gsf','GSF')}${bkInput('Source Construction Budget','sourceConstruction','$')}${bkInput('Pre-Development Period','predevMonths','months')}${bkInput('Construction Period','constructionMonths','months')}${bkInput('Lease-Up Period','leaseupMonths','months')}${bkInput('Pre-Leased Occupancy at CO','preleasedPct','%','pct')}${bkInput('Predevelopment Carry','predevCarry','$')}</tbody></table></div>
 <div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Development - Hard Cost Trade Lines ($ / GSF, Development!F25:F38)</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('Demolition, Abatement & Site Clearing','hc_demo','$/GSF')}${bkInput('Site Work, Utilities & Off-Sites','hc_sitework','$/GSF')}${bkInput('Excavation, Shoring & Foundations','hc_excavation','$/GSF')}${bkInput('Structured Parking - Below Grade','hc_parking','$/GSF')}${bkInput('Concrete Podium & Superstructure','hc_podium','$/GSF')}${bkInput('Exterior Envelope, Glazing & Balconies','hc_envelope','$/GSF')}${bkInput('Roofing, Waterproofing & Membrane','hc_roofing','$/GSF')}${bkInput('MEP & Fire Protection','hc_mep','$/GSF')}${bkInput('Elevators & Conveying','hc_elevators','$/GSF')}${bkInput('Interior Partitions & Common Finishes','hc_partitions','$/GSF')}${bkInput('Unit Interiors - Cabinets, Appliances, Fixtures','hc_unitint','$/GSF')}${bkInput('Amenity & Common Area Fit-Out','hc_amenity','$/GSF')}${bkInput('Commercial Shell / Fit-Out','hc_commshell','$/GSF')}${bkInput('Landscape, Hardscape & Streetscape','hc_landscape','$/GSF')}${bkInput('General Conditions & Requirements','hardGCPct','%','pct')}${bkInput('Contractor Fee','hardContractorFeePct','%','pct')}${bkInput('Risk, Payment & Bonds','hardRiskBondsPct','%','pct')}${bkInput('Hard Cost Contingency','hardContPct','%','pct')}</tbody></table></div>
@@ -241,14 +284,14 @@ function bkDevFundingV10(){
  const commitLTC=ltc>0&&ltc*(feeFac+intFac)<1?ltc*U0/(1-ltc*(feeFac+intFac)):0,commitLTV=ltv>0?ltv*stabVal:Number.POSITIVE_INFINITY,commitCalc=(()=>{const a=ltc>0?(commitLTC||0):Number.POSITIVE_INFINITY,raw=Math.min(a,commitLTV);return isFinite(raw)?Math.max(0,Math.floor(raw/1000)*1000):0;})(),commit=fixedAmt>0?fixedAmt:commitCalc,balCap=Math.max(commit,ceil),upfront=commit*feeFac+Number(s.lenderLegal||0),estInt=commit*intFac,eqTarget=eqFirst>0?eqFirst:(commit>0?Math.max(0,x.unlev+upfront+estInt-commit):9.9e14);
  /* unit-level lease-up: the operating shortfall is funded in the months it actually occurs (the unit schedule's negative NOI), not spread evenly */
  let leaseShares=null;if(typeof bkDevUnitOn==='function'&&bkDevUnitOn(s)&&x.leaseDef>0){const sf={};let tot=0;(x.leaseupRamp||[]).forEach(r=>{const v=Math.max(0,-Number(r.after||0));if(v>0){sf[r.mo]=v;tot+=v;}});if(tot>0){leaseShares={};Object.keys(sf).forEach(k=>{leaseShares[k]=sf[k]/tot;});}}
- const resList=bkInitReserves(s,x);let opBal=0,intBal=0,heldBal=0,resFundedT=0,resDrawnT=0;let bal=0,prin=0,unusedTotal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
+ const resList=bkInitReserves(s,x);let opBal=0,intBal=0,heldBal=0,resFundedT=0,resDrawnT=0;let bal=0,prin=0,unusedTotal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);const bp=(x.budgetRows&&x.budgetRows.length)?bkDevBudgetPlan(x,s):null;let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
  for(let mo=1;mo<=x.hold;mo++){
    const land=mo===1?x.land+x.close+x.acq+x.pre:0;
-   let hard=x.hard*bkCurveShare(mo,LC.conStart,LC.conLen,s.hardCurveMethod,s.hardCurveSteepness);
+   let hard=bp?(bp.hard[mo]||0):x.hard*bkCurveShare(mo,LC.conStart,LC.conLen,s.hardCurveMethod,s.hardCurveSteepness);
    const preShare=x.preMo>0?bkCurveShare(mo,1,x.preMo,s.softPreMethod,1):0;
    const conShare=bkCurveShare(mo,LC.conStart,LC.conLen,s.softConMethod,s.softConSteepness);
    const luShare=x.luMo>0?bkCurveShare(mo,x.co+1,x.luMo,s.softLeaseMethod,1):0;
-   let soft=x.soft*(.28*preShare+(.62+(x.preMo===0?.28:0))*conShare+.10*luShare);if(x.luMo===0&&mo===LC.closeoutMo)soft+=x.soft*.10;
+   let soft=bp?(bp.soft[mo]||0):x.soft*(.28*preShare+(.62+(x.preMo===0?.28:0))*conShare+.10*luShare);if(!bp&&x.luMo===0&&mo===LC.closeoutMo)soft+=x.soft*.10;
    let lease=x.leaseDef*(leaseShares?(leaseShares[mo]||0):bkCurveShare(mo,x.co+1,x.luMo,'Straight-Line',1)),fees=mo===x.preMo+1?upfront:0;
    cumHard+=hard;cumSoft+=soft;cumLease+=lease;cumFees+=fees;
    if(mo===LC.sweepMo){const rh=x.hard-cumHard,rs=x.soft-cumSoft,rl=x.leaseDef-cumLease,rf=upfront-cumFees;if(rh>.01)hard+=rh;if(rs>.01)soft+=rs;if(rl>.01)lease+=rl;if(rf>.01)fees+=rf;}
