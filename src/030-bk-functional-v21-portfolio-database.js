@@ -127,7 +127,7 @@ RENDERERS['Portfolio Rollup'] = function(){
   const computed = saved.map(snap=>({snap, m:bkPortfolioMetricsFor(snap)})).filter(x=>x.m.ok);
   const totalPrice = computed.reduce((z,x)=>z+x.m.purchasePrice,0), totalLoan = computed.reduce((z,x)=>z+x.m.loan,0), totalEquity = computed.reduce((z,x)=>z+x.m.equity,0), totalNOI = computed.reduce((z,x)=>z+x.m.y1noi,0);
   const blendedCap = totalPrice? totalNOI/totalPrice : 0, blendedLTV = totalPrice? totalLoan/totalPrice : 0;
-  const wIRR = window.__BK_CR_wIRR(computed.map(x=>x.m));
+  const PC = bkPortfolioConsolidated(saved);
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio Rollup - Consolidated Snapshot (${computed.length} Deal(s))</caption><tbody>
     <tr><td class="rowlabel">Total Purchase Price (Gross Assets)</td><td class="v">${money(totalPrice)}</td></tr>
     <tr><td class="rowlabel">Total Debt</td><td class="v">${money(totalLoan)}</td></tr>
@@ -135,10 +135,10 @@ RENDERERS['Portfolio Rollup'] = function(){
     <tr><td class="rowlabel">Blended Loan-to-Value</td><td class="v">${bkPct(blendedLTV)}</td></tr>
     <tr><td class="rowlabel">Year 1 Combined NOI</td><td class="v">${money(totalNOI)}</td></tr>
     <tr><td class="rowlabel">Blended Going-In Cap Rate</td><td class="v">${bkPct(blendedCap)}</td></tr>
-    <tr class="grandtotal"><td class="rowlabel">Equity-Weighted Levered IRR</td><td class="v">${bkPct(wIRR)}</td></tr>
-    </tbody></table></div>
+    <tr class="grandtotal"><td class="rowlabel">Portfolio Levered IRR (combined dated cash flow)</td><td class="v">${bkPortfolioIRRText(PC)}</td></tr>
+    </tbody></table></div>${bkPortfolioIRRNote(PC)}
     <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> a single-period consolidated view (vs. Portfolio CF's multi-year time series): every figure sums or weights the same real per-deal engine output.</div></div>`;
-  const sidebar = sidebarShell(`<div class="card"><div class="card-head">Rollup</div><div class="metric-list"><div class="metric-row"><span class="k">Blended Cap Rate</span><span class="v">${bkPct(blendedCap)}</span></div><div class="metric-row"><span class="k">Blended LTV</span><span class="v">${bkPct(blendedLTV)}</span></div><div class="metric-row"><span class="k">Wtd. IRR</span><span class="v">${bkPct(wIRR)}</span></div></div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
+  const sidebar = sidebarShell(`<div class="card"><div class="card-head">Rollup</div><div class="metric-list"><div class="metric-row"><span class="k">Blended Cap Rate</span><span class="v">${bkPct(blendedCap)}</span></div><div class="metric-row"><span class="k">Blended LTV</span><span class="v">${bkPct(blendedLTV)}</span></div><div class="metric-row"><span class="k">Portfolio IRR</span><span class="v">${bkPortfolioIRRText(PC)}</span></div></div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
   return {title:'Portfolio Rollup', crumbs:'Portfolio Database', desc:'Single-period consolidated balance-sheet-style rollup of the whole portfolio.', meta:{Deals:computed.length,'Blended Cap':bkPct(blendedCap),'Blended LTV':bkPct(blendedLTV),Currency:'USD'}, main, sidebar};
 };
 

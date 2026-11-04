@@ -145,6 +145,11 @@
 "close": "</script>"
 },
 {
+"file": "029a-bk-portfolio-consolidated.js",
+"open": "\n\n<script id=\"bk-portfolio-consolidated\">",
+"close": "</script>"
+},
+{
 "file": "030-bk-functional-v21-portfolio-database.js",
 "open": "\n\n<script id=\"bk-functional-v21-portfolio-database\">",
 "close": "</script>"

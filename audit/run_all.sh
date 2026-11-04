@@ -60,6 +60,7 @@ echo "== Harbor Point stage A (development Snapshot, Sources = Uses in sheet and
 echo "== Harbor Point stage B (hurdle replay, gross contributions, integrity checks fail visibly, credit gate, independent second model)"; node audit/harbor_stageB_test.js index.html | tail -1
 echo "== Harbor Point stage C (investor summary pages, summary of investment, portfolio impact, cover photo, Model Checks)"; node audit/harbor_stageC_test.js index.html | tail -1
 echo "== Harbor Point stage E (fixed facility, equity first, unused fee, initial reserves, contingency register, LP-only pref, catch-up rate, independent model)"; node audit/harbor_stageE_test.js index.html | tail -1
+echo "== Portfolio IRR on the combined dated cash flow (independent XIRR, reconciliation, no averaged IRR)"; node audit/portfolio_irr_test.js index.html | tail -1
 echo "== Stage D (Deal Underwrite tab bar; input / calculated / linked / N/A / attention cell convention on every input sheet)"; node audit/stageD_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"
