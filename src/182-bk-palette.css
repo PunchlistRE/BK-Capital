@@ -51,3 +51,30 @@ html body .grp-btn, html body .note-flag, html body button, html body .bk-sx-chi
 html body .dot{ border-radius:0 !important; width:6px; height:6px; }
 html body #viewport .bk-tile, html body #viewport .bk-tile.hero{ border:1px solid var(--ae-line); background:var(--ae-cell); }
 @media (min-width:901px){ body.bk-has-kpibar .rail{ max-height:calc(100vh - 68px); overflow-y:auto; } }
+
+/* TREE NAVIGATION: the sidebar is a tree. Each group has a square +/- expander, the open group's sheets hang from a dotted line, the current sheet is a flat selected row. */
+html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-item{ display:none !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label{ cursor:pointer !important; position:relative; padding-left:26px !important; color:var(--bk-navy); font-weight:700; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ content:"\2212"; position:absolute; left:6px; top:50%; margin-top:-6px; width:11px; height:11px; box-sizing:border-box; border:1px solid #7B8794; background:#fff; color:var(--bk-navy); font:700 10px/9px Inter,system-ui,sans-serif; text-align:center; border-radius:0; }
+html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-group-label::before{ content:"+"; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed){ position:relative; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed)::after{ content:""; position:absolute; left:11px; top:30px; bottom:10px; border-left:1px dotted #8A96A5; pointer-events:none; }
+html:not(.bk-rail-collapsed) body .rail .rail-item{ position:relative; padding-left:34px !important; border-radius:0 !important; border:0 !important; background:transparent; box-shadow:none !important; color:var(--ae-ink); }
+html:not(.bk-rail-collapsed) body .rail .rail-item::before{ content:""; position:absolute; left:11px; top:50%; width:14px; border-top:1px dotted #8A96A5; }
+html:not(.bk-rail-collapsed) body .rail .rail-item .dot{ display:none; }
+html:not(.bk-rail-collapsed) body .rail .rail-item:hover{ background:var(--ae-head2); }
+html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:var(--ae-sel) !important; color:var(--bk-navy) !important; font-weight:700; box-shadow:inset 3px 0 0 var(--bk-key-rule) !important; }
+
+/* RIBBON: under the tab row, the active tab's sheets are large labelled buttons, then Deal and View command groups, each with its caption underneath. */
+.bk-ribbon{ display:flex; align-items:stretch; gap:0; background:var(--ae-head2); border-bottom:1px solid var(--ae-line); padding:4px 10px 0; overflow-x:auto; font-family:Inter,"Segoe UI",system-ui,sans-serif; }
+.bk-ribbon .rb-g{ display:flex; flex-direction:column; border-right:1px solid var(--ae-line); padding:0 8px; flex:0 0 auto; min-width:0; }
+.bk-ribbon .rb-g:last-child{ border-right:0; }
+.bk-ribbon .rb-row{ display:flex; gap:2px; align-items:stretch; flex:1 1 auto; }
+.bk-ribbon .rb-b{ display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:3px; min-width:58px; max-width:88px; padding:5px 5px 4px; border:1px solid transparent; background:transparent; color:var(--ae-ink); font:500 11px/1.2 Inter,system-ui,sans-serif; text-align:center; cursor:pointer; border-radius:0; }
+.bk-ribbon .rb-b svg{ width:26px; height:26px; flex:0 0 auto; stroke:var(--bk-navy-2); fill:none; stroke-width:1.5; stroke-linecap:square; stroke-linejoin:miter; }
+.bk-ribbon .rb-b:hover{ background:var(--ae-sel); border-color:var(--ae-line); }
+.bk-ribbon .rb-b.on{ background:#fff; border-color:var(--ae-line); border-bottom-color:#fff; box-shadow:inset 0 2px 0 var(--bk-key-rule); font-weight:700; color:var(--bk-navy); }
+.bk-ribbon .rb-cap{ text-align:center; font:600 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--bk-navy-2); background:var(--ae-head); margin:3px -8px 0; padding:4px 0; border-top:1px solid var(--ae-line); }
+.bk-ribbon .rb-g.active .rb-cap{ background:var(--bk-navy); color:#fff; }
+@media (max-width:900px){ .bk-ribbon{ display:none; } }
+@media print{ .bk-ribbon{ display:none !important; } }
