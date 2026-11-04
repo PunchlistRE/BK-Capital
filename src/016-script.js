@@ -13,8 +13,9 @@
 /* Hurdle accounts follow the dated cash flows: a contribution is dated where the returns put it (the closing day for the closing equity, the month-end for the rest) and accrues from then;
    each period accrues (1 + rate) ^ (actual days / 365), the same basis as the XIRR the hurdle is tested with. closing = the part of the first row dated at closing. */
 function bkWfTiming(x){
- const rows=x.rows||[], start=x.closeDt?new Date(x.closeDt).getTime():NaN, eq0=Number(rows[0]&&rows[0].eqDraw)||0;
- const days=rows.map((r,i)=>{ const t=new Date(r.dt).getTime(), p=i?new Date(rows[i-1].dt).getTime():start; const d=(t-p)/86400000; return isFinite(d)&&d>0?d:365/12; });
+ const rows=x.rows||[], eq0=Number(rows[0]&&rows[0].eqDraw)||0;
+ const dn=v=>{ const d=new Date(v); return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000; };   /* calendar days (the date as written, not elapsed milliseconds), so the viewer's time zone cannot move a result */
+ const days=rows.map((r,i)=>{ const t=dn(r.dt), p=i?dn(rows[i-1].dt):(x.closeDt?dn(x.closeDt):NaN); const d=t-p; return isFinite(d)&&d>0?d:365/12; });
  return { eq0, f:(rate,i)=>Math.pow(1+Number(rate||0),days[i]/365), closing:(con,i)=>i===0?Math.min(con,eq0):0 };
 }
 window.bkWfTiming=bkWfTiming;

@@ -15,9 +15,10 @@ function P(v){ return isFinite(v) ? (v * 100).toFixed(2) + '%' : '—'; }
 var TOL = 1;   /* dollars */
 /* own XIRR: flows dated in days / 365, closing-day component split out exactly as the returns do, bisection on the rate */
 function xirr(vals, dates, closeDt, closeAmt){
-  var v = vals.slice(), d = dates.map(function(x){ return +new Date(x); });
-  if(closeDt && closeAmt){ v = [closeAmt, vals[0] - closeAmt].concat(vals.slice(1)); d = [+new Date(closeDt)].concat(d); }
-  var t0 = d[0], f = function(r){ return v.reduce(function(a, c, i){ return a + c / Math.pow(1 + r, (d[i] - t0) / 31536000000); }, 0); }, lo = -0.95, hi = 10;
+  var day = function(x){ var q = new Date(x); return Date.UTC(q.getFullYear(), q.getMonth(), q.getDate()) / 86400000; };   /* calendar days, the date as written: the viewer's time zone cannot move a result */
+  var v = vals.slice(), d = dates.map(day);
+  if(closeDt && closeAmt){ v = [closeAmt, vals[0] - closeAmt].concat(vals.slice(1)); d = [day(closeDt)].concat(d); }
+  var t0 = d[0], f = function(r){ return v.reduce(function(a, c, i){ return a + c / Math.pow(1 + r, (d[i] - t0) / 365); }, 0); }, lo = -0.95, hi = 10;
   if(!(f(lo) * f(hi) < 0)) return NaN;
   for(var i = 0; i < 200; i++){ var mid = (lo + hi) / 2; if(f(lo) * f(mid) <= 0) hi = mid; else lo = mid; }
   return (lo + hi) / 2;

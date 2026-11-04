@@ -85,8 +85,10 @@ def run(d, quiet=False):
     # the permanent loan is sized on NOI BEFORE reserves, by design (lenders size before reserves)
     fwd_perm = sum(d['calcNOI'] * (1 + g_noi) ** (max(1, math.ceil((k - stab + 1) / 12)) - 1) / 12 for k in range(stab + 1, stab + 13))
     eq('permanent-loan sizing NOI = forward 12-month NOI before reserves', t['noi'], fwd_perm, 1)
-    pos = sum(v for v in vals if v > 0); neg = -sum(v for v in vals if v < 0)
-    eq('MOIC = distributions / contributions', m['moic'], pos / neg, 1e-9)
+    # investors contribute and receive gross: the equity called (and any shortfall in the month's other cash) is a contribution, the surplus of the other cash a distribution
+    oth = [r['cf'] + r['equityDraw'] + r['refiEq'] for r in rows]
+    pos = sum(max(0, o) for o in oth); neg = sum(r['equityDraw'] + r['refiEq'] + max(0, -o) for r, o in zip(rows, oth))
+    eq('MOIC = distributions / contributions (both gross)', m['moic'], pos / neg, 1e-9)
     last = rows[-1]
     eq('sale net of selling costs', last['sale'], last['grossSale'] * (1 - N('saleCostPct')), 0.5)
     ok('debt repaid at sale equals permanent balance', abs(last['payoff'] - t['permDebtAtSale']) < 1 or last['payoff'] > 0)

@@ -2069,8 +2069,9 @@ RENDERERS['Returns']=sheetReturnsV06;RENDERERS['Equity Waterfall']=sheetEquityWa
 /* Hurdle accounts follow the dated cash flows: a contribution is dated where the returns put it (the closing day for the closing equity, the month-end for the rest) and accrues from then;
    each period accrues (1 + rate) ^ (actual days / 365), the same basis as the XIRR the hurdle is tested with. closing = the part of the first row dated at closing. */
 function bkWfTiming(x){
- const rows=x.rows||[], start=x.closeDt?new Date(x.closeDt).getTime():NaN, eq0=Number(rows[0]&&rows[0].eqDraw)||0;
- const days=rows.map((r,i)=>{ const t=new Date(r.dt).getTime(), p=i?new Date(rows[i-1].dt).getTime():start; const d=(t-p)/86400000; return isFinite(d)&&d>0?d:365/12; });
+ const rows=x.rows||[], eq0=Number(rows[0]&&rows[0].eqDraw)||0;
+ const dn=v=>{ const d=new Date(v); return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000; };   /* calendar days (the date as written, not elapsed milliseconds), so the viewer's time zone cannot move a result */
+ const days=rows.map((r,i)=>{ const t=dn(r.dt), p=i?dn(rows[i-1].dt):(x.closeDt?dn(x.closeDt):NaN); const d=t-p; return isFinite(d)&&d>0?d:365/12; });
  return { eq0, f:(rate,i)=>Math.pow(1+Number(rate||0),days[i]/365), closing:(con,i)=>i===0?Math.min(con,eq0):0 };
 }
 window.bkWfTiming=bkWfTiming;
@@ -22503,7 +22504,7 @@ function buildDev(){
   var rows = (gate.rows || []).filter(function(r){ return r.applicable !== false; }).slice(0, 14);
   var gateTbl = '<table><thead><tr><th>Credit gate</th><th>Deal</th><th>Policy</th><th>Result</th></tr></thead><tbody>' + rows.map(function(r){ var f = fmtGate(r); return '<tr><td class="l">' + esc(r.label) + (r.severity === 'HARD' ? ' <span class="note">(hard)</span>' : '') + '</td><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td><td><span class="pill ' + (r.pass ? 'pass' : 'fail') + '">' + (r.pass ? 'PASS' : 'FAIL') + '</span></td></tr>'; }).join('') + '</tbody></table>';
   var ig = gate.integrity, exc = (gate.exceptions || []).slice(0, 6).map(function(e){ return '<div>' + (e.severity === 'HARD' ? '<b>Hard:</b> ' : '<b>Soft:</b> ') + esc(e.message) + '</div>'; }).join('')
-    + (ig ? ig.hard.map(function(c){ return '<div><b>Model check failed:</b> ' + esc(c.label) + ' — ' + esc(c.detail) + '</div>'; }).join('') + ig.warn.map(function(c){ return '<div><b>Model warning:</b> ' + esc(c.label) + ' — ' + esc(c.detail) + '</div>'; }).join('') + '<div class="note" style="margin-top:4px">Model integrity: ' + esc(ig.text) + '.</div>' : '');
+    + (ig ? ig.hard.map(function(c){ return '<div><b>Model check failed:</b> ' + esc(c.label) + '</div>'; }).join('') + ig.warn.map(function(c){ return '<div><b>Model warning:</b> ' + esc(c.label) + '</div>'; }).join('') + '<div class="note" style="margin-top:4px">Model integrity: ' + esc(ig.text) + '.</div>' : '');
   pages.push(page('<h2>Credit decision</h2><div class="g2" style="grid-template-columns:1.3fr .9fr"><div>' + gateTbl + '</div><div><div class="bx" style="padding:10px 12px"><div class="t">Decision: ' + esc(gate.verdict || 'Not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div>' + (exc ? '<div class="ins" style="margin-top:4px">' + exc + '</div>' : '') + (gate.action ? '<div class="note" style="margin-top:7px"><b>Next step:</b> ' + esc(gate.action) + '</div>' : '') + '</div></div></div>'
     + '<h2 style="margin-top:16px">Delay and exit stress</h2>' + stress + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid and stress tests rerun the model. Development returns depend heavily on cost, schedule and exit assumptions. This summary is an analytical aid, not an offer or a fairness opinion. Check it against your own model before relying on it.</div></div>', N, N, D));
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Development Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
@@ -27413,9 +27414,10 @@ function P(v){ return isFinite(v) ? (v * 100).toFixed(2) + '%' : '—'; }
 var TOL = 1;   /* dollars */
 /* own XIRR: flows dated in days / 365, closing-day component split out exactly as the returns do, bisection on the rate */
 function xirr(vals, dates, closeDt, closeAmt){
-  var v = vals.slice(), d = dates.map(function(x){ return +new Date(x); });
-  if(closeDt && closeAmt){ v = [closeAmt, vals[0] - closeAmt].concat(vals.slice(1)); d = [+new Date(closeDt)].concat(d); }
-  var t0 = d[0], f = function(r){ return v.reduce(function(a, c, i){ return a + c / Math.pow(1 + r, (d[i] - t0) / 31536000000); }, 0); }, lo = -0.95, hi = 10;
+  var day = function(x){ var q = new Date(x); return Date.UTC(q.getFullYear(), q.getMonth(), q.getDate()) / 86400000; };   /* calendar days, the date as written: the viewer's time zone cannot move a result */
+  var v = vals.slice(), d = dates.map(day);
+  if(closeDt && closeAmt){ v = [closeAmt, vals[0] - closeAmt].concat(vals.slice(1)); d = [day(closeDt)].concat(d); }
+  var t0 = d[0], f = function(r){ return v.reduce(function(a, c, i){ return a + c / Math.pow(1 + r, (d[i] - t0) / 365); }, 0); }, lo = -0.95, hi = 10;
   if(!(f(lo) * f(hi) < 0)) return NaN;
   for(var i = 0; i < 200; i++){ var mid = (lo + hi) / 2; if(f(lo) * f(mid) <= 0) hi = mid; else lo = mid; }
   return (lo + hi) / 2;
