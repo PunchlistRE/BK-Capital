@@ -18,12 +18,12 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
       bad: /NaN|undefined|Infinity|\[object/.test(document.body.innerText), numbered: P.slice(1).every((s, i) => new RegExp('Page ' + (i + 2) + ' of ' + P.length).test(s.innerText)), text: document.body.innerText.replace(/\s+/g, ' ') }; });
 
   /* 1 pages and headings */
-  const HEAD = ['Dashboard', 'Summary of investment', 'Returns and what they rest on', 'Budget and funding', 'Construction funding', 'Unit economics, operations and lease-up', 'Financing and debt metrics', 'Performance and sensitivity', 'What breaks the deal', 'Combined downside cases', 'Single-variable sensitivities', 'Credit decision', 'Impact to portfolio', 'Model integrity and limits'];
-  for (const [tag, deal, expectPages] of [['Harbor Point', H, 15], ['audit development deal, 4 years', Object.assign({}, V, { holdYears: 4 }), 15], ['audit development deal, 15 years', Object.assign({}, V, { holdYears: 15 }), 17], ['acquisition deal', A, 8]]) {
+  const HEAD = ['Dashboard', 'Summary of investment', 'Returns and what they rest on', 'Budget and funding', 'Construction funding', 'Unit economics, operations and lease-up', 'Financing and debt metrics', 'Performance and sensitivity', 'What breaks the deal', 'Combined downside cases', 'Single-variable sensitivities', 'Credit decision', 'Model integrity and limits'];
+  for (const [tag, deal, expectPages] of [['Harbor Point', H, 14], ['audit development deal, 4 years', Object.assign({}, V, { holdYears: 4 }), 14], ['audit development deal, 15 years', Object.assign({}, V, { holdYears: 15 }), 16], ['acquisition deal', A, 7]]) {
     const p = await open(deal); const t0 = Date.now(); const q = await view(p); const ms = Date.now() - t0; const r = await layout(q);
     check(tag + ': ' + expectPages + ' pages, numbered in order', r.n === expectPages && r.numbered, r.n);
     check(tag + ': nothing overflows, runs wide, is clipped, or prints NaN / undefined', !r.over.length && !r.wide.length && !r.clip && !r.bad, JSON.stringify({ over: r.over, wide: r.wide, clip: r.clip, bad: r.bad }));
-    const heads = /Harbor|development/.test(tag) ? HEAD : ['Dashboard', 'Summary of investment', 'Impact to portfolio']; const idx = heads.map(h => r.text.toLowerCase().indexOf(h.toLowerCase()));
+    const heads = /Harbor|development/.test(tag) ? HEAD : ['Dashboard', 'Summary of investment']; const idx = heads.map(h => r.text.toLowerCase().indexOf(h.toLowerCase()));
     check(tag + ': ' + heads.length + ' headings present' + (/Harbor|development/.test(tag) ? ', in reading order' : ''), idx.every(i => i >= 0) && (!/Harbor|development/.test(tag) || idx.slice().sort((a, b) => a - b).join() === idx.join() || true), JSON.stringify(heads.filter((h, i) => idx[i] < 0)));
     check(tag + ': the summary builds in under 15 seconds', ms < 15000, ms + ' ms'); check(tag + ': no page errors', p.errs.length === 0, p.errs.join('|')); await q.close(); await p.close(); }
 
@@ -72,7 +72,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
 
   /* 5 impact to portfolio */
   { const p = await open(H); const q = await view(p); const r = await layout(q);
-    check('first deal: the portfolio page says "First deal in the portfolio: N/A" and shows the deal on its own', /First deal in the portfolio: N\/A/.test(r.text) && /This deal on its own/.test(r.text) && !/What adding this asset changes/.test(r.text)); await q.close(); await p.close(); }
+    check('first deal: there is no portfolio to compare with, so no empty "Impact to portfolio" page is printed', !/First deal in the portfolio/.test(r.text) && !/Impact to portfolio/.test(r.text) && !/What adding this asset changes/.test(r.text)); await q.close(); await p.close(); }
   { const p = await open(H, [A, Object.assign({}, V, { propertyType: 'Multifamily' })]); const R = await p.evaluate(() => { const D = bkPortfolioImpact(), m = bkMonthlyReturns(), s = bkLoad(), saved = bkPortfolioLoad();
       const per = saved.map(sn => ({ mt: bkPortfolioMetricsFor(sn), mr: bkPortfolioMonthlyFor(sn).r, sn })), meM = bkPortfolioMetricsFor(s);
       return { D: { n: D.before.n, afterN: D.after.n, bEq: D.before.eq, aEq: D.after.eq, bCost: D.before.cost, aCost: D.after.cost, bLoan: D.before.loan, aLoan: D.after.loan, bW: D.before.wirr, aW: D.after.wirr, bC: D.before.cirr, aC: D.after.cirr, bM: D.before.moic, aM: D.after.moic, bDev: D.before.dev, aDev: D.after.dev, bBig: D.before.big, aBig: D.after.big, first: D.first },
@@ -110,7 +110,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
   { const p = await open(H); const r = await p.evaluate(async () => { showSheet('Model Checks'); await new Promise(r => setTimeout(r, 900)); const g = bkIntegrity(); const t = document.querySelector('#viewport').innerText.replace(/\s+/g, ' '); return { t, n: g.checks.length, hard: g.hard.length, warn: g.warn.length, rows: [...document.querySelectorAll('#viewport table.bk-mc')].map(x => x.querySelectorAll('tbody tr').length) }; });
     check('Model Checks: a "Calculation Integrity" table lists every integrity check', /Calculation Integrity/.test(r.t) && r.rows[r.rows.length - 1] === r.n, JSON.stringify(r.rows) + ' vs ' + r.n);
     check('Model Checks: the warnings are shown as WARNING and the counts feed the Warnings total', /WARNING/.test(r.t) && r.warn > 0, r.warn);
-    const f = await p.evaluate(async () => { const o = window.bkMonthlyReturns; window.bkMonthlyReturns = function () { const m = o.apply(this, arguments); m.irr += 0.01; return m; }; showSheet('Model Checks'); await new Promise(r => setTimeout(r, 900)); const t = document.querySelector('#viewport').innerText.replace(/\s+/g, ' '); return { t, hard: bkIntegrity().hard.length }; });
+    const f = await p.evaluate(async () => { const o = window.bkMonthlyReturns; window.bkMonthlyReturns = function () { const m = o.apply(this, arguments); return Object.assign({}, m, { irr: m.irr + 0.01 }); }; bkPerfClear(); showSheet('Model Checks'); await new Promise(r => setTimeout(r, 900)); const t = document.querySelector('#viewport').innerText.replace(/\s+/g, ' '); return { t, hard: bkIntegrity().hard.length }; });
     check('Model Checks: a failed check shows as FAILED and is counted as an error', /FAILED/.test(f.t) && f.hard > 0 && /ERRORS [1-9]/.test(f.t.replace(/\s+/g, ' ')), f.t.slice(f.t.indexOf('ERRORS'), f.t.indexOf('ERRORS') + 30)); await p.close(); }
 
   console.log('harbor stage C: ' + checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);

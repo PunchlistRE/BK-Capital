@@ -47,7 +47,7 @@ var CSS = '@page{size:8.5in 11in;margin:0}*{box-sizing:border-box}html,body{marg
  + '.su{display:grid;grid-template-columns:1fr 1fr;gap:12px}.su table td{font-size:10.5px}.bar{height:8px;border-radius:4px;background:#e6edf3;overflow:hidden;display:flex}.bar i{display:block;height:100%}'
  + '.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:8.5px;font-weight:700;letter-spacing:.08em}.pass{background:#E3F3EA;color:#1F7A4C}.fail{background:#FBE5E2;color:#B23A2C}.warn{background:#FBF1D9;color:#8A6410}.na{background:#EEF1F4;color:#566a80}'
  + '.hm{border-collapse:separate;border-spacing:3px}.hm td,.hm th{border:0;text-align:center;padding:5px 4px;font-size:10px;border-radius:5px}.hm th{background:none;color:#566a80;font-size:8.5px;letter-spacing:.06em}.hm td.row{background:none;color:#566a80;font-size:8.5px;font-weight:700;text-align:right;letter-spacing:.04em}'
- + '.note{font-size:8.5px;color:#7A8797;line-height:1.5}.rng{position:relative;height:8px;background:#e6edf3;border-radius:4px}.rng i{position:absolute;top:0;bottom:0;background:#BFD7EA;border-radius:4px}.rng b{position:absolute;top:-3px;width:4px;height:14px;border-radius:2px;margin-left:-2px}'
+ + '.note{font-size:8.5px;color:#7A8797;line-height:1.5;margin-bottom:4px}.note + h2,.note + .h2{margin-top:16px}.rng{position:relative;height:8px;background:#e6edf3;border-radius:4px}.rng i{position:absolute;top:0;bottom:0;background:#BFD7EA;border-radius:4px}.rng b{position:absolute;top:-3px;width:4px;height:14px;border-radius:2px;margin-left:-2px}'
  + '.cover{background:#14283d}.cover:before,.cover:after{display:none}.cover .kick{color:#6fb4f2}.chip{border-radius:2px;border-color:rgba(255,255,255,.3)}.verdict{border-radius:2px;background:rgba(255,255,255,.06)}.verdict .dot{border-radius:2px}.ck{border-top:2px solid rgba(255,255,255,.4)}'
  + '.hd{border-bottom:2px solid #14283d}.hd .r .th{border-radius:2px;box-shadow:none}h2{color:#25313d}h2:after{background:#aeb7c0}'
  + '.kp .c,.sc .c,.bx{border-radius:2px;border-color:#c8cfd6}.kp .c{background:#fff}.kp .c.hl{background:#eef2f6;border-color:#c8cfd6;border-top:3px solid #1a5f9e;color:#14283d}.kp .c.hl .k,.kp .c.hl .d{color:#566a80}.sc .c.cur{border-color:#1a5f9e;box-shadow:none;border-top:3px solid #1a5f9e;background:#f3f8fd}.ins div{border-radius:0;background:#f3f6f9;border-left-color:#1a5f9e}'
@@ -259,7 +259,7 @@ function buildDev(){
   /* the pages that explain the investment (src/179), placed where a reader needs them; footers are renumbered over the final page list */
   var XP = typeof window.bkDevReportPages === 'function' ? safe(function(){ return window.bkDevReportPages(); }, null) : null;
   if(XP){ var pgx = function(inner){ return page(inner, 0, 0, D); };
-    pages.push(pgx(XP.portfolio)); pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance), pgx(XP.budget)); pages.splice(2, 0, pgx(XP.returns));
+    if(XP.portfolio && !/First deal in the portfolio/.test(XP.portfolio)) pages.push(pgx(XP.portfolio)); pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance), pgx(XP.budget)); pages.splice(2, 0, pgx(XP.returns));
     pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); }
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Development Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
@@ -385,7 +385,7 @@ function build(){
     + '<h2 style="margin-top:16px">Against the market</h2>' + mTbl
     + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid reruns the model for each cell. This summary is an analytical aid, not an offer or a fairness opinion, and is only as good as the assumptions behind it. Check it against your own model before relying on it.</div></div>', N, N, D));
   /* impact to portfolio (src/179): near the end, before the credit page's closing notes; footers renumbered over the final list */
-  if(typeof window.bkPortfolioImpactPage === 'function'){ var pgi = safe(function(){ return window.bkPortfolioImpactPage(); }, null); if(pgi){ pages.push(page(pgi, 0, 0, D)); pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); } }
+  if(typeof window.bkPortfolioImpactPage === 'function'){ var pgi = safe(function(){ return window.bkPortfolioImpactPage(); }, null); if(pgi && !/First deal in the portfolio/.test(pgi)){ pages.push(page(pgi, 0, 0, D)); pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); } }
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Investment Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 
