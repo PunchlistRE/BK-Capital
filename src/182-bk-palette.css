@@ -179,3 +179,5 @@ html body #viewport .status-chip[data-bk-chip="optional"]{ background:transparen
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; } :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; } }
 :root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; }
 :root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; }
+/* the Import tab shows the older readers' pages, so their own upload boxes (replaced by the one at the top) are hidden */
+html body #viewport div:has(> input#bkOMFile), html body #viewport div:has(> input#bkImportFile), html body #viewport div:has(> input#bkRRFile){ display:none; }

@@ -16,12 +16,20 @@ function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c
 function safe(f, d){ try { return f(); } catch(e){ return d; } }
 var $ = function(n){ return n == null ? '' : (n < 0 ? '(' : '') + '$' + Math.round(Math.abs(n)).toLocaleString('en-US') + (n < 0 ? ')' : ''); };
 
+/* ---------- what the reader has learned: a label you assigned (or ignored) is applied to every later file ---------- */
+var LK = 'bkcapital.learn.fields.v1';
+function lload(){ try { return JSON.parse(localStorage.getItem(LK) || '{}') || {}; } catch(e){ return {}; } }
+function lsave(o){ try { localStorage.setItem(LK, JSON.stringify(o)); } catch(e){} try { if(typeof bkLoad === 'function' && typeof bkHasActiveDeal === 'function' && bkHasActiveDeal()){ var d = bkLoad(); d._learnFields = o; bkSave(d); } } catch(e){} }
+function lmerge(){ try { var d = typeof bkLoad === 'function' ? bkLoad() : null, o = d && d._learnFields; if(o){ var cur = lload(), ch = false; Object.keys(o).forEach(function(k){ if(!cur[k] || (cur[k].t || 0) < (o[k].t || 0)){ cur[k] = o[k]; ch = true; } }); if(ch) try { localStorage.setItem(LK, JSON.stringify(cur)); } catch(e){} } } catch(e){} }
+function lnorm(l){ return String(l || '').toLowerCase().replace(/[^a-z0-9% ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+window.bkImportLearn = { all:function(){ lmerge(); return lload(); }, set:function(label, k){ var o = lload(), n = lnorm(label); if(!n) return; o[n] = { k:k, label:String(label).slice(0, 80), t:Date.now(), at:new Date().toISOString().slice(0, 10) }; lsave(o); }, forget:function(){ lsave({}); try { localStorage.removeItem(LK); } catch(e){} } };
+
 /* ---------- values ---------- */
 function parseVal(raw){
   if(raw == null || raw === '') return null;
   if(typeof raw === 'number') return { n:raw, unit:'', text:String(raw) };
   var t = String(raw).trim(); if(!t) return null;
-  var m = /^\(?\s*(-?)\s*\$?\s*(-?[\d,]*\.?\d+)\s*(%|x|sf|sq\.?\s*ft\.?|acres?|ac|months?|mos?|yrs?|years?|units?|[kKmMbB])?\b/.exec(t);
+  var m = /^\(?\s*(-?)\s*\$?\s*(-?[\d,]*\.?\d+)\s*(%|x|sf|sq\.?\s*ft\.?|acres?|ac|months?|mos?|yrs?|years?|units?|[kKmMbB])?(?![A-Za-z0-9])/.exec(t);
   if(!m || /^[A-Za-z]/.test(t)) return { n:null, unit:'', text:t };
   var n = parseFloat(m[2].replace(/,/g, '')), neg = /^\(/.test(t) || m[1] === '-'; if(!isFinite(n)) return { n:null, unit:'', text:t };
   var u = (m[3] || '').toLowerCase(), unit = u === '%' ? 'pct' : /^(sf|sq)/.test(u) ? 'sf' : /^ac/.test(u) ? 'acres' : /^(mo|month)/.test(u) ? 'months' : /^(y)/.test(u) ? 'years' : u === 'x' ? 'x' : '';
@@ -34,48 +42,51 @@ function isLabel(c){ return typeof c === 'string' && /[A-Za-z]{3}/.test(c) && c.
 function pct(v){ if(!v || v.n == null) return null; if(v.unit === 'pct') return v.n / 100; return Math.abs(v.n) <= 1 ? v.n : v.n / 100; }
 
 /* ---------- what each model input is called (by meaning, many wordings) ---------- */
+var W = function(){ return Array.prototype.slice.call(arguments).map(function(g){ return '(?=.*\\b(?:' + g + ')\\b)'; }).join(''); };
 var F = {
-  name:{ lab:'Property / deal name', kind:'text', rx:[/^(property|project|deal|investment|asset) name$/, /^name$/, /^(property|project) title$/] },
-  location:{ lab:'Address / location', kind:'text', rx:[/^(property |site |street )?address$/, /^location$/, /^property location$/, /^municipality$/, /^city( and state)?$/] },
-  propertyType:{ lab:'Property type', kind:'text', rx:[/^(asset|property|building|project|product) (type|class)$/, /^use$/, /^proposed use$/] },
-  purchasePrice:{ lab:'Purchase / land price', kind:'money', min:10000, rx:[/\b(purchase|asking|guidance|offering|list(ing)?|acquisition|contract|sale|seller|land) (price|cost|basis)\b/, /^price$/, /^land (purchase|acquisition|value)\b/, /^guidance price$/], no:/per |\/|psf|implied|unit|sf$|cap |closing|capital|cost of sale|fee/ },
-  units:{ lab:'Units', kind:'int', min:1, max:20000, rx:[/^(total |proposed |planned |approved |residential |apartment |dwelling |rental |number of |no\. of |# of |#)?(units?|unit count)$/, /^units? \(?total\)?$/], no:/per |mix|type|vacant|occupied/ },
-  gsf:{ lab:'Gross building area (SF)', kind:'area', min:500, rx:[/gross (building |floor |buildable )?(area|sf|square f)/, /^gba$/, /^gross sf$/, /^building (size|area|sf)\b/, /^total (building )?(sf|square f)/], no:/rentable|net|existing/ },
-  siteArea:{ lab:'Site area (acres)', kind:'acres', rx:[/(site|land|lot|parcel) (area|size)\b/, /^acreage$/, /^acres$/, /^gross land area$/] },
-  conLTC:{ lab:'Construction loan-to-cost', kind:'pct', rx:[/loan.to.cost/, /^ltc\b/, /\bltc$/], no:/max|ceiling/ },
-  conRate:{ lab:'Construction loan rate (all-in)', kind:'pct', rx:[/all.in (interest )?rate/, /^(construction )?(loan )?(interest )?rate$/, /^coupon$/] },
+  name:{ lab:'Property / deal name', kind:'text', rx:[/^(property|project|deal|investment|asset|building) name$/, /^name$/, /^(property|project) title$/] },
+  location:{ lab:'Address / location', kind:'text', rx:[/^(property |site |street |subject )?address$/, /^(property )?location$/, /^city( and state)?$/] },
+  propertyType:{ lab:'Property type', kind:'text', rx:[/^(asset|property|building|project|product) (type|class)$/, /^(proposed )?use$/] },
+  purchasePrice:{ lab:'Purchase / land price', kind:'money', min:10000, rx:[new RegExp('^' + W('offer|offering|asking|purchase|purchasing|list|listing|guidance|contract|acquisition|sale|seller|land|bid|buy', 'price|cost|basis|amount|value')), /^price$/, /^(asking|offer|bid|list)$/, /^acquisition$/], no:/per |\/|psf|implied|unit|\bsf\b|cap |closing|capital|cost of sale|fee|cost basis per|reserve|tax|assess/ },
+  units:{ lab:'Units', kind:'int', min:1, max:20000, rx:[/^(total |proposed |planned |approved |residential |apartment |dwelling |rental |number of |no\.? of |# of |#)?(apartments?|units?|doors?|dwellings?|unit count|apartment count)( count| total)?$/, /^(number|count|total|no\.?|#)( of)? (apartments?|units?|doors?|dwellings?)/, /^units? \(?total\)?$/], no:/per |mix|type|vacant|occupied|rent|sf|size/ },
+  gsf:{ lab:'Gross building area (SF)', kind:'area', min:500, rx:[/gross (building |floor |buildable )?(area|sf|square f)/, /^gba$/, /^gross sf$/, /^building (size|area|sf)\b/, /^total (building )?(sf|square f)/, /^building sq ?(ft|feet)/], no:/rentable|net|existing/ },
+  siteArea:{ lab:'Site area (acres)', kind:'acres', rx:[/(site|land|lot|parcel) (area|size)\b/, /^acreage$/, /^acres$/, /^gross land area$/, /^lot$/] },
+  conLTC:{ lab:'Construction loan-to-cost', kind:'pct', rx:[/loan.to.cost/, /\bltc\b/], no:/max|ceiling/ },
+  conRate:{ lab:'Construction loan rate (all-in)', kind:'pct', rx:[/all.in (interest )?rate/, /construction (loan )?(interest )?rate/] },
+  acqRate:{ lab:'Loan interest rate', kind:'pct', max:0.25, rx:[/^(loan |note |mortgage |senior |debt |permanent |perm )?(interest )?rate$/, /\bcoupon\b/, /interest rate/, /^(loan|debt|mortgage) rate/], no:/index|sofr|spread|cap\b|growth|exit|discount|tax|inflation|vacancy|escalat/ },
+  acqAmort:{ lab:'Loan amortization (years)', kind:'years', rx:[/amorti[sz]ation/, /\bamort\b/], no:/construction|interest.only|io\b/ },
   debtIndexRate:{ lab:'Index rate (e.g. SOFR)', kind:'pct', rx:[/^(sofr|libor|index( rate)?|base rate)\b/] },
   debtSpread:{ lab:'Spread over index', kind:'pct', rx:[/^(credit )?spread\b/, /spread over/] },
-  conOrigFee:{ lab:'Loan origination fee', kind:'pct', rx:[/^(loan )?(origination|financing|closing) fee$/, /^origination fee$/], no:/unused|commitment/ },
-  acqLTV:{ lab:'Loan-to-value', kind:'pct', rx:[/loan.to.value/, /^ltv$/], no:/max/, acqOnly:true },
-  exitCap:{ lab:'Exit cap rate', kind:'pct', max:0.2, rx:[/(exit|terminal|reversion|residual|going.out|disposition|sale) cap(italization|italisation)? ?rate/, /^cap(italization)? rate (at )?(exit|sale|reversion)/, /^exit cap/, /^terminal cap/] },
-  saleCostPct:{ lab:'Cost of sale (%)', kind:'pct', max:0.2, rx:[/(disposition|selling|sale|exit|transaction) (costs?|fees?|expenses?)/, /^cost of sale/, /^brokerage on sale/] },
-  holdYears:{ lab:'Hold period (years)', kind:'years', rx:[/^(hold|holding|investment|analysis|projection) (period|term|horizon)\b/, /^hold \(?(years|yrs)/, /^term \(?years/] },
-  rentGrowth:{ lab:'Annual rent growth', kind:'pct', max:0.2, rx:[/^(annual )?(rent|revenue|income|rental) growth/, /^rent (increase|escalation)/] },
-  opexGrowth:{ lab:'Annual expense growth', kind:'pct', max:0.2, rx:[/^(annual )?(operating )?(expense|opex|cost) (growth|inflation|increase)/, /^expense growth/] },
-  vacancy:{ lab:'Vacancy and credit loss (%)', kind:'pct', max:0.9, rx:[/^(general |economic |stabili[sz]ed )?vacancy( rate| allowance| (&|and) credit loss| (&|and) collection loss)?$/, /^vacancy$/] },
-  occupancy:{ lab:'Stabilized occupancy', kind:'pct', min:0.3, rx:[/^(stabili[sz]ed|target|underwritten|economic|projected) occupancy$/, /^occupancy (at )?stabili[sz]ation$/], derived:true },
-  taxes:{ lab:'Real estate taxes (annual $)', kind:'money', rx:[/^((real estate|property) )?tax(es)?$/, /^real estate taxes?$/, /^property tax(es)?$/], no:/growth|rate|%|assess|millage|reserve/ },
-  insurance:{ lab:'Insurance (annual $)', kind:'money', rx:[/^insurance$/, /^property insurance$/], no:/reserve|growth/ },
-  utilities:{ lab:'Utilities (annual $)', kind:'money', rx:[/^utilities$/, /^utility( expense| costs?)?$/], no:/reimb|recover/ },
-  rm:{ lab:'Repairs and maintenance (annual $)', kind:'money', rx:[/^repairs?( (&|and) maintenance)?$/, /^maintenance( (&|and) repairs?)?$/, /^r ?& ?m$/], no:/reserve/ },
-  payroll:{ lab:'Payroll / administration (annual $)', kind:'money', rx:[/^payroll/, /^(general )?(&|and)? ?admin(istration|istrative)?$/, /^payroll (&|and) admin/] },
-  mgmtPct:{ lab:'Management fee (% of income)', kind:'pct', max:0.2, rx:[/^(property )?(management|mgmt)( fee)?$/] },
-  sourceConstruction:{ lab:'Hard construction cost', kind:'money', min:10000, rx:[/^(total )?hard (costs?|construction( costs?)?)$/, /^construction (hard )?costs?$/, /^hard construction$/, /^base building (cost|construction)$/], no:/contingen|per |psf/ },
+  conOrigFee:{ lab:'Loan origination fee', kind:'pct', rx:[/^(loan )?(origination|financing|closing|lender) fee$/, /^origination fee$/, /^points$/], no:/unused|commitment/ },
+  acqLTV:{ lab:'Loan-to-value', kind:'pct', rx:[/loan.to.value/, /\bltv\b/], no:/max|construction/ },
+  exitCap:{ lab:'Exit cap rate', kind:'pct', max:0.2, rx:[new RegExp('^' + W('exit|terminal|reversion|residual|going.out|disposition|sale|resale|reversionary|out', 'cap|capitali[sz]ation|yield')), /^cap(italization|italisation)? rate (at )?(exit|sale|reversion)/, /^exit cap/, /^terminal cap/, /^reversion(ary)? (rate|yield|cap)/] },
+  saleCostPct:{ lab:'Cost of sale (%)', kind:'pct', max:0.2, rx:[new RegExp('^' + W('disposition|selling|sale|sales|exit|transaction|brokerage|reversion', 'cost|costs|fee|fees|expense|expenses|commission')), /^cost of sale/], no:/price|proceeds|gross/ },
+  holdYears:{ lab:'Hold period (years)', kind:'years', rx:[/^(hold|holding|investment|analysis|projection|ownership) (period|term|horizon|length)\b/, /^hold \(?(years|yrs)/, /^(years|yrs) (held|hold)/, /^term \(?years/, /^(hold|holding)$/, /^exit year$/, /^(sale|disposition) (year|timing)$/] },
+  rentGrowth:{ lab:'Annual rent growth', kind:'pct', max:0.2, rx:[/^(annual )?(rent|revenue|income|rental) (growth|increase|escalation|inflation)/, /^(annual )?(growth|increase|escalation|inflation|bumps?) (in|of|on) (rents?|revenue|income)/, /^rent (increase|escalation)/, /^annual rent growth/] },
+  opexGrowth:{ lab:'Annual expense growth', kind:'pct', max:0.2, rx:[/^(annual )?(operating )?(expense|expenses|opex|cost|costs) (growth|inflation|increase|escalation)/, /^(annual )?(growth|increase|inflation) (in|of|on) (operating )?(expenses?|opex|costs?)/, /^expense growth/] },
+  vacancy:{ lab:'Vacancy and credit loss (%)', kind:'pct', max:0.9, rx:[/^(general |economic |stabili[sz]ed |physical )?vacancy( rate| allowance| factor| loss)?( ?[&\/]? ?(and )?(credit|collection|bad debt) loss)?$/, /^vacancy$/, /^(vacancy|credit) (allowance|factor)$/] },
+  occupancy:{ lab:'Stabilized occupancy', kind:'pct', min:0.3, rx:[/^(stabili[sz]ed|target|underwritten|economic|projected)( physical| economic)? occupancy$/, /^occupancy (at )?stabili[sz]ation$/], derived:true },
+  taxes:{ lab:'Real estate taxes (annual $)', kind:'money', rx:[/^((real estate|property|re) )?tax(es)?$/, /^real estate taxes?$/, /^property tax(es)?$/], no:/growth|rate|%|assess|millage|reserve/ },
+  insurance:{ lab:'Insurance (annual $)', kind:'money', rx:[/^(property |hazard |liability )?insurance( premium| premiums| cost)?$/], no:/reserve|growth/ },
+  utilities:{ lab:'Utilities (annual $)', kind:'money', rx:[/^(common |house |owner )?utilit(y|ies)( expense| costs?)?$/], no:/reimb|recover/ },
+  rm:{ lab:'Repairs and maintenance (annual $)', kind:'money', rx:[/^repairs?( (&|and) maintenance)?$/, /^maintenance( (&|and) repairs?)?$/, /^r ?& ?m$/, /^(repairs|maintenance)( and| &)? ?(repairs|maintenance)?$/], no:/reserve|capital|cap ?ex/ },
+  payroll:{ lab:'Payroll / administration (annual $)', kind:'money', rx:[/^payroll/, /^(general )?(&|and)? ?admin(istration|istrative)?$/, /^(on.?site )?(staff|personnel|salaries)/] },
+  mgmtPct:{ lab:'Management fee (% of income)', kind:'pct', max:0.2, rx:[/^(property |asset )?(management|mgmt|manager)( fee)?$/] },
+  sourceConstruction:{ lab:'Hard construction cost', kind:'money', min:10000, rx:[/^(total )?hard (costs?|construction( costs?)?)$/, /^construction (hard )?costs?$/, /^hard construction$/, /^base building (cost|construction)$/, /^(total )?construction (budget|cost)$/], no:/contingen|per |psf/ },
   predevMonths:{ lab:'Pre-development period (months)', kind:'months', rx:[/pre.?development (period|duration|months|term)/, /entitlement (period|duration|months)/] },
   constructionMonths:{ lab:'Construction period (months)', kind:'months', rx:[/construction (period|duration|months|term|schedule)\b/, /^months of construction/, /^build.?out (period|months)/] },
   leaseupMonths:{ lab:'Lease-up period (months)', kind:'months', rx:[/lease.?up (period|duration|months|term)/, /absorption (period|months)/] },
-  pref:{ lab:'Preferred return', kind:'pct', max:0.5, rx:[/^(lp |investor )?(cumulative )?(preferred return|pref(erred)? (return|rate))/] },
+  pref:{ lab:'Preferred return', kind:'pct', max:0.5, rx:[/^(lp |investor )?(cumulative )?(preferred return|pref(erred)? (return|rate)|pref)/] },
   gpShare:{ lab:'GP / sponsor equity share', kind:'pct', max:0.9, rx:[/^(gp|sponsor)( co.?invest(ment)?)?( equity)?( share| %| percent| contribution)?$/, /^gp co.?invest/] }
 };
 /* facts with no model input yet: kept and listed */
-var NOINPUT = [ ['Total development budget', /^total (project |development )?(budget|cost)\b|^total development budget|^all.in (project )?cost/], ['Soft costs', /^(total )?soft costs?$/], ['Contingency', /^(hard |soft |total |project )?contingency$/],
+var NOINPUT = [ ['Total development budget', /^total (project |development )?(budget|cost)\b|^total development budget|^all.in (project )?cost/], ['Soft costs', /^(total )?soft (development )?costs?$/], ['Contingency', /^(hard[- ]costs? |hard |soft |total |project )?contingency$/],
   ['Initial / debt reserves', /^(initial )?reserves?$|interest reserve|operating reserve|lease.?up reserve|liquidity reserve/], ['Loan commitment / facility', /(facility|loan) (ceiling|cap|commitment|amount|principal)|initial (construction )?loan principal|loan amount/],
   ['Net operating income', /^(net operating income|noi)\b|^cash flow after reserves/], ['Effective gross income', /^effective gross (income|revenue)|^egi$/], ['Gross potential rent', /^gross potential (base )?rent|^potential gross (revenue|rent)/],
   ['Other income', /^other income\b/], ['Replacement reserves', /^replacement reserves?/], ['Target NOI / validation', /target (stabili[sz]ed )?noi|validation target/], ['Parcel ID', /^parcel (id|number)/], ['Existing improvements', /existing (building|improvements)/],
   ['Rentable area (SF)', /^rentable (area|sf)/], ['Parking', /^(proposed )?parking( spaces)?$/], ['Equity-first threshold', /equity.first/], ['Unused commitment fee', /unused (commitment )?fee/] ];
 
-function labelKey(L){ for(var k in F){ var d = F[k]; if(d.no && d.no.test(L)) continue; for(var i = 0; i < d.rx.length; i++) if(d.rx[i].test(L)) return k; } return null; }
+function labelKey(L){ var lr = lload()[lnorm(L)]; if(lr) return lr.k === 'ignore' ? '__ignore' : lr.k; for(var k in F){ var d = F[k]; if(d.no && d.no.test(L)) continue; for(var i = 0; i < d.rx.length; i++) if(d.rx[i].test(L)) return k; } return null; }
 
 /* ---------- facts from one sheet ---------- */
 function sheetFacts(sh, file, out, ctx){
@@ -84,6 +95,13 @@ function sheetFacts(sh, file, out, ctx){
   for(r = 0; r < rows.length; r++){
     var row = rows[r] || [], cells = []; for(j = 0; j < row.length; j++) if(row[j] != null && String(row[j]).trim() !== '') cells.push({ j:j, v:row[j] });
     if(!cells.length) continue;
+    /* sentences: a few facts are stated in words ("a five-story, 120-unit community", "65% LTC", "90% LP / 10% GP"); they count as low-confidence unless another place agrees */
+    cells.forEach(function(c){ if(typeof c.v === 'string' && c.v.length > 30){ var t = c.v, m2;
+      if((m2 = /\b(\d[\d,]*)[- ]units?\b(?!\s*(mix|type))/i.exec(t)) && +m2[1].replace(/,/g, '') >= 2) out.push({ label:'units', v:{ n:+m2[1].replace(/,/g, ''), unit:'', text:m2[0] }, file:file, sheet:sh.name, row:r + 1, note:'Stated in a sentence', derived:true, direct:'units', prose:true });
+      if((m2 = /\b(\d+(?:\.\d+)?)[- ]acres?\b/i.exec(t))) out.push({ label:'siteArea', v:{ n:parseFloat(m2[1]), unit:'acres', text:m2[0] }, file:file, sheet:sh.name, row:r + 1, note:'Stated in a sentence', derived:true, direct:'siteArea', prose:true });
+      if((m2 = /(guidance|asking|purchase|offering|list|seller)\s+price[:\s]+\$\s?([\d,]+(?:\.\d+)?)/i.exec(t))) out.push({ label:'purchasePrice', v:{ n:+m2[2].replace(/,/g, ''), unit:'money', text:m2[0] }, file:file, sheet:sh.name, row:r + 1, note:'Stated in a sentence', derived:true, direct:'purchasePrice', prose:true });
+      if((m2 = /(\d+(?:\.\d+)?)\s*%\s*LTC\b/i.exec(t))) out.push({ label:'conLTC', v:{ n:parseFloat(m2[1]) / 100, unit:'pct', text:m2[0] }, file:file, sheet:sh.name, row:r + 1, note:'Stated in a sentence: ' + t.slice(0, 60), derived:true, direct:'conLTC', prose:true });
+      if((m2 = /(\d+(?:\.\d+)?)\s*%\s*LP\s*[\/,&]\s*(\d+(?:\.\d+)?)\s*%\s*GP/i.exec(t))) out.push({ label:'gpShare', v:{ n:parseFloat(m2[2]) / 100, unit:'pct', text:m2[0] }, file:file, sheet:sh.name, row:r + 1, note:'Equity split stated as ' + m2[0], derived:true, direct:'gpShare', prose:true }); } });
     /* "Label: value" inside one cell (prose lines, text from a PDF) */
     cells.forEach(function(c){ if(typeof c.v === 'string'){ var m = /^([A-Za-z][A-Za-z0-9 &\/.#()'-]{2,60}?)\s*[:–-]\s+(\S.*)$/.exec(c.v.trim()); if(m && !/^\d/.test(m[1]) && m[2].length < 160) add(m[1], parseVal(m[2]), r, ''); } });
     /* a label cell followed by a value cell (any column, any layout); the cells after the value are its notes */
@@ -101,7 +119,7 @@ function sheetFacts(sh, file, out, ctx){
   }
   tables(sh, file, out, ctx);
 }
-var HEAD = { units:/^(units?|# ?units|no\. of units|count|qty|quantity)$/, sf:/^((avg|average|unit|net|rentable)\.? )?(unit )?(sf|sq\.? ?ft\.?|square (feet|footage)|size)$|^avg unit sf$/, rent:/(monthly|market|asking|in.?place|proforma|pro forma|contract|scheduled)?\s*rent( ?\/ ?(unit|mo|month))?( per (unit|month))?$|^monthly (market )?rent$/, type:/^(unit )?(type|mix|plan|name|description|floor ?plan|category|line item|item)$/, amount:/^(budget|amount|cost|total|total cost|\$|annual amount|annual|value)$/, grp:/^(cost )?(group|type|class|classification|category)$/,
+var HEAD = { units:/^(units?|# ?units|#|no\.?|number|no\.? of units|count|qty|quantity|# of units|apts?)$/, sf:/^((avg|average|unit|net|rentable)\.? )?(unit )?(sf|sq\.? ?ft\.?|square (feet|footage)|size)$|^avg unit sf$/, rent:/(monthly|market|asking|in.?place|proforma|pro forma|contract|scheduled)?\s*rent( ?\/ ?(unit|mo|month))?( per (unit|month))?$|^monthly (market )?rent$/, type:/^(unit )?(type|mix|plan|name|description|floor ?plan|category|line item|item)$/, amount:/^(budget|amount|cost|total|total cost|\$|annual amount|annual|value)$/, grp:/^(cost )?(group|type|class|classification|category)$/,
   start:/(draw|start|begin)( start)?( month)?$|^start( month)?$/, end:/(draw|end|finish)( end)?( month)?$|^end( month)?$/, lp:/^lp( split| %| share)?$/, gp:/^gp( split| %| share)?$/, tier:/^(tier|priority|hurdle|description|waterfall tier)/, timing:/timing( month)?/, klass:/^classification$|^class$/ };
 function isTableHeader(a){ var n = a.map(nl), hit = 0; Object.keys(HEAD).forEach(function(k){ if(n.some(function(x){ return HEAD[k].test(x); })) hit++; }); return hit >= 2; }
 function findCols(hdr){ var o = {}, n = hdr.map(function(h){ return nl(h); }); Object.keys(HEAD).forEach(function(k){ for(var i = 0; i < n.length; i++) if(n[i] && HEAD[k].test(n[i]) && o[k] == null){ o[k] = i; break; } }); return o; }
@@ -136,49 +154,60 @@ function tables(sh, file, out, ctx){
     /* timing of pre-development lines: negative months before closing */
     if(col.timing != null && col.klass != null){ var mn = 0, c2 = 0; body.forEach(function(b){ var tm = num(b.cells[col.timing]); if(tm != null && tm < 0 && /predev/.test(nl(b.cells[col.klass]))){ mn = Math.min(mn, tm); c2++; } }); if(c2) out.push({ label:'predev window', v:{ n:-mn, unit:'months', text:(-mn) + ' months' }, file:file, sheet:sh.name, row:r + 2, note:'Pre-development lines are timed from month ' + mn + ' to closing', derived:true, direct:'predevMonths' }); }
     /* waterfall tiers: rows with an LP split and a GP split */
-    if(col.lp != null && col.gp != null){ body.forEach(function(b){ var desc = String(b.cells[col.tier != null ? col.tier + 1 : 1] == null ? '' : b.cells[col.tier != null ? col.tier + 1 : 1]), full = b.cells.map(function(x){ return x == null ? '' : String(x); }).join(' | '), L = nl(full), lpv = pct(parseVal(b.cells[col.lp])), gpv = pct(parseVal(b.cells[col.gp]));
+    if(col.lp != null && col.gp != null){ body.forEach(function(b){ var strs = b.cells.map(function(x){ return x == null ? '' : String(x); }), desc = strs.filter(function(t){ return /[A-Za-z]{2}/.test(t) && /irr|prefer|catch|return of|capital|residual|pro.?rata|tier/i.test(t); }).sort(function(a, c){ return c.length - a.length; })[0] || '', full = strs.join(' | '), L = nl(desc), lpv = pct(parseVal(b.cells[col.lp])), gpv = pct(parseVal(b.cells[col.gp]));
       var m;
-      if(/preferred return|pref\b/.test(L) && (m = /(\d+(?:\.\d+)?)\s*%/.exec(full))) out.push({ label:'pref', v:{ n:parseFloat(m[1]) / 100, unit:'pct', text:m[1] + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:full.slice(0, 90), derived:true, direct:'pref' });
+      if(/preferred return|pref\b/.test(L) && (m = /(\d+(?:\.\d+)?)\s*%/.exec(desc))) out.push({ label:'pref', v:{ n:parseFloat(m[1]) / 100, unit:'pct', text:m[1] + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:full.slice(0, 90), derived:true, direct:'pref' });
       if(/catch.?up/.test(L) && gpv != null) out.push({ label:'gpCatchup', v:{ n:gpv, unit:'pct', text:(gpv * 100) + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:'GP share during catch-up: ' + full.slice(0, 80), derived:true, direct:'gpCatchup' });
       if(/return of (contributed )?capital|return of capital|pro.?rata/.test(L) && gpv != null && gpv > 0) out.push({ label:'gpShare', v:{ n:gpv, unit:'pct', text:(gpv * 100) + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:'GP share of capital: ' + full.slice(0, 80), derived:true, direct:'gpShare' });
-      var tiers = /irr/.test(L) ? full.match(/(\d+(?:\.\d+)?)\s*%/g) : null; if(tiers && lpv != null){ var hi = parseFloat(tiers[tiers.length - 1]) / 100, key = /above|over|exceed|>/.test(L) ? 'tier4' : /from|between|to/.test(L) && tiers.length > 1 ? 'tier3' : 'tier2'; out.push({ label:'tier:' + key, v:{ n:hi, unit:'pct', text:(hi * 100) + '%' }, lp:lpv, file:file, sheet:sh.name, row:b.row + 1, note:full.slice(0, 100), derived:true }); } }); }
+      var tiers = /irr/.test(L) ? desc.match(/(\d+(?:\.\d+)?)\s*%/g) : null; if(tiers && lpv != null){ var hi = parseFloat(tiers[tiers.length - 1]) / 100, key = /above|over|exceed|>/.test(L) ? 'tier4' : /\bfrom\b|between/.test(L) && tiers.length > 1 ? 'tier3' : 'tier2'; out.push({ label:'tier:' + key, v:{ n:hi, unit:'pct', text:(hi * 100) + '%' }, lp:lpv, file:file, sheet:sh.name, row:b.row + 1, note:desc.slice(0, 100), derived:true }); } }); }
     r = k - 1;
   }
 }
 
 /* ---------- choose the value for each model input ---------- */
 function resolve(facts, ctx){
-  var cand = {}, extra = [], used = {};
+  var cand = {}, extra = [], used = {}, res0 = { rentable:null }, unknown = [];
   function put(k, val, f, why, conf){ (cand[k] = cand[k] || []).push({ k:k, val:val, f:f, why:why || '', conf:conf || 'check' }); }
   facts.forEach(function(f){
-    var L = f.direct ? nl(f.direct) : nl(f.label), v = f.v, k = f.direct && F[f.direct] ? f.direct : labelKey(L);
+    var L = f.direct ? nl(f.direct) : nl(f.label), v = f.v, k = f.direct && F[f.direct] ? f.direct : labelKey(L); if(k === '__ignore') return; if(k && !F[k] && !/^(avgRent|hurdle2|hurdle3|gpCatchup|t[234]LP|hardContPct)$/.test(k)) k = null; var learned = !!(lload()[lnorm(f.label)]);
     if(f.label === 'units' && f.derived){ put('units', v.n, f, f.note, 'check'); return; } if(f.label === 'avgRent'){ put('avgRent', v.n, f, f.note, 'check'); return; }
     if(/^budget:/.test(f.label)){ var bk = f.label.slice(7); if(bk === 'hard') put('sourceConstruction', v.n, f, f.note); else extra.push({ label:{ soft:'Soft costs', contingency:'Contingency', reserve:'Reserves', financing:'Financing costs', land:'Land / acquisition', predev:'Pre-development' }[bk] || bk, text:$(v.n), f:f, note:f.note, key:bk }); return; }
     if(f.label === 'draw window'){ put('constructionMonths', v.n, f, f.note, 'low'); return; } if(f.label === 'predev window'){ put('predevMonths', v.n, f, f.note, 'low'); return; }
     if(/^tier:/.test(f.label)){ (ctx.tiers = ctx.tiers || {})[f.label.slice(5)] = { hi:v.n, lp:f.lp, f:f }; return; }
-    if(f.derived && f.direct){ put(f.direct, v.n, f, f.note, 'check'); return; }
+    if(f.derived && f.direct){ put(f.direct, v.n, f, f.note, f.prose ? 'low' : 'check'); return; }
     if(k){ var d = F[k], val = null, why = '';
       if(d.kind === 'text'){ if(v.n == null || /[A-Za-z]/.test(v.text)) val = v.text; if(k === 'propertyType' && /^\d/.test(v.text)) val = null; }
-      else if(d.kind === 'money'){ val = v.n != null && (v.unit === 'money' || v.unit === '' || v.unit === 'x') ? v.n : null; if(val != null && /%/.test(v.text)) val = null; }
+      else if(d.kind === 'money'){ val = v.n != null && (v.unit === 'money' || v.unit === '' || v.unit === 'x') ? v.n : null; if(val != null && /%/.test(v.text)) val = null; if(val != null && /\/\s*(unit|apt|apartment)/i.test(v.text + ' ' + (f.note || ''))){ (cand[k] = cand[k] || []).push({ k:k, val:val, perUnit:true, f:f, why:'Stated per unit (' + v.text.slice(0, 40) + '); multiplied by the unit count', conf:'low' }); return; } }
       else if(d.kind === 'int'){ val = v.n != null && v.n === Math.round(v.n) ? v.n : null; }
       else if(d.kind === 'area'){ val = v.n != null && (v.unit === 'sf' || v.unit === '' || /sf|sq/.test(L)) ? v.n : null; }
       else if(d.kind === 'acres'){ if(v.n != null){ val = v.unit === 'sf' || (v.unit === '' && v.n > 1000) ? v.n / 43560 : v.n; val = Math.round(val * 100) / 100; if(v.unit === 'sf') why = 'Converted from square feet'; } }
-      else if(d.kind === 'pct'){ val = pct(v); if(val == null || (v.unit === 'money' && /\$/.test(v.text))) val = null;
+      else if(d.kind === 'pct' && v.n == null && v.text){ var eq = /=\s*(\d+(?:\.\d+)?)\s*%/.exec(v.text), allp = v.text.match(/(\d+(?:\.\d+)?)\s*%/g); if(eq) val = parseFloat(eq[1]) / 100; else if(allp && allp.length === 1) val = parseFloat(allp[0]) / 100; if(val != null) why = 'Read from "' + v.text.slice(0, 60) + '"'; }
+      else if(d.kind === 'pct'){ val = v.n == null ? null : v.unit === 'pct' ? v.n / 100 : (Math.abs(v.n) <= 1 ? v.n : (Math.abs(v.n) <= 100 && !/\$/.test(v.text) ? v.n / 100 : null)); if(v.unit === 'money' && /\$/.test(v.text)) val = null;
         if(val == null && v.n != null && f.note){ var nm = /(\d+(?:\.\d+)?)\s*%\s*of\b/.exec(f.note); if(nm && (k === 'vacancy' || k === 'mgmtPct')){ val = parseFloat(nm[1]) / 100; why = 'Read from the note "' + f.note.slice(0, 60) + '" (the amount beside it is the dollar result)'; } } }
       else if(d.kind === 'months'){ val = v.n != null ? (v.unit === 'years' ? Math.round(v.n * 12) : v.n) : null; if(val == null && v.text){ var mm = /(\d+)\s*months?/.exec(v.text); if(mm) val = +mm[1]; } }
       else if(d.kind === 'years'){ if(v.n != null) val = v.unit === 'months' || /months?/.test(v.text) ? v.n / 12 : v.n; if(val == null){ var m2 = /(\d+(?:\.\d+)?)\s*(months?|years?|yrs?)/.exec(v.text); if(m2) val = /^m/.test(m2[2]) ? +m2[1] / 12 : +m2[1]; } }
       if(val != null && d.min != null && val < d.min) val = null; if(val != null && d.max != null && val > d.max) val = null;
       if(val != null && d.kind === 'text' && !val) val = null;
-      if(val != null){ put(k, val, f, why); return; } }
+      if(val != null){ put(k, val, f, learned ? 'Mapped by a label you taught the reader' : why, learned ? 'check' : 'check'); return; } }
+    if(k && !F[k]){ var lv = parseVal(f.v.text); if(f.v.n != null){ put(k, PCTK[k] ? pct(f.v) : f.v.n, f, 'Mapped by a label you taught the reader', 'check'); return; } }
+    if(/^(net )?rentable (area|sf|square f)|^nra\b|^net rentable/.test(L) && v.n != null && v.n >= 500 && !res0.rentable){ res0.rentable = { val:v.n, f:f }; }
     for(var i = 0; i < NOINPUT.length; i++) if(NOINPUT[i][1].test(L) && v){ extra.push({ label:NOINPUT[i][0], text:v.n != null ? (v.unit === 'pct' ? (v.n).toFixed(2) + '%' : (Math.abs(v.n) <= 1 && !v.unit ? (v.n * 100).toFixed(2) + '%' : (v.unit === 'money' || Math.abs(v.n) > 999 ? $(v.n) : String(v.n)))) : v.text, f:f, note:f.note }); return; }
+    if(v && v.n != null && isLabel(f.label) && !f.derived && !/^(total|sum|subtotal|page|row|item|no\.?|#|tier|test)$/i.test(f.label.trim())) unknown.push(f);
   });
-  return { cand:cand, extra:extra };
+  var seen = {}; extra = extra.filter(function(e){ var k2 = e.label + '|' + e.text; if(seen[k2]) return false; seen[k2] = 1; return true; });
+  var seenU = {}; unknown = unknown.filter(function(u){ var k3 = lnorm(u.label); if(seenU[k3] || lload()[k3]) return false; seenU[k3] = 1; return true; }).slice(0, 80);
+  return { cand:cand, extra:extra, rentable:res0.rentable, unknown:unknown };
 }
 function choose(res, ctx){
   var cand = res.cand, out = {}, conflicts = [];
   Object.keys(cand).forEach(function(k){
-    var list = cand[k], groups = [];
-    list.forEach(function(c){ var g = groups.filter(function(x){ return typeof c.val === 'number' ? Math.abs(x.val - c.val) <= Math.max(1e-9, Math.abs(x.val) * 0.005) : String(x.val).toLowerCase() === String(c.val).toLowerCase(); })[0]; if(g) g.items.push(c); else groups.push({ val:c.val, items:[c] }); });
+    var list = cand[k].map(function(c){ if(!c.perUnit) return c; var un = cand.units && cand.units[0] && cand.units[0].val; return un ? Object.assign({}, c, { val:Math.round(c.val * un * 100) / 100, perUnit:false }) : null; }).filter(Boolean), groups = [];
+    if(!list.length) return;
+    /* a sheet that lists many different values for one input is a range of cases (a sensitivity grid), not a competing statement of the input */
+    var per = {}; list.forEach(function(c){ var key = c.f.file + '|' + c.f.sheet; (per[key] = per[key] || {})[typeof c.val === 'number' ? Math.round(c.val * 1e6) : c.val] = 1; });
+    var rangeSheets = Object.keys(per).filter(function(key){ return Object.keys(per[key]).length >= 3; });
+    if(rangeSheets.length && rangeSheets.length < Object.keys(per).length){ var dropped = list.filter(function(c){ return rangeSheets.indexOf(c.f.file + '|' + c.f.sheet) >= 0; }); list = list.filter(function(c){ return rangeSheets.indexOf(c.f.file + '|' + c.f.sheet) < 0; }); (ctx.ranges = ctx.ranges || []).push({ k:k, n:dropped.length, sheet:dropped[0].f.sheet, lo:Math.min.apply(null, dropped.map(function(c){ return c.val; })), hi:Math.max.apply(null, dropped.map(function(c){ return c.val; })) }); }
+    list.forEach(function(c){ var g = groups.filter(function(x){ return typeof c.val === 'number' ? Math.abs(x.val - c.val) <= Math.max(1e-9, Math.abs(x.val) * 0.005) : (function(a, b){ a = String(a).toLowerCase().replace(/[^a-z0-9]+/g, ''); b = String(b).toLowerCase().replace(/[^a-z0-9]+/g, ''); return a === b || (a.length > 8 && b.length > 8 && (a.indexOf(b) === 0 || b.indexOf(a) === 0)); })(x.val, c.val); })[0]; if(g) g.items.push(c); else groups.push({ val:c.val, items:[c] }); });
     groups.sort(function(a, b){ var wa = a.items.reduce(function(t, i){ return t + (i.conf === 'low' ? 0.5 : 1); }, 0), wb = b.items.reduce(function(t, i){ return t + (i.conf === 'low' ? 0.5 : 1); }, 0); return wb - wa; });
     var best = groups[0], places = {}; best.items.forEach(function(i){ places[i.f.file + '|' + i.f.sheet + '|' + i.f.row] = 1; });
     var n = Object.keys(places).length, conf = n >= 2 ? 'verified' : (best.items[0].conf === 'low' ? 'low' : 'check'), why = best.items[0].why || (n >= 2 ? 'Stated in ' + n + ' places that agree' : 'Read from a labelled value');
@@ -187,6 +216,10 @@ function choose(res, ctx){
   });
   /* occupancy is the complement of vacancy: it fills vacancy only when vacancy was not stated, and confirms it when they agree */
   if(out.occupancy){ var vac = 1 - out.occupancy.val; if(out.vacancy){ if(Math.abs(out.vacancy.val - vac) < 0.0006){ out.vacancy.conf = 'verified'; out.vacancy.why = 'Vacancy ' + (out.vacancy.val * 100).toFixed(1) + '% agrees with stabilized occupancy ' + (out.occupancy.val * 100).toFixed(1) + ' % (complementary, not additive)'; } } else out.vacancy = { val:Math.round(vac * 10000) / 10000, conf:'low', why:'Derived as 1 - stabilized occupancy', src:out.occupancy.src }; delete out.occupancy; }
+  /* a loan rate on a development deal is the construction rate; LTV / LTC stay as stated */
+  if(ctx.dev && out.acqRate && !out.conRate){ out.conRate = out.acqRate; } if(ctx.dev) delete out.acqRate; if(ctx.dev) delete out.acqAmort;
+  /* only the building size the document states: net rentable area stands in for building size when no gross area was found, and says so */
+  if(!out.gsf && res.rentable){ out.gsf = { val:res.rentable.val, conf:'low', why:'Net rentable area used as building size: no gross building area was stated', src:[res.rentable.f] }; }
   /* all-in rate from index plus spread when no all-in rate was stated */
   if(!out.conRate && out.debtIndexRate && out.debtSpread){ out.conRate = { val:Math.round((out.debtIndexRate.val + out.debtSpread.val) * 1e6) / 1e6, conf:'check', why:'Index ' + (out.debtIndexRate.val * 100).toFixed(2) + '% + spread ' + (out.debtSpread.val * 100).toFixed(2) + '%', src:out.debtIndexRate.src }; }
   delete out.debtIndexRate; delete out.debtSpread;
@@ -201,9 +234,10 @@ function choose(res, ctx){
   if(cont && out.sourceConstruction){ var cv = parseFloat(String(cont.text).replace(/[^0-9.]/g, '')); if(cv > 0 && out.sourceConstruction.val > 0){ out.hardContPct = { val:Math.round(cv / out.sourceConstruction.val * 10000) / 10000, conf:'low', why:'Contingency ' + cont.text + ' over hard cost ' + $(out.sourceConstruction.val) + '; the document does not say which costs contingency applies to', src:[cont.f] }; } }
   return { fields:out, conflicts:conflicts };
 }
-var PCT = { conLTC:1, conRate:1, conOrigFee:1, acqLTV:1, exitCap:1, saleCostPct:1, rentGrowth:1, opexGrowth:1, vacancy:1, mgmtPct:1, pref:1, gpShare:1, hurdle2:1, hurdle3:1, t2LP:1, t3LP:1, t4LP:1, hardContPct:1, gpCatchup:1 };
+var PCT = { acqRate:1, conLTC:1, conRate:1, conOrigFee:1, acqLTV:1, exitCap:1, saleCostPct:1, rentGrowth:1, opexGrowth:1, vacancy:1, mgmtPct:1, pref:1, gpShare:1, hurdle2:1, hurdle3:1, t2LP:1, t3LP:1, t4LP:1, hardContPct:1, gpCatchup:1 };
 var LAB = { avgRent:'Average monthly rent / unit', hurdle2:'Second hurdle (IRR)', hurdle3:'Third hurdle (IRR)', t2LP:'Tier 2 split to LP', t3LP:'Tier 3 split to LP', t4LP:'Tier 4 split to LP', hardContPct:'Hard-cost contingency (%)', gpCatchup:'GP catch-up share' };
-function fmt(k, v){ if(typeof v !== 'number') return String(v); if(PCT[k]) return (v * 100).toFixed(2) + '%'; if(k === 'units' || k === 'gsf') return Math.round(v).toLocaleString('en-US'); if(/Months$/.test(k)) return v + ' mo'; if(k === 'holdYears') return (Math.round(v * 100) / 100) + ' yrs'; if(k === 'siteArea') return v + ' acres'; return $(v); }
+var PCTK = { hurdle2:1, hurdle3:1, gpCatchup:1, t2LP:1, t3LP:1, t4LP:1, hardContPct:1 };
+function fmt(k, v){ if(typeof v !== 'number') return String(v); if(PCT[k]) return (v * 100).toFixed(2) + '%'; if(k === 'units') return Math.round(v).toLocaleString('en-US') + ' units'; if(k === 'gsf') return Math.round(v).toLocaleString('en-US') + ' SF'; if(/Months$/.test(k)) return v + ' mo'; if(k === 'holdYears' || k === 'acqAmort') return (Math.round(v * 100) / 100) + ' yrs'; if(k === 'siteArea') return v + ' acres'; return $(v); }
 function label(k){ return LAB[k] || (F[k] && F[k].lab) || k; }
 
 /* ---------- classify a file by its content, then read it ---------- */
@@ -213,10 +247,35 @@ function classify(parsed){
   var dev = has(/\bhard costs?\b|\bsoft costs?\b|construction loan|\bdraw(s)?\b|contingency|waterfall|development budget|entitlement|ground.up|predevelopment|pre-development/) >= 3 || has(/development (opportunity|site|program)|proposed development|ground.up/) >= 2;
   var rr = parsed.sheets.some(function(sh){ var rows = sh.rows || []; for(var i = 0; i < Math.min(rows.length, 40); i++){ var h = (rows[i] || []).map(nl); if(h.some(function(x){ return /^(unit|apt|apartment|suite|space)( ?(#|no\.?|number|id))?$/.test(x); }) && h.some(function(x){ return /rent/.test(x); }) && h.length >= 3 && rows.length - i > 5) return true; } return false; });
   var stmt = has(/^(total )?(operating )?expenses?$|total operating expenses/) >= 1 && has(/^net operating income|^noi$/) >= 1 && has(/^(effective gross|total (income|revenue)|gross potential)/) >= 1;
-  return { dev:dev, rentRoll:rr && !dev, statement:stmt && !dev, kind:rr && !dev ? 'rent roll' : stmt && !dev ? 'income statement / operating statement' : dev ? 'development pro forma / offering' : 'document with labelled facts' };
+  var portfolio = parsed.sheets.length >= 4 && parsed.sheets.some(function(sh){ var rows = sh.rows || []; for(var i = 0; i < Math.min(rows.length, 12); i++){ var h = (rows[i] || []).map(nl); if(h.some(function(x){ return /^(property|asset|building)( name)?$/.test(x); }) && h.some(function(x){ return /^units?$|^sf$|^square f/.test(x); }) && rows.length - i >= 4) return true; } return false; });
+  return { portfolio:portfolio, dev:dev, rentRoll:rr && !dev && !portfolio, statement:stmt && !dev && !portfolio, kind:portfolio ? 'portfolio of several properties (master workbook)' : rr && !dev ? 'rent roll' : stmt && !dev ? 'income statement / operating statement' : dev ? 'development pro forma / offering' : 'document with labelled facts' };
 }
+/* PDFs are read with PDF.js (text where there is a text layer, text recognition where there is not), one sheet of rows per page, cells split where the page leaves a gap */
+var NOUN = null;
+function knownLabel(t){ var L = nl(t); if(!L) return false; if(labelKey(L)) return true; for(var i = 0; i < NOINPUT.length; i++) if(NOINPUT[i][1].test(L)) return true; return false; }
+function valTokens(line){ var m = line.match(/\$\s?[\d,]+(?:\.\d+)?[KMB]?|\(?-?\d[\d,]*(?:\.\d+)?\)?\s?(?:%|SF|sq\.? ?ft\.?|acres?|units?|months?|mo\b|years?|yrs?|x\b)?/gi); return m ? m.map(function(x){ return x.trim(); }) : []; }
+function bestSplit(words, n, score){ var best = null, bs = -1; (function rec(i, parts){ if(parts.length === n - 1){ var last = words.slice(i).join(' '); if(!last) return; var all = parts.concat([last]), sc = all.reduce(function(t, g){ return t + (score(g) ? Math.min(3, g.split(/\s+/).length) : 0); }, 0); if(sc > bs){ bs = sc; best = all; } return; } for(var j = i + 1; j <= words.length - (n - 1 - parts.length); j++) rec(j, parts.concat([words.slice(i, j).join(' ')])); })(0, []); return best; }
+function headerLike(line){ var w = line.split(/\s+/); if(w.length < 2 || w.length > 14 || /\d/.test(line)) return false; var cap = w.filter(function(x){ return /^[A-Z]/.test(x) || /^[A-Z.&\/-]+$/.test(x); }).length; return cap / w.length >= 0.7; }
+function isHeadScore(g){ var n = nl(g); return Object.keys(HEAD).some(function(k){ return HEAD[k].test(n); }) || knownLabel(g); }
+function pdfRows(text){
+  var lines = String(text || '').split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean), rows = [], i = 0;
+  while(i < lines.length){ var line = lines[i], next = lines[i + 1] || '', toks = valTokens(next);
+    /* a row of headings over a row of values */
+    if(headerLike(line) && toks.length >= 2 && toks.length <= 8 && next.replace(/\$?[\d,.]+\s?(%|SF|acres?|units?)?/gi, '').trim().length < 3){ var parts = bestSplit(line.split(/\s+/), toks.length, knownLabel); if(parts && parts.filter(knownLabel).length >= 2){ rows.push(parts); rows.push(toks); i += 2; continue; } }
+    /* a small table: a heading line, then rows that are a label followed by figures */
+    var dataRe = /^([A-Za-z0-9][A-Za-z0-9 &\/.\-]*?)\s+((?:\(?\$?-?[\d,]+(?:\.\d+)?%?\)?[KkMm]?\s*(?:weighted avg\.?)?\s*){2,})$/, d1 = dataRe.exec(next), d2 = dataRe.exec(lines[i + 2] || '');
+    if(d1 && d2 && !dataRe.test(line) && w2(line) >= 2 && w2(line) <= 14){ var nc = 1 + valTokens(d1[2]).length, hp = bestSplit(line.split(/\s+/), nc, isHeadScore); if(hp){ rows.push(hp); i++; while(i < lines.length && dataRe.test(lines[i])){ var dm = dataRe.exec(lines[i]); rows.push([dm[1].trim()].concat(valTokens(dm[2]))); i++; } continue; } }
+    /* "Label  value": a known label at the start of the line */
+    var w = line.split(/\s+/), done = false;
+    for(var n = Math.min(6, w.length - 1); n >= 1 && !done; n--){ var pre = w.slice(0, n).join(' '); if(knownLabel(pre) && !/[:]$/.test(pre)){ rows.push([pre, w.slice(n).join(' ')]); done = true; } }
+    if(!done) rows.push([line]); i++; }
+  return rows; }
+function w2(l){ return l.split(/\s+/).length; }
+function pdfParsed(f){ if(typeof window.bkOMPageText !== 'function') return Promise.resolve(null);
+  return window.bkOMPageText(f).then(function(pages){ var sheets = pages.map(function(t, i){ return { name:'page ' + (i + 1), rows:pdfRows(t) }; }); return sheets.length ? { kind:'pdf', sheets:sheets } : null; }).catch(function(){ return null; }); }
 function readOne(f){
-  return Promise.resolve(window.bkImportParseFile(f)).then(function(parsed){
+  var first = /\.pdf$/i.test(f.name) ? pdfParsed(f) : Promise.resolve(null);
+  return first.then(function(pp){ return pp || window.bkImportParseFile(f); }).then(function(parsed){
     var cls = classify(parsed), info = { name:f.name, kind:cls.kind, cls:cls, parsed:parsed };
     if(parsed.unreadable) info.note = 'The text in this PDF could not be read (it may be a scanned image). Use the Offering memorandum reader on a text PDF, or upload the Excel version.';
     return { f:f, info:info };
@@ -227,8 +286,9 @@ function ingest(files){
   Promise.all(Array.prototype.map.call(files, function(f){ return readOne(f).catch(function(e){ return { f:f, info:{ name:f.name, kind:'unreadable', err:String(e && e.message || e) } }; }); })).then(function(rs){
     /* a lone rent roll or plain operating statement goes to the existing, tested reader for it */
     if(rs.length === 1 && rs[0].info.cls){ var c = rs[0].info.cls, f0 = rs[0].f;
+      if(c.portfolio){ S.busy = false; S.routed = 'portfolio'; S.files.push(rs[0]); showSheet('Portfolio Import'); setTimeout(function(){ var inp = document.getElementById('bkMasterFile'); if(inp && window.DataTransfer){ var dt = new DataTransfer(); dt.items.add(f0); inp.files = dt.files; if(typeof window.bkImportMasterFile === 'function') window.bkImportMasterFile(); } }, 250); return; }
       if(c.rentRoll && typeof window.bkRRRun === 'function'){ S.busy = false; S.routed = 'rent roll'; window.bkRRRun({ files:[f0] }); return; }
-      if(c.statement && typeof window.bkImportRun === 'function'){ S.busy = false; S.routed = 'operating statement'; window.bkImportRun({ files:[f0] }); return; }
+      if(c.statement && !/\.pdf$/i.test(f0.name) && typeof window.bkImportRun === 'function'){ S.busy = false; S.routed = 'operating statement'; window.bkImportRun({ files:[f0] }); return; }
       if(!c.dev && /\.pdf$/i.test(f0.name) && typeof window.bkOMRun === 'function'){ S.busy = false; S.routed = 'offering memorandum / listing'; window.bkOMRun({ files:[f0] }); return; } }
     var facts = [], ctx = { dev:false };
     rs.forEach(function(x){ S.files.push(x); if(!x.info.parsed) return; if(x.info.cls.dev) ctx.dev = true; x.info.parsed.sheets.forEach(function(sh){ sheetFacts(sh, x.f.name, facts, ctx); }); });
@@ -236,12 +296,15 @@ function ingest(files){
     var res = resolve(all, ctx); S.res = res; S.pick = choose(res, ctx); S.dev = ctx.dev || S.dev;
     /* name fallback: the title at the top of the first sheet or page */
     if(!S.pick.fields.name){ var first = rs.filter(function(x){ return x.info.parsed; })[0]; if(first){ var rows = first.info.parsed.sheets[0].rows || [], t = ''; for(var i = 0; i < Math.min(6, rows.length) && !t; i++) (rows[i] || []).forEach(function(c){ if(!t && typeof c === 'string' && c.length > 5 && c.length < 70 && /[A-Za-z]/.test(c)) t = c.trim(); });
-        t = t.replace(/\s*[—–-]\s*(development )?(pro forma|offering memorandum|budget|summary|model).*$/i, '').replace(/\b(development|pro forma|offering memorandum)\b.*$/i, '').trim(); if(t) S.pick.fields.name = { val:t.replace(/\b([A-Z])([A-Z]+)\b/g, function(m, a, b){ return a + b.toLowerCase(); }), conf:'low', why:'No name was labelled; this is the title at the top of "' + first.f.name + '"', src:[] }; } }
+        t = t.replace(/\s*[—–-]\s*(\w+\s+){0,2}(pro forma|offering memorandum|budget|summary|model|analysis|underwriting)\b.*$/i, '').replace(/\b(development|pro forma|offering memorandum)\b.*$/i, '').trim(); if(t) S.pick.fields.name = { val:t.replace(/\b([A-Z])([A-Z]+)\b/g, function(m, a, b){ return a + b.toLowerCase(); }), conf:'low', why:'No name was labelled; this is the title at the top of "' + first.f.name + '"', src:[] }; } }
     S.busy = false; S.msg = ''; showSheet('Import');
   });
 }
 window.bkImportHubRun = function(inp){ var fs = inp && inp.files ? inp.files : []; if(!fs.length) return; ingest(fs); };
 window.bkImportHubReset = function(){ S = { files:[], facts:[], cand:null, msg:'', busy:false, routed:'' }; showSheet('Import'); };
+window.bkImportHubTeach = function(i, k){ var list = S.teach || []; var lab = list[i]; if(!lab || !k) return; window.bkImportLearn.set(lab, k); var ctx = { dev:!!S.dev }; S.res = resolve(S.facts, ctx); S.pick = choose(S.res, ctx); S.msg = 'Learned: "' + lab + '" is ' + (k === 'ignore' ? 'ignored' : label(k)) + '. It will be applied to every file from now on.'; showSheet('Import'); };
+function teachSelect(lab){ S.teach = S.teach || []; var i = S.teach.indexOf(lab); if(i < 0){ S.teach.push(lab); i = S.teach.length - 1; }
+  return '<select onchange="bkImportHubTeach(' + i + ', this.value)" style="max-width:150px;font-size:11px"><option value="">Use as...</option>' + Object.keys(F).filter(function(k){ return k !== 'occupancy'; }).map(function(k){ return '<option value="' + k + '">' + esc(F[k].lab) + '</option>'; }).join('') + '<option value="avgRent">Average monthly rent / unit</option><option value="ignore">Ignore this label</option></select>'; }
 window.bkImportHubSkip = function(k){ if(S.pick && S.pick.fields[k]){ S.pick.fields[k].skip = !S.pick.fields[k].skip; showSheet('Import'); } };
 function dealFields(){ var o = {}; Object.keys(S.pick.fields).forEach(function(k){ var f = S.pick.fields[k]; if(!f.skip) o[k] = f.val; }); return o; }
 window.bkImportHubCreate = function(){
@@ -263,28 +326,38 @@ window.bkImportHubFill = function(){
   bkSave(s); S.msg = 'Filled ' + n + ' empty input' + (n === 1 ? '' : 's') + (kept.length ? '. Left ' + kept.length + ' filled input' + (kept.length === 1 ? '' : 's') + ' unchanged (' + kept.map(label).join(', ') + ').' : '.'); showSheet('Import'); };
 
 /* ---------- the tab ---------- */
+function uploadBox(){ var box = window.bkConf ? window.bkConf.box : function(h){ return '<div class="note-flag">' + h + '</div>'; };
+  return box('<b>Upload</b><div style="margin:8px 0"><input id="bkImportHubFile" type="file" multiple accept=".pdf,.xlsx,.xlsm,.csv" onchange="bkImportHubRun(this)"' + (S.busy ? ' disabled' : '') + '></div>'
+    + '<div style="font-size:12px;opacity:.75">PDF, Excel (.xlsx, .xlsm) or CSV; add several together (an OM and its pro forma, say). The reader works out what each file is from what is in it, finds the inputs wherever they sit, and shows where each came from. A rent roll, an operating statement or a listing is read by its dedicated reader; pro formas, budgets and development offerings are read for labelled facts and tables; a workbook of several properties goes to Portfolio Import. Nothing is sent to a server.</div>'
+    + (S.busy ? '<div style="margin-top:8px"><b>' + esc(S.msg) + '</b></div>' : '') + (S.msg && !S.busy ? '<div style="margin-top:8px">' + esc(S.msg) + '</div>' : '') + learnedLine()); }
+function learnedLine(){ var n = Object.keys(window.bkImportLearn.all()).length; return n ? '<div style="font-size:12px;margin-top:8px"><b>' + n + ' label' + (n === 1 ? '' : 's') + ' learned from your corrections</b> are applied to every file. <a style="cursor:pointer" onclick="if(confirm(\'Forget everything the reader has learned from your corrections?\')){ bkImportLearn.forget(); showSheet(currentSheet); }">Forget them</a></div>' : ''; }
 function render(){
   var hdr = { title:'Import', crumbs:'Inputs', desc:'Drop any document that describes a deal: an offering memorandum or listing, a T-12 or operating statement, a pro forma, a rent roll, or several together. The reader works out what each one is.', meta:{ Files:S.files.length || 'none', Found:S.pick ? Object.keys(S.pick.fields).length + ' inputs' : '-', Kind:S.dev ? 'Development' : (S.files.length ? 'Acquisition / other' : '-') }, sidebar:'' };
   var box = window.bkConf ? window.bkConf.box : function(h){ return '<div class="note-flag">' + h + '</div>'; };
-  var main = box('<b>Upload</b><div style="margin:8px 0"><input id="bkImportHubFile" type="file" multiple accept=".pdf,.xlsx,.xlsm,.csv" onchange="bkImportHubRun(this)"' + (S.busy ? ' disabled' : '') + '></div>'
-    + '<div style="font-size:12px;opacity:.75">PDF, Excel (.xlsx, .xlsm) or CSV. You can add the OM and the pro forma together. A rent roll or a plain operating statement is passed to its dedicated reader; everything else is read for labelled facts, tables and assumptions, whatever the layout. Nothing is sent to a server.</div>'
-    + (S.busy ? '<div style="margin-top:8px"><b>' + esc(S.msg) + '</b></div>' : '') + (S.msg && !S.busy ? '<div style="margin-top:8px">' + esc(S.msg) + '</div>' : ''));
+  var main = uploadBox();
   if(S.files.length){ main += box('<b>What was read</b><table class="fin" style="margin-top:6px"><thead><tr><th>File</th><th>Recognised as</th><th>Sheets / pages</th></tr></thead><tbody>' + S.files.map(function(x){ return '<tr><td>' + esc(x.f.name) + '</td><td>' + esc(x.info.kind) + (x.info.note ? '<br><span style="color:#B23A2C">' + esc(x.info.note) + '</span>' : '') + (x.info.err ? '<br><span style="color:#B23A2C">' + esc(x.info.err) + '</span>' : '') + '</td><td>' + (x.info.parsed ? x.info.parsed.sheets.length : '') + '</td></tr>'; }).join('') + '</tbody></table>'); }
   if(S.pick){ var ks = Object.keys(S.pick.fields), order = Object.keys(F).concat(['avgRent', 'hardContPct', 'hurdle2', 'hurdle3', 'gpCatchup', 't2LP', 't3LP', 't4LP']);
     ks.sort(function(a, b){ return order.indexOf(a) - order.indexOf(b); });
     var cnt = { verified:0, check:0, low:0, assumed:0 }; ks.forEach(function(k){ cnt[S.pick.fields[k].conf]++; });
     main += box('<b>What the deal will start with</b> <span style="opacity:.7;font-size:12px">' + cnt.verified + ' verified · ' + cnt.check + ' check · ' + cnt.low + ' low. Untick anything you do not want. Everything not listed stays empty and shows as missing.</span>'
-      + '<table class="fin" style="margin-top:6px"><thead><tr><th>Use</th><th>Input</th><th class="r">Value</th><th>Where it came from</th><th>Confidence</th></tr></thead><tbody>' + ks.map(function(k){ var f = S.pick.fields[k], src = f.src && f.src[0] ? esc(f.src[0].file) + ' · ' + esc(f.src[0].sheet) + ' · row ' + f.src[0].row + (f.src.length > 1 ? ' (+' + (f.src.length - 1) + ' more)' : '') : 'document title';
-        return '<tr' + (f.skip ? ' style="opacity:.45"' : '') + '><td><input type="checkbox"' + (f.skip ? '' : ' checked') + ' onchange="bkImportHubSkip(\'' + k + '\')"></td><td>' + esc(label(k)) + '</td><td class="r">' + esc(fmt(k, f.val)) + '</td><td style="font-size:12px">' + src + '<br><span style="opacity:.7">' + esc(f.why) + '</span></td><td>' + (window.bkConf ? window.bkConf.chip({ l:f.conf, why:f.why }) : f.conf) + '</td></tr>'; }).join('') + '</tbody></table>'
+      + '<table class="fin" style="margin-top:6px"><thead><tr><th>Use</th><th>Input</th><th class="r">Value</th><th>Where it came from</th><th>Confidence</th><th>Not right?</th></tr></thead><tbody>' + ks.map(function(k){ var f = S.pick.fields[k], src = f.src && f.src[0] ? esc(f.src[0].file) + ' · ' + esc(f.src[0].sheet) + ' · row ' + f.src[0].row + (f.src.length > 1 ? ' (+' + (f.src.length - 1) + ' more)' : '') : 'document title';
+        return '<tr' + (f.skip ? ' style="opacity:.45"' : '') + '><td><input type="checkbox"' + (f.skip ? '' : ' checked') + ' onchange="bkImportHubSkip(\'' + k + '\')"></td><td>' + esc(label(k)) + '</td><td class="r">' + esc(fmt(k, f.val)) + '</td><td style="font-size:12px">' + src + '<br><span style="opacity:.7">' + esc(f.why) + '</span></td><td>' + (window.bkConf ? window.bkConf.chip({ l:f.conf, why:f.why }) : f.conf) + '</td><td>' + (f.src && f.src[0] && f.src[0].label && !f.src[0].derived ? teachSelect(f.src[0].label) : '') + '</td></tr>'; }).join('') + '</tbody></table>'
       + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label style="font-size:12px">Deal name <input id="bkImpName" type="text" value="' + esc(S.pick.fields.name ? S.pick.fields.name.val : '') + '" style="width:260px"></label><button type="button" class="pl-hbtn primary" onclick="bkImportHubCreate()">Create a new deal from these</button><button type="button" class="pl-hbtn" onclick="bkImportHubFill()">Add to the open deal (empty inputs only)</button><button type="button" class="pl-hbtn" onclick="bkImportHubReset()">Start over</button></div>');
-    if(S.res && S.res.extra.length){ main += box('<details><summary style="cursor:pointer"><b>Also found, with no input to put it in yet (' + S.res.extra.length + ')</b></summary><table class="fin" style="margin-top:6px"><thead><tr><th>Item</th><th class="r">Value</th><th>Where</th></tr></thead><tbody>' + S.res.extra.map(function(e){ return '<tr><td>' + esc(e.label) + '</td><td class="r">' + esc(e.text) + '</td><td style="font-size:12px">' + esc(e.f.file) + ' · ' + esc(e.f.sheet) + ' · row ' + e.f.row + (e.note ? '<br><span style="opacity:.7">' + esc(String(e.note).slice(0, 110)) + '</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table><div style="font-size:12px;opacity:.7;margin-top:6px">These are kept with the document. They are not entered into the model because it has no input for them or they are results the model works out itself.</div></details>'); }
+    if(S.res && S.res.unknown && S.res.unknown.length){ main += box('<details><summary style="cursor:pointer"><b>Not recognised yet (' + S.res.unknown.length + ')</b> <span style="opacity:.7;font-size:12px">labels with a number the reader could not place; teach it and it will know them in every later file</span></summary><table class="fin" style="margin-top:6px"><thead><tr><th>Label</th><th class="r">Value</th><th>Where</th><th>Teach</th></tr></thead><tbody>' + S.res.unknown.map(function(e){ return '<tr><td>' + esc(e.label) + '</td><td class="r">' + esc(e.v.unit === 'pct' ? e.v.n.toFixed(2) + '%' : (Math.abs(e.v.n) > 999 ? $(e.v.n) : e.v.text)) + '</td><td style="font-size:12px">' + esc(e.file) + ' · ' + esc(e.sheet) + ' · row ' + e.row + '</td><td>' + teachSelect(e.label) + '</td></tr>'; }).join('') + '</tbody></table></details>'); }
+    if(S.res && S.res.extra.length){ main += box('<details><summary style="cursor:pointer"><b>Also found, with no input to put it in yet (' + S.res.extra.length + ')</b></summary><table class="fin" style="margin-top:6px"><thead><tr><th>Item</th><th class="r">Value</th><th>Where</th><th>Teach</th></tr></thead><tbody>' + S.res.extra.map(function(e){ return '<tr><td>' + esc(e.label) + '</td><td class="r">' + esc(e.text) + '</td><td style="font-size:12px">' + esc(e.f.file) + ' · ' + esc(e.f.sheet) + ' · row ' + e.f.row + (e.note ? '<br><span style="opacity:.7">' + esc(String(e.note).slice(0, 110)) + '</span>' : '') + '</td><td>' + (e.f && e.f.label && !e.f.derived ? teachSelect(e.f.label) : '') + '</td></tr>'; }).join('') + '</tbody></table><div style="font-size:12px;opacity:.7;margin-top:6px">These are kept with the document. They are not entered into the model because it has no input for them or they are results the model works out itself.</div></details>'); }
   }
   main += '<div style="font-size:12px;opacity:.7;margin-top:12px">Multi-property Yardi / Excel source packages with staged review: <a data-goto-sheet2="Source Ingestion" style="cursor:pointer">Source ingestion</a>.</div>';
   hdr.main = main; return hdr;
 }
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Import', render); else RENDERERS['Import'] = render;
 /* one place to import: the four old entries leave the navigation (their pages stay reachable for saved links and tests) */
-safe(function(){ var g = GROUPS.filter(function(x){ return x.id === 'inputs'; })[0]; if(g){ g.sheets = g.sheets.filter(function(n){ return ['Source Ingestion', 'Import Deal', 'Import OM', 'Import Rent Roll'].indexOf(n) < 0; }); var i = g.sheets.indexOf('Rent Roll'); g.sheets.splice(i < 0 ? g.sheets.length : i + 1, 0, 'Import'); } });
+safe(function(){ var g = GROUPS.filter(function(x){ return x.id === 'inputs'; })[0]; if(g){ g.sheets = g.sheets.filter(function(n){ return ['Source Ingestion', 'Import Deal', 'Import OM', 'Import Rent Roll'].indexOf(n) < 0; }); var i = g.sheets.indexOf('Rent Roll'); g.sheets.splice(i < 0 ? g.sheets.length : i + 1, 0, 'Import'); } if(typeof bkBuildRail === 'function') bkBuildRail(); });
+/* the older review pages (offering memorandum, statement, rent roll, source ingestion) now open inside this tab: same readers, one place */
+var EMB = ['Import OM', 'Import Deal', 'Import Rent Roll', 'Source Ingestion'];
+EMB.forEach(function(n){ var orig = RENDERERS[n]; if(typeof orig !== 'function' || orig.__hub) return;
+  var w = function(){ var h = orig.apply(this, arguments); if(h && typeof h === 'object' && h.title){ h = Object.assign({}, h, { title:'Import', crumbs:'Inputs' }); h.main = '<div class="bk-hub-top">' + uploadBox() + '</div>' + (h.main || ''); } try { currentSheet = 'Import'; } catch(e){} return h; };
+  w.__hub = true; w.__bkOriginal = orig.__bkOriginal || orig; if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(n, w); else RENDERERS[n] = w; });
+window.bkImportHubPdfRows = pdfRows;
 window.bkImportHubClassify = function(parsed){ return classify(parsed); };
 window.bkImportHubRead = function(parsed, name){ var facts = [], ctx = { dev:false }; ctx.dev = classify(parsed).dev; parsed.sheets.forEach(function(sh){ sheetFacts(sh, name || 'file', facts, ctx); }); var res = resolve(facts, ctx); return { facts:facts, res:res, pick:choose(res, ctx), cls:classify(parsed) }; };
 })();
