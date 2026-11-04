@@ -46,18 +46,19 @@ function run(){
     var unlevSum = x.land + x.close + x.acq + x.pre + x.hard + x.soft + num(x.leaseDef);
     add('unlev', 'Budget', 'Cost before financing equals land + closing + acquisition fee + pre-development + hard + soft + lease-up deficit', tie(unlevSum, x.unlev) ? 'pass' : 'hard', M(unlevSum) + ' vs ' + M(x.unlev) + '.');
     /* 2 sources = uses */
-    var excess = sum('excess'), draws = sum('loanDraw'), capInt = num(f.actualCapInt), uses = x.unlev + num(f.upfrontFees) + capInt + excess, sources = draws + capInt + num(f.equityTotal);
+    var excess = sum('excess'), draws = sum('loanDraw'), capInt = num(f.actualCapInt), uses = x.unlev + num(f.upfrontFees) + capInt + excess + num(f.resFunded), sources = draws + capInt + num(f.equityTotal) + num(f.resDrawn);
     add('su', 'Sources & Uses', 'Total sources equal total uses', tie(uses, sources) ? 'pass' : 'hard', 'Uses ' + M(uses) + ' (cost ' + M(x.unlev) + ' + fees ' + M(f.upfrontFees) + ' + capitalised interest ' + M(capInt) + ' + interest paid by equity beyond the commitment ' + M(excess) + '); sources ' + M(sources) + ' (draws ' + M(draws) + ' + capitalised interest ' + M(capInt) + ' + equity ' + M(f.equityTotal) + ').');
     /* 3 draws follow eligible costs */
-    var costs = sum('need'); var fundedCosts = sum('eq') + draws + sum('overflow');
+    var costs = sum('need') - sum('resLease'); var fundedCosts = sum('eq') + draws + sum('overflow');
     add('draws', 'Debt', 'Every month\'s cost is paid by equity or a loan draw (debt draws follow costs)', tie(costs, fundedCosts) ? 'pass' : 'hard', 'Costs ' + M(costs) + ' = equity ' + M(sum('eq') + sum('overflow')) + ' + draws ' + M(draws) + ' (' + M(costs - fundedCosts) + ' difference).');
     /* 4 capitalised interest recomputed month by month */
-    var bal = 0, bad = [], accrued = 0, rate = num(s.conRate) / 1, commit = num(f.commit), payoff = Number(s.refiAtStab || 0) ? x.stab : x.hold;
-    ms.forEach(function(z){ var interest = (commit > 0 && z.mo <= x.stab && z.mo < payoff) ? bal * rate / 12 : 0, cap = Math.min(interest, Math.max(0, commit - bal));
+    var bal = 0, bad = [], accrued = 0, rate = num(s.conRate) / 1, commit = num(f.commit), bcap = num(f.balCap) || commit, payoff = Number(s.refiAtStab || 0) ? x.stab : x.hold;
+    ms.forEach(function(z){ var interest = (commit > 0 && z.mo <= x.stab && z.mo < payoff) ? bal * rate / 12 : 0, cap = Math.min(interest, Math.max(0, bcap - bal));
       if(!tie(cap, z.capInt, 0.5) || !tie(interest - cap, z.excess, 0.5)) bad.push('month ' + z.mo + ': interest ' + M(interest) + ' vs ' + M(num(z.capInt) + num(z.excess)));
       accrued += interest; bal += cap + num(z.loanDraw); if(!tie(bal, z.end, 0.5)) bad.push('month ' + z.mo + ': balance ' + M(bal) + ' vs ' + M(z.end)); });
     add('capint', 'Debt', 'Capitalised interest equals the opening balance x rate / 12 each month, and the balance rolls forward', bad.length ? 'hard' : 'pass', bad.length ? bad.slice(0, 3).join('; ') : 'Interest accrued ' + M(accrued) + ' = capitalised ' + M(capInt) + ' + paid by equity beyond the commitment ' + M(excess) + '; closing balance ' + M(bal) + '.');
-    add('facility', 'Debt', 'The loan balance never exceeds the commitment', Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0])) <= commit + TOL ? 'pass' : 'hard', 'Peak balance ' + M(Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0]))) + ' vs commitment ' + M(commit) + '.');
+    add('facility', 'Debt', 'The loan balance never exceeds the commitment', Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0])) <= bcap + TOL ? 'pass' : 'hard', 'Peak balance ' + M(Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0]))) + ' vs ' + (bcap > commit + TOL ? 'ceiling ' + M(bcap) + ' (principal commitment ' + M(commit) + ')' : 'commitment ' + M(commit)) + '.');
+    if(f.fixedFacility){ var pr = ms.reduce(function(a, z){ return a + num(z.loanDraw); }, 0); add('fixed', 'Debt', 'Principal drawn does not exceed the fixed facility amount', pr <= commit + TOL ? 'pass' : 'hard', 'Principal drawn ' + M(pr) + ' vs facility ' + M(commit) + (num(s.conEquityFirst) > 0 ? '; equity called ' + M(f.equityTotal) + ' against the equity-first amount ' + M(num(s.conEquityFirst)) : '') + '.'); }
     /* 5 payoff and sale */
     var last = rows[rows.length - 1] || {}, held = !!t.conHeldToSale, expectPay = last.refi !== undefined && x.hold < x.stab ? num((ms[x.hold - 1] || {}).end) : (num(t.permDebtAtSale) + (held ? num(t.conHeldBalance) : 0));
     add('payoff', 'Debt', 'The debt repaid at sale equals the outstanding balance', tie(num(last.payoff), expectPay) ? 'pass' : 'hard', 'Repaid ' + M(last.payoff) + ' vs outstanding ' + M(expectPay) + (held ? ' (construction loan held to sale)' : '') + '.');

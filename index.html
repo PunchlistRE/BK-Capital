@@ -2089,6 +2089,8 @@ function bkWaterfallV07(opts){
     IRR. 'deal' (legacy): accounts run on total equity and are reduced by total distributions. Tier
     rates, splits and the catch-up definition are the deal's own terms in both modes. */
  const lpMode=bkConventions(s).cvHurdleBasis==='lp', lpS=1-Number(s.gpShare||0);
+ /* optional terms (blank = as before): the share of each catch-up dollar the GP takes (1 = all of it), and a preferred return that only the LP earns */
+ const cr=(s.gpCatchupRate===undefined||s.gpCatchupRate===null||s.gpCatchupRate==='')?1:Math.min(1,Math.max(0,Number(s.gpCatchupRate))), lpOnly=Number(s.prefLPOnly)===1;
  for(let i=0;i<n;i++){
    // SYS_CF rows 107-108: equity draw is always a contribution; only a shortfall in the
    // OTHER monthly components (NOI-after-debt-service, asset fee, sale) adds to it, and any
@@ -2099,19 +2101,19 @@ function bkWaterfallV07(opts){
      const clc=TM.closing(con,i)*lpS;
      let a1=(b1+clc)*TM.f(s.pref,i)+(lc-clc), a2=(b2+clc)*TM.f(s.hurdle2,i)+(lc-clc), a3=(b3+clc)*TM.f(s.hurdle3,i)+(lc-clc);
      // Tier 1: pari passu until the LP's preferred-return account is cleared
-     const t1=lpS>0?Math.min(dist,a1/lpS):dist, lp1=t1*lpS;
+     const t1=lpOnly?Math.min(dist,a1):(lpS>0?Math.min(dist,a1/lpS):dist), lp1=lpOnly?t1:t1*lpS;
      cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
      const rem1=Math.max(0,dist-t1);
-     const catchup=Number(s.gpCatchup)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(1-Number(s.gpCatchupTarget)))):0;
+     const catchup=Number(s.gpCatchup)?(cr>Number(s.gpCatchupTarget)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(cr-Number(s.gpCatchupTarget)))):rem1):0, lpCU=(1-cr)*catchup;
      // Tier 2 / 3: the deal's own split until the LP's own account for that hurdle is cleared
-     const need2=Math.max(0,a2-lp1), t2=Number(s.t2LP)>0?Math.min(Math.max(0,dist-t1-catchup),need2/Number(s.t2LP)):0, lp2=t2*Number(s.t2LP);
-     const need3=Math.max(0,a3-lp1-lp2), t3=Number(s.t3LP)>0?Math.min(Math.max(0,dist-t1-catchup-t2),need3/Number(s.t3LP)):0, lp3=t3*Number(s.t3LP);
+     const need2=Math.max(0,a2-lp1-lpCU), t2=Number(s.t2LP)>0?Math.min(Math.max(0,dist-t1-catchup),need2/Number(s.t2LP)):0, lp2=t2*Number(s.t2LP);
+     const need3=Math.max(0,a3-lp1-lpCU-lp2), t3=Number(s.t3LP)>0?Math.min(Math.max(0,dist-t1-catchup-t2),need3/Number(s.t3LP)):0, lp3=t3*Number(s.t3LP);
      const t4=Math.max(0,dist-t1-catchup-t2-t3), lp4=t4*Number(s.t4LP);
-     const lpRecv=lp1+lp2+lp3+lp4;
+     const lpRecv=lp1+lpCU+lp2+lp3+lp4;
      b1=Math.max(0,a1-lpRecv); b2=Math.max(0,a2-lpRecv); b3=Math.max(0,a3-lpRecv);
      const lpCon=-con*lpS, gpCon=-con*gs;
-     const lpDist=lpRecv, gpDist=t1*gs+catchup+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
-     const promote=Math.max(0,gpDist-gs*(t1+catchup+t2+t3+t4));
+     const lpDist=lpRecv, gpDist=(lpOnly?0:t1*gs)+catchup*cr+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
+     const promote=Math.max(0,gpDist-gs*((lpOnly?0:t1)+catchup+t2+t3+t4));
      cumProm+=promote; cumDist+=t1+catchup+t2+t3+t4;
      rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
      continue;
@@ -2119,15 +2121,15 @@ function bkWaterfallV07(opts){
    const cl=TM.closing(con,i), beg1=b1, req1=(beg1+cl)*TM.f(s.pref,i)+(con-cl), t1=Math.min(dist,req1); b1=req1-t1;
    cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
    const rem1=Math.max(0,dist-t1);
-   const catchup=Number(s.gpCatchup)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(1-Number(s.gpCatchupTarget)))):0;
+   const catchup=Number(s.gpCatchup)?(cr>Number(s.gpCatchupTarget)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(cr-Number(s.gpCatchupTarget)))):rem1):0;
    const beg2=b2,req2=(beg2+cl)*TM.f(s.hurdle2,i)+(con-cl);
    const t2=Math.min(Math.max(0,dist-t1-catchup),Math.max(0,req2-t1-catchup)); b2=Math.max(0,req2-t1-catchup-t2);
    const beg3=b3,req3=(beg3+cl)*TM.f(s.hurdle3,i)+(con-cl);
    const t3=Math.min(Math.max(0,dist-t1-catchup-t2),Math.max(0,req3-t1-catchup-t2)); b3=Math.max(0,req3-t1-catchup-t2-t3);
    const t4=Math.max(0,dist-t1-catchup-t2-t3);
    const lpCon=-con*(1-Number(s.gpShare)), gpCon=-con*Number(s.gpShare);
-   const lpDist=t1*(1-Number(s.gpShare))+t2*Number(s.t2LP)+t3*Number(s.t3LP)+t4*Number(s.t4LP);
-   const gpDist=t1*Number(s.gpShare)+catchup+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
+   const lpDist=t1*(1-Number(s.gpShare))+(1-cr)*catchup+t2*Number(s.t2LP)+t3*Number(s.t3LP)+t4*Number(s.t4LP);
+   const gpDist=t1*Number(s.gpShare)+catchup*cr+t2*(1-Number(s.t2LP))+t3*(1-Number(s.t3LP))+t4*(1-Number(s.t4LP));
    const promote=Math.max(0,gpDist-Number(s.gpShare)*(t1+catchup+t2+t3+t4));
    cumProm+=promote; cumDist+=t1+catchup+t2+t3+t4;
    rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
@@ -2320,6 +2322,8 @@ function bkDevSoftCostLadder(s,gsf,hardTotal,price,kScale){
   const total=softSubtotal+devFee+contingency;
   return{lines,softSubtotal,devFee,contingency,total};
 }
+/* Contingency register: the hard-cost contingency in the budget tracked as original / allocated / change orders (used) / remaining / forecast. Change orders and expected further use draw it down; use beyond the original is an overrun added to hard cost, and (when release is 'saved') what is not used is taken out of cost. With no register the contingency is spent in full, as before. */
+window.bkContingencyStats=function(s,original){const c=(s&&s.contingency&&typeof s.contingency==='object')?s.contingency:null;if(!c)return null;const sum=a=>(Array.isArray(a)?a:[]).reduce((t,r)=>t+(Number(r&&r.amount)||0),0);const alloc=sum(c.allocations),used=sum(c.changeOrders),more=Math.max(0,Number(c.forecastMore)||0),forecast=used+more,remaining=original-used,fRemaining=original-forecast,over=Math.max(0,-fRemaining),saved=c.release==='saved'?Math.max(0,fRemaining):0;return{original,allocated:alloc,unallocated:original-alloc,used,remaining,more,forecast,forecastRemaining:fRemaining,overrun:over,saved,release:c.release==='saved'?'saved':'spent',adj:over-saved};};
 function bkDevV09(){
  const s=bkEnsureV06(), isDev=String(s.dealType||'').toLowerCase().includes('develop');
  const land=Number(s.landOverrideOn)?Number(s.residualLandValue||0):Number(s.purchasePrice||0);
@@ -2346,10 +2350,11 @@ function bkDevV09(){
      const c=costAtK(1); hard=c.hard.total; soft=c.soft.total; hardLadder=c.hard; softLadder=c.soft; k=1;
    }
  }
+ let contReg=null;if(isDev&&hardLadder){contReg=bkContingencyStats(s,hardLadder.contingency);if(contReg&&contReg.adj){hardLadder=Object.assign({},hardLadder,{contingency:hardLadder.contingency+contReg.adj,total:hardLadder.total+contReg.adj});hard=hardLadder.total;}}
  const ramp=isDev?bkDevLeaseupRamp(s,co,stab,luMo):{months:[],leaseDef:0};
  const leaseDef=ramp.leaseDef, unlev=land+close+acq+pre+hard+soft+leaseDef;
  const phases=[['Pre-Development',preMo?1:'-',preMo||'-',preMo],['Construction',conMo?preMo+1:'-',conMo?co:'-',conMo],['Certificate of Occupancy',isDev&&co?co:'-',isDev&&co?co:'-',isDev&&co?1:0],['Lease-Up / Absorption',luMo?co+1:(isDev?'-':1),luMo?stab:(isDev?'-':1),luMo],['Stabilized Operations',stab,hold,Math.max(0,hold-stab+1)],['Sale / Exit',hold,hold,1]];
- return{s,isDev,land,close,acq,pre,hard,soft,hardLadder,softLadder,calibK:k,leaseDef,leaseupRamp:ramp.months,unlev,preMo,conMo,luMo,co,stab,hold,phases};
+ return{s,isDev,land,close,acq,pre,hard,soft,hardLadder,softLadder,contReg,calibK:k,leaseDef,leaseupRamp:ramp.months,unlev,preMo,conMo,luMo,co,stab,hold,phases};
 }
 const _dealV09=sheetDealUnderwrite;sheetDealUnderwrite=function(){const o=_dealV09();o.main+=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Development - Workbook Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkSelect('Development Budget Mode','devBudgetMode',[['SOURCE','SOURCE'],['PARAMETRIC','PARAMETRIC']])}${bkInput('Gross Building Area','gsf','GSF')}${bkInput('Source Construction Budget','sourceConstruction','$')}${bkInput('Pre-Development Period','predevMonths','months')}${bkInput('Construction Period','constructionMonths','months')}${bkInput('Lease-Up Period','leaseupMonths','months')}${bkInput('Pre-Leased Occupancy at CO','preleasedPct','%','pct')}${bkInput('Predevelopment Carry','predevCarry','$')}</tbody></table></div>
 <div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Development - Hard Cost Trade Lines ($ / GSF, Development!F25:F38)</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('Demolition, Abatement & Site Clearing','hc_demo','$/GSF')}${bkInput('Site Work, Utilities & Off-Sites','hc_sitework','$/GSF')}${bkInput('Excavation, Shoring & Foundations','hc_excavation','$/GSF')}${bkInput('Structured Parking - Below Grade','hc_parking','$/GSF')}${bkInput('Concrete Podium & Superstructure','hc_podium','$/GSF')}${bkInput('Exterior Envelope, Glazing & Balconies','hc_envelope','$/GSF')}${bkInput('Roofing, Waterproofing & Membrane','hc_roofing','$/GSF')}${bkInput('MEP & Fire Protection','hc_mep','$/GSF')}${bkInput('Elevators & Conveying','hc_elevators','$/GSF')}${bkInput('Interior Partitions & Common Finishes','hc_partitions','$/GSF')}${bkInput('Unit Interiors - Cabinets, Appliances, Fixtures','hc_unitint','$/GSF')}${bkInput('Amenity & Common Area Fit-Out','hc_amenity','$/GSF')}${bkInput('Commercial Shell / Fit-Out','hc_commshell','$/GSF')}${bkInput('Landscape, Hardscape & Streetscape','hc_landscape','$/GSF')}${bkInput('General Conditions & Requirements','hardGCPct','%','pct')}${bkInput('Contractor Fee','hardContractorFeePct','%','pct')}${bkInput('Risk, Payment & Bonds','hardRiskBondsPct','%','pct')}${bkInput('Hard Cost Contingency','hardContPct','%','pct')}</tbody></table></div>
@@ -2404,6 +2409,8 @@ function bkDevLifecycleV13(x){
   deficitFunded:Number(x.leaseDef||0)>0,                       // F15: a lease-up deficit is funded capital; its negative NOI is NOT charged again in returns
   saleBeforeTakeout:x.hold<x.stab};                            // F16: before stabilisation there is no permanent loan to repay
 }
+/* Initial reserves: cash funded into reserve buckets at closing, completion, stabilization or a month number. 'operating' pays the lease-up shortfall, 'interest' pays construction interest that would otherwise fall to equity, 'held' sits as cash. Whatever is left is released at the sale. */
+window.bkInitReserves=function(s,x){const a=Array.isArray(s&&s.initReserves)?s.initReserves:[];return a.map(function(r){const amt=Number(r&&r.amount);if(!(amt>0))return null;const at=r.at,mo=at==='co'?x.co:at==='stab'?x.stab:(at==='close'||at==='predev'||at===undefined||at==='')?1:Number(at);const use=r.use==='operating'||r.use==='interest'?r.use:'held';return {name:String(r.name||'Reserve'),amount:amt,mo:Math.min(Math.max(1,Math.round(isFinite(mo)?mo:1)),x.hold),use:use};}).filter(Boolean);};
 function bkDevFundingV10(){
  const x=bkDevV09(),s=x.s;if(!x.isDev)return Object.assign(x,{months:[],commit:0,actualCapInt:0,upfrontFees:0,levered:x.unlev,equityTotal:x.unlev});
  // x.leaseDef / x.unlev are already the real, ramp-computed values from bkDevV09() -- no longer a flat manual
@@ -2414,10 +2421,12 @@ function bkDevFundingV10(){
  /* interest is capitalised only through stabilisation (see the draw loop below), so the interest reserve that
     sizes the commitment must stop there too, with or without a takeout; otherwise a no-takeout loan exceeds its LTC. */
  const payoff=Number(s.refiAtStab||0)?x.stab:x.hold, accr=Math.max(3,Math.round((Math.min(payoff,x.stab)-(x.preMo+1)+1)*.7)), intFac=Math.max(0,Number(s.conUtil||0))*rate*accr/12, U0=x.unlev+Number(s.lenderLegal||0), ltc=Number(s.conLTC||0), ltv=Number(s.conLTV||0);
- const commitLTC=ltc>0&&ltc*(feeFac+intFac)<1?ltc*U0/(1-ltc*(feeFac+intFac)):0,commitLTV=ltv>0?ltv*stabVal:Number.POSITIVE_INFINITY,commit=(()=>{const a=ltc>0?(commitLTC||0):Number.POSITIVE_INFINITY,raw=Math.min(a,commitLTV);return isFinite(raw)?Math.max(0,Math.floor(raw/1000)*1000):0;})(),upfront=commit*feeFac+Number(s.lenderLegal||0),estInt=commit*intFac,eqTarget=commit>0?Math.max(0,x.unlev+upfront+estInt-commit):9.9e14;
+ /* optional fixed-facility terms (blank = the facility is sized from loan to cost / value as before): a fixed principal, a ceiling on the balance including capitalised interest, an equity-first amount, and a fee on the undrawn principal */
+ const fixedAmt=Math.max(0,Number(s.conFixedAmt||0)),ceil=Math.max(0,Number(s.conCeiling||0)),eqFirst=Math.max(0,Number(s.conEquityFirst||0)),unusedPct=Math.max(0,Number(s.conUnusedFeePct||0));
+ const commitLTC=ltc>0&&ltc*(feeFac+intFac)<1?ltc*U0/(1-ltc*(feeFac+intFac)):0,commitLTV=ltv>0?ltv*stabVal:Number.POSITIVE_INFINITY,commitCalc=(()=>{const a=ltc>0?(commitLTC||0):Number.POSITIVE_INFINITY,raw=Math.min(a,commitLTV);return isFinite(raw)?Math.max(0,Math.floor(raw/1000)*1000):0;})(),commit=fixedAmt>0?fixedAmt:commitCalc,balCap=Math.max(commit,ceil),upfront=commit*feeFac+Number(s.lenderLegal||0),estInt=commit*intFac,eqTarget=eqFirst>0?eqFirst:(commit>0?Math.max(0,x.unlev+upfront+estInt-commit):9.9e14);
  /* unit-level lease-up: the operating shortfall is funded in the months it actually occurs (the unit schedule's negative NOI), not spread evenly */
  let leaseShares=null;if(typeof bkDevUnitOn==='function'&&bkDevUnitOn(s)&&x.leaseDef>0){const sf={};let tot=0;(x.leaseupRamp||[]).forEach(r=>{const v=Math.max(0,-Number(r.after||0));if(v>0){sf[r.mo]=v;tot+=v;}});if(tot>0){leaseShares={};Object.keys(sf).forEach(k=>{leaseShares[k]=sf[k]/tot;});}}
- let bal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
+ const resList=bkInitReserves(s,x);let opBal=0,intBal=0,heldBal=0,resFundedT=0,resDrawnT=0;let bal=0,prin=0,unusedTotal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
  for(let mo=1;mo<=x.hold;mo++){
    const land=mo===1?x.land+x.close+x.acq+x.pre:0;
    let hard=x.hard*bkCurveShare(mo,LC.conStart,LC.conLen,s.hardCurveMethod,s.hardCurveSteepness);
@@ -2428,12 +2437,15 @@ function bkDevFundingV10(){
    let lease=x.leaseDef*(leaseShares?(leaseShares[mo]||0):bkCurveShare(mo,x.co+1,x.luMo,'Straight-Line',1)),fees=mo===x.preMo+1?upfront:0;
    cumHard+=hard;cumSoft+=soft;cumLease+=lease;cumFees+=fees;
    if(mo===LC.sweepMo){const rh=x.hard-cumHard,rs=x.soft-cumSoft,rl=x.leaseDef-cumLease,rf=upfront-cumFees;if(rh>.01)hard+=rh;if(rs>.01)soft+=rs;if(rl>.01)lease+=rl;if(rf>.01)fees+=rf;}
-   const need=land+hard+soft+lease+fees;
-   const eq=Math.min(need,Math.max(0,eqTarget-cumEq));cumEq+=eq;
-   const beg=bal,interest=(commit>0&&mo<=x.stab&&mo<payoff)?beg*rate/12:0,capInt=Math.min(interest,Math.max(0,commit-beg)),excess=Math.max(0,interest-capInt),loanDraw=(commit>0&&mo<payoff)?Math.min(Math.max(0,need-eq),Math.max(0,commit-beg-capInt)):0,overflow=Math.max(0,need-eq-loanDraw);bal=beg+capInt+loanDraw;actualCapInt+=capInt;overflowTotal+=overflow+excess;cumNeed+=need;
-   months.push({mo,land,hard,soft,lease,fees,need,eq,beg,capInt,excess,loanDraw,overflow,end:bal,cumNeed});
+   const unused=(unusedPct>0&&commit>0&&mo>=x.preMo+1&&mo<=x.stab&&mo<payoff)?Math.max(0,commit-prin)*unusedPct/12:0;unusedTotal+=unused;
+   let resFund=0,resFundOp=0;resList.forEach(r=>{if(r.mo===mo){resFund+=r.amount;if(r.use==='operating'){opBal+=r.amount;resFundOp+=r.amount;}else if(r.use==='interest')intBal+=r.amount;else heldBal+=r.amount;}});resFundedT+=resFund;
+   const resLease=Math.min(lease,opBal);opBal-=resLease;
+   const need=land+hard+soft+lease+fees+unused+resFund,fundNeed=need-resLease;
+   const eq=Math.min(fundNeed,Math.max(0,eqTarget-cumEq));cumEq+=eq;
+   const beg=bal,interest=(commit>0&&mo<=x.stab&&mo<payoff)?beg*rate/12:0,capInt=Math.min(interest,Math.max(0,balCap-beg)),excess=Math.max(0,interest-capInt),loanDraw=(commit>0&&mo<payoff)?Math.min(Math.max(0,fundNeed-eq),Math.max(0,commit-prin),Math.max(0,balCap-beg-capInt)):0,overflow=Math.max(0,fundNeed-eq-loanDraw),resInt=Math.min(excess,intBal);intBal-=resInt;resDrawnT+=resLease+resInt;bal=beg+capInt+loanDraw;prin+=loanDraw;actualCapInt+=capInt;overflowTotal+=overflow+excess-resInt;cumNeed+=need;
+   months.push({mo,land,hard,soft,lease,fees,unused,resFund,resFundOp,resLease,resInt,need,eq,beg,capInt,excess,loanDraw,overflow,end:bal,cumNeed});
  }
- return Object.assign(x,{stabVal,rate,feeFac,commitLTC,commitLTV,commit,upfrontFees:upfront,estInt,eqTarget,actualCapInt,overflowTotal,levered:x.unlev+upfront+actualCapInt,equityTotal:cumEq+overflowTotal,months});
+ return Object.assign(x,{stabVal,rate,feeFac,commitLTC,commitLTV,commit,balCap,fixedFacility:fixedAmt>0,unusedFees:unusedTotal,resFunded:resFundedT,resDrawn:resDrawnT,resRelease:opBal+intBal+heldBal,resList,upfrontFees:upfront+unusedTotal,estInt,eqTarget,actualCapInt,overflowTotal,levered:x.unlev+upfront+unusedTotal+actualCapInt,equityTotal:cumEq+overflowTotal,months});
 }
 const _dealV10=sheetDealUnderwrite;sheetDealUnderwrite=function(){const o=_dealV10();const xv10=bkDevV09();o.main+=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Construction Facility & Draw Curves - Workbook Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkSelect('Hard Cost Curve','hardCurveMethod',[['Straight-Line','Straight-Line'],['S-Curve','S-Curve']])}${bkInput('Hard Cost Curve Steepness','hardCurveSteepness','x')}${bkSelect('Soft Construction Curve','softConMethod',[['Straight-Line','Straight-Line'],['S-Curve','S-Curve']])}${bkInput('Soft Construction Steepness','softConSteepness','x')}<tr><td class="rowlabel">Lease-Up Operating Deficit<span class="bk-sub">Cumulative negative NOI, CO to Stab-1 (see Pre-Leased Occupancy / Lease-Up Period above)</span></td><td>${bkFmt(xv10.leaseDef)}</td><td style="text-align:left">$</td><td><span class="status-chip">CALC</span></td></tr>${bkInput('Construction Max LTC','conLTC','%','pct')}${bkInput('Construction Max LTSV','conLTV','%','pct')}${bkInput('Construction Rate','conRate','%','pct')}${bkInput('Construction Origination Fee','conOrigFee','%','pct')}${bkInput('Rate Cap Cost','conCapCost','%','pct')}${bkInput('Sizing Utilization','conUtil','%','pct')}${bkInput('Guaranty Fee','guarantyFeePct','%','pct')}${bkInput('Lender Legal','lenderLegal','$')}</tbody></table></div>`;return o;};
 function sheetDevDrawsV10(){const x=bkDevFundingV10();if(!x.isDev)return sheetDevDrawsV09();const rows=x.months.filter(z=>z.need||z.capInt||z.loanDraw||z.eq||z.overflow).slice(0,60).map(z=>`<tr><td class="rowlabel">${z.mo}</td><td>${bkFmt(z.hard)}</td><td>${bkFmt(z.soft)}</td><td>${bkFmt(z.need)}</td><td>${bkFmt(z.eq)}</td><td>${bkFmt(z.loanDraw)}</td><td>${bkFmt(z.capInt)}</td><td>${bkFmt(z.end)}</td></tr>`).join('');const main=`<div class="tbl-wrap"><table class="fin"><caption>Development Draws - Monthly Engine</caption><thead><tr><th class="rowlabel-h">Month</th><th>Hard</th><th>Soft</th><th>Funding Need</th><th>Equity</th><th>Facility Draw</th><th>Cap. Interest</th><th>Ending Balance</th></tr></thead><tbody>${rows}</tbody></table></div><div class="note-flag"><span>&#10003;</span><div><b>Monthly development engine -</b> hard-cost S-curves, the workbook's 28% / 62% / 10% soft-cost timing, equity-first funding, construction-facility draws, commitment caps, and monthly capitalized interest are now running in-browser.</div></div>`;return{title:'Dev Draws',crumbs:'Development',desc:'Monthly development funding schedule and construction facility interaction.',meta:{Property:x.s.name,Curve:x.s.hardCurveMethod||'S-Curve','Commitment':bkFmt(x.commit),'Cap. Interest':bkFmt(x.actualCapInt)},main,sidebar:sidebarShell(`<div class="card"><div class="card-head">Construction Facility</div><div class="metric-list"><div class="metric-row"><span class="k">Commitment</span><span class="v">${bkFmt(x.commit)}</span></div><div class="metric-row"><span class="k">Upfront Fees</span><span class="v">${bkFmt(x.upfrontFees)}</span></div><div class="metric-row"><span class="k">Actual Cap. Interest</span><span class="v">${bkFmt(x.actualCapInt)}</span></div><div class="metric-row"><span class="k">Levered All-In</span><span class="v">${bkFmt(x.levered)}</span></div></div></div>${colorKeyCard()}`)};}
@@ -2527,10 +2539,11 @@ function bkDevMonthlyReturnsV12(){
  /* tenant-level commercial leases (when on): the retail the lease schedule earns, in place of the retail inside the growth path, and its leasing capital */
  const LH=(typeof bkDevLeaseHooks==='function')?bkDevLeaseHooks(s,x):null, leaseDelta=k=>LH?LH.delta(k):0, leaseCap=k=>LH?LH.cap(k):0;
  const curveNOI=k=>k>=x.stab?noiAtYear(Math.max(1,Math.ceil((k-x.stab+1)/12)))/12+leaseDelta(k):Number((rampByMo[k]||{after:0}).after||0);
+ let opAvail=0,opUsed=0;
  for(let mo=1;mo<=months;mo++){
    const dt=bkMonthEnd(start,mo);   // V32.1: month-end
    const funding=x.months[mo-1]||{eq:0,overflow:0};
-   const equityDraw=Number(funding.eq||0)+Number(funding.overflow||0)+Number(funding.excess||0);   /* interest beyond the commitment is paid by equity in the month it accrues */
+   const equityDraw=Number(funding.eq||0)+Number(funding.overflow||0)+Number(funding.excess||0)-Number(funding.resInt||0);   /* interest beyond the commitment is paid by equity in the month it accrues */
    const isOperating=mo>=x.stab;
    const ramp=rampByMo[mo];
    const opYear=Math.max(1,Math.ceil((mo-x.stab+1)/12));
@@ -2545,12 +2558,16 @@ function bkDevMonthlyReturnsV12(){
    let sale=0,payoff=0,grossSale=0,dispoFee=0;
    if(mo===months){let fwdExitNOI=0;for(let k=months+1;k<=months+12;k++)fwdExitNOI+=curveNOI(k);grossSale=fwdExitNOI/exitCap;sale=grossSale*(1-saleCost);dispoFee=grossSale*Number(s.dispositionFeePct||0);payoff=LCR.saleBeforeTakeout?Number((x.months[months-1]||{end:0}).end||0):permBal+(x.conHeldToSale?Number(x.conHeldBalance||0):0);}
    const leaseCapMo=leaseCap(mo);
-   const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo;
+   /* the operating reserve pays an operating shortfall in the lease-up months before the partners are asked for it; what is left of the initial reserves is released with the sale */
+   opAvail+=Number(funding.resFundOp||0)-Number(funding.resLease||0);
+   const cf0=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo, short0=Math.max(0,-(cf0+equityDraw+refiEq)), resOp=Math.min(short0,opAvail);opAvail-=resOp;opUsed+=resOp;
+   const resRel=(mo===months)?Math.max(0,Number(x.resRelease||0)-opUsed):0;
+   const cf=cf0+resOp+resRel;
    /* unlevered flow: every project cost as it falls (no financing fee, no interest), the property's own income, and the sale net of selling costs; no loan, no refinance, no equity split */
    uCost.push(Number(funding.land||0)+Number(funding.hard||0)+Number(funding.soft||0)+Number(funding.lease||0)); uVals.push(-uCost[uCost.length-1]+noi-assetFee-leaseCapMo+sale-dispoFee);
    /* investors contribute and receive gross: the equity called (and any shortfall in the month's other cash) is a contribution, the surplus of the other cash is a distribution; they are never netted against each other */
    const otherCF=cf+equityDraw+refiEq, wfContrib=equityDraw+refiEq+Math.max(0,-otherCF), wfDist=Math.max(0,otherCF);
-   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale,wfContrib,wfDist});
+   rows.push({m:mo,y:Math.ceil(mo/12),dt,resRelease:resRel,resOp,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale,wfContrib,wfDist});
    values.push(cf);dates.push(dt);
  }
  const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=rows.reduce((z,r)=>z+r.wfDist,0),contrib=rows.reduce((z,r)=>z+r.wfContrib,0),moic=contrib?dist/contrib:0;
@@ -6778,6 +6795,7 @@ try{implement(document);}catch(e){}
     const opL=[Number(s.t2LP||0),Number(s.t3LP||0),Number(s.t4LP||0)], pick=(k,d)=>(s[k]===undefined||s[k]===null||s[k]==='')?d:Number(s[k]);
     const saleL=[pick('t2LPs',opL[0]),pick('t3LPs',opL[1]),pick('t4LPs',opL[2])];
     const TM=window.bkWfTiming(x);
+    const cr=(s.gpCatchupRate===undefined||s.gpCatchupRate===null||s.gpCatchupRate==='')?1:Math.min(1,Math.max(0,Number(s.gpCatchupRate))), lpOnly=Number(s.prefLPOnly)===1;
     let ib1=0,ib2=0,ib3=0,cumCon=0,cumDist=0,cumProm=0,lpCumCon=0,cumLPDist=0; const rows=[];
     const comb=(a,e)=>mode==='IRR'?a:mode==='EM'?e:(all?Math.max(a,e):Math.min(a,e));
     for(let i=0;i<n;i++){
@@ -6790,12 +6808,12 @@ try{implement(document);}catch(e){}
       const segs=split?[{d:opD,l:opL,sale:false},{d:saleD,l:saleL,sale:true}]:[{d:dist,l:opL,sale:false}];
       let lpGot=0, T1=0,CU=0,T2=0,T3=0,T4=0, gpD=0, lpD=0, promOp=0, promSale=0;
       segs.forEach(sg=>{ if(!(sg.d>0)) return; const d=sg.d, L=sg.l, e1=Math.max(0,R1-lpGot), e2=Math.max(0,R2-lpGot), e3=Math.max(0,R3-lpGot);
-        const t1=lpS>0?Math.min(d,e1/lpS):d, lp1=t1*lpS, preCatchProfit=Math.max(0,(cumDist+t1)-cumCon), rem1=Math.max(0,d-t1);
-        const tg=Number(s.gpCatchupTarget||0), catchup=Number(s.gpCatchup)&&tg<1?Math.min(rem1,Math.max(0,(tg*preCatchProfit-cumProm)/(1-tg))):0;
-        const need2=Math.max(0,e2-lp1), t2=L[0]>0?Math.min(Math.max(0,d-t1-catchup),need2/L[0]):0, lp2=t2*L[0];
-        const need3=Math.max(0,e3-lp1-lp2), t3=L[1]>0?Math.min(Math.max(0,d-t1-catchup-t2),need3/L[1]):0, lp3=t3*L[1];
-        const t4=Math.max(0,d-t1-catchup-t2-t3), lp4=t4*L[2], lpRecv=lp1+lp2+lp3+lp4, gp=t1*gs+catchup+t2*(1-L[0])+t3*(1-L[1])+t4*(1-L[2]);
-        const prom=Math.max(0,gp-gs*(t1+catchup+t2+t3+t4)); cumProm+=prom; cumDist+=t1+catchup+t2+t3+t4; lpGot+=lpRecv; cumLPDist+=lpRecv;
+        const t1=lpOnly?Math.min(d,e1):(lpS>0?Math.min(d,e1/lpS):d), lp1=lpOnly?t1:t1*lpS, preCatchProfit=Math.max(0,(cumDist+t1)-cumCon), rem1=Math.max(0,d-t1);
+        const tg=Number(s.gpCatchupTarget||0), catchup=Number(s.gpCatchup)&&tg<1?(cr>tg?Math.min(rem1,Math.max(0,(tg*preCatchProfit-cumProm)/(cr-tg))):rem1):0, lpCU=(1-cr)*catchup;
+        const need2=Math.max(0,e2-lp1-lpCU), t2=L[0]>0?Math.min(Math.max(0,d-t1-catchup),need2/L[0]):0, lp2=t2*L[0];
+        const need3=Math.max(0,e3-lp1-lpCU-lp2), t3=L[1]>0?Math.min(Math.max(0,d-t1-catchup-t2),need3/L[1]):0, lp3=t3*L[1];
+        const t4=Math.max(0,d-t1-catchup-t2-t3), lp4=t4*L[2], lpRecv=lp1+lpCU+lp2+lp3+lp4, gp=(lpOnly?0:t1*gs)+catchup*cr+t2*(1-L[0])+t3*(1-L[1])+t4*(1-L[2]);
+        const prom=Math.max(0,gp-gs*((lpOnly?0:t1)+catchup+t2+t3+t4)); cumProm+=prom; cumDist+=t1+catchup+t2+t3+t4; lpGot+=lpRecv; cumLPDist+=lpRecv;
         T1+=t1;CU+=catchup;T2+=t2;T3+=t3;T4+=t4;lpD+=lpRecv;gpD+=gp; if(sg.sale) promSale+=prom; else promOp+=prom; });
       ib1=Math.max(0,a1-lpGot); ib2=Math.max(0,a2-lpGot); ib3=Math.max(0,a3-lpGot);
       const lpCon=-lc, gpCon=-con*gs, promote=promOp+promSale;
@@ -6814,6 +6832,7 @@ try{implement(document);}catch(e){}
 
     const n=x.rows.length, gpShare=Number(s.gpShare||0), lpShare=1-gpShare;
     const em1=Math.max(0,Number(s.em1||0)), em2=Math.max(em1,Number(s.em2||0)), em3=Math.max(em2,Number(s.em3||0));
+    const cr=(s.gpCatchupRate===undefined||s.gpCatchupRate===null||s.gpCatchupRate==='')?1:Math.min(1,Math.max(0,Number(s.gpCatchupRate))), lpOnly=Number(s.prefLPOnly)===1;
     let cumCon=0,cumDist=0,cumProm=0,cumLPDist=0;
     const rows=[];
     for(let i=0;i<n;i++){
@@ -6825,15 +6844,15 @@ try{implement(document);}catch(e){}
 
       // Tier 1: pari passu until LP cumulative distributions reach EM1 on cumulative LP contributions.
       const needLP1=Math.max(0,lpCumCon*em1-cumLPDist);
-      const t1=lpShare>0?Math.min(rem,needLP1/lpShare):0; rem-=t1;
-      let lpDist=t1*lpShare, gpDist=t1*gpShare;
-      cumLPDist+=t1*lpShare;
+      const t1=lpOnly?Math.min(rem,needLP1):(lpShare>0?Math.min(rem,needLP1/lpShare):0); rem-=t1;
+      let lpDist=lpOnly?t1:t1*lpShare, gpDist=lpOnly?0:t1*gpShare;
+      cumLPDist+=lpOnly?t1:t1*lpShare;
 
       // Existing GP catch-up convention retained after Tier 1.
       const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
       const target=Math.max(0,Math.min(.999999,Number(s.gpCatchupTarget||0)));
-      const catchup=Number(s.gpCatchup)&&target<1 ? Math.min(rem,Math.max(0,(target*preCatchProfit-cumProm)/(1-target))) : 0;
-      rem-=catchup; gpDist+=catchup;
+      const catchup=Number(s.gpCatchup)&&target<1 ? (cr>target?Math.min(rem,Math.max(0,(target*preCatchProfit-cumProm)/(cr-target))):rem) : 0;
+      rem-=catchup; gpDist+=catchup*cr; lpDist+=(1-cr)*catchup; cumLPDist+=(1-cr)*catchup;
 
       // Tier 2 / 3: allocate at the selected promote split until LP reaches each EM threshold.
       const t2LP=Number(s.t2LP||0), t3LP=Number(s.t3LP||0), t4LP=Number(s.t4LP||0);
@@ -6844,7 +6863,7 @@ try{implement(document);}catch(e){}
       const t4=Math.max(0,rem); lpDist+=t4*t4LP; gpDist+=t4*(1-t4LP); cumLPDist+=t4*t4LP;
 
       const lpCon=-con*lpShare, gpCon=-con*gpShare;
-      const promote=Math.max(0,gpDist-gpShare*(t1+catchup+t2+t3+t4));
+      const promote=Math.max(0,gpDist-gpShare*((lpOnly?0:t1)+catchup+t2+t3+t4));
       cumProm+=promote; cumDist+=t1+catchup+t2+t3+t4;
       rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1:Math.max(0,lpCumCon*em1-cumLPDist),b2:Math.max(0,lpCumCon*em2-cumLPDist),b3:Math.max(0,lpCumCon*em3-cumLPDist)});
     }
@@ -12362,11 +12381,11 @@ extend('Debt','w3aConstructionSizing', function(o){
       tie('Levered cost = unlevered + fees + capitalized interest', x.levered, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0)+(Number(x.actualCapInt)||0))
     + tie('Sources = Uses at the project level', (Number(x.equityTotal)||0)+(Number(x.commit)||0)>=(Number(x.levered)||0) ? Number(x.levered)||0 : (Number(x.equityTotal)||0)+(Number(x.commit)||0), Number(x.levered)||0, 1e9)
     + tie('Facility drawn never exceeds the commitment',
-        Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; })), Number(x.commit)||0, 1e9)
+        Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; })), Number(x.balCap||x.commit)||0, 1e9)
     + '<tr>'+lbl('Peak facility balance')
       + val(money(Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; }))))
-      + val(money(x.commit)) + val('-')
-      + '<td class="v">'+ (Math.max.apply(null,(x.months||[{end:0}]).map(function(m){return Number(m.end)||0;})) <= (Number(x.commit)||0)+1
+      + val(money(x.balCap||x.commit)) + val('-')
+      + '<td class="v">'+ (Math.max.apply(null,(x.months||[{end:0}]).map(function(m){return Number(m.end)||0;})) <= (Number(x.balCap||x.commit)||0)+1
           ? chip('pass','WITHIN COMMITMENT') : chip('fail','OVER COMMITMENT')) + '</td></tr>');
 
   o.main = (o.main||'') + sizing + perm + recon;
@@ -12451,8 +12470,8 @@ extend('Dev Draws','w3aDrawDetail', function(o){
     a.land+=Number(m.land)||0; a.hard+=Number(m.hard)||0; a.soft+=Number(m.soft)||0;
     a.lease+=Number(m.lease)||0; a.fees+=Number(m.fees)||0; a.need+=Number(m.need)||0;
     a.eq+=Number(m.eq)||0; a.draw+=Number(m.loanDraw)||0; a.cap+=Number(m.capInt)||0;
-    a.exc+=Number(m.excess)||0; a.ovf+=Number(m.overflow)||0; return a;
-  }, {land:0,hard:0,soft:0,lease:0,fees:0,need:0,eq:0,draw:0,cap:0,exc:0,ovf:0});
+    a.exc+=Number(m.excess)||0; a.ovf+=Number(m.overflow)||0; a.unused+=Number(m.unused)||0; a.resFund+=Number(m.resFund)||0; a.resLease+=Number(m.resLease)||0; return a;
+  }, {land:0,hard:0,soft:0,lease:0,fees:0,need:0,eq:0,draw:0,cap:0,exc:0,ovf:0,unused:0,resFund:0,resLease:0});
   body += '<tr class="grandtotal">'+lbl('TOTAL')+val(money(tot.land))+val(money(tot.hard))+val(money(tot.soft))
         + val(money(tot.lease))+val(money(tot.fees))+val(money(tot.need))+val('-')+'</tr>';
 
@@ -12471,11 +12490,11 @@ extend('Dev Draws','w3aDrawDetail', function(o){
   var controls = wrapTable('Draw Schedule Integrity Controls',
     '<tr><th class="rowlabel-h">Check</th><th>A</th><th>B</th><th>Variance</th><th>Status</th></tr>',
       tie('Draw categories sum to total funding need',
-          tot.land+tot.hard+tot.soft+tot.lease+tot.fees, tot.need)
+          tot.land+tot.hard+tot.soft+tot.lease+tot.fees+tot.unused+tot.resFund, tot.need)
     + tie('Funding sources cover the funding need',
-          tot.eq+tot.draw+tot.ovf, tot.need)
+          tot.eq+tot.draw+tot.ovf, tot.need-tot.resLease)
     + tie('Total funding need ties to unlevered cost plus upfront fees',
-          tot.need, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0))
+          tot.need, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0)+(Number(x.resFunded)||0))
     + tie('Capitalized interest ties to the sizing engine', tot.cap, Number(x.actualCapInt)||0, 0.01)
     + tie('Equity draws plus overflow tie to total equity', tot.eq+tot.ovf, Number(x.equityTotal)||0, 0.01));
 
@@ -17585,11 +17604,13 @@ try{
     if(Number(x.pre)>0.5) uses.push(['Predevelopment Carry', x.pre]);
     uses.push(['Hard Costs', x.hard],['Soft Costs', x.soft]);
     if(Number(x.leaseDef)>0.5) uses.push(['Lease-Up Operating Deficit', x.leaseDef]);
-    uses.push(['Construction Facility Upfront Fees', x.upfrontFees],['Capitalized Construction Interest', x.actualCapInt],['Interest Funded by Equity Beyond the Commitment', excess]);
+    uses.push(['Construction Facility Fees (origination and unused commitment)', x.upfrontFees],['Capitalized Construction Interest', x.actualCapInt],['Interest Funded by Equity Beyond the Commitment', excess]);
+    if(Number(x.resFunded)>0.5) uses.push(['Initial Reserves Funded', x.resFunded]);
     var totalUses = uses.reduce(function(t,u){ return t+(Number(u[1])||0); },0);
     var srcs = [['Construction Facility - draws', draws],['Construction Facility - capitalized interest', capIntSched],['Equity - equity-first funding', eqPlan]];
     if(Math.abs(eqOver)>0.5) srcs.push(['Equity - cost overflow beyond the commitment', eqOver]);
     if(Math.abs(excess)>0.5) srcs.push(['Equity - interest beyond the commitment', excess]);
+    if(Number(x.resDrawn)>0.5) srcs.push(['Initial reserves - drawn for the lease-up shortfall and interest', x.resDrawn]);
     var totalSrc = srcs.reduce(function(t,u){ return t+u[1]; },0);
     var delta = totalSrc - totalUses, ok = Math.abs(delta) < 1;
     var facility = draws + capIntSched, equity = totalSrc - facility;
@@ -22595,10 +22616,10 @@ function buildDev(){
     + narr + '<div class="bx mt"><div class="t">Levered return against the hurdle</div>' + K.gauge(D) + '</div>'
     + '<div class="g1 mt"><div class="bx"><div class="t">Equity cash flow</div><div class="s">Each year\'s cash to equity; the line is the running total. Equity is funded through construction and lease-up, then returned from operations, the takeout and the sale.</div>' + K.chartCash(D) + '</div></div>', 2, N, D));
   /* 3 budget, funding and timeline */
-  var items = [['Land', fund.land], ['Closing costs', fund.close], ['Acquisition fee', fund.acq], ['Pre-development', fund.pre], ['Hard costs', fund.hard], ['Soft costs', fund.soft], ['Capitalised interest', fund.actualCapInt], ['Interest paid by equity beyond the loan commitment', excessInt], ['Loan fees', fund.upfrontFees]], totUses = allIn || sum(items.map(function(a){ return a[1]; }));
+  var items = [['Land', fund.land], ['Closing costs', fund.close], ['Acquisition fee', fund.acq], ['Pre-development', fund.pre], ['Hard costs', fund.hard], ['Soft costs', fund.soft], ['Capitalised interest', fund.actualCapInt], ['Interest paid by equity beyond the loan commitment', excessInt], ['Loan fees', fund.upfrontFees], ['Initial reserves funded', fund.resFunded]], totUses = allIn ? allIn + (fund.resFunded || 0) : sum(items.map(function(a){ return a[1]; }));
   function su(label, v, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td' + (cls ? '' : ' class="l"') + '>' + label + '</td><td>' + F(v) + '</td><td>' + (totUses ? P(v / totUses, 1) : '') + '</td></tr>'; }
   var uses = '<table><thead><tr><th>Uses</th><th>Amount</th><th>%</th></tr></thead><tbody>' + items.filter(function(a){ return Math.abs(a[1] || 0) > 0.5; }).map(function(a){ return su(a[0], a[1]); }).join('') + su('Total project cost', totUses, 'tot') + '</tbody></table>';
-  var sources = '<table><thead><tr><th>Sources</th><th>Amount</th><th>%</th></tr></thead><tbody>' + su('Construction loan - draws', loanDraws) + su('Construction loan - interest capitalised', fund.actualCapInt) + su('Equity', fund.equityTotal) + su('Total sources', loanDraws + (fund.actualCapInt || 0) + fund.equityTotal, 'tot') + '</tbody></table>';
+  var sources = '<table><thead><tr><th>Sources</th><th>Amount</th><th>%</th></tr></thead><tbody>' + su('Construction loan - draws', loanDraws) + su('Construction loan - interest capitalised', fund.actualCapInt) + su('Equity', fund.equityTotal) + (fund.resDrawn > 0.5 ? su('Initial reserves drawn', fund.resDrawn) : '') + su('Total sources', loanDraws + (fund.actualCapInt || 0) + fund.equityTotal + (fund.resDrawn || 0), 'tot') + '</tbody></table>';
   var palette = ['#0e2a4a', '#12609f', '#3A73DF', '#51A8DB', '#8FB8DE', '#3E9AE6', '#B8B2A0', '#c9d6e2'], bar = '<div class="bar" style="height:16px;margin:12px 0 4px">' + items.filter(function(a){ return a[1] > 0; }).map(function(a, j){ return '<i style="width:' + (a[1] / totUses * 100) + '%;background:' + palette[j % palette.length] + '"></i>'; }).join('') + '</div><div class="note" style="display:flex;flex-wrap:wrap;gap:4px 14px">' + items.filter(function(a){ return a[1] > 0; }).map(function(a, j){ return '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + palette[j % palette.length] + ';margin-right:4px"></span>' + a[0] + ' ' + P(a[1] / totUses, 0) + '</span>'; }).join('') + '</div>';
   var ph = fund.phases || [], pcol = ['#8FB8DE', '#12609f', '#3E9AE6', '#51A8DB', '#2E8B57', '#0e2a4a'], total = Math.max.apply(null, ph.map(function(p_){ return p_[2]; }).concat([1])), W = 696, g = '<svg viewBox="0 0 ' + W + ' ' + (ph.length * 24 + 30) + '" style="width:100%;height:auto;display:block;color:#0e2a4a">';
   ph.forEach(function(p_, j){ var x0 = 150 + (p_[1] - 1) / total * (W - 160), w = Math.max(6, (p_[2] - p_[1] + 1) / total * (W - 160)); g += '<text x="0" y="' + (j * 24 + 18) + '" font-size="11" fill="currentColor">' + esc(p_[0]) + '</text><rect x="' + x0 + '" y="' + (j * 24 + 6) + '" width="' + w + '" height="16" rx="4" fill="' + pcol[j % pcol.length] + '"/><text x="' + (x0 + w + 60 > W ? x0 + w - 6 : x0 + w + 6) + '" y="' + (j * 24 + 18) + '" text-anchor="' + (x0 + w + 60 > W ? 'end' : 'start') + '" font-size="10" font-weight="' + (x0 + w + 60 > W ? 700 : 400) + '" fill="' + (x0 + w + 60 > W && w > 60 ? '#fff' : 'currentColor') + '" opacity="' + (x0 + w + 60 > W ? 1 : .75) + '">' + (p_[1] === p_[2] ? 'month ' + p_[1] : p_[1] + '–' + p_[2]) + '</text>'; });
@@ -23261,7 +23282,7 @@ var TABS = [
   { id:'Revenues',   ic:'R', subs:[['res', 'Residential Rent'], ['com', 'Commercial'], ['oth', 'Other Income'], ['misc', 'Miscellaneous']] },
   { id:'Expenses',   ic:'E', subs:[['op', 'Operating'], ['nonop', 'Non-Operating'], ['cap', 'Capital'], ['grp', 'Expense Groups']] },
   { id:'Tenants',    ic:'T', subs:[['roll', 'Rent Roll'], ['lease', 'Commercial Leases'], ['abs', 'Space Absorption'], ['coh', 'Lease Cohort']] },
-  { id:'Investment', ic:'$', subs:[['acq', 'Acquisition'], ['fin', 'Financing'], ['dev', 'Development'], ['jv', 'Partnership'], ['fees', 'Fees']] },
+  { id:'Investment', ic:'$', subs:[['acq', 'Acquisition'], ['fin', 'Financing'], ['dev', 'Development'], ['cont', 'Contingency'], ['res', 'Reserves'], ['jv', 'Partnership'], ['fees', 'Fees']] },
   { id:'Valuation',  ic:'V', subs:[['exit', 'Exit'], ['sum', 'Value and Returns']] }
 ];
 var SUBKEY = 'bkcapital.ed.sub.v1', subs = (function(){ try { return JSON.parse(localStorage.getItem(SUBKEY) || '{}') || {}; } catch(e){ return {}; } })();
@@ -23511,16 +23532,43 @@ function pFin(s){ var d = isDev(s), out = '';
       R('Lender Tests Use', sel('lenderNoiBasis', [['', 'Before reserves'], ['after', 'After reserves']], { s:s, def:'' }), 'DSCR, and LTV on value')])
     + summaryTable('Loan Result', [['Loan', off ? 'none' : money(db.loan), off ? '' : 'binding: ' + esc(db.binding || '-')], ['Loan to Value', off ? '-' : pct(db.ltv, 1), ''], ['Loan to Cost', off ? '-' : pct(db.ltc, 1), ''], ['Going-In DSCR', off ? '-' : x2(db.dscr), ''], ['Equity Required', money(db.equity), '', 'tot']]); }
   else { var f = safe(function(){ return bkDevFundingV10(); }, null) || {};
-    out += form('Construction Loan', 'C', [R('Maximum Loan to Cost', inp('conLTC', 'pct', { s:s }), '%'), R('Maximum Loan to Stabilized Value', inp('conLTV', 'pct', { s:s }), '%'), R('Interest Rate', inp('conRate', 'pct', { s:s }), '% (index plus spread)'), R('Origination Fee', inp('conOrigFee', 'pct', { s:s }), '% of commitment'), R('Rate Cap Cost', inp('conCapCost', 'pct', { s:s }), '% of commitment'), R('Average Utilization (sizing estimate)', inp('conUtil', 'pct', { s:s }), '%'), R('Lender Legal and Reports', inp('lenderLegal', 'num', { s:s }), '$')])
+    out += form('Construction Loan', 'C', [R('Maximum Loan to Cost', inp('conLTC', 'pct', { s:s }), '%'), R('Maximum Loan to Stabilized Value', inp('conLTV', 'pct', { s:s }), '%'), R('Interest Rate', inp('conRate', 'pct', { s:s }), '% (index plus spread)'), R('Origination Fee', inp('conOrigFee', 'pct', { s:s }), '% of commitment'), R('Rate Cap Cost', inp('conCapCost', 'pct', { s:s }), '% of commitment'), R('Average Utilization (sizing estimate)', inp('conUtil', 'pct', { s:s }), '%'), R('Lender Legal and Reports', inp('lenderLegal', 'num', { s:s }), '$'), NOTE('Fixed facility terms. Leave all four blank to size the loan from loan to cost and value, as above. With a fixed amount, that amount is the loan principal (and the origination fee is charged on it); the ceiling caps the balance including capitalised interest; interest above the ceiling is paid by equity.'), R('Fixed Facility Amount', inp('conFixedAmt', 'num', { s:s, blank:'null' }), '$ loan principal (blank = sized by loan to cost)'), R('Balance Ceiling', inp('conCeiling', 'num', { s:s, blank:'null' }), '$ principal plus capitalised interest (blank = the facility amount)'), R('Equity Funds First', inp('conEquityFirst', 'num', { s:s, blank:'null' }), '$ spent before the first loan draw (blank = the equity the sizing implies)'), R('Unused Commitment Fee', inp('conUnusedFeePct', 'pct', { s:s, blank:'null' }), '% a year on the undrawn principal, until stabilization')])
     + form('Permanent Loan and Refinance', 'P', [R('At Stabilization', sel('refiAtStab', [['1', 'Refinance into a permanent loan'], ['0', 'Hold the construction loan to sale']], { s:s, def:String(num(s.refiAtStab)) })), R('Maximum Loan to Value', inp('permLTV', 'pct', { s:s }), '%'), R('Minimum DSCR', inp('permDSCR', 'num', { s:s }), 'x'), R('Minimum Debt Yield', inp('permDebtYield', 'pct', { s:s }), '%'), R('Interest Rate', inp('permRate', 'pct', { s:s }), '%'), R('Amortization', inp('permAmort', 'int', { s:s }), 'years'), R('Interest-Only Period', inp('permIO', 'int', { s:s }), 'years'), R('Financing Fee', inp('permOrigFee', 'pct', { s:s }), '%'), R('Valuation Cap Rate', inp('refiCapRate', 'pct', { s:s }), '% on forward NOI at refinance')])
     + summaryTable('Construction Loan Result', [['Commitment', money(f.commit), ''], ['Total Project Cost (levered)', money(f.levered), ''], ['Equity Required', money(f.equityTotal), '', 'tot']]); }
   return out; }
 function pDev(s){ if(!isDev(s)) return '<div class="ae-panel"><div class="ae-ph"><i>D</i>Development</div><div class="ae-form"><div class="note">This is an acquisition. Change the Deal Type on Property &gt; Description to Development to model a budget, schedule and construction financing.</div></div></div>';
   return form('Budget and Schedule', 'D', [R('Budget Mode', sel('devBudgetMode', [['SOURCE', 'Calibrate to the source construction total'], ['PARAMETRIC', 'Build up from the cost ladder']], { s:s, def:'SOURCE' })), R('Source Construction Budget', inp('sourceConstruction', 'num', { s:s }), '$ hard and soft'), R('Pre-Development Period', safe(function(){ return window.bkDevGanttOn(s); }, false) ? ro(String(num(s.predevMonths))) : inp('predevMonths', 'int', { s:s }), safe(function(){ return window.bkDevGanttOn(s); }, false) ? 'months (from the task schedule on Dev Schedule)' : 'months'), R('Construction Period', safe(function(){ return window.bkDevGanttOn(s); }, false) ? ro(String(num(s.constructionMonths))) : inp('constructionMonths', 'int', { s:s }), safe(function(){ return window.bkDevGanttOn(s); }, false) ? 'months (from the task schedule on Dev Schedule)' : 'months'), R('Lease-Up Period', safe(function(){ return window.bkDevUnitOn(s); }, false) ? ro(String(num(s.leaseupMonths))) : inp('leaseupMonths', 'int', { s:s }), safe(function(){ return window.bkDevUnitOn(s); }, false) ? 'months (from the unit schedule on Dev Lease-Up)' : 'months'), R('Pre-Leased at Completion', inp('preleasedPct', 'pct', { s:s }), '%'), R('Hard Cost Contingency', inp('hardContPct', 'pct', { s:s }), '%'), R('Soft Cost Contingency', inp('softContPct', 'pct', { s:s }), '%')])
     + '<div class="ae-row">' + btn('Cost ladder and budget', 'showSheet(\'Development\')', true) + btn('Schedule', 'showSheet(\'Dev Schedule\')') + btn('Draws', 'showSheet(\'Dev Draws\')') + '</div>'; }
+/* ---------- CONTINGENCY AND INITIAL RESERVES (development) ---------- */
+function listSet(key, i, field, raw, numeric){ var s = bkLoad(), a = s.contingency && s.contingency[key]; if(key === 'initReserves') a = s.initReserves; if(!a || !a[i]) return; if(numeric){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } a[i][field] = v; } else a[i][field] = raw; bkSave(s); showSheet(cur()); }
+window.bkEdCont = function(key, i, field, raw){ listSet(key, i, field, raw, field === 'amount'); };
+window.bkEdContAdd = function(key){ var s = bkLoad(); s.contingency = s.contingency || {}; s.contingency[key] = Array.isArray(s.contingency[key]) ? s.contingency[key] : []; var c = safe(function(){ return bkParseDealDate(s.closing, '2027-01-01'); }, new Date());
+  s.contingency[key].push(key === 'changeOrders' ? { name:'', month:c.getFullYear() + '-' + String(c.getMonth() + 1).padStart(2, '0'), amount:0 } : { name:'', amount:0 }); bkSave(s); showSheet(cur()); };
+window.bkEdContDel = function(key, i){ var s = bkLoad(); if(!s.contingency || !Array.isArray(s.contingency[key])) return; s.contingency[key].splice(i, 1); bkSave(s); showSheet(cur()); };
+window.bkEdContSet = function(field, raw){ var s = bkLoad(); s.contingency = s.contingency || {}; if(field === 'forecastMore'){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } s.contingency.forecastMore = v; } else s.contingency[field] = raw; bkSave(s); showSheet(cur()); };
+window.bkEdRes = function(i, field, raw){ listSet('initReserves', i, field, raw, field === 'amount'); };
+window.bkEdResAdd = function(){ var s = bkLoad(); s.initReserves = Array.isArray(s.initReserves) ? s.initReserves : []; s.initReserves.push({ name:'', amount:0, at:'close', use:'held' }); bkSave(s); showSheet(cur()); };
+window.bkEdResDel = function(i){ var s = bkLoad(); if(!Array.isArray(s.initReserves)) return; s.initReserves.splice(i, 1); if(!s.initReserves.length) delete s.initReserves; bkSave(s); showSheet(cur()); };
+function listTable(title, ic, key, cols, rows, addLabel, note){ return '<div class="ae-panel"><div class="ae-ph"><i>' + ic + '</i>' + esc(title) + '</div><table class="ae-grid"><thead><tr>' + cols.map(function(c){ return '<th>' + esc(c) + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' + (rows || '<tr><td class="c ro" colspan="' + (cols.length + 1) + '">None.</td></tr>') + '</tbody></table><div class="ae-row">' + btn(addLabel, key === 'initReserves' ? 'bkEdResAdd()' : 'bkEdContAdd(\'' + key + '\')') + '</div>' + (note ? '<div class="ae-form"><div class="note">' + note + '</div></div>' : '') + '</div>'; }
+function pContingency(s){ if(!isDev(s)) return pDev(s); var x = safe(function(){ return bkDevV09(); }, null) || {}, st = x.contReg, base = x.hardLadder ? (st ? st.original : x.hardLadder.contingency) : 0, c = s.contingency || {}, al = Array.isArray(c.allocations) ? c.allocations : [], co = Array.isArray(c.changeOrders) ? c.changeOrders : [];
+  var tin = function(key, i, f, v, ph, cls){ return '<input type="text" class="' + (cls || '') + '" id="ae-ct-' + key + '-' + f + '-' + i + '" value="' + esc(cls ? fmtIn(v, 'num') : v || '') + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' autocomplete="off" onchange="bkEdCont(\'' + key + '\',' + i + ',\'' + f + '\',this.value)">'; };
+  var dl = function(key, i){ return '<td class="c"><button type="button" class="ae-x" onclick="bkEdContDel(\'' + key + '\',' + i + ')">&times;</button></td>'; };
+  var sum = summaryTable('Contingency', [['Original Hard-Cost Contingency', money(base), st ? '' : 'in the budget; spent in full unless a register is kept'], ['Allocated to Trades', st ? money(st.allocated) : '-', ''], ['Unallocated', st ? money(st.unallocated) : '-', ''], ['Change Orders (used)', st ? money(st.used) : '-', ''], ['Remaining', st ? money(st.remaining) : '-', ''],
+    ['Further Use Expected', st ? money(st.more) : '-', ''], ['Forecast at Completion', st ? money(st.forecast) : '-', 'used + expected', 'tot'], ['Forecast Remaining', st ? money(st.forecastRemaining) : '-', st && st.forecastRemaining < 0 ? 'overrun' : ''], ['Added to Hard Cost (overrun)', st ? money(st.overrun) : '-', 'follows the hard-cost draw curve'], ['Taken out of Cost (saved)', st ? money(st.saved) : '-', st && st.release === 'saved' ? '' : 'only when unused contingency is released']]);
+  var ctl = form('Contingency Treatment', 'K', [R('Further Use Expected', '<input type="text" class="ae-in num" id="ae-ct-more" value="' + esc(fmtIn(c.forecastMore, 'num')) + '" autocomplete="off" onchange="bkEdContSet(\'forecastMore\',this.value)">', '$ not yet a change order'), R('Unused Contingency', '<select class="ae-sel" onchange="bkEdContSet(\'release\',this.value)"><option value="spent"' + (c.release === 'saved' ? '' : ' selected') + '>Is spent (stays in cost)</option><option value="saved"' + (c.release === 'saved' ? ' selected' : '') + '>Is saved (comes out of cost)</option></select>'), NOTE('Change orders draw the contingency down; use beyond the original is added to hard cost. The original contingency is set on Cost Ladder (hard contingency %).')]);
+  var t1 = listTable('Allocation of Contingency to Trades', 'A', 'allocations', ['Trade or purpose', 'Amount'], al.map(function(r, i){ return '<tr><td>' + tin('allocations', i, 'name', r.name, 'e.g. Podium') + '</td><td>' + tin('allocations', i, 'amount', r.amount, '', 'num') + '</td>' + dl('allocations', i) + '</tr>'; }).join(''), 'Add an allocation');
+  var t2 = listTable('Change Orders', 'C', 'changeOrders', ['Description', 'Month', 'Amount'], co.map(function(r, i){ return '<tr><td>' + tin('changeOrders', i, 'name', r.name, 'e.g. Added waterproofing') + '</td><td><input type="month" value="' + esc(r.month || '') + '" onchange="bkEdCont(\'changeOrders\',' + i + ',\'month\',this.value)"></td><td>' + tin('changeOrders', i, 'amount', r.amount, '', 'num') + '</td>' + dl('changeOrders', i) + '</tr>'; }).join(''), 'Add a change order');
+  return ctl + sum + t1 + t2; }
+function pReserves(s){ if(!isDev(s)) return pDev(s); var a = Array.isArray(s.initReserves) ? s.initReserves : [], f = safe(function(){ return bkDevFundingV10(); }, null) || {}, m = safe(function(){ return bkMonthlyReturns(); }, null) || {}, op = (m.rows || []).reduce(function(t, r){ return t + num(r.resOp); }, 0), rel = (m.rows || []).reduce(function(t, r){ return t + num(r.resRelease); }, 0);
+  var rows = a.map(function(r, i){ var at = r.at === 'co' || r.at === 'stab' || r.at === 'close' ? r.at : (has(r.at) ? 'm' : 'close'); return '<tr><td><input type="text" id="ae-rs-name-' + i + '" value="' + esc(r.name || '') + '" placeholder="e.g. Operating / lease-up" autocomplete="off" onchange="bkEdRes(' + i + ',\'name\',this.value)"></td><td><input type="text" class="num" id="ae-rs-amount-' + i + '" value="' + esc(fmtIn(r.amount, 'num')) + '" autocomplete="off" onchange="bkEdRes(' + i + ',\'amount\',this.value)"></td>'
+    + '<td><select onchange="bkEdRes(' + i + ',\'at\',this.value==\'m\'?\'1\':this.value)">' + [['close', 'Closing'], ['co', 'Completion'], ['stab', 'Stabilization'], ['m', 'Month number']].map(function(o){ return '<option value="' + o[0] + '"' + (at === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' + (at === 'm' ? ' <input type="text" class="num" style="width:56px" value="' + esc(r.at) + '" onchange="bkEdRes(' + i + ',\'at\',this.value)">' : '') + '</td>'
+    + '<td><select onchange="bkEdRes(' + i + ',\'use\',this.value)">' + [['operating', 'Pays the lease-up shortfall'], ['interest', 'Pays interest beyond the facility'], ['held', 'Held as cash']].map(function(o){ return '<option value="' + o[0] + '"' + ((r.use || 'held') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td><td class="c"><button type="button" class="ae-x" onclick="bkEdResDel(' + i + ')">&times;</button></td></tr>'; }).join('');
+  var tbl = '<div class="ae-panel"><div class="ae-ph"><i>R</i>Initial Reserves</div><table class="ae-grid"><thead><tr><th>Reserve</th><th>Amount</th><th>Funded At</th><th>Used For</th><th></th></tr></thead><tbody>' + (rows || '<tr><td class="c ro" colspan="5">No initial reserves.</td></tr>') + '</tbody></table><div class="ae-row">' + btn('Add a reserve', 'bkEdResAdd()') + '</div><div class="ae-form"><div class="note">A reserve is cash funded into the project (a use of funds, paid for by equity and the loan). Whatever it has not paid by the sale is released to equity with the sale proceeds. Interest paid from a reserve is not charged to equity.</div></div></div>';
+  var sum = a.length ? summaryTable('Reserves in the Hold', [['Funded', money(f.resFunded), ''], ['Paid Lease-Up Shortfall and Interest', money(num(f.resDrawn) + op), ''], ['Released with the Sale', money(rel), '', 'tot']]) : '';
+  return tbl + sum; }
 function pJv(s){ return form('Equity Waterfall', 'W', [R('GP / Sponsor Equity Share', inp('gpShare', 'pct', { s:s }), '%'), R('Hurdle Basis', sel('hurdleBasis', [['1', 'IRR hurdles'], ['2', 'Equity multiple hurdles'], ['3', 'IRR and equity multiple hurdles']], { s:s, def:String(num(s.hurdleBasis) || 1) })), R('IRR and Multiple Combine', sel('hurdleBoth', [['all', 'Both must be met'], ['either', 'Either is enough']], { s:s, def:String(s.hurdleBoth || 'all') })), R('Tested On', sel('cvHurdleBasis', [['lp', 'LP contributions and distributions'], ['deal', 'Total deal equity cash flows']], { s:s, def:safe(function(){ return bkConventions(s).cvHurdleBasis; }, 'lp') })),
     R('Tier 1 Preferred Return', inp('pref', 'pct', { s:s }), '% IRR'), R('Second Hurdle', inp('hurdle2', 'pct', { s:s }), '% IRR'), R('Third Hurdle', inp('hurdle3', 'pct', { s:s }), '% IRR'), R('Tier 2 Split to LP', inp('t2LP', 'pct', { s:s }), '%'), R('Tier 3 Split to LP', inp('t3LP', 'pct', { s:s }), '%'), R('Tier 4 Split to LP (residual)', inp('t4LP', 'pct', { s:s }), '%'),
-    R('GP Catch-Up', sel('gpCatchup', [['0', 'No'], ['1', 'Yes']], { s:s, def:String(num(s.gpCatchup)) })), R('Separate Promote For Sale Proceeds', sel('promoteSplit', [['0', 'No: one set of tier splits'], ['1', 'Yes: operating cash and sale / refinance proceeds']], { s:s, def:String(num(s.promoteSplit) || 0) })), R('Sale Proceeds: LP Share, Tiers 2 / 3 / 4', inp('t2LPs', 'pct', { s:s }) + inp('t3LPs', 'pct', { s:s }) + inp('t4LPs', 'pct', { s:s }), '% to the LP on sale / refinance proceeds (blank = same as operating); used when the separate promote is on'), R('Catch-Up Target', inp('gpCatchupTarget', 'pct', { s:s }), '% of total profit'), R('Equity Multiple Hurdles', inp('em1', 'num', { s:s }) + inp('em2', 'num', { s:s }) + inp('em3', 'num', { s:s }), 'x (used when the basis is equity multiple, or IRR and equity multiple)')])
+    R('GP Catch-Up', sel('gpCatchup', [['0', 'No'], ['1', 'Yes']], { s:s, def:String(num(s.gpCatchup)) })), R('Separate Promote For Sale Proceeds', sel('promoteSplit', [['0', 'No: one set of tier splits'], ['1', 'Yes: operating cash and sale / refinance proceeds']], { s:s, def:String(num(s.promoteSplit) || 0) })), R('Sale Proceeds: LP Share, Tiers 2 / 3 / 4', inp('t2LPs', 'pct', { s:s }) + inp('t3LPs', 'pct', { s:s }) + inp('t4LPs', 'pct', { s:s }), '% to the LP on sale / refinance proceeds (blank = same as operating); used when the separate promote is on'), R('Catch-Up Target', inp('gpCatchupTarget', 'pct', { s:s }), '% of total profit'), R('Catch-Up Rate to the GP', inp('gpCatchupRate', 'pct', { s:s, blank:'null' }), '% of each catch-up dollar the GP takes (blank = 100%)'), R('Preferred Return Earned By', sel('prefLPOnly', [['0', 'LP and GP pari passu'], ['1', 'LP only']], { s:s, def:String(num(s.prefLPOnly)) }), 'LP only: Tier 1 cash is the LP\'s preferred return and the GP takes none of it'), R('Equity Multiple Hurdles', inp('em1', 'num', { s:s }) + inp('em2', 'num', { s:s }) + inp('em3', 'num', { s:s }), 'x (used when the basis is equity multiple, or IRR and equity multiple)')])
     + '<div class="ae-row">' + btn('Equity waterfall results', 'showSheet(\'Equity Waterfall\')', true) + btn('Investors', 'showSheet(\'Investors\')') + '</div>'; }
 function pFees(s){ return form('Sponsor Fees', 'F', [R('Acquisition Fee', inp('acqFeePct', 'pct', { s:s }), '% of price, at closing'), R('Asset Management Fee', inp('assetMgmtPct', 'pct', { s:s }), '% of effective gross income'), R('Disposition Fee', inp('dispositionFeePct', 'pct', { s:s }), '% of sale price'), isDev(s) ? R('Development Fee', inp('devFeePct', 'pct', { s:s }), '% of hard + soft') : NOTE(''), isDev(s) ? R('Construction Management Fee', inp('cmFeePct', 'pct', { s:s }), '% of hard cost') : NOTE(''), isDev(s) ? R('Guaranty Fee', inp('guarantyFeePct', 'pct', { s:s }), '% of the construction commitment') : NOTE('Development and guaranty fees apply to development deals.')]); }
 /* ---------- VALUATION ---------- */
@@ -23535,14 +23583,14 @@ function pSum(s){ var dev = isDev(s), c = calc(), m = safe(function(){ return bk
 /* ---------- assembly ---------- */
 var PANELS = {
   Property: { desc:pDesc, loc:pLoc, area:pArea, analysis:pAnalysis, tpl:pTpl }, Market: { infl:pInfl, vac:pVac, credit:pCredit, lease:pLease, rent:pRent },
-  Revenues: { res:pRes, com:pCom, oth:pOth, misc:pMisc }, Expenses: { op:pOp, nonop:pNonop, cap:pCap, grp:pGrp }, Tenants: { roll:pRoll, lease:pLease, abs:pAbs, coh:pCoh }, Investment: { acq:pAcq, fin:pFin, dev:pDev, jv:pJv, fees:pFees }, Valuation: { exit:pExit, sum:pSum } };
+  Revenues: { res:pRes, com:pCom, oth:pOth, misc:pMisc }, Expenses: { op:pOp, nonop:pNonop, cap:pCap, grp:pGrp }, Tenants: { roll:pRoll, lease:pLease, abs:pAbs, coh:pCoh }, Investment: { acq:pAcq, fin:pFin, dev:pDev, cont:pContingency, res:pReserves, jv:pJv, fees:pFees }, Valuation: { exit:pExit, sum:pSum } };
 var EXTRA = { Revenues:revSummary, Expenses:expSummary };
 var HINTS = { desc:'Who the deal is. The Deal ID is fixed once the deal exists.', loc:'Where it is and how large the site is.', area:'Areas drive every amount you enter per unit or per GSF.', analysis:'When the analysis starts, how long it runs, and which case you are looking at.', tpl:'Save a deal\'s rates and structure and start the next one from it.',
   infl:'Rates by year. A blank year uses the Default; upside and downside cases shift the Default.', vac:'Vacancy and credit loss reduce income before expenses.', credit:'Credit loss is charged on rent; choose what it is charged on.', lease:'Concessions and loss to lease reduce rent before vacancy.', rent:'Market rent against what the rent roll says is in place.',
   res:'Residential rent is units times the average rent, unless a rent roll is loaded.', com:'Retail base rent and NNN recoveries per square foot.', oth:'Income per unit per year.', misc:'Flat income lines such as a roof antenna, parking or storage.',
   op:'Each line has its own basis and frequency; amounts are stored as annual totals. Inflation comes from the Market tab.', nonop:'Below NOI: replacement reserves and the asset management fee.', cap:'Dated one-off capital items below NOI. They reduce cash flow and returns, not NOI.', grp:'Operating expenses grouped as lenders and investors read them.',
   roll:'Unit-level income. A loaded rent roll replaces the average-rent calculation.', lease:'Each commercial tenant on its own lease: rent, bumps, expiry, recoveries, and what happens when it rolls.', abs:'How fast space leases up after completion.', coh:'Lease expirations by year.',
-  acq:'What it costs to get into the deal.', fin:'The loan, how it is sized, and what that leaves for equity.', dev:'Budget, schedule and cost ladder for a development.', jv:'How profit splits between the sponsor and its investors.', fees:'Fees paid to the sponsor.', exit:'How the deal is sold and at what price.', sum:'What the deal is worth and what it returns, from the same engine as every other sheet.' };
+  acq:'What it costs to get into the deal.', fin:'The loan, how it is sized, and what that leaves for equity.', dev:'Budget, schedule and cost ladder for a development.', cont:'The contingency in the budget: what is allocated, what change orders have used, and the forecast at completion.', res:'Cash set aside at closing or completion that pays the lease-up shortfall or interest and is released at the sale.', jv:'How profit splits between the sponsor and its investors.', fees:'Fees paid to the sponsor.', exit:'How the deal is sold and at what price.', sum:'What the deal is worth and what it returns, from the same engine as every other sheet.' };
 function render(tab){ var s = bkLoad(), sub = subOf(tab), t = TABS.filter(function(x){ return x.id === tab; })[0];
   var strip = '<div class="ae-tabs" role="tablist">' + TABS.map(function(x){ return '<div class="ae-tab' + (x.id === tab ? ' on' : '') + '" role="tab" tabindex="0" onclick="showSheet(\'' + x.id + '\')" onkeydown="if(event.key===\'Enter\')showSheet(\'' + x.id + '\')"><i>' + x.ic + '</i>' + x.id + '</div>'; }).join('') + '</div>';
   var subStrip = '<div class="ae-subs" role="tablist">' + t.subs.map(function(a){ return '<div class="ae-sub' + (a[0] === sub ? ' on' : '') + '" role="tab" tabindex="0" onclick="bkEdSub(\'' + tab + '\',\'' + a[0] + '\')" onkeydown="if(event.key===\'Enter\')bkEdSub(\'' + tab + '\',\'' + a[0] + '\')">' + a[1] + '</div>'; }).join('') + '</div>';
@@ -26468,7 +26516,7 @@ function run(opts){
   var okC = Math.abs(dist - tiers) <= TOL_USD * Math.max(1, n / 12) && Math.abs(dist - partner) <= TOL_USD * Math.max(1, n / 12) && Math.abs(con - pcon) <= TOL_USD && Math.abs(dist - eng) <= TOL_USD * Math.max(1, n / 12);
   out.other.push({ id:'cons', label:'Every dollar is distributed once', status:okC ? 'pass' : 'fail', detail:'Distributable ' + M(dist) + '; paid through the tiers ' + M(tiers) + '; to LP and GP ' + M(partner) + '; the engine\'s own distributions ' + M(eng) + '. Contributions ' + M(con) + ' vs ' + M(pcon) + ' to the partners.' });
   /* promote */
-  var gpDist = sum(function(r){ return r.gpDist; }), prorata = gs * sum(function(r){ return r.t1 + r.catchup + r.t2 + r.t3 + r.t4; }), promote = num(w.promote);
+  var gpDist = sum(function(r){ return r.gpDist; }), prorata = gs * sum(function(r){ return (Number(s.prefLPOnly) === 1 ? 0 : r.t1) + r.catchup + r.t2 + r.t3 + r.t4; }), promote = num(w.promote);
   var okP = promote >= -TOL_USD && Math.abs(promote - Math.max(0, gpDist - prorata)) <= TOL_USD * Math.max(1, n / 12) + 1 && (out.hurdles[0].cleared || promote <= TOL_USD);
   out.other.push({ id:'promote', label:'Promote is the GP\'s excess over its pro-rata share', status:okP ? 'pass' : 'fail', detail:'GP distributions ' + M(gpDist) + ' less its pro-rata share ' + M(prorata) + ' = ' + M(gpDist - prorata) + '; promote reported ' + M(promote) + '.' + (out.hurdles[0].cleared ? '' : ' Tier 1 was not cleared, so no promote is due.') });
   var sm = safe(function(){ return summary({ w:w }); }, null);
@@ -26493,18 +26541,18 @@ function run(opts){
 function summary(opts){
   var w = (opts && opts.w) || window.bkWaterfallV07(), s = w.s, rows = w.rows, n = rows.length, gs = num(s.gpShare) || 0, lpS = 1 - gs;
   var em = String(s.hurdleBasis) === '2', lpMode = String(s.hurdleBasis) === '3' ? true : safe(function(){ return bkConventions(s).cvHurdleBasis === 'lp'; }, true), r1 = Math.pow(1 + (num(s.pref) || 0), 1 / 12) - 1;
-  var P = 0, capLeft = 0, acc = { roc:0, pref:0 }, prevB = 0, lpT1 = 0;
+  var lpOnlyP = Number(s.prefLPOnly) === 1 && lpMode, P = 0, capLeft = 0, acc = { roc:0, pref:0 }, prevB = 0, lpT1 = 0;
   var TM2 = window.bkWfTiming(w.x);
   rows.forEach(function(r, i2){
-    var inflow = lpMode ? -r.lpCon : r.con, T1 = lpMode ? r.t1 * lpS : r.t1, rocM = 0, prefM = 0;
+    var inflow = lpMode ? -r.lpCon : r.con, T1 = lpMode ? (lpOnlyP ? r.t1 : r.t1 * lpS) : r.t1, rocM = 0, prefM = 0;
     capLeft += inflow;
     if(!em){ P += (prevB + TM2.closing(r.con, i2) * (lpMode ? lpS : 1)) * (TM2.f(s.pref, i2) - 1); prefM = Math.min(T1, Math.max(0, P)); P -= prefM; rocM = Math.min(T1 - prefM, Math.max(0, capLeft)); prefM = T1 - rocM; /* tier-1 cash beyond capital and the accrued preference (a multiple hurdle) is hurdle return too */ capLeft -= rocM; }
     else { rocM = Math.min(T1, Math.max(0, capLeft)); capLeft -= rocM; prefM = T1 - rocM; }
     prevB = num(r.ib1 != null ? r.ib1 : r.b1) || 0; acc.roc += rocM; acc.pref += prefM; lpT1 += lpMode ? T1 : T1 * lpS; });
-  var scaleLP = lpMode ? 1 : lpS, scaleGP = lpMode ? gs / lpS : gs;
+  var scaleLP = lpMode ? 1 : lpS, scaleGP = lpMode ? (lpOnlyP ? 0 : gs / lpS) : gs;
   var sum = function(f){ return rows.reduce(function(t, r){ return t + (num(f(r)) || 0); }, 0); };
   var lpC = -sum(function(r){ return r.lpCon; }), gpC = -sum(function(r){ return r.gpCon; }), lpD = sum(function(r){ return r.lpDist; }), gpD = sum(function(r){ return r.gpDist; });
-  var gpT1 = lpMode ? (lpS > 0 ? lpT1 * gs / lpS : 0) : sum(function(r){ return r.t1; }) * gs;
+  var gpT1 = lpMode ? (lpOnlyP ? 0 : lpS > 0 ? lpT1 * gs / lpS : 0) : sum(function(r){ return r.t1; }) * gs;
   var lp = { contributed:lpC, roc:acc.roc * scaleLP, pref:acc.pref * scaleLP, promote:0, dist:lpD }, gp = { contributed:gpC, roc:acc.roc * scaleGP, pref:acc.pref * scaleGP, promote:sum(function(r){ return r.promote; }), dist:gpD };
   lp.excess = lpD - lp.roc - lp.pref; gp.excess = gpD - gp.roc - gp.pref - gp.promote;
   [lp, gp].forEach(function(q){ q.profit = q.dist - q.contributed; q.moic = q.contributed > 0 ? q.dist / q.contributed : NaN; });
@@ -27632,18 +27680,19 @@ function run(){
     var unlevSum = x.land + x.close + x.acq + x.pre + x.hard + x.soft + num(x.leaseDef);
     add('unlev', 'Budget', 'Cost before financing equals land + closing + acquisition fee + pre-development + hard + soft + lease-up deficit', tie(unlevSum, x.unlev) ? 'pass' : 'hard', M(unlevSum) + ' vs ' + M(x.unlev) + '.');
     /* 2 sources = uses */
-    var excess = sum('excess'), draws = sum('loanDraw'), capInt = num(f.actualCapInt), uses = x.unlev + num(f.upfrontFees) + capInt + excess, sources = draws + capInt + num(f.equityTotal);
+    var excess = sum('excess'), draws = sum('loanDraw'), capInt = num(f.actualCapInt), uses = x.unlev + num(f.upfrontFees) + capInt + excess + num(f.resFunded), sources = draws + capInt + num(f.equityTotal) + num(f.resDrawn);
     add('su', 'Sources & Uses', 'Total sources equal total uses', tie(uses, sources) ? 'pass' : 'hard', 'Uses ' + M(uses) + ' (cost ' + M(x.unlev) + ' + fees ' + M(f.upfrontFees) + ' + capitalised interest ' + M(capInt) + ' + interest paid by equity beyond the commitment ' + M(excess) + '); sources ' + M(sources) + ' (draws ' + M(draws) + ' + capitalised interest ' + M(capInt) + ' + equity ' + M(f.equityTotal) + ').');
     /* 3 draws follow eligible costs */
-    var costs = sum('need'); var fundedCosts = sum('eq') + draws + sum('overflow');
+    var costs = sum('need') - sum('resLease'); var fundedCosts = sum('eq') + draws + sum('overflow');
     add('draws', 'Debt', 'Every month\'s cost is paid by equity or a loan draw (debt draws follow costs)', tie(costs, fundedCosts) ? 'pass' : 'hard', 'Costs ' + M(costs) + ' = equity ' + M(sum('eq') + sum('overflow')) + ' + draws ' + M(draws) + ' (' + M(costs - fundedCosts) + ' difference).');
     /* 4 capitalised interest recomputed month by month */
-    var bal = 0, bad = [], accrued = 0, rate = num(s.conRate) / 1, commit = num(f.commit), payoff = Number(s.refiAtStab || 0) ? x.stab : x.hold;
-    ms.forEach(function(z){ var interest = (commit > 0 && z.mo <= x.stab && z.mo < payoff) ? bal * rate / 12 : 0, cap = Math.min(interest, Math.max(0, commit - bal));
+    var bal = 0, bad = [], accrued = 0, rate = num(s.conRate) / 1, commit = num(f.commit), bcap = num(f.balCap) || commit, payoff = Number(s.refiAtStab || 0) ? x.stab : x.hold;
+    ms.forEach(function(z){ var interest = (commit > 0 && z.mo <= x.stab && z.mo < payoff) ? bal * rate / 12 : 0, cap = Math.min(interest, Math.max(0, bcap - bal));
       if(!tie(cap, z.capInt, 0.5) || !tie(interest - cap, z.excess, 0.5)) bad.push('month ' + z.mo + ': interest ' + M(interest) + ' vs ' + M(num(z.capInt) + num(z.excess)));
       accrued += interest; bal += cap + num(z.loanDraw); if(!tie(bal, z.end, 0.5)) bad.push('month ' + z.mo + ': balance ' + M(bal) + ' vs ' + M(z.end)); });
     add('capint', 'Debt', 'Capitalised interest equals the opening balance x rate / 12 each month, and the balance rolls forward', bad.length ? 'hard' : 'pass', bad.length ? bad.slice(0, 3).join('; ') : 'Interest accrued ' + M(accrued) + ' = capitalised ' + M(capInt) + ' + paid by equity beyond the commitment ' + M(excess) + '; closing balance ' + M(bal) + '.');
-    add('facility', 'Debt', 'The loan balance never exceeds the commitment', Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0])) <= commit + TOL ? 'pass' : 'hard', 'Peak balance ' + M(Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0]))) + ' vs commitment ' + M(commit) + '.');
+    add('facility', 'Debt', 'The loan balance never exceeds the commitment', Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0])) <= bcap + TOL ? 'pass' : 'hard', 'Peak balance ' + M(Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0]))) + ' vs ' + (bcap > commit + TOL ? 'ceiling ' + M(bcap) + ' (principal commitment ' + M(commit) + ')' : 'commitment ' + M(commit)) + '.');
+    if(f.fixedFacility){ var pr = ms.reduce(function(a, z){ return a + num(z.loanDraw); }, 0); add('fixed', 'Debt', 'Principal drawn does not exceed the fixed facility amount', pr <= commit + TOL ? 'pass' : 'hard', 'Principal drawn ' + M(pr) + ' vs facility ' + M(commit) + (num(s.conEquityFirst) > 0 ? '; equity called ' + M(f.equityTotal) + ' against the equity-first amount ' + M(num(s.conEquityFirst)) : '') + '.'); }
     /* 5 payoff and sale */
     var last = rows[rows.length - 1] || {}, held = !!t.conHeldToSale, expectPay = last.refi !== undefined && x.hold < x.stab ? num((ms[x.hold - 1] || {}).end) : (num(t.permDebtAtSale) + (held ? num(t.conHeldBalance) : 0));
     add('payoff', 'Debt', 'The debt repaid at sale equals the outstanding balance', tie(num(last.payoff), expectPay) ? 'pass' : 'hard', 'Repaid ' + M(last.payoff) + ' vs outstanding ' + M(expectPay) + (held ? ' (construction loan held to sale)' : '') + '.');
