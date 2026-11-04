@@ -23,10 +23,11 @@ function bkDevMonthlyReturnsV12(){
  /* tenant-level commercial leases (when on): the retail the lease schedule earns, in place of the retail inside the growth path, and its leasing capital */
  const LH=(typeof bkDevLeaseHooks==='function')?bkDevLeaseHooks(s,x):null, leaseDelta=k=>LH?LH.delta(k):0, leaseCap=k=>LH?LH.cap(k):0;
  const curveNOI=k=>k>=x.stab?noiAtYear(Math.max(1,Math.ceil((k-x.stab+1)/12)))/12+leaseDelta(k):Number((rampByMo[k]||{after:0}).after||0);
+ let opAvail=0,opUsed=0;
  for(let mo=1;mo<=months;mo++){
    const dt=bkMonthEnd(start,mo);   // V32.1: month-end
    const funding=x.months[mo-1]||{eq:0,overflow:0};
-   const equityDraw=Number(funding.eq||0)+Number(funding.overflow||0)+Number(funding.excess||0);   /* interest beyond the commitment is paid by equity in the month it accrues */
+   const equityDraw=Number(funding.eq||0)+Number(funding.overflow||0)+Number(funding.excess||0)-Number(funding.resInt||0);   /* interest beyond the commitment is paid by equity in the month it accrues */
    const isOperating=mo>=x.stab;
    const ramp=rampByMo[mo];
    const opYear=Math.max(1,Math.ceil((mo-x.stab+1)/12));
@@ -41,12 +42,16 @@ function bkDevMonthlyReturnsV12(){
    let sale=0,payoff=0,grossSale=0,dispoFee=0;
    if(mo===months){let fwdExitNOI=0;for(let k=months+1;k<=months+12;k++)fwdExitNOI+=curveNOI(k);grossSale=fwdExitNOI/exitCap;sale=grossSale*(1-saleCost);dispoFee=grossSale*Number(s.dispositionFeePct||0);payoff=LCR.saleBeforeTakeout?Number((x.months[months-1]||{end:0}).end||0):permBal+(x.conHeldToSale?Number(x.conHeldBalance||0):0);}
    const leaseCapMo=leaseCap(mo);
-   const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo;
+   /* the operating reserve pays an operating shortfall in the lease-up months before the partners are asked for it; what is left of the initial reserves is released with the sale */
+   opAvail+=Number(funding.resFundOp||0)-Number(funding.resLease||0);
+   const cf0=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo, short0=Math.max(0,-(cf0+equityDraw+refiEq)), resOp=Math.min(short0,opAvail);opAvail-=resOp;opUsed+=resOp;
+   const resRel=(mo===months)?Math.max(0,Number(x.resRelease||0)-opUsed):0;
+   const cf=cf0+resOp+resRel;
    /* unlevered flow: every project cost as it falls (no financing fee, no interest), the property's own income, and the sale net of selling costs; no loan, no refinance, no equity split */
    uCost.push(Number(funding.land||0)+Number(funding.hard||0)+Number(funding.soft||0)+Number(funding.lease||0)); uVals.push(-uCost[uCost.length-1]+noi-assetFee-leaseCapMo+sale-dispoFee);
    /* investors contribute and receive gross: the equity called (and any shortfall in the month's other cash) is a contribution, the surplus of the other cash is a distribution; they are never netted against each other */
    const otherCF=cf+equityDraw+refiEq, wfContrib=equityDraw+refiEq+Math.max(0,-otherCF), wfDist=Math.max(0,otherCF);
-   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale,wfContrib,wfDist});
+   rows.push({m:mo,y:Math.ceil(mo/12),dt,resRelease:resRel,resOp,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale,wfContrib,wfDist});
    values.push(cf);dates.push(dt);
  }
  const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=rows.reduce((z,r)=>z+r.wfDist,0),contrib=rows.reduce((z,r)=>z+r.wfContrib,0),moic=contrib?dist/contrib:0;

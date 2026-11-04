@@ -21,7 +21,7 @@ echo "== probability-weighted returns vs independent model"; node audit/risk_run
 echo "== import rent roll (CSV / XLSX / PDF, synthetic fixtures)"; node audit/import_rr_test.js index.html | tail -2
 echo "== tie-out to the owner's V7.2 master workbook (10 stored deals)"; node audit/gold_tieout.js index.html --check | tail -1
 echo "== editor engine support (growth curves, miscellaneous income, capital items)"; node audit/editor_engine_test.js index.html | tail -2
-echo "== property editor (7 tabs, 29 sub-tabs, writes and conversions)"; node audit/editor_test.js index.html | tail -2
+echo "== property editor (7 tabs, 31 sub-tabs, writes and conversions)"; node audit/editor_test.js index.html | tail -2
 echo "== reports (cash flow, valuation, tenant, audit; reconcile to the engine)"; node audit/reports_test.js index.html | tail -2
 echo "== commercial lease model (rollover branches, recoveries, TI/LC, editor, reports)"; node audit/lease_test.js index.html | tail -2
 echo "== lease model fixes (merged rollover, market defaults, general vacancy stress, bump anchor)"; node audit/lease_fix_test.js index.html "$REF" | tail -1
@@ -59,6 +59,7 @@ echo "== Undo / Redo for every function (all stores, exact, labelled, drastic-ch
 echo "== Harbor Point stage A (development Snapshot, Sources = Uses in sheet and PDF, takeout wording, unlevered returns)"; node audit/harbor_stageA_test.js index.html | tail -1
 echo "== Harbor Point stage B (hurdle replay, gross contributions, integrity checks fail visibly, credit gate, independent second model)"; node audit/harbor_stageB_test.js index.html | tail -1
 echo "== Harbor Point stage C (investor summary pages, summary of investment, portfolio impact, cover photo, Model Checks)"; node audit/harbor_stageC_test.js index.html | tail -1
+echo "== Harbor Point stage E (fixed facility, equity first, unused fee, initial reserves, contingency register, LP-only pref, catch-up rate, independent model)"; node audit/harbor_stageE_test.js index.html | tail -1
 echo "== Stage D (Deal Underwrite tab bar; input / calculated / linked / N/A / attention cell convention on every input sheet)"; node audit/stageD_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"

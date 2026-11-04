@@ -68,7 +68,7 @@ function run(opts){
   var okC = Math.abs(dist - tiers) <= TOL_USD * Math.max(1, n / 12) && Math.abs(dist - partner) <= TOL_USD * Math.max(1, n / 12) && Math.abs(con - pcon) <= TOL_USD && Math.abs(dist - eng) <= TOL_USD * Math.max(1, n / 12);
   out.other.push({ id:'cons', label:'Every dollar is distributed once', status:okC ? 'pass' : 'fail', detail:'Distributable ' + M(dist) + '; paid through the tiers ' + M(tiers) + '; to LP and GP ' + M(partner) + '; the engine\'s own distributions ' + M(eng) + '. Contributions ' + M(con) + ' vs ' + M(pcon) + ' to the partners.' });
   /* promote */
-  var gpDist = sum(function(r){ return r.gpDist; }), prorata = gs * sum(function(r){ return r.t1 + r.catchup + r.t2 + r.t3 + r.t4; }), promote = num(w.promote);
+  var gpDist = sum(function(r){ return r.gpDist; }), prorata = gs * sum(function(r){ return (Number(s.prefLPOnly) === 1 ? 0 : r.t1) + r.catchup + r.t2 + r.t3 + r.t4; }), promote = num(w.promote);
   var okP = promote >= -TOL_USD && Math.abs(promote - Math.max(0, gpDist - prorata)) <= TOL_USD * Math.max(1, n / 12) + 1 && (out.hurdles[0].cleared || promote <= TOL_USD);
   out.other.push({ id:'promote', label:'Promote is the GP\'s excess over its pro-rata share', status:okP ? 'pass' : 'fail', detail:'GP distributions ' + M(gpDist) + ' less its pro-rata share ' + M(prorata) + ' = ' + M(gpDist - prorata) + '; promote reported ' + M(promote) + '.' + (out.hurdles[0].cleared ? '' : ' Tier 1 was not cleared, so no promote is due.') });
   var sm = safe(function(){ return summary({ w:w }); }, null);
@@ -93,18 +93,18 @@ function run(opts){
 function summary(opts){
   var w = (opts && opts.w) || window.bkWaterfallV07(), s = w.s, rows = w.rows, n = rows.length, gs = num(s.gpShare) || 0, lpS = 1 - gs;
   var em = String(s.hurdleBasis) === '2', lpMode = String(s.hurdleBasis) === '3' ? true : safe(function(){ return bkConventions(s).cvHurdleBasis === 'lp'; }, true), r1 = Math.pow(1 + (num(s.pref) || 0), 1 / 12) - 1;
-  var P = 0, capLeft = 0, acc = { roc:0, pref:0 }, prevB = 0, lpT1 = 0;
+  var lpOnlyP = Number(s.prefLPOnly) === 1 && lpMode, P = 0, capLeft = 0, acc = { roc:0, pref:0 }, prevB = 0, lpT1 = 0;
   var TM2 = window.bkWfTiming(w.x);
   rows.forEach(function(r, i2){
-    var inflow = lpMode ? -r.lpCon : r.con, T1 = lpMode ? r.t1 * lpS : r.t1, rocM = 0, prefM = 0;
+    var inflow = lpMode ? -r.lpCon : r.con, T1 = lpMode ? (lpOnlyP ? r.t1 : r.t1 * lpS) : r.t1, rocM = 0, prefM = 0;
     capLeft += inflow;
     if(!em){ P += (prevB + TM2.closing(r.con, i2) * (lpMode ? lpS : 1)) * (TM2.f(s.pref, i2) - 1); prefM = Math.min(T1, Math.max(0, P)); P -= prefM; rocM = Math.min(T1 - prefM, Math.max(0, capLeft)); prefM = T1 - rocM; /* tier-1 cash beyond capital and the accrued preference (a multiple hurdle) is hurdle return too */ capLeft -= rocM; }
     else { rocM = Math.min(T1, Math.max(0, capLeft)); capLeft -= rocM; prefM = T1 - rocM; }
     prevB = num(r.ib1 != null ? r.ib1 : r.b1) || 0; acc.roc += rocM; acc.pref += prefM; lpT1 += lpMode ? T1 : T1 * lpS; });
-  var scaleLP = lpMode ? 1 : lpS, scaleGP = lpMode ? gs / lpS : gs;
+  var scaleLP = lpMode ? 1 : lpS, scaleGP = lpMode ? (lpOnlyP ? 0 : gs / lpS) : gs;
   var sum = function(f){ return rows.reduce(function(t, r){ return t + (num(f(r)) || 0); }, 0); };
   var lpC = -sum(function(r){ return r.lpCon; }), gpC = -sum(function(r){ return r.gpCon; }), lpD = sum(function(r){ return r.lpDist; }), gpD = sum(function(r){ return r.gpDist; });
-  var gpT1 = lpMode ? (lpS > 0 ? lpT1 * gs / lpS : 0) : sum(function(r){ return r.t1; }) * gs;
+  var gpT1 = lpMode ? (lpOnlyP ? 0 : lpS > 0 ? lpT1 * gs / lpS : 0) : sum(function(r){ return r.t1; }) * gs;
   var lp = { contributed:lpC, roc:acc.roc * scaleLP, pref:acc.pref * scaleLP, promote:0, dist:lpD }, gp = { contributed:gpC, roc:acc.roc * scaleGP, pref:acc.pref * scaleGP, promote:sum(function(r){ return r.promote; }), dist:gpD };
   lp.excess = lpD - lp.roc - lp.pref; gp.excess = gpD - gp.roc - gp.pref - gp.promote;
   [lp, gp].forEach(function(q){ q.profit = q.dist - q.contributed; q.moic = q.contributed > 0 ? q.dist / q.contributed : NaN; });
