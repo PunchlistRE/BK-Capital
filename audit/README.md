@@ -13,6 +13,7 @@ Run everything: `PLAYWRIGHT_MODULE=<path> CHROMIUM_PATH=<chrome> audit/run_all.s
 | `dev_scope_test.js` | Acquisition conventions never touch development deals. |
 | `persistence_test.js`, `ui_test.js` | Saved values survive; the controls drive the engine. |
 | `harbor_stageA_test.js` | Harbor Point regressions: development Snapshot reads the construction facility, Sources = Uses on the sheet and in the PDF, the returns cash flow charges the equity the ledger says, the PDF states how the construction loan is repaid, and unlevered returns exist and do not depend on financing. |
+| `harbor_stageB_test.js` | Harbor Point regressions: hurdles replay to their rates on dated cash flows, contributions are gross and tie, the integrity checks (`bkIntegrity`) fail visibly when the engine is tampered with, the credit gate follows them, and a second model (`harbor/reference2.py`) written from the raw inputs matches the engine to the dollar. |
 | `required_status_test.js` | The REQUIRED marker, the Status chip, the progress bar, Home and the guide agree on what is missing; non-applicable tables read N/A. |
 | `undo_test.js` | Undo / Redo cover every store, restore byte for byte, are labelled, and ask first when a change moves the model drastically. |
 

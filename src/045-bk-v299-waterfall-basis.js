@@ -8,6 +8,7 @@
   BK_BASE.em2 = BK_BASE.em2===undefined ? 2.59 : BK_BASE.em2;
   BK_BASE.em3 = BK_BASE.em3===undefined ? 4.05 : BK_BASE.em3;
   BK_BASE.promoteSplit = BK_BASE.promoteSplit===undefined ? 0 : BK_BASE.promoteSplit; // 1 = separate promote splits for operating cash and for sale / refinance proceeds (t2LPs..t4LPs)
+  BK_BASE.devHurdleBasis = BK_BASE.devHurdleBasis===undefined ? 'deal' : BK_BASE.devHurdleBasis; // development deals: 'deal' = hurdle accounts on total equity (legacy), 'lp' = on the LP's own dated cash flows
   BK_BASE.hurdleBoth = BK_BASE.hurdleBoth===undefined ? 'all' : BK_BASE.hurdleBoth; // basis 3 only: 'all' = both tests must be met, 'either' = one is enough
 
   function bkWfBasis(s){ var b=String(s.hurdleBasis); return b==='2' ? 'EM' : b==='3' ? 'BOTH' : 'IRR'; }
@@ -20,6 +21,7 @@
       const o=priorDeal();
       o.main += `<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Waterfall Hurdle Basis</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>
         ${bkSelect('Hurdle Basis','hurdleBasis',[['1','IRR'],['2','Equity Multiple'],['3','IRR and Equity Multiple']])}
+        ${bkSelect('Hurdle Test - Development Deals','devHurdleBasis',[['deal','Total equity (legacy)'],['lp','LP cash flows (dated)']])}
         ${bkSelect('IRR and Multiple Hurdles Combine','hurdleBoth',[['all','Both must be met'],['either','Either is enough']])}
         ${bkInput('Tier 1 Hurdle - Equity Multiple','em1','x')}
         ${bkInput('Tier 2 Hurdle - Equity Multiple','em2','x')}
@@ -54,12 +56,13 @@
     const em1=Math.max(0,Number(s.em1||0)), em2=Math.max(0,Number(s.em2||0)), em3=Math.max(0,Number(s.em3||0));
     const opL=[Number(s.t2LP||0),Number(s.t3LP||0),Number(s.t4LP||0)], pick=(k,d)=>(s[k]===undefined||s[k]===null||s[k]==='')?d:Number(s[k]);
     const saleL=[pick('t2LPs',opL[0]),pick('t3LPs',opL[1]),pick('t4LPs',opL[2])];
+    const TM=window.bkWfTiming(x);
     let ib1=0,ib2=0,ib3=0,cumCon=0,cumDist=0,cumProm=0,lpCumCon=0,cumLPDist=0; const rows=[];
     const comb=(a,e)=>mode==='IRR'?a:mode==='EM'?e:(all?Math.max(a,e):Math.min(a,e));
     for(let i=0;i<n;i++){
       const xr=x.rows[i], con=(xr.wfContrib!=null?xr.wfContrib:Math.max(0,-xr.cf)), dist=(xr.wfDist!=null?xr.wfDist:Math.max(0,xr.cf));
       const lc=con*lpS; lpCumCon+=lc; cumCon+=con;
-      const a1=(ib1+lc)*(1+r1), a2=(ib2+lc)*(1+r2), a3=(ib3+lc)*(1+r3);
+      const clc=TM.closing(con,i)*lpS, a1=(ib1+clc)*TM.f(s.pref,i)+(lc-clc), a2=(ib2+clc)*TM.f(s.hurdle2,i)+(lc-clc), a3=(ib3+clc)*TM.f(s.hurdle3,i)+(lc-clc);
       const R1=comb(a1,Math.max(0,lpCumCon*em1-cumLPDist)), R2=comb(a2,Math.max(0,lpCumCon*em2-cumLPDist)), R3=comb(a3,Math.max(0,lpCumCon*em3-cumLPDist));
       /* the part of the month's distribution that is sale / refinance proceeds (net of the payoff and the disposition fee), the rest operating */
       const saleNet=Math.max(0,(Number(xr.sale)||0)-(Number(xr.dispoFee)||0)-(Number(xr.payoff)||0)+(Number(xr.refi)||0)), saleD=split?Math.min(dist,saleNet):0, opD=dist-saleD;

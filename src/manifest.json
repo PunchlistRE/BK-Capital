@@ -890,6 +890,11 @@
 "close": "</script>"
 },
 {
+"file": "178-bk-integrity.js",
+"open": "\n<script id=\"bk-integrity\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""

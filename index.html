@@ -1505,6 +1505,8 @@ function bkConventions(s){
   if(out.isDevelopment){
     Object.keys(BK_CV_LEGACY).forEach(function(k){ out[k] = BK_CV_LEGACY[k]; });
     out.legacyFields = Object.keys(BK_CV_LEGACY);
+    /* the one development-specific choice: whether the hurdles are tested on the LP's own dated cash flows ('lp') or on total equity ('deal', the legacy method and the default) */
+    if(s.devHurdleBasis === 'lp'){ out.cvHurdleBasis = 'lp'; out.legacyFields = out.legacyFields.filter(function(k){ return k !== 'cvHurdleBasis'; }); }
   }
   out.isLegacy = out.legacyFields.length === Object.keys(BK_CV_LEGACY).length;
   out.isStandard = Object.keys(BK_CV_STANDARD).every(function(k){ return out[k] === BK_CV_STANDARD[k]; });
@@ -2064,10 +2066,18 @@ RENDERERS['Returns']=sheetReturnsV06;RENDERERS['Equity Waterfall']=sheetEquityWa
 // it. One engine, many scopes - the same pattern bkPortfolioMetricsFor() and bkSolve()
 // already use. If this had been done by copying the tier loop, the two copies would
 // drift the first time a hurdle convention changed.
+/* Hurdle accounts follow the dated cash flows: a contribution is dated where the returns put it (the closing day for the closing equity, the month-end for the rest) and accrues from then;
+   each period accrues (1 + rate) ^ (actual days / 365), the same basis as the XIRR the hurdle is tested with. closing = the part of the first row dated at closing. */
+function bkWfTiming(x){
+ const rows=x.rows||[], start=x.closeDt?new Date(x.closeDt).getTime():NaN, eq0=Number(rows[0]&&rows[0].eqDraw)||0;
+ const days=rows.map((r,i)=>{ const t=new Date(r.dt).getTime(), p=i?new Date(rows[i-1].dt).getTime():start; const d=(t-p)/86400000; return isFinite(d)&&d>0?d:365/12; });
+ return { eq0, f:(rate,i)=>Math.pow(1+Number(rate||0),days[i]/365), closing:(con,i)=>i===0?Math.min(con,eq0):0 };
+}
+window.bkWfTiming=bkWfTiming;
 function bkWaterfallV07(opts){
  const x=(opts&&opts.x)?opts.x:bkMonthlyReturns(),s=(opts&&opts.s)?opts.s:x.s,n=x.rows.length;
  const mr=a=>Math.pow(1+Number(a||0),1/12)-1;
- const r1=mr(s.pref),r2=mr(s.hurdle2),r3=mr(s.hurdle3);
+ const r1=mr(s.pref),r2=mr(s.hurdle2),r3=mr(s.hurdle3), TM=bkWfTiming(x);
  let b1=0,b2=0,b3=0,cumCon=0,cumDist=0,cumProm=0;
  const rows=[];
  /* CONVENTION cvHurdleBasis. 'lp': every hurdle account accrues on the LP's own contributions and is
@@ -2082,7 +2092,8 @@ function bkWaterfallV07(opts){
    const con=(x.rows[i].wfContrib!=null?x.rows[i].wfContrib:Math.max(0,-x.rows[i].cf)), dist=(x.rows[i].wfDist!=null?x.rows[i].wfDist:Math.max(0,x.rows[i].cf));
    if(lpMode){
      const lc=con*lpS, gs=Number(s.gpShare||0);
-     let a1=b1+lc+(b1+lc)*r1, a2=b2+lc+(b2+lc)*r2, a3=b3+lc+(b3+lc)*r3;
+     const clc=TM.closing(con,i)*lpS;
+     let a1=(b1+clc)*TM.f(s.pref,i)+(lc-clc), a2=(b2+clc)*TM.f(s.hurdle2,i)+(lc-clc), a3=(b3+clc)*TM.f(s.hurdle3,i)+(lc-clc);
      // Tier 1: pari passu until the LP's preferred-return account is cleared
      const t1=lpS>0?Math.min(dist,a1/lpS):dist, lp1=t1*lpS;
      cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
@@ -2101,13 +2112,13 @@ function bkWaterfallV07(opts){
      rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
      continue;
    }
-   const beg1=b1, acc1=(beg1+con)*r1, req1=beg1+con+acc1, t1=Math.min(dist,req1); b1=req1-t1;
+   const cl=TM.closing(con,i), beg1=b1, req1=(beg1+cl)*TM.f(s.pref,i)+(con-cl), t1=Math.min(dist,req1); b1=req1-t1;
    cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
    const rem1=Math.max(0,dist-t1);
    const catchup=Number(s.gpCatchup)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(1-Number(s.gpCatchupTarget)))):0;
-   const beg2=b2,acc2=(beg2+con)*r2,req2=beg2+con+acc2;
+   const beg2=b2,req2=(beg2+cl)*TM.f(s.hurdle2,i)+(con-cl);
    const t2=Math.min(Math.max(0,dist-t1-catchup),Math.max(0,req2-t1-catchup)); b2=Math.max(0,req2-t1-catchup-t2);
-   const beg3=b3,acc3=(beg3+con)*r3,req3=beg3+con+acc3;
+   const beg3=b3,req3=(beg3+cl)*TM.f(s.hurdle3,i)+(con-cl);
    const t3=Math.min(Math.max(0,dist-t1-catchup-t2),Math.max(0,req3-t1-catchup-t2)); b3=Math.max(0,req3-t1-catchup-t2-t3);
    const t4=Math.max(0,dist-t1-catchup-t2-t3);
    const lpCon=-con*(1-Number(s.gpShare)), gpCon=-con*Number(s.gpShare);
@@ -2533,10 +2544,12 @@ function bkDevMonthlyReturnsV12(){
    const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo;
    /* unlevered flow: every project cost as it falls (no financing fee, no interest), the property's own income, and the sale net of selling costs; no loan, no refinance, no equity split */
    uCost.push(Number(funding.land||0)+Number(funding.hard||0)+Number(funding.soft||0)+Number(funding.lease||0)); uVals.push(-uCost[uCost.length-1]+noi-assetFee-leaseCapMo+sale-dispoFee);
-   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale});
+   /* investors contribute and receive gross: the equity called (and any shortfall in the month's other cash) is a contribution, the surplus of the other cash is a distribution; they are never netted against each other */
+   const otherCF=cf+equityDraw+refiEq, wfContrib=equityDraw+refiEq+Math.max(0,-otherCF), wfDist=Math.max(0,otherCF);
+   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale,wfContrib,wfDist});
    values.push(cf);dates.push(dt);
  }
- const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=values.reduce((z,v)=>z+Math.max(0,v),0),contrib=values.reduce((z,v)=>z+Math.max(0,-v),0),moic=contrib?dist/contrib:0;
+ const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=rows.reduce((z,r)=>z+r.wfDist,0),contrib=rows.reduce((z,r)=>z+r.wfContrib,0),moic=contrib?dist/contrib:0;
  const grossSale=(rows[rows.length-1]||{}).grossSale||0;
  const uIRR=bkXirrClose(uVals,dates,start,-(uCost[0]||0)), uPos=uVals.reduce((z,v)=>z+Math.max(0,v),0), uNeg=uVals.reduce((z,v)=>z+Math.max(0,-v),0);
  return {s,u:{irr:uIRR,moic:uNeg?uPos/uNeg:0,profit:uPos-uNeg,cost:uNeg,flows:uVals,grossSale,netSale:(rows[rows.length-1]||{}).sale||0},d:{equity:contrib,debtAtSale:(rows[rows.length-1]||{}).payoff||0},x,rows,values,dates,irr,moic,dist,contrib,isDevelopment:true,closeDt:new Date(start)};
@@ -6641,6 +6654,7 @@ try{implement(document);}catch(e){}
   BK_BASE.em2 = BK_BASE.em2===undefined ? 2.59 : BK_BASE.em2;
   BK_BASE.em3 = BK_BASE.em3===undefined ? 4.05 : BK_BASE.em3;
   BK_BASE.promoteSplit = BK_BASE.promoteSplit===undefined ? 0 : BK_BASE.promoteSplit; // 1 = separate promote splits for operating cash and for sale / refinance proceeds (t2LPs..t4LPs)
+  BK_BASE.devHurdleBasis = BK_BASE.devHurdleBasis===undefined ? 'deal' : BK_BASE.devHurdleBasis; // development deals: 'deal' = hurdle accounts on total equity (legacy), 'lp' = on the LP's own dated cash flows
   BK_BASE.hurdleBoth = BK_BASE.hurdleBoth===undefined ? 'all' : BK_BASE.hurdleBoth; // basis 3 only: 'all' = both tests must be met, 'either' = one is enough
 
   function bkWfBasis(s){ var b=String(s.hurdleBasis); return b==='2' ? 'EM' : b==='3' ? 'BOTH' : 'IRR'; }
@@ -6653,6 +6667,7 @@ try{implement(document);}catch(e){}
       const o=priorDeal();
       o.main += `<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Waterfall Hurdle Basis</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>
         ${bkSelect('Hurdle Basis','hurdleBasis',[['1','IRR'],['2','Equity Multiple'],['3','IRR and Equity Multiple']])}
+        ${bkSelect('Hurdle Test - Development Deals','devHurdleBasis',[['deal','Total equity (legacy)'],['lp','LP cash flows (dated)']])}
         ${bkSelect('IRR and Multiple Hurdles Combine','hurdleBoth',[['all','Both must be met'],['either','Either is enough']])}
         ${bkInput('Tier 1 Hurdle - Equity Multiple','em1','x')}
         ${bkInput('Tier 2 Hurdle - Equity Multiple','em2','x')}
@@ -6687,12 +6702,13 @@ try{implement(document);}catch(e){}
     const em1=Math.max(0,Number(s.em1||0)), em2=Math.max(0,Number(s.em2||0)), em3=Math.max(0,Number(s.em3||0));
     const opL=[Number(s.t2LP||0),Number(s.t3LP||0),Number(s.t4LP||0)], pick=(k,d)=>(s[k]===undefined||s[k]===null||s[k]==='')?d:Number(s[k]);
     const saleL=[pick('t2LPs',opL[0]),pick('t3LPs',opL[1]),pick('t4LPs',opL[2])];
+    const TM=window.bkWfTiming(x);
     let ib1=0,ib2=0,ib3=0,cumCon=0,cumDist=0,cumProm=0,lpCumCon=0,cumLPDist=0; const rows=[];
     const comb=(a,e)=>mode==='IRR'?a:mode==='EM'?e:(all?Math.max(a,e):Math.min(a,e));
     for(let i=0;i<n;i++){
       const xr=x.rows[i], con=(xr.wfContrib!=null?xr.wfContrib:Math.max(0,-xr.cf)), dist=(xr.wfDist!=null?xr.wfDist:Math.max(0,xr.cf));
       const lc=con*lpS; lpCumCon+=lc; cumCon+=con;
-      const a1=(ib1+lc)*(1+r1), a2=(ib2+lc)*(1+r2), a3=(ib3+lc)*(1+r3);
+      const clc=TM.closing(con,i)*lpS, a1=(ib1+clc)*TM.f(s.pref,i)+(lc-clc), a2=(ib2+clc)*TM.f(s.hurdle2,i)+(lc-clc), a3=(ib3+clc)*TM.f(s.hurdle3,i)+(lc-clc);
       const R1=comb(a1,Math.max(0,lpCumCon*em1-cumLPDist)), R2=comb(a2,Math.max(0,lpCumCon*em2-cumLPDist)), R3=comb(a3,Math.max(0,lpCumCon*em3-cumLPDist));
       /* the part of the month's distribution that is sale / refinance proceeds (net of the payoff and the disposition fee), the rest operating */
       const saleNet=Math.max(0,(Number(xr.sale)||0)-(Number(xr.dispoFee)||0)-(Number(xr.payoff)||0)+(Number(xr.refi)||0)), saleD=split?Math.min(dist,saleNet):0, opD=dist-saleD;
@@ -18656,7 +18672,7 @@ function stepStatus(){
   out.returns = !r.canCalculate ? { st:'', tip:'Results withheld until inputs are complete' } : !isFinite(irr) ? { st:'warn', tip:'Levered IRR not finite' } : (hur && irr < hur) ? { st:'warn', tip:'Levered IRR ' + pct(irr) + ' is below the ' + pct(hur) + ' hurdle' } : { st:'done', tip:'Levered IRR ' + pct(irr) };
   var nFail = ctls.filter(function(c){ return c.level === 'FAIL'; }).length;
   out.review = nFail ? { st:'fail', tip:nFail + ' model error' + (nFail > 1 ? 's' : '') + ' to fix' }
-             : (gate && gate.verdict === 'DECLINE') ? { st:'fail', tip:'Credit gate: ' + String(gate.status || 'decline') }
+             : (gate && /^(DECLINE|HOLD)$/.test(gate.verdict)) ? { st:'fail', tip:'Credit gate: ' + String(gate.status || 'decline') }
              : r.state === 'INVESTMENT READY' && !r.sourceReview ? { st:'done', tip:'Investment ready' }
              : r.state === 'NOT DECISION-GRADE' || r.sourceReview || r.state === 'BLOCKED' ? { st:'warn', tip:r.state + (r.sourceReview ? ' - source review' : '') }
              : { st:'', tip:r.state };
@@ -19807,6 +19823,10 @@ function dealGate(){
   else if(hard === 0 && score >= p.advanceScore) verdict = 'APPROVE';
   else if(score >= p.conditionalScore || (hard === 0 && soft <= 2)) verdict = 'CONDITIONAL';
   else verdict = 'DECLINE';
+  /* the gate reflects the validation results, not just whether the engine finished: a result that does not reconcile cannot be approved, and an approval cannot say "no exceptions" while a model warning stands */
+  var integ = typeof window.bkIntegrity === 'function' ? window.bkIntegrity() : null, integHard = integ ? integ.hard.length : 0, integWarn = integ ? integ.warn.length : 0;
+  if(integHard > 0) verdict = 'HOLD';
+  else if(integWarn > 0 && verdict === 'APPROVE') verdict = 'CONDITIONAL';
   var exceptions = live.filter(function(r){ return !r.pass; }).sort(function(a, b){ return (a.severity === b.severity ? 0 : a.severity === 'HARD' ? -1 : 1) || (b.weight - a.weight); }).map(function(r){
     var gap = r.dir === '>=' ? r.threshold - r.value : r.value - r.threshold, msg;
     if(r.id === 'capacity') msg = 'Debt: ' + fmtVal(r.value - r.threshold, 'usd') + ' above capacity (' + fmtVal(r.value, 'usd') + ' vs ' + fmtVal(cap.capacity, 'usd') + ')';
@@ -19814,13 +19834,15 @@ function dealGate(){
     else msg = r.label.replace(/ \(.*/, '') + ': ' + fmtVal(r.value, r.type) + ' vs ' + fmtVal(r.threshold, r.type) + ' required';
     return { severity:r.severity, id:r.id, message:msg };
   });
-  var action = verdict === 'APPROVE' ? 'Proceed to close on the selected structure; satisfy the conditions precedent.'
+  var action = verdict === 'HOLD' ? 'The model failed ' + integHard + ' integrity check' + (integHard > 1 ? 's' : '') + ' (' + integ.hard.map(function(c){ return c.label; }).slice(0, 3).join('; ') + (integHard > 3 ? '; ...' : '') + '). Fix them before this result is used for a decision.'
+    : (verdict === 'CONDITIONAL' && integWarn > 0 && hard + soft === 0) ? 'The credit gates pass, but ' + integWarn + ' model warning' + (integWarn > 1 ? 's stand' : ' stands') + ': ' + integ.warn.map(function(c){ return c.label; }).join('; ') + '. Approval is conditional on resolving or accepting them.'
+    : verdict === 'APPROVE' ? 'Proceed to close on the selected structure; satisfy the conditions precedent.'
     : (overage > p.maxDebtOverage && !overrideValid) ? 'Resize senior debt to <= ' + fmtVal(cap.capacity, 'usd') + ', renegotiate price / economics, or record a documented credit override.'
     : hard > 0 ? 'Resolve the hard exceptions before returning to committee.' : 'Resolve or accept the soft exceptions; conditional approval is available at the committee’s discretion.';
-  var status = verdict + ' — ' + (hard + soft === 0 ? 'NO MATERIAL EXCEPTIONS' : hard + ' HARD / ' + soft + ' SOFT EXCEPTION' + (hard + soft > 1 ? 'S' : ''));
+  var status = verdict + ' — ' + (integHard > 0 ? integHard + ' MODEL CHECK' + (integHard > 1 ? 'S' : '') + ' FAILED' + (hard + soft > 0 ? ' / ' + hard + ' HARD / ' + soft + ' SOFT' : '') : (hard + soft === 0 ? (integWarn > 0 ? integWarn + ' MODEL WARNING' + (integWarn > 1 ? 'S' : '') : 'NO MATERIAL EXCEPTIONS') : hard + ' HARD / ' + soft + ' SOFT EXCEPTION' + (hard + soft > 1 ? 'S' : '') + (integWarn > 0 ? ' / ' + integWarn + ' MODEL WARNING' + (integWarn > 1 ? 'S' : '') : '')));
   return { policy:p, rows:rows, score:score, weightTotal:wTotal, weightsOk:Math.abs(wTotal - 1) < 1e-9, passed:live.filter(function(r){ return r.pass; }).length, applicable:live.length,
     hard:hard, soft:soft, overage:overage, overrideValid:overrideValid, override:ov, verdict:verdict, status:status, action:action, exceptions:exceptions,
-    capacity:cap, cushions:rc, ret:ret, waterfall:w, register:rr, development:dev };
+    capacity:cap, cushions:rc, ret:ret, waterfall:w, register:rr, development:dev, integrity:integ };
 }
 /* The gate re-runs the engine dozens of times (capacity ladder, cushions), about half a second. It is a pure function of the deal, so the last few results are kept by the deal's own contents. */
 var gateMemo = [];
@@ -19940,7 +19962,8 @@ function listEditor(list, label, placeholder){
 function ic(){ return bkLoad()._ic || {}; }
 register('IC Memo', function(){
   var s = bkLoad(), g = window.bkDealGate(), I = ic(), c = g.cushions, cap = g.capacity, ret = g.ret, w = g.waterfall;
-  var banner = '<div class="note-flag" style="margin-top:0;border-left:4px solid ' + (g.verdict === 'APPROVE' ? '#3F6B4A' : g.verdict === 'CONDITIONAL' ? '#B8860B' : '#A93B2C') + '"><span>' + (g.verdict === 'APPROVE' ? '&#10003;' : '&#9888;') + '</span><div><b>' + esc(g.status) + '</b><br>' + esc(g.action) + '</div></div>';
+  var banner = '<div class="note-flag" style="margin-top:0;border-left:4px solid ' + (g.verdict === 'APPROVE' ? '#3F6B4A' : g.verdict === 'CONDITIONAL' ? '#B8860B' : '#A93B2C') + '"><span>' + (g.verdict === 'APPROVE' ? '&#10003;' : '&#9888;') + '</span><div><b>' + esc(g.status) + '</b><br>' + esc(g.action) + '</div></div>'
+    + (g.integrity ? '<div class="note-flag" style="margin-top:6px;border-left:4px solid ' + (g.integrity.hard.length ? '#A93B2C' : g.integrity.warn.length ? '#B8860B' : '#3F6B4A') + '"><span>' + (g.integrity.hard.length ? '&#9888;' : g.integrity.warn.length ? '&#9888;' : '&#10003;') + '</span><div><b>Model integrity: ' + esc(g.integrity.text) + '</b>' + g.integrity.hard.map(function(c){ return '<br><b>Failed:</b> ' + esc(c.label) + ' — ' + esc(c.detail); }).join('') + g.integrity.warn.map(function(c){ return '<br><b>Warning:</b> ' + esc(c.label) + ' — ' + esc(c.detail); }).join('') + '</div></div>' : '');
   var thesis = (I.thesis || []).concat(['', '', '']).slice(0, Math.max(3, (I.thesis || []).length + 1));
   var thesisHtml = thesis.map(function(t, i){ return '<tr><td class="rowlabel">' + (i + 1) + '</td><td data-bk-align="text" colspan="3"><input type="text" style="width:100%" value="' + esc(t) + '" placeholder="Thesis point" onchange="bkICSet(\'thesis.' + i + '\',this.value)"></td></tr>'; }).join('');
   var dealRows = [
@@ -21772,7 +21795,7 @@ function build(s, oldMain){
   var next;
   if(!can){ var miss = (ready && ready.missing || []).slice(0, 4).map(function(m){ return m.label; }); next = ['Finish the required inputs', (ready ? ready.missing.length : 'Some') + ' still missing' + (miss.length ? ': ' + miss.join(', ') + (ready.missing.length > 4 ? '…' : '') : '') + '. Results stay hidden until they are in.', 'Deal Underwrite', 'Go to Deal Underwrite']; }
   else if(fails.length) next = ['Fix ' + fails.length + ' model error' + (fails.length === 1 ? '' : 's'), esc(fails[0].area + ': ' + String(fails[0].msg).split(' Why it matters')[0]), 'Model Checks', 'Open Model Checks'];
-  else if(gate && gate.verdict === 'DECLINE') next = ['Credit gate says decline', 'The deal fails ' + gate.hard + ' hard and ' + gate.soft + ' soft policy tests. Resize the debt, change the price, or record a documented override.', 'Debt Capacity', 'Open Debt Capacity'];
+  else if(gate && /^(DECLINE|HOLD)$/.test(gate.verdict)) next = ['Credit gate says decline', 'The deal fails ' + gate.hard + ' hard and ' + gate.soft + ' soft policy tests. Resize the debt, change the price, or record a documented override.', 'Debt Capacity', 'Open Debt Capacity'];
   else if(warns.length) next = ['Review ' + warns.length + ' warning' + (warns.length === 1 ? '' : 's'), esc(warns[0].area + ': ' + String(warns[0].msg).split(' Why it matters')[0]), 'Model Checks', 'Open Model Checks'];
   else next = ['Ready for committee', 'Inputs are complete and no checks are open. Stress the deal, then open the IC memo.', 'IC Memo', 'Open the IC memo'];
   var rows = [];
@@ -21780,7 +21803,7 @@ function build(s, oldMain){
   if(can && h){
     rows.push([irrOk || '', 'Returns vs hurdle', 'Levered IRR ' + P(h.levIRR) + ' against a ' + P(hurdle) + ' target; ' + X(h.levMOIC) + ' multiple', 'Returns']);
     if(!dev){ var cap = gate && gate.capacity; rows.push([cap ? (cap.overage > 0 ? 'warn' : 'pass') : '', 'Debt against policy', cap ? (cap.overage > 0 ? 'Loan is ' + M(cap.overage) + ' above what policy supports (' + M(cap.capacity) + ', binding on ' + esc(cap.binding && cap.binding.name || 'policy') + ')' : 'Loan is within policy capacity (' + M(cap.capacity) + ')') : 'DSCR ' + X(h.dscr), 'Debt Capacity']); }
-    if(gate) rows.push([gate.verdict === 'APPROVE' ? 'pass' : gate.verdict === 'DECLINE' ? 'fail' : 'warn', 'Credit decision', esc(String(gate.status || gate.verdict).replace(/\s+—\s+/, ': ')), 'IC Memo']);
+    if(gate) rows.push([gate.verdict === 'APPROVE' ? 'pass' : /^(DECLINE|HOLD)$/.test(gate.verdict) ? 'fail' : 'warn', 'Credit decision', esc(String(gate.status || gate.verdict).replace(/\s+—\s+/, ': ')), 'IC Memo']);
     if(!dev){ var rk = safe(function(){ return bkRiskScenarios(); }, null); if(rk) rows.push([rk.pLoss > 0.2 ? 'warn' : 'pass', 'Downside odds', 'Scenario-weighted: ' + P(rk.pLoss, 0) + ' chance of losing money, ' + P(rk.pMiss, 0) + ' chance of missing the hurdle; expected IRR ' + P(rk.irrOfExpectedCF), 'Probability-Weighted']); }
   }
   if(!dev) rows.push([Array.isArray(s.rentRoll) && s.rentRoll.length ? 'pass' : 'warn', 'Rent roll', Array.isArray(s.rentRoll) && s.rentRoll.length ? s.rentRoll.length + ' units loaded; revenue is built from them' : 'No unit rent roll: revenue uses the flat average rent per unit, with no loss to lease or rollover', 'Import Rent Roll']);
@@ -22479,7 +22502,8 @@ function buildDev(){
   var stress = '<table><thead><tr><th>Stress test</th><th>Levered IRR</th><th>Multiple</th><th>Profit</th><th>vs hurdle</th></tr></thead><tbody>' + cases.map(function(c, j){ var r = c[1]; if(!r) return ''; var okc = r[0] >= hurdle; return '<tr' + (j === 0 ? ' class="sub"' : '') + '><td' + (j === 0 ? '' : ' class="l"') + '>' + c[0] + '</td><td>' + P(r[0], 1) + '</td><td>' + X(r[1]) + '</td><td>' + M(r[2]) + '</td><td><span class="pill ' + (okc ? 'pass' : 'fail') + '">' + (okc ? 'MEETS' : 'BELOW') + '</span></td></tr>'; }).join('') + '</tbody></table><div class="note" style="margin-top:5px">Each row reruns the full model with the change shown. Cost-overrun stress is not shown: with the budget set from a source total, hard-cost changes are absorbed in the calibration.</div>';
   var rows = (gate.rows || []).filter(function(r){ return r.applicable !== false; }).slice(0, 14);
   var gateTbl = '<table><thead><tr><th>Credit gate</th><th>Deal</th><th>Policy</th><th>Result</th></tr></thead><tbody>' + rows.map(function(r){ var f = fmtGate(r); return '<tr><td class="l">' + esc(r.label) + (r.severity === 'HARD' ? ' <span class="note">(hard)</span>' : '') + '</td><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td><td><span class="pill ' + (r.pass ? 'pass' : 'fail') + '">' + (r.pass ? 'PASS' : 'FAIL') + '</span></td></tr>'; }).join('') + '</tbody></table>';
-  var exc = (gate.exceptions || []).slice(0, 6).map(function(e){ return '<div>' + (e.severity === 'HARD' ? '<b>Hard:</b> ' : '<b>Soft:</b> ') + esc(e.message) + '</div>'; }).join('');
+  var ig = gate.integrity, exc = (gate.exceptions || []).slice(0, 6).map(function(e){ return '<div>' + (e.severity === 'HARD' ? '<b>Hard:</b> ' : '<b>Soft:</b> ') + esc(e.message) + '</div>'; }).join('')
+    + (ig ? ig.hard.map(function(c){ return '<div><b>Model check failed:</b> ' + esc(c.label) + ' — ' + esc(c.detail) + '</div>'; }).join('') + ig.warn.map(function(c){ return '<div><b>Model warning:</b> ' + esc(c.label) + ' — ' + esc(c.detail) + '</div>'; }).join('') + '<div class="note" style="margin-top:4px">Model integrity: ' + esc(ig.text) + '.</div>' : '');
   pages.push(page('<h2>Credit decision</h2><div class="g2" style="grid-template-columns:1.3fr .9fr"><div>' + gateTbl + '</div><div><div class="bx" style="padding:10px 12px"><div class="t">Decision: ' + esc(gate.verdict || 'Not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div>' + (exc ? '<div class="ins" style="margin-top:4px">' + exc + '</div>' : '') + (gate.action ? '<div class="note" style="margin-top:7px"><b>Next step:</b> ' + esc(gate.action) + '</div>' : '') + '</div></div></div>'
     + '<h2 style="margin-top:16px">Delay and exit stress</h2>' + stress + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid and stress tests rerun the model. Development returns depend heavily on cost, schedule and exit assumptions. This summary is an analytical aid, not an offer or a fairness opinion. Check it against your own model before relying on it.</div></div>', N, N, D));
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Development Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
@@ -24396,7 +24420,7 @@ function advice(s){
     var mk = safe(function(){ return bkMarketCompare(); }, null); if(mk && mk.rows){ mk.rows.forEach(function(r){ if(r.status !== 'IN RANGE' && (r.id === 'rate' || r.id === 'ltv')) add('debt', 'info', r.label + ' is ' + (r.id === 'ltv' ? pc(r.value, 0) : pc(r.value, 2)) + ', ' + r.status.toLowerCase() + ' (' + (r.id === 'ltv' ? pc(r.low, 0) + ' to ' + pc(r.high, 0) : pc(r.low, 2) + ' to ' + pc(r.high, 2)) + ').'); if(r.status !== 'IN RANGE' && r.id === 'opexUnit') add('expenses', 'info', 'Operating expenses per unit are ' + money0(r.value) + ', ' + r.status.toLowerCase() + ' (' + money0(r.low) + ' to ' + money0(r.high) + ').'); }); }
   }
   if(dev){ var cm = Number(s.constructionMonths) || 0; if(cm && (cm < 12 || cm > 30)) add('land', 'info', 'A construction period of ' + cm + ' months is outside the usual 12 to 30.'); var gate = safe(function(){ return bkDealGate(); }, null); var sp = gate && gate.rows ? gate.rows.filter(function(r){ return r.id === 'devSpread' && r.applicable; })[0] : null; if(sp && sp.value != null && sp.value < sp.threshold) add('exit', 'warn', 'The yield on cost is only ' + Math.round(sp.value) + ' bps over the exit cap; the house wants ' + Math.round(sp.threshold) + '. Development risk needs a bigger cushion than that.'); }
-  var gt = safe(function(){ return bkDealGate(); }, null); if(gt && /DECLINE/i.test(gt.verdict || '') && gt.action) add('review', 'warn', 'The credit gate says decline: ' + gt.action);
+  var gt = safe(function(){ return bkDealGate(); }, null); if(gt && /DECLINE|HOLD/i.test(gt.verdict || '') && gt.action) add('review', 'warn', 'The credit gate says decline: ' + gt.action);
   return out;
 }
 function secOf(secs, id){ return secs.filter(function(x){ return x.id === id; })[0]; }
@@ -25912,7 +25936,7 @@ function render(){
   else if(z && z.last) cols.push({ k:'occ', head:'Occupancy required', sn:z.last, what:'100% occupancy. Still fails', delta:'Occupancy ' + P(1 - base.vacancy, 1) + ' → 100% (best case, still fails)' });
   var row = function(l, f, em){ return '<tr><td style="' + cell + (em ? ';font-weight:700' : '') + '">' + l + '</td>' + cols.map(function(c){ return '<td style="' + cell + ';text-align:right' + (em ? ';font-weight:700' : '') + '">' + f(c.sn, c) + '</td>'; }).join('') + '</tr>'; };
   var rows = row('What changes', function(sn, c){ return '<span style="font-size:12px">' + esc(c.delta || c.what) + '</span>'; })
-    + row('Credit verdict', function(sn){ var col = sn.verdict === 'APPROVE' ? '#1a7f37' : sn.verdict === 'DECLINE' ? '#b42318' : '#b26a00'; return '<span style="color:' + col + ';font-weight:700">' + esc(sn.verdict) + '</span>'; }, true)
+    + row('Credit verdict', function(sn){ var col = sn.verdict === 'APPROVE' ? '#1a7f37' : /^(DECLINE|HOLD)$/.test(sn.verdict) ? '#b42318' : '#b26a00'; return '<span style="color:' + col + ';font-weight:700">' + esc(sn.verdict) + '</span>'; }, true)
     + row('HARD / SOFT exceptions', function(sn){ return sn.hard + ' / ' + sn.soft; })
     + row('Purchase price', function(sn){ return M(sn.price); }) + row('Price per unit', function(sn){ return sn.units > 0 ? M(sn.price / sn.units) : '—'; })
     + row('Senior loan', function(sn){ return M(sn.loan); }) + row('Equity at closing', function(sn){ return M(sn.equity); }) + row('Additional equity vs today', function(sn){ return sn === base ? '—' : (sn.equity - base.equity >= 0 ? '+' : '') + M(sn.equity - base.equity); })
@@ -26203,7 +26227,7 @@ function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c
 function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
 function P2(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
-var TOL_IRR = 0.0005, TOL_USD = 1;          /* the IRR is dated (actual days / 365) while the accounts accrue monthly: 5 bps; money to the dollar */
+var TOL_IRR = 0.00005, TOL_USD = 1;         /* the accounts accrue on the same dated, actual-days / 365 basis as the XIRR they are tested with: half a basis point; money to the dollar */
 
 function run(opts){
   var w = (opts && opts.w) || window.bkWaterfallV07(), s = w.s, rows = w.rows, x = w.x, n = rows.length, gs = num(s.gpShare) || 0, lpS = 1 - gs;
@@ -26211,21 +26235,21 @@ function run(opts){
   var out = { basis:em ? 'EM' : both ? 'BOTH' : 'IRR', rule:rule, lpMode:lpMode, hurdles:[], other:[], rows:n };
   var last = rows[n - 1] || {}, bal = function(k){ return num(last['b' + k]) || 0; };
   var eq0 = num(x.rows[0] && x.rows[0].eqDraw) || 0, closeDt = x.closeDt, dates = rows.map(function(r){ return r.dt; });
-  var rates = [num(s.pref), num(s.hurdle2), num(s.hurdle3)], ems = [num(s.em1), num(s.em2), num(s.em3)];
+  var TM = window.bkWfTiming(x), rates = [num(s.pref), num(s.hurdle2), num(s.hurdle3)], ems = [num(s.em1), num(s.em2), num(s.em3)];
   var xirr = function(v, closeAmt){ return typeof bkXirrClose === 'function' ? bkXirrClose(v, dates, closeDt, closeAmt) : (typeof bkXirr === 'function' ? bkXirr(v, dates) : NaN); };
   for(var k = 1; k <= 3; k++){
     var h = { k:k, name:k === 1 ? 'Tier 1 · preferred return' : 'Tier ' + k + ' hurdle', balance:bal(k) }, cleared = h.balance <= TOL_USD;
     if(both){
-      var rt = rates[k - 1], hm2 = ems[k - 1], mr2 = Math.pow(1 + rt, 1 / 12) - 1, b2 = 0, fl = [], ap2 = 0, lpC = w.lp ? w.lp.contrib : NaN, cum = rows.reduce(function(t, r){ return t + r.lpDist; }, 0);
-      for(var i2 = 0; i2 < n; i2++){ var q = rows[i2], inf = -q.lpCon, a2 = (b2 + inf) * (1 + mr2), ib = num(q['ib' + k]) || 0, ap = a2 - ib; fl.push(-inf + ap); ap2 += ap; b2 = ib; }
+      var rt = rates[k - 1], hm2 = ems[k - 1], b2 = 0, fl = [], ap2 = 0, lpC = w.lp ? w.lp.contrib : NaN, cum = rows.reduce(function(t, r){ return t + r.lpDist; }, 0);
+      for(var i2 = 0; i2 < n; i2++){ var q = rows[i2], inf = -q.lpCon, cl2 = TM.closing(q.con, i2) * lpS, a2 = (b2 + cl2) * TM.f(rt, i2) + (inf - cl2), ib = num(q['ib' + k]) || 0, ap = a2 - ib; fl.push(-inf + ap); ap2 += ap; b2 = ib; }
       var irr2 = xirr(fl, -eq0 * lpS), mult = lpC > 0 ? cum / lpC : NaN, irrSat = (num(last['ib' + k]) || 0) <= TOL_USD, emSat = !(hm2 > 0) || (isFinite(mult) && mult >= hm2 - 1e-6), reachedRule = rule === 'all' ? irrSat && emSat : irrSat || emSat;
       var irrOk = irrSat ? (isFinite(irr2) && Math.abs(irr2 - rt) <= TOL_IRR) : (!isFinite(irr2) ? ap2 <= TOL_USD : irr2 < rt + 1e-9), emOk = true;
       Object.assign(h, { name:'Tier ' + k + (k === 1 ? ' · first hurdle' : ' hurdle'), rate:rt, em:hm2, target:rt, measured:irr2, multiple:mult, unit:'both', cleared:cleared, irrMet:irrSat, emMet:emSat });
       h.status = irrOk && cleared === reachedRule ? 'pass' : 'fail';
       h.detail = 'IRR test ' + (irrSat ? 'met' : 'not met') + ' (replayed ' + P2(irr2) + ' vs ' + P2(rt) + '); multiple test ' + (emSat ? 'met' : 'not met') + ' (LP ' + (isFinite(mult) ? mult.toFixed(3) : '—') + 'x vs ' + hm2.toFixed(2) + 'x). ' + (rule === 'all' ? 'Both are required' : 'Either is enough') + ', so the tier is ' + (reachedRule ? 'reached' : 'open') + '; the waterfall shows it ' + (cleared ? 'reached' : 'open (' + M(h.balance) + ' still owed)') + (h.status === 'pass' ? '.' : ': they disagree.');
     } else if(!em){
-      var rate = rates[k - 1], mr = Math.pow(1 + rate, 1 / 12) - 1, b = 0, flows = [], applied = 0, contrib = 0;
-      for(var i = 0; i < n; i++){ var r = rows[i], inflow = lpMode ? (-r.lpCon) : r.con, a = (b + inflow) * (1 + mr), bk = num(r['b' + k]) || 0, ap = a - bk; flows.push(-inflow + ap); applied += ap; contrib += inflow; b = bk; }
+      var rate = rates[k - 1], b = 0, flows = [], applied = 0, contrib = 0;
+      for(var i = 0; i < n; i++){ var r = rows[i], inflow = lpMode ? (-r.lpCon) : r.con, cl = TM.closing(r.con, i) * (lpMode ? lpS : 1), a = (b + cl) * TM.f(rate, i) + (inflow - cl), bk = num(r['b' + k]) || 0, ap = a - bk; flows.push(-inflow + ap); applied += ap; contrib += inflow; b = bk; }
       var irr = xirr(flows, -eq0 * (lpMode ? lpS : 1));
       Object.assign(h, { rate:rate, measured:irr, target:rate, unit:'irr', applied:applied, contributed:contrib, cleared:cleared });
       if(!isFinite(rate) || rate <= 0){ h.status = 'na'; h.detail = 'This hurdle has no rate.'; }
@@ -26282,10 +26306,11 @@ function summary(opts){
   var w = (opts && opts.w) || window.bkWaterfallV07(), s = w.s, rows = w.rows, n = rows.length, gs = num(s.gpShare) || 0, lpS = 1 - gs;
   var em = String(s.hurdleBasis) === '2', lpMode = String(s.hurdleBasis) === '3' ? true : safe(function(){ return bkConventions(s).cvHurdleBasis === 'lp'; }, true), r1 = Math.pow(1 + (num(s.pref) || 0), 1 / 12) - 1;
   var P = 0, capLeft = 0, acc = { roc:0, pref:0 }, prevB = 0, lpT1 = 0;
-  rows.forEach(function(r){
+  var TM2 = window.bkWfTiming(w.x);
+  rows.forEach(function(r, i2){
     var inflow = lpMode ? -r.lpCon : r.con, T1 = lpMode ? r.t1 * lpS : r.t1, rocM = 0, prefM = 0;
     capLeft += inflow;
-    if(!em){ P += (prevB + inflow) * r1; prefM = Math.min(T1, Math.max(0, P)); P -= prefM; rocM = Math.min(T1 - prefM, Math.max(0, capLeft)); prefM = T1 - rocM; /* tier-1 cash beyond capital and the accrued preference (a multiple hurdle) is hurdle return too */ capLeft -= rocM; }
+    if(!em){ P += (prevB + TM2.closing(r.con, i2) * (lpMode ? lpS : 1)) * (TM2.f(s.pref, i2) - 1); prefM = Math.min(T1, Math.max(0, P)); P -= prefM; rocM = Math.min(T1 - prefM, Math.max(0, capLeft)); prefM = T1 - rocM; /* tier-1 cash beyond capital and the accrued preference (a multiple hurdle) is hurdle return too */ capLeft -= rocM; }
     else { rocM = Math.min(T1, Math.max(0, capLeft)); capLeft -= rocM; prefM = T1 - rocM; }
     prevB = num(r.ib1 != null ? r.ib1 : r.b1) || 0; acc.roc += rocM; acc.pref += prefM; lpT1 += lpMode ? T1 : T1 * lpS; });
   var scaleLP = lpMode ? 1 : lpS, scaleGP = lpMode ? gs / lpS : gs;
@@ -27369,6 +27394,109 @@ window.bkDevScheduleReport = function(){
   document.body.appendChild(o); document.documentElement.classList.add('bk-sr-open'); document.addEventListener('keydown', onKey, true);
   var z = Math.min(1, (window.innerWidth - 24) / (W + 4)); if(z < 1) o.querySelector('.sr-pages').style.zoom = String(z);
 };
+})();
+</script>
+<script id="bk-integrity">/* ===========================================================================
+   MODEL INTEGRITY. Independent re-computations of what the engine says, each reported as one of
+     pass  - the figures tie                     hard - they do not tie: a result must not be relied on, and the credit gate cannot approve
+     warn  - the figures tie but something material is true that a reader must know (a disclosed assumption or limit)
+     na    - the check does not apply to this deal
+   Nothing here changes a figure. Every check recomputes from raw engine outputs (monthly funding rows, cash-flow rows, hurdle rows) with its own arithmetic, including its own XIRR.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function') return;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+function M(v){ return (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
+function P(v){ return isFinite(v) ? (v * 100).toFixed(2) + '%' : '—'; }
+var TOL = 1;   /* dollars */
+/* own XIRR: flows dated in days / 365, closing-day component split out exactly as the returns do, bisection on the rate */
+function xirr(vals, dates, closeDt, closeAmt){
+  var v = vals.slice(), d = dates.map(function(x){ return +new Date(x); });
+  if(closeDt && closeAmt){ v = [closeAmt, vals[0] - closeAmt].concat(vals.slice(1)); d = [+new Date(closeDt)].concat(d); }
+  var t0 = d[0], f = function(r){ return v.reduce(function(a, c, i){ return a + c / Math.pow(1 + r, (d[i] - t0) / 31536000000); }, 0); }, lo = -0.95, hi = 10;
+  if(!(f(lo) * f(hi) < 0)) return NaN;
+  for(var i = 0; i < 200; i++){ var mid = (lo + hi) / 2; if(f(lo) * f(mid) <= 0) hi = mid; else lo = mid; }
+  return (lo + hi) / 2;
+}
+window.bkIrrIndependent = xirr;
+
+function run(){
+  var s = bkLoad(), dev = /develop/i.test(String(s.dealType || '')), C = [];
+  var add = function(id, group, label, status, detail){ C.push({ id:id, group:group, label:label, status:status, detail:detail }); };
+  var tie = function(a, b, tol){ return Math.abs(a - b) <= (tol == null ? TOL : tol); };
+  var m = safe(function(){ return bkMonthlyReturns(); }, null);
+  if(!m){ add('calc', 'Engine', 'The engine produced results', 'hard', 'The returns could not be calculated.'); return summarize(C); }
+  var w = safe(function(){ return bkWaterfallV07(); }, null), rows = m.rows || [];
+
+  if(dev){
+    var x = safe(function(){ return bkDevV09(); }, null), f = safe(function(){ return bkDevFundingV10(); }, null), t = safe(function(){ return bkDevTakeoutV11(); }, null);
+    if(!x || !f || !t){ add('calc', 'Engine', 'The development engine produced results', 'hard', 'Development funding could not be calculated.'); return summarize(C); }
+    var ms = f.months || [], sum = function(k){ return ms.reduce(function(a, z){ return a + num(z[k]); }, 0); };
+    /* 1 budget ties to its lines */
+    var hl = x.hardLadder, sl = x.softLadder;
+    if(hl && sl){
+      var hSum = hl.lines.reduce(function(a, l){ return a + l.total; }, 0) + hl.gc + hl.contractorFee + hl.riskBonds + hl.contingency, sSum = sl.lines.reduce(function(a, l){ return a + l.total; }, 0) + sl.devFee + sl.contingency;
+      add('budget', 'Budget', 'Hard and soft cost totals equal the sum of their lines', tie(hSum, x.hard) && tie(sSum, x.soft) ? 'pass' : 'hard', 'Hard lines ' + M(hSum) + ' vs total ' + M(x.hard) + '; soft lines ' + M(sSum) + ' vs total ' + M(x.soft) + '.');
+    } else add('budget', 'Budget', 'Hard and soft cost totals equal the sum of their lines', 'na', 'No line-level ladder for this budget mode.');
+    var unlevSum = x.land + x.close + x.acq + x.pre + x.hard + x.soft + num(x.leaseDef);
+    add('unlev', 'Budget', 'Cost before financing equals land + closing + acquisition fee + pre-development + hard + soft + lease-up deficit', tie(unlevSum, x.unlev) ? 'pass' : 'hard', M(unlevSum) + ' vs ' + M(x.unlev) + '.');
+    /* 2 sources = uses */
+    var excess = sum('excess'), draws = sum('loanDraw'), capInt = num(f.actualCapInt), uses = x.unlev + num(f.upfrontFees) + capInt + excess, sources = draws + capInt + num(f.equityTotal);
+    add('su', 'Sources & Uses', 'Total sources equal total uses', tie(uses, sources) ? 'pass' : 'hard', 'Uses ' + M(uses) + ' (cost ' + M(x.unlev) + ' + fees ' + M(f.upfrontFees) + ' + capitalised interest ' + M(capInt) + ' + interest paid by equity beyond the commitment ' + M(excess) + '); sources ' + M(sources) + ' (draws ' + M(draws) + ' + capitalised interest ' + M(capInt) + ' + equity ' + M(f.equityTotal) + ').');
+    /* 3 draws follow eligible costs */
+    var costs = sum('need'); var fundedCosts = sum('eq') + draws + sum('overflow');
+    add('draws', 'Debt', 'Every month\'s cost is paid by equity or a loan draw (debt draws follow costs)', tie(costs, fundedCosts) ? 'pass' : 'hard', 'Costs ' + M(costs) + ' = equity ' + M(sum('eq') + sum('overflow')) + ' + draws ' + M(draws) + ' (' + M(costs - fundedCosts) + ' difference).');
+    /* 4 capitalised interest recomputed month by month */
+    var bal = 0, bad = [], accrued = 0, rate = num(s.conRate) / 1, commit = num(f.commit), payoff = Number(s.refiAtStab || 0) ? x.stab : x.hold;
+    ms.forEach(function(z){ var interest = (commit > 0 && z.mo <= x.stab && z.mo < payoff) ? bal * rate / 12 : 0, cap = Math.min(interest, Math.max(0, commit - bal));
+      if(!tie(cap, z.capInt, 0.5) || !tie(interest - cap, z.excess, 0.5)) bad.push('month ' + z.mo + ': interest ' + M(interest) + ' vs ' + M(num(z.capInt) + num(z.excess)));
+      accrued += interest; bal += cap + num(z.loanDraw); if(!tie(bal, z.end, 0.5)) bad.push('month ' + z.mo + ': balance ' + M(bal) + ' vs ' + M(z.end)); });
+    add('capint', 'Debt', 'Capitalised interest equals the opening balance x rate / 12 each month, and the balance rolls forward', bad.length ? 'hard' : 'pass', bad.length ? bad.slice(0, 3).join('; ') : 'Interest accrued ' + M(accrued) + ' = capitalised ' + M(capInt) + ' + paid by equity beyond the commitment ' + M(excess) + '; closing balance ' + M(bal) + '.');
+    add('facility', 'Debt', 'The loan balance never exceeds the commitment', Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0])) <= commit + TOL ? 'pass' : 'hard', 'Peak balance ' + M(Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0]))) + ' vs commitment ' + M(commit) + '.');
+    /* 5 payoff and sale */
+    var last = rows[rows.length - 1] || {}, held = !!t.conHeldToSale, expectPay = last.refi !== undefined && x.hold < x.stab ? num((ms[x.hold - 1] || {}).end) : (num(t.permDebtAtSale) + (held ? num(t.conHeldBalance) : 0));
+    add('payoff', 'Debt', 'The debt repaid at sale equals the outstanding balance', tie(num(last.payoff), expectPay) ? 'pass' : 'hard', 'Repaid ' + M(last.payoff) + ' vs outstanding ' + M(expectPay) + (held ? ' (construction loan held to sale)' : '') + '.');
+    var cost = num(s.saleCostPct);
+    add('sale', 'Exit', 'Net sale proceeds equal the gross sale value less selling costs', tie(num(last.sale), num(last.grossSale) * (1 - cost), 2) ? 'pass' : 'hard', 'Gross ' + M(last.grossSale) + ' x (1 - ' + P(cost) + ') = ' + M(num(last.grossSale) * (1 - cost)) + ' vs ' + M(last.sale) + '.');
+    /* 6 equity in returns equals the ledger plus operating shortfall */
+    var eqRet = rows.reduce(function(a, r){ return a + num(r.equityDraw) + num(r.refiEq); }, 0);
+    add('eqret', 'Equity', 'The equity charged in the returns cash flow equals the equity in the funding ledger', tie(eqRet, num(f.equityTotal) + num(t.refiShortfall), 2) ? 'pass' : 'hard', 'Returns ' + M(eqRet) + ' vs ledger ' + M(f.equityTotal) + (num(t.refiShortfall) ? ' + takeout shortfall ' + M(t.refiShortfall) : '') + '.');
+    var shortfall = rows.reduce(function(a, r){ return a + Math.max(0, num(r.wfContrib) - num(r.equityDraw) - num(r.refiEq)); }, 0);
+    if(w){ var lpC = num(w.lp && w.lp.contributed != null ? w.lp.contributed : w.lp && w.lp.contrib), gpC = num(w.gp && w.gp.contributed != null ? w.gp.contributed : w.gp && w.gp.contrib), conTot = rows.reduce(function(a, r){ return a + num(r.wfContrib); }, 0);
+      add('contrib', 'Equity', 'LP + GP contributions equal total contributions: the equity ledger plus any operating shortfall the partners fund', tie(lpC + gpC, conTot, 2) && tie(conTot, eqRet + shortfall, 2) ? 'pass' : 'hard', 'LP ' + M(lpC) + ' + GP ' + M(gpC) + ' = ' + M(lpC + gpC) + '; equity called ' + M(eqRet) + ' + operating shortfall ' + M(shortfall) + ' = ' + M(eqRet + shortfall) + '.'); }
+    /* 7 unlevered */
+    add('unlev_irr', 'Returns', 'Unlevered IRR and multiple are calculated', m.u && isFinite(m.u.irr) && m.u.moic > 0 ? 'pass' : 'hard', m.u ? 'Unlevered IRR ' + P(m.u.irr) + ', ' + (m.u.moic || 0).toFixed(2) + 'x.' : 'missing');
+    /* warnings: material, true, disclosed */
+    if(excess > 1) add('w_interest', 'Debt', 'Interest accrues beyond the loan commitment', 'warn', M(excess) + ' of interest accrues after the commitment is full and is paid by equity. Either the commitment is too small for the plan or the interest reserve is short.');
+    var over = num(f.overflowTotal) - excess;
+    if(over > 1) add('w_overflow', 'Equity', 'Costs exceed what equity plus the commitment can fund', 'warn', M(over) + ' of costs are funded by equity over the planned amount (' + M(f.eqTarget) + ').');
+    if(t.saleBeforeTakeout || x.hold < x.stab) add('w_sale', 'Exit', 'The sale falls before the project stabilises', 'warn', 'Stabilisation is month ' + x.stab + '; the hold ends at month ' + x.hold + '.');
+    if(!held && !Number(s.refiAtStab || 0)) add('w_nodebt', 'Debt', 'No takeout and no construction loan', 'na', 'All-equity deal.');
+  } else {
+    var d = safe(function(){ return bkDebt(); }, null), fee = d ? num(d.fee) : 0;
+    if(d){ var uses2 = num(d.basis) + fee, src2 = num(d.loan) + num(d.equity); add('su', 'Sources & Uses', 'Total sources equal total uses', tie(uses2, src2, 2) ? 'pass' : 'hard', 'Uses ' + M(uses2) + ' (basis ' + M(d.basis) + ' + fee ' + M(fee) + '); sources ' + M(src2) + ' (loan ' + M(d.loan) + ' + equity ' + M(d.equity) + ').'); }
+    ['budget', 'capint', 'facility'].forEach(function(id){ add(id, 'Development', id === 'budget' ? 'Development budget ties to its lines' : id === 'capint' ? 'Capitalised interest' : 'Construction facility', 'na', 'Development deals only.'); });
+  }
+  /* common: IRR and multiple recomputed, waterfall */
+  var vals = rows.map(function(r){ return num(r.cf); }), dts = rows.map(function(r){ return r.dt; }), eq0 = num(rows[0] && rows[0].eqDraw), irr2 = xirr(vals, dts, m.closeDt, -eq0);
+  add('irr', 'Returns', 'Levered IRR equals an independent XIRR of the dated cash flows', isFinite(irr2) && isFinite(m.irr) ? (Math.abs(irr2 - m.irr) <= 1e-6 ? 'pass' : 'hard') : 'warn', 'Engine ' + P(m.irr) + ' vs independent ' + P(irr2) + '.');
+  var dist = rows.reduce(function(a, r){ return a + (r.wfDist != null ? num(r.wfDist) : Math.max(0, num(r.cf))); }, 0), con = rows.reduce(function(a, r){ return a + (r.wfContrib != null ? num(r.wfContrib) : Math.max(0, -num(r.cf))); }, 0);
+  add('moic', 'Returns', 'Equity multiple equals total distributions / total contributions', con > 0 && tie(m.moic, dist / con, 1e-9) && tie(num(m.dist), dist, 2) && tie(num(m.contrib), con, 2) ? 'pass' : 'hard', 'Distributions ' + M(dist) + ' / contributions ' + M(con) + ' = ' + (con ? (dist / con).toFixed(4) : '—') + 'x vs engine ' + (m.moic || 0).toFixed(4) + 'x.');
+  if(w && typeof bkWaterfallChecks === 'function'){
+    var wc = safe(function(){ return bkWaterfallChecks(); }, null);
+    if(wc){ wc.hurdles.concat(wc.other).forEach(function(c){ add('wf_' + (c.id || ('h' + c.k)), 'Waterfall', c.label || c.name, c.status === 'pass' ? 'pass' : c.status === 'na' ? 'na' : 'hard', c.detail); });
+      var lpFlows = safe(function(){ return w.rows.map(function(r){ return num(r.lpCF); }); }, null);
+      if(lpFlows){ var lpi = xirr(lpFlows, w.rows.map(function(r){ return r.dt; }), m.closeDt, -eq0 * (1 - num(s.gpShare))); add('wf_lpirr', 'Waterfall', 'LP IRR equals an independent XIRR of the dated LP cash flows', isFinite(lpi) && isFinite(w.lpIRR) ? (Math.abs(lpi - w.lpIRR) <= 1e-6 ? 'pass' : 'hard') : 'warn', 'Engine ' + P(w.lpIRR) + ' vs independent ' + P(lpi) + '.'); } }
+  } else add('wf', 'Waterfall', 'Waterfall checks', 'na', 'No waterfall for this deal.');
+  return summarize(C);
+}
+function summarize(C){
+  var o = { checks:C, hard:C.filter(function(c){ return c.status === 'hard'; }), warn:C.filter(function(c){ return c.status === 'warn'; }), na:C.filter(function(c){ return c.status === 'na'; }), pass:C.filter(function(c){ return c.status === 'pass'; }) };
+  o.ok = o.hard.length === 0; o.text = o.hard.length + ' failed, ' + o.warn.length + ' warning' + (o.warn.length === 1 ? '' : 's') + ', ' + o.pass.length + ' passed, ' + o.na.length + ' not applicable'; return o;
+}
+window.bkIntegrity = function(){ try { return run(); } catch(e){ return summarize([{ id:'crash', group:'Engine', label:'Integrity checks ran', status:'hard', detail:'The checks themselves failed: ' + e.message }]); } };
 })();
 </script>
 </body>
