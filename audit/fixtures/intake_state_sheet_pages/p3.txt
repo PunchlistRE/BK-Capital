@@ -1,0 +1,41 @@
+ACTUAL
+Sales Price  $9,800,000
+Loan Amount  $5,880,000
+Property Address  Down Payment  $3,920,000  RENT ROLL  1435 State St
+1435 & 1455 State St New Haven CT  Interest Rate  6.50%
+Loan to Value  60.00%  BEDS/BATH  RENT  Bed Counts  Average Rents  Amount
+# of Units  Term Mo.  $360  1455 State  $35,150  7 - Studios  $1,500  $10,500
+$38  1435 State  $37,800  9 - 1 Bed  $1,700  $15,300
+Use Annual Figures  5 - 2 Beds  $2,400  $12,000
+Gross Income  $37,800
+Apartment Units  $875,400  Monthly  $72,950
+Retail/Commercial Units  Yearly  $875,400
+Laundry  1455 State St
+Gross Income  $875,400
+Bed Counts  Average Rents  Amount
+Vacancy Factor  1 - Studio  $1,550  $1,550
+Residential 5%  $43,770  10 - 1 Bedroom  $1,800  $18,000
+Commercial 10%  $0    6 - 2 Bedrooms  $2,600  $15,600
+Total  $43,770  $35,150
+Effective gross Income  $831,630
+Taxes
+1455 State - $72,915  Expenses Annual Figures
+1435 State - $88,971  R/E Taxes  $161,886
+Insurance Premium  $45,000
+Electric/Gas  Maint/ Manage (8% EGI)  $66,530.4
+1435 - 11800  Water/Sewer  $19,000
+1455 - 6400  H&W - Electric & Gas  $8,000
+Trash/Grounds  $5,500
+Total Expenses  $305,916.4
+Net Operating Income (NOI)  $525,713.6
+Principle and Interest Pmt  $445,987.2
+Debt Service Coverage Ratio  $1.18
+Monthly mortgage payment  $37,165.6
+Net income after mortgage  $79,726.4
+Return on investment (ROI)  2.03%
+Cap rate  5.36%
+Proforma
+Information contained on and in this document regarding this listing has been compiled from various sources
+all of which may not be completely accurate. Vanguard Private Client Group makes no warranty or
+representation as to the accuracy of listing information. All information that influences a decision
+to purchase a listed property should be independently verified by the purchaser.

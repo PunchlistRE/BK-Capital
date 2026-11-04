@@ -1,0 +1,5 @@
+Building  Unit Number  Bed Count  Bath Count  Deposit Amt  Rent Amt
+VACANT  1455 STATE ST  #001  $1  $1  $0  $0
+FORCHA, DERICK  1455 STATE ST  #002  $1  $1  $1,650  $1,700
+SANTANA, ARIANNY  1455 STATE ST  #003  $1  $1  $1,550  $1,550
+CHAUDHRY, ZAID  1455 STATE ST  #004  $1  $1  $1,550  $1,550
