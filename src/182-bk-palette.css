@@ -238,3 +238,19 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
 /* the centre title of the header gives way before it can run into the buttons */
 @media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
 @media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }
+
+/* SUB-TAB DROP-DOWNS: a section with many pages shows one drop-down per group; the open list is vertical, so nothing wraps or overlaps. */
+html body .bk-ribbon .rb-tabs:has(.rb-dd){ display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; overflow:visible; padding:5px 0; }
+html body .bk-ribbon .rb-dd{ position:relative; }
+html body .bk-ribbon .rb-ddb{ display:flex; align-items:center; gap:8px; border:1px solid var(--ae-line); background:var(--ae-cell); color:var(--ae-ink); padding:0 10px; font:600 12px/30px Inter,"Segoe UI",system-ui,sans-serif; border-radius:3px; cursor:pointer; }
+html body .bk-ribbon .rb-ddb:hover{ background:var(--ae-sel); border-color:var(--bk-navy-2); }
+html body .bk-ribbon .rb-dd.on .rb-ddb{ background:var(--bk-navy); border-color:var(--bk-navy); color:#fff; }
+html body .bk-ribbon .rb-ddl{ letter-spacing:.05em; text-transform:uppercase; font-size:11px; }
+html body .bk-ribbon .rb-ddc{ font-weight:500; opacity:.9; padding-left:8px; border-left:1px solid rgba(255,255,255,.4); }
+html body .bk-ribbon .rb-ddb i{ font-style:normal; font-size:10px; opacity:.8; }
+html body .bk-ribbon .rb-ddm{ display:none; position:absolute; z-index:60; top:calc(100% + 2px); left:0; min-width:210px; max-height:70vh; overflow:auto; background:var(--ae-cell,#fff); border:1px solid var(--ae-line); box-shadow:0 8px 22px rgba(14,42,74,.18); border-radius:4px; padding:4px 0; }
+html body .bk-ribbon .rb-dd.open .rb-ddm{ display:block; }
+html body .bk-ribbon .rb-ddi{ display:block; width:100%; text-align:left; border:0; background:transparent; color:var(--ae-ink); padding:0 14px; font:500 13px/32px Inter,"Segoe UI",system-ui,sans-serif; cursor:pointer; }
+html body .bk-ribbon .rb-ddi:hover{ background:var(--ae-sel); }
+html body .bk-ribbon .rb-ddi.on{ font-weight:650; color:var(--bk-navy); background:var(--ae-cell-ro); box-shadow:inset 3px 0 0 var(--bk-navy); }
+html[data-theme="dark"] body .bk-ribbon .rb-ddi.on{ color:#fff; }
