@@ -24,12 +24,22 @@ const FX = f => path.join(__dirname, 'fixtures', 'import_hub', f);
   check('LTV 65% from "Debt: LTV"; rate 6.25% from "Coupon on senior loan"; amortization 30 years', /65\.00%/.test((g['Loan-to-value'] || {}).v) && /6\.25%/.test((g['Loan interest rate'] || {}).v) && /30/.test((g['Loan amortization (years)'] || {}).v), JSON.stringify([g['Loan-to-value'], g['Loan interest rate'], g['Loan amortization (years)']]));
   check('hold 5 years from "Years held"; rent growth 2.50%; sale costs 1.50%; vacancy 6.00%; management fee 3.50% from "Mgmt fee"', /5/.test((g['Hold period (years)'] || {}).v) && /2\.50%/.test((g['Annual rent growth'] || {}).v) && /1\.50%/.test((g['Cost of sale (%)'] || {}).v) && /6\.00%/.test((g['Vacancy and credit loss (%)'] || {}).v) && /3\.50%/.test((g['Management fee (% of income)'] || {}).v));
   check('unit-weighted average rent $2,171 from a table headed Apt Type / # / SF / Rent $/mo, and its 48 units agree with the stated 48 (Verified)', /2,171/.test((g['Average monthly rent / unit'] || {}).v) && /Verified/i.test((g['Units'] || {}).c), JSON.stringify([g['Average monthly rent / unit'], g['Units']]));
-  check('"Resale rate" is not guessed: it is listed as not recognized, and net rentable area is used for building size only as a Low fallback', !g['Exit cap rate'] && /Low/i.test((g['Gross building area (SF)'] || {}).c));
+  check('"Resale rate" is not guessed: it is listed as not recognized, and net rentable area is read as leasable area (GLA / NRA) and is never used as the gross building area', !g['Exit cap rate'] && !g['Gross building area (SF)'] && !!g['Leasable area (GLA / NRA, SF)']);
   /* ---- teaching ---- */
   const taught = await p.evaluate(() => { const row = [...document.querySelectorAll('details table tbody tr')].find(r => /resale rate/i.test(r.children[0].textContent)); if (!row) return false; const s = row.querySelector('select'); s.value = 'exitCap'; s.dispatchEvent(new Event('change')); return true; }); await p.waitForTimeout(600);
   g = await picks(p); check('teaching "Resale rate" = Exit cap rate maps it at once (5.75%)', taught && /5\.75%/.test((g['Exit cap rate'] || {}).v), JSON.stringify(g['Exit cap rate']));
   await p.evaluate(() => bkImportHubReset()); await p.waitForTimeout(300); await upload(p, FX('oak_court_notes.xlsx')); g = await picks(p);
   check('a different file with the same label ("Resale rate" 6%, "Asking" $4.1M, "Dwelling units" 30) is mapped by what was taught', /6\.00%/.test((g['Exit cap rate'] || {}).v) && /4,100,000/.test((g['Purchase / land price'] || {}).v) && /^30/.test((g['Units'] || {}).v), JSON.stringify(g));
+  /* ---- an assessor's property record card (Vision Government Solutions): gross area and living area are different things; a past sale is not a price ---- */
+  p = await open(); const pdfOK0 = !!process.env.BK_PDFJS_DIR;
+  if(pdfOK0){ const T = process.env.BK_PDFJS_DIR; await p.route(/cdn\.jsdelivr\.net\/npm\//, r => { const u = r.request().url().replace(/^.*\/npm\//, ''), m = /^(@?[^@]+(?:\/[^@/]+)?)@[^/]+\/(.*)$/.exec(u); try { r.fulfill({ path: path.join(T, m[1], m[2]) }); } catch (e) { r.abort(); } });
+    await upload(p, FX('vision_record_card.pdf')); await p.waitForTimeout(5000); g = await picks(p);
+    const txt = await p.evaluate(() => document.getElementById('viewport').innerText);
+    check('assessor record card: recognized as a property record card, not an offering memorandum', /property record card/i.test(txt));
+    check('gross building area 40,871 SF (sub-area total, gross column) and leasable area 34,789 SF (living column) are different inputs, both Low', /40,871/.test((g['Gross building area (SF)'] || {}).v) && /34,789/.test((g['Leasable area (GLA / NRA, SF)'] || {}).v) && /Low/i.test((g['Leasable area (GLA / NRA, SF)'] || {}).c), JSON.stringify([g['Gross building area (SF)'], g['Leasable area (GLA / NRA, SF)']]));
+    check('units 38 (Low), 1.01 acres, Multifamily; the 2017 sale of $1,800,000 is NOT entered as a price', /^38/.test((g['Units'] || {}).v) && /1\.01/.test((g['Site area (acres)'] || {}).v) && !g['Purchase / land price']);
+    const all = await p.evaluate(() => document.getElementById('viewport').textContent);
+    check('year built, owner and last sale are listed as found with no input yet', /1968/.test(all) && /1,800,000/.test(all) && /614 SHIPPAN ASSOCIATES/i.test(all)); }
   await p.close();
   /* ---- development pro forma workbook and the development OM, together ---- */
   p = await open(); const pdfOK = !!process.env.BK_PDFJS_DIR;

@@ -5,7 +5,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');
 const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirname, 'devdeal.js'));
 /* the guide's steps, written out (ids, keys, which are required, labels): the original steps plus Sources and uses and Investors / LP-GP economics after Financing */
-const GUIDE_ACQ = [['property', [['name', 1, 'Name'], ['location', 0, 'City, state'], ['units', 1, 'Units'], ['gsf', 0, 'Building area, SF']]],
+const GUIDE_ACQ = [['property', [['name', 1, 'Name'], ['location', 0, 'City, state'], ['units', 1, 'Units'], ['gsf', 0, 'Gross building area (GBA), SF'], ['gla', 0, 'Leasable area (GLA / NRA), SF']]],
   ['price', [['purchasePrice', 1, 'Purchase price'], ['closingCostsPct', 1, 'Closing costs, % of price'], ['closing', 0, 'Closing date']]],
   ['income', [['avgRent', 1, 'Average rent per unit, per month'], ['otherIncomePerUnit', 0, 'Other income per unit, per year'], ['vacancy', 1, 'Vacancy']]],
   ['expenses', [['taxes', 1, 'Real estate taxes, per year'], ['insurance', 1, 'Insurance, per year'], ['utilities', 0, 'Utilities the owner pays, per year'], ['rm', 1, 'Repairs and maintenance, per year'], ['mgmtPct', 1, 'Management fee, % of income'], ['payroll', 0, 'On-site payroll, per year'], ['contract', 0, 'Contract services (landscaping, snow, pest), per year'], ['ga', 0, 'General, admin and other, per year'], ['reserves', 0, 'Replacement reserves, per year']]],
@@ -14,7 +14,7 @@ const GUIDE_ACQ = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
   ['partners', [['gpShare', 0, 'GP equity contribution (% of total equity)'], ['pref', 0, 'Preferred return'], ['hurdle2', 0, 'Second hurdle (IRR)'], ['hurdle3', 0, 'Third hurdle (IRR)'], ['t2LP', 0, 'LP share above the preferred return'], ['t3LP', 0, 'LP share above the second hurdle'], ['t4LP', 0, 'LP share above the third hurdle']]],
   ['exit', [['holdYears', 1, 'Hold period, years'], ['exitCap', 1, 'Exit cap rate'], ['rentGrowth', 0, 'Annual rent growth'], ['opexGrowth', 0, 'Annual expense growth'], ['saleCostPct', 0, 'Cost of sale, % of price']]],
   ['decision', [['capRefiHeadroom', 0, 'Refinance: minimum headroom, $'], ['capRefiDebtYield', 0, 'Refinance: minimum debt yield'], ['capSellCoE', 0, 'Sell: cash-on-equity below'], ['capSellNOIGrowth', 0, 'Sell: NOI growth below'], ['capKeepCoE', 0, 'Keep: cash-on-equity at or above']]]];
-const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, state'], ['units', 1, 'Residential units'], ['gsf', 0, 'Gross building area, SF']]],
+const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, state'], ['units', 1, 'Residential units'], ['gsf', 0, 'Gross building area, SF'], ['gla', 0, 'Leasable area (GLA / NRA), SF']]],
   ['land', [['purchasePrice', 1, 'Land price'], ['sourceConstruction', 1, 'Construction budget (hard + soft)'], ['closing', 0, 'Closing date'], ['predevMonths', 0, 'Pre-development, months'], ['constructionMonths', 1, 'Construction, months'], ['leaseupMonths', 0, 'Lease-up, months']]],
   GUIDE_ACQ[2], GUIDE_ACQ[3],
   ['debt', [['conLTC', 1, 'Construction loan, % of cost'], ['conRate', 1, 'Construction loan rate'], ['permRate', 0, 'Permanent loan rate'], ['permAmort', 0, 'Permanent amortization, years']]],

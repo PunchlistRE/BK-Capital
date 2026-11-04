@@ -19269,9 +19269,7 @@ function ribbon(frame, sheet){
   var dev = false; try { var d = bkLoad(); dev = !!d && /develop/i.test(String(d.dealType || '')); } catch(e){}
   var tab = (typeof NAV_TABS !== 'undefined' ? NAV_TABS : []).find(function(t){ return t.groups.some(function(id){ var x = GROUPS.find(function(y){ return y.id === id; }); return x && x.sheets.indexOf(sheet) > -1; }); });
   var gs = tab ? tab.groups.map(function(id){ return GROUPS.find(function(x){ return x.id === id; }); }).filter(function(x){ return x && !x.hidden && (x.id !== 'dev' || dev || x.sheets.indexOf(sheet) > -1); }) : [];
-  /* each group of the section is its own row, named at the left when there is more than one, so a long section reads as a few short lists rather than one wrapped line */
-  var multi = gs.filter(function(g){ return g.sheets.some(function(n){ return typeof RENDERERS[n] === 'function'; }); }).length > 1;
-  var sub = gs.map(function(g){ var btns = g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); return btns ? '<div class="rb-row">' + (multi ? '<span class="rb-gl">' + esc(g.label) + '</span>' : '') + '<div class="rb-pages">' + btns + '</div></div>' : ''; }).join('');
+  var sub = gs.map(function(g){ return g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); }).filter(Boolean).join('<span class="rb-sep" aria-hidden="true"></span>');
   var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
   var h = '<div class="bk-ribbon" role="toolbar" aria-label="Pages and commands"><div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
     + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
@@ -22056,7 +22054,8 @@ window.BKReg.addFields([
   F('location', 'City, state', 'text', { ex:'Stamford, CT' }),
   F('propertyType', 'Property type', 'choice', { options:['Multifamily', 'Mixed-Use', 'Industrial', 'Retail', 'Office', 'Hospitality', 'Land', 'Other'] }),
   F('units', 'Units', 'int', { help:'Residential units, or suites for a commercial building. Per-unit figures divide by this.', ex:'120' }),
-  F('gsf', 'Building area, SF', 'int', { help:'Gross building area. Per-SF figures divide by this.', ex:'108,000' }),
+  F('gsf', 'Gross building area (GBA), SF', 'int', { help:'Everything inside the building envelope: corridors, lobbies, mechanical and amenity space as well as rentable space. Construction costs per SF and the building size divide by this.', ex:'108,000' }),
+  F('gla', 'Leasable area (GLA / NRA), SF', 'int', { help:'The area tenants pay rent on. Always the same as or smaller than the gross building area; the difference is the building\'s inefficiency. Rent per SF and efficiency use it. Leave blank if unknown: nothing is estimated.', ex:'96,000' }),
   F('commercialArea', 'Commercial area, SF', 'int', { help:'Retail or office space, if any.' }),
   F('rentRoll', 'Rent roll', 'table', { help:'Unit by unit: rent in place, market rent, lease dates. Import it or enter it on the Rent Roll sheet.', sheet:'Rent Roll' }),
   F('leases', 'Commercial tenant schedule', 'table', { help:'Tenant by tenant: rent, bumps, expiry and recoveries.', sheet:'Tenants' }),
@@ -22204,7 +22203,7 @@ var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume 
   [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
 
 R.addWorkflow('acquisition', [
-  S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
+  S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf'), q('gla')]),
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
@@ -22215,7 +22214,7 @@ R.addWorkflow('acquisition', [
   S('decision', 'Decision thresholds', 'The lines the hold, refinance or sell tests are measured against. Without them the decision test has nothing to compare to. Skip to keep the standard ones.', 'Capital Allocation', [q('capRefiHeadroom'), q('capRefiDebtYield'), q('capSellCoE'), q('capSellNOIGrowth'), q('capKeepCoE')], { skippable:true }) ]);
 
 R.addWorkflow('development', [
-  S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' })]),
+  S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' }), q('gla')]),
   S('land', 'Land and budget', 'The two big costs. Land is the price; the construction budget is hard and soft costs together.', 'Deal Underwrite',
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
   INCOME, EXPENSES,
@@ -24089,7 +24088,7 @@ function pDesc(s){ var pu = safe(function(){ return window.bkDealPhotoURL(); }, 
     + '<div class="ae-panel"><div class="ae-ph"><i>P</i>Photo</div><div class="ae-row">' + (pu ? '<img alt="Property photo" src="' + pu + '" style="width:160px;height:110px;object-fit:cover;border:1px solid var(--ae-line)">' : '<span class="ae-unit">No photo yet.</span>') + btn('Photo and documents...', 'showSheet(\'Deal Documents\')') + '</div></div>'; }
 function pLoc(s){ return form('Location', 'L', [R('City, State', inp('location', 'text', { s:s, ph:'e.g. Hartford, CT' })), R('Site Area', inp('siteArea', 'num', { s:s }), 'acres'), R('Parking', inp('parking', 'int', { s:s }), 'spaces')]); }
 function pArea(s){ var u = num(s.units), res = Math.max(0, num(s.gsf) - num(s.commercialArea));
-  return form('Area Measures', 'A', [R('Residential / Rentable Units', inp('units', 'int', { s:s }), 'units'), R('Gross Building Area', inp('gsf', 'num', { s:s }), 'GSF'), R('Ground-Floor Retail / Commercial Area', inp('commercialArea', 'num', { s:s }), 'SF'),
+  return form('Area Measures', 'A', [R('Residential / Rentable Units', inp('units', 'int', { s:s }), 'units'), R('Gross Building Area (GBA)', inp('gsf', 'num', { s:s }), 'GSF, everything inside the envelope'), R('Leasable Area (GLA / NRA)', inp('gla', 'num', { s:s }), num(s.gla) > 0 && num(s.gsf) > 0 ? 'SF rented to tenants; ' + (num(s.gla) / num(s.gsf) * 100).toFixed(1) + '% of gross' : 'SF rented to tenants; at most the gross area'), R('Ground-Floor Retail / Commercial Area', inp('commercialArea', 'num', { s:s }), 'SF'),
     R('Residential Area', ro(res ? Math.round(res).toLocaleString('en-US') : '-'), 'GSF (building area less commercial)'), R('Average Gross Area per Unit', ro(u > 0 && res ? Math.round(res / u).toLocaleString('en-US') : '-'), 'GSF'), NOTE('Dollar amounts are in US dollars and areas in square feet throughout. Amounts you enter "per unit" or "per GSF" use these figures.')]); }
 function pAnalysis(s){ var c = safe(function(){ return bkParseDealDate(s.closing, '2027-01-01'); }, null), end = c ? new Date(c.getFullYear() + Math.round(num(s.holdYears)), c.getMonth(), 0) : null, fmt = function(d){ return d ? d.toLocaleDateString('en-US', { month:'short', year:'numeric' }) : '-'; };
   return form('Analysis', 'A', [R('Analysis Begin (Purchase Date)', inp('closing', 'text', { s:s, ph:'M/D/YYYY' })), R('Length of Analysis', inp('holdYears', 'int', { s:s }), 'years'), R('Analysis End', ro(fmt(end))), R('Valuation (PV / IRR) Date', ro('Analysis Begin')), R('Case', sel('scenarioCase', ['Base', 'Upside', 'Downside'], { s:s, def:'Base' })),
@@ -25681,6 +25680,7 @@ function checks(sec, s){
   if(isFinite(t4) && isFinite(t3) && t4 > t3) add('t4LP', 'warn', 'The LP share usually falls as the hurdles are passed, but this (' + pctTxt(t4) + ') is higher than the share before it (' + pctTxt(t3) + ').');
   if(isFinite(gp) && gp > 0 && !(pref > 0) && sec.fields.some(function(x){ return x.k === 'pref'; })) add('pref', 'info', 'There is a GP share but no preferred return. Without one, profit is split from the first dollar.');
   var ks = num('capSellCoE'), kk = num('capKeepCoE'); if(isFinite(ks) && isFinite(kk) && ks > 0 && kk > 0 && kk < ks) add('capKeepCoE', 'err', 'The keep level (' + pctTxt(kk) + ') cannot be lower than the sell level (' + pctTxt(ks) + '); between them the test would say both keep and sell.');
+  var ga = num('gsf'), la = num('gla'); if(isFinite(ga) && isFinite(la) && ga > 0 && la > 0){ if(la > ga) add('gla', 'err', 'Leasable area (' + la.toLocaleString('en-US') + ' SF) cannot be more than the gross building area (' + ga.toLocaleString('en-US') + ' SF). Gross includes corridors, lobbies and mechanical space; leasable is what tenants rent.'); else if(la / ga < 0.6) add('gla', 'warn', 'Leasable area is only ' + pctTxt(la / ga) + ' of the gross building area. Check both figures; most buildings are 75 to 90 percent efficient.'); }
   if(isFinite(io) && isFinite(am) && am > 0 && io > am) add('acqIO', 'err', 'Interest-only years (' + io + ') cannot be longer than the amortization (' + am + ' years).');
   return out; }
 function msgHtml(list){ return (list || []).map(function(m){ return '<div class="' + m.lvl + '">' + (m.lvl === 'err' ? 'Fix this: ' : m.lvl === 'warn' ? 'Check this: ' : '') + esc(m.text) + '</div>'; }).join(''); }
@@ -29278,6 +29278,7 @@ var F = {
   propertyType:{ lab:'Property type', kind:'text', rx:[/^(asset|property|building|project|product) (type|class)$/, /^(proposed )?use$/] },
   purchasePrice:{ lab:'Purchase / land price', kind:'money', min:10000, rx:[new RegExp('^' + W('offer|offering|asking|purchase|purchasing|list|listing|guidance|contract|acquisition|sale|seller|land|bid|buy', 'price|cost|basis|amount|value')), /^price$/, /^(asking|offer|bid|list)$/, /^acquisition$/], no:/per |\/|psf|implied|unit|\bsf\b|cap |closing|capital|cost of sale|fee|cost basis per|reserve|tax|assess/ },
   units:{ lab:'Units', kind:'int', min:1, max:20000, rx:[/^(total |proposed |planned |approved |residential |apartment |dwelling |rental |number of |no\.? of |# of |#)?(apartments?|units?|doors?|dwellings?|unit count|apartment count)( count| total)?$/, /^(number|count|total|no\.?|#)( of)? (apartments?|units?|doors?|dwellings?)/, /^units? \(?total\)?$/], no:/per |mix|type|vacant|occupied|rent|sf|size/ },
+  gla:{ lab:'Leasable area (GLA / NRA, SF)', kind:'area', min:500, rx:[/^(gla|nra|nrsf|nra sf)$/, /(gross )?leasable (area|sf|square f)/, /^(net )?rentable (building )?(area|sf|square f)/, /^net rentable/, /^total (leasable|rentable)/, /^rentable sq ?(ft|feet)/] },
   gsf:{ lab:'Gross building area (SF)', kind:'area', min:500, rx:[/gross (building |floor |buildable )?(area|sf|square f)/, /^gba$/, /^gross sf$/, /^building (size|area|sf)\b/, /^total (building )?(sf|square f)/, /^building sq ?(ft|feet)/], no:/rentable|net|existing/ },
   siteArea:{ lab:'Site area (acres)', kind:'acres', rx:[/(site|land|lot|parcel) (area|size)\b/, /^acreage$/, /^acres$/, /^gross land area$/, /^lot$/] },
   conLTC:{ lab:'Construction loan-to-cost', kind:'pct', rx:[/loan.to.cost/, /\bltc\b/], no:/max|ceiling/ },
@@ -29404,6 +29405,8 @@ function resolve(facts, ctx){
   facts.forEach(function(f){
     var L = f.direct ? nl(f.direct) : nl(f.label), v = f.v, k = f.direct && F[f.direct] ? f.direct : labelKey(L); if(k === '__ignore') return; if(k && !F[k] && !/^(avgRent|hurdle2|hurdle3|gpCatchup|t[234]LP|hardContPct)$/.test(k)) k = null; var learned = !!(lload()[lnorm(f.label)]);
     if(f.label === 'units' && f.derived){ put('units', v.n, f, f.note, 'check'); return; } if(f.label === 'avgRent'){ put('avgRent', v.n, f, f.note, 'check'); return; }
+    if(/^record:/.test(f.label)){ var rk = f.label.slice(7); put(rk, rk === 'location' || rk === 'propertyType' ? f.v.text : f.v.n, f, f.note, 'low'); return; }
+    if(/^record-extra:/.test(f.label)){ extra.push({ label:f.label.slice(13), text:f.v.text, f:f, note:f.note }); return; }
     if(/^budget:/.test(f.label)){ var bk = f.label.slice(7); if(bk === 'hard') put('sourceConstruction', v.n, f, f.note); else extra.push({ label:{ soft:'Soft costs', contingency:'Contingency', reserve:'Reserves', financing:'Financing costs', land:'Land / acquisition', predev:'Pre-development' }[bk] || bk, text:$(v.n), f:f, note:f.note, key:bk }); return; }
     if(f.label === 'draw window'){ put('constructionMonths', v.n, f, f.note, 'low'); return; } if(f.label === 'predev window'){ put('predevMonths', v.n, f, f.note, 'low'); return; }
     if(/^tier:/.test(f.label)){ (ctx.tiers = ctx.tiers || {})[f.label.slice(5)] = { hi:v.n, lp:f.lp, f:f }; return; }
@@ -29443,7 +29446,7 @@ function choose(res, ctx){
     list.forEach(function(c){ var g = groups.filter(function(x){ return typeof c.val === 'number' ? Math.abs(x.val - c.val) <= Math.max(1e-9, Math.abs(x.val) * 0.001) : (function(a, b){ a = String(a).toLowerCase().replace(/[^a-z0-9]+/g, ''); b = String(b).toLowerCase().replace(/[^a-z0-9]+/g, ''); return a === b || (a.length > 8 && b.length > 8 && (a.indexOf(b) === 0 || b.indexOf(a) === 0)); })(x.val, c.val); })[0]; if(g) g.items.push(c); else groups.push({ val:c.val, items:[c] }); });
     groups.sort(function(a, b){ var wa = a.items.reduce(function(t, i){ return t + (i.conf === 'low' ? 0.5 : 1); }, 0), wb = b.items.reduce(function(t, i){ return t + (i.conf === 'low' ? 0.5 : 1); }, 0); return wb - wa; });
     var best = groups[0], places = {}; best.items.forEach(function(i){ places[i.f.file + '|' + i.f.sheet + '|' + i.f.row] = 1; });
-    var n = Object.keys(places).length, conf = n >= 2 ? 'verified' : (best.items[0].conf === 'low' ? 'low' : 'check'), why = best.items[0].why || (n >= 2 ? 'Stated in ' + n + ' places that agree' : 'Read from a labelled value');
+    var n = Object.keys(places).length, conf = best.items.some(function(it){ return it.conf === 'low' && it.f && /^record:/.test(it.f.label); }) ? 'low' : n >= 2 ? 'verified' : (best.items[0].conf === 'low' ? 'low' : 'check')   /* an assessor card never verifies an input on its own */, why = best.items[0].why || (n >= 2 ? 'Stated in ' + n + ' places that agree' : 'Read from a labelled value');
     if(groups.length > 1){ conf = 'low'; why = 'Sources disagree: ' + groups.map(function(g){ return fmt(k, g.val) + ' (' + g.items[0].f.sheet + ', row ' + g.items[0].f.row + ')'; }).join(' vs '); conflicts.push(k); }
     out[k] = { val:best.val, conf:conf, why:why, src:best.items.map(function(i){ return i.f; }) };
   });
@@ -29452,7 +29455,7 @@ function choose(res, ctx){
   /* a loan rate on a development deal is the construction rate; LTV / LTC stay as stated */
   if(ctx.dev && out.acqRate && !out.conRate){ out.conRate = out.acqRate; } if(ctx.dev) delete out.acqRate; if(ctx.dev) delete out.acqAmort;
   /* only the building size the document states: net rentable area stands in for building size when no gross area was found, and says so */
-  if(!out.gsf && res.rentable){ out.gsf = { val:res.rentable.val, conf:'low', why:'Net rentable area used as building size: no gross building area was stated', src:[res.rentable.f] }; }
+  /* leasable (net rentable) area is its own field now; it is never used as the gross building area */
   /* all-in rate from index plus spread when no all-in rate was stated */
   if(!out.conRate && out.debtIndexRate && out.debtSpread){ out.conRate = { val:Math.round((out.debtIndexRate.val + out.debtSpread.val) * 1e6) / 1e6, conf:'check', why:'Index ' + (out.debtIndexRate.val * 100).toFixed(2) + '% + spread ' + (out.debtSpread.val * 100).toFixed(2) + '%', src:out.debtIndexRate.src }; }
   delete out.debtIndexRate; delete out.debtSpread;
@@ -29474,7 +29477,7 @@ function choose(res, ctx){
 var PCT = { acqRate:1, conLTC:1, conRate:1, conOrigFee:1, acqLTV:1, exitCap:1, saleCostPct:1, rentGrowth:1, opexGrowth:1, vacancy:1, mgmtPct:1, pref:1, gpShare:1, hurdle2:1, hurdle3:1, t2LP:1, t3LP:1, t4LP:1, hardContPct:1, gpCatchup:1 };
 var LAB = { avgRent:'Average monthly rent / unit', hurdle2:'Second hurdle (IRR)', hurdle3:'Third hurdle (IRR)', t2LP:'Tier 2 split to LP', t3LP:'Tier 3 split to LP', t4LP:'Tier 4 split to LP', hardContPct:'Hard-cost contingency (%)', gpCatchup:'GP catch-up share' };
 var PCTK = { hurdle2:1, hurdle3:1, gpCatchup:1, t2LP:1, t3LP:1, t4LP:1, hardContPct:1 };
-function fmt(k, v){ if(typeof v !== 'number') return String(v); if(PCT[k]) return (v * 100).toFixed(2) + '%'; if(k === 'units') return Math.round(v).toLocaleString('en-US') + ' units'; if(k === 'gsf') return Math.round(v).toLocaleString('en-US') + ' SF'; if(/Months$/.test(k)) return v + ' mo'; if(k === 'holdYears' || k === 'acqAmort') return (Math.round(v * 100) / 100) + ' yrs'; if(k === 'siteArea') return v + ' acres'; return $(v); }
+function fmt(k, v){ if(typeof v !== 'number') return String(v); if(PCT[k]) return (v * 100).toFixed(2) + '%'; if(k === 'units') return Math.round(v).toLocaleString('en-US') + ' units'; if(k === 'gsf' || k === 'gla') return Math.round(v).toLocaleString('en-US') + ' SF'; if(/Months$/.test(k)) return v + ' mo'; if(k === 'holdYears' || k === 'acqAmort') return (Math.round(v * 100) / 100) + ' yrs'; if(k === 'siteArea') return v + ' acres'; return $(v); }
 function label(k){ return LAB[k] || (F[k] && F[k].lab) || k; }
 
 /* ---------- classify a file by its content, then read it ---------- */
@@ -29488,8 +29491,10 @@ function classify(parsed){
   var listing = parsed.kind === 'pdf' && (has(/listing price|asking price|offering price|purchase price|executive summary|property overview|investment (summary|highlights)|offering memorandum|\bcap rate\b|for sale|exclusively (listed|offered)/) >= 1 || stmt0(L));
   var stmt = has(/^(total )?(operating )?expenses?$|total operating expenses/) >= 1 && has(/^net operating income|^noi$/) >= 1 && has(/^(effective gross|total (income|revenue)|gross potential)/) >= 1;
   var portfolio = parsed.sheets.length >= 4 && parsed.sheets.some(function(sh){ var rows = sh.rows || []; for(var i = 0; i < Math.min(rows.length, 12); i++){ var h = (rows[i] || []).map(nl); if(h.some(function(x){ return /^(property|asset|building)( name)?$/.test(x); }) && h.some(function(x){ return /^units?$|^sf$|^square f/.test(x); }) && rows.length - i >= 4) return true; } return false; });
+  var record = parsed.kind === 'pdf' && has(/building sub.?areas|owner of record|^assessment$|^appraisal$|ownership history|valuation history/) >= 3 && has(/year built|living area|land use|^building (information|attributes)/) >= 1;   /* an assessor's property record card */
+  if(record){ listing = false; rr = false; }
   if(listing) rr = false;
-  return { portfolio:portfolio, dev:dev, listing:!!listing, rentRoll:rr && !dev && !portfolio, statement:stmt && !dev && !portfolio, kind:portfolio ? 'portfolio of several properties (master workbook)' : listing && !dev ? 'offering memorandum / listing' : rr && !dev ? 'rent roll' : stmt && !dev ? 'income statement / operating statement' : dev ? 'development pro forma / offering' : 'document with labelled facts' };
+  return { record:record, portfolio:portfolio, dev:dev, listing:!!listing, rentRoll:rr && !dev && !portfolio, statement:stmt && !dev && !portfolio, kind:portfolio ? 'portfolio of several properties (master workbook)' : record ? 'property record card (assessor)' : listing && !dev ? 'offering memorandum / listing' : rr && !dev ? 'rent roll' : stmt && !dev ? 'income statement / operating statement' : dev ? 'development pro forma / offering' : 'document with labelled facts' };
 }
 window.bkImportClassify = function(parsed){ return classify(parsed); };
 /* PDFs are read with PDF.js (text where there is a text layer, text recognition where there is not), one sheet of rows per page, cells split where the page leaves a gap */
@@ -29499,6 +29504,29 @@ function valTokens(line){ var m = line.match(/\$\s?[\d,]+(?:\.\d+)?[KMB]?|\(?-?\
 function bestSplit(words, n, score){ var best = null, bs = -1; (function rec(i, parts){ if(parts.length === n - 1){ var last = words.slice(i).join(' '); if(!last) return; var all = parts.concat([last]), sc = all.reduce(function(t, g){ return t + (score(g) ? Math.min(3, g.split(/\s+/).length) : 0); }, 0); if(sc > bs){ bs = sc; best = all; } return; } for(var j = i + 1; j <= words.length - (n - 1 - parts.length); j++) rec(j, parts.concat([words.slice(i, j).join(' ')])); })(0, []); return best; }
 function headerLike(line){ var w = line.split(/\s+/); if(w.length < 2 || w.length > 14 || /\d/.test(line)) return false; var cap = w.filter(function(x){ return /^[A-Z]/.test(x) || /^[A-Z.&\/-]+$/.test(x); }).length; return cap / w.length >= 0.7; }
 function isHeadScore(g){ var n = nl(g); return Object.keys(HEAD).some(function(k){ return HEAD[k].test(n); }) || knownLabel(g); }
+/* An assessor's property record card (Vision Government Solutions and similar): fixed labels with values to the right, and a building sub-area table whose totals are the GROSS area and the LIVING area.
+   Gross area is the building's gross area; living area is the finished, heated area and only approximates leasable area, so it is read as Low confidence into the leasable-area field. Nothing here is a price: the last sale is listed, not entered. */
+function recordFacts(text, file, sheet, out){
+  var T = String(text || ''), n = function(s){ return parseFloat(String(s).replace(/[^0-9.]/g, '')); };
+  function push(label, v, note){ out.push({ label:label, v:v, file:file, sheet:sheet, row:0, note:note || '', derived:true }); }
+  function sf(key, val, note){ if(val > 0) push('record:' + key, { n:val, unit:'sf', text:Math.round(val).toLocaleString('en-US') + ' SF' }, note); }
+  function ex(label, text, note){ if(text) push('record-extra:' + label, { n:null, unit:'', text:String(text).trim() }, note); }
+  var m;
+  if((m = /^Location\s+(.+?)\s+Mblu/m.exec(T))) push('record:location', { n:null, unit:'', text:m[1].trim().replace(/\b([A-Z])([A-Z]+)\b/g, function(x, a, b){ return a + b.toLowerCase(); }) }, 'Record card location (the card gives a street address, not the city)');
+  if((m = /Bldg Use\s+(.+)/.exec(T)) || (m = /Style:\s+(.+)/.exec(T))){ var use = m[1].trim(); if(/apart|multi|lux apt|residential/i.test(use)) push('record:propertyType', { n:null, unit:'', text:'Multifamily' }, 'Record card use: "' + use + '"'); }
+  if((m = /^\s*([\d,]{5,})\s+([\d,]{5,})\s*$/m.exec(T)) && /Building Sub-Areas/.test(T)){ sf('gsf', n(m[1]), 'Total of the building sub-areas, gross area column'); sf('gla', n(m[2]), 'Total of the building sub-areas, living area column. Living area is finished, heated space and only approximates rentable area: confirm against a rent roll'); }
+  else if((m = /Living Area:\s*([\d,]+)/.exec(T))) sf('gla', n(m[1]), 'Record card living area. Confirm against a rent roll');
+  if((m = /Occupancy\s+(\d+(?:\.\d+)?)/.exec(T))){ var u = Math.round(parseFloat(m[1])); if(u >= 1) push('record:units', { n:u, unit:'', text:u + ' units' }, 'Record card "Occupancy ' + m[1] + '" (the unit count on this card format; confirm against a rent roll)'); }
+  if((m = /Size \(Acres\)\s+([\d.]+)/.exec(T))) push('record:siteArea', { n:parseFloat(m[1]), unit:'acres', text:m[1] + ' acres' }, 'Record card land size');
+  if((m = /Year Built:\s*(\d{4})/.exec(T))) ex('Year built', m[1], 'Record card');
+  if((m = /Stories:\s*(\d+)/.exec(T))) ex('Stories', m[1], 'Record card');
+  if((m = /^Owner\s+(.+?)\s+Sale Price/m.exec(T))) ex('Owner of record', m[1], 'Record card');
+  if((m = /Sale Price\s+(\$[\d,]+)/.exec(T))) ex('Last recorded sale price', m[1], 'Record card; a past sale, not the current price');
+  if((m = /Sale Date\s+(\d{1,2}\/\d{1,2}\/\d{4})/.exec(T))) ex('Last recorded sale date', m[1], 'Record card');
+  if((m = /Appraisal\s+(\$[\d,]+)/.exec(T))) ex('Appraised value (assessor)', m[1], 'Record card; an assessor value, not a market price');
+  if((m = /Total Market Value\s+(\$[\d,]+)/.exec(T))) ex('Assessed market value', m[1], 'Record card');
+  if((m = /Total Market Land\s+(\$[\d,]+)/.exec(T))) ex('Assessed land value', m[1], 'Record card');
+}
 function pdfRows(text){
   var lines = String(text || '').split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean), rows = [], i = 0;
   while(i < lines.length){ var line = lines[i], next = lines[i + 1] || '', toks = valTokens(next);
@@ -29515,7 +29543,7 @@ function pdfRows(text){
 window.bkImportPdfRows = function(text){ return pdfRows(text); };
 function w2(l){ return l.split(/\s+/).length; }
 function pdfParsed(f){ if(typeof window.bkOMPageText !== 'function') return Promise.resolve(null);
-  return window.bkOMPageText(f).then(function(pages){ var sheets = pages.map(function(t, i){ return { name:'page ' + (i + 1), rows:pdfRows(t) }; }); return sheets.length ? { kind:'pdf', sheets:sheets } : null; }).catch(function(){ return null; }); }
+  return window.bkOMPageText(f).then(function(pages){ var sheets = pages.map(function(t, i){ return { name:'page ' + (i + 1), rows:pdfRows(t), text:t }; }); return sheets.length ? { kind:'pdf', sheets:sheets } : null; }).catch(function(){ return null; }); }
 function readOne(f){
   var first = /\.pdf$/i.test(f.name) ? pdfParsed(f) : Promise.resolve(null);
   return first.then(function(pp){ return pp || window.bkImportParseFile(f); }).then(function(parsed){
@@ -29532,9 +29560,9 @@ function ingest(files){
       if(c.portfolio){ S.busy = false; S.routed = 'portfolio'; S.files.push(rs[0]); showSheet('Portfolio Import'); setTimeout(function(){ var inp = document.getElementById('bkMasterFile'); if(inp && window.DataTransfer){ var dt = new DataTransfer(); dt.items.add(f0); inp.files = dt.files; if(typeof window.bkImportMasterFile === 'function') window.bkImportMasterFile(); } }, 250); return; }
       if(c.rentRoll && typeof window.bkRRRun === 'function'){ S.busy = false; S.routed = 'rent roll'; window.bkRRRun({ files:[f0] }); return; }
       if(c.statement && !/\.pdf$/i.test(f0.name) && typeof window.bkImportRun === 'function'){ S.busy = false; S.routed = 'operating statement'; window.bkImportRun({ files:[f0] }); return; }
-      if(!c.dev && /\.pdf$/i.test(f0.name) && typeof window.bkOMRun === 'function'){ S.busy = false; S.routed = 'offering memorandum / listing'; window.bkOMRun({ files:[f0] }); return; } }
+      if(!c.dev && !c.record && /\.pdf$/i.test(f0.name) && typeof window.bkOMRun === 'function'){ S.busy = false; S.routed = 'offering memorandum / listing'; window.bkOMRun({ files:[f0] }); return; } }
     var facts = [], ctx = { dev:false };
-    rs.forEach(function(x){ S.files.push(x); if(!x.info.parsed) return; if(x.info.cls.dev) ctx.dev = true; x.info.parsed.sheets.forEach(function(sh){ sheetFacts(sh, x.f.name, facts, ctx); }); });
+    rs.forEach(function(x){ S.files.push(x); if(!x.info.parsed) return; if(x.info.cls.dev) ctx.dev = true; x.info.parsed.sheets.forEach(function(sh){ if(x.info.cls.record){ if(sh.text) recordFacts(sh.text, x.f.name, sh.name, facts); } else sheetFacts(sh, x.f.name, facts, ctx); }); });
     var all = S.facts.concat(facts); S.facts = all;
     var res = resolve(all, ctx); S.res = res; S.pick = choose(res, ctx); S.dev = ctx.dev || S.dev;
     /* name fallback: the title at the top of the first sheet or page */
@@ -29742,6 +29770,7 @@ document.head.appendChild(st);
    GP equity contribution (a share of the money put in, set in Investment > Partnership as gpShare) is a different thing from the GP's profit participation
    (pref, catch-up and promote tiers). Only the first is used here. */
 (function(){
+  if(typeof BK_BASE === 'object' && BK_BASE && !('gla' in BK_BASE)) BK_BASE.gla = 0;   /* leasable area (GLA / NRA): separate from the gross building area, blank until entered */
   function sum(a, k){ return (a || []).reduce(function(t, m){ return t + (Number(m[k]) || 0); }, 0); }
   function n(v){ v = Number(v); return isFinite(v) ? v : 0; }
   function tie(id, label, a, b, tol, note){ var ok = Math.abs(n(a) - n(b)) <= (tol == null ? 1 : tol); return { id:id, label:label, a:n(a), b:n(b), ok:ok, note:note || '' }; }
@@ -30042,22 +30071,6 @@ html body .bk-ribbon .rb-t{ line-height:34px; }
 html body .bk-ribbon .rb-t{ padding:0 9px; font-size:12.5px; }
 html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
 
-/* SUB-TABS, ONE ROW PER GROUP. A long section reads as a few short, named lists; every page is a boxed button; the current page is filled; rows alternate so they are told apart; nothing overlaps. */
-html body .bk-ribbon .rb-tabs{ display:flex; flex-direction:column; flex-wrap:nowrap; overflow:visible; gap:0; align-items:stretch; }
-html body .bk-ribbon .rb-row{ display:flex; align-items:flex-start; gap:12px; padding:5px 0; border-bottom:1px solid var(--ae-line); }
-html body .bk-ribbon .rb-row:nth-child(even){ background:var(--ae-cell-ro); margin:0 -12px; padding-left:12px; padding-right:12px; }
-html body .bk-ribbon .rb-row:last-child{ border-bottom:0; }
-html body .bk-ribbon .rb-gl{ flex:0 0 118px; padding-top:7px; font:700 10.5px/1.25 Inter,system-ui,sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ae-dim); }
-html body .bk-ribbon .rb-pages{ display:flex; flex-wrap:wrap; gap:4px; flex:1 1 auto; min-width:0; }
-html body .bk-ribbon .rb-t{ position:static; flex:0 0 auto; border:1px solid var(--ae-line); border-bottom-width:1px; background:var(--ae-cell); padding:0 11px; font:500 12.5px/26px Inter,"Segoe UI",system-ui,sans-serif; opacity:1; color:var(--ae-ink); }
-html body .bk-ribbon .rb-t + .rb-t::before{ display:none; }
-html body .bk-ribbon .rb-t:hover{ background:var(--ae-sel); border-color:var(--bk-navy-2); }
-html body .bk-ribbon .rb-t.on{ background:var(--bk-navy); border-color:var(--bk-navy); color:#fff; font-weight:650; box-shadow:none; }
-html[data-theme="dark"] body .bk-ribbon .rb-t.on{ background:#1f4e8c; border-color:#6fb4f2; color:#fff !important; }
-@media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on{ background:#1f4e8c; border-color:#6fb4f2; color:#fff !important; } }
-html body .bk-ribbon .rb-sep{ display:none; }
-html body .bk-ribbon .rb-cmds{ align-self:flex-start; padding-top:5px; }
-@media (max-width:760px){ html body .bk-ribbon .rb-gl{ flex-basis:84px; } }
 /* the centre title of the header gives way before it can run into the buttons */
 @media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
 @media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }
