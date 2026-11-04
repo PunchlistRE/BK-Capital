@@ -231,6 +231,11 @@ function buildDev(){
     + (ig ? ig.hard.map(function(c){ return '<div><b>Model check failed:</b> ' + esc(c.label) + '</div>'; }).join('') + ig.warn.map(function(c){ return '<div><b>Model warning:</b> ' + esc(c.label) + '</div>'; }).join('') + '<div class="note" style="margin-top:4px">Model integrity: ' + esc(ig.text) + '.</div>' : '');
   pages.push(page('<h2>Credit decision</h2><div class="g2" style="grid-template-columns:1.3fr .9fr"><div>' + gateTbl + '</div><div><div class="bx" style="padding:10px 12px"><div class="t">Decision: ' + esc(gate.verdict || 'Not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div>' + (exc ? '<div class="ins" style="margin-top:4px">' + exc + '</div>' : '') + (gate.action ? '<div class="note" style="margin-top:7px"><b>Next step:</b> ' + esc(gate.action) + '</div>' : '') + '</div></div></div>'
     + '<h2 style="margin-top:16px">Delay and exit stress</h2>' + stress + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid and stress tests rerun the model. Development returns depend heavily on cost, schedule and exit assumptions. This summary is an analytical aid, not an offer or a fairness opinion. Check it against your own model before relying on it.</div></div>', N, N, D));
+  /* the pages that explain the investment (src/179), placed where a reader needs them; footers are renumbered over the final page list */
+  var XP = typeof window.bkDevReportPages === 'function' ? safe(function(){ return window.bkDevReportPages(); }, null) : null;
+  if(XP){ var pgx = function(inner){ return page(inner, 0, 0, D); };
+    pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance)); pages.splice(2, 0, pgx(XP.returns));
+    pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); }
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Development Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 
@@ -360,6 +365,32 @@ window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, n
 window.bkReportClose = function(){ var e = document.getElementById('pl-report'); if(e) e.remove(); document.documentElement.style.overflow = ''; };
 window.bkReportPrint = function(){ var f = document.getElementById('pl-report-frame'); if(f && f.contentWindow){ f.contentWindow.focus(); f.contentWindow.print(); } };
 window.bkReportOpen = function(){ var go = function(){ return bkReportOpenNow(); }; return Promise.resolve(typeof window.bkDocsWarm === 'function' ? window.bkDocsWarm() : '').then(go, go); };
+/* the cover photo: one clear control on the preview. It sets or changes the deal's photo (the same photo as on Deal Documents and the Overview), redraws the summary at once, and can remove it. */
+function photoCtl(){
+  var has = !!safe(function(){ return window.bkDealPhotoURL(); }, ''), id = 'pl-photo-in', btn = 'border-radius:999px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.04em;';
+  return '<span id="pl-photo-ctl" style="display:inline-flex;align-items:center;gap:8px;padding-right:12px;margin-right:4px;border-right:1px solid rgba(255,255,255,.25)">'
+    + (has ? '<img alt="" src="' + safe(function(){ return window.bkDealPhotoURL(); }, '') + '" style="width:34px;height:26px;object-fit:cover;border-radius:3px;border:1px solid rgba(255,255,255,.5)">' : '<span style="width:34px;height:26px;border-radius:3px;border:1px dashed rgba(255,255,255,.5);display:inline-block"></span>')
+    + '<span style="font-size:11px;color:#B9C8D8;line-height:1.2;max-width:120px">' + (has ? 'Cover photo set' : 'No cover photo yet') + '</span>'
+    + '<label for="' + id + '" style="' + btn + 'background:#fff;color:#0e2a4a;padding:8px 14px;border:0;display:inline-block">' + (has ? 'CHANGE PHOTO' : 'SET COVER PHOTO') + '</label><input id="' + id + '" type="file" accept="image/*" style="display:none" onchange="bkReportPhotoPick(this)">'
+    + (has ? '<button type="button" onclick="bkReportPhotoRemove()" style="' + btn + 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:7px 12px;font-weight:600">Remove</button>' : '') + '</span>';
+}
+function redrawSummary(){
+  var f = document.getElementById('pl-report-frame'), h = safe(window.bkReportHTML, null); if(!f || !h) return;
+  var y = 0; try { y = f.contentWindow.scrollY || 0; } catch(e){}
+  f.addEventListener('load', function again(){ f.removeEventListener('load', again); try { f.contentWindow.scrollTo(0, y); } catch(e){} });
+  f.srcdoc = h; var c = document.getElementById('pl-photo-ctl'); if(c){ var t = document.createElement('div'); t.innerHTML = photoCtl(); c.replaceWith(t.firstChild); }
+}
+window.bkReportPhotoPick = function(input){
+  var file = input && input.files && input.files[0]; if(!file) return;
+  if(!/^image\//.test(file.type)){ alert('Choose an image file (JPEG, PNG or similar).'); input.value = ''; return; }
+  if(typeof window.bkDocsSetPhoto !== 'function'){ alert('Photos are not available in this build.'); return; }
+  var lab = document.querySelector('#pl-photo-ctl label'); if(lab) lab.textContent = 'SAVING…';
+  window.bkDocsSetPhoto(file).then(function(){ redrawSummary(); }, function(e){ alert('The photo could not be saved: ' + (e && e.message || e)); redrawSummary(); });
+};
+window.bkReportPhotoRemove = function(){
+  if(typeof window.bkDocsClearPhoto !== 'function') return;
+  window.bkDocsClearPhoto().then(function(){ redrawSummary(); }, function(){ redrawSummary(); });
+};
 function bkReportOpenNow(){
   var s = safe(function(){ return bkLoad(); }, null), msg = null;
   if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())) msg = 'Open or create a deal first.';
@@ -369,7 +400,7 @@ function bkReportOpenNow(){
   bkReportClose();
   var o = document.createElement('div'); o.id = 'pl-report';
   o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#081a30;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif';
-  o.innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0e2a4a;border-bottom:2px solid #3E9AE6;color:#fff"><b style="font-size:13px;letter-spacing:.06em">INVESTMENT SUMMARY</b><span style="font-size:12px;color:#B9C8D8">' + esc(s.name || '') + ' · ' + ((html.match(/<section class="page/g) || []).length) + ' pages · Letter</span><span style="flex:1"></span><button type="button" onclick="bkReportPrint()" style="background:#3E9AE6;color:#081a30;border:0;border-radius:999px;padding:8px 18px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.06em">SAVE AS PDF</button><button type="button" onclick="bkReportClose()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:7px 14px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer">Close</button></div>'
+  o.innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0e2a4a;border-bottom:2px solid #3E9AE6;color:#fff"><b style="font-size:13px;letter-spacing:.06em">INVESTMENT SUMMARY</b><span style="font-size:12px;color:#B9C8D8">' + esc(s.name || '') + ' · ' + ((html.match(/<section class="page/g) || []).length) + ' pages · Letter</span><span style="flex:1"></span>' + photoCtl() + '<button type="button" onclick="bkReportPrint()" style="background:#3E9AE6;color:#081a30;border:0;border-radius:999px;padding:8px 18px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.06em">SAVE AS PDF</button><button type="button" onclick="bkReportClose()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:7px 14px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer">Close</button></div>'
     + '<iframe id="pl-report-frame" title="Investment summary preview" style="flex:1;border:0;width:100%;background:#c9d6e2"></iframe>';
   document.body.appendChild(o); document.documentElement.style.overflow = 'hidden';
   var f = document.getElementById('pl-report-frame');

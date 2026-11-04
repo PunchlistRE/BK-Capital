@@ -895,6 +895,11 @@
 "close": "</script>"
 },
 {
+"file": "179-bk-devreport-extra.js",
+"open": "\n<script id=\"bk-devreport-extra\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
