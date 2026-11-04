@@ -19276,9 +19276,6 @@ function ribbon(frame, sheet){
   var tab = (typeof NAV_TABS !== 'undefined' ? NAV_TABS : []).find(function(t){ return t.groups.some(function(id){ var x = GROUPS.find(function(y){ return y.id === id; }); return x && x.sheets.indexOf(sheet) > -1; }); });
   var gs = tab ? tab.groups.map(function(id){ return GROUPS.find(function(x){ return x.id === id; }); }).filter(function(x){ return x && !x.hidden && (x.id !== 'dev' || dev || x.sheets.indexOf(sheet) > -1); }) : [];
   var sub = gs.map(function(g){ return g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); }).filter(Boolean).join('<span class="rb-sep" aria-hidden="true"></span>');
-  /* a section with many pages (the portfolio and monthly-engine sections run to twenty) shows each group as a drop-down list instead of a long row of buttons */
-  var vis = gs.map(function(g){ return { g:g, list:g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }) }; }).filter(function(x){ return x.list.length; }), total = vis.reduce(function(n, x){ return n + x.list.length; }, 0);
-  if(total > 9){ sub = '<div class="rb-dd open-off"><button type="button" class="rb-ddb" aria-haspopup="true" aria-expanded="false" data-bk-dd><span class="rb-ddl">' + esc(tab ? tab.label : 'Pages') + '</span><span class="rb-ddc">' + esc(sheet) + '</span><i aria-hidden="true">&#9662;</i></button><div class="rb-ddm" role="menu">' + vis.map(function(x){ return '<div class="rb-tg"><div class="rb-tgh"><b aria-hidden="true">&minus;</b>' + esc(x.g.label) + '<em>' + x.list.length + '</em></div>' + x.list.map(function(n){ return '<button type="button" role="menuitem" class="rb-ddi' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join('') + '</div>'; }).join('') + '</div></div>'; }
   var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
   var h = '<div class="bk-ribbon" role="toolbar" aria-label="Pages and commands"><div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
     + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
@@ -19331,8 +19328,6 @@ document.addEventListener('click', function(e){
     /* the nav strip scrolls horizontally, so the menu is positioned against the window to avoid being clipped */
     pop.style.position = 'fixed'; pop.style.top = (rc.bottom + 4) + 'px'; pop.style.left = Math.max(8, Math.min(rc.left, window.innerWidth - 236)) + 'px'; pop.style.right = 'auto';
     mw.classList.toggle('open'); return; }
-  if((el = t.closest('[data-bk-dd]'))){ var dd = el.closest('.rb-dd'), was = dd.classList.contains('open'); document.querySelectorAll('.rb-dd.open').forEach(function(x){ x.classList.remove('open'); var bb = x.querySelector('[data-bk-dd]'); if(bb) bb.setAttribute('aria-expanded', 'false'); }); if(!was){ dd.classList.add('open'); el.setAttribute('aria-expanded', 'true'); } return; }
-  if(!t.closest('.rb-dd')) document.querySelectorAll('.rb-dd.open').forEach(function(x){ x.classList.remove('open'); });
   if((el = t.closest('[data-bk-more-group]'))){ var g = GROUPS.find(function(x){ return x.id === el.getAttribute('data-bk-more-group'); }); if(g) showSheet(g.sheets[0]); return; }
   if((el = t.closest('[data-bk-jump]'))){ var tgt = document.getElementById(el.getAttribute('data-bk-jump')); if(tgt){ tgt.scrollIntoView({ behavior:'smooth', block:'start' }); } return; }
   if((el = t.closest('[data-bk-jump-key]'))){ var row = document.querySelector('#viewport tr[data-bk-key="' + el.getAttribute('data-bk-jump-key') + '"]');
@@ -30086,25 +30081,6 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
 /* the centre title of the header gives way before it can run into the buttons */
 @media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
 @media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }
-
-/* SUB-TAB DROP-DOWN, in the style of the side tree: a dark panel, a heading per group with its count, and the pages under it on a dotted line. */
-html body .bk-ribbon .rb-tabs:has(.rb-dd){ display:flex; align-items:center; overflow:visible; padding:5px 0; }
-html body .bk-ribbon .rb-dd{ position:relative; }
-html body .bk-ribbon .rb-ddb{ display:flex; align-items:center; gap:10px; border:1px solid var(--bk-navy); background:var(--bk-navy); color:#fff; padding:0 12px; font:600 13px/32px Inter,"Segoe UI",system-ui,sans-serif; border-radius:3px; cursor:pointer; }
-html body .bk-ribbon .rb-ddl{ letter-spacing:.06em; text-transform:uppercase; font-size:11px; opacity:.85; }
-html body .bk-ribbon .rb-ddc{ font-weight:600; padding-left:10px; border-left:1px solid rgba(255,255,255,.4); }
-html body .bk-ribbon .rb-ddb i{ font-style:normal; font-size:10px; opacity:.85; }
-html body .bk-ribbon .rb-ddm{ display:none; position:absolute; z-index:60; top:calc(100% + 2px); left:0; min-width:250px; max-height:74vh; overflow:auto; background:#1b2430; border:1px solid #40474F; box-shadow:0 10px 26px rgba(0,0,0,.32); border-radius:4px; padding:6px 0 8px; }
-html body .bk-ribbon .rb-dd.open .rb-ddm{ display:block; }
-html body .bk-ribbon .rb-tg{ position:relative; padding-bottom:4px; }
-html body .bk-ribbon .rb-tg::after{ content:""; position:absolute; left:17px; top:30px; bottom:12px; border-left:1px dotted #7d8896; pointer-events:none; }
-html body .bk-ribbon .rb-tgh{ display:flex; align-items:center; gap:9px; padding:8px 12px 6px; color:#fff; font:700 11px/16px Inter,system-ui,sans-serif; letter-spacing:.09em; text-transform:uppercase; }
-html body .bk-ribbon .rb-tgh b{ display:inline-flex; width:11px; height:11px; border:1px solid #9aa6b4; align-items:center; justify-content:center; font-size:10px; line-height:1; color:#fff; }
-html body .bk-ribbon .rb-tgh em{ margin-left:auto; font-style:normal; font-size:10.5px; padding:1px 7px; border-radius:3px; background:#3a4452; color:#e6ecf3; }
-html body .bk-ribbon .rb-ddi{ position:relative; display:block; width:100%; text-align:left; border:0; background:transparent; color:#dfe6ee; padding:0 14px 0 38px; font:500 13px/30px Inter,"Segoe UI",system-ui,sans-serif; cursor:pointer; }
-html body .bk-ribbon .rb-ddi::before{ content:""; position:absolute; left:17px; top:50%; width:14px; border-top:1px dotted #7d8896; }
-html body .bk-ribbon .rb-ddi:hover{ background:#27313f; }
-html body .bk-ribbon .rb-ddi.on{ background:#2a3a52; color:#fff; font-weight:700; box-shadow:inset 3px 0 0 #6fb4f2; }
 </style>
 </body>
 </html>

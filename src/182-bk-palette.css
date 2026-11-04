@@ -238,22 +238,3 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
 /* the centre title of the header gives way before it can run into the buttons */
 @media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
 @media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }
-
-/* SUB-TAB DROP-DOWN, in the style of the side tree: a dark panel, a heading per group with its count, and the pages under it on a dotted line. */
-html body .bk-ribbon .rb-tabs:has(.rb-dd){ display:flex; align-items:center; overflow:visible; padding:5px 0; }
-html body .bk-ribbon .rb-dd{ position:relative; }
-html body .bk-ribbon .rb-ddb{ display:flex; align-items:center; gap:10px; border:1px solid var(--bk-navy); background:var(--bk-navy); color:#fff; padding:0 12px; font:600 13px/32px Inter,"Segoe UI",system-ui,sans-serif; border-radius:3px; cursor:pointer; }
-html body .bk-ribbon .rb-ddl{ letter-spacing:.06em; text-transform:uppercase; font-size:11px; opacity:.85; }
-html body .bk-ribbon .rb-ddc{ font-weight:600; padding-left:10px; border-left:1px solid rgba(255,255,255,.4); }
-html body .bk-ribbon .rb-ddb i{ font-style:normal; font-size:10px; opacity:.85; }
-html body .bk-ribbon .rb-ddm{ display:none; position:absolute; z-index:60; top:calc(100% + 2px); left:0; min-width:250px; max-height:74vh; overflow:auto; background:#1b2430; border:1px solid #40474F; box-shadow:0 10px 26px rgba(0,0,0,.32); border-radius:4px; padding:6px 0 8px; }
-html body .bk-ribbon .rb-dd.open .rb-ddm{ display:block; }
-html body .bk-ribbon .rb-tg{ position:relative; padding-bottom:4px; }
-html body .bk-ribbon .rb-tg::after{ content:""; position:absolute; left:17px; top:30px; bottom:12px; border-left:1px dotted #7d8896; pointer-events:none; }
-html body .bk-ribbon .rb-tgh{ display:flex; align-items:center; gap:9px; padding:8px 12px 6px; color:#fff; font:700 11px/16px Inter,system-ui,sans-serif; letter-spacing:.09em; text-transform:uppercase; }
-html body .bk-ribbon .rb-tgh b{ display:inline-flex; width:11px; height:11px; border:1px solid #9aa6b4; align-items:center; justify-content:center; font-size:10px; line-height:1; color:#fff; }
-html body .bk-ribbon .rb-tgh em{ margin-left:auto; font-style:normal; font-size:10.5px; padding:1px 7px; border-radius:3px; background:#3a4452; color:#e6ecf3; }
-html body .bk-ribbon .rb-ddi{ position:relative; display:block; width:100%; text-align:left; border:0; background:transparent; color:#dfe6ee; padding:0 14px 0 38px; font:500 13px/30px Inter,"Segoe UI",system-ui,sans-serif; cursor:pointer; }
-html body .bk-ribbon .rb-ddi::before{ content:""; position:absolute; left:17px; top:50%; width:14px; border-top:1px dotted #7d8896; }
-html body .bk-ribbon .rb-ddi:hover{ background:#27313f; }
-html body .bk-ribbon .rb-ddi.on{ background:#2a3a52; color:#fff; font-weight:700; box-shadow:inset 3px 0 0 #6fb4f2; }
