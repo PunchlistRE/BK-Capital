@@ -29295,14 +29295,19 @@ function label(k){ return LAB[k] || (F[k] && F[k].lab) || k; }
 
 /* ---------- classify a file by its content, then read it ---------- */
 function allLabels(parsed){ var o = []; parsed.sheets.forEach(function(sh){ (sh.rows || []).forEach(function(r){ (r || []).forEach(function(c){ if(typeof c === 'string') o.push(nl(c)); }); }); }); return o; }
+function stmt0(L){ var has = function(rx){ return L.filter(function(x){ return rx.test(x); }).length; }; return has(/^(total )?(operating )?expenses?$|total operating expenses/) >= 1 && has(/^net operating income|^noi$/) >= 1 && has(/^(effective gross|total (income|revenue)|gross potential)/) >= 1; }
 function classify(parsed){
   var L = allLabels(parsed), has = function(rx){ return L.filter(function(x){ return rx.test(x); }).length; };
   var dev = has(/\bhard costs?\b|\bsoft costs?\b|construction loan|\bdraw(s)?\b|contingency|waterfall|development budget|entitlement|ground.up|predevelopment|pre-development/) >= 3 || has(/development (opportunity|site|program)|proposed development|ground.up/) >= 2;
-  var rr = parsed.sheets.some(function(sh){ var rows = sh.rows || []; for(var i = 0; i < Math.min(rows.length, 40); i++){ var h = (rows[i] || []).map(nl); if(h.some(function(x){ return /^(unit|apt|apartment|suite|space)( ?(#|no\.?|number|id))?$/.test(x); }) && h.some(function(x){ return /rent/.test(x); }) && h.length >= 3 && rows.length - i > 5) return true; } return false; });
+  var rr = parsed.sheets.some(function(sh){ var rows = sh.rows || []; for(var i = 0; i < Math.min(rows.length, 40); i++){ var h = (rows[i] || []).map(nl); if(h.some(function(x){ return /^(unit|apt|apartment|suite|space)( ?(#|no\.?|number|id))?$/.test(x); }) && h.some(function(x){ return /\brent\b/.test(x); }) && h.length >= 3 && rows.length - i > 5) return true; } return false; });   /* 'rent' as a word: 'Current' is a column heading in a unit mix, not a rent column */
+  /* an offering memorandum or listing usually carries a rent roll or unit mix page; the whole document is still an OM, read by the OM reader */
+  var listing = parsed.kind === 'pdf' && (has(/listing price|asking price|offering price|purchase price|executive summary|property overview|investment (summary|highlights)|offering memorandum|\bcap rate\b|for sale|exclusively (listed|offered)/) >= 1 || stmt0(L));
   var stmt = has(/^(total )?(operating )?expenses?$|total operating expenses/) >= 1 && has(/^net operating income|^noi$/) >= 1 && has(/^(effective gross|total (income|revenue)|gross potential)/) >= 1;
   var portfolio = parsed.sheets.length >= 4 && parsed.sheets.some(function(sh){ var rows = sh.rows || []; for(var i = 0; i < Math.min(rows.length, 12); i++){ var h = (rows[i] || []).map(nl); if(h.some(function(x){ return /^(property|asset|building)( name)?$/.test(x); }) && h.some(function(x){ return /^units?$|^sf$|^square f/.test(x); }) && rows.length - i >= 4) return true; } return false; });
-  return { portfolio:portfolio, dev:dev, rentRoll:rr && !dev && !portfolio, statement:stmt && !dev && !portfolio, kind:portfolio ? 'portfolio of several properties (master workbook)' : rr && !dev ? 'rent roll' : stmt && !dev ? 'income statement / operating statement' : dev ? 'development pro forma / offering' : 'document with labelled facts' };
+  if(listing) rr = false;
+  return { portfolio:portfolio, dev:dev, listing:!!listing, rentRoll:rr && !dev && !portfolio, statement:stmt && !dev && !portfolio, kind:portfolio ? 'portfolio of several properties (master workbook)' : listing && !dev ? 'offering memorandum / listing' : rr && !dev ? 'rent roll' : stmt && !dev ? 'income statement / operating statement' : dev ? 'development pro forma / offering' : 'document with labelled facts' };
 }
+window.bkImportClassify = function(parsed){ return classify(parsed); };
 /* PDFs are read with PDF.js (text where there is a text layer, text recognition where there is not), one sheet of rows per page, cells split where the page leaves a gap */
 var NOUN = null;
 function knownLabel(t){ var L = nl(t); if(!L) return false; if(labelKey(L)) return true; for(var i = 0; i < NOINPUT.length; i++) if(NOINPUT[i][1].test(L)) return true; return false; }
@@ -29323,6 +29328,7 @@ function pdfRows(text){
     for(var n = Math.min(6, w.length - 1); n >= 1 && !done; n--){ var pre = w.slice(0, n).join(' '); if(knownLabel(pre) && !/[:]$/.test(pre)){ rows.push([pre, w.slice(n).join(' ')]); done = true; } }
     if(!done) rows.push([line]); i++; }
   return rows; }
+window.bkImportPdfRows = function(text){ return pdfRows(text); };
 function w2(l){ return l.split(/\s+/).length; }
 function pdfParsed(f){ if(typeof window.bkOMPageText !== 'function') return Promise.resolve(null);
   return window.bkOMPageText(f).then(function(pages){ var sheets = pages.map(function(t, i){ return { name:'page ' + (i + 1), rows:pdfRows(t) }; }); return sheets.length ? { kind:'pdf', sheets:sheets } : null; }).catch(function(){ return null; }); }
