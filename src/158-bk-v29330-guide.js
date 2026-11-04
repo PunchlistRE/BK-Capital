@@ -144,7 +144,7 @@ function checks(sec, s){
 function msgHtml(list){ return (list || []).map(function(m){ return '<div class="' + m.lvl + '">' + (m.lvl === 'err' ? 'Fix this: ' : m.lvl === 'warn' ? 'Check this: ' : '') + esc(m.text) + '</div>'; }).join(''); }
 function errorsOf(sec, s){ var m = checks(sec, s), o = []; Object.keys(m).forEach(function(k){ m[k].forEach(function(x){ if(x.lvl === 'err') o.push({ k:k, text:x.text }); }); }); return o; }
 function paintMsgs(sec){ var s = bkLoad(), m = checks(sec, s); sec.fields.forEach(function(fl){ var el = document.getElementById('gdm-' + fl.k); if(el) el.innerHTML = msgHtml(m[fl.k]); });
-  var errs = errorsOf(sec, s), btn = document.getElementById('gd-next'); if(btn){ btn.disabled = errs.length > 0; btn.title = errs.length ? 'Fix the red items first' : ''; btn.textContent = errs.length ? 'Fix the red items to continue' : 'Looks right, continue'; btn.style.opacity = errs.length ? '.55' : ''; } }
+  var errs = errorsOf(sec, s), btn = document.getElementById('gd-next'); if(btn){ btn.disabled = errs.length > 0; btn.title = errs.length ? 'Fix the red items first' : ''; if(errs.length) btn.textContent = 'Fix the red items to continue'; else { var rows = safe(function(){ return changeList(s, sec); }, []) || []; btn.textContent = rows.length ? 'Confirm ' + rows.length + ' change' + (rows.length === 1 ? '' : 's') + ' and continue' : 'Looks right, continue'; } btn.style.opacity = errs.length ? '.55' : ''; } }
 /* sources and uses: what the deal costs, what the loan covers, and who puts up the equity. Read from the engine under the figures being edited. */
 function isDevS(s){ return /develop/i.test(String(s.dealType || '')); }
 function suInner(s0){

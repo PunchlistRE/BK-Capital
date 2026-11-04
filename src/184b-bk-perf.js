@@ -8,7 +8,7 @@
     S.setItem = function(k){ if(/^bkcapital/i.test(String(k))) ver++; return si.apply(this, arguments); };
     S.removeItem = function(k){ if(/^bkcapital/i.test(String(k))) ver++; return ri.apply(this, arguments); };
     S.clear = function(){ ver++; return ci.apply(this, arguments); }; } catch(e){}
-  function stateKey(){ try { return ver + '|' + JSON.stringify(bkLoad()); } catch(e){ return null; } }
+  function stateKey(){ try { return ver + '|' + (typeof bkIsProvisioned === 'function' ? (bkIsProvisioned() ? 1 : 0) : '') + '|' + JSON.stringify(bkLoad()); } catch(e){ return null; } }
   var NAMES = ['bkDealReadiness', 'bkModelControls', 'bkRequiredRows', 'bkIntegrity', 'bkMonthlyReturns', 'bkWaterfallV07', 'bkDevTakeoutV11', 'bkDevFundingV10', 'bkDevV09', 'bkDebt', 'bkAnnualCF', 'bkAllInputsTie', 'bkFundingSummary'];
   var stores = {};
   function wrap(name){
