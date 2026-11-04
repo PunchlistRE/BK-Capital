@@ -197,6 +197,12 @@ function decorateTopNav(frame){
 }
 
 /* ---------------------------------------------------------------- 2. snapshot + key */
+/* ALL INPUTS TIE: one verdict from the shared funding ties (src/184) and the model integrity checks */
+function tieChip(){
+  var t; try { t = window.bkAllInputsTie && window.bkAllInputsTie(); } catch(e){ t = null; } if(!t || t.withheld) return '';
+  var tip = t.ok ? t.checks + ' checks agree: Sources & Uses, Debt, Funding, Returns and the model integrity checks' : t.failed.map(function(f){ return f.label + (f.detail ? ' (' + f.detail + ')' : ''); }).join('; ');
+  return '<a data-goto-sheet2="Model Checks" title="' + esc(tip) + '" style="cursor:pointer"><span class="status-chip ' + (t.ok ? 'pass' : 'fail') + '">' + (t.ok ? 'ALL INPUTS TIE' : t.failed.length + ' DO NOT TIE') + '</span></a>';
+}
 function snapshotCard(){
   if(!hasDeal()) return '';
   var r = readiness(), s = bkLoad();
@@ -215,6 +221,7 @@ function snapshotCard(){
     + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(h.binding) + '</span>' : ''))
     + row('Equity', money(h.equity)) + row('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
+    + (tieChip() ? row('Inputs', tieChip()) : '')
     + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '')
     + (function(){ var m = null; try { m = window.bkMarketCompare && window.bkMarketCompare(); } catch(e){}
         if(!m || !m.rows) return ''; var out = m.rows.filter(function(x){ return x.status === 'ABOVE RANGE' || x.status === 'BELOW RANGE'; }).length;
@@ -585,7 +592,7 @@ function kpiBar(sheet){
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
       + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
-      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) + (tieChip() ? cell('Inputs', tieChip()) : '') : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }
 function refreshFlow(){

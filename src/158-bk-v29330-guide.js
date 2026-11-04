@@ -147,24 +147,23 @@ function paintMsgs(sec){ var s = bkLoad(), m = checks(sec, s); sec.fields.forEac
 /* sources and uses: what the deal costs, what the loan covers, and who puts up the equity. Read from the engine under the figures being edited. */
 function isDevS(s){ return /develop/i.test(String(s.dealType || '')); }
 function suInner(s0){
-  var dev = isDevS(s0), run = function(fn){ return safe(function(){ return window.bkRunWith(Object.assign({}, st.draft), fn); }, null); };
-  var d = run(function(){ return bkDebt(); }), uses = [], loan = 0, equity = 0, total = 0, note = '';
-  if(dev){ var f = run(function(){ return bkDevFundingV10(); }); if(!f || !isFinite(f.levered) || !(f.levered > 0)) return '<div class="gd-card" style="font-size:13px">Enter the land price, the construction budget and the financing first; then the cost, the loan and the equity appear here.</div>';
-    total = f.levered; loan = Number(f.commit) || 0; equity = Number(f.equityTotal) || Math.max(0, total - loan); uses = [['Total project cost, including interest and fees', total]]; note = 'The construction loan funds up to its commitment; the equity pays the rest, and goes in first.'; }
-  else { var p = Number(s0.purchasePrice) || 0, v = Object.assign({}, s0, st.draft), cl = p * Number(v.closingCostsPct || 0), af = p * (safe(function(){ return bkAcqFeePct(v); }, 0) || 0), lf = d && d.fee ? Number(d.fee) : 0;
-    if(!(p > 0)) return '<div class="gd-card" style="font-size:13px">Enter the purchase price and the financing first; then the cost, the loan and the equity appear here.</div>';
-    uses = [['Purchase price', p], ['Closing costs', cl], ['Acquisition fee', af], ['Loan origination fee', lf]].filter(function(r){ return r[1] > 0; }); total = uses.reduce(function(t, r){ return t + r[1]; }, 0);
-    loan = d && v.debtEnabled !== false ? Number(d.loan) || 0 : 0; equity = Math.max(0, total - loan); note = loan ? 'Equity is the cost left after the loan.' : 'No loan: the equity pays for everything (all cash).'; }
-  var v2 = Object.assign({}, s0, st.draft), gp = Number(v2.gpShare) || 0, gpD = equity * gp, lpD = equity - gpD, tie = Math.abs(loan + equity - total) < 1;
+  var F = safe(function(){ return window.bkRunWith(Object.assign({}, st.draft), function(){ return bkFundingSummary(); }); }, null);
+  if(!F || !(F.totalUses > 0)) return '<div class="gd-card" style="font-size:13px">Enter the price, the budget and the financing first; then the cost, the loan and the equity appear here.</div>';
   function row(a, b, c, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + esc(a) + '</td><td style="text-align:right">' + (b == null ? '' : money0(b)) + '</td><td style="text-align:right">' + (c == null ? '' : esc(c)) + '</td></tr>'; }
-  var T = 'width:100%;border-collapse:collapse;font-size:13px', cells = 'padding:6px 8px;border-bottom:1px solid var(--line,#e3e8ee)';
+  var T = 'width:100%;border-collapse:collapse;font-size:13px', cells = 'padding:6px 8px;border-bottom:1px solid var(--line,#e3e8ee)', dev = F.dev, tu = F.totalUses;
+  var uses = F.uses.filter(function(r){ return Math.abs(r[1]) > 0.5; });
+  var gpTxt = F.gpEquity > 0 ? pctTxt(F.gpEquity / F.equity) : '0% (none)';
   return '<div class="gd-card gd-su"><style>.gd-su td,.gd-su th{' + cells + '}.gd-su th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500,#566a80)}.gd-su tr.t td{font-weight:700;border-top:2px solid #0e2a4a}</style>'
-   + '<table style="' + T + '"><thead><tr><th>Uses: what the deal costs</th><th style="text-align:right">$</th><th></th></tr></thead><tbody>' + uses.map(function(r){ return row(r[0], r[1]); }).join('') + row('Total uses', total, null, 't') + '</tbody></table>'
-   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Sources: where the money comes from</th><th style="text-align:right">$</th><th style="text-align:right">% of cost</th></tr></thead><tbody>'
-   + row(dev ? 'Construction loan' : 'Loan', loan, total ? pctTxt(loan / total) : '') + row('Equity', equity, total ? pctTxt(equity / total) : '') + row('Total sources', loan + equity, null, 't') + '</tbody></table>'
-   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Who puts up the equity</th><th style="text-align:right">$</th><th style="text-align:right">% of equity</th></tr></thead><tbody>'
-   + row('GP / sponsor', gpD, gp ? pctTxt(gp) : '0% (none)') + row('Limited partners (LPs)', lpD, pctTxt(1 - gp)) + row('Total equity', equity, null, 't') + '</tbody></table>'
-   + '<div style="font-size:12.5px;margin-top:10px;color:var(--ink-500,#566a80)">' + esc(note) + (tie ? '' : ' <b style="color:#a32f24">Sources and uses differ by ' + money0(Math.abs(loan + equity - total)) + '.</b>') + (gp ? '' : ' With no GP share, one investor puts up all of the equity; add a GP share above if the sponsor co-invests.') + ' LP names and amounts are added on the Investors page.</div></div>'; }
+   + '<div style="font-size:12px;color:var(--ink-500,#566a80);margin-bottom:8px"><b>Read only.</b> These figures come from the same calculation as the Sources &amp; Uses page. Change them where they are entered: the loan on the Financing step, the GP equity share in the Partnership panel, the investors on the Investors page.</div>'
+   + '<table style="' + T + '"><thead><tr><th>Uses: what the deal costs</th><th style="text-align:right">$</th><th style="text-align:right">% of uses</th></tr></thead><tbody>' + uses.map(function(r){ return row(r[0], r[1], pctTxt(r[1] / tu)); }).join('') + row('Total uses', tu, null, 't') + '</tbody></table>'
+   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Sources: where the money comes from</th><th style="text-align:right">$</th><th style="text-align:right">% of uses</th></tr></thead><tbody>'
+   + row(dev ? 'Construction facility (draws + capitalized interest)' : 'Loan', F.loan, pctTxt(F.loan / tu)) + row('Equity at funding', F.equity, pctTxt(F.equity / tu)) + row('Total sources', F.totalSources, null, 't') + '</tbody></table>'
+   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Who puts up the equity at funding</th><th style="text-align:right">$</th><th style="text-align:right">% of equity</th></tr></thead><tbody>'
+   + row('GP / sponsor equity', F.gpEquity, gpTxt) + row('Limited partners (LPs)', F.lpEquity, pctTxt(F.equity ? F.lpEquity / F.equity : 1)) + row('Total equity', F.equity, null, 't') + '</tbody></table>'
+   + (F.postClosing > 1 ? '<div style="font-size:12.5px;margin-top:10px">Equity contributed in the returns over the hold: ' + money0(F.contributed) + ' (' + money0(F.postClosing) + ' after funding: ' + (dev ? 'takeout and operating shortfalls' : 'balloon equity, refinance shortfall or operating shortfalls') + ').</div>' : '')
+   + '<div style="font-size:12.5px;margin-top:10px;color:var(--ink-500,#566a80)">The GP equity share is what the GP puts in. It is separate from the GP\'s share of the profits (preferred return, catch-up and promote tiers), which are set on the next step.' + (F.failed.length ? ' <b style="color:#a32f24">Does not tie: ' + esc(F.failed[0].label) + '.</b>' : '') + '</div>'
+   + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="pl-hbtn" onclick="document.documentElement.classList.remove(\'bk-guide\');bkEdGo(\'Investment\',\'Investment\',\'jv\')">Edit GP equity share (Investment &rsaquo; Partnership)</button><button type="button" class="pl-hbtn" onclick="bkGuideDetail(\'Investors\')">Investors page</button><button type="button" class="pl-hbtn" onclick="bkGuideDetail(\'Sources & Uses\')">Full Sources &amp; Uses</button></div></div>';
+}
 function paintSU(sec){ var el = document.getElementById('gd-su'); if(el) el.innerHTML = suInner(bkLoad()); }
 
 /* ------------------------------------------------------------ pages */

@@ -17631,23 +17631,11 @@ try{
   /* ---------- development ---------- */
   CR.wrapDev('Sources & Uses', function(o){
     var q = CR.state(), x = q.x, s = q.s, r = q.r;
-    var draws = sum(x.months,'loanDraw'), capIntSched = sum(x.months,'capInt'), eqPlan = sum(x.months,'eq'), eqOver = sum(x.months,'overflow'), excess = sum(x.months,'excess');
-    var uses = [['Land / Purchase Price', x.land],['Closing / Diligence Costs', x.close],['Acquisition Fee', x.acq]];
-    if(Number(x.pre)>0.5) uses.push(['Predevelopment Carry', x.pre]);
-    uses.push(['Hard Costs', x.hard],['Soft Costs', x.soft]);
-    if(Number(x.leaseDef)>0.5) uses.push(['Lease-Up Operating Deficit', x.leaseDef]);
-    uses.push(['Construction Facility Fees (origination and unused commitment)', x.upfrontFees],['Capitalized Construction Interest', x.actualCapInt],['Interest Funded by Equity Beyond the Commitment', excess]);
-    if(Number(x.resFunded)>0.5) uses.push(['Initial Reserves Funded', x.resFunded]);
-    var totalUses = uses.reduce(function(t,u){ return t+(Number(u[1])||0); },0);
-    var srcs = [['Construction Facility - draws', draws],['Construction Facility - capitalized interest', capIntSched],['Equity - equity-first funding', eqPlan]];
-    if(Math.abs(eqOver)>0.5) srcs.push(['Equity - cost overflow beyond the commitment', eqOver]);
-    if(Math.abs(excess)>0.5) srcs.push(['Equity - interest beyond the commitment', excess]);
-    if(Number(x.resDrawn)>0.5) srcs.push(['Initial reserves - drawn for the lease-up shortfall and interest', x.resDrawn]);
-    var totalSrc = srcs.reduce(function(t,u){ return t+u[1]; },0);
-    var delta = totalSrc - totalUses, ok = Math.abs(delta) < 1;
-    var facility = draws + capIntSched, equity = totalSrc - facility;
+    var F = bkFundingSummary();   /* the one shared funding calculation (src/184); this page only lays it out */
+    var uses = F.uses, srcs = F.sources, totalUses = F.totalUses, totalSrc = F.totalSources, excess = F.excess;
+    var delta = totalSrc - totalUses, ok = Math.abs(delta) < 1, facility = F.loan, equity = F.equity;
     var units = Number(s.units)||0, gsf = Number(s.gsf)||0;
-    var retEq = sum(r.rows,'equityDraw'), eqVsRet = x.equityTotal - retEq;
+    var retEq = F.returnsEquityDraws, eqVsRet = equity - retEq;
     var explained = Math.abs(eqVsRet - excess) < 1;
     function two(list,total,cap){ return CR.table(cap,'<tr><th class="rowlabel-h" colspan="2">'+(cap.indexOf('Uses')===0||/Uses/.test(cap)?'Uses':'Sources')+'</th></tr>', list.map(function(u){ return '<tr>'+CR.lbl(u[0])+CR.val(M(u[1]))+'</tr>'; }).join('')); }
     var main = '<div class="tbl-wrap"><table class="fin"><caption>Sources &amp; Uses - Active Deal (Development)</caption><thead><tr><th class="rowlabel-h" colspan="2">Uses</th></tr></thead><tbody>'
@@ -17699,10 +17687,8 @@ try{
         var s = bkLoad(); if(CR.isDevSnap(s)) return o;
         var m = String(o && o.main || ''); var iu = m.indexOf('<caption>Uses - total, per unit, per SF'), is = m.indexOf('<caption>Sources - total, per unit, per SF');
         if(iu<0 || is<0) return o;
-        var d = bkDebt(), wf = null; try{ wf = bkWaterfallV07(); }catch(e){}
-        var cap = Number(s.rateCapCost)||0, closingEq = (Number(d.equity)||0) + cap;
-        var lp = null, gp = null;
-        if(wf && wf.lp && wf.gp){ lp = Math.abs(Number(wf.lp.contrib)||0) || null; gp = Math.abs(Number(wf.gp.contrib)||0) || null; }
+        var F = bkFundingSummary(), d = F.d, cap = Number(s.rateCapCost)||0, closingEq = F.equity;   /* shared funding calculation (src/184) */
+        var lp = F.lp || null, gp = F.gp || null;
         if(lp===null || gp===null){ var share = Number(s.gpShare); if(!isFinite(share)) share = 0.5; gp = closingEq*share; lp = closingEq-gp; }
         var post = (lp+gp) - closingEq;
         if(!(cap>0) && !(Math.abs(post)>=1)) return o;                     // nothing to add: page stays byte-identical
@@ -18910,6 +18896,12 @@ function decorateTopNav(frame){
 }
 
 /* ---------------------------------------------------------------- 2. snapshot + key */
+/* ALL INPUTS TIE: one verdict from the shared funding ties (src/184) and the model integrity checks */
+function tieChip(){
+  var t; try { t = window.bkAllInputsTie && window.bkAllInputsTie(); } catch(e){ t = null; } if(!t || t.withheld) return '';
+  var tip = t.ok ? t.checks + ' checks agree: Sources & Uses, Debt, Funding, Returns and the model integrity checks' : t.failed.map(function(f){ return f.label + (f.detail ? ' (' + f.detail + ')' : ''); }).join('; ');
+  return '<a data-goto-sheet2="Model Checks" title="' + esc(tip) + '" style="cursor:pointer"><span class="status-chip ' + (t.ok ? 'pass' : 'fail') + '">' + (t.ok ? 'ALL INPUTS TIE' : t.failed.length + ' DO NOT TIE') + '</span></a>';
+}
 function snapshotCard(){
   if(!hasDeal()) return '';
   var r = readiness(), s = bkLoad();
@@ -18928,6 +18920,7 @@ function snapshotCard(){
     + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(h.binding) + '</span>' : ''))
     + row('Equity', money(h.equity)) + row('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
+    + (tieChip() ? row('Inputs', tieChip()) : '')
     + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '')
     + (function(){ var m = null; try { m = window.bkMarketCompare && window.bkMarketCompare(); } catch(e){}
         if(!m || !m.rows) return ''; var out = m.rows.filter(function(x){ return x.status === 'ABOVE RANGE' || x.status === 'BELOW RANGE'; }).length;
@@ -19298,7 +19291,7 @@ function kpiBar(sheet){
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
       + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
-      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) + (tieChip() ? cell('Inputs', tieChip()) : '') : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }
 function refreshFlow(){
@@ -22101,7 +22094,7 @@ window.BKReg.addFields([
   F('opexGrowth', 'Annual expense growth', 'pct', { zeroOk:true, sug:sug(0.03, 'Expenses usually grow at about 3% a year.') }),
   F('saleCostPct', 'Cost of sale, % of price', 'pct', { zeroOk:true, sug:sug(0.02, 'Broker and closing costs on a sale are about 2%.') }),
   /* partnership */
-  F('gpShare', 'GP / sponsor equity share', 'pct', { zeroOk:true, help:'The share of the equity cheque the GP puts in; LPs put in the rest. Type 10 for 10%. Blank or 0% means one investor puts in all of it.' }), F('pref', 'Preferred return', 'pct', { zeroOk:true, help:'The yearly return LPs receive first, before the GP shares in profit. Type 8 for 8%. Typical: 6% to 10%.' }),
+  F('gpShare', 'GP equity contribution (% of total equity)', 'pct', { zeroOk:true, help:'How much of the equity cheque the GP puts in; the LPs put in the rest. This is money in, not profit out: the GP\'s share of the profits is set by the preferred return, catch-up and promote tiers below. Type 10 for 10%. Blank or 0% means one investor puts in all of it.' }), F('pref', 'Preferred return', 'pct', { zeroOk:true, help:'The yearly return LPs receive first, before the GP shares in profit. Type 8 for 8%. Typical: 6% to 10%.' }),
   F('hurdle2', 'Second hurdle (IRR)', 'pct', { zeroOk:true, help:'The IRR LPs must reach before the split changes. Type 12 for 12%. Must be above the preferred return. Typical: 10% to 15%.' }), F('hurdle3', 'Third hurdle (IRR)', 'pct', { zeroOk:true, help:'A higher IRR where the split changes again. Type 18 for 18%. Must be above the second hurdle. Typical: 15% to 20%.' }),
   F('t2LP', 'LP share above the preferred return', 'pct', { zeroOk:true, help:'Of each extra dollar of profit above the preferred return, the LP keeps this share and the GP gets the rest (the promote). Type 80 for an 80/20 split. Typical: 70% to 90%.' }), F('t3LP', 'LP share above the second hurdle', 'pct', { zeroOk:true, help:'The LP share once the second hurdle is passed. Usually lower than the share before it. Typical: 60% to 80%.' }), F('t4LP', 'LP share above the third hurdle', 'pct', { zeroOk:true, help:'The LP share once the third hurdle is passed. Usually the lowest. Typical: 50% to 70%.' }),
   /* decision thresholds: the lines the Hold / Refinance / Sell tests are measured against */
@@ -22215,9 +22208,9 @@ R.addWorkflow('acquisition', [
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
-  S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Costs and the loan are read from the model; the GP share is the one thing to enter here.', 'Sources & Uses', [q('gpShare', 'optional', { label:'GP / sponsor share of the equity' })], { skippable:true }),
+  S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Everything on this step is read from the model and shown for checking; nothing is entered here.', 'Sources & Uses', [], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
-    [q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
+    [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT,
   S('decision', 'Decision thresholds', 'The lines the hold, refinance or sell tests are measured against. Without them the decision test has nothing to compare to. Skip to keep the standard ones.', 'Capital Allocation', [q('capRefiHeadroom'), q('capRefiDebtYield'), q('capSellCoE'), q('capSellNOIGrowth'), q('capKeepCoE')], { skippable:true }) ]);
 
@@ -22227,9 +22220,9 @@ R.addWorkflow('development', [
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilized.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
-  S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Costs and the loan are read from the model; the GP share is the one thing to enter here.', 'Sources & Uses', [q('gpShare', 'optional', { label:'GP / sponsor share of the equity' })], { skippable:true }),
+  S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Everything on this step is read from the model and shown for checking; nothing is entered here.', 'Sources & Uses', [], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
-    [q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
+    [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT ]);
 
 R.addWorkflow('valuation', [
@@ -22639,6 +22632,7 @@ function build(s, oldMain){
   else next = ['Ready for committee', 'Inputs are complete and no checks are open. Stress the deal, then open the IC memo.', 'IC Memo', 'Open the IC memo'];
   var rows = [];
   rows.push([can ? 'pass' : 'fail', 'Required inputs', can ? 'All ' + (Array.isArray(ready.met) ? ready.met.length + ' ' : '') + 'required inputs entered' : (ready ? ready.missing.length : '?') + ' missing', 'Deal Underwrite']);
+  if(can){ var tt = safe(function(){ return window.bkAllInputsTie(); }, null); if(tt && !tt.withheld) rows.push([tt.ok ? 'pass' : 'fail', 'All inputs tie', tt.ok ? tt.checks + ' checks agree across Sources & Uses, Debt, Funding and Returns' : tt.failed.length + ' do not tie: ' + tt.failed[0].label, 'Sources & Uses']); }
   if(can && h){
     rows.push([irrOk || '', 'Returns vs hurdle', 'Levered IRR ' + P(h.levIRR) + ' against a ' + P(hurdle) + ' target; ' + X(h.levMOIC) + ' multiple', 'Returns']);
     if(!dev){ var cap = gate && gate.capacity; rows.push([cap ? (cap.overage > 0 ? 'warn' : 'pass') : '', 'Debt against policy', cap ? (cap.overage > 0 ? 'Loan is ' + M(cap.overage) + ' above what policy supports (' + M(cap.capacity) + ', binding on ' + esc(cap.binding && cap.binding.name || 'policy') + ')' : 'Loan is within policy capacity (' + M(cap.capacity) + ')') : 'DSCR ' + X(h.dscr), 'Debt Capacity']); }
@@ -24314,7 +24308,7 @@ function pReserves(s){ if(!isDev(s)) return pDev(s); var a = Array.isArray(s.ini
   var tbl = '<div class="ae-panel"><div class="ae-ph"><i>R</i>Initial Reserves</div><table class="ae-grid"><thead><tr><th>Reserve</th><th>Amount</th><th>Funded At</th><th>Used For</th><th></th></tr></thead><tbody>' + (rows || '<tr><td class="c ro" colspan="5">No initial reserves.</td></tr>') + '</tbody></table><div class="ae-row">' + btn('Add a reserve', 'bkEdResAdd()') + '</div><div class="ae-form"><div class="note">A reserve is cash funded into the project (a use of funds, paid for by equity and the loan). Whatever it has not paid by the sale is released to equity with the sale proceeds. Interest paid from a reserve is not charged to equity.</div></div></div>';
   var sum = a.length ? summaryTable('Reserves in the Hold', [['Funded', money(f.resFunded), ''], ['Paid Lease-Up Shortfall and Interest', money(num(f.resDrawn) + op), ''], ['Released with the Sale', money(rel), '', 'tot']]) : '';
   return tbl + sum; }
-function pJv(s){ return form('Equity Waterfall', 'W', [R('GP / Sponsor Equity Share', inp('gpShare', 'pct', { s:s }), '%'), R('Hurdle Basis', sel('hurdleBasis', [['1', 'IRR hurdles'], ['2', 'Equity multiple hurdles'], ['3', 'IRR and equity multiple hurdles']], { s:s, def:String(num(s.hurdleBasis) || 1) })), R('IRR and Multiple Combine', sel('hurdleBoth', [['all', 'Both must be met'], ['either', 'Either is enough']], { s:s, def:String(s.hurdleBoth || 'all') })), R('Tested On', sel('cvHurdleBasis', [['lp', 'LP contributions and distributions'], ['deal', 'Total deal equity cash flows']], { s:s, def:safe(function(){ return bkConventions(s).cvHurdleBasis; }, 'lp') })),
+function pJv(s){ return form('Equity Waterfall', 'W', [R('GP Equity Contribution (% of total equity)', inp('gpShare', 'pct', { s:s }), '% put in by the GP; profit sharing is the hurdles below'), R('Hurdle Basis', sel('hurdleBasis', [['1', 'IRR hurdles'], ['2', 'Equity multiple hurdles'], ['3', 'IRR and equity multiple hurdles']], { s:s, def:String(num(s.hurdleBasis) || 1) })), R('IRR and Multiple Combine', sel('hurdleBoth', [['all', 'Both must be met'], ['either', 'Either is enough']], { s:s, def:String(s.hurdleBoth || 'all') })), R('Tested On', sel('cvHurdleBasis', [['lp', 'LP contributions and distributions'], ['deal', 'Total deal equity cash flows']], { s:s, def:safe(function(){ return bkConventions(s).cvHurdleBasis; }, 'lp') })),
     R('Tier 1 Preferred Return', inp('pref', 'pct', { s:s }), '% IRR'), R('Second Hurdle', inp('hurdle2', 'pct', { s:s }), '% IRR'), R('Third Hurdle', inp('hurdle3', 'pct', { s:s }), '% IRR'), R('Tier 2 Split to LP', inp('t2LP', 'pct', { s:s }), '%'), R('Tier 3 Split to LP', inp('t3LP', 'pct', { s:s }), '%'), R('Tier 4 Split to LP (residual)', inp('t4LP', 'pct', { s:s }), '%'),
     R('GP Catch-Up', sel('gpCatchup', [['0', 'No'], ['1', 'Yes']], { s:s, def:String(num(s.gpCatchup)) })), R('Separate Promote For Sale Proceeds', sel('promoteSplit', [['0', 'No: one set of tier splits'], ['1', 'Yes: operating cash and sale / refinance proceeds']], { s:s, def:String(num(s.promoteSplit) || 0) })), R('Sale Proceeds: LP Share, Tiers 2 / 3 / 4', inp('t2LPs', 'pct', { s:s }) + inp('t3LPs', 'pct', { s:s }) + inp('t4LPs', 'pct', { s:s }), '% to the LP on sale / refinance proceeds (blank = same as operating); used when the separate promote is on'), R('Catch-Up Target', inp('gpCatchupTarget', 'pct', { s:s }), '% of total profit'), R('Catch-Up Rate to the GP', inp('gpCatchupRate', 'pct', { s:s, blank:'null' }), '% of each catch-up dollar the GP takes (blank = 100%)'), R('Preferred Return Earned By', sel('prefLPOnly', [['0', 'LP and GP pari passu'], ['1', 'LP only']], { s:s, def:String(num(s.prefLPOnly)) }), 'LP only: Tier 1 cash is the LP\'s preferred return and the GP takes none of it'), R('Equity Multiple Hurdles', inp('em1', 'num', { s:s }) + inp('em2', 'num', { s:s }) + inp('em3', 'num', { s:s }), 'x (used when the basis is equity multiple, or IRR and equity multiple)')])
     + '<div class="ae-row">' + btn('Equity waterfall results', 'showSheet(\'Equity Waterfall\')', true) + btn('Investors', 'showSheet(\'Investors\')') + '</div>'; }
@@ -25696,24 +25690,23 @@ function paintMsgs(sec){ var s = bkLoad(), m = checks(sec, s); sec.fields.forEac
 /* sources and uses: what the deal costs, what the loan covers, and who puts up the equity. Read from the engine under the figures being edited. */
 function isDevS(s){ return /develop/i.test(String(s.dealType || '')); }
 function suInner(s0){
-  var dev = isDevS(s0), run = function(fn){ return safe(function(){ return window.bkRunWith(Object.assign({}, st.draft), fn); }, null); };
-  var d = run(function(){ return bkDebt(); }), uses = [], loan = 0, equity = 0, total = 0, note = '';
-  if(dev){ var f = run(function(){ return bkDevFundingV10(); }); if(!f || !isFinite(f.levered) || !(f.levered > 0)) return '<div class="gd-card" style="font-size:13px">Enter the land price, the construction budget and the financing first; then the cost, the loan and the equity appear here.</div>';
-    total = f.levered; loan = Number(f.commit) || 0; equity = Number(f.equityTotal) || Math.max(0, total - loan); uses = [['Total project cost, including interest and fees', total]]; note = 'The construction loan funds up to its commitment; the equity pays the rest, and goes in first.'; }
-  else { var p = Number(s0.purchasePrice) || 0, v = Object.assign({}, s0, st.draft), cl = p * Number(v.closingCostsPct || 0), af = p * (safe(function(){ return bkAcqFeePct(v); }, 0) || 0), lf = d && d.fee ? Number(d.fee) : 0;
-    if(!(p > 0)) return '<div class="gd-card" style="font-size:13px">Enter the purchase price and the financing first; then the cost, the loan and the equity appear here.</div>';
-    uses = [['Purchase price', p], ['Closing costs', cl], ['Acquisition fee', af], ['Loan origination fee', lf]].filter(function(r){ return r[1] > 0; }); total = uses.reduce(function(t, r){ return t + r[1]; }, 0);
-    loan = d && v.debtEnabled !== false ? Number(d.loan) || 0 : 0; equity = Math.max(0, total - loan); note = loan ? 'Equity is the cost left after the loan.' : 'No loan: the equity pays for everything (all cash).'; }
-  var v2 = Object.assign({}, s0, st.draft), gp = Number(v2.gpShare) || 0, gpD = equity * gp, lpD = equity - gpD, tie = Math.abs(loan + equity - total) < 1;
+  var F = safe(function(){ return window.bkRunWith(Object.assign({}, st.draft), function(){ return bkFundingSummary(); }); }, null);
+  if(!F || !(F.totalUses > 0)) return '<div class="gd-card" style="font-size:13px">Enter the price, the budget and the financing first; then the cost, the loan and the equity appear here.</div>';
   function row(a, b, c, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + esc(a) + '</td><td style="text-align:right">' + (b == null ? '' : money0(b)) + '</td><td style="text-align:right">' + (c == null ? '' : esc(c)) + '</td></tr>'; }
-  var T = 'width:100%;border-collapse:collapse;font-size:13px', cells = 'padding:6px 8px;border-bottom:1px solid var(--line,#e3e8ee)';
+  var T = 'width:100%;border-collapse:collapse;font-size:13px', cells = 'padding:6px 8px;border-bottom:1px solid var(--line,#e3e8ee)', dev = F.dev, tu = F.totalUses;
+  var uses = F.uses.filter(function(r){ return Math.abs(r[1]) > 0.5; });
+  var gpTxt = F.gpEquity > 0 ? pctTxt(F.gpEquity / F.equity) : '0% (none)';
   return '<div class="gd-card gd-su"><style>.gd-su td,.gd-su th{' + cells + '}.gd-su th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500,#566a80)}.gd-su tr.t td{font-weight:700;border-top:2px solid #0e2a4a}</style>'
-   + '<table style="' + T + '"><thead><tr><th>Uses: what the deal costs</th><th style="text-align:right">$</th><th></th></tr></thead><tbody>' + uses.map(function(r){ return row(r[0], r[1]); }).join('') + row('Total uses', total, null, 't') + '</tbody></table>'
-   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Sources: where the money comes from</th><th style="text-align:right">$</th><th style="text-align:right">% of cost</th></tr></thead><tbody>'
-   + row(dev ? 'Construction loan' : 'Loan', loan, total ? pctTxt(loan / total) : '') + row('Equity', equity, total ? pctTxt(equity / total) : '') + row('Total sources', loan + equity, null, 't') + '</tbody></table>'
-   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Who puts up the equity</th><th style="text-align:right">$</th><th style="text-align:right">% of equity</th></tr></thead><tbody>'
-   + row('GP / sponsor', gpD, gp ? pctTxt(gp) : '0% (none)') + row('Limited partners (LPs)', lpD, pctTxt(1 - gp)) + row('Total equity', equity, null, 't') + '</tbody></table>'
-   + '<div style="font-size:12.5px;margin-top:10px;color:var(--ink-500,#566a80)">' + esc(note) + (tie ? '' : ' <b style="color:#a32f24">Sources and uses differ by ' + money0(Math.abs(loan + equity - total)) + '.</b>') + (gp ? '' : ' With no GP share, one investor puts up all of the equity; add a GP share above if the sponsor co-invests.') + ' LP names and amounts are added on the Investors page.</div></div>'; }
+   + '<div style="font-size:12px;color:var(--ink-500,#566a80);margin-bottom:8px"><b>Read only.</b> These figures come from the same calculation as the Sources &amp; Uses page. Change them where they are entered: the loan on the Financing step, the GP equity share in the Partnership panel, the investors on the Investors page.</div>'
+   + '<table style="' + T + '"><thead><tr><th>Uses: what the deal costs</th><th style="text-align:right">$</th><th style="text-align:right">% of uses</th></tr></thead><tbody>' + uses.map(function(r){ return row(r[0], r[1], pctTxt(r[1] / tu)); }).join('') + row('Total uses', tu, null, 't') + '</tbody></table>'
+   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Sources: where the money comes from</th><th style="text-align:right">$</th><th style="text-align:right">% of uses</th></tr></thead><tbody>'
+   + row(dev ? 'Construction facility (draws + capitalized interest)' : 'Loan', F.loan, pctTxt(F.loan / tu)) + row('Equity at funding', F.equity, pctTxt(F.equity / tu)) + row('Total sources', F.totalSources, null, 't') + '</tbody></table>'
+   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Who puts up the equity at funding</th><th style="text-align:right">$</th><th style="text-align:right">% of equity</th></tr></thead><tbody>'
+   + row('GP / sponsor equity', F.gpEquity, gpTxt) + row('Limited partners (LPs)', F.lpEquity, pctTxt(F.equity ? F.lpEquity / F.equity : 1)) + row('Total equity', F.equity, null, 't') + '</tbody></table>'
+   + (F.postClosing > 1 ? '<div style="font-size:12.5px;margin-top:10px">Equity contributed in the returns over the hold: ' + money0(F.contributed) + ' (' + money0(F.postClosing) + ' after funding: ' + (dev ? 'takeout and operating shortfalls' : 'balloon equity, refinance shortfall or operating shortfalls') + ').</div>' : '')
+   + '<div style="font-size:12.5px;margin-top:10px;color:var(--ink-500,#566a80)">The GP equity share is what the GP puts in. It is separate from the GP\'s share of the profits (preferred return, catch-up and promote tiers), which are set on the next step.' + (F.failed.length ? ' <b style="color:#a32f24">Does not tie: ' + esc(F.failed[0].label) + '.</b>' : '') + '</div>'
+   + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="pl-hbtn" onclick="document.documentElement.classList.remove(\'bk-guide\');bkEdGo(\'Investment\',\'Investment\',\'jv\')">Edit GP equity share (Investment &rsaquo; Partnership)</button><button type="button" class="pl-hbtn" onclick="bkGuideDetail(\'Investors\')">Investors page</button><button type="button" class="pl-hbtn" onclick="bkGuideDetail(\'Sources & Uses\')">Full Sources &amp; Uses</button></div></div>';
+}
 function paintSU(sec){ var el = document.getElementById('gd-su'); if(el) el.innerHTML = suInner(bkLoad()); }
 
 /* ------------------------------------------------------------ pages */
@@ -29313,7 +29306,7 @@ var F = {
   constructionMonths:{ lab:'Construction period (months)', kind:'months', rx:[/construction (period|duration|months|term|schedule)\b/, /^months of construction/, /^build.?out (period|months)/] },
   leaseupMonths:{ lab:'Lease-up period (months)', kind:'months', rx:[/lease.?up (period|duration|months|term)/, /absorption (period|months)/] },
   pref:{ lab:'Preferred return', kind:'pct', max:0.5, rx:[/^(lp |investor )?(cumulative )?(preferred return|pref(erred)? (return|rate)|pref)/] },
-  gpShare:{ lab:'GP / sponsor equity share', kind:'pct', max:0.9, rx:[/^(gp|sponsor)( co.?invest(ment)?)?( equity)?( share| %| percent| contribution)?$/, /^gp co.?invest/] }
+  gpShare:{ lab:'GP equity contribution (% of equity)', kind:'pct', max:0.9, rx:[/^(gp|sponsor)( co.?invest(ment)?)?( equity)?( share| %| percent| contribution)?$/, /^gp co.?invest/] }
 };
 /* facts with no model input yet: kept and listed */
 var NOINPUT = [ ['Total development budget', /^total (project |development )?(budget|cost)\b|^total development budget|^all.in (project )?cost/], ['Soft costs', /^(total )?soft (development )?costs?$/], ['Contingency', /^(hard[- ]costs? |hard |soft |total |project )?contingency$/],
@@ -29741,6 +29734,75 @@ var rep = GROUPS.find(function(g){ return g.id === 'reports'; }); if(rep && rep.
 if(typeof bkBuildRail === 'function') try { bkBuildRail(); } catch(e){}
 var st = document.createElement('style'); st.textContent = '.rf .rf-in{width:100%;min-width:110px;box-sizing:border-box;text-align:right;padding:4px 6px;border:1px solid var(--ae-line,#c8d3de);background:var(--ae-in,#fffde8)}.rf td.u{color:var(--ink-500,#566a80);font-size:12px}.rf-report .rf-sec{margin:0 0 18px}.rf-report h2{font-size:17px;margin:18px 0 6px}';
 document.head.appendChild(st);
+})();
+</script>
+<script id="bk-funding-summary">/* One calculation of the funding picture, read by every page that shows it (Sources & Uses, the guided Step-by-Step Guide, the Home tie indicator, the tests).
+   It adds no input and recomputes no engine result: every figure is read from bkDebt / bkDevTakeoutV11 (funding) / bkMonthlyReturns / bkWaterfallV07,
+   and the ties compare those engines with each other.
+   GP equity contribution (a share of the money put in, set in Investment > Partnership as gpShare) is a different thing from the GP's profit participation
+   (pref, catch-up and promote tiers). Only the first is used here. */
+(function(){
+  function sum(a, k){ return (a || []).reduce(function(t, m){ return t + (Number(m[k]) || 0); }, 0); }
+  function n(v){ v = Number(v); return isFinite(v) ? v : 0; }
+  function tie(id, label, a, b, tol, note){ var ok = Math.abs(n(a) - n(b)) <= (tol == null ? 1 : tol); return { id:id, label:label, a:n(a), b:n(b), ok:ok, note:note || '' }; }
+  window.bkFundingSummary = function(){
+    var s = bkLoad(), dev = /develop/i.test(String(s.dealType || '')), wf = null, r = null, ties = [], out = { dev:dev, s:s };
+    try{ wf = bkWaterfallV07(); }catch(e){}
+    try{ r = bkMonthlyReturns(); }catch(e){}
+    var lpC = wf && wf.lp ? Math.abs(n(wf.lp.contrib)) : 0, gpC = wf && wf.gp ? Math.abs(n(wf.gp.contrib)) : 0;
+    if(dev){
+      var x = bkDevTakeoutV11(), draws = sum(x.months, 'loanDraw'), capInt = sum(x.months, 'capInt'), eqPlan = sum(x.months, 'eq'), eqOver = sum(x.months, 'overflow'), excess = sum(x.months, 'excess');
+      var uses = [['Land / Purchase Price', x.land], ['Closing / Diligence Costs', x.close], ['Acquisition Fee', x.acq]];
+      if(n(x.pre) > 0.5) uses.push(['Predevelopment Carry', x.pre]);
+      uses.push(['Hard Costs', x.hard], ['Soft Costs', x.soft]);
+      if(n(x.leaseDef) > 0.5) uses.push(['Lease-Up Operating Deficit', x.leaseDef]);
+      uses.push(['Construction Facility Fees (origination and unused commitment)', x.upfrontFees], ['Capitalized Construction Interest', x.actualCapInt], ['Interest Funded by Equity Beyond the Commitment', excess]);
+      if(n(x.resFunded) > 0.5) uses.push(['Initial Reserves Funded', x.resFunded]);
+      var srcs = [['Construction Facility - draws', draws], ['Construction Facility - capitalized interest', capInt], ['Equity - equity-first funding', eqPlan]];
+      if(Math.abs(eqOver) > 0.5) srcs.push(['Equity - cost overflow beyond the commitment', eqOver]);
+      if(Math.abs(excess) > 0.5) srcs.push(['Equity - interest beyond the commitment', excess]);
+      if(n(x.resDrawn) > 0.5) srcs.push(['Initial reserves - drawn for the lease-up shortfall and interest', x.resDrawn]);
+      var totalUses = uses.reduce(function(t, u){ return t + n(u[1]); }, 0), totalSrc = srcs.reduce(function(t, u){ return t + n(u[1]); }, 0);
+      var facility = draws + capInt, equity = totalSrc - facility, retEq = r ? sum(r.rows, 'equityDraw') : 0, takeEq = r ? sum(r.rows, 'refiEq') : 0, contrib = r ? n(r.contrib) : 0;
+      Object.assign(out, { x:x, uses:uses, sources:srcs, totalUses:totalUses, totalSources:totalSrc, loan:facility, commit:n(x.commit), equity:equity, engineEquity:n(x.equityTotal), returnsEquityDraws:retEq, excess:excess,
+        takeoutEquity:takeEq, otherPostFunding:contrib - retEq - takeEq, contributed:contrib, postClosing:contrib - equity });
+      ties.push(tie('su', 'Total sources equal total uses', totalSrc, totalUses, 1));
+      ties.push({ id:'commit', label:'Facility drawn plus capitalized interest is within the commitment', a:facility, b:n(x.commit), ok:facility <= n(x.commit) + 1, note:'' });
+      ties.push(tie('eqEngine', 'Equity per Sources equals the funding engine\'s total equity requirement', equity, x.equityTotal, 1));
+      var d1 = equity - retEq, expl = Math.abs(d1 - excess) < 1 || Math.abs(d1) < 1;
+      ties.push({ id:'eqReturns', label:'Equity in the funding schedule agrees with the equity drawn in the returns cash flow', a:equity, b:retEq, ok:expl, note:Math.abs(d1) < 1 ? '' : 'Differs by interest beyond the commitment (' + Math.round(d1).toLocaleString('en-US') + ')' });
+    } else {
+      var d = bkDebt(), price = n(s.purchasePrice), closing = price * n(s.closingCostsPct), acqFee = price * (typeof bkAcqFeePct === 'function' ? bkAcqFeePct(s) : n(s.acqFeePct)), cap = n(s.rateCapCost);
+      var uses2 = [['Purchase Price', price], ['Closing Costs', closing], ['Acquisition Fee', acqFee], ['Loan Origination Fee', n(d.fee)]];
+      if(cap > 0) uses2.push(['Rate Cap Premium (funded as Month-1 equity)', cap]);
+      var eqClose = n(d.equity) + cap, contrib2 = r ? n(r.contrib) : (lpC + gpC);
+      var totalUses2 = uses2.reduce(function(t, u){ return t + u[1]; }, 0), srcs2 = [['Acquisition Loan', n(d.loan)], ['Equity at closing', eqClose]];
+      Object.assign(out, { d:d, uses:uses2, sources:srcs2, totalUses:totalUses2, totalSources:n(d.loan) + eqClose, loan:n(d.loan), commit:n(d.loan), equity:eqClose, engineEquity:n(d.equity) + cap, returnsEquityDraws:0, contributed:contrib2, postClosing:(lpC + gpC) - eqClose });
+      ties.push(tie('su', 'Total sources equal total uses', out.totalSources, totalUses2, 1));
+      ties.push(tie('loan', 'Loan in Sources equals the Debt page loan', n(d.loan), bkDebt().loan, 1));
+    }
+    out.lp = lpC; out.gp = gpC; out.gpShareInput = s.gpShare === '' || s.gpShare == null ? null : n(s.gpShare);
+    var tot = lpC + gpC;
+    if(wf && tot > 0){
+      ties.push(tie('wfReturns', 'GP + LP contributions in the waterfall equal the equity contributed in the returns', tot, out.contributed, 1));
+      if(out.gpShareInput != null && out.gpShareInput > 0) ties.push({ id:'gpPct', label:'GP equity contribution is the Partnership GP share of total equity', a:gpC / tot, b:out.gpShareInput, ok:Math.abs(gpC / tot - out.gpShareInput) < 0.0005, note:'' });
+    }
+    var sh = out.gpShareInput != null && out.gpShareInput > 0 && out.gpShareInput < 1 ? out.gpShareInput : 0;
+    out.gpEquity = out.equity * sh; out.lpEquity = out.equity - out.gpEquity;   /* equity at funding split by the Partnership GP equity share */
+    out.gpPct = tot > 0 ? gpC / tot : null; out.lpPct = tot > 0 ? lpC / tot : null;
+    out.ties = ties; out.failed = ties.filter(function(t){ return !t.ok; });
+    return out;
+  };
+  /* The single indicator: every funding tie plus the model integrity checks. */
+  window.bkAllInputsTie = function(){
+    var res = { ok:true, checks:0, failed:[], withheld:false };
+    try{
+      if(typeof bkIsProvisioned === 'function' && !bkIsProvisioned()){ res.withheld = true; res.ok = false; return res; }
+      var f = bkFundingSummary(); res.checks += f.ties.length; f.failed.forEach(function(t){ res.failed.push({ group:'Funding', label:t.label, detail:t.note || (Math.round(t.a).toLocaleString('en-US') + ' vs ' + Math.round(t.b).toLocaleString('en-US')) }); });
+      if(typeof bkIntegrity === 'function'){ var I = bkIntegrity(); (I.checks || []).forEach(function(c){ if(c.status === 'na') return; res.checks++; if(c.status === 'hard' || c.status === 'fail') res.failed.push({ group:c.group || 'Integrity', label:c.label, detail:c.detail || '' }); }); }
+    }catch(e){ res.failed.push({ group:'Error', label:'Tie check could not run', detail:e.message }); }
+    res.ok = res.failed.length === 0; return res;
+  };
 })();
 </script>
 <style id="bk-palette-css">/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.

@@ -77,7 +77,7 @@ var F = {
   constructionMonths:{ lab:'Construction period (months)', kind:'months', rx:[/construction (period|duration|months|term|schedule)\b/, /^months of construction/, /^build.?out (period|months)/] },
   leaseupMonths:{ lab:'Lease-up period (months)', kind:'months', rx:[/lease.?up (period|duration|months|term)/, /absorption (period|months)/] },
   pref:{ lab:'Preferred return', kind:'pct', max:0.5, rx:[/^(lp |investor )?(cumulative )?(preferred return|pref(erred)? (return|rate)|pref)/] },
-  gpShare:{ lab:'GP / sponsor equity share', kind:'pct', max:0.9, rx:[/^(gp|sponsor)( co.?invest(ment)?)?( equity)?( share| %| percent| contribution)?$/, /^gp co.?invest/] }
+  gpShare:{ lab:'GP equity contribution (% of equity)', kind:'pct', max:0.9, rx:[/^(gp|sponsor)( co.?invest(ment)?)?( equity)?( share| %| percent| contribution)?$/, /^gp co.?invest/] }
 };
 /* facts with no model input yet: kept and listed */
 var NOINPUT = [ ['Total development budget', /^total (project |development )?(budget|cost)\b|^total development budget|^all.in (project )?cost/], ['Soft costs', /^(total )?soft (development )?costs?$/], ['Contingency', /^(hard[- ]costs? |hard |soft |total |project )?contingency$/],

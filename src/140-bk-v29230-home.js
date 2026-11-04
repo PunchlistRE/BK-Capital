@@ -95,6 +95,7 @@ function build(s, oldMain){
   else next = ['Ready for committee', 'Inputs are complete and no checks are open. Stress the deal, then open the IC memo.', 'IC Memo', 'Open the IC memo'];
   var rows = [];
   rows.push([can ? 'pass' : 'fail', 'Required inputs', can ? 'All ' + (Array.isArray(ready.met) ? ready.met.length + ' ' : '') + 'required inputs entered' : (ready ? ready.missing.length : '?') + ' missing', 'Deal Underwrite']);
+  if(can){ var tt = safe(function(){ return window.bkAllInputsTie(); }, null); if(tt && !tt.withheld) rows.push([tt.ok ? 'pass' : 'fail', 'All inputs tie', tt.ok ? tt.checks + ' checks agree across Sources & Uses, Debt, Funding and Returns' : tt.failed.length + ' do not tie: ' + tt.failed[0].label, 'Sources & Uses']); }
   if(can && h){
     rows.push([irrOk || '', 'Returns vs hurdle', 'Levered IRR ' + P(h.levIRR) + ' against a ' + P(hurdle) + ' target; ' + X(h.levMOIC) + ' multiple', 'Returns']);
     if(!dev){ var cap = gate && gate.capacity; rows.push([cap ? (cap.overage > 0 ? 'warn' : 'pass') : '', 'Debt against policy', cap ? (cap.overage > 0 ? 'Loan is ' + M(cap.overage) + ' above what policy supports (' + M(cap.capacity) + ', binding on ' + esc(cap.binding && cap.binding.name || 'policy') + ')' : 'Loan is within policy capacity (' + M(cap.capacity) + ')') : 'DSCR ' + X(h.dscr), 'Debt Capacity']); }
