@@ -43,7 +43,7 @@ Upside
 Local only - sign in to save · 4 changed
 ↶ Undo
 ↷
-+ New deal
++ New analysis
 Import OM
 Create PDF summary
 Clear inputs
@@ -3877,7 +3877,7 @@ Colour key
 Portfolio - Saved Deals (0)
 Deal	Type	Property	Purchase Price	Equity	Levered IRR	MOIC	Actions
 No deals saved to the portfolio yet.
-Portfolio Total / Wtd. Avg			$0	$0	0.00%		
+Portfolio Total (IRR and multiple on the combined dated cash flow)			$0	$0	Unavailable	-	
 + SAVE ACTIVE DEAL (HARBOR POINT RESIDENCES) TO PORTFOLIO
 MODEL NOTES (1)
 Deal Snapshot
@@ -3907,8 +3907,8 @@ Total Purchase Price
 $0
 Total Equity
 $0
-Equity-Wtd. IRR
-0.00%
+Portfolio IRR
+Unavailable
 Model Information
 Version
 Beta
@@ -3974,10 +3974,10 @@ Aggregate KPIs across every saved deal, computed live from each deal's own snaps
 
 DEALS
 0
-WTD IRR
-0.00%
-WTD MOIC
-0.00x
+PORTFOLIO IRR
+Unavailable
+MULTIPLE
+-
 CURRENCY
 USD
 Print / Save PDF
@@ -3985,8 +3985,8 @@ Colour key
 Portfolio Dashboard - 0 Deal(s)
 Total Purchase Price	$0
 Total Equity Invested	$0
-Equity-Weighted Levered IRR	0.00%
-Equity-Weighted MOIC	0.00x
+Portfolio Levered IRR (combined dated cash flow)	Unavailable
+Portfolio Equity Multiple (distributions / contributions)	Unavailable
 Best Performer	-
 Weakest Performer	-
 Purchase Price by Property Type
@@ -4018,8 +4018,8 @@ Deals
 0
 Total Equity
 $0
-Wtd. IRR
-0.00%
+Portfolio IRR
+Unavailable
 Model Information
 Version
 Beta
@@ -4443,6 +4443,8 @@ DEALS
 0
 YEARS
 0
+PORTFOLIO IRR
+Unavailable
 CURRENCY
 USD
 Print / Save PDF
@@ -5615,7 +5617,7 @@ Total Equity	$0
 Blended Loan-to-Value	0.00%
 Year 1 Combined NOI	$0
 Blended Going-In Cap Rate	0.00%
-Equity-Weighted Levered IRR	0.00%
+Portfolio Levered IRR (combined dated cash flow)	Unavailable
 MODEL NOTES (1)
 Deal Snapshot
 Levered IRR
@@ -5642,8 +5644,8 @@ Blended Cap Rate
 0.00%
 Blended LTV
 0.00%
-Wtd. IRR
-0.00%
+Portfolio IRR
+Unavailable
 Model Information
 Version
 Beta
@@ -8902,10 +8904,10 @@ Versions
 No versions yet. Save one before a big change.
 Change log
 WHEN	WHAT	FROM	TO
-Nov 4 7:34 AM	Down Absorption Factor	0	0.25
-Nov 4 7:34 AM	Up Absorption Factor	0	-0.1
-Nov 4 7:34 AM	Down Construction Mo Delta	0	3
-Nov 4 7:34 AM	Down Hard Cost Variance	0	0.05
+Nov 4 8:38 AM	Down Absorption Factor	0	0.25
+Nov 4 8:38 AM	Up Absorption Factor	0	-0.1
+Nov 4 8:38 AM	Down Construction Mo Delta	0	3
+Nov 4 8:38 AM	Down Hard Cost Variance	0	0.05
 
 #### Financing Lab
 PUNCHLIST CAPITAL BETA
@@ -10107,10 +10109,10 @@ Cost of sale	2.00%
 Exit NOI basis	-		
 Recent Changes
 When	Input	From	To
-Nov 4, 7:34 AM	downAbsorptionFactor	0	0.25
-Nov 4, 7:34 AM	upAbsorptionFactor	0	(0.10)
-Nov 4, 7:34 AM	downConstructionMoDelta	0	3
-Nov 4, 7:34 AM	downHardCostVariance	0	0.05
+Nov 4, 8:38 AM	downAbsorptionFactor	0	0.25
+Nov 4, 8:38 AM	upAbsorptionFactor	0	(0.10)
+Nov 4, 8:38 AM	downConstructionMoDelta	0	3
+Nov 4, 8:38 AM	downHardCostVariance	0	0.05
 Version history
 Model checks
 
@@ -10241,9 +10243,12 @@ Hold and exit
 Review
 Levered IRR 33.10% · multiple 2.71x
 Name *
+What the deal is called on every page and report.
 City, state
 Residential units *
+Residential units, or suites for a commercial building. Per-unit figures divide by this.
 Gross building area, SF
+Gross building area. Per-SF figures divide by this.
 Looks right, continue
 Skip for now
 Add more detail on the full sheet

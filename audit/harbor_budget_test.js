@@ -1,0 +1,52 @@
+// Investor PDF: the Development budget page (budget, contingency register, initial reserves) and the facility text on the Financing page.
+// Every figure on the page is compared with the engine's own output (bkDevV09, bkDevFundingV10, bkMonthlyReturns); the page does no financial calculation of its own.
+//   node audit/harbor_budget_test.js index.html
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');
+const H = require(path.join(__dirname, 'harbor', 'deal.js')), B = require(path.join(__dirname, 'harbor', 'deal_brief.js')), V = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(__dirname, 'deal.js'));
+(async () => {
+  const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined }); let checks = 0, fails = 0;
+  const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 300) + ']' : '')); };
+  const open = async (deal) => { const p = await b.newPage({ viewport: { width: 1400, height: 900 } }); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+    await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
+    await p.evaluate((d) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d); bkSave(s); }, deal); return p; };
+  const engine = (p) => p.evaluate(() => { const x = bkDevV09(), f = bkDevFundingV10(), m = bkMonthlyReturns(), ms = f.months, sum = k => ms.reduce((a, z) => a + (z[k] || 0), 0), sr = k => m.rows.reduce((a, z) => a + (z[k] || 0), 0);
+    return { land: x.land, closeAcq: x.close + x.acq, pre: x.pre, trades: x.hardLadder.tradeSubtotal, gcFee: x.hardLadder.gc + x.hardLadder.contractorFee + x.hardLadder.riskBonds, cont: x.hardLadder.contingency, hard: x.hard, soft: x.soft, lease: x.leaseDef, unlev: x.unlev, resFunded: f.resFunded,
+      usedOp: sum('resLease') + sr('resOp'), usedInt: sum('resInt'), rel: sr('resRelease'), reg: x.contReg, upfront: f.upfrontFees, capInt: f.actualCapInt, commit: f.commit, balCap: f.balCap, unused: f.unusedFees, fixed: f.fixedFacility, list: f.resList, hardLines: x.hardLadder.lines.filter(l => l.total > 0).map(l => [l.name, l.total]), softLines: x.softLadder.lines.filter(l => l.total > 0).map(l => [l.name, l.total]), peak: Math.max.apply(null, ms.map(z => z.end)), s: { units: bkLoad().units, gsf: bkLoad().gsf } }; });
+  const doc = async (p) => { const html = await p.evaluate(() => bkReportHTML()); const q = await b.newPage({ viewport: { width: 900, height: 1200 } }); await q.setContent(html); await q.waitForTimeout(300); return q; };
+  const pageInfo = (q) => q.evaluate(() => { const P = [...document.querySelectorAll('.page')]; const idx = P.findIndex(s => /Development budget/i.test(s.querySelector('h2') ? s.querySelector('h2').innerText : ''));
+    const rows = idx < 0 ? [] : [...P[idx].querySelectorAll('tr')].map(tr => [...tr.children].map(c => c.innerText.replace(/\s+/g, ' ').trim()));
+    const s = idx < 0 ? null : P[idx], ft = s && s.querySelector('.ft2'), bd = s && s.querySelector('.bd'), over = s ? Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) > ft.getBoundingClientRect().top - 2 : null;
+    const heads = P.map(s => (s.querySelector('h2') ? s.querySelector('h2').innerText : '').trim().toLowerCase()); return { n: P.length, idx, rows, over, heads, text: s ? s.innerText.replace(/\s+/g, ' ') : '', all: document.body.innerText.replace(/\s+/g, ' ') }; });
+  const $ = (t) => Number(String(t).replace(/[$,()]/g, '')) * (/\(/.test(t) ? -1 : 1);
+  const val = (rows, label, col) => { const r = rows.find(r => r[0] && r[0].toLowerCase() === label.toLowerCase()); return r ? $(r[col == null ? 1 : col]) : NaN; };
+  const cval = (rows, label) => { const L = rows.map(r => r.map(c => c.toLowerCase())), hi = L.findIndex(r => r[0] === 'original'); if (hi < 0) return NaN; const k = L[hi].indexOf(label.toLowerCase()); return k < 0 ? NaN : $(rows[hi + 1][k]); };
+  const near = (a, b2) => Math.abs(a - b2) < 0.51;
+
+  for (const [tag, deal] of [['Harbor Point (base)', H], ['Harbor Point (deal brief)', B], ['audit development deal', V], ['deal brief + contingency register', Object.assign({}, B, { contingency: { allocations: [{ name: 'Podium', amount: 600000 }], changeOrders: [{ name: 'Waterproofing', amount: 350000 }], forecastMore: 500000, release: 'saved' } })],
+    ['deal brief, ceiling $28M + $1.0M interest reserve', Object.assign({}, B, { conCeiling: 28000000, initReserves: [{ name: 'Interest', amount: 1000000, at: 'close', use: 'interest' }] })]]) {
+    const p = await open(deal); const e = await engine(p); const q = await doc(p); const r = await pageInfo(q);
+    check(tag + ': the Development budget page is in the summary, after Financing and debt metrics', r.idx > 0 && r.heads.indexOf('financing and debt metrics') >= 0 && r.heads.indexOf('financing and debt metrics') < r.idx, JSON.stringify(r.heads));
+    check(tag + ': the page fits (nothing runs into the footer) and prints no NaN / undefined', r.over === false && !/NaN|undefined|Infinity|\[object/.test(r.text), r.over);
+    const R = r.rows;
+    check(tag + ': land, closing, predevelopment, trades, GC / fee / bonds, contingency, hard total, soft and (if any) lease-up equal the engine', near(val(R, 'Land'), e.land) && near(val(R, 'Closing costs and acquisition fee'), e.closeAcq) && near(val(R, 'Predevelopment'), e.pre) && near(val(R, 'Hard cost: trades'), e.trades) && near(val(R, 'Hard cost: general conditions, contractor fee and bonds'), e.gcFee) && near(val(R, 'Hard cost: contingency'), e.cont) && near(val(R, 'Hard costs, total'), e.hard) && near(val(R, 'Soft costs'), e.soft) && (!e.lease || near(val(R, 'Lease-up deficit'), e.lease)), JSON.stringify([val(R, 'Land'), val(R, 'Hard costs, total'), e.hard]));
+    check(tag + ': the total development budget equals cost before financing plus reserves, and the components add to it', near(val(R, 'Total development budget'), e.unlev + (e.resFunded || 0)) && near(val(R, 'Land') + val(R, 'Closing costs and acquisition fee') + val(R, 'Predevelopment') + val(R, 'Hard costs, total') + val(R, 'Soft costs') + (e.lease ? val(R, 'Lease-up deficit') : 0) + (e.resFunded ? val(R, 'Initial reserves') : 0), e.unlev + (e.resFunded || 0)), JSON.stringify([val(R, 'Total development budget'), e.unlev + (e.resFunded || 0)]));
+    check(tag + ': per-unit and per-GSF columns equal amount / units and amount / GSF', (() => { const t = R.find(x => x[0] === 'Total development budget'); return t && near(Math.round($(t[1]) / e.s.units), $(t[2])) && Math.abs($(t[3].replace('$', '')) - Math.round($(t[1]) / e.s.gsf)) <= 1; })(), JSON.stringify(R.find(x => x[0] === 'Total development budget')));
+    check(tag + ': every hard-cost trade and soft-cost line in the engine\'s ladder is listed with its amount', e.hardLines.concat(e.softLines).every(([n, v]) => R.some(x => x[0] === n && near($(x[1]), v))), JSON.stringify(e.hardLines.concat(e.softLines).filter(([n, v]) => !R.some(x => x[0] === n && near($(x[1]), v)))));
+    if (e.reg) { check(tag + ': contingency register figures equal the engine (original, allocated, unallocated, used, remaining, further use, forecast, forecast remaining, release)', near(cval(R, 'Original'), e.reg.original) && near(cval(R, 'Allocated'), e.reg.allocated) && near(cval(R, 'Unallocated'), e.reg.unallocated) && near(cval(R, 'Used'), e.reg.used) && near(cval(R, 'Remaining'), e.reg.remaining) && near(cval(R, 'Further use'), e.reg.more) && near(cval(R, 'Total use'), e.reg.forecast) && near(cval(R, 'Left'), e.reg.forecastRemaining) && (!e.reg.saved || near(cval(R, 'Released'), e.reg.saved)), JSON.stringify(e.reg)); }
+    else check(tag + ': with no register the page says contingency is the hard-cost ladder amount', /No contingency register is entered/.test(r.text) && r.text.indexOf('$' + Math.round(e.cont).toLocaleString('en-US')) > 0, r.text.slice(0, 80));
+    if (e.list && e.list.length) {
+      check(tag + ': every reserve is listed with its month and amount, and the total funded equals the engine', e.list.every(l => R.some(x => x[0] === l.name && Number(x[2]) === l.mo && near($(x[3]), l.amount))) && near(val(R, 'Total funded', 3), e.resFunded), JSON.stringify(e.list));
+      const tot = R.filter(x => x[0] === 'Total').pop();
+      check(tag + ': used and released equal the engine and add up to the amount funded', tot && near($(tot[1]), e.resFunded) && near($(tot[2]), e.usedOp + e.usedInt) && near($(tot[3]), e.rel) && near(e.usedOp + e.usedInt + e.rel, e.resFunded), JSON.stringify([tot, e.usedOp, e.usedInt, e.rel, e.resFunded]));
+    } else check(tag + ': with no reserves the page says so', /No initial reserves are entered/.test(r.text));
+    /* the financing page tells the truth about the facility */
+    const fin = r.all;
+    { const okFixed = /fixed principal entered/.test(fin) && /Balance ceiling/.test(fin) && /Equity funds the first/.test(fin) && (e.unused > 0 ? fin.indexOf('$' + Math.round(e.unused).toLocaleString('en-US')) > 0 : true), okLtc = /LTC [\d.]+% formula/.test(fin);
+      check(tag + ': the Financing page describes the facility as entered (' + (e.fixed ? 'fixed principal, ceiling, equity first, unused fee' : 'loan-to-cost formula') + ') and never says the fee is not modelled', (e.fixed ? okFixed : okLtc) && (e.fixed || /Unused-commitment fee\s+none entered/.test(fin)) && !/Unused-commitment fee[^$]{0,70}not modelled/.test(fin), fin.slice(Math.max(0, fin.search(/Facility commitment/)), Math.max(0, fin.search(/Facility commitment/)) + 200)); }
+    check(tag + ': the limits list no longer says contingency, reserves, a fixed commitment or a catch-up rate cannot be entered', !/not tracked or released/.test(fin) && !/cannot be entered/.test(fin) && !/not a catch-up rate/.test(fin));
+    check(tag + ': no page errors', p.errs.length === 0, p.errs.join('|')); await q.close(); await p.close(); }
+
+  /* an acquisition deal is untouched */
+  { const p = await open(A); const q = await doc(p); const r = await pageInfo(q); check('acquisition deal: no Development budget page, still 8 pages', r.idx < 0 && r.n === 8, r.n); await q.close(); await p.close(); }
+  console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
+})();
