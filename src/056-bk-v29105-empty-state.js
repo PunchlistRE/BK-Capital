@@ -93,7 +93,7 @@ window.bkClearTemplateValues = function(){
    (blankStructure:true). The named template still applies to programmatic callers, so every saved deal and every audit deck keeps its own terms. With no GP, the LP takes every tier. */
 window.bkCreateNewDeal = function(opts){
   opts = opts || {};
-  if(opts.blankStructure){ var given = opts; opts = Object.assign({ gpShare:0, t2LP:1, t3LP:1, t4LP:1 }, opts, { template:'Blank' }); ['closingCostsPct', 'closingPct', 'saleCostPct', 'acqFeePct', 'acquisitionFeePct'].forEach(function(k){ if(given[k] === undefined || given[k] === null || given[k] === '') delete opts[k]; }); }   /* terms the caller supplies (an import) are kept; only what nobody supplied starts empty */
+  if(opts.blankStructure){ var given = opts; opts = Object.assign({ gpShare:0, t2LP:1, t3LP:1, t4LP:1, rolloverAssumptions:{}, leaseMkt:{ _blank:1 } }, opts, { template:'Blank' }); ['closingCostsPct', 'closingPct', 'saleCostPct', 'acqFeePct', 'acquisitionFeePct'].forEach(function(k){ if(given[k] === undefined || given[k] === null || given[k] === '') delete opts[k]; }); }   /* terms the caller supplies (an import) are kept; only what nobody supplied starts empty */
   var blank = {
     dealId       : opts.dealId       || '',
     name         : opts.name         || '',

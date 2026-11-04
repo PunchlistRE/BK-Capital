@@ -20,7 +20,7 @@ var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume 
   [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
 
 R.addWorkflow('acquisition', [
-  S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
+  S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf'), q('gla')]),
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
@@ -31,7 +31,7 @@ R.addWorkflow('acquisition', [
   S('decision', 'Decision thresholds', 'The lines the hold, refinance or sell tests are measured against. Without them the decision test has nothing to compare to. Skip to keep the standard ones.', 'Capital Allocation', [q('capRefiHeadroom'), q('capRefiDebtYield'), q('capSellCoE'), q('capSellNOIGrowth'), q('capKeepCoE')], { skippable:true }) ]);
 
 R.addWorkflow('development', [
-  S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' })]),
+  S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' }), q('gla')]),
   S('land', 'Land and budget', 'The two big costs. Land is the price; the construction budget is hard and soft costs together.', 'Deal Underwrite',
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
   INCOME, EXPENSES,

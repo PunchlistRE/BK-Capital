@@ -4,6 +4,7 @@
    GP equity contribution (a share of the money put in, set in Investment > Partnership as gpShare) is a different thing from the GP's profit participation
    (pref, catch-up and promote tiers). Only the first is used here. */
 (function(){
+  if(typeof BK_BASE === 'object' && BK_BASE && !('gla' in BK_BASE)) BK_BASE.gla = 0;   /* leasable area (GLA / NRA): separate from the gross building area, blank until entered */
   function sum(a, k){ return (a || []).reduce(function(t, m){ return t + (Number(m[k]) || 0); }, 0); }
   function n(v){ v = Number(v); return isFinite(v) ? v : 0; }
   function tie(id, label, a, b, tol, note){ var ok = Math.abs(n(a) - n(b)) <= (tol == null ? 1 : tol); return { id:id, label:label, a:n(a), b:n(b), ok:ok, note:note || '' }; }
