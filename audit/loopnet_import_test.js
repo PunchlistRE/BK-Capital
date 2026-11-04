@@ -85,8 +85,8 @@ const FX = n => fs.readdirSync(path.join(__dirname, 'fixtures', n)).sort((a, b) 
   /* the real upload path, when the PDFs and PDF.js are available */
   const HP = process.env.BK_LOOPNET_HOYT, AP = process.env.BK_LOOPNET_ARCTIC;
   if (HP && AP && process.env.BK_PDFJS_DIR && fs.existsSync(HP) && fs.existsSync(AP)) {
-    { const p = await open(true); await hoyt(p, true, HP); check('Hoyt (real PDF upload): no page errors', p.errs.length === 0, p.errs.join('|')); await p.close(); }
-    { const p = await open(true); const st = await arctic(p, true, AP); check('Arctic (real PDF upload): the page offers "Create deal from this listing"', /Create deal from this listing/.test(st.ui)); check('Arctic (real PDF upload): no page errors', p.errs.length === 0, p.errs.join('|')); await p.close(); }
+    { const p = await open(true); await hoyt(p, true, HP); const cv = await p.evaluate(() => { const c = bkOMState().info.cover; return c ? { size: c.size, type: c.type } : null; }); check('Hoyt (real PDF upload): the listing\'s main photo (the largest image on page 1) is extracted as the cover picture', cv && cv.size > 100000 && /image/.test(cv.type), JSON.stringify(cv)); check('Hoyt (real PDF upload): no page errors', p.errs.length === 0, p.errs.join('|')); await p.close(); }
+    { const p = await open(true); const st = await arctic(p, true, AP); const cv2 = await p.evaluate(() => { const c = bkOMState().info.cover; return c ? { size: c.size, type: c.type } : null; }); check('Arctic (real PDF upload): the main photo is extracted as the cover picture', cv2 && cv2.size > 100000 && /image/.test(cv2.type), JSON.stringify(cv2)); check('Arctic (real PDF upload): the page offers "Create deal from this listing"', /Create deal from this listing/.test(st.ui)); check('Arctic (real PDF upload): no page errors', p.errs.length === 0, p.errs.join('|')); await p.close(); }
   } else console.log('SKIPPED real-PDF checks (set BK_LOOPNET_HOYT, BK_LOOPNET_ARCTIC and BK_PDFJS_DIR)');
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();

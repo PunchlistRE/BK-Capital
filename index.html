@@ -24687,10 +24687,10 @@ function pageText(tc){ var rows = []; tc.items.forEach(function(it){ if(!it.str 
 function renderPage(page, width){ var v1 = page.getViewport({ scale:1 }), vp = page.getViewport({ scale:width / v1.width }), c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height); var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
   return page.render({ canvasContext:ctx, viewport:vp }).promise.then(function(){ return new Promise(function(res){ c.toBlob(function(b){ res(b); }, 'image/jpeg', 0.92); }); }); }
 /* image-only pages: take the picture itself at its own resolution (re-drawing the page smooths away fine print) */
-function pageImage(page){ var lib = window.pdfjsLib, OPS = lib.OPS;
+function pageImage(page, minW){ var lib = window.pdfjsLib, OPS = lib.OPS;
   return page.getOperatorList().then(function(ol){ var ids = []; for(var i = 0; i < ol.fnArray.length; i++){ var f = ol.fnArray[i]; if(f === OPS.paintImageXObject || f === OPS.paintJpegXObject) ids.push(ol.argsArray[i][0]); }
     return Promise.all(ids.map(function(id){ return new Promise(function(res){ var done = false, fin = function(o){ if(!done){ done = true; res(o); } }; try { (/^g_/.test(id) ? page.commonObjs : page.objs).get(id, fin); } catch(e){ fin(null); } setTimeout(function(){ fin(null); }, 4000); }); }));
-  }).then(function(imgs){ var best = null; imgs.forEach(function(o){ if(o && o.width >= 1000 && (!best || o.width * o.height > best.width * best.height)) best = o; }); if(!best) return null;
+  }).then(function(imgs){ var best = null; imgs.forEach(function(o){ if(o && o.width >= (minW || 1000) && (!best || o.width * o.height > best.width * best.height)) best = o; }); if(!best) return null;
     var c = document.createElement('canvas'); c.width = best.width; c.height = best.height; var ctx = c.getContext('2d');
     if(best.bitmap) ctx.drawImage(best.bitmap, 0, 0); else if(best.data){ var d = best.data, n = best.width * best.height, rgba = new Uint8ClampedArray(n * 4), k;
       if(d.length === n * 4) rgba.set(d); else if(d.length === n * 3){ for(k = 0; k < n; k++){ rgba[k * 4] = d[k * 3]; rgba[k * 4 + 1] = d[k * 3 + 1]; rgba[k * 4 + 2] = d[k * 3 + 2]; rgba[k * 4 + 3] = 255; } } else return null;
@@ -24735,7 +24735,10 @@ function readOMPdfjs(file){
       /* picture pages could not be read (no recognition engine, offline): keep the pages that have text rather than giving up on them */
       .catch(function(e){ if(pendingAll.length >= n) throw e; info.ocrError = (e && e.message) || String(e); info.ocrSkipped = pendingAll.map(function(i){ return i + 1; }); pendingAll.forEach(function(i){ if(!texts[i]) texts[i] = ''; }); });
     }).then(function(){
-      info.pages = texts; if(!coverIsPhoto(texts[0])) return info;
+      info.pages = texts;
+      /* a LoopNet listing's hero photo is an embedded image on page 1 (the largest one on the page); the page text is a header, so the designed-OM test below does not apply */
+      if(isLoopNet(texts)) return getPage(0).then(function(p){ return pageImage(p, 600); }).then(function(b){ if(b) info.cover = b; return info; }).catch(function(){ return info; });
+      if(!coverIsPhoto(texts[0])) return info;
       return getPage(0).then(function(p){ return renderPage(p, 1800); }).then(function(b){ info.cover = b; return info; }).catch(function(){ return info; }); });
   });
 }
