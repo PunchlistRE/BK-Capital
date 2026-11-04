@@ -26,6 +26,7 @@
 .ae-grid{ border-collapse:collapse; width:100%; background:var(--ae-cell); font-variant-numeric:tabular-nums; }
 .ae-grid th{ background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border:1px solid var(--ae-line); padding:4px 8px; font-weight:600; text-align:left; color:var(--ae-ink); white-space:nowrap; }
 .ae-grid th.grp{ text-align:center; background:var(--ae-head); }
+.ae-grid th.r{ text-align:right; }   /* a numeric column's heading sits over its figures */
 .ae-grid td{ border:1px solid var(--ae-line); padding:0; }
 .ae-grid td.c{ padding:4px 8px; } .ae-grid td.r{ text-align:right; } .ae-grid td.ro{ background:var(--ae-cell-ro); color:var(--ae-dim); }
 .ae-grid td input, .ae-grid td select{ width:100%; border:0; background:transparent; color:var(--ae-ink); font:inherit; padding:4px 8px; box-sizing:border-box; border-radius:0; }
