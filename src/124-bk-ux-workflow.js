@@ -519,6 +519,21 @@ function decorate(sheet){
   if(sheet === 'Deal Underwrite' && hasDeal()) decorateUnderwrite(frame);
   decorateNotes(frame);
   decorateRail();
+  kpiBar(sheet);
+}
+/* KEY-FIGURE BAR: the headline figures stay at the foot of every deal sheet, read from the same headline() as the Deal Snapshot, so they cannot differ from it. */
+function kpiBar(sheet){
+  var el = document.getElementById('bk-kpibar');
+  if(!hasDeal() || sheet === 'Guide'){ if(el) el.hidden = true; document.body.classList.remove('bk-has-kpibar'); return; }
+  if(!el){ el = document.createElement('div'); el.id = 'bk-kpibar'; el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Key figures'); document.body.appendChild(el); }
+  var r = readiness(), cell = function(k, v, sub){ return '<div class="kb-c"><div class="kb-k">' + k + '</div><div class="kb-v">' + v + '</div>' + (sub ? '<div class="kb-s">' + sub + '</div>' : '') + '</div>'; };
+  var html;
+  if(!r || !r.canCalculate){ html = cell('Status', esc(r ? r.state : 'DRAFT'), 'results withheld until ' + (r ? r.missing.length : 0) + ' required input' + (r && r.missing.length === 1 ? ' is' : 's are') + ' entered'); }
+  else { var h; try { h = headline(); } catch(e){ h = null; }
+    html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
+      + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+  el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }
 function refreshFlow(){
   var vp = document.getElementById('viewport'), bar = vp && vp.querySelector('.bk-flow'); if(!bar) return;

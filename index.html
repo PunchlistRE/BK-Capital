@@ -19226,6 +19226,21 @@ function decorate(sheet){
   if(sheet === 'Deal Underwrite' && hasDeal()) decorateUnderwrite(frame);
   decorateNotes(frame);
   decorateRail();
+  kpiBar(sheet);
+}
+/* KEY-FIGURE BAR: the headline figures stay at the foot of every deal sheet, read from the same headline() as the Deal Snapshot, so they cannot differ from it. */
+function kpiBar(sheet){
+  var el = document.getElementById('bk-kpibar');
+  if(!hasDeal() || sheet === 'Guide'){ if(el) el.hidden = true; document.body.classList.remove('bk-has-kpibar'); return; }
+  if(!el){ el = document.createElement('div'); el.id = 'bk-kpibar'; el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Key figures'); document.body.appendChild(el); }
+  var r = readiness(), cell = function(k, v, sub){ return '<div class="kb-c"><div class="kb-k">' + k + '</div><div class="kb-v">' + v + '</div>' + (sub ? '<div class="kb-s">' + sub + '</div>' : '') + '</div>'; };
+  var html;
+  if(!r || !r.canCalculate){ html = cell('Status', esc(r ? r.state : 'DRAFT'), 'results withheld until ' + (r ? r.missing.length : 0) + ' required input' + (r && r.missing.length === 1 ? ' is' : 's are') + ' entered'); }
+  else { var h; try { h = headline(); } catch(e){ h = null; }
+    html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
+      + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+  el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }
 function refreshFlow(){
   var vp = document.getElementById('viewport'), bar = vp && vp.querySelector('.bk-flow'); if(!bar) return;
@@ -29011,6 +29026,24 @@ html body #viewport a{ color:var(--ae-accent); }
 
 /* LAYOUT: one left edge. The page title, the header strip and every section start at the same x (22px gutter); sections sit 16px below the header and 12px apart. */
 @media (min-width:901px){ html body .main-col{ padding:16px 22px 40px; } html body #viewport .main-col > .note-flag:first-child{ margin-top:0; } }
+
+/* KEY-FIGURE BAR: a deep-navy strip at the foot of the window with the headline figures, large and plain. */
+#bk-kpibar{ position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex; align-items:stretch; background:var(--bk-navy); color:#EAF0F7; border-top:2px solid var(--bk-navy-2); font-family:Inter,"Segoe UI",system-ui,sans-serif; }
+#bk-kpibar[hidden]{ display:none; }
+#bk-kpibar .kb-c{ flex:1 1 0; min-width:0; padding:7px 14px 6px; border-left:1px solid rgba(255,255,255,.14); }
+#bk-kpibar .kb-c:first-child{ border-left:0; }
+#bk-kpibar .kb-k{ font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:#9FB3CC; font-weight:600; }
+#bk-kpibar .kb-v{ font-size:21px; line-height:1.15; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#bk-kpibar .kb-s{ font-size:10.5px; color:#8FB4E3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.bk-has-kpibar{ padding-bottom:68px; }
+@media (max-width:900px){ #bk-kpibar{ display:none !important; } body.bk-has-kpibar{ padding-bottom:0; } }
+@media print{ #bk-kpibar{ display:none !important; } body.bk-has-kpibar{ padding-bottom:0; } }
+
+/* FLAT AND SQUARE. Controls, cards, chips and tiles are rectangles with hairline borders; no rounded corners, no pills, no shadows. Status dots become small squares. */
+html body .grp-btn, html body .note-flag, html body button, html body .bk-sx-chip, html body .glyph, html body .bk-seg, html body .bk-save, html body details.bk-notes, html body .bk-tile, html body .bk-tile.hero, html body .bk-req, html body .bk-sx-seg, html body .pl-search, html body .status-chip, html body td, html body .bar, html body .ae-tab, html body .pf-print{ border-radius:0 !important; box-shadow:none; }
+html body .dot{ border-radius:0 !important; width:6px; height:6px; }
+html body #viewport .bk-tile, html body #viewport .bk-tile.hero{ border:1px solid var(--ae-line); background:var(--ae-cell); }
+@media (min-width:901px){ body.bk-has-kpibar .rail{ max-height:calc(100vh - 68px); overflow-y:auto; } }
 </style>
 </body>
 </html>
