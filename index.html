@@ -19724,7 +19724,7 @@ function controls(){
       + (elect ? row('Elected Bonus %', input('bonusPct', ((Number(r.bonusPct) || 0) * 100).toFixed(0), '(parseFloat(this.value)||0)/100', 70), 'Percent of eligible basis expensed in the first year.', chip('', 'INPUT')) : '')
       + row('Cost Segregation Fee', input('costSegFee', (Number(r.costSegFee) || 0).toLocaleString('en-US'), 'parseFloat(this.value.replace(/[$,]/g,\'\'))||0'), 'Paid at closing and deducted in the first tax year. Used for the payback ratio.', chip('', 'INPUT'))
       + row('Tax Losses', sel('lossMode', [['suspend', 'Suspended until income or sale (passive)'], ['usable', 'Usable against other income']], r.lossMode === 'usable' ? 'usable' : 'suspend'),
-            'Suspended is conservative and matches the legacy engine: a cost-seg loss only pays off at sale. Usable assumes the investor can absorb the loss (real estate professional, or passive income elsewhere) and saves tax at the tax rate each year.', chip('', 'INPUT'))
+            'Suspended is conservative: a cost-seg loss only pays off at sale. Usable assumes the investor can absorb it each year (real estate professional, or other passive income).', chip('', 'INPUT'))
       + row('PV Discount Rate', input('pvRate', (((Number(r.pvRate) || 0.08) * 100)).toFixed(1), '(parseFloat(this.value)||8)/100', 70), 'Used only to present the present value of cost-seg tax savings.', chip('', 'INPUT'));
   }
   return legacy + '<div class="tbl-wrap"><table class="fin"><caption>Tax-Grade Depreciation Settings</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th><th style="text-align:left">What it does</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
