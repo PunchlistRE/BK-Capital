@@ -75,7 +75,7 @@ const LEG = `(function(){ const s = bkLoad(), pre = Math.round(Number(s.predevMo
   const gap = await p.evaluate((src) => { bkDevGanttField(1, 'start', '12'); const s = bkLoad(); return { s: [s.predevMonths, s.constructionMonths] }; }, SNAP);
   check('holding the first construction task back to month 12 sets 11 months before construction and shortens nothing else', gap.s[0] === 11 && gap.s[1] >= 18 - 0 - 0 || gap.s[0] === 11, JSON.stringify(gap.s));
   /* lease-up window moves with construction (unit-level lease-up) */
-  const lu = await p.evaluate((d) => { bkCreateNewDeal(d); bkDevUnitMode('units'); const a = bkDevV09(); bkDevGanttMode('tasks'); eval(src); bkDevGanttField(1, 'dur', String(bkLoad().devGantt.tasks[1].dur + 4)); const c = bkDevV09(); return { co0: a.co, co1: c.co, first0: a.leaseupRamp[0].mo, first1: c.leaseupRamp[0].mo, lu0: a.luMo, lu1: c.luMo }; }, DEV);
+  const lu = await p.evaluate(([d, src]) => { bkCreateNewDeal(d); bkDevUnitMode('units'); const a = bkDevV09(); bkDevGanttMode('tasks'); eval(src); bkDevGanttField(1, 'dur', String(bkLoad().devGantt.tasks[1].dur + 4)); const c = bkDevV09(); return { co0: a.co, co1: c.co, first0: a.leaseupRamp[0].mo, first1: c.leaseupRamp[0].mo, lu0: a.luMo, lu1: c.luMo }; }, [DEV, LEG]);
   check('the lease-up window moves with the certificate of occupancy when the schedule changes, and its length is unchanged', lu.co1 === lu.co0 + 4 && lu.first1 === lu.first0 + 4 && lu.lu0 === lu.lu1, JSON.stringify(lu));
 
   /* ---- 4. editing ---- */
