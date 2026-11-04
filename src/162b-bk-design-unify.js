@@ -42,6 +42,13 @@ function chipKinds(root){
     if(k){ if(c.getAttribute('data-bk-chip') !== k) c.setAttribute('data-bk-chip', k); } else if(c.hasAttribute('data-bk-chip')) c.removeAttribute('data-bk-chip');
   });
 }
+/* a choice with nothing stored shows "Select..." instead of silently displaying its first option, so a cleared deal does not look filled in */
+function selectBlanks(root){ var st; try { st = bkLoad(); } catch(e){ return; } if(!st) return;
+  [].forEach.call(root.querySelectorAll('select[onchange]'), function(sel){ if(sel.getAttribute('data-bk-blank') === '1') return;
+    var m = /(?:bkEdSet|bkSetField|bkSetConvention|bkIOToggleSet)\('([A-Za-z0-9_]+)'/.exec(sel.getAttribute('onchange') || ''); if(!m) return; var k = m[1]; if(/^(dealType|scenarioCase|cv)/.test(k)) return;
+    var v = st[k]; if(!(v === '' || v == null)) return;
+    if([].some.call(sel.options, function(o){ return o.value === ''; })){ if(sel.value !== '') sel.value = ''; return; }
+    var o = document.createElement('option'); o.value = ''; o.textContent = 'Select...'; sel.insertBefore(o, sel.firstChild); sel.value = ''; sel.setAttribute('data-bk-blank', '1'); }); }
 function stkLabels(root){
   [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
     [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
@@ -115,7 +122,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');

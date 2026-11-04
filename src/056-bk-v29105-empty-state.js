@@ -137,6 +137,7 @@ window.bkCreateNewDeal = function(opts){
   var merged = Object.assign({}, bkLoad(), blank);
   /* A blank start has NO values, not zeros: every numeric input that is 0 becomes empty, so the sheets show empty cells and the status chips say what is missing. Switches, tier splits, curve shapes and conventions are settings, not inputs, and keep their value. The engine reads an empty cell as 0, so no calculation changes. */
   if(opts.blankStructure){ var KEEP = /On$|^refiAt|Enabled$|^t[234]LP$|Basis$|Steepness$|^_|^cv/; Object.keys(merged).forEach(function(k){ if(typeof merged[k] === 'number' && merged[k] === 0 && !KEEP.test(k)) merged[k] = ''; }); }
+  if(opts.blankStructure){ merged.debtRateType = ''; }   /* the engine reads an empty rate type as Fixed */
   window.bkProvision('new-deal', merged);
   if(typeof currentSheet !== 'undefined') showSheet('Deal Underwrite');
   return window.bkProductionCounts();

@@ -7692,6 +7692,7 @@ window.bkCreateNewDeal = function(opts){
   var merged = Object.assign({}, bkLoad(), blank);
   /* A blank start has NO values, not zeros: every numeric input that is 0 becomes empty, so the sheets show empty cells and the status chips say what is missing. Switches, tier splits, curve shapes and conventions are settings, not inputs, and keep their value. The engine reads an empty cell as 0, so no calculation changes. */
   if(opts.blankStructure){ var KEEP = /On$|^refiAt|Enabled$|^t[234]LP$|Basis$|Steepness$|^_|^cv/; Object.keys(merged).forEach(function(k){ if(typeof merged[k] === 'number' && merged[k] === 0 && !KEEP.test(k)) merged[k] = ''; }); }
+  if(opts.blankStructure){ merged.debtRateType = ''; }   /* the engine reads an empty rate type as Fixed */
   window.bkProvision('new-deal', merged);
   if(typeof currentSheet !== 'undefined') showSheet('Deal Underwrite');
   return window.bkProductionCounts();
@@ -26550,6 +26551,13 @@ function chipKinds(root){
     if(k){ if(c.getAttribute('data-bk-chip') !== k) c.setAttribute('data-bk-chip', k); } else if(c.hasAttribute('data-bk-chip')) c.removeAttribute('data-bk-chip');
   });
 }
+/* a choice with nothing stored shows "Select..." instead of silently displaying its first option, so a cleared deal does not look filled in */
+function selectBlanks(root){ var st; try { st = bkLoad(); } catch(e){ return; } if(!st) return;
+  [].forEach.call(root.querySelectorAll('select[onchange]'), function(sel){ if(sel.getAttribute('data-bk-blank') === '1') return;
+    var m = /(?:bkEdSet|bkSetField|bkSetConvention|bkIOToggleSet)\('([A-Za-z0-9_]+)'/.exec(sel.getAttribute('onchange') || ''); if(!m) return; var k = m[1]; if(/^(dealType|scenarioCase|cv)/.test(k)) return;
+    var v = st[k]; if(!(v === '' || v == null)) return;
+    if([].some.call(sel.options, function(o){ return o.value === ''; })){ if(sel.value !== '') sel.value = ''; return; }
+    var o = document.createElement('option'); o.value = ''; o.textContent = 'Select...'; sel.insertBefore(o, sel.firstChild); sel.value = ''; sel.setAttribute('data-bk-blank', '1'); }); }
 function stkLabels(root){
   [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
     [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
@@ -26623,7 +26631,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
@@ -29581,6 +29589,17 @@ html body #viewport .status-chip[data-bk-chip="optional"]{ background:transparen
 :root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; }
 /* the Import tab shows the older readers' pages, so their own upload boxes (replaced by the one at the top) are hidden */
 html body #viewport div:has(> input#bkOMFile), html body #viewport div:has(> input#bkImportFile), html body #viewport div:has(> input#bkRRFile){ display:none; }
+
+/* CLICKABLE LOOK: every tab and ribbon button has a visible edge at rest (not only on hover), so it reads as a button. The open one is joined to the page below it. */
+html body .tabnav .grp-btn{ border:1px solid rgba(255,255,255,.32) !important; border-bottom:0 !important; background:rgba(255,255,255,.07) !important; margin-right:3px; }
+html body .tabnav .grp-btn:hover{ background:rgba(255,255,255,.16) !important; border-color:rgba(255,255,255,.55) !important; }
+html body .tabnav .grp-btn.on{ border-color:#fff !important; box-shadow:inset 0 3px 0 var(--ae-accent) !important; }
+.bk-ribbon .rb-b{ border:1px solid var(--ae-line); background:var(--ae-cell-ro); margin:0 1px 2px; box-shadow:0 1px 0 rgba(14,42,74,.08); }
+.bk-ribbon .rb-b:hover{ background:var(--ae-sel); border-color:var(--bk-navy-2); }
+.bk-ribbon .rb-b.on{ background:var(--ae-cell); border-color:var(--bk-navy-2); border-bottom-color:var(--ae-cell); box-shadow:inset 0 2px 0 var(--bk-key-rule); }
+html body #viewport .ae-tab:not(.on), html body #viewport .ae-sub:not(.on), html body #viewport .ae-subs button:not(.on), html body #viewport .bk-dt:not(.on){ border:1px solid var(--ae-line) !important; background:var(--ae-cell-ro) !important; }
+html body #viewport .ae-tab:not(.on):hover, html body #viewport .ae-subs button:not(.on):hover, html body #viewport .bk-dui.bk-tabs .bk-dt:not(.on):hover{ background:var(--ae-sel) !important; border-color:var(--bk-navy-2) !important; }
+html body #viewport .ae-subs{ gap:3px; }
 </style>
 </body>
 </html>
