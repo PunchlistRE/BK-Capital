@@ -1,0 +1,21 @@
+Very walkable  Moderately drivable  Good public transit  Fairly bikeable
+80/100  70/100  60/100  50/100
+®
+Source: Local Logic
+Transportation
+Buses
+Hoyt St & Bedford St  Hoyt St
+0 min drive | 0.0 mi  0 min drive | 0.0 mi
+Bedford St & Hoyt St  Bedford St
+0 min drive | 0.1 mi  0 min drive | 0.1 mi
+Hoyt St
+0 min drive | 0.1 mi
+Commuter Rail
+Stamford Amtrak Station  Stamford
+3 min drive | 1.2 mi  3 min drive | 1.2 mi
+Airport
+Westchester County  LaGuardia
+24 min drive | 13.6 mi  51 min drive | 32.9 mi
+Long Island MacArthur
+101 min drive | 70.9 mi
+Sale Advisor
