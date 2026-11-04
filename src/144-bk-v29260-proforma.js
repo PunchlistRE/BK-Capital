@@ -67,7 +67,7 @@ function chartCash(D){
   g += '<polyline points="' + pts.map(function(p){ return p[0] + ',' + p[1]; }).join(' ') + '" fill="none" stroke="' + COL.gold + '" stroke-width="2.5"/>';
   pts.forEach(function(p){ g += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4" fill="' + COL.gold + '" stroke="#fff" stroke-width="1.5"/>'; });
   var pb = null; for(var k = 0; k < D.Y.length; k++){ if(D.Y[k].cum >= 0){ pb = k; break; } }
-  if(pb != null) g += '<text x="' + pts[pb][0] + '" y="' + (pts[pb][1] - 10) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + COL.ok + '">money back</text>';
+  if(pb != null) g += '<text x="' + (pts[pb][0] - 8) + '" y="' + (pts[pb][1] - 14) + '" text-anchor="end" font-size="10.5" font-weight="700" fill="' + COL.ok + '">money back</text>';
   return svgOpen(W, Hh, 'Equity cash flow by year with running total') + g + '</svg>';
 }
 /* where the profit comes from: equity in, operating cash flow, the sale (net of the loan), profit */

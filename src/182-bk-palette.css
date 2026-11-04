@@ -220,3 +220,4 @@ html[data-theme="dark"] body .bk-flow .bk-step.cur .n{ background:#9fcdf5 !impor
 html[data-theme="dark"] body .bk-ribbon .rb-c svg{ stroke:#9fcdf5; }
 @media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on, html:not([data-theme="light"]) body .bk-flow .bk-step.cur{ color:#9fcdf5 !important; border-bottom-color:#9fcdf5; } html:not([data-theme="light"]) body .bk-flow .bk-step.cur{ box-shadow:inset 0 -2px 0 #9fcdf5 !important; } html:not([data-theme="light"]) body .bk-flow .bk-step.cur .n{ background:#9fcdf5 !important; color:#0b1622 !important; } html:not([data-theme="light"]) body .bk-ribbon .rb-c svg{ stroke:#9fcdf5; } }
 html body .bk-nogp{ color:var(--ae-ink); opacity:.6; font-style:italic; }
+html body #viewport .ae-hint:before{ color:var(--ae-dim); }
