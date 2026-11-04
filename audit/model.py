@@ -1,7 +1,7 @@
 """Independent re-implementation of the BK Capital acquisition engine, written from the documented
 conventions rather than from the app's code. Used by conventions_test.py to verify every setting.
 
-Scope: flat average-rent acquisition deals with fixed-rate amortising debt (the two sample deals).
+Scope: flat average-rent acquisition deals with fixed-rate amortizing debt (the two sample deals).
 Conventions (deal fields; absent = legacy, exactly as the app resolves them):
   cvRentGrowthStart  'month1' (legacy) | 'year2'
   cvOpexVariablePct  0.4 (legacy) | any share 0..1

@@ -26,7 +26,7 @@ def run(d, quiet=False):
         eq(f"m{z['mo']} balance roll", z['end'], z['beg'] + z['capInt'] + z['loanDraw'], 0.01)
         ok(f"m{z['mo']} balance <= commitment", z['end'] <= commit + 0.01)
         eq(f"m{z['mo']} opening balance = prior closing", z['beg'], bal, 0.01); bal = z['end']
-        # capitalised interest never exceeds interest accrued on the opening balance
+        # capitalized interest never exceeds interest accrued on the opening balance
         ok(f"m{z['mo']} interest = opening balance x rate/12 when charged", abs((z['capInt'] + z['excess']) - z['beg'] * rate / 12) < 0.01 or (z['capInt'] + z['excess']) == 0)
     # ---- 2. cost totals tie to the ladder
     eq('sum of monthly hard cost = budget hard', sum(z['hard'] for z in mo), dv['hard'], 1)
@@ -35,7 +35,7 @@ def run(d, quiet=False):
     eq('total hard + soft = SOURCE budget', dv['hard'] + dv['soft'], N('sourceConstruction'), 1)
     eq('land month 1 = price + closing + acquisition fee + pre-dev carry', mo[0]['land'], dv['land'] + dv['close'] + dv['acq'] + dv['pre'], 1)
     eq('closing = price x closingPct', dv['close'], N('purchasePrice') * N('closingPct'), 0.5)
-    eq('capitalised interest = sum of monthly capInt', f['actualCapInt'], sum(z['capInt'] for z in mo), 1)
+    eq('capitalized interest = sum of monthly capInt', f['actualCapInt'], sum(z['capInt'] for z in mo), 1)
     # ---- 3. construction loan within its leverage limit
     total_cost = dv['unlev'] + f['upfrontFees'] + f['actualCapInt']
     ok('effective LTC (commitment / total cost incl. fees and interest) <= conLTC', commit / total_cost <= N('conLTC') + 0.005, f'{commit/total_cost:.3%} vs {N("conLTC"):.0%}')
@@ -57,7 +57,7 @@ def run(d, quiet=False):
         eq('no takeout: no refinance proceeds', t['refiProceeds'], 0, 0.5)
     else:
         eq('no construction loan: nothing is drawn', sum(z['loanDraw'] for z in mo), 0, 0.01)
-        eq('no construction loan: no capitalised interest', f['actualCapInt'], 0, 0.01)
+        eq('no construction loan: no capitalized interest', f['actualCapInt'], 0, 0.01)
     # ---- 5. returns recomputed from the app's own cash flows
     rows = m['rows']; vals = m['values']; dts = [date.fromisoformat(x) for x in m['dates']]
     start = date(2027, 1, 1)
@@ -75,11 +75,11 @@ def run(d, quiet=False):
     # reserves grows at the NOI growth rate and the reserves grow at the opex rate, like the acquisition engine.
     g_noi = N('noiGrowth') or N('rentGrowth'); base = d['baseNOI']
     if not N('stabilizedNOI'): eq('operating NOI base = Year-1 NOI before reserves - replacement reserves', base, d['calcNOI'] - N('reserves'), 0.5)
-    # reserves are a cost: they grow at the opex rate; NOI before reserves grows at the NOI rate (a user-entered stabilised NOI cannot be split)
+    # reserves are a cost: they grow at the opex rate; NOI before reserves grows at the NOI rate (a user-entered stabilized NOI cannot be split)
     res0 = 0.0 if N('stabilizedNOI') else N('reserves'); g_op = N('opexGrowth')
     noi_k = lambda k: ((base + res0) * (1 + g_noi) ** (max(1, math.ceil((k - stab + 1) / 12)) - 1) - res0 * (1 + g_op) ** (max(1, math.ceil((k - stab + 1) / 12)) - 1)) / 12
     for z in rows:
-        eq(f"m{z['m']} operating NOI = NOI before reserves (NOI growth) less reserves (opex growth), / 12 (0 before stabilisation unless in lease-up)", z['noi'], noi_k(z['m']), 0.01) if z['m'] >= stab else None
+        eq(f"m{z['m']} operating NOI = NOI before reserves (NOI growth) less reserves (opex growth), / 12 (0 before stabilization unless in lease-up)", z['noi'], noi_k(z['m']), 0.01) if z['m'] >= stab else None
     fwd_exit = sum(noi_k(k) for k in range(len(rows) + 1, len(rows) + 13))
     eq('gross sale = forward 12-month NOI (after reserves) / exit cap', rows[-1]['grossSale'], fwd_exit / N('exitCap'), 1)
     # the permanent loan is sized on NOI BEFORE reserves, by design (lenders size before reserves)
@@ -95,7 +95,7 @@ def run(d, quiet=False):
     # ---- 6. plausibility of the fixture's answer (guards against engine drift)
     yoc = noi / total_cost
     spread = (yoc - N('exitCap')) * 1e4
-    if not quiet: print(f'  total cost incl. interest {total_cost/1e6:.2f}M, stabilised NOI {noi/1e6:.2f}M, yield on cost {yoc:.2%} ({spread:.0f} bp over exit cap)')
+    if not quiet: print(f'  total cost incl. interest {total_cost/1e6:.2f}M, stabilized NOI {noi/1e6:.2f}M, yield on cost {yoc:.2%} ({spread:.0f} bp over exit cap)')
     if not quiet: print(f'  construction loan {commit/1e6:.2f}M ({commit/total_cost:.1%} LTC), equity {f["equityTotal"]/1e6:.2f}M, permanent loan {t["permLoan"]/1e6:.2f}M ({t["bindingTest"]}), levered IRR {m["irr"]:.1%}, MOIC {m["moic"]:.2f}x')
     ok('yield on cost 5.5%-8.5%', 0.055 <= yoc <= 0.085, f'{yoc:.2%}')
     ok('development spread over exit cap 75-300 bp', 75 <= spread <= 300, f'{spread:.0f} bp')

@@ -15,7 +15,7 @@ def bal_after(loan, rate, years, k):
     i = rate / 12; p = pmt_m(rate, years, loan); g = (1 + i) ** k
     return loan * g - p * (g - 1) / i
 
-def balance(m, k):                                          # existing loan: closed form from the loan, rate and amortisation
+def balance(m, k):                                          # existing loan: closed form from the loan, rate and amortization
     i = m['monthlyRate']; n = m['amortMonths']; L = m['loan']; P = m['monthlyPmt']; g = (1 + i) ** k
     return L * g - P * (g - 1) / i
 

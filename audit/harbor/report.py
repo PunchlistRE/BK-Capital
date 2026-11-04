@@ -12,15 +12,15 @@ for f in F['findings']: w('- ' + f)
 for t in ['The workbook places predevelopment costs at months −3 to −1 and construction at months 1–24; the brief says months 0–2 / 3–26. The brief was followed.',
           '“Hard-cost contingency” in the OM budget is $2.0M; the brief says contingency is separate from hard costs. Treated as separate.',
           '5% vacancy and 95% occupancy are one assumption; applying both would double-count. Treated as one.',
-          'The $750,000 debt-service/interest reserve and capitalised interest both pay for interest. Funding both is a double-count risk.',
+          'The $750,000 debt-service/interest reserve and capitalized interest both pay for interest. Funding both is a double-count risk.',
           'The brief does not say who earns the preferred return (LP only per Tier 2, or LP and GP) or what the 50% catch-up runs to.',
           'BK Capital\'s defaults charge a 1% asset-management fee and a 0.5% disposition fee that the brief does not mention. They are switched off for Harbor Point in `deal.js` and the default is flagged here.']: w('- ' + t)
 w('')
 w('## 2. Results (BK Capital, after stages A and B)\n')
 w('| Item | Value | Note |\n|---|---:|---|')
-for r in [('Cost before financing', m(B['unlev']), 'hard $26.95M = $24.95M of lines + $2.0M contingency; soft $5.00M'), ('Total uses = total sources', '%s' % m(B['unlev'] + B['upfront'] + B['capInt'] + B['excess']), 'incl. fees, capitalised interest and interest equity pays beyond the commitment'),
+for r in [('Cost before financing', m(B['unlev']), 'hard $26.95M = $24.95M of lines + $2.0M contingency; soft $5.00M'), ('Total uses = total sources', '%s' % m(B['unlev'] + B['upfront'] + B['capInt'] + B['excess']), 'incl. fees, capitalized interest and interest equity pays beyond the commitment'),
           ('Construction facility', m(B['commit']), 'sized by LTC on all-in cost; not the $27.3M / $34M of the brief'), ('Equity requirement', m(B['equityTotal']), 'brief: $14.973M initial; the rest is cost and interest beyond the commitment'),
-          ('Stabilised NOI (before reserves)', m(B['stabNOI']), 'brief target $2.95M; variance %s' % m(B['stabNOI'] - 2950000)), ('Gross sale, month 48', m(B['grossSale']), 'next-12-months NOI after reserves / 5.00%'),
+          ('Stabilized NOI (before reserves)', m(B['stabNOI']), 'brief target $2.95M; variance %s' % m(B['stabNOI'] - 2950000)), ('Gross sale, month 48', m(B['grossSale']), 'next-12-months NOI after reserves / 5.00%'),
           ('Levered IRR / multiple', '%s / %s' % (p(B['irr']), x(B['moic'])), 'multiple = distributions / contributions, both gross'), ('Unlevered IRR / multiple', '%s / %s' % (p(B['uIRR']), x(B['uMOIC'])), 'independent of financing'),
           ('LP IRR / multiple', '%s / %s' % (p(B['lpIRR']), x(B['lpMOIC'])), 'hurdles tested on the LP\'s dated cash flows'), ('GP IRR / multiple', '%s / %s' % (p(B['gpIRR']), x(B['gpMOIC'])), 'GP promote %s' % m(B['promote'])),
           ('Credit gate', R['gate']['status'], R['gate']['action'][:160])]: w('| %s | %s | %s |' % r)
@@ -28,12 +28,12 @@ w('')
 w('## 3. Resolving the two builds (33.95% vs 31.8%)\n')
 w('The 33.95% reported at the start was BK Capital\'s first run. The first build from the brief gave 31.78%. The difference is accounted for in three parts, with a residual that is stated, not plugged.\n')
 w('**a) Corrections to BK Capital (stages A and B).** Equity now pays the $1.22M of interest that accrues after the loan commitment is full (the returns cash flow had left it out) — about −1.2 points; the 1% asset-management and 0.5% disposition fees the brief never specified were removed — about +0.35 points. 33.95% → 33.09%.\n')
-w('**b) BK Capital against a second, independent model.** `reference2.py` rebuilds the cost ladder, S-curves, facility sizing, funding loop, operating cash flow, sale, dated IRR and the LP/GP waterfall from the raw inputs. It matches the engine to the dollar on 23 figures: cost, facility, capitalised interest, equity, sale, payoff, levered and unlevered IRR, multiple, LP and GP IRR and distributions, and promote. So the engine does what it says; what remains is a difference in assumptions.\n')
+w('**b) BK Capital against a second, independent model.** `reference2.py` rebuilds the cost ladder, S-curves, facility sizing, funding loop, operating cash flow, sale, dated IRR and the LP/GP waterfall from the raw inputs. It matches the engine to the dollar on 23 figures: cost, facility, capitalized interest, equity, sale, payoff, levered and unlevered IRR, multiple, LP and GP IRR and distributions, and promote. So the engine does what it says; what remains is a difference in assumptions.\n')
 w('**c) Walking BK Capital\'s assumptions to the brief\'s, one at a time** (independent model with switches, levered IRR):\n')
 w('| Step | Levered IRR |\n|---|---:|')
 for s in W: w('| %s | %s |' % (s['step'], p(s['irr'])))
 w('')
-w('Capitalising interest to the sale changes nothing here because the commitment is already full by stabilisation; interest after that is paid by equity either way.\n')
+w('Capitalising interest to the sale changes nothing here because the commitment is already full by stabilization; interest after that is paid by equity either way.\n')
 w('The walk ends at %s against the first build\'s %s. The remaining %.2f points are not isolated: the first build uses the workbook\'s monthly cost percentages instead of BK Capital\'s S-curves and a slightly different timeline convention. Nothing has been plugged to close it.\n' % (p(W[-1]['irr']), p(F['returns']['levered_irr']), (W[-1]['irr'] - F['returns']['levered_irr']) * 100))
 w('## 4. Model integrity (`bkIntegrity`)\n')
 w('%s. Hard = the figures do not tie; warn = they tie but something material is true; n/a = does not apply.\n' % R['integrity']['text'])
@@ -76,7 +76,7 @@ w('')
 w('## 10. Stage E: the brief\'s financing, reserve and waterfall terms\n')
 w('`deal_brief.js` is this deal with the brief\'s own terms entered (the base `deal.js` is unchanged so stages A to C stay comparable). Every new input is optional and blank by default; blank reproduces the base case exactly (`harbor_stageE_test.js`), and the independent model `reference2.py` matches the engine to the dollar on the brief deal.\n')
 w('| Term | Input | Entered as |\n|---|---|---|')
-for r_ in [['Fixed facility', '`conFixedAmt`', '$27.3M principal; the 1% origination fee is charged on it ($273,000)'], ['Balance ceiling', '`conCeiling`', '$34M, including capitalised interest'], ['Equity first', '`conEquityFirst`', '$14.7M before the first loan draw'], ['Unused commitment fee', '`conUnusedFeePct`', '0.5% a year on the undrawn principal, to stabilization'],
+for r_ in [['Fixed facility', '`conFixedAmt`', '$27.3M principal; the 1% origination fee is charged on it ($273,000)'], ['Balance ceiling', '`conCeiling`', '$34M, including capitalized interest'], ['Equity first', '`conEquityFirst`', '$14.7M before the first loan draw'], ['Unused commitment fee', '`conUnusedFeePct`', '0.5% a year on the undrawn principal, to stabilization'],
            ['Initial reserves', '`initReserves`', '$750,000 operating / lease-up at completion; $750,000 debt service and $500,000 other, held from closing (the brief\'s four buckets entered as three)'], ['Catch-up rate', '`gpCatchupRate`', '50%'], ['Preferred return', '`prefLPOnly`', 'LP only']]: w('| %s | %s | %s |' % tuple(r_))
 w('\nTo confirm with the deal team (not inferred here): the brief gives a 50% catch-up but not what it runs to (the 20%-of-profit target is the original build\'s mapping), and section 1 records that the brief does not say who earns the preferred return; `deal_brief.js` uses LP only. Neither is used in the base `deal.js`.\n')
 open(H + 'REPORT.md', 'w').write('\n'.join(o)); print(len(o))

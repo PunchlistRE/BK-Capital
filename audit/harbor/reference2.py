@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """A second, independent implementation of BK Capital's documented development conventions, written from the deal's raw inputs only (never from the engine's outputs).
-   It rebuilds: the cost ladder, the monthly cost curves, the facility sizing, the funding loop (equity first, interest capitalised to the commitment), the operating cash flow,
+   It rebuilds: the cost ladder, the monthly cost curves, the facility sizing, the funding loop (equity first, interest capitalized to the commitment), the operating cash flow,
    the sale, the dated levered and unlevered IRR, and the LP/GP hurdle waterfall. audit/harbor_stageB_test.js compares every figure with the engine.
        python3 audit/harbor/reference2.py inputs.json > out.json"""
 import json, sys, math, calendar, datetime as dt

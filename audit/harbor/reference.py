@@ -23,12 +23,12 @@ gpr = sum(n * r for n, r, _ in mix) * 12; avg = gpr / 12 / 120; sf = sum(n * s f
 R['rent'] = dict(gpr=gpr, monthly=gpr / 12, weighted_avg=avg, unit_sf=sf, rent_psf=gpr / 12 / sf)
 if round(avg) != 3302: F(f'Weighted average rent from the unit mix is ${avg:,.2f}, not the $3,302 stated in the OM and workbook.')
 if sf != 112_800: F(f'Unit areas in the workbook add to {sf:,} SF, not the 112,800 SF rentable area stated ({sf / 112800 - 1:+.1%}).')
-# --- stabilised operations
+# --- stabilized operations
 occ, other_pu = 0.95, 175
 rent_eff = gpr * occ; other = other_pu * 120 * occ * 12; egi = rent_eff + other
 opx_fixed = 400_000 + 120_000 + 150_000 + 144_000 + 180_000; mgmt = 0.04 * egi; opex = opx_fixed + mgmt; noi = egi - opex; resv = 300 * 120
 R['noi'] = dict(gpr=gpr, vacancy_loss=gpr * 0.05, rent_eff=rent_eff, other_income=other, egi=egi, fixed_opex=opx_fixed, mgmt=mgmt, opex=opex, noi=noi, reserves=resv, cfads=noi - resv, target=2_950_000, variance=noi - 2_950_000)
-F(f'Stabilised NOI from the rent roll and expense inputs is ${noi:,.0f}, ${noi - 2_950_000:,.0f} ({noi / 2_950_000 - 1:+.1%}) above the $2,950,000 target. Not plugged. At 5.00% the difference is ${(noi - 2_950_000) / 0.05:,.0f} of sale value.')
+F(f'Stabilized NOI from the rent roll and expense inputs is ${noi:,.0f}, ${noi - 2_950_000:,.0f} ({noi / 2_950_000 - 1:+.1%}) above the $2,950,000 target. Not plugged. At 5.00% the difference is ${(noi - 2_950_000) / 0.05:,.0f} of sale value.')
 A('Other income of $175 is paid by occupied units only (95% of 120); vacancy 5% and occupancy 95% are one assumption, not two deductions.')
 # --- sources & uses timeline (month 0 = closing)
 H, S, C = {}, {}, {}
@@ -42,7 +42,7 @@ for m in range(0, 27): uses[m] += H[m] + S[m] + C[m]
 uses[0] += land + close + 0.3 * 0 + 1_250_000; uses[26] += 750_000
 for m in (0, 1, 2): uses[m] += pre / 3
 total_uses = sum(uses.values()); R['uses_before_financing'] = total_uses
-# --- debt: equity first $14.7M of eligible costs, then debt; fee from equity; interest capitalised monthly on opening balance, ceiling $34M
+# --- debt: equity first $14.7M of eligible costs, then debt; fee from equity; interest capitalized monthly on opening balance, ceiling $34M
 rate = 0.0725; commit0 = 27_300_000; ceiling = 34_000_000; eq_first = 14_700_000
 fee = 0.01 * commit0; eq, bal, cum_cost, cap_int, unused_fees, short = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 eqflow = {m: 0.0 for m in range(0, 49)}; debt = []
@@ -58,11 +58,11 @@ for m in range(0, 49):
     uf = 0.005 / 12 * undrawn; unused_fees += uf; eqflow[m] += uf
     debt.append(dict(m=m, need=round(need), eq=round(e), draw=round(d), cap_int=round(ci), bal=round(bal)))
 R['debt'] = dict(commit_initial=commit0, ceiling=ceiling, origination_fee=fee, capitalised_interest=cap_int, unused_fees=unused_fees, balance_m48=bal, peak=max(x['bal'] for x in debt), principal_draws=sum(x['draw'] for x in debt), facility_shortfall=short, headroom=ceiling - bal, schedule=debt)
-A('Interest accrues on the opening balance each month and is capitalised through month 48 (not paid from operations); the lease-up NOI is distributed after the operating reserve.')
+A('Interest accrues on the opening balance each month and is capitalized through month 48 (not paid from operations); the lease-up NOI is distributed after the operating reserve.')
 A('Unused commitment fee = 0.50% a year on the undrawn part of the $27.3M initial principal through month 26 (lender convention not given); paid by equity.')
-A('The $750,000 debt-service/interest reserve is cash held, not spent (interest is capitalised), and is returned at sale; its funding overlaps the capitalised interest line.')
-F(f'Capitalised interest to month 48 is ${cap_int:,.0f}; the loan reaches ${bal:,.0f} against a ${ceiling:,.0f} ceiling ({"over" if bal > ceiling else "under"}). Equity forced above the ${eq_first:,.0f} threshold: ${short:,.0f}. All-in cost incl. financing is higher than the $42M budget by ${cap_int + fee + unused_fees:,.0f}.')
-# --- operations months 27-48 (no rent growth before stabilisation: rents are stated in today's dollars; flagged)
+A('The $750,000 debt-service/interest reserve is cash held, not spent (interest is capitalized), and is returned at sale; its funding overlaps the capitalized interest line.')
+F(f'Capitalized interest to month 48 is ${cap_int:,.0f}; the loan reaches ${bal:,.0f} against a ${ceiling:,.0f} ceiling ({"over" if bal > ceiling else "under"}). Equity forced above the ${eq_first:,.0f} threshold: ${short:,.0f}. All-in cost incl. financing is higher than the $42M budget by ${cap_int + fee + unused_fees:,.0f}.')
+# --- operations months 27-48 (no rent growth before stabilization: rents are stated in today's dollars; flagged)
 ramp = {r[0]: r[1] for r in openpyxl.load_workbook(f, data_only=True)['Lease-Up'].iter_rows(min_row=4, values_only=True) if isinstance(r[0], int)}
 op = {}
 for m in range(27, 49):
