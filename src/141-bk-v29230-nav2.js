@@ -80,7 +80,7 @@ function railHead(){
   var h = document.querySelector('#rail .rail-head'); if(!h) return; var t = h.querySelector('h1'), p = h.querySelector('p'), e = h.querySelector('.eyebrow'); if(!t || !p) return;
   var s = null, on = true; try { on = typeof window.bkHasActiveDeal === 'function' ? window.bkHasActiveDeal() : true; s = on ? bkLoad() : null; } catch(x){}
   if(e) e.textContent = 'Punchlist Capital';
-  if(s && s.name){ t.textContent = s.name; p.textContent = [s.dealType, s.propertyType, s.status].filter(Boolean).join(' \u00b7 '); } else { t.textContent = 'No deal open'; p.textContent = 'Start from Home: import a T-12 or begin a blank deal.'; }
+  if(s && s.name){ t.textContent = s.name; p.textContent = [(function(){ try { var a = window.BKReg && window.BKReg.of(s); return a && a.ownReadiness ? a.name : s.dealType; } catch(e){ return s.dealType; } })(), s.propertyType, s.status].filter(Boolean).join(' \u00b7 '); } else { t.textContent = 'No deal open'; p.textContent = 'Start from Home: import a T-12 or begin a blank deal.'; }
 }
 /* ---- rail: only the working group is open; click a group name to open or fold it */
 function groupOf(sheet){ for(var i = 0; i < GROUPS.length; i++) if(GROUPS[i].sheets.indexOf(sheet) > -1) return GROUPS[i]; return null; }
