@@ -58,7 +58,22 @@ function frontDoor(L){
     + '<p class="pl-docs">Or start from a document: ' + docs.map(function(d){ return '<button type="button" class="pl-link" ' + go(d[1]) + '>' + d[0] + '</button>'; }).join('<span aria-hidden="true"> · </span>') + '</p>'
     + dealsBlock(L) + '</div>';
 }
+/* the Overview of an analysis with its own engine (Refinancing, and the analyses that follow): the registry's tiles from its summary, the next step, and its workflow as the checklist */
+function buildOwn(s, a){ var R = window.BKReg, sm = safe(function(){ return R.summarize(s); }, null), ready = safe(function(){ return bkDealReadiness(); }, null), can = ready && ready.canCalculate;
+  var fmt = function(m){ var v = m.value; if(v === null || v === undefined) return '-'; return m.fmt === 'pct' ? P(v, 2) : m.fmt === 'x' ? X(v) : m.fmt === 'int' ? String(Math.round(v)) : M(v); };
+  var all = sm ? [sm.primary].concat(sm.metrics) : [], byId = {}; all.forEach(function(m){ byId[m.id] = m; });
+  var kpis = can ? R.tiles(a.id).map(function(id){ var m = byId[id] || (function(){ var d = R.metric(id); return d ? { id:id, label:d.label, fmt:d.fmt, note:d.note || '', value:safe(function(){ return R.summarize(s).metrics.concat([R.summarize(s).primary]).filter(function(x){ return x.id === id; })[0].value; }, null) } : null; })(); return m; }).filter(Boolean) : [];
+  var wf = ready && ready.workflow || [], miss = (ready && ready.missing || []);
+  var next = !can ? ['Finish the required inputs', miss.length ? miss.length + ' still missing: ' + miss.slice(0, 4).map(function(m){ return m.label; }).join(', ') + (miss.length > 4 ? '…' : '') + '.' : 'The analysis cannot run yet' + (ready && ready.blockers && ready.blockers.length ? ': ' + esc(ready.blockers[0]) : '.'), a.home || 'Home', 'Open ' + (a.home || 'the analysis')] : ['Ready to report', esc(sm && sm.question ? sm.question : '') + ' The report is built from the same figures.', a.id === 'refinance' ? 'Refinance Report' : 'Reports', 'Open the report'];
+  var rows = wf.map(function(x){ var st = (R.workflow(a.id).filter(function(y){ return y.id === x.id; })[0]) || {}; return [x.complete ? 'pass' : (x.skippable ? '' : 'warn'), x.title, x.complete ? 'Complete' : (x.missing.length ? 'Missing: ' + x.missing.map(function(k){ var f = R.field(k); return f ? f.label : k; }).join(', ') : (x.skippable ? 'Optional' : '')), st.sheet || a.home]; });
+  var tag = function(l, c){ return '<span class="status-chip ' + (c || '') + '">' + l + '</span>'; }, rd = ready ? String(ready.state || '') : '';
+  return '<div class="pl-home"><div class="pl-hero"><h2>' + esc(s.name || 'Untitled') + '</h2><p class="pl-sub">' + esc([a.name, s.propertyType, s.location, s.units ? s.units + ' units' : ''].filter(Boolean).join(' · ')) + '</p><div class="pl-chips">' + tag(esc(rd || 'DRAFT'), /READY/.test(rd) ? 'pass' : 'warn') + '</div></div>'
+    + (kpis.length ? '<div class="pl-kpis">' + kpis.map(function(m){ return '<button type="button" class="pl-kpi" ' + go(a.home || 'Home') + '><div class="k">' + esc(m.label) + '</div><div class="v">' + fmt(m) + '</div><div class="s">' + esc(m.note || '') + '</div></button>'; }).join('') + '</div>' : '')
+    + '<div class="pl-next"><div><div class="t">Next step</div><div class="m">' + next[0] + '</div><div class="d">' + next[1] + '</div></div><div><button type="button" class="pl-btn" ' + go(next[2]) + '>' + esc(next[3]) + '</button></div></div>'
+    + '<div class="pl-h">' + esc(a.name) + ' steps</div><div class="pl-check">' + rows.map(function(r){ return '<div class="pl-row ' + r[0] + '" role="button" tabindex="0" ' + go(r[3]) + '><span class="dot"></span><span class="l">' + esc(r[1]) + '</span><span class="r">' + esc(r[2]) + '</span><span class="go">Open &rarr;</span></div>'; }).join('') + '</div></div>';
+}
 function build(s, oldMain){
+  var an = safe(function(){ return window.BKReg.of(s); }, null); if(an && an.ownReadiness) return buildOwn(s, an);
   var dev = isDev(s), h = safe(function(){ return window.bkHeadline(); }, null), pol = safe(function(){ return bkPolicy(); }, {}), ready = safe(function(){ return bkDealReadiness(); }, null);
   var gate = dev ? null : safe(function(){ return bkDealGate(); }, null), ctl = safe(function(){ return bkModelControls(); }, []), mk = dev ? null : safe(function(){ return bkMarketCompare(); }, null);
   var fails = ctl.filter(function(c){ return c.level === 'FAIL'; }), warns = ctl.filter(function(c){ return c.level !== 'FAIL'; });

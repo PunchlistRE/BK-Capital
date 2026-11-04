@@ -18,10 +18,10 @@ R.addSections([
   X('schedule', 'Construction schedule', { builder:'devschedule.summary', when:'a task schedule exists' }),
   X('disclosures', 'Assumptions and disclosures', { builder:'report.disclosures' }),
   /* planned */
-  P('valExec', 'Executive valuation summary'), P('propDesc', 'Property description'), P('rentRollMix', 'Rent roll / unit mix'), P('incomeAnalysis', 'Income analysis'), P('opexAnalysis', 'Operating expense analysis'),
+  P('valExec', 'Executive valuation summary'), X('propDesc', 'Property description', { builder:'refinance.report' }), P('rentRollMix', 'Rent roll / unit mix'), P('incomeAnalysis', 'Income analysis'), P('opexAnalysis', 'Operating expense analysis'),
   P('noiRecon', 'NOI reconciliation'), P('capRateAnalysis', 'Capitalization rate analysis'), P('valueConclusion', 'Estimated market value'), P('valSens', 'Valuation sensitivity'),
   P('capitalBudget', 'Capital improvement budget'), P('taxAnalysis', 'Tax analysis', { when:'tax analysis selected' }),
-  P('refiExec', 'Executive refinance summary'), P('existingDebt', 'Existing debt and payoff'), P('proposedDebt', 'Proposed financing and lender tests'), P('refiProceeds', 'Proceeds and equity'), P('refiCompare', 'Alternative structures'),
+  X('refiExec', 'Executive refinance summary', { builder:'refinance.report' }), X('existingDebt', 'Existing debt and payoff', { builder:'refinance.report' }), X('proposedDebt', 'Proposed financing and lender tests', { builder:'refinance.report' }), X('refiProceeds', 'Proceeds and equity', { builder:'refinance.report' }), X('refiCompare', 'Alternative structures', { builder:'refinance.report' }),
   P('holdExec', 'Executive hold / sell summary'), P('holdCompare', 'Hold vs. sell'), P('saleTax', 'Disposition tax estimate', { when:'tax analysis selected' }),
   P('afterTaxCF', 'After-tax cash flow'), P('investorSchedules', 'Investor contributions and distributions'),
   P('pfExec', 'Executive portfolio summary'), P('pfComposition', 'Portfolio composition'), P('pfValues', 'Asset-level valuations'), P('pfOps', 'Operating performance'), P('pfConsolidation', 'Portfolio consolidation'),

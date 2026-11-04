@@ -186,7 +186,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   const first = await p.evaluate(() => (document.querySelector('#pl-palette .it span:nth-child(2)') || document.querySelector('#pl-palette .it')).textContent);
   check('the palette filters as you type', /Refi/i.test(first), first);
   await p.keyboard.press('Enter'); await p.waitForTimeout(500);
-  check('Enter opens the chosen sheet and closes the palette', await p.evaluate(() => currentSheet === 'Refi / Recap' && !document.getElementById('pl-palette').classList.contains('open')));
+  check('Enter opens the chosen sheet and closes the palette', await p.evaluate(() => /^Refi/.test(currentSheet) && !document.getElementById('pl-palette').classList.contains('open')));
   const rail = await p.evaluate(() => [...document.querySelectorAll('#rail-groups .rail-group')].filter(g => !g.classList.contains('bk-adv') && !g.classList.contains('pl-collapsed')).length);
   check('the left rail keeps only the working group open', rail === 1, String(rail));
   await p.keyboard.press('Escape');

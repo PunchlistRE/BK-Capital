@@ -54,16 +54,16 @@ R.addWorkflow('valuation', [
 
 R.addWorkflow('refinance', [
   S('property', 'Property information', 'Identifies the asset and its size.', 'Property', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
-  S('ops', 'Current operating performance', 'Lenders size on the NOI the property earns today.', 'Deal Underwrite', [q('avgRent', 'required'), q('vacancy', 'required'), q('taxes', 'required'), q('insurance', 'required'), q('rm', 'required'), q('mgmtPct', 'required')]),
-  S('value', 'Current property valuation', 'The LTV test uses this value.', 'Valuation', [q('currentValue', 'required'), q('valCapRate')]),
-  S('existing', 'Existing debt and payoff', 'What has to be repaid before any cash comes out.', 'Debt', [q('exLoanBalance', 'required'), q('exLoanRate', 'required'), q('exLoanMaturity', 'required'), q('exLoanAmort'), q('exPrepay')]),
-  S('proposed', 'Proposed financing', 'The terms of the new loan.', 'Debt', [q('newLoanRate', 'required'), q('newLoanTerm', 'required'), q('newLoanAmort'), q('newLoanIO')]),
-  S('lender', 'Lender constraints', 'The tests that size the loan, kept apart from your own assumptions.', 'Debt', [q('lenderMaxLTV', 'required'), q('lenderMinDSCR', 'required'), q('lenderMinDY')]),
-  S('sizing', 'Debt sizing', 'The loan is the lowest the tests allow.', 'Debt', [q('newLoanAmount', 'optional')]),
-  S('costs', 'Refinance costs', 'Points, legal and the prepayment penalty reduce the proceeds.', 'Debt', [q('newLoanCosts', 'required')]),
-  S('proceeds', 'Proceeds and equity extraction', 'Net cash out after payoff and costs, and the equity left in.', 'Debt', [q('value', 'derived')]),
-  S('alts', 'Alternative financing scenarios', 'Compare structures side by side.', 'Financing Compare', [q('refiScenarios')]),
-  S('review', 'Review and generate the refinance report', '', 'Reports', []) ]);
+  S('ops', 'Current operating performance', 'Lenders size on the NOI the property earns today: rent, vacancy and the expenses.', 'Revenues', [q('avgRent', 'required'), q('otherIncomePerUnit'), q('vacancy', 'required'), q('taxes', 'required'), q('insurance', 'required'), q('rm', 'required'), q('mgmtPct', 'required'), q('utilities'), q('payroll'), q('reserves')]),
+  S('value', 'Current property valuation', 'The LTV test uses this value: enter it, or a market cap rate to value the NOI.', 'Refinancing', [q('currentValue', 'conditional', { when:function(s){ return !(Number(s.valCapRate) > 0); } }), q('valCapRate')]),
+  S('existing', 'Existing debt and payoff', 'What has to be repaid before any cash comes out.', 'Refinancing', [q('exLoanBalance', 'required'), q('exLoanRate', 'required'), q('exLoanMaturity'), q('exLoanAmort'), q('exPrepay')]),
+  S('proposed', 'Proposed financing', 'The terms of the new loan.', 'Refinancing', [q('newLoanRate', 'required'), q('newLoanTerm'), q('newLoanAmort'), q('newLoanIO')]),
+  S('lender', 'Lender constraints', 'The tests that size the loan, kept apart from your own assumptions.', 'Refinancing', [q('lenderMaxLTV', 'required'), q('lenderMinDSCR', 'required'), q('lenderMinDY')]),
+  S('sizing', 'Debt sizing', 'The loan is the lowest the tests allow, or less if you ask for less.', 'Refinancing', [q('newLoanAmount', 'optional')]),
+  S('costs', 'Refinance costs', 'Points, legal and lender fees reduce the proceeds. The prepayment penalty is entered with the existing loan.', 'Refinancing', [q('newLoanCosts', 'required')]),
+  S('proceeds', 'Proceeds and equity extraction', 'Net cash out after payoff and costs, and the equity left in.', 'Refinancing', [q('value', 'derived')]),
+  S('alts', 'Alternative financing scenarios', 'Compare structures side by side.', 'Refinancing', [q('refiScenarios')], { skippable:true }),
+  S('review', 'Review and generate the refinance report', 'Check the result and print the report.', 'Refinance Report', []) ]);
 
 R.addWorkflow('hold', [
   S('property', 'Property information', '', 'Property', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
