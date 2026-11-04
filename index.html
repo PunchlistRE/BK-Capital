@@ -29117,6 +29117,12 @@ html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-
 html body #viewport .pf-ins li b, html body #viewport .note-flag b{ color:var(--bk-navy); }
 html body #viewport .ae-hint, html body #viewport .ae .ae-hint{ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
 html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--bk-navy-2); padding-right:10px; border-right:1px solid var(--ae-line); }
+
+/* FLOW: on a wide screen the step strip and the case / save / undo controls share one row, which gives the page back about 45px. */
+@media (min-width:1200px){ html body .bk-flow{ flex-wrap:nowrap; } html body .bk-flow .bk-steps{ flex:1 1 auto; min-width:0; gap:2px; } html body .bk-flow .bk-step-sep{ flex:0 0 10px; width:10px; min-width:10px; } html body .bk-flow .bk-flow-right{ flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap; } }
+
+/* The ribbon already lists the seven Property Editor sheets, so the second row of the same seven tabs inside the page is hidden on wide screens; the sub-tabs (Acquisition, Financing ...) stay. Phones, which have no ribbon, keep it. */
+@media (min-width:901px){ html body #viewport .ae > .ae-tabs, html body #viewport .ae .ae-tabs{ display:none; } }
 </style>
 </body>
 </html>
