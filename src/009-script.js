@@ -152,14 +152,17 @@ function sidebarShell(bodyHtml, opts){
 }
 
 function colorKeyCard(){
+  /* the swatches are the real styles: input = blue on pale yellow; calculated = black; linked = green; N/A = grey; attention = red / amber outline */
+  var sw = function(style, txt){ return '<span class="keyswatch" style="' + style + '"><b>' + txt + '</b></span>'; };
   return `<div class="card">
     <div class="card-head">Color &amp; Formatting Key</div>
     <div>
-      <div class="keyrow"><span class="keyswatch" style="background:var(--gold-100); border-color:var(--input-blue);"></span><div><b style="color:var(--input-blue)">Input Cell</b><span>Direct user assumption or hardcode. Only cells to type in.</span></div></div>
-      <div class="keyrow"><span class="keyswatch" style="background:#fff; border:1px solid var(--line);"></span><div><b>Formula</b><span>Calculated on this sheet.</span></div></div>
-      <div class="keyrow"><span class="keyswatch" style="background:#fff;"></span><div><b style="color:var(--linked-green)">Linked Formula</b><span>Pulled from another worksheet.</span></div></div>
-      <div class="keyrow"><span class="keyswatch" style="background:#fff;"></span><div><b style="color:var(--external-red)">External Link</b><span>References another workbook.</span></div></div>
-      <div class="keyrow"><span class="keyswatch" style="background:#EFEDE7;"></span><div><b style="color:var(--stored-grey)">Stored Value</b><span>Written by Save Deal / regression. Never typed.</span></div></div>
+      <div class="keyrow">${sw('background:var(--bk-in-fill,#fdfae6);border:1px solid var(--bk-in-line,#e4d9a3);color:var(--bk-in-ink,#1a44c2)', '12')}<div><b style="color:var(--bk-in-ink,#1a44c2)">Input</b><span>Blue text on a pale yellow cell. You can type here.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--ae-ink,#10233a)', '12')}<div><b>Calculated</b><span>Black text, no fill. Worked out from other cells; not typed.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-link-ink,#13774a)', '12')}<div><b style="color:var(--bk-link-ink,#13774a)">Linked</b><span>Green text. Shown here, but set or worked out on another sheet.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-na-ink,#69747f)', 'n/a')}<div><b style="color:var(--bk-na-ink,#69747f)">N/A</b><span>Grey text. Does not apply to this kind of deal.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;box-shadow:inset 0 0 0 2px var(--bk-attn-red,#d1433a);border:0', '')}<div><b style="color:var(--bk-attn-red,#d1433a)">Required / missing</b><span>Red outline. The model cannot calculate until it is entered.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;box-shadow:inset 0 0 0 2px var(--bk-attn-amber,#d99a1f);border:0', '')}<div><b style="color:var(--bk-attn-amber,#b9780f)">Needs a look</b><span>Amber outline. Not required to calculate, but the returns need it.</span></div></div>
     </div>
   </div>`;
 }

@@ -41,7 +41,7 @@ html body #viewport table.fin td[data-bk-kind^="input"] select,
 html body #viewport table.fin td[data-bk-kind^="input"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
   -webkit-appearance:none; appearance:none; box-sizing:border-box;
   height:22px !important; min-width:0 !important; width:100% !important; max-width:none !important;
-  margin:0 !important; padding:1px 20px 1px 0 !important; border:0 !important; border-bottom:1px solid var(--bk-in-line) !important;
+  margin:0 !important; padding:1px 20px 1px 0 !important; border:0 !important; border-bottom:0 !important;
   border-radius:0 !important; background-color:transparent !important; color:var(--bk-in-ink) !important;
   font-weight:600 !important; font-size:12px !important; line-height:20px !important; font-family:inherit !important; box-shadow:none !important; }
 html body #viewport table.fin td[data-bk-kind="input-text"] select,
@@ -91,10 +91,9 @@ html body #viewport table.fin tbody tr.total > td, html body #viewport table.fin
 html body #viewport table.fin tbody tr.grandtotal .status-chip, html body #viewport table.fin tbody tr.total .status-chip {
   background:transparent !important; color:var(--bk-total-ink) !important; border-color:rgba(244,239,225,.55) !important; }
 
-/* ---- V32.1: one underline for EVERY editable cell (typed cells and dropdowns alike) ---- */
+/* ---- editable cells are marked by the fill and the thin edge, not by an inner underline ---- */
 html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind^="input"]:not(:has(select,input,textarea)) {
-  background-image:linear-gradient(var(--bk-in-line),var(--bk-in-line)) !important; background-repeat:no-repeat !important;
-  background-size:calc(100% - 20px) 1px !important; background-position:10px calc(100% - 6px) !important;
+  background-image:none !important;   /* the filled cell is the field: no inner underline */
   line-height:22px !important; }
 /* a mixed column (figures + dropdowns) has ONE alignment: dropdown text follows the figures */
 html body #viewport table.fin td[data-bk-kind="input-text"][data-bk-col="num"] select,

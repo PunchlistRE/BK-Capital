@@ -59,7 +59,8 @@ function NOTE(t){ return { note:t }; }
 function hint(t){ return '<div class="ae-hint">' + t + '</div>'; }
 function btn(label, onclick, pri){ return '<button type="button" class="ae-btn' + (pri ? ' pri' : '') + '" onclick="' + onclick + '">' + esc(label) + '</button>'; }
 function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
-function summaryTable(title, rows){ return '<div class="ae-panel ae-sum"><div class="ae-ph"><i>=</i>' + esc(title) + '</div><table class="ae-grid"><tbody>' + rows.map(function(r){ return '<tr class="' + (r[3] || '') + '"><td class="c">' + esc(r[0]) + '</td><td class="c r">' + r[1] + '</td><td class="c r ro">' + (r[2] || '') + '</td></tr>'; }).join('') + '</tbody></table></div>'; }
+/* link = the figures are shown here but come from another sheet (the returns engine), so they read as linked (green), not calculated on this page */
+function summaryTable(title, rows, link){ return '<div class="ae-panel ae-sum"><div class="ae-ph"><i>=</i>' + esc(title) + '</div><table class="ae-grid"><tbody>' + rows.map(function(r){ return '<tr class="' + (r[3] || '') + '"><td class="c">' + esc(r[0]) + '</td><td class="c r' + (link ? ' bk-link' : '') + '"' + (link ? ' title="Linked: this figure comes from the returns engine (Returns)"' : '') + '>' + r[1] + '</td><td class="c r ro">' + (r[2] || '') + '</td></tr>'; }).join('') + '</tbody></table></div>'; }
 /* a line grid for operating-style amounts: How Input, Amount, Frequency, Annual Total and the shares of income and per unit */
 /* Basis and amount use the app's existing input-basis system (the same one Deal Underwrite uses), so a basis picked here is the basis shown there. Frequency (annual or monthly) is an extra display layer kept in _ed. */
 var BLAB = { DOLLARS_YR:'$ / Year (Total)', DOLLARS_UNIT_YR:'$ / Unit / Year', DOLLARS_GSF_YR:'$ / GSF / Year', PCT_EGI:'% of EGI' };
@@ -307,7 +308,7 @@ function pSum(s){ var dev = isDev(s), c = calc(), m = safe(function(){ return bk
   rows.push(['Year-1 Net Operating Income', money(c.after), 'after reserves']);
   if(!dev){ rows.push(['Going-In Cap Rate', price > 0 ? pct(num(c.noi) / price, 2) : '-', 'NOI before reserves / price']); rows.push(['Direct Capitalization Value', num(s.exitCap) > 0 ? money(num(c.noi) / num(s.exitCap)) : '-', 'year-1 NOI / exit cap']); if(ac) rows.push(['Gross Sale Price', money(ac.grossSale), 'at exit', 'tot']); rows.push(['Unlevered IRR', ac ? pct(ac.irr, 2) : '-', ac ? 'multiple ' + x2(ac.moic) : '']); }
   rows.push(['Levered IRR', pct(m.irr, 2), 'multiple ' + x2(m.moic)]); rows.push(['Equity Required', money(dev ? m.contrib : (d && d.equity)), '']); rows.push(['Profit to Equity', money(num(m.dist) - num(m.contrib)), 'distributions less contributions', 'tot']);
-  return summaryTable('Value and Returns', rows) + '<div class="ae-row">' + btn('Returns', 'showSheet(\'Returns\')', true) + btn('Sensitivity', 'showSheet(\'Sensitivity\')') + btn('Equity waterfall', 'showSheet(\'Equity Waterfall\')') + btn('Cash flow', 'showSheet(\'Property CF\')') + '</div>'; }
+  return summaryTable('Value and Returns', rows, true) + '<div class="ae-row">' + btn('Returns', 'showSheet(\'Returns\')', true) + btn('Sensitivity', 'showSheet(\'Sensitivity\')') + btn('Equity waterfall', 'showSheet(\'Equity Waterfall\')') + btn('Cash flow', 'showSheet(\'Property CF\')') + '</div>'; }
 /* ---------- assembly ---------- */
 var PANELS = {
   Property: { desc:pDesc, loc:pLoc, area:pArea, analysis:pAnalysis, tpl:pTpl }, Market: { infl:pInfl, vac:pVac, credit:pCredit, lease:pLease, rent:pRent },
