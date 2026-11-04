@@ -91,14 +91,13 @@ The walk ends at 32.44% against the first build's 31.78%. The remaining 0.66 poi
 
 ## 5. What BK Capital cannot do yet (stated, not approximated)
 
+Stage E added the fixed facility, initial reserves, a contingency register, a catch-up rate and an LP-only preferred return as inputs (section 10). Still open:
+
 - **Cost lines.** 13 hard trades and 16 soft lines, each a $/GSF or % rate, versus 16 hard and 19 soft dollar categories. Merged: enclosure accessories into envelope; mechanical, plumbing, electrical and fire into one MEP line; architecture, structural, MEP engineering and interior design into A&E; temporary utilities and miscellaneous into “Entitlement, Zoning & Community”.
-- **Contingency tracking** (original / allocated / change orders / used / remaining / forecast): not modelled; contingency is a % layer inside hard cost.
-- **Initial reserves** ($2.0M in four buckets) and their release at sale: not modelled.
-- **Fixed facility.** A fixed $27.3M principal, $34M ceiling, “equity funds the first $14.7M” and an unused-commitment fee cannot be entered; the commitment is derived from LTC.
-- **Waterfall.** The catch-up is “100% to the GP until it holds X% of profit” (set to 20%), not a 50% catch-up rate. The preferred return is earned by LP and GP pari passu, not LP only. Hurdle accounts compound at the annual rate on actual days / 365.
-- **Lease-up shortfall.** Negative cash in the early lease-up months is not in the funding ledger (the deficit is netted over the whole lease-up); the partners fund it as extra contributions.
+- **Lease-up shortfall in the funding ledger.** Negative cash in the early lease-up months is not in the funding ledger (the deficit is netted over the whole lease-up); an operating reserve now pays it when one is entered, otherwise the partners fund it as extra contributions.
 - **Refinance-and-hold.** The refinance case still sells at the horizon; it does not hold the asset.
 - **Stated-NOI target.** A broker's NOI is not an input, so the variance against it is reported here, not in the model.
+- **Contingency timing.** An overrun or a release of unused contingency follows the hard-cost draw curve; change-order months are recorded but do not time the cash.
 
 ## 6. Defects found, and their state
 
@@ -113,6 +112,7 @@ The walk ends at 32.44% against the first build's 31.78%. The remaining 0.66 poi
 - Credit gate said “APPROVE — NO MATERIAL EXCEPTIONS” with failed checks standing — **fixed (stage B)**: model failures give HOLD; model warnings cap the gate at CONDITIONAL and are named.
 - PDF omits DSCR, debt yield, LTV, break-evens, unit mix, lease-up schedule, financing and refinance analysis, sensitivities, combined downside — **open (stage C)**.
 - Model Checks sheet reports 0 errors / 0 warnings; the new integrity findings are not yet on it — **open**.
+- The waterfall terms in `deal.js` (8% / 12% / 18% hurdles, 10% GP share, 80 / 70 / 60 splits, catch-up to 20% of profit) had been moved into a code comment by a Stage C edit, so `results.json` and the investor summary PDF were produced on the template hurdles (7% / 10% / 15%, 50 / 45 / 40 splits): LP IRR 21.35%, GP IRR 87.32%, promote $11.52M. The project-level figures were unaffected. — **fixed**: the terms are restored as originally mapped, and the results and PDF regenerated (LP 26.77%, GP 69.76%, promote $6.57M).
 
 ## 7. Refinance alternative (month 43, 65% LTV, 6.25%, 30-yr, 1% fee)
 
@@ -197,3 +197,19 @@ Delays extend the hold by the same number of months. Cost overrun applies to har
 ## 9. Conclusion
 
 The engine now reconciles: sources equal uses, interest ties month by month, the IRR hurdles replay to their rates, and an independent model matches to the dollar. The headline return is 33.09% levered, 22.32% unlevered. It stays CONDITIONAL, not approved, because equity pays interest beyond the facility commitment and costs exceed what the commitment funds. What the model still cannot do is in section 5; those are the limits of what it can tell an investment committee about this deal.
+
+## 10. Stage E: the brief's financing, reserve and waterfall terms
+
+`deal_brief.js` is this deal with the brief's own terms entered (the base `deal.js` is unchanged so stages A to C stay comparable). Every new input is optional and blank by default; blank reproduces the base case exactly (`harbor_stageE_test.js`), and the independent model `reference2.py` matches the engine to the dollar on the brief deal.
+
+| Term | Input | Entered as |
+|---|---|---|
+| Fixed facility | `conFixedAmt` | $27.3M principal; the 1% origination fee is charged on it ($273,000) |
+| Balance ceiling | `conCeiling` | $34M, including capitalised interest |
+| Equity first | `conEquityFirst` | $14.7M before the first loan draw |
+| Unused commitment fee | `conUnusedFeePct` | 0.5% a year on the undrawn principal, to stabilization |
+| Initial reserves | `initReserves` | $750,000 operating / lease-up at completion; $750,000 debt service and $500,000 other, held from closing (the brief's four buckets entered as three) |
+| Catch-up rate | `gpCatchupRate` | 50% |
+| Preferred return | `prefLPOnly` | LP only |
+
+To confirm with the deal team (not inferred here): the brief gives a 50% catch-up but not what it runs to (the 20%-of-profit target is the original build's mapping), and section 1 records that the brief does not say who earns the preferred return; `deal_brief.js` uses LP only. Neither is used in the base `deal.js`.

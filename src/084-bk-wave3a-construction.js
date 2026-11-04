@@ -151,11 +151,11 @@ extend('Debt','w3aConstructionSizing', function(o){
       tie('Levered cost = unlevered + fees + capitalized interest', x.levered, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0)+(Number(x.actualCapInt)||0))
     + tie('Sources = Uses at the project level', (Number(x.equityTotal)||0)+(Number(x.commit)||0)>=(Number(x.levered)||0) ? Number(x.levered)||0 : (Number(x.equityTotal)||0)+(Number(x.commit)||0), Number(x.levered)||0, 1e9)
     + tie('Facility drawn never exceeds the commitment',
-        Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; })), Number(x.commit)||0, 1e9)
+        Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; })), Number(x.balCap||x.commit)||0, 1e9)
     + '<tr>'+lbl('Peak facility balance')
       + val(money(Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; }))))
-      + val(money(x.commit)) + val('-')
-      + '<td class="v">'+ (Math.max.apply(null,(x.months||[{end:0}]).map(function(m){return Number(m.end)||0;})) <= (Number(x.commit)||0)+1
+      + val(money(x.balCap||x.commit)) + val('-')
+      + '<td class="v">'+ (Math.max.apply(null,(x.months||[{end:0}]).map(function(m){return Number(m.end)||0;})) <= (Number(x.balCap||x.commit)||0)+1
           ? chip('pass','WITHIN COMMITMENT') : chip('fail','OVER COMMITMENT')) + '</td></tr>');
 
   o.main = (o.main||'') + sizing + perm + recon;
@@ -240,8 +240,8 @@ extend('Dev Draws','w3aDrawDetail', function(o){
     a.land+=Number(m.land)||0; a.hard+=Number(m.hard)||0; a.soft+=Number(m.soft)||0;
     a.lease+=Number(m.lease)||0; a.fees+=Number(m.fees)||0; a.need+=Number(m.need)||0;
     a.eq+=Number(m.eq)||0; a.draw+=Number(m.loanDraw)||0; a.cap+=Number(m.capInt)||0;
-    a.exc+=Number(m.excess)||0; a.ovf+=Number(m.overflow)||0; return a;
-  }, {land:0,hard:0,soft:0,lease:0,fees:0,need:0,eq:0,draw:0,cap:0,exc:0,ovf:0});
+    a.exc+=Number(m.excess)||0; a.ovf+=Number(m.overflow)||0; a.unused+=Number(m.unused)||0; a.resFund+=Number(m.resFund)||0; a.resLease+=Number(m.resLease)||0; return a;
+  }, {land:0,hard:0,soft:0,lease:0,fees:0,need:0,eq:0,draw:0,cap:0,exc:0,ovf:0,unused:0,resFund:0,resLease:0});
   body += '<tr class="grandtotal">'+lbl('TOTAL')+val(money(tot.land))+val(money(tot.hard))+val(money(tot.soft))
         + val(money(tot.lease))+val(money(tot.fees))+val(money(tot.need))+val('-')+'</tr>';
 
@@ -260,11 +260,11 @@ extend('Dev Draws','w3aDrawDetail', function(o){
   var controls = wrapTable('Draw Schedule Integrity Controls',
     '<tr><th class="rowlabel-h">Check</th><th>A</th><th>B</th><th>Variance</th><th>Status</th></tr>',
       tie('Draw categories sum to total funding need',
-          tot.land+tot.hard+tot.soft+tot.lease+tot.fees, tot.need)
+          tot.land+tot.hard+tot.soft+tot.lease+tot.fees+tot.unused+tot.resFund, tot.need)
     + tie('Funding sources cover the funding need',
-          tot.eq+tot.draw+tot.ovf, tot.need)
+          tot.eq+tot.draw+tot.ovf, tot.need-tot.resLease)
     + tie('Total funding need ties to unlevered cost plus upfront fees',
-          tot.need, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0))
+          tot.need, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0)+(Number(x.resFunded)||0))
     + tie('Capitalized interest ties to the sizing engine', tot.cap, Number(x.actualCapInt)||0, 0.01)
     + tie('Equity draws plus overflow tie to total equity', tot.eq+tot.ovf, Number(x.equityTotal)||0, 0.01));
 

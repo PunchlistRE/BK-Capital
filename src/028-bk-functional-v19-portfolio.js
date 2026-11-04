@@ -75,15 +75,15 @@ RENDERERS['Portfolio'] = function(){
     <td><button type="button" class="status-chip" data-portfolio-load="${bkEsc(key)}">Load</button> <button type="button" class="status-chip" data-portfolio-remove="${bkEsc(key)}">Remove</button></td></tr>`).join('');
   const ok = computed.filter(r=>r.m.ok);
   const totalEquity = ok.reduce((z,r)=>z+r.m.equity,0), totalPrice = ok.reduce((z,r)=>z+r.m.purchasePrice,0);
-  const wIRR = window.__BK_CR_wIRR(ok.map(r=>r.m));
-  const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio - Saved Deals (${saved.length})</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Type</th><th>Property</th><th>Purchase Price</th><th>Equity</th><th>Levered IRR</th><th>MOIC</th><th>Actions</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="8">No deals saved to the portfolio yet.</td></tr>'}<tr class="grandtotal"><td class="rowlabel">Portfolio Total / Wtd. Avg</td><td></td><td></td><td>${money(totalPrice)}</td><td>${money(totalEquity)}</td><td>${bkPct(wIRR)}</td><td></td><td></td></tr></tbody></table></div>
+  const PC = bkPortfolioConsolidated(saved);
+  const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio - Saved Deals (${saved.length})</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Type</th><th>Property</th><th>Purchase Price</th><th>Equity</th><th>Levered IRR</th><th>MOIC</th><th>Actions</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="8">No deals saved to the portfolio yet.</td></tr>'}<tr class="grandtotal"><td class="rowlabel">Portfolio Total (IRR and multiple on the combined dated cash flow)</td><td></td><td></td><td>${money(totalPrice)}</td><td>${money(totalEquity)}</td><td>${bkPortfolioIRRText(PC)}</td><td>${PC.available&&isFinite(PC.moic)?PC.moic.toFixed(2)+'x':'-'}</td><td></td></tr></tbody></table></div>${bkPortfolioIRRNote(PC)}
     ${hasDeal?`<div style="margin-top:12px;"><button type="button" class="status-chip pass" data-portfolio-add="1">+ Save Active Deal (${bkEsc(cur.name||'Untitled')}) to Portfolio</button></div>`:`<div class="note-flag" style="margin-top:12px;"><span>&#9432;</span><div>No deal is active, so there is nothing to add. Create or load a deal first.</div></div>`}
     <div class="note-flag"><span>&#10003;</span><div><b>Live portfolio -</b> each row re-runs the real, already-verified engine (<code>bkAnnualCF</code>/<code>bkDebt</code>/<code>bkMonthlyReturns</code>) against that deal's own saved snapshot, the same safe scratch-copy swap Sensitivity uses -- not a static copy of numbers. "Load" swaps a saved deal into the active slot (this app holds one active deal at a time); "Save Active Deal" snapshots whatever's currently loaded. The equity-weighted total only includes deals whose engine run succeeded.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Portfolio Summary</div><div class="metric-list">
     <div class="metric-row"><span class="k">Deals Saved</span><span class="v">${saved.length}</span></div>
     <div class="metric-row"><span class="k">Total Purchase Price</span><span class="v">${money(totalPrice)}</span></div>
     <div class="metric-row"><span class="k">Total Equity</span><span class="v">${money(totalEquity)}</span></div>
-    <div class="metric-row"><span class="k">Equity-Wtd. IRR</span><span class="v">${bkPct(wIRR)}</span></div>
+    <div class="metric-row"><span class="k">Portfolio IRR</span><span class="v">${bkPortfolioIRRText(PC)}</span></div>
   </div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio &amp; Investors</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
   return {title:'Portfolio', crumbs:'Portfolio & Investors', desc:'Saved deals, each re-computed live from its own snapshot through the real engine.', meta:{'Saved Deals':saved.length,'Active Deal':hasDeal?(cur.name||'-'):'None','Total Equity':money(totalEquity),Currency:'USD'}, main, sidebar};
 };
@@ -93,8 +93,7 @@ RENDERERS['Portfolio Dashboard'] = function(){
   const money = n => n<0 ? '($'+bkFmt(-n)+')' : '$'+bkFmt(n);
   const computed = saved.map(snap=>({snap, m:bkPortfolioMetricsFor(snap)})).filter(r=>r.m.ok);
   const totalEquity = computed.reduce((z,r)=>z+r.m.equity,0), totalPrice = computed.reduce((z,r)=>z+r.m.purchasePrice,0);
-  const wIRR = window.__BK_CR_wIRR(computed.map(r=>r.m));
-  const wMOIC = totalEquity ? computed.reduce((z,r)=>z+r.m.moic*r.m.equity,0)/totalEquity : 0;
+  const PC = bkPortfolioConsolidated(saved);
   const best = window.__BK_CR_pick(computed,1);
   const worst = window.__BK_CR_pick(computed,0);
   const byType = {}; computed.forEach(r=>{ const t=r.snap.propertyType||'Other'; byType[t]=(byType[t]||0)+r.m.purchasePrice; });
@@ -102,19 +101,19 @@ RENDERERS['Portfolio Dashboard'] = function(){
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio Dashboard - ${computed.length} Deal(s)</caption><tbody>
     <tr><td class="rowlabel">Total Purchase Price</td><td class="v">${money(totalPrice)}</td></tr>
     <tr><td class="rowlabel">Total Equity Invested</td><td class="v">${money(totalEquity)}</td></tr>
-    <tr class="grandtotal"><td class="rowlabel">Equity-Weighted Levered IRR</td><td class="v">${bkPct(wIRR)}</td></tr>
-    <tr class="grandtotal"><td class="rowlabel">Equity-Weighted MOIC</td><td class="v">${wMOIC.toFixed(2)}x</td></tr>
+    <tr class="grandtotal"><td class="rowlabel">Portfolio Levered IRR (combined dated cash flow)</td><td class="v">${bkPortfolioIRRText(PC)}</td></tr>
+    <tr class="grandtotal"><td class="rowlabel">Portfolio Equity Multiple (distributions / contributions)</td><td class="v">${PC.available&&isFinite(PC.moic)?PC.moic.toFixed(2)+'x':'Unavailable'}</td></tr>
     <tr><td class="rowlabel">Best Performer</td><td class="v">${best?bkEsc(best.snap.name)+' - '+bkPct(best.m.irr):'-'}</td></tr>
     <tr><td class="rowlabel">Weakest Performer</td><td class="v">${worst?bkEsc(worst.snap.name)+' - '+bkPct(worst.m.irr):'-'}</td></tr>
     </tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Purchase Price by Property Type</caption><thead><tr><th class="rowlabel-h">Property Type</th><th>Total Price</th><th>% of Portfolio</th></tr></thead><tbody>${typeRows||'<tr><td class="rowlabel" colspan="3">No deals saved yet.</td></tr>'}</tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live dashboard -</b> every figure here comes from the same per-deal engine runs as the Portfolio page (equity-weighted across deals whose engine run succeeded); nothing is hard-coded. Save deals from the Portfolio page to populate this.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live dashboard -</b> every figure here comes from the same per-deal engine runs as the Portfolio page (the IRR and multiple are on the combined dated cash flow of every saved deal); nothing is hard-coded. Save deals from the Portfolio page to populate this.</div></div>${bkPortfolioIRRNote(PC)}`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">At a Glance</div><div class="metric-list">
     <div class="metric-row"><span class="k">Deals</span><span class="v">${computed.length}</span></div>
     <div class="metric-row"><span class="k">Total Equity</span><span class="v">${money(totalEquity)}</span></div>
-    <div class="metric-row"><span class="k">Wtd. IRR</span><span class="v">${bkPct(wIRR)}</span></div>
+    <div class="metric-row"><span class="k">Portfolio IRR</span><span class="v">${bkPortfolioIRRText(PC)}</span></div>
   </div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio &amp; Investors</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
-  return {title:'Portfolio Dashboard', crumbs:'Portfolio & Investors', desc:"Aggregate KPIs across every saved deal, computed live from each deal's own snapshot.", meta:{Deals:computed.length,'Wtd IRR':bkPct(wIRR),'Wtd MOIC':wMOIC.toFixed(2)+'x',Currency:'USD'}, main, sidebar};
+  return {title:'Portfolio Dashboard', crumbs:'Portfolio & Investors', desc:"Aggregate KPIs across every saved deal, computed live from each deal's own snapshot.", meta:{Deals:computed.length,'Portfolio IRR':bkPortfolioIRRText(PC),'Multiple':PC.available&&isFinite(PC.moic)?PC.moic.toFixed(2)+'x':'-',Currency:'USD'}, main, sidebar};
 };
 
 bkRefreshRailStatus();

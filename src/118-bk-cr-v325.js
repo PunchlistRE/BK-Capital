@@ -93,11 +93,13 @@ try{
     if(Number(x.pre)>0.5) uses.push(['Predevelopment Carry', x.pre]);
     uses.push(['Hard Costs', x.hard],['Soft Costs', x.soft]);
     if(Number(x.leaseDef)>0.5) uses.push(['Lease-Up Operating Deficit', x.leaseDef]);
-    uses.push(['Construction Facility Upfront Fees', x.upfrontFees],['Capitalized Construction Interest', x.actualCapInt],['Interest Funded by Equity Beyond the Commitment', excess]);
+    uses.push(['Construction Facility Fees (origination and unused commitment)', x.upfrontFees],['Capitalized Construction Interest', x.actualCapInt],['Interest Funded by Equity Beyond the Commitment', excess]);
+    if(Number(x.resFunded)>0.5) uses.push(['Initial Reserves Funded', x.resFunded]);
     var totalUses = uses.reduce(function(t,u){ return t+(Number(u[1])||0); },0);
     var srcs = [['Construction Facility - draws', draws],['Construction Facility - capitalized interest', capIntSched],['Equity - equity-first funding', eqPlan]];
     if(Math.abs(eqOver)>0.5) srcs.push(['Equity - cost overflow beyond the commitment', eqOver]);
     if(Math.abs(excess)>0.5) srcs.push(['Equity - interest beyond the commitment', excess]);
+    if(Number(x.resDrawn)>0.5) srcs.push(['Initial reserves - drawn for the lease-up shortfall and interest', x.resDrawn]);
     var totalSrc = srcs.reduce(function(t,u){ return t+u[1]; },0);
     var delta = totalSrc - totalUses, ok = Math.abs(delta) < 1;
     var facility = draws + capIntSched, equity = totalSrc - facility;
@@ -341,7 +343,7 @@ try{
     var ms = saved.map(function(sn){ return {snap:sn, m:window.bkPortfolioMetricsFor(sn)}; }).filter(function(x){ return x.m && x.m.ok; });
     var und = ms.filter(function(x){ return !fin(x.m.irr); }), devs = ms.filter(function(x){ return x.m.isDev; });
     var h = '';
-    if(und.length) h += CR.note('&#9888;','<b>Equity-weighted IRR excludes '+und.length+' deal(s) whose IRR is undefined:</b> '+und.map(function(x){ return CR.esc(x.snap.name||'Deal'); }).join(', ')+'. Undefined means the equity cash flow has no sign change; it is not counted as zero. These deals remain in the equity, debt, price and NOI totals.');
+    if(und.length) h += CR.note('&#9888;','<b>'+und.length+' deal(s) have no IRR of their own:</b> '+und.map(function(x){ return CR.esc(x.snap.name||'Deal'); }).join(', ')+'. That means the deal\'s equity cash flow has no sign change. Their dated cash flows still count in the combined portfolio cash flow, and they remain in the equity, debt, price and NOI totals.');
     if(devs.length) h += CR.note('&#9432;','<b>Development deals in this portfolio ('+devs.length+')</b> contribute peak funded development debt, equity contributed in the returns cash flow, and total development cost in place of purchase price; Year 1 NOI is the first 12 months of the development monthly returns.');
     if(h) o.main = (o.main||'') + h;
   }
