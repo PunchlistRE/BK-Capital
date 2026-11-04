@@ -82,7 +82,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   const F = await doc.evaluate(() => { const num = s => { s = String(s || '').trim(); if (!s || s === '–' || s === '—') return 0; return Number(s.replace(/[$,()%\s]/g, '')); }; const t = document.querySelector('table.drw'); if (!t) return null; const R = {};
     [...t.querySelectorAll('tbody tr')].forEach(tr => { const c = [...tr.cells].map(x => x.innerText); if (c.length > 2) R[c[0].trim()] = c.slice(1).map(num); }); return { R, pages: document.querySelectorAll('.page').length }; });
   const lastOf = a => a[a.length - 1], nearK = (a, b) => Math.abs(a * 1000 - b) <= 1000;
-  check('development: a construction funding page, and 5-year waterfall pages (6-year hold)', F && F.pages === 7 + (Math.ceil(6 / 5) - 1));
+  check('development: a construction funding page, and 5-year waterfall pages (6-year hold)', F && F.pages === 13 + (Math.ceil(6 / 5) - 1));
   check('construction funding: total costs, equity, loan draws and capitalised interest equal the funding engine\'s', nearK(lastOf(F.R['Total costs']), fd.need) && nearK(lastOf(F.R['Construction loan draws']), fd.draw) && nearK(lastOf(F.R['Interest capitalised']), fd.ci) && nearK(lastOf(F.R['Equity']) + (F.R['Equity over plan'] ? lastOf(F.R['Equity over plan']) : 0), fd.eq));
   check('construction funding: every quarter\'s sources equal its costs', F.R['Total sources'].every((v, j) => Math.abs(v - F.R['Total costs'][j]) <= 1));
   check('construction funding: the loan rolls forward each quarter (beginning + draws + interest = ending)', F.R['Ending balance'].slice(0, -1).every((e, j) => Math.abs(F.R['Beginning balance'][j] + F.R['Draws'][j] + F.R['Interest capitalised'][j] - e) <= 2) && nearK(lastOf(F.R['Ending balance']), fd.end));
@@ -93,7 +93,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('development summary: nothing runs into a page footer', dover.length === 0, dover.join(','));
   /* short and long holds: the right number of pages, and nothing clipped, overflowing or running into a footer */
   for (const [nm, d, pages] of [['2-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 2 }), 7], ['15-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 15 }), 11],
-    ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 9], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 7]]) {
+    ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 15], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 13]]) {
     const html = await p.evaluate(d => { bkCreateNewDeal(d); return bkReportHTML(); }, d); await doc.setContent(html); await doc.waitForTimeout(300);
     const r = await doc.evaluate(() => { const P = [...document.querySelectorAll('.page')];
       return { n: P.length, over: P.map((s, i) => { const ft = s.querySelector('.ft2'), bd = s.querySelector('.bd'); if (!ft || !bd) return null; return Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) > ft.getBoundingClientRect().top - 2 ? i + 1 : null; }).filter(Boolean),

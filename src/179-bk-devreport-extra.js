@@ -54,10 +54,10 @@ function build(){
   T('Construction delay (exit moves with it)', [0, 3, 6, 12].map(function(n){ return [n === 0 ? 'Base schedule' : n + ' months', { constructionMonths:cm + n, holdYears:hy + n / 12 }]; }));
   T('Lease-up delay (exit moves with it)', [0, 3, 6, 12].map(function(n){ return [n === 0 ? 'Base schedule' : n + ' months', { leaseupMonths:lu + n, holdYears:hy + n / 12 }]; }));
   D.combined = [
-    ['1. Costs +10%, rents -5%, exit cap +50 bps', { scnHardPct:num(s.scnHardPct) + 0.10, avgRent:rent * 0.95, exitCap:cap + 0.005 }],
-    ['2. Costs +15%, rate +200 bps, 6-month construction delay', { scnHardPct:num(s.scnHardPct) + 0.15, conRate:rate + 0.02, constructionMonths:cm + 6, holdYears:hy + 0.5 }],
-    ['3. Rents -10%, lease-up 6 months late, exit cap +100 bps', { avgRent:rent * 0.90, leaseupMonths:lu + 6, holdYears:hy + 0.5, exitCap:cap + 0.01 }],
-    ['4. Costs +20%, rate +300 bps, rents -10%, exit cap +100 bps', { scnHardPct:num(s.scnHardPct) + 0.20, conRate:rate + 0.03, avgRent:rent * 0.90, exitCap:cap + 0.01 }]].map(function(r){ return Object.assign({ label:r[0] }, run(r[1])); });
+    ['1. Cost +10, rent −5, cap +50', { scnHardPct:num(s.scnHardPct) + 0.10, avgRent:rent * 0.95, exitCap:cap + 0.005 }],
+    ['2. Cost +15, rate +200, delay 6 mo', { scnHardPct:num(s.scnHardPct) + 0.15, conRate:rate + 0.02, constructionMonths:cm + 6, holdYears:hy + 0.5 }],
+    ['3. Rent −10, lease-up +6 mo, cap +100', { avgRent:rent * 0.90, leaseupMonths:lu + 6, holdYears:hy + 0.5, exitCap:cap + 0.01 }],
+    ['4. Cost +20, rate +300, rent −10, cap +100', { scnHardPct:num(s.scnHardPct) + 0.20, conRate:rate + 0.03, avgRent:rent * 0.90, exitCap:cap + 0.01 }]].map(function(r){ return Object.assign({ label:r[0] }, run(r[1])); });
   /* what breaks the deal */
   var be = D.be, hit = function(sol, fmt, base0){ return sol.x != null ? fmt(sol.x) : (sol.bound === 'n/a' ? 'not calculable' : (sol.bound === 'low' ? 'still above the hurdle at ' + fmt(sol.at) : 'already below the hurdle at ' + fmt(sol.at))); };
   var capSol = solve(function(c){ return irrOf({ exitCap:c }); }, 0.02, 0.14, hurdle);
@@ -80,6 +80,7 @@ function build(){
     ['Land price at which the levered IRR equals the hurdle', hit(landSol, function(f){ return usd(num(s.purchasePrice) * f) + ' (' + Math.round((f - 1) * 100) + '% vs base)'; })],
     ['Construction delay the deal can absorb before the IRR falls below the hurdle', delay == null ? 'more than 36 months' : (delay === 0 ? 'none: the base case is already below the hurdle' : 'under ' + delay + ' months')]];
   /* operating statement, lease-up and unit economics */
+  D.cush = { capBps:capSol.x != null ? (capSol.x - cap) * 10000 : null, rentPct:rentSol.x != null ? rentSol.x / rent - 1 : null, costPct:costSol.x != null ? costSol.x : null };
   D.calc = safe(function(){ return bkCalc(); }, {});
   D.ramp = safe(function(){ return bkDevV09().leaseupRamp || []; }, []);
   D.dev = safe(function(){ return bkDevV09(); }, {});
@@ -143,20 +144,20 @@ function financePage(D){
     + (refi.length ? '<h2 style="margin-top:14px">Refinance alternative at stabilisation (month ' + b.stab + ')</h2><table><tbody>' + refi.map(function(x){ return tr(x); }).join('') + '</tbody></table>' + note : '');
 }
 
-var COLS = '<colgroup><col style="width:27%"><col style="width:8.5%"><col style="width:8%"><col style="width:8%"><col style="width:8.5%"><col style="width:7.5%"><col style="width:7.5%"><col style="width:7%"><col style="width:10.5%"><col style="width:7.5%"></colgroup>';
+var COLS = '<colgroup>' + [30, 8.5, 7.5, 8.5, 8, 7.5, 7.5, 6.5, 9.5, 6.5].map(function(w){ return '<col style="width:' + w + '%">'; }).join('') + '</colgroup>';
 function riskPage(D){
-  var b = D.base, hurdle = D.hurdle, head = ['Case', 'Gross sale', 'Profit', 'Unlev. IRR', 'Levered IRR', 'LP IRR', 'GP IRR', 'LP mult.', 'Equity beyond plan', 'DSCR'];
+  var b = D.base, hurdle = D.hurdle, head = ['Case', 'Sale value', 'Profit', 'Unlev. IRR', 'Lev. IRR', 'LP IRR', 'GP IRR', 'LP x', 'Extra equity', 'DSCR'];
   var cell = function(q){ var cls = isFinite(q.irr) && q.irr < hurdle ? ' class="neg"' : ''; return '<tr><td class="l">' + esc(q.label) + '</td><td>' + mil(q.grossSale) + '</td><td>' + mil(q.profit) + '</td><td>' + pct(q.uirr, 1) + '</td><td' + cls + '>' + pct(q.irr, 1) + '</td><td>' + pct(q.lpIRR, 1) + '</td><td>' + pct(q.gpIRR, 0) + '</td><td>' + mult(q.lpMOIC) + '</td><td>' + mil(q.extraEq) + '</td><td>' + (q.dscr ? mult(q.dscr) : '—') + '</td></tr>'; };
-  var tables = D.tables.map(function(t){ return '<h2 style="font-size:10px;margin:8px 0 2px">' + esc(t.name) + '</h2><table class="rr" style="table-layout:fixed">' + COLS + '<thead><tr>' + head.map(function(h, i){ return '<th' + (i ? '' : ' class="l"') + '>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + t.rows.map(cell).join('') + '</tbody></table>'; });
+  var tables = D.tables.map(function(t){ return '<h2 style="font-size:10px;margin:8px 0 2px">' + esc(t.name) + '</h2><table class="rr" style="table-layout:fixed">' + COLS + '<thead><tr>' + head.map(function(h, i){ return '<th' + (i ? '' : ' class="l"') + ' style="font-size:6.4px;letter-spacing:0;padding:3px 2px">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + t.rows.map(cell).join('') + '</tbody></table>'; });
   var be = '<table><tbody>' + D.be.rows.map(function(r){ return tr(r); }).join('') + '</tbody></table>';
-  var a = '<h2>What breaks the deal</h2><div class="note" style="margin:0 0 4px">Each break-even reruns the full model with one input moved until the levered IRR reaches the ' + pct(hurdle, 1) + ' hurdle (or equity just gets its money back). Red = below the hurdle.</div>' + be;
-  var comb = '<h2>Combined downside cases</h2><table class="rr" style="table-layout:fixed">' + COLS + '<thead><tr>' + head.map(function(h, i){ return '<th' + (i ? '' : ' class="l"') + '>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + cell(Object.assign({ label:'Base case' }, b)) + D.combined.map(cell).join('') + '</tbody></table>';
+  var a = '<h2>What breaks the deal</h2><div class="note" style="margin:0 0 4px">Each break-even reruns the full model with one input moved until the levered IRR reaches the ' + pct(hurdle, 1) + ' hurdle (or equity just gets its money back). Red = below the hurdle. In the combined cases cost is the hard-cost overrun in %, rent the change in %, rate and cap the change in bps.</div>' + be;
+  var comb = '<h2>Combined downside cases</h2><table class="rr" style="table-layout:fixed">' + COLS + '<thead><tr>' + head.map(function(h, i){ return '<th' + (i ? '' : ' class="l"') + ' style="font-size:6.4px;letter-spacing:0;padding:3px 2px">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + cell(Object.assign({ label:'Base case' }, b)) + D.combined.map(cell).join('') + '</tbody></table>';
   return { a:a + '<div class="note" style="margin-top:4px">Delays move the sale by the same number of months. Cost overrun applies to hard cost including contingency. DSCR is stabilised NOI over annual debt service after stabilisation.</div>' + comb, b:'<h2>Single-variable sensitivities</h2>' + tables.join('') };
 }
 
 function integrityPage(D){
   var g = D.integrity, gate = D.gate || {}, s = D.s;
-  var rows = g ? g.checks.map(function(c){ var k = c.status === 'pass' ? 'pass' : c.status === 'hard' ? 'fail' : c.status === 'warn' ? 'warn' : ''; return '<tr><td class="l" style="white-space:nowrap">' + esc(c.group) + '</td><td class="l" style="white-space:normal;line-height:1.15">' + esc(c.label) + '</td><td style="white-space:nowrap"><span class="pill ' + k + '">' + (c.status === 'hard' ? 'FAILED' : c.status === 'warn' ? 'WARNING' : c.status === 'na' ? 'N/A' : 'PASS') + '</span></td></tr>'; }).join('') : '';
+  var rows = g ? g.checks.map(function(c){ var k = c.status === 'pass' ? 'pass' : c.status === 'hard' ? 'fail' : c.status === 'warn' ? 'warn' : ''; return '<tr><td class="l" style="white-space:normal;line-height:1.1">' + esc(c.group) + '</td><td class="l" style="white-space:normal;line-height:1.15">' + esc(c.label) + '</td><td style="white-space:nowrap"><span class="pill ' + k + '">' + (c.status === 'hard' ? 'FAILED' : c.status === 'warn' ? 'WARNING' : c.status === 'na' ? 'N/A' : 'PASS') + '</span></td></tr>'; }).join('') : '';
   var detail = g ? g.hard.concat(g.warn).map(function(c){ return '<div><b>' + (c.status === 'hard' ? 'Failed: ' : 'Warning: ') + '</b>' + esc(c.label) + ' — ' + esc(c.detail) + '</div>'; }).join('') : '';
   var lim = ['Costs are entered as 13 hard-cost trades and 16 soft-cost lines; lines in a brief are merged to fit, and each cannot be escalated or reforecast on its own.', 'Contingency and initial reserves are not tracked or released as separate balances.', 'The construction loan is sized by an LTC formula; a fixed commitment, a facility ceiling, an equity-first threshold and an unused-commitment fee cannot be entered.',
     'The GP catch-up is a share-of-profit target (100% until the GP holds that share), not a catch-up rate; the preferred return is shared by LP and GP unless hurdles are tested on LP flows.', 'A refinance is illustrated at stabilisation; the property is still sold at the end of the hold.', 'Source citations, extraction confidence and broker-versus-model discrepancy reporting are not part of this summary.'];
