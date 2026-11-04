@@ -42,7 +42,12 @@ var DEVS = [
   INC, EXP(true),
   { id:'debt', title:'Financing', why:'A construction loan, then a permanent loan once the building is stabilised.', sheet:'Debt', fields:[ f('conLTC', 'Construction loan, % of cost', 'pct', { req:1, sug:function(){ return { v:0.65, why:'Construction lenders usually lend 60% to 70% of cost.' }; } }), f('conRate', 'Construction loan rate', 'pct', { req:1, sug:function(){ return { v:0.075, why:'A placeholder until you have a quote.' }; } }), f('permRate', 'Permanent loan rate', 'pct', { sug:function(){ return { v:0.0675, why:'A placeholder until you have a quote.' }; } }), f('permAmort', 'Permanent amortisation, years', 'int', { sug:function(){ return { v:30, why:'30 years is standard.' }; } }) ] },
   EXIT ];
-function sections(s){ return /develop/i.test(String((s || bkLoad()).dealType || '')) ? DEVS : ACQ; }
+/* the steps come from the analysis registry (src/139d): the deal's own analysis decides them. The lists above are the fallback if the registry is not loaded. */
+function fromRegistry(s){ var R = window.BKReg; if(!R) return null; var a = R.of(s), wf = a && a.live ? R.workflow(a.id) : null; if(!wf || !wf.length) return null;
+  return wf.map(function(st){ return { id:st.id, title:st.title, why:st.why, sheet:st.sheet, skippable:!!st.skippable, fields:(st.fields || []).filter(function(e){ var d = R.field(e.k); return d && d.kind !== 'derived' && d.kind !== 'table' && R.requirement(e, s) !== 'na'; }).map(function(e){ var d = R.field(e.k), o = { k:e.k, label:e.label || d.label, t:d.kind === 'choice' ? 'text' : d.kind };
+      if(R.requirement(e, s) === 'required') o.req = 1; var h = e.help || d.help; if(h) o.help = h; var sg = e.sug || d.sug; if(sg) o.sug = sg; return o; }) }; }); }
+function sections(s){ s = s || bkLoad(); return fromRegistry(s) || (/develop/i.test(String(s.dealType || '')) ? DEVS : ACQ); }
+window.bkGuideSections = function(s){ return sections(s); };
 
 /* ------------------------------------------------------------ values */
 function gstate(s){ var g = (s && s._guide) || {}; return { done:g.done || {}, skipped:g.skipped || {}, from:g.from || null, assumed:g.assumed || [], confirmed:g.confirmed || {} }; }
@@ -226,6 +231,8 @@ window.bkGuideNext = function(){ var s = bkLoad(), secs = sections(s), sec = sec
 window.bkGuideSkip = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var g = gstate(s); g.skipped[sec.id] = 1; delete g.done[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.step = nextId(secs, sec.id); show(); };
 window.bkGuideBack = function(){ var s = bkLoad(), secs = sections(s), i = st.step === 'review' ? secs.length : secs.findIndex(function(x){ return x.id === st.step; }); st.draft = {}; st.step = i > 0 ? secs[i - 1].id : secs[0].id; show(); };
 window.bkGuideDetail = function(sheet){ document.documentElement.classList.remove('bk-guide'); if(typeof showSheet === 'function') showSheet(sheet); };
+/* start the guide on the deal just created (from the new-analysis dialog): no second deal is made */
+window.bkGuideBegin = function(){ setPref(true); st.screen = ''; st.step = null; st.draft = {}; st.checked = {}; var s = bkLoad(); s._guide = { done:{}, skipped:{}, from:null, assumed:[], confirmed:{} }; bkSave(s); show(); paintToggle(); };
 window.bkGuideBlank = function(type){ st.screen = ''; st.step = null; st.draft = {}; if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(type === 'Development' ? { dealType:'Development', name:'', location:'', closing:'1/1/2027' } : { dealType:'Acquisition', name:'', location:'', closing:'1/1/2027' }); var s = bkLoad(); s._guide = { done:{}, skipped:{}, from:null, assumed:[], confirmed:{} }; if(!String(s.dealId || '').trim() || /^BK-002$/.test(String(s.dealId))) s.dealId = 'NEW-' + Date.now().toString(36).toUpperCase(); bkSave(s); show(); };
 window.bkGuideDoc = function(sheet){ if(typeof showSheet === 'function') showSheet(sheet); };
 /* a deal has just been created from a document: mark what came from it and what I assumed, then carry on in the guide */

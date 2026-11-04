@@ -21762,6 +21762,484 @@ if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('I
 })();
 </script>
 
+<script id="bk-reg-core">/* ANALYSIS REGISTRY - CORE. An analysis type (Property Valuation, Acquisition Analysis, ...) is described by six parts, each kept in its own file:
+     analyses   what the analysis is, the question it answers, the engine family it runs on, whether it is live   (139c)
+     fields     one dictionary of every input: label, kind, help, an example, a suggestion; shared by all analyses   (139b)
+     workflows  the steps of each analysis, the fields each step asks for and how each is required             (139d)
+     summaries  the metrics each analysis leads with, from one metric dictionary                                (139e)
+     reports    the PDF sections of each analysis                                                                (139f)
+     checks     which validation rules apply to each analysis; the rest read N/A                                  (139g)
+   This file only stores and reads them. The engines are not here and are never duplicated: a deal's analysisType chooses what is shown, asked and checked;
+   its dealType (kept for every saved deal) still chooses the engine family. A deal with no analysisType is read from its dealType. */
+(function(){
+'use strict';
+var R = { analyses:{}, order:[], fields:{}, workflows:{}, metrics:{}, summaries:{}, sections:{}, reports:{}, rules:{}, checks:{} };
+function put(map, id, v){ if(map[id]) throw new Error('BKReg: ' + id + ' is defined twice'); map[id] = v; return v; }
+var REQ = ['required', 'optional', 'conditional', 'na', 'derived'];
+var BKReg = {
+  REQ:REQ,
+  addAnalysis:function(a){ put(R.analyses, a.id, a); R.order.push(a.id); return a; },
+  addFields:function(list){ list.forEach(function(f){ put(R.fields, f.k, f); }); },
+  addWorkflow:function(id, steps){ return put(R.workflows, id, steps); },
+  addMetrics:function(list){ list.forEach(function(m){ put(R.metrics, m.id, m); }); },
+  addSummary:function(id, spec){ return put(R.summaries, id, spec); },
+  addSections:function(list){ list.forEach(function(x){ put(R.sections, x.id, x); }); },
+  addReport:function(id, ids){ return put(R.reports, id, ids); },
+  addRules:function(list){ list.forEach(function(x){ put(R.rules, x.id, x); }); },
+  addChecks:function(id, ids){ return put(R.checks, id, ids); },
+  analyses:function(){ return R.order.map(function(id){ return R.analyses[id]; }); },
+  analysis:function(id){ return R.analyses[id] || null; },
+  /* the analysis a deal is: its own analysisType, or the one its dealType implies (every deal saved before analysis types existed) */
+  of:function(s){ s = s || (typeof bkLoad === 'function' ? bkLoad() : {}) || {}; return R.analyses[s.analysisType] || R.analyses[/develop/i.test(String(s.dealType || '')) ? 'development' : 'acquisition']; },
+  field:function(k){ return R.fields[k] || null; },
+  workflow:function(id){ return R.workflows[id] || []; },
+  metric:function(id){ return R.metrics[id] || null; },
+  summary:function(id){ return R.summaries[id] || null; },
+  section:function(id){ return R.sections[id] || null; },
+  report:function(id){ return (R.reports[id] || []).map(function(x){ return R.sections[x]; }); },
+  rule:function(id){ return R.rules[id] || null; },
+  checks:function(id){ return R.checks[id] || []; },
+  /* is a field required, optional, not applicable ... in this step, for this deal. Conditional fields resolve against the deal. */
+  requirement:function(entry, s){ var q = entry.req || 'optional'; if(q === 'conditional') return (typeof entry.when === 'function' && entry.when(s || {})) ? 'required' : 'na'; return q; },
+  /* a value is present when it was entered: blank and null are missing; zero is missing for amounts that cannot be zero (a price, a unit count) */
+  present:function(k, s){ var f = R.fields[k] || {}, v = (s || {})[k];
+    if(f.kind === 'table') return Array.isArray(v) && v.length > 0;
+    if(f.kind === 'text' || f.kind === 'date' || f.kind === 'choice') return v != null && String(v).trim() !== '';
+    if(f.kind === 'bool') return v === true || v === false;
+    if(v === null || v === undefined || v === '') return false;
+    var n = Number(v); if(!isFinite(n)) return false; return f.zeroOk ? true : n !== 0; },
+  /* each step's state for a deal, computed from the deal (never stored), so editing anywhere updates it */
+  stepState:function(step, s){ var need = (step.fields || []).filter(function(e){ return BKReg.requirement(e, s) === 'required'; }), miss = need.filter(function(e){ return !BKReg.present(e.k, s); });
+    return { required:need.length, missing:miss.map(function(e){ return e.k; }), complete:miss.length === 0 }; },
+  /* consistency of the registry itself: every reference resolves, and a live analysis never asks for a field, metric or section that is not built */
+  lint:function(){ var bad = [];
+    R.order.forEach(function(id){ var a = R.analyses[id];
+      if(!R.workflows[id]) bad.push(id + ': no workflow'); if(!R.summaries[id]) bad.push(id + ': no summary'); if(!R.reports[id]) bad.push(id + ': no report'); if(!R.checks[id]) bad.push(id + ': no checks');
+      (R.workflows[id] || []).forEach(function(st){ if(!st.id || !st.title) bad.push(id + ': a step without an id or title');
+        (st.fields || []).forEach(function(e){ var f = R.fields[e.k]; if(!f) bad.push(id + '/' + st.id + ': unknown field ' + e.k); else if(a.live && f.planned) bad.push(id + '/' + st.id + ': live analysis asks for planned field ' + e.k);
+          if(REQ.indexOf(e.req || 'optional') < 0) bad.push(id + '/' + st.id + ': bad requirement ' + e.req); if(e.req === 'conditional' && typeof e.when !== 'function') bad.push(id + '/' + st.id + ': conditional ' + e.k + ' without a condition'); }); });
+      var sm = R.summaries[id]; if(sm){ (sm.metrics || []).concat([sm.primary]).forEach(function(m){ var d = R.metrics[m]; if(!d) bad.push(id + ': unknown metric ' + m); else if(a.live && d.planned) bad.push(id + ': live analysis leads with planned metric ' + m); }); }
+      (R.reports[id] || []).forEach(function(x){ var d = R.sections[x]; if(!d) bad.push(id + ': unknown report section ' + x); else if(a.live && d.planned) bad.push(id + ': live analysis reports planned section ' + x); });
+      (R.checks[id] || []).forEach(function(x){ if(!R.rules[x]) bad.push(id + ': unknown rule ' + x); }); });
+    return bad; },
+  _raw:R
+};
+window.BKReg = BKReg;
+})();
+</script>
+
+<script id="bk-reg-fields">/* ANALYSIS REGISTRY - FIELD DICTIONARY. Every input any analysis asks for, defined once: the deal key, label, kind, why it is needed, an example and,
+   where there is a sensible default, a suggestion with its reason. Workflows refer to these keys and only say whether a field is required in their step.
+   kind: money, pct, int, num, text, bool, choice, table (a list such as the rent roll), derived (a calculated figure shown, never typed).
+   planned: the input belongs to an analysis that is not built yet; no live analysis may ask for it (BKReg.lint enforces this). */
+(function(){
+'use strict';
+if(!window.BKReg) return;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function F(k, label, kind, o){ return Object.assign({ k:k, label:label, kind:kind }, o || {}); }
+function sug(v, why){ return function(){ return { v:v, why:why }; }; }
+window.BKReg.addFields([
+  /* property */
+  F('name', 'Name', 'text', { help:'What the deal is called on every page and report.', ex:'14 Main Street' }),
+  F('location', 'City, state', 'text', { ex:'Stamford, CT' }),
+  F('propertyType', 'Property type', 'choice', { options:['Multifamily', 'Mixed-Use', 'Industrial', 'Retail', 'Office', 'Hospitality', 'Land', 'Other'] }),
+  F('units', 'Units', 'int', { help:'Residential units, or suites for a commercial building. Per-unit figures divide by this.', ex:'120' }),
+  F('gsf', 'Building area, SF', 'int', { help:'Gross building area. Per-SF figures divide by this.', ex:'108,000' }),
+  F('commercialArea', 'Commercial area, SF', 'int', { help:'Retail or office space, if any.' }),
+  F('rentRoll', 'Rent roll', 'table', { help:'Unit by unit: rent in place, market rent, lease dates. Import it or enter it on the Rent Roll sheet.', sheet:'Rent Roll' }),
+  F('leases', 'Commercial tenant schedule', 'table', { help:'Tenant by tenant: rent, bumps, expiry and recoveries.', sheet:'Tenants' }),
+  /* acquisition */
+  F('purchasePrice', 'Purchase price', 'money', { help:'What you pay for the property.', ex:'$24,000,000' }),
+  F('closingCostsPct', 'Closing costs, % of price', 'pct', { zeroOk:true, sug:sug(0.02, 'Legal, title, lender fees and inspections are typically 1.5% to 3%.') }),
+  F('closing', 'Closing date', 'text', { help:'Dates the cash flows. For example 3/1/2027.', ex:'3/1/2027' }),
+  F('acqStrategy', 'Investment strategy', 'choice', { options:['Stabilized', 'Value-add', 'Opportunistic', 'Lease-up', 'Redevelopment', 'Portfolio acquisition'], help:'Changes which steps apply: lease-up and renovation steps appear only where they matter.' }),
+  /* income */
+  F('avgRent', 'Average rent per unit, per month', 'money', { help:'Total monthly scheduled rent divided by units.', ex:'$1,650' }),
+  F('otherIncomePerUnit', 'Other income per unit, per year', 'money', { zeroOk:true, help:'Laundry, parking, fees, utility bill-back.' }),
+  F('vacancy', 'Vacancy', 'pct', { zeroOk:true, sug:sug(0.05, 'Stabilised multifamily is usually underwritten at 5%. Use more if the building is not full.') }),
+  F('badDebtPct', 'Credit loss', 'pct', { zeroOk:true, sug:sug(0.01, 'About 1% of rent for a stabilised building.') }),
+  F('concessionPct', 'Concessions', 'pct', { zeroOk:true }),
+  F('lossToLeasePct', 'Loss to lease', 'pct', { zeroOk:true }),
+  /* expenses */
+  F('taxes', 'Real estate taxes, per year', 'money'), F('insurance', 'Insurance, per year', 'money'),
+  F('utilities', 'Utilities the owner pays, per year', 'money', { zeroOk:true }), F('rm', 'Repairs and maintenance, per year', 'money'),
+  F('mgmtPct', 'Management fee, % of income', 'pct', { sug:sug(0.03, 'Third-party managers charge about 3% to 5% of collected income. Include a fee even if you self-manage.') }),
+  F('payroll', 'On-site payroll, per year', 'money', { zeroOk:true }), F('contract', 'Contract services (landscaping, snow, pest), per year', 'money', { zeroOk:true }), F('ga', 'General, admin and other, per year', 'money', { zeroOk:true }),
+  F('reserves', 'Replacement reserves, per year', 'money', { zeroOk:true, sug:function(s){ var u = Number(s.units) || 0; return u ? { v:u * 300, why:'Reserves are usually $250 to $300 a unit a year (' + u + ' units).' } : null; } }),
+  F('capex', 'Capital items', 'table', { help:'Dated one-off capital spending below NOI (roof, HVAC, renovations).', sheet:'Expenses' }),
+  /* financing (acquisition loan) */
+  F('debtEnabled', 'Use acquisition debt', 'bool'),
+  F('acqLTV', 'Loan-to-value, max', 'pct', { sug:sug(0.65, 'Most lenders cap multifamily at 65% to 75%; 65% is a safe starting point.') }),
+  F('acqRate', 'Interest rate', 'pct', { sug:sug(0.0675, 'A placeholder until you have a lender quote.') }),
+  F('acqAmort', 'Amortisation, years', 'int', { sug:sug(30, '30 years is standard.') }),
+  F('acqIO', 'Interest-only years', 'num', { zeroOk:true, help:'0 if none.' }),
+  F('acqOrigFee', 'Origination fee, %', 'pct', { zeroOk:true, sug:sug(0.01, '1% is typical.') }),
+  F('acqDSCR', 'Minimum DSCR', 'num'),
+  /* hold and exit */
+  F('holdYears', 'Hold period, years', 'int', { sug:sug(5, 'Five years is the usual base case.') }),
+  F('exitCap', 'Exit cap rate', 'pct', { sug:function(s){ var c = safe(function(){ return bkCalc(); }, {}), p = Number(s.purchasePrice) || 0; return c.noi && p ? { v:Math.round((c.noi / p + 0.0025) * 10000) / 10000, why:'The going-in cap rate (' + (c.noi / p * 100).toFixed(2) + '%) plus 0.25%, so the sale is not assumed to be better than the purchase.' } : { v:0.06, why:'No price or income yet; 6% is a placeholder.' }; } }),
+  F('rentGrowth', 'Annual rent growth', 'pct', { zeroOk:true, sug:sug(0.03, '3% is a common long-run assumption; use less in a soft market.') }),
+  F('opexGrowth', 'Annual expense growth', 'pct', { zeroOk:true, sug:sug(0.03, 'Expenses usually grow at about 3% a year.') }),
+  F('saleCostPct', 'Cost of sale, % of price', 'pct', { zeroOk:true, sug:sug(0.02, 'Broker and closing costs on a sale are about 2%.') }),
+  /* partnership */
+  F('gpShare', 'GP / sponsor equity share', 'pct', { zeroOk:true }), F('pref', 'Preferred return', 'pct', { zeroOk:true }),
+  /* development */
+  F('sourceConstruction', 'Construction budget (hard + soft)', 'money', { help:'Hard and soft costs together; the cost ladder is scaled to it.' }),
+  F('predevMonths', 'Pre-development, months', 'int', { zeroOk:true, sug:sug(6, 'Permits and bidding usually take 3 to 9 months.') }),
+  F('constructionMonths', 'Construction, months', 'int', { sug:sug(18, 'Mid-rise multifamily usually builds in 16 to 24 months.') }),
+  F('leaseupMonths', 'Lease-up, months', 'int', { zeroOk:true, sug:sug(12, 'New buildings usually lease up in 10 to 16 months.') }),
+  F('hardContPct', 'Hard-cost contingency', 'pct', { zeroOk:true }),
+  F('conLTC', 'Construction loan, % of cost', 'pct', { sug:sug(0.65, 'Construction lenders usually lend 60% to 70% of cost.') }),
+  F('conRate', 'Construction loan rate', 'pct', { sug:sug(0.075, 'A placeholder until you have a quote.') }),
+  F('conFixedAmt', 'Fixed facility amount', 'money', { zeroOk:true, help:'Blank sizes the loan from loan to cost.' }),
+  F('permRate', 'Permanent loan rate', 'pct', { sug:sug(0.0675, 'A placeholder until you have a quote.') }),
+  F('permAmort', 'Permanent amortisation, years', 'int', { sug:sug(30, '30 years is standard.') }),
+  F('initReserves', 'Initial reserves', 'table', { sheet:'Investment' }),
+  /* tax (exists today for acquisitions) */
+  F('_depr', 'Depreciation and cost segregation', 'table', { sheet:'Depreciation', help:'Land allocation, components and recovery periods.' }),
+  /* calculated figures a step shows */
+  F('noi', 'Net operating income', 'derived'), F('value', 'Estimated value', 'derived'),
+  /* planned: Property Valuation */
+  F('valNormalizeAdj', 'Normalizing adjustments to NOI', 'money', { planned:true, zeroOk:true }), F('valStabilizedNoi', 'Stabilized NOI', 'money', { planned:true }),
+  F('valCapRate', 'Market cap rate', 'pct', { planned:true }), F('valComps', 'Comparable sales', 'table', { planned:true }), F('valDate', 'Valuation date', 'text', { planned:true }),
+  /* planned: refinancing and hold */
+  F('exLoanBalance', 'Existing loan balance', 'money', { planned:true }), F('exLoanRate', 'Existing interest rate', 'pct', { planned:true }), F('exLoanMaturity', 'Existing maturity date', 'text', { planned:true }),
+  F('exLoanAmort', 'Existing amortization, years', 'int', { planned:true }), F('exPrepay', 'Prepayment penalty', 'money', { planned:true, zeroOk:true }),
+  F('newLoanAmount', 'Proposed loan amount', 'money', { planned:true }), F('newLoanRate', 'Proposed interest rate', 'pct', { planned:true }), F('newLoanTerm', 'Proposed term, years', 'int', { planned:true }),
+  F('newLoanAmort', 'Proposed amortization, years', 'int', { planned:true }), F('newLoanIO', 'Interest-only years', 'num', { planned:true, zeroOk:true }), F('newLoanCosts', 'Points and closing costs', 'money', { planned:true, zeroOk:true }),
+  F('lenderMaxLTV', 'Lender maximum LTV', 'pct', { planned:true }), F('lenderMinDSCR', 'Lender minimum DSCR', 'num', { planned:true }), F('lenderMinDY', 'Lender minimum debt yield', 'pct', { planned:true }),
+  F('refiScenarios', 'Alternative financing structures', 'table', { planned:true }),
+  F('currentValue', 'Current property value', 'money', { planned:true }), F('ownedBasis', 'Original basis and accumulated depreciation', 'table', { planned:true }),
+  F('capitalProjects', 'Capital improvement program', 'table', { planned:true }), F('taxProfile', 'Tax profile and rule set', 'table', { planned:true }),
+  /* planned: portfolio */
+  F('holdings', 'Portfolio holdings', 'table', { planned:true }), F('portfolioScenarios', 'Portfolio scenarios', 'table', { planned:true }),
+  /* planned: operating business */
+  F('bizRevenue', 'Revenue and its drivers', 'table', { planned:true }), F('bizCosts', 'Cost of revenue and operating expenses', 'table', { planned:true }),
+  F('bizWorkingCapital', 'Working capital', 'table', { planned:true }), F('bizCapex', 'Business capital expenditures', 'table', { planned:true }), F('bizMultiple', 'Valuation multiples', 'table', { planned:true })
+]);
+})();
+</script>
+
+<script id="bk-reg-analyses">/* ANALYSIS REGISTRY - ANALYSIS TYPES, in the order the setup page shows them.
+   dealType is the engine family a new deal of this type is created on (every engine already branches on it). engines lists the calculation engines the
+   analysis runs; anything not listed is not run, so its numbers cannot appear on the analysis's pages or report. live: the analysis can be started today. */
+(function(){
+'use strict';
+if(!window.BKReg) return;
+var R = window.BKReg;
+[
+  { id:'valuation', name:'Property Valuation', q:'What is the property worth today on its income?', icon:'value', dealType:'Acquisition', live:false,
+    engines:['operating', 'valuation'], about:'Income, expenses and NOI in place, normalized and stabilized, capitalized at market rates. Not an appraisal, and no financing or investor returns.' },
+  { id:'acquisition', name:'Acquisition Analysis', q:'Should we buy it, and at what price?', icon:'key', dealType:'Acquisition', live:true,
+    engines:['operating', 'monthly', 'debt', 'returns', 'waterfall', 'sensitivity', 'tax'], about:'Price, operations, financing, sale and returns for an existing property.' },
+  { id:'development', name:'Development Analysis', q:'Does the project pencil, from land to stabilization?', icon:'crane', dealType:'Development', live:true,
+    engines:['operating', 'development', 'returns', 'waterfall', 'sensitivity'], about:'Land, budget, schedule, construction financing, lease-up, stabilization and exit.' },
+  { id:'refinance', name:'Refinancing Analysis', q:'How much can we borrow, and what does it leave us?', icon:'loop', dealType:'Acquisition', live:false,
+    engines:['operating', 'valuation', 'refinance'], about:'The existing loan and its payoff against proposed structures, sized by the lender\'s tests.' },
+  { id:'hold', name:'Hold & Disposition', q:'Keep the property or sell it?', icon:'scale', dealType:'Acquisition', live:false,
+    engines:['operating', 'monthly', 'debt', 'returns', 'tax'], about:'Hold-period cash flow against selling now, with the tax on the sale where supported.' },
+  { id:'comprehensive', name:'Comprehensive Underwriting', q:'The full model of one investment, with tax and partners', icon:'stack', dealType:'Acquisition', live:false,
+    engines:['operating', 'monthly', 'debt', 'returns', 'waterfall', 'sensitivity', 'tax', 'capital'], about:'Every supported schedule for one property: operations, capital, financing, tax and partners.' },
+  { id:'portfolio', name:'Portfolio Analysis', q:'How do our properties add up, and what should we do next?', icon:'grid', dealType:'Acquisition', live:false,
+    engines:['portfolio'], about:'Holdings consolidated on dated cash flows, with debt maturities, concentration and scenarios.' },
+  { id:'business', name:'Business Valuation & Underwriting', q:'What is the operating business worth?', icon:'chart', dealType:'Acquisition', live:false,
+    engines:['business'], about:'Revenue, EBITDA, working capital, free cash flow and valuation for an operating company, kept separate from property underwriting.' }
+].forEach(function(a){ R.addAnalysis(a); });
+
+/* line icons (20px, current text colour) */
+var P = {
+  value:'<path d="M4 17V9l6-5 6 5v8z"/><path d="M8 17v-4h4v4"/>',
+  key:'<circle cx="7" cy="10" r="3"/><path d="M10 10h7M14 10v3M17 10v2"/>',
+  crane:'<path d="M5 17V4h1l9 3H6M15 7v4"/><path d="M3 17h6"/><rect x="13" y="11" width="4" height="3"/>',
+  loop:'<path d="M15 7a6 6 0 0 0-10 2M5 13a6 6 0 0 0 10-2"/><path d="M15 3v4h-4M5 17v-4h4"/>',
+  scale:'<path d="M10 4v13M6 17h8M4 7h12"/><path d="M4 7l-2 5h4zM16 7l-2 5h4z"/>',
+  stack:'<path d="M10 3l7 3-7 3-7-3z"/><path d="M3 10l7 3 7-3M3 14l7 3 7-3"/>',
+  grid:'<rect x="3" y="3" width="6" height="6"/><rect x="11" y="3" width="6" height="6"/><rect x="3" y="11" width="6" height="6"/><rect x="11" y="11" width="6" height="6"/>',
+  chart:'<path d="M3 17h14M5 14V9M9 14V5M13 14v-3"/>'
+};
+R.icon = function(name){ return '<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[name] || '') + '</svg>'; };
+})();
+</script>
+
+<script id="bk-reg-workflows">/* ANALYSIS REGISTRY - WORKFLOWS. Each analysis's own steps, in order. A step names the fields it asks for and, for each, whether it is required,
+   optional, conditional (with its condition), not applicable or derived; label and suggestion can be specialised for the step. 'sheet' is where the
+   detail lives in the full model. Completion is computed from the deal itself (BKReg.stepState), so the guide and the full model never disagree.
+   Acquisition and Development reproduce today's guide exactly; their longer workflows come with Phase 10. The other six are their full workflows;
+   their steps that need inputs not yet built use planned fields and open once those analyses are built. */
+(function(){
+'use strict';
+if(!window.BKReg) return;
+var R = window.BKReg;
+function q(k, req, o){ return Object.assign({ k:k, req:req || 'optional' }, o || {}); }
+function S(id, title, why, sheet, fields, o){ return Object.assign({ id:id, title:title, why:why, sheet:sheet, fields:fields || [] }, o || {}); }
+var isDevSug = function(v, why){ return function(){ return { v:v, why:why }; }; };
+
+/* shared step blocks (the same objects are used, so the two analyses that share a step cannot drift apart) */
+var INCOME = S('income', 'Rents and other income', 'Income is what everything else rests on. Use the rent the units earn today; add the upside later, on purpose.', 'Deal Underwrite',
+  [q('avgRent', 'required'), q('otherIncomePerUnit'), q('vacancy', 'required')]);
+var EXPENSES = S('expenses', 'Operating expenses', 'Use the last twelve months where you have them. A missing line (management, repairs, reserves) is the most common way an NOI looks better than it is.', 'Deal Underwrite',
+  [q('taxes', 'required'), q('insurance', 'required'), q('utilities'), q('rm', 'required'), q('mgmtPct', 'required'), q('payroll'), q('contract'), q('ga'), q('reserves')]);
+var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume it sells for. The exit cap rate moves the answer more than anything else here.', 'Deal Underwrite',
+  [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
+
+R.addWorkflow('acquisition', [
+  S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
+  S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
+  INCOME, EXPENSES,
+  S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
+  EXIT ]);
+
+R.addWorkflow('development', [
+  S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' })]),
+  S('land', 'Land and budget', 'The two big costs. Land is the price; the construction budget is hard and soft costs together.', 'Deal Underwrite',
+    [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
+  INCOME, EXPENSES,
+  S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilised.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
+  EXIT ]);
+
+R.addWorkflow('valuation', [
+  S('property', 'Property information', 'Identifies the property and sizes the per-unit and per-SF value.', 'Property', [q('name', 'required'), q('location', 'required'), q('propertyType', 'required'), q('units', 'required'), q('gsf', 'required')]),
+  S('mix', 'Unit mix / tenant schedule', 'Value rests on what each unit or tenant pays.', 'Rent Roll', [q('rentRoll', 'required'), q('leases', 'conditional', { when:function(s){ return Number(s.commercialArea) > 0; } })]),
+  S('inplace', 'In-place income', 'Rent the property collects today, before any upside.', 'Deal Underwrite', [q('avgRent', 'required'), q('otherIncomePerUnit')]),
+  S('market', 'Market rent assumptions', 'Market rent sets the normalized and stabilized income.', 'Rent Roll', [q('rentRoll', 'required')]),
+  S('vacancy', 'Vacancy and other income', 'Vacancy, credit loss and concessions reduce income before expenses.', 'Deal Underwrite', [q('vacancy', 'required'), q('badDebtPct'), q('concessionPct')]),
+  EXPENSES,
+  S('noi', 'NOI calculation', 'Current, normalized and stabilized NOI, each stated with what it includes.', 'Operating Underwrite', [q('noi', 'derived'), q('valNormalizeAdj'), q('valStabilizedNoi', 'optional')]),
+  S('caprate', 'Market cap rate and comparables', 'The cap rate converts NOI into value; comparables support it.', 'Valuation', [q('valCapRate', 'required'), q('valComps'), q('valDate', 'required')]),
+  S('value', 'Estimated property value', 'Value = NOI / cap rate for each NOI, with value per unit and per SF.', 'Valuation', [q('value', 'derived')]),
+  S('review', 'Review and generate the valuation report', 'Check what is missing and what is estimated, then produce the report.', 'Valuation Report', []) ]);
+
+R.addWorkflow('refinance', [
+  S('property', 'Property information', 'Identifies the asset and its size.', 'Property', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
+  S('ops', 'Current operating performance', 'Lenders size on the NOI the property earns today.', 'Deal Underwrite', [q('avgRent', 'required'), q('vacancy', 'required'), q('taxes', 'required'), q('insurance', 'required'), q('rm', 'required'), q('mgmtPct', 'required')]),
+  S('value', 'Current property valuation', 'The LTV test uses this value.', 'Valuation', [q('currentValue', 'required'), q('valCapRate')]),
+  S('existing', 'Existing debt and payoff', 'What has to be repaid before any cash comes out.', 'Debt', [q('exLoanBalance', 'required'), q('exLoanRate', 'required'), q('exLoanMaturity', 'required'), q('exLoanAmort'), q('exPrepay')]),
+  S('proposed', 'Proposed financing', 'The terms of the new loan.', 'Debt', [q('newLoanRate', 'required'), q('newLoanTerm', 'required'), q('newLoanAmort'), q('newLoanIO')]),
+  S('lender', 'Lender constraints', 'The tests that size the loan, kept apart from your own assumptions.', 'Debt', [q('lenderMaxLTV', 'required'), q('lenderMinDSCR', 'required'), q('lenderMinDY')]),
+  S('sizing', 'Debt sizing', 'The loan is the lowest the tests allow.', 'Debt', [q('newLoanAmount', 'optional')]),
+  S('costs', 'Refinance costs', 'Points, legal and the prepayment penalty reduce the proceeds.', 'Debt', [q('newLoanCosts', 'required')]),
+  S('proceeds', 'Proceeds and equity extraction', 'Net cash out after payoff and costs, and the equity left in.', 'Debt', [q('value', 'derived')]),
+  S('alts', 'Alternative financing scenarios', 'Compare structures side by side.', 'Financing Compare', [q('refiScenarios')]),
+  S('review', 'Review and generate the refinance report', '', 'Reports', []) ]);
+
+R.addWorkflow('hold', [
+  S('property', 'Property information', '', 'Property', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
+  S('ops', 'Current operating performance', 'Where the property stands today.', 'Deal Underwrite', [q('avgRent', 'required'), q('vacancy', 'required'), q('taxes', 'required'), q('insurance', 'required'), q('rm', 'required'), q('mgmtPct', 'required')]),
+  S('value', 'Current property valuation', 'What it would sell for today.', 'Valuation', [q('currentValue', 'required')]),
+  S('forward', 'Forward operating assumptions', 'Growth that drives the hold case.', 'Market', [q('rentGrowth', 'required'), q('opexGrowth', 'required')]),
+  S('capex', 'Capital expenditure requirements', 'What holding will cost in capital.', 'Expenses', [q('capitalProjects'), q('reserves')]),
+  S('debt', 'Existing financing', 'The loan to be repaid at a sale.', 'Debt', [q('exLoanBalance', 'required'), q('exLoanRate', 'required'), q('exLoanMaturity', 'required')]),
+  S('period', 'Hold period assumptions', '', 'Deal Underwrite', [q('holdYears', 'required')]),
+  S('exit', 'Disposition assumptions', '', 'Deal Underwrite', [q('exitCap', 'required'), q('saleCostPct', 'required')]),
+  S('tax', 'Tax and adjusted basis', 'Optional. Recapture and gain on a sale, flagged for professional review.', 'Depreciation', [q('ownedBasis'), q('taxProfile')], { skippable:true }),
+  S('compare', 'Hold vs. sell comparison', '', 'Returns', [q('value', 'derived')]),
+  S('sens', 'Sensitivity analysis', '', 'Sensitivity', []),
+  S('review', 'Review and generate the report', '', 'Reports', []) ]);
+
+R.addWorkflow('comprehensive', [
+  S('property', 'Property and ownership information', '', 'Property', [q('name', 'required'), q('location', 'required'), q('propertyType', 'required'), q('units', 'required'), q('gsf', 'required')]),
+  S('acq', 'Acquisition assumptions', '', 'Investment', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'required'), q('acqStrategy', 'required')]),
+  S('mix', 'Unit mix and rent roll', '', 'Rent Roll', [q('rentRoll', 'required')]),
+  S('revenue', 'Revenue projections', '', 'Market', [q('rentGrowth', 'required'), q('otherIncomePerUnit')]),
+  S('vacancy', 'Vacancy and credit loss', '', 'Market', [q('vacancy', 'required'), q('badDebtPct', 'required')]),
+  EXPENSES,
+  S('capital', 'Capital improvement program', '', 'Expenses', [q('capitalProjects', 'required')]),
+  S('financing', 'Financing structure', '', 'Investment', [q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort', 'required'), q('acqDSCR')]),
+  S('su', 'Sources and uses', '', 'Sources & Uses', [q('value', 'derived')]),
+  S('debtsched', 'Debt schedules', '', 'Debt Schedule', []),
+  S('opcf', 'Operating cash flow', '', 'Property CF', []),
+  S('reserves', 'Capital expenditure and reserve schedules', '', 'Expenses', [q('reserves', 'required')]),
+  S('depr', 'Depreciation and cost segregation', '', 'Depreciation', [q('taxProfile', 'required')]),
+  S('aftertax', 'After-tax cash flow', '', 'After-Tax', []),
+  S('refi', 'Refinancing scenarios', '', 'Refi / Recap', [q('refiScenarios')], { skippable:true }),
+  S('exit', 'Disposition assumptions', '', 'Valuation', [q('holdYears', 'required'), q('exitCap', 'required'), q('saleCostPct', 'required')]),
+  S('investors', 'Investor contributions and distributions', '', 'Investors', [q('gpShare', 'required')]),
+  S('waterfall', 'Waterfall and preferred returns', '', 'Equity Waterfall', [q('pref', 'required')]),
+  S('returns', 'Investment returns', '', 'Returns', []),
+  S('sens', 'Sensitivity and downside analysis', '', 'Sensitivity', []),
+  S('review', 'Review and generate the comprehensive report', '', 'Reports', []) ]);
+
+R.addWorkflow('portfolio', [
+  S('overview', 'Portfolio overview', '', 'Portfolio', [q('name', 'required')]),
+  S('select', 'Property selection / import', 'Link saved models or enter owned properties.', 'Portfolio', [q('holdings', 'required')]),
+  S('assets', 'Asset-level information', '', 'Portfolio', [q('holdings', 'required')]),
+  S('values', 'Property valuations', '', 'Portfolio', []), S('ops', 'Operating performance', '', 'Portfolio', []),
+  S('capital', 'Capital improvement requirements', '', 'Portfolio', [q('capitalProjects')]), S('debt', 'Debt and maturity schedule', '', 'Portfolio', []),
+  S('tax', 'Depreciation and tax profiles', '', 'Portfolio', [q('taxProfile')], { skippable:true }), S('consolidate', 'Portfolio consolidation', 'Dated cash flows added together; nothing counted twice.', 'Portfolio M', []),
+  S('compare', 'Asset-level comparisons', '', 'Portfolio', []), S('risk', 'Portfolio risk analysis', '', 'Portfolio', []),
+  S('scenarios', 'Portfolio scenarios', 'Sell, refinance, change operations, invest capital, and compare the results side by side.', 'Portfolio', [q('portfolioScenarios')]),
+  S('review', 'Review and generate the portfolio report', '', 'Reports', []) ]);
+
+R.addWorkflow('business', [
+  S('company', 'Company information', '', 'Business Model', [q('name', 'required')]),
+  S('revenue', 'Revenue and growth', '', 'Business Model', [q('bizRevenue', 'required')]),
+  S('costs', 'Cost of revenue and operating expenses', '', 'Business Model', [q('bizCosts', 'required')]),
+  S('ebitda', 'EBITDA', '', 'Business Model', []),
+  S('wc', 'Working capital', '', 'Business Model', [q('bizWorkingCapital')]),
+  S('capex', 'Capital expenditures', '', 'Business Model', [q('bizCapex')]),
+  S('fcf', 'Free cash flow', '', 'Business Valuation', []),
+  S('valuation', 'Valuation and multiples', '', 'Business Valuation', [q('bizMultiple', 'required')]),
+  S('financing', 'Financing and investor returns', '', 'Business Valuation', [], { skippable:true }),
+  S('sens', 'Sensitivity analysis', '', 'Business Valuation', []),
+  S('review', 'Review and generate the business report', '', 'Reports', []) ]);
+})();
+</script>
+
+<script id="bk-reg-summaries">/* ANALYSIS REGISTRY - SUMMARIES. One metric dictionary; each analysis's summary is an ordered list of metric ids with the primary output first.
+   A metric reads the engines through one context object (computed once per summary), so the on-screen summary and the PDF executive summary, which both
+   call BKReg.summarize, cannot show different figures. A metric returns null when the input it needs is missing; it is shown as missing, never as zero.
+   planned: belongs to an analysis not built yet; no live analysis may lead with it. */
+(function(){
+'use strict';
+if(!window.BKReg) return;
+var R = window.BKReg;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function fin(v){ return typeof v === 'number' && isFinite(v) ? v : null; }
+function pos(v){ v = fin(v); return v !== null && v !== 0 ? v : null; }
+function M(id, label, fmt, get, o){ return Object.assign({ id:id, label:label, fmt:fmt, get:get }, o || {}); }
+function P(id, label, fmt){ return M(id, label, fmt, function(){ return null; }, { planned:true }); }
+/* the engines, each run at most once for a summary */
+function ctx(s){ var c = { s:s }, memo = {};
+  var lazy = function(k, f){ Object.defineProperty(c, k, { get:function(){ if(!(k in memo)) memo[k] = safe(f, null); return memo[k]; } }); };
+  lazy('calc', function(){ return bkCalc(); }); lazy('debt', function(){ return bkDebt(); }); lazy('ret', function(){ return bkMonthlyReturns(); }); lazy('acf', function(){ return bkAnnualCF(); });
+  lazy('dev', function(){ return bkDevV09(); }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
+  return c; }
+var price = function(c){ return pos(Number(c.s.purchasePrice)); };
+R.addMetrics([
+  /* shared operating */
+  M('gpi', 'Gross potential income', 'money', function(c){ var k = c.calc; return k ? pos(k.gpr + k.commercial + k.recovery + k.other) : null; }),
+  M('egi', 'Effective gross income', 'money', function(c){ return c.calc ? pos(c.calc.egi) : null; }),
+  M('opex', 'Operating expenses', 'money', function(c){ return c.calc ? pos(c.calc.total) : null; }),
+  M('noiInPlace', 'In-place NOI (before reserves)', 'money', function(c){ return c.calc ? fin(c.calc.noi) : null; }),
+  /* acquisition */
+  M('price', 'Purchase price', 'money', function(c){ return price(c); }),
+  M('totalCost', 'Total acquisition cost', 'money', function(c){ return c.acf ? pos(-c.acf.initial) : null; }, { note:'price, closing costs and acquisition fee' }),
+  M('equity', 'Equity required', 'money', function(c){ return c.debt ? pos(c.debt.equity) : null; }),
+  M('loan', 'Loan', 'money', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.loan) : null; }),
+  M('ltv', 'Loan to value', 'pct', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.ltv) : null; }),
+  M('dscr', 'Going-in DSCR', 'x', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.dscr) : null; }),
+  M('goingInCap', 'Going-in cap rate', 'pct', function(c){ var p = price(c); return p && c.calc ? fin(c.calc.noi / p) : null; }),
+  M('cashOnCash', 'Year-1 cash-on-cash', 'pct', function(c){ var r = c.ret, e = c.debt ? pos(c.debt.equity) : null; if(!r || !e) return null; var y = (r.rows || []).slice(0, 12).reduce(function(t, x){ return t + (Number(x.noi) || 0) - (Number(x.reserve) || 0) - (Number(x.ds) || 0) - (Number(x.assetFee) || 0); }, 0); return fin(y / e); }, { note:'first twelve months of cash after debt service / equity' }),
+  M('leveredIRR', 'Levered IRR', 'pct', function(c){ return c.ret ? fin(c.ret.irr) : null; }),
+  M('unleveredIRR', 'Unlevered IRR', 'pct', function(c){ var r = c.ret; if(!r) return null; return fin(r.u && r.u.irr != null ? r.u.irr : (c.acf ? c.acf.irr : null)); }),
+  M('moic', 'Equity multiple', 'x', function(c){ return c.ret ? fin(c.ret.moic) : null; }),
+  M('grossSale', 'Gross sale price', 'money', function(c){ var r = c.ret, last = r && r.rows ? r.rows[r.rows.length - 1] : null; return fin(c.acf && !/develop/i.test(String(c.s.dealType || '')) ? c.acf.grossSale : last && last.grossSale); }),
+  /* development */
+  M('land', 'Land cost', 'money', function(c){ return c.dev ? pos(c.dev.land) : null; }),
+  M('hardSoft', 'Hard and soft costs', 'money', function(c){ return c.dev ? pos(c.dev.hard + c.dev.soft) : null; }),
+  M('devCost', 'Total development cost (before financing)', 'money', function(c){ return c.dev ? pos(c.dev.unlev) : null; }),
+  M('capitalization', 'Total capitalization (incl. financing)', 'money', function(c){ return c.fund ? pos(c.fund.levered) : null; }),
+  M('conLoan', 'Construction facility', 'money', function(c){ return c.fund ? pos(c.fund.commit) : null; }),
+  M('devEquity', 'Equity requirement', 'money', function(c){ return c.fund ? pos(c.fund.equityTotal) : null; }),
+  M('capInt', 'Capitalized interest', 'money', function(c){ return c.fund ? fin(c.fund.actualCapInt) : null; }),
+  M('timeline', 'Months to stabilization', 'int', function(c){ return c.dev ? pos(c.dev.stab) : null; }),
+  M('stabNOI', 'Stabilized NOI', 'money', function(c){ return c.calc ? fin(c.calc.noi) : null; }),
+  M('yieldOnCost', 'Yield on cost', 'pct', function(c){ return c.calc && c.dev && c.dev.unlev > 0 ? fin(c.calc.noi / c.dev.unlev) : null; }),
+  M('stabValue', 'Stabilized value', 'money', function(c){ return c.take ? pos(c.take.stabVal) : null; }),
+  M('devSpread', 'Development spread (yield on cost less exit cap)', 'bps', function(c){ var e = pos(Number(c.s.exitCap)); return c.calc && c.dev && c.dev.unlev > 0 && e ? fin((c.calc.noi / c.dev.unlev - e) * 10000) : null; }),
+  /* planned */
+  P('noiNormalized', 'Normalized NOI', 'money'), P('noiStabilized', 'Stabilized NOI', 'money'), P('capRate', 'Selected cap rate', 'pct'), P('marketValue', 'Estimated market value', 'money'),
+  P('valuePerUnit', 'Value per unit', 'money'), P('valuePerSF', 'Value per SF', 'money'),
+  P('currentValue', 'Current property value', 'money'), P('existingPayoff', 'Existing loan payoff', 'money'), P('newLoan', 'Proposed loan', 'money'), P('newLTV', 'LTV', 'pct'), P('newDSCR', 'DSCR', 'x'), P('newDY', 'Debt yield', 'pct'),
+  P('refiCosts', 'Refinance costs', 'money'), P('netProceeds', 'Net proceeds', 'money'), P('cashOut', 'Cash-out proceeds', 'money'), P('equityRetained', 'Remaining equity', 'money'),
+  P('forwardNOI', 'Forward NOI', 'money'), P('netSaleNow', 'Net proceeds from selling now', 'money'), P('holdIRR', 'Hold-case IRR', 'pct'), P('saleTax', 'Estimated tax on sale', 'money'),
+  P('afterTaxIRR', 'After-tax IRR', 'pct'), P('capitalRequired', 'Capital improvement requirements', 'money'),
+  P('assetCount', 'Properties', 'int'), P('gav', 'Gross asset value', 'money'), P('portfolioDebt', 'Outstanding debt', 'money'), P('portfolioEquity', 'Portfolio equity', 'money'), P('portfolioNOI', 'NOI', 'money'),
+  P('portfolioLTV', 'Portfolio LTV', 'pct'), P('portfolioIRR', 'Portfolio IRR (combined dated cash flow)', 'pct'), P('maturityExposure', 'Debt maturing within 24 months', 'money'),
+  P('bizRevenue', 'Revenue', 'money'), P('bizEBITDA', 'EBITDA', 'money'), P('bizFCF', 'Free cash flow', 'money'), P('bizValue', 'Business value', 'money'), P('bizMultiple', 'EV / EBITDA', 'x')
+]);
+function sum(id, question, primary, metrics){ R.addSummary(id, { question:question, primary:primary, metrics:metrics }); }
+sum('valuation', 'What is the property worth today on its income?', 'marketValue', ['gpi', 'egi', 'opex', 'noiInPlace', 'noiNormalized', 'noiStabilized', 'capRate', 'valuePerUnit', 'valuePerSF']);
+sum('acquisition', 'Should we buy it, and at what price?', 'leveredIRR', ['price', 'totalCost', 'equity', 'noiInPlace', 'goingInCap', 'loan', 'ltv', 'dscr', 'cashOnCash', 'unleveredIRR', 'moic', 'grossSale']);
+sum('development', 'Does the project pencil?', 'leveredIRR', ['land', 'hardSoft', 'devCost', 'capitalization', 'conLoan', 'devEquity', 'capInt', 'timeline', 'stabNOI', 'yieldOnCost', 'stabValue', 'devSpread', 'unleveredIRR', 'moic']);
+sum('refinance', 'How much can we borrow, and what does it leave us?', 'netProceeds', ['currentValue', 'noiInPlace', 'existingPayoff', 'newLoan', 'newLTV', 'newDSCR', 'newDY', 'refiCosts', 'cashOut', 'equityRetained']);
+sum('hold', 'Keep the property or sell it?', 'holdIRR', ['currentValue', 'noiInPlace', 'forwardNOI', 'capitalRequired', 'existingPayoff', 'netSaleNow', 'saleTax']);
+sum('comprehensive', 'The full model of one investment', 'leveredIRR', ['totalCost', 'equity', 'noiInPlace', 'capitalRequired', 'loan', 'dscr', 'unleveredIRR', 'moic', 'cashOnCash', 'afterTaxIRR']);
+sum('portfolio', 'How do our properties add up?', 'portfolioIRR', ['assetCount', 'gav', 'portfolioDebt', 'portfolioEquity', 'portfolioNOI', 'portfolioLTV', 'maturityExposure']);
+sum('business', 'What is the operating business worth?', 'bizValue', ['bizRevenue', 'bizEBITDA', 'bizFCF', 'bizMultiple']);
+/* the summary of a deal under its analysis: the primary output and the metrics, each with its value or null (missing) */
+R.summarize = function(s){ s = s || (typeof bkLoad === 'function' ? bkLoad() : {}); var a = R.of(s), sp = R.summary(a.id), c = ctx(s);
+  var row = function(id){ var m = R.metric(id); return { id:id, label:m.label, fmt:m.fmt, note:m.note || '', planned:!!m.planned, value:m.planned ? null : safe(function(){ return m.get(c); }, null) }; };
+  return { analysis:a, question:sp.question, primary:row(sp.primary), metrics:sp.metrics.map(row) }; };
+})();
+</script>
+
+<script id="bk-reg-reports">/* ANALYSIS REGISTRY - REPORT SECTIONS. Each analysis's PDF is an ordered list of sections from one section dictionary; shared sections (cover,
+   assumptions and disclosures) are defined once. 'builder' names the existing page builder a live section is produced by today (the Create PDF summary
+   in src/145, src/177, src/179); a planned section belongs to an analysis not built yet. 'when' marks an optional section (shown only when its data exists). */
+(function(){
+'use strict';
+if(!window.BKReg) return;
+var R = window.BKReg;
+function X(id, title, o){ return Object.assign({ id:id, title:title }, o || {}); }
+function P(id, title, o){ return X(id, title, Object.assign({ planned:true }, o || {})); }
+R.addSections([
+  /* built today */
+  X('cover', 'Cover', { builder:'report.cover' }), X('dashboard', 'Dashboard', { builder:'report.dashboard' }),
+  X('acqFinancial', 'Financial summary: sources and uses, loan, exit, returns', { builder:'report.financial' }), X('acqCashFlow', 'Annual cash flow', { builder:'report.cashflow' }),
+  X('waterfall', 'Distribution waterfall', { builder:'report.waterfall' }), X('performance', 'Performance and sensitivity', { builder:'report.performance' }),
+  X('credit', 'Credit and market', { builder:'report.credit' }), X('portfolioImpact', 'Impact to portfolio', { builder:'report.portfolioImpact', when:'portfolio has other deals' }),
+  X('devBudget', 'Budget and funding', { builder:'report.devBudget' }), X('devDraws', 'Draw schedule', { builder:'report.devDraws' }),
+  X('devRisk', 'Risk and break-evens', { builder:'devreport.risk' }), X('devSens', 'Sensitivities', { builder:'devreport.sens' }), X('integrity', 'Model integrity', { builder:'devreport.integrity' }),
+  X('schedule', 'Construction schedule', { builder:'devschedule.summary', when:'a task schedule exists' }),
+  X('disclosures', 'Assumptions and disclosures', { builder:'report.disclosures' }),
+  /* planned */
+  P('valExec', 'Executive valuation summary'), P('propDesc', 'Property description'), P('rentRollMix', 'Rent roll / unit mix'), P('incomeAnalysis', 'Income analysis'), P('opexAnalysis', 'Operating expense analysis'),
+  P('noiRecon', 'NOI reconciliation'), P('capRateAnalysis', 'Capitalization rate analysis'), P('valueConclusion', 'Estimated market value'), P('valSens', 'Valuation sensitivity'),
+  P('capitalBudget', 'Capital improvement budget'), P('taxAnalysis', 'Tax analysis', { when:'tax analysis selected' }),
+  P('refiExec', 'Executive refinance summary'), P('existingDebt', 'Existing debt and payoff'), P('proposedDebt', 'Proposed financing and lender tests'), P('refiProceeds', 'Proceeds and equity'), P('refiCompare', 'Alternative structures'),
+  P('holdExec', 'Executive hold / sell summary'), P('holdCompare', 'Hold vs. sell'), P('saleTax', 'Disposition tax estimate', { when:'tax analysis selected' }),
+  P('afterTaxCF', 'After-tax cash flow'), P('investorSchedules', 'Investor contributions and distributions'),
+  P('pfExec', 'Executive portfolio summary'), P('pfComposition', 'Portfolio composition'), P('pfValues', 'Asset-level valuations'), P('pfOps', 'Operating performance'), P('pfConsolidation', 'Portfolio consolidation'),
+  P('pfDebt', 'Debt and maturity schedule'), P('pfCapital', 'Capital improvement requirements'), P('pfTax', 'Depreciation and tax profiles'), P('pfCompare', 'Asset-level comparisons'), P('pfRisk', 'Portfolio risk'), P('pfScenarios', 'Scenario comparison'),
+  P('bizExec', 'Executive business summary'), P('bizOps', 'Revenue, costs and EBITDA'), P('bizCash', 'Working capital and free cash flow'), P('bizValue', 'Valuation and multiples'), P('bizSens', 'Sensitivity')
+]);
+R.addReport('acquisition', ['cover', 'dashboard', 'acqFinancial', 'acqCashFlow', 'waterfall', 'performance', 'credit', 'portfolioImpact', 'disclosures']);
+R.addReport('development', ['cover', 'dashboard', 'devBudget', 'devDraws', 'schedule', 'devRisk', 'devSens', 'performance', 'waterfall', 'credit', 'integrity', 'portfolioImpact', 'disclosures']);
+R.addReport('valuation', ['valExec', 'propDesc', 'rentRollMix', 'incomeAnalysis', 'opexAnalysis', 'noiRecon', 'capRateAnalysis', 'valueConclusion', 'valSens', 'disclosures']);
+R.addReport('refinance', ['refiExec', 'propDesc', 'existingDebt', 'proposedDebt', 'refiProceeds', 'refiCompare', 'disclosures']);
+R.addReport('hold', ['holdExec', 'propDesc', 'acqCashFlow', 'capitalBudget', 'holdCompare', 'saleTax', 'disclosures']);
+R.addReport('comprehensive', ['cover', 'dashboard', 'acqFinancial', 'capitalBudget', 'acqCashFlow', 'afterTaxCF', 'taxAnalysis', 'investorSchedules', 'waterfall', 'performance', 'credit', 'disclosures']);
+R.addReport('portfolio', ['pfExec', 'pfComposition', 'pfValues', 'pfOps', 'pfConsolidation', 'pfDebt', 'pfCapital', 'pfTax', 'pfCompare', 'pfRisk', 'pfScenarios', 'disclosures']);
+R.addReport('business', ['bizExec', 'bizOps', 'bizCash', 'bizValue', 'bizSens', 'disclosures']);
+})();
+</script>
+
+<script id="bk-reg-checks">/* ANALYSIS REGISTRY - VALIDATION RULES. Which checks apply to each analysis. A rule not listed for an analysis is N/A there (never a failure).
+   'source' names where the check runs today: bkIntegrity check ids (src/178), the waterfall checks (src/169), the readiness machine (src/081),
+   the conflict rules (src/129) and the credit gate (src/127). planned: a check that belongs to an analysis not built yet. */
+(function(){
+'use strict';
+if(!window.BKReg) return;
+var R = window.BKReg;
+function X(id, label, source, o){ return Object.assign({ id:id, label:label, source:source }, o || {}); }
+R.addRules([
+  X('readiness', 'Required inputs are present (nothing missing is treated as zero)', 'readiness'), X('conflicts', 'Inputs do not contradict each other', 'conflicts'),
+  X('credit', 'Credit gate: failed checks hold the decision', 'credit'),
+  X('budget', 'Hard and soft cost totals equal their lines', 'integrity:budget'), X('unlev', 'Cost before financing adds up', 'integrity:unlev'), X('su', 'Sources equal uses', 'integrity:su'),
+  X('draws', 'Every month\'s cost is funded', 'integrity:draws'), X('capint', 'Capitalised interest rolls forward', 'integrity:capint'), X('facility', 'The balance never exceeds the facility', 'integrity:facility'),
+  X('fixed', 'Principal stays within a fixed facility', 'integrity:fixed'), X('payoff', 'Debt repaid at sale equals the balance', 'integrity:payoff'), X('sale', 'Net sale equals gross less costs', 'integrity:sale'),
+  X('eqret', 'Equity in returns equals the funding ledger', 'integrity:eqret'), X('contrib', 'LP + GP contributions tie', 'integrity:contrib'), X('unlev_irr', 'Unlevered returns are calculated', 'integrity:unlev_irr'),
+  X('irr', 'Levered IRR equals an independent XIRR', 'integrity:irr'), X('moic', 'Multiple = distributions / contributions', 'integrity:moic'), X('waterfall', 'Hurdles replay, tiers in order, every dollar once', 'waterfall'),
+  X('noiTies', 'NOI = income less expenses, by line', 'planned', { planned:true }), X('valueTies', 'Value = NOI / cap rate for each scenario', 'planned', { planned:true }), X('noDebt', 'No financing figure reaches a valuation', 'planned', { planned:true }),
+  X('payoffTies', 'Payoff = balance + accrued interest + prepayment', 'planned', { planned:true }), X('sizingTies', 'Loan = the lowest of the lender tests', 'planned', { planned:true }),
+  X('basisTies', 'Basis, land, depreciation and accumulated depreciation reconcile', 'planned', { planned:true }), X('capitalTies', 'Capital budget, actuals and funding reconcile', 'planned', { planned:true }),
+  X('portfolioTies', 'Consolidated flows equal the sum of the holdings; nothing counted twice', 'planned', { planned:true }), X('bizTies', 'EBITDA, free cash flow and value reconcile', 'planned', { planned:true })
+]);
+var CORE = ['readiness', 'conflicts', 'sale', 'payoff', 'eqret', 'contrib', 'unlev_irr', 'irr', 'moic', 'waterfall', 'credit'];
+R.addChecks('acquisition', CORE);
+R.addChecks('development', ['budget', 'unlev', 'su', 'draws', 'capint', 'facility', 'fixed'].concat(CORE));
+R.addChecks('valuation', ['readiness', 'conflicts', 'noiTies', 'valueTies', 'noDebt']);
+R.addChecks('refinance', ['readiness', 'conflicts', 'noiTies', 'payoffTies', 'sizingTies']);
+R.addChecks('hold', ['readiness', 'conflicts', 'sale', 'payoff', 'irr', 'moic', 'basisTies']);
+R.addChecks('comprehensive', CORE.concat(['capitalTies', 'basisTies']));
+R.addChecks('portfolio', ['portfolioTies']);
+R.addChecks('business', ['readiness', 'bizTies']);
+/* applies(analysisId, integrityCheckId): false means N/A for this analysis */
+R.applies = function(aid, checkId){ var ids = R.checks(aid); return ids.some(function(id){ var r = R.rule(id); return r && (r.source === 'integrity:' + checkId || id === checkId); }); };
+})();
+</script>
+
 <script id="bk-v29230-home">
 /* V29.23.0 - HOME. The front door and the deal dashboard: what this deal is, how it looks against policy, what to do next. Presentation only: every figure comes from the
    live engine, gate and checks already in the app. The earlier certification and module tables are kept, under "Certification and module detail". */
@@ -21790,6 +22268,12 @@ var CSS = '.pl-home{max-width:1040px}.pl-hero{margin:4px 0 18px}.pl-hero h2{font
  + '.pl-act:hover{box-shadow:0 4px 14px rgba(16,25,34,.10);border-color:#3E9AE6}.pl-act b{display:block;font-size:14px;margin-bottom:3px}.pl-act span{font-size:12px;color:var(--ink-500,#566a80);line-height:1.4}.pl-act.primary{border-color:#3E9AE6;background:linear-gradient(180deg,#eef5fc,#fff)}'
  + '.pl-deals{background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:10px;overflow:hidden}.pl-deal{display:grid;grid-template-columns:minmax(120px,2fr) repeat(3,minmax(70px,1fr)) auto;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line,#dbe4ec);font-size:13px}.pl-deal:first-child{border-top:0}.pl-deal small{display:block;color:var(--ink-500,#566a80);font-size:11px}'
  + '.pl-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:6px}.pl-step{padding:12px 14px;border-left:3px solid #3E9AE6;background:rgba(62,154,230,.08);border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.45}.pl-step b{display:block;font-size:13px;margin-bottom:2px}'
+ + '.pl-ans{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:6px 0 14px}@media (max-width:1000px){.pl-ans{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:520px){.pl-ans{grid-template-columns:minmax(0,1fr)}}'
+ + '.pl-an{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:10px;padding:14px 14px 16px;cursor:pointer;color:var(--ink-900,#10233a);font:inherit;min-height:118px}'
+ + '.pl-an:hover,.pl-an:focus-visible{border-color:#3E9AE6;box-shadow:0 4px 14px rgba(16,25,34,.10);outline:none}.pl-an .ic{color:#12609f;display:flex}.pl-an b{font-size:14px;line-height:1.3}.pl-an .q{font-size:12.5px;line-height:1.45;color:var(--ink-500,#566a80)}'
+ + '.pl-an.off{cursor:default;opacity:.62}.pl-an.off:hover{border-color:var(--line,#dbe4ec);box-shadow:none}.pl-an .soon{margin-top:auto;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--ink-500,#566a80)}'
+ + '.pl-docs{font-size:13px;color:var(--ink-500,#566a80);margin:4px 0 6px;display:flex;flex-wrap:wrap;gap:4px;align-items:baseline}.pl-link{background:none;border:0;padding:0;font:inherit;color:#12609f;cursor:pointer;text-decoration:underline;text-underline-offset:2px}.pl-link:hover{color:#0e2a4a}'
+ + '@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pl-link,:root:not([data-theme="light"]) .pl-an .ic{color:#8cc4f2}:root:not([data-theme="light"]) .pl-link:hover{color:#cfe6fa}}:root[data-theme="dark"] .pl-link,:root[data-theme="dark"] .pl-an .ic{color:#8cc4f2}:root[data-theme="dark"] .pl-link:hover{color:#cfe6fa}'
  + '.pl-detail{margin-top:26px}.pl-detail>summary{cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500,#566a80);padding:10px 0}'
  + '@media (max-width:640px){.pl-row{grid-template-columns:18px 1fr auto}.pl-row .r{grid-column:2 / 4;grid-row:2}.pl-deal{grid-template-columns:1fr auto}.pl-deal>div:nth-child(n+2):not(:last-child){display:none}.pl-hero h2{font-size:24px}}';
 if(!document.getElementById('pl-home-css')){ var st = document.createElement('style'); st.id = 'pl-home-css'; st.textContent = CSS; document.head.appendChild(st); }
@@ -21805,14 +22289,16 @@ function dealsBlock(L, cur){
     return '<div class="pl-deal"><div><b>' + esc(d.name || d.dealId || 'Untitled') + '</b><small>' + esc([d.dealType, d.propertyType, d.location].filter(Boolean).join(' · ')) + '</small></div><div>' + M(d.purchasePrice) + '<small>price</small></div><div>' + P(m.irr) + '<small>levered IRR</small></div><div>' + X(m.moic) + '<small>multiple</small></div>'
       + '<div>' + (x.active ? '<span class="status-chip pass">OPEN</span>' : '<button type="button" class="status-chip" onclick="bkHomeOpen(' + i + ')">OPEN</button>') + '</div></div>'; }).join('') + '</div>';
 }
+/* the front door with no deal open: the analyses (from the analysis registry, so this page always lists exactly what the platform defines), then one quiet line for starting from a document */
 function frontDoor(L){
-  var steps = [['1  Bring the deal in', 'Upload a Yardi T-12 or a rent roll, or type the deal in.'], ['2  Check the model', 'Contradictions, market ranges and credit policy are checked as you go.'], ['3  Stress it', 'Downside cases, break-evens and probability-weighted returns.'], ['4  Take it to committee', 'IC memo with the decision, the cushions and the risks.']];
-  return '<div class="pl-home"><div class="pl-hero"><h2>Underwrite a deal</h2><p class="pl-sub">Start from a rent roll or T-12, or from a blank deal. Nothing is calculated from placeholder numbers: figures appear once the required inputs are in.</p></div>'
-    + '<div class="pl-acts"><button type="button" class="pl-act primary" onclick="bkGuideOn()"><b>Guide me step by step</b><span>One question at a time, in a logical order, from blank or from a document. Nothing changes until you confirm it.</span></button><button type="button" class="pl-act" ' + go('Import OM') + '><b>Import an offering memorandum</b><span>Upload the broker\'s OM (PDF). Price, units, rents, income and expenses load into a new deal, with the OM and its photo kept on the deal.</span></button><button type="button" class="pl-act" ' + go('Import Deal') + '><b>Import a T-12</b><span>Upload a Yardi workbook, CSV or PDF. Line items are footed to the statement and the price is set from the cap rate.</span></button>'
-    + '<button type="button" class="pl-act" ' + go('Import Rent Roll') + '><b>Import a rent roll</b><span>Map the columns, review every unit, and apply it to the active deal.</span></button>'
-    + '<button type="button" class="pl-act" onclick="bkCreateNewDeal()"><b>Start a blank deal</b><span>Enter the property, income, expenses and debt yourself.</span></button>'
-    + '<button type="button" class="pl-act" ' + go('Source Ingestion') + '><b>Review a source package</b><span>Stage a workbook, reconcile it, and approve each figure before it reaches a deal.</span></button></div>'
-    + dealsBlock(L) + '<div class="pl-h">How it works</div><div class="pl-steps">' + steps.map(function(t){ return '<div class="pl-step"><b>' + t[0] + '</b>' + t[1] + '</div>'; }).join('') + '</div></div>';
+  var R = window.BKReg, list = R ? R.analyses() : [];
+  var cards = list.map(function(a){ var live = !!a.live;
+    return '<button type="button" class="pl-an' + (live ? '' : ' off') + '"' + (live ? ' onclick="bkStartAnalysis(\'' + a.id + '\')"' : ' aria-disabled="true" tabindex="-1"') + ' data-analysis="' + a.id + '"><span class="ic">' + (R.icon ? R.icon(a.icon) : '') + '</span><b>' + esc(a.name) + '</b><span class="q">' + esc(a.q) + '</span>' + (live ? '' : '<span class="soon">In development</span>') + '</button>'; }).join('');
+  var docs = [['Offering memorandum', 'Import OM'], ['T-12', 'Import Deal'], ['Rent roll', 'Import Rent Roll'], ['Source package', 'Source Ingestion']];
+  return '<div class="pl-home pl-front"><div class="pl-hero"><h2>Start an analysis</h2><p class="pl-sub">Pick the question you are answering. Each analysis asks for what it needs and nothing else.</p></div>'
+    + '<div class="pl-ans">' + cards + '</div>'
+    + '<p class="pl-docs">Or start from a document: ' + docs.map(function(d){ return '<button type="button" class="pl-link" ' + go(d[1]) + '>' + d[0] + '</button>'; }).join('<span aria-hidden="true"> · </span>') + '</p>'
+    + dealsBlock(L) + '</div>';
 }
 function build(s, oldMain){
   var dev = isDev(s), h = safe(function(){ return window.bkHeadline(); }, null), pol = safe(function(){ return bkPolicy(); }, {}), ready = safe(function(){ return bkDealReadiness(); }, null);
@@ -21983,7 +22469,7 @@ var CSS = '.pl-toolbar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:w
  + '.pl-hbtn.primary{background:#0e2a4a;color:#fff;border-color:#0e2a4a}.pl-hbtn:hover{box-shadow:0 3px 10px rgba(16,25,34,.18)}.pl-hbtn.danger{border-color:#C0392B;color:#B23A2C}'
  + '#pl-modal{position:fixed;inset:0;z-index:2100;background:rgba(10,16,22,.55);display:none;align-items:center;justify-content:center;padding:16px}#pl-modal.open{display:flex}#pl-modal .box{width:min(520px,100%);background:var(--surface,#fff);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.35);border:1px solid var(--line,#dbe4ec);padding:22px 22px 18px}'
  + '#pl-modal h3{font:700 22px/1.2 "Schibsted Grotesk","Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;margin:0 0 6px;color:var(--ink-900,#10233a)}#pl-modal p{font-size:13px;line-height:1.55;color:var(--ink-500,#566a80);margin:0 0 12px}#pl-modal label.f{display:block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--ink-500,#566a80);margin:10px 0 4px}'
- + '#pl-modal input[type=text],#pl-modal select{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line,#dbe4ec);border-radius:8px;font:14px Inter,system-ui,sans-serif;background:#fff;text-align:right;text-align-last:right}#pl-modal .chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:12px 0 2px}#pl-modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}';
+ + '#pl-modal input.left,#pl-modal select.left{text-align:left!important;text-align-last:left!important}#pl-modal input[type=text],#pl-modal select{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line,#dbe4ec);border-radius:8px;font:14px Inter,system-ui,sans-serif;background:#fff;text-align:right;text-align-last:right}#pl-modal .chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:12px 0 2px}#pl-modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}';
 var st = document.createElement('style'); st.id = 'pl-newdeal-css'; st.textContent = CSS; document.head.appendChild(st);
 function modal(html){ var m = document.getElementById('pl-modal'); if(!m){ m = document.createElement('div'); m.id = 'pl-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); document.body.appendChild(m);
     m.addEventListener('mousedown', function(e){ if(e.target === m) closeModal(); }); m.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeModal(); } }); }
@@ -21995,18 +22481,25 @@ function active(){ return typeof window.bkHasActiveDeal === 'function' ? window.
 function saveFirstBox(label){ var s = active() ? safe(function(){ return bkLoad(); }, null) : null; if(!s || !(s.name || s.dealId)) return ''; return '<label class="chk"><input type="checkbox" id="pl-save1" checked> <span>' + label + ' <b>' + esc(s.name || s.dealId) + '</b> to the portfolio first</span></label>'; }
 function snapshot(){ var cb = document.getElementById('pl-save1'); if(cb && cb.checked && typeof bkPortfolioAddCurrent === 'function'){ try { bkPortfolioAddCurrent(); } catch(e){} } }
 
-window.bkNewDealDialog = function(){
-  modal('<h3>Start a new deal</h3><p>This opens a blank deal. Nothing is calculated until the required inputs are in.</p>'
-    + '<label class="f" for="pl-nm">Deal name</label><input type="text" id="pl-nm" placeholder="e.g. 14 Main Street" autocomplete="off">'
-    + '<label class="f" for="pl-ty">Deal type</label><select id="pl-ty"><option value="Acquisition">Acquisition</option><option value="Development">Development</option></select>'
-    + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn" onclick="bkNewDealImport()">Import a T-12 instead</button><button type="button" class="pl-hbtn" onclick="bkModalClose();showSheet(\'Import OM\')">Import an OM instead</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create blank deal</button></div>');
-  var nm = document.getElementById('pl-nm'); if(nm) nm.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); bkNewDealGo(); } });
+/* New deal: the analysis is picked on the front door's cards (or here, from the registry's live analyses); the dialog asks for the name only */
+function analysisOptions(sel){ var R = window.BKReg; return (R ? R.analyses() : []).map(function(a){ return '<option value="' + a.id + '"' + (a.live ? '' : ' disabled') + (a.id === sel ? ' selected' : '') + '>' + esc(a.name) + (a.live ? '' : ' (in development)') + '</option>'; }).join(''); }
+window.bkStartAnalysis = function(id){ var R = window.BKReg, a = R && R.analysis(id); if(!a || !a.live) return; window.bkNewDealDialog(id); };
+window.bkNewDealDialog = function(id){
+  var R = window.BKReg, a = R && id ? R.analysis(id) : null;
+  modal('<h3>' + (a ? 'New ' + esc(a.name) : 'Start a new analysis') + '</h3><p>' + (a ? esc(a.q) + ' ' : '') + 'Nothing is calculated until the required inputs are in.</p>'
+    + (a ? '<input type="hidden" id="pl-an" value="' + a.id + '">' : '<label class="f" for="pl-an">Analysis</label><select id="pl-an" class="left">' + analysisOptions('acquisition') + '</select>')
+    + '<label class="f" for="pl-nm">Name</label><input type="text" id="pl-nm" class="left" placeholder="e.g. 14 Main Street" autocomplete="off">'
+    + '<label class="chk"><input type="checkbox" id="pl-guide"> <span>Guide me step by step</span></label>'
+    + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create</button></div>');
+  var nm = document.getElementById('pl-nm'); if(nm){ nm.focus(); nm.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); bkNewDealGo(); } }); }
 };
 window.bkNewDealGo = function(){
-  var nm = (document.getElementById('pl-nm') || {}).value || '', ty = (document.getElementById('pl-ty') || {}).value || 'Acquisition';
+  var R = window.BKReg, nm = ((document.getElementById('pl-nm') || {}).value || '').trim(), aid = (document.getElementById('pl-an') || {}).value || 'acquisition', guide = !!(document.getElementById('pl-guide') || {}).checked;
+  var a = (R && R.analysis(aid)) || { id:'acquisition', dealType:'Acquisition', live:true }; if(!a.live) return;
   snapshot(); closeModal();
-  var id = nm.trim() ? nm.trim().replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase().slice(0, 24) : '';
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm.trim(), dealId:id, dealType:ty });
+  var id = nm ? nm.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase().slice(0, 24) : 'NEW-' + Date.now().toString(36).toUpperCase();
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id });
+  if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
 window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import Deal'); };
 
@@ -22022,7 +22515,8 @@ window.bkClearInputsGo = function(){
 
 RENDERERS['Home'] = function(){
   var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
-  var has = active(), bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New deal</button><button type="button" class="pl-hbtn" onclick="showSheet(\'Import OM\')">Import OM</button>' + (has ? '<button type="button" class="pl-hbtn" onclick="bkReportOpen()" style="border-color:#3E9AE6;color:#12609f;font-weight:700">Create PDF summary</button>' : '') + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
+  var has = active(); if(!has) return o;
+  var bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkNewDealDialog()">+ New analysis</button><button type="button" class="pl-hbtn" onclick="showSheet(\'Import OM\')">Import OM</button>' + (has ? '<button type="button" class="pl-hbtn" onclick="bkReportOpen()" style="border-color:#3E9AE6;color:#12609f;font-weight:700">Create PDF summary</button>' : '') + (has ? '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button>' : '') + '</div>';
   return Object.assign({}, o, { main:o.main.replace('<div class="pl-home">', '<div class="pl-home">' + bar) });
 };
 if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
@@ -24472,7 +24966,12 @@ var DEVS = [
   INC, EXP(true),
   { id:'debt', title:'Financing', why:'A construction loan, then a permanent loan once the building is stabilised.', sheet:'Debt', fields:[ f('conLTC', 'Construction loan, % of cost', 'pct', { req:1, sug:function(){ return { v:0.65, why:'Construction lenders usually lend 60% to 70% of cost.' }; } }), f('conRate', 'Construction loan rate', 'pct', { req:1, sug:function(){ return { v:0.075, why:'A placeholder until you have a quote.' }; } }), f('permRate', 'Permanent loan rate', 'pct', { sug:function(){ return { v:0.0675, why:'A placeholder until you have a quote.' }; } }), f('permAmort', 'Permanent amortisation, years', 'int', { sug:function(){ return { v:30, why:'30 years is standard.' }; } }) ] },
   EXIT ];
-function sections(s){ return /develop/i.test(String((s || bkLoad()).dealType || '')) ? DEVS : ACQ; }
+/* the steps come from the analysis registry (src/139d): the deal's own analysis decides them. The lists above are the fallback if the registry is not loaded. */
+function fromRegistry(s){ var R = window.BKReg; if(!R) return null; var a = R.of(s), wf = a && a.live ? R.workflow(a.id) : null; if(!wf || !wf.length) return null;
+  return wf.map(function(st){ return { id:st.id, title:st.title, why:st.why, sheet:st.sheet, skippable:!!st.skippable, fields:(st.fields || []).filter(function(e){ var d = R.field(e.k); return d && d.kind !== 'derived' && d.kind !== 'table' && R.requirement(e, s) !== 'na'; }).map(function(e){ var d = R.field(e.k), o = { k:e.k, label:e.label || d.label, t:d.kind === 'choice' ? 'text' : d.kind };
+      if(R.requirement(e, s) === 'required') o.req = 1; var h = e.help || d.help; if(h) o.help = h; var sg = e.sug || d.sug; if(sg) o.sug = sg; return o; }) }; }); }
+function sections(s){ s = s || bkLoad(); return fromRegistry(s) || (/develop/i.test(String(s.dealType || '')) ? DEVS : ACQ); }
+window.bkGuideSections = function(s){ return sections(s); };
 
 /* ------------------------------------------------------------ values */
 function gstate(s){ var g = (s && s._guide) || {}; return { done:g.done || {}, skipped:g.skipped || {}, from:g.from || null, assumed:g.assumed || [], confirmed:g.confirmed || {} }; }
@@ -24656,6 +25155,8 @@ window.bkGuideNext = function(){ var s = bkLoad(), secs = sections(s), sec = sec
 window.bkGuideSkip = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var g = gstate(s); g.skipped[sec.id] = 1; delete g.done[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.step = nextId(secs, sec.id); show(); };
 window.bkGuideBack = function(){ var s = bkLoad(), secs = sections(s), i = st.step === 'review' ? secs.length : secs.findIndex(function(x){ return x.id === st.step; }); st.draft = {}; st.step = i > 0 ? secs[i - 1].id : secs[0].id; show(); };
 window.bkGuideDetail = function(sheet){ document.documentElement.classList.remove('bk-guide'); if(typeof showSheet === 'function') showSheet(sheet); };
+/* start the guide on the deal just created (from the new-analysis dialog): no second deal is made */
+window.bkGuideBegin = function(){ setPref(true); st.screen = ''; st.step = null; st.draft = {}; st.checked = {}; var s = bkLoad(); s._guide = { done:{}, skipped:{}, from:null, assumed:[], confirmed:{} }; bkSave(s); show(); paintToggle(); };
 window.bkGuideBlank = function(type){ st.screen = ''; st.step = null; st.draft = {}; if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(type === 'Development' ? { dealType:'Development', name:'', location:'', closing:'1/1/2027' } : { dealType:'Acquisition', name:'', location:'', closing:'1/1/2027' }); var s = bkLoad(); s._guide = { done:{}, skipped:{}, from:null, assumed:[], confirmed:{} }; if(!String(s.dealId || '').trim() || /^BK-002$/.test(String(s.dealId))) s.dealId = 'NEW-' + Date.now().toString(36).toUpperCase(); bkSave(s); show(); };
 window.bkGuideDoc = function(sheet){ if(typeof showSheet === 'function') showSheet(sheet); };
 /* a deal has just been created from a document: mark what came from it and what I assumed, then carry on in the guide */
