@@ -1,0 +1,102 @@
+/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.
+   Navy is the brand and the structure (chrome, section bars, the key rule). Slate greys carry the neutral surfaces. One blue is the accent.
+   Four semantic colours, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
+   The cell convention is unchanged: blue text on pale yellow is an input. This part loads after every other style so it settles the tokens; it changes colours only. */
+:root{
+  --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
+  --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
+  --ae-ink:#14212F; --ae-dim:#566577; --ae-accent:#1F4E8C; --ae-hint:#F3F6FA;
+  --bk-key-fill:#DDE7F4; --bk-key-ink:#0B2545; --bk-key-rule:#1F4E8C; --bk-key-line:rgba(31,78,140,.25);
+  --bk-link-ink:#1B7A4B; --bk-attn-red:#C0392B; --bk-attn-amber:#B7791F; --bk-na-ink:#6B7785;
+  --bk-in-line:#D6C57A; --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
+}
+html.bk-auth-ok body, html body{ background:var(--ae-bg); }
+/* section bars and column headings: flat slate with a navy base line, so structure reads at a glance */
+html body #viewport table.fin caption, html body #viewport .card-head, html body #viewport .bk-snap > .card-head, html body #viewport .bk-sx-card > .bk-sx-title, html body #viewport .pf-card > .t{
+  background:var(--ae-head) !important; border-bottom:2px solid var(--bk-navy) !important; color:var(--bk-navy) !important; }
+html body #viewport table.fin th{ background:var(--ae-head2) !important; color:var(--ae-ink) !important; border-color:var(--ae-line) !important; }
+html body #viewport table.fin thead tr:last-child th{ border-bottom:1px solid var(--bk-navy-2) !important; }
+html body #viewport [data-ic]::before{ background:var(--bk-navy) !important; }
+html body #viewport table.fin tr.grandtotal td:first-child, html body #viewport table.fin tr.tot td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+/* chips: one background and one ink per meaning */
+html body .status-chip.pass{ background:var(--bk-ok-bg) !important; color:var(--bk-link-ink) !important; }
+html body .status-chip.warn{ background:var(--bk-warn-bg) !important; color:#8A5A12 !important; }
+html body .status-chip.fail{ background:var(--bk-fail-bg) !important; color:#A32F24 !important; }
+/* the page title and headline figures take the navy */
+html body #viewport .title-block h2{ color:var(--bk-navy); }
+html body #viewport a{ color:var(--ae-accent); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(111,180,242,.14); --bk-key-ink:#e8eef5; --bk-key-rule:#6fb4f2; --bk-key-line:rgba(111,180,242,.3); --bk-ok-bg:rgba(98,215,159,.14); --bk-warn-bg:rgba(240,184,74,.15); --bk-fail-bg:rgba(255,122,110,.16); } 
+  html body #viewport table.fin caption, html body #viewport .card-head, html body #viewport .bk-snap > .card-head, html body #viewport .bk-sx-card > .bk-sx-title, html body #viewport .pf-card > .t{ background:var(--ae-head) !important; color:var(--ae-ink) !important; border-bottom-color:var(--ae-accent) !important; } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(111,180,242,.14); --bk-key-ink:#e8eef5; --bk-key-rule:#6fb4f2; --bk-key-line:rgba(111,180,242,.3); --bk-ok-bg:rgba(98,215,159,.14); --bk-warn-bg:rgba(240,184,74,.15); --bk-fail-bg:rgba(255,122,110,.16); }
+:root[data-theme="dark"] body #viewport table.fin caption, :root[data-theme="dark"] body #viewport .card-head, :root[data-theme="dark"] body #viewport .bk-snap > .card-head, :root[data-theme="dark"] body #viewport .bk-sx-card > .bk-sx-title, :root[data-theme="dark"] body #viewport .pf-card > .t{ background:var(--ae-head) !important; color:var(--ae-ink) !important; border-bottom-color:var(--ae-accent) !important; }
+:root[data-theme="dark"] body, :root[data-theme="dark"] html body{ background:var(--ae-bg); }
+
+/* LAYOUT: one left edge. The page title, the header strip and every section start at the same x (22px gutter); sections sit 16px below the header and 12px apart. */
+@media (min-width:901px){ html body .main-col{ padding:16px 22px 40px; } html body #viewport .main-col > .note-flag:first-child{ margin-top:0; } }
+
+/* KEY-FIGURE BAR: a deep-navy strip at the foot of the window with the headline figures, large and plain. */
+#bk-kpibar{ position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex; align-items:stretch; background:var(--bk-navy); color:#EAF0F7; border-top:2px solid var(--bk-navy-2); font-family:Inter,"Segoe UI",system-ui,sans-serif; }
+#bk-kpibar[hidden]{ display:none; }
+#bk-kpibar .kb-c{ flex:1 1 0; min-width:0; padding:7px 14px 6px; border-left:1px solid rgba(255,255,255,.14); }
+#bk-kpibar .kb-c:first-child{ border-left:0; }
+#bk-kpibar .kb-k{ font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:#9FB3CC; font-weight:600; }
+#bk-kpibar .kb-v{ font-size:21px; line-height:1.15; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#bk-kpibar .kb-s{ font-size:10.5px; color:#8FB4E3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.bk-has-kpibar{ padding-bottom:68px; }
+@media (max-width:900px){ #bk-kpibar{ display:none !important; } body.bk-has-kpibar{ padding-bottom:0; } }
+@media print{ #bk-kpibar{ display:none !important; } body.bk-has-kpibar{ padding-bottom:0; } }
+
+/* FLAT AND SQUARE. Controls, cards, chips and tiles are rectangles with hairline borders; no rounded corners, no pills, no shadows. Status dots become small squares. */
+html body .grp-btn, html body .note-flag, html body button, html body .bk-sx-chip, html body .glyph, html body .bk-seg, html body .bk-save, html body details.bk-notes, html body .bk-tile, html body .bk-tile.hero, html body .bk-req, html body .bk-sx-seg, html body .pl-search, html body .status-chip, html body td, html body .bar, html body .ae-tab, html body .pf-print{ border-radius:0 !important; box-shadow:none; }
+html body .dot{ border-radius:0 !important; width:6px; height:6px; }
+html body #viewport .bk-tile, html body #viewport .bk-tile.hero{ border:1px solid var(--ae-line); background:var(--ae-cell); }
+@media (min-width:901px){ body.bk-has-kpibar .rail{ max-height:calc(100vh - 68px); overflow-y:auto; } }
+
+/* TREE NAVIGATION: the sidebar is a tree. Each group has a square +/- expander, the open group's sheets hang from a dotted line, the current sheet is a flat selected row. */
+html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-item{ display:none !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label{ cursor:pointer !important; position:relative; padding-left:26px !important; color:var(--bk-navy); font-weight:700; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ content:"\2212"; position:absolute; left:6px; top:50%; margin-top:-6px; width:11px; height:11px; box-sizing:border-box; border:1px solid #7B8794; background:#fff; color:var(--bk-navy); font:700 10px/9px Inter,system-ui,sans-serif; text-align:center; border-radius:0; }
+html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-group-label::before{ content:"+"; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed){ position:relative; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed)::after{ content:""; position:absolute; left:11px; top:30px; bottom:10px; border-left:1px dotted #8A96A5; pointer-events:none; }
+html:not(.bk-rail-collapsed) body .rail .rail-item{ position:relative; padding-left:34px !important; border-radius:0 !important; border:0 !important; background:transparent; box-shadow:none !important; color:var(--ae-ink); }
+html:not(.bk-rail-collapsed) body .rail .rail-item::before{ content:""; position:absolute; left:11px; top:50%; width:14px; border-top:1px dotted #8A96A5; }
+html:not(.bk-rail-collapsed) body .rail .rail-item .dot{ display:none; }
+html:not(.bk-rail-collapsed) body .rail .rail-item:hover{ background:var(--ae-head2); }
+html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:var(--ae-sel) !important; color:var(--bk-navy) !important; font-weight:700; box-shadow:inset 3px 0 0 var(--bk-key-rule) !important; }
+
+/* RIBBON: under the tab row, the active tab's sheets are large labelled buttons, then Deal and View command groups, each with its caption underneath. */
+.bk-ribbon{ display:flex; align-items:stretch; gap:0; background:var(--ae-head2); border-bottom:1px solid var(--ae-line); padding:4px 10px 0; overflow-x:auto; font-family:Inter,"Segoe UI",system-ui,sans-serif; }
+.bk-ribbon .rb-g{ display:flex; flex-direction:column; border-right:1px solid var(--ae-line); padding:0 8px; flex:0 0 auto; min-width:0; }
+.bk-ribbon .rb-g:last-child{ border-right:0; }
+.bk-ribbon .rb-row{ display:flex; gap:2px; align-items:stretch; flex:1 1 auto; }
+.bk-ribbon .rb-b{ display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:3px; min-width:58px; max-width:88px; padding:5px 5px 4px; border:1px solid transparent; background:transparent; color:var(--ae-ink); font:500 11px/1.2 Inter,system-ui,sans-serif; text-align:center; cursor:pointer; border-radius:0; }
+.bk-ribbon .rb-b svg{ width:26px; height:26px; flex:0 0 auto; stroke:var(--bk-navy-2); fill:none; stroke-width:1.5; stroke-linecap:square; stroke-linejoin:miter; }
+.bk-ribbon .rb-b:hover{ background:var(--ae-sel); border-color:var(--ae-line); }
+.bk-ribbon .rb-b.on{ background:#fff; border-color:var(--ae-line); border-bottom-color:#fff; box-shadow:inset 0 2px 0 var(--bk-key-rule); font-weight:700; color:var(--bk-navy); }
+.bk-ribbon .rb-cap{ text-align:center; font:600 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--bk-navy-2); background:var(--ae-head); margin:3px -8px 0; padding:4px 0; border-top:1px solid var(--ae-line); }
+.bk-ribbon .rb-g.active .rb-cap{ background:var(--bk-navy); color:#fff; }
+@media (max-width:900px){ .bk-ribbon{ display:none; } }
+@media print{ .bk-ribbon{ display:none !important; } }
+
+/* INPUT GRIDS, CLEANED UP: one row height, everything centred vertically; the Units column is quiet and left; the Status column is centred with chips of one width and one height; an input cell has ONE amber hairline, not a border plus an inner ring; dropdowns show a caret. */
+html body #viewport table.fin.bk-grid4 tbody tr > td, html body #viewport table.fin.bk-grid3 tbody tr > td{ vertical-align:middle; }
+html body #viewport table.fin.bk-grid4 tbody tr:not(.total):not(.grandtotal):not(.sec) > td, html body #viewport table.fin.bk-grid3 tbody tr:not(.total):not(.grandtotal):not(.sec) > td{ height:36px; padding-top:4px !important; padding-bottom:4px !important; }
+html body #viewport table.fin.bk-grid4 tbody tr > td:nth-child(3){ text-align:left !important; color:var(--ae-dim) !important; font-size:12px !important; }
+html body #viewport table.fin.bk-grid4 tbody tr > td:nth-child(3)[data-bk-v="blank"]{ color:var(--bk-na-ink); }
+html body #viewport table.fin.bk-grid4 thead th:last-child, html body #viewport table.fin.bk-grid4 tbody tr > td:last-child{ text-align:center; width:132px; }
+html body #viewport table.fin .status-chip{ display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; min-width:104px; height:20px; padding:0 8px; font:600 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.05em; white-space:nowrap; }
+html body #viewport table.fin tr.input td.v, html body #viewport table.fin td.v:has(select){ box-shadow:none !important; border-color:var(--bk-in-line) !important; }
+html body #viewport table.fin tr.input td.v:hover{ box-shadow:none !important; border-color:var(--bk-attn-amber) !important; }
+html body #viewport table.fin tr.input td.v select, html body #viewport table.fin td.v select{ appearance:none; -webkit-appearance:none; padding-right:20px; background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231B3F66' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 4px center !important; border:0 !important; text-align:right; text-align-last:right; }
+html body #viewport table.fin td.v select option{ color:#14212F; background:#fff; }
+html body #viewport table.fin td.bk-uom, html body #viewport table.fin.bk-grid4 tbody tr > td.bk-uom{ color:var(--ae-dim) !important; font-size:12px !important; text-align:left !important; }
+html body #viewport table.fin tr.input td.v input:not([type=checkbox]){ text-align:right; padding-right:20px !important; width:100% !important; box-sizing:border-box; }
+html body #viewport table.fin tr.input td.v input::placeholder{ color:var(--bk-na-ink); opacity:1; font-weight:500; }
+
+/* NOTES: explanatory notes are quiet paper, not blue. White card, hairline border, a slate rule on the left. Alerts keep their own amber / red rule. */
+html body #viewport .pf-ins li, html body #viewport .note-flag:not(.bk-fail-banner):not(.bk-controls-flag){ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
+html body #viewport .pf-ins li b, html body #viewport .note-flag b{ color:var(--bk-navy); }
+html body #viewport .ae-hint, html body #viewport .ae .ae-hint{ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--bk-navy-2); padding-right:10px; border-right:1px solid var(--ae-line); }

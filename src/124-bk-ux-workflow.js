@@ -519,6 +519,43 @@ function decorate(sheet){
   if(sheet === 'Deal Underwrite' && hasDeal()) decorateUnderwrite(frame);
   decorateNotes(frame);
   decorateRail();
+  ribbon(frame, sheet);
+  kpiBar(sheet);
+}
+/* RIBBON: the command bar under the group tabs. It only carries existing commands (open a sheet, new analysis, import, clear, print, key, guide, sidebar); nothing new is calculated. */
+var RB = { doc:'M6 3h9l4 4v14H6z M15 3v4h4 M9 12h7 M9 16h7', grid:'M4 5h16v14H4z M4 10h16 M4 15h16 M10 5v14', chart:'M4 20V4 M4 20h16 M8 16v-5 M12 16V8 M16 16v-8', bank:'M3 9l9-5 9 5 M5 9v9 M10 9v9 M14 9v9 M19 9v9 M3 20h18', key:'M8 14a4 4 0 1 1 3-6.5L21 17v3h-3v-2h-2v-2h-2l-1.5-1.5', plus:'M12 5v14 M5 12h14', up:'M12 16V5 M7 10l5-5 5 5 M5 19h14', trash:'M5 7h14 M9 7V4h6v3 M7 7l1 13h8l1-13', print:'M7 9V3h10v6 M7 17H4v-7h16v7h-3 M7 14h10v7H7z', book:'M5 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H5z M19 4h-6 M19 4v14h-6', side:'M4 5h16v14H4z M9 5v14', swatch:'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z', people:'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M3 20v-2a5 5 0 0 1 10 0v2 M16 6a3 3 0 0 1 0 6 M21 20v-2a5 5 0 0 0-3-4.5', cal:'M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4', calc:'M6 3h12v18H6z M9 7h6 M9 12h2 M13 12h2 M9 16h2 M13 16h2' };
+var RB_OF = { overview:'grid', inputs:'doc', editor:'grid', reports:'doc', propops:'chart', dev:'cal', debt:'bank', returns:'chart', biz:'calc', credit:'bank', tools:'calc', portfolio:'people', qa:'doc' };
+function rbIcon(k){ return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (RB[k] || RB.doc) + '"/></svg>'; }
+function rbBtn(icon, label, attrs, on){ return '<button type="button" class="rb-b' + (on ? ' on' : '') + '" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; }
+function ribbon(frame, sheet){
+  if(!frame || frame.querySelector('.bk-ribbon')) return;
+  var nav = frame.querySelector('.tabnav'); if(!nav) return;
+  var g = typeof groupOf === 'function' ? groupOf(sheet) : null, adv = advancedIds ? advancedIds() : [];
+  var sheets = g ? g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }) : [], ic = RB_OF[g && g.id] || 'doc';
+  var h = '<div class="bk-ribbon" role="toolbar" aria-label="Commands">';
+  h += '<div class="rb-g active"><div class="rb-row">' + sheets.map(function(n){ return rbBtn(ic, n, 'data-goto-sheet2="' + esc(n) + '"', n === sheet); }).join('') + '</div><div class="rb-cap">' + esc(g ? g.label : 'Sheets') + '</div></div>';
+  h += '<div class="rb-g"><div class="rb-row">'
+    + rbBtn('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + rbBtn('up', 'Import OM', 'data-goto-sheet2="Import OM"')
+    + rbBtn('trash', 'Clear inputs', 'onclick="showSheet(\'Home\');setTimeout(function(){if(window.bkClearInputsDialog)bkClearInputsDialog();},50)"') + rbBtn('print', 'Print / Save PDF', 'onclick="bkPrintSection()"')
+    + '</div><div class="rb-cap">Deal</div></div>';
+  h += '<div class="rb-g"><div class="rb-row">'
+    + rbBtn('swatch', 'Colour key', 'onclick="var b=document.querySelector(\'[data-bk-key-toggle]\');if(b)b.click()"') + rbBtn('book', 'Guide', 'data-goto-sheet2="Guide"') + rbBtn('side', 'Sidebar', 'onclick="bkRailCollapse()"')
+    + '</div><div class="rb-cap">View</div></div></div>';
+  nav.insertAdjacentHTML('afterend', h);
+}
+/* KEY-FIGURE BAR: the headline figures stay at the foot of every deal sheet, read from the same headline() as the Deal Snapshot, so they cannot differ from it. */
+function kpiBar(sheet){
+  var el = document.getElementById('bk-kpibar');
+  if(!hasDeal() || sheet === 'Guide'){ if(el) el.hidden = true; document.body.classList.remove('bk-has-kpibar'); return; }
+  if(!el){ el = document.createElement('div'); el.id = 'bk-kpibar'; el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Key figures'); document.body.appendChild(el); }
+  var r = readiness(), cell = function(k, v, sub){ return '<div class="kb-c"><div class="kb-k">' + k + '</div><div class="kb-v">' + v + '</div>' + (sub ? '<div class="kb-s">' + sub + '</div>' : '') + '</div>'; };
+  var html;
+  if(!r || !r.canCalculate){ html = cell('Status', esc(r ? r.state : 'DRAFT'), 'results withheld until ' + (r ? r.missing.length : 0) + ' required input' + (r && r.missing.length === 1 ? ' is' : 's are') + ' entered'); }
+  else { var h; try { h = headline(); } catch(e){ h = null; }
+    html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
+      + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+  el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }
 function refreshFlow(){
   var vp = document.getElementById('viewport'), bar = vp && vp.querySelector('.bk-flow'); if(!bar) return;

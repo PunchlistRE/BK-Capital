@@ -566,6 +566,7 @@ function colorKeyCard(){
       <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--ae-ink,#10233a)', '12')}<div><b>Calculated</b><span>Black text, no fill. Worked out from other cells; not typed.</span></div></div>
       <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-link-ink,#13774a)', '12')}<div><b style="color:var(--bk-link-ink,#13774a)">Linked</b><span>Green text. Shown here, but set or worked out on another sheet.</span></div></div>
       <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-na-ink,#69747f)', 'n/a')}<div><b style="color:var(--bk-na-ink,#69747f)">N/A</b><span>Grey text. Does not apply to this kind of deal.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-na-ink,#69747f)', '\u2014')}<div><b>Dash, Unavailable, N/A, zero</b><span>A dash means nothing entered or nothing in that period. Unavailable means it cannot be calculated yet. N/A means it does not apply to this deal. A real zero is always shown as a number.</span></div></div>
       <div class="keyrow">${sw('background:transparent;box-shadow:inset 0 0 0 2px var(--bk-attn-red,#d1433a);border:0', '')}<div><b style="color:var(--bk-attn-red,#d1433a)">Required / missing</b><span>Red outline. The model cannot calculate until it is entered.</span></div></div>
       <div class="keyrow">${sw('background:transparent;box-shadow:inset 0 0 0 2px var(--bk-attn-amber,#d99a1f);border:0', '')}<div><b style="color:var(--bk-attn-amber,#b9780f)">Needs a look</b><span>Amber outline. Not required to calculate, but the returns need it.</span></div></div>
     </div>
@@ -10670,6 +10671,8 @@ window.bkFieldStatus = function(key){
   if(Object.prototype.hasOwnProperty.call(rr.core, key)) return { state:'missing', label:'MISSING', cls:'fail', tip:'Required to calculate returns: ' + rr.core[key] };
   if(Object.prototype.hasOwnProperty.call(rr.invest, key)) return { state:'needed', label:'NEEDED', cls:'warn', tip:'Needed before the deal is investment-ready: ' + rr.invest[key] };
   try { var s = bkLoad(), t = s._template; if(t && t.values && Object.prototype.hasOwnProperty.call(t.values, key) && s[key] === t.values[key]) return { state:'template', label:'TEMPLATE', cls:'warn', tip:'Pre-filled from the assumption template; edit it to make it yours' }; } catch(e){}
+  /* a field that is not required and has nothing in it is not "OK": it is simply blank */
+  try { var sv = bkLoad()[key]; if(sv === '' || sv === null) return { state:'blank', label:'OPTIONAL', cls:'', tip:'Not required, and nothing entered' }; } catch(e){}
   return { state:'ok', label:'OK', cls:'pass', tip:'' };
 };
 
@@ -16319,6 +16322,12 @@ go();
         var n=fails(), vp=document.getElementById('viewport'), mc=vp && vp.querySelector('.main-col');
         if(n && mc && !mc.querySelector('.bk-fail-banner')){
           var d=document.createElement('div'); d.className='note-flag bk-fail-banner';
+          var rd=null; try{ rd=(typeof bkDealReadiness==='function')?bkDealReadiness():null; }catch(e){}
+          if(rd && rd.state==='DRAFT' && rd.missing && rd.missing.length && !(rd.blockers && rd.blockers.length)){
+            /* an unfinished deal is not a failed deal: say what is missing, in a neutral tone; the red banner stays for complete deals that fail */
+            d.className='note-flag bk-fail-banner bk-draft-banner';
+            d.innerHTML='<span>&#9432;</span><div><b>Draft - '+rd.missing.length+' required input'+(rd.missing.length===1?'':'s')+' still to enter.</b> Results on this page are withheld until they are. Go to Deal Underwrite to complete them.</div>';
+          } else
           d.innerHTML='<span>&#9888;</span><div><b class="bk-ctl-FAIL">FAIL - '+n+' model-control failure'+(n===1?'':'s')+'.</b> Figures on this page are diagnostic and are not decision-grade until resolved. See Home or Deal Underwrite for the list.</div>';
           mc.insertBefore(d, mc.firstChild);
         }
@@ -16622,12 +16631,18 @@ html.bk-auth-ok body { background: #F4EFE3; }
         });
       }
       var w=t.closest('.tbl-wrap');
-      if(w){ var sc = want==='bk-m-scroll' && w.scrollWidth > w.clientWidth + 2;
+      if(w){ var sc = w.scrollWidth > w.clientWidth + 2; /* any table wider than its card, on any screen, gets the scroll cue */
         if(sc && !w.classList.contains('bk-scrollable')) w.classList.add('bk-scrollable');
         if(!sc && w.classList.contains('bk-scrollable')) w.classList.remove('bk-scrollable'); }
     });
   }
-  var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); }catch(e){} }); }
+  /* report tables (class rp-tbl) scroll themselves, so they get the same cue */
+  function runRp(){ var vp=document.getElementById('viewport'); if(!vp) return;
+    vp.querySelectorAll('table.rp-tbl').forEach(function(t){ var sc = t.scrollWidth > t.clientWidth + 2;
+      if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); });
+    vp.querySelectorAll('.ae table.ae-grid').forEach(function(g){ var t = g.parentElement; if(!t || t.classList.contains('ae-panel')) return; var sc = t.scrollWidth > t.clientWidth + 2;
+      if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); }); }
+  var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
   if(typeof window.bkDisplayPass==='function') window.bkDisplayPass(schedule);
   window.addEventListener('resize', schedule);
 })();
@@ -18189,6 +18204,11 @@ schedule();
 .bk-sx-be th:first-child, .bk-sx-be td:first-child{ text-align:left; }
 .bk-sx-be td.cushion-neg{ color:var(--sx-dn); font-weight:700; }
 .bk-sx-tip{ position:fixed; z-index:9999; pointer-events:none; background:#0e2a4a; color:#eaf0f6; font-size:11.5px; line-height:1.35; padding:6px 9px; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.25); max-width:260px; display:none; }
+
+/* Visual QA: the analysis cards (Sensitivity, Financing Lab/Compare, Version History) use the same lettered title bar as every other section. Hierarchy is kept: the card body keeps its own padding and the chart stays inside. */
+html body #viewport .bk-sx-card{ background:var(--ae-cell-ro,var(--sx-surface)); border:1px solid var(--ae-line,var(--sx-line)); border-radius:0; box-shadow:none; padding:0 0 12px; margin-top:12px; }
+html body #viewport .bk-sx-card > *{ margin-left:12px; margin-right:12px; }
+html body #viewport .bk-sx-card > .bk-sx-title{ display:flex; align-items:center; gap:0; margin:0 0 10px; padding:6px 10px; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border-bottom:1px solid var(--ae-line); color:var(--ae-ink); font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif; letter-spacing:.01em; text-transform:none; }
 </style>
 <script id="bk-sensitivity-explorer">
 /* ===========================================================================
@@ -19206,6 +19226,43 @@ function decorate(sheet){
   if(sheet === 'Deal Underwrite' && hasDeal()) decorateUnderwrite(frame);
   decorateNotes(frame);
   decorateRail();
+  ribbon(frame, sheet);
+  kpiBar(sheet);
+}
+/* RIBBON: the command bar under the group tabs. It only carries existing commands (open a sheet, new analysis, import, clear, print, key, guide, sidebar); nothing new is calculated. */
+var RB = { doc:'M6 3h9l4 4v14H6z M15 3v4h4 M9 12h7 M9 16h7', grid:'M4 5h16v14H4z M4 10h16 M4 15h16 M10 5v14', chart:'M4 20V4 M4 20h16 M8 16v-5 M12 16V8 M16 16v-8', bank:'M3 9l9-5 9 5 M5 9v9 M10 9v9 M14 9v9 M19 9v9 M3 20h18', key:'M8 14a4 4 0 1 1 3-6.5L21 17v3h-3v-2h-2v-2h-2l-1.5-1.5', plus:'M12 5v14 M5 12h14', up:'M12 16V5 M7 10l5-5 5 5 M5 19h14', trash:'M5 7h14 M9 7V4h6v3 M7 7l1 13h8l1-13', print:'M7 9V3h10v6 M7 17H4v-7h16v7h-3 M7 14h10v7H7z', book:'M5 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H5z M19 4h-6 M19 4v14h-6', side:'M4 5h16v14H4z M9 5v14', swatch:'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z', people:'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M3 20v-2a5 5 0 0 1 10 0v2 M16 6a3 3 0 0 1 0 6 M21 20v-2a5 5 0 0 0-3-4.5', cal:'M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4', calc:'M6 3h12v18H6z M9 7h6 M9 12h2 M13 12h2 M9 16h2 M13 16h2' };
+var RB_OF = { overview:'grid', inputs:'doc', editor:'grid', reports:'doc', propops:'chart', dev:'cal', debt:'bank', returns:'chart', biz:'calc', credit:'bank', tools:'calc', portfolio:'people', qa:'doc' };
+function rbIcon(k){ return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (RB[k] || RB.doc) + '"/></svg>'; }
+function rbBtn(icon, label, attrs, on){ return '<button type="button" class="rb-b' + (on ? ' on' : '') + '" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; }
+function ribbon(frame, sheet){
+  if(!frame || frame.querySelector('.bk-ribbon')) return;
+  var nav = frame.querySelector('.tabnav'); if(!nav) return;
+  var g = typeof groupOf === 'function' ? groupOf(sheet) : null, adv = advancedIds ? advancedIds() : [];
+  var sheets = g ? g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }) : [], ic = RB_OF[g && g.id] || 'doc';
+  var h = '<div class="bk-ribbon" role="toolbar" aria-label="Commands">';
+  h += '<div class="rb-g active"><div class="rb-row">' + sheets.map(function(n){ return rbBtn(ic, n, 'data-goto-sheet2="' + esc(n) + '"', n === sheet); }).join('') + '</div><div class="rb-cap">' + esc(g ? g.label : 'Sheets') + '</div></div>';
+  h += '<div class="rb-g"><div class="rb-row">'
+    + rbBtn('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + rbBtn('up', 'Import OM', 'data-goto-sheet2="Import OM"')
+    + rbBtn('trash', 'Clear inputs', 'onclick="showSheet(\'Home\');setTimeout(function(){if(window.bkClearInputsDialog)bkClearInputsDialog();},50)"') + rbBtn('print', 'Print / Save PDF', 'onclick="bkPrintSection()"')
+    + '</div><div class="rb-cap">Deal</div></div>';
+  h += '<div class="rb-g"><div class="rb-row">'
+    + rbBtn('swatch', 'Colour key', 'onclick="var b=document.querySelector(\'[data-bk-key-toggle]\');if(b)b.click()"') + rbBtn('book', 'Guide', 'data-goto-sheet2="Guide"') + rbBtn('side', 'Sidebar', 'onclick="bkRailCollapse()"')
+    + '</div><div class="rb-cap">View</div></div></div>';
+  nav.insertAdjacentHTML('afterend', h);
+}
+/* KEY-FIGURE BAR: the headline figures stay at the foot of every deal sheet, read from the same headline() as the Deal Snapshot, so they cannot differ from it. */
+function kpiBar(sheet){
+  var el = document.getElementById('bk-kpibar');
+  if(!hasDeal() || sheet === 'Guide'){ if(el) el.hidden = true; document.body.classList.remove('bk-has-kpibar'); return; }
+  if(!el){ el = document.createElement('div'); el.id = 'bk-kpibar'; el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Key figures'); document.body.appendChild(el); }
+  var r = readiness(), cell = function(k, v, sub){ return '<div class="kb-c"><div class="kb-k">' + k + '</div><div class="kb-v">' + v + '</div>' + (sub ? '<div class="kb-s">' + sub + '</div>' : '') + '</div>'; };
+  var html;
+  if(!r || !r.canCalculate){ html = cell('Status', esc(r ? r.state : 'DRAFT'), 'results withheld until ' + (r ? r.missing.length : 0) + ' required input' + (r && r.missing.length === 1 ? ' is' : 's are') + ' entered'); }
+  else { var h; try { h = headline(); } catch(e){ h = null; }
+    html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
+      + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+  el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }
 function refreshFlow(){
   var vp = document.getElementById('viewport'), bar = vp && vp.querySelector('.bk-flow'); if(!bar) return;
@@ -23477,7 +23534,7 @@ window.bkHistoryRestoreAsk = function(vid){ var v = hist(bkLoad()).versions.filt
 window.bkHistoryCompare = function(vid){ sel = sel === vid ? null : vid; showSheet('Version History'); };
 window.bkHistorySaveFromForm = function(){ var e = document.getElementById('bk-ver-name'); bkHistorySaveVersion(e && e.value.trim() ? e.value.trim() : '', false); showSheet('Version History'); };
 
-function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function box(h){ h = String(h).replace(/^<div style="font-weight:700;margin-bottom:6px">([\s\S]*?)<\/div>/, '<p class="bk-sx-title">$1</p>'); return '<div class="bk-sx-card" style="font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 function render(){
   flush();
   var s = safe(function(){ return bkLoad(); }, null), h = hist(s), cur = headline(), hdr = { title:'Version History', crumbs:'QA', desc:'Every input change on this deal, and named versions you can compare and restore.', meta:{ Property:s && s.name, Versions:h.versions.length, Changes:h.log.length }, sidebar:'' };
@@ -23541,7 +23598,7 @@ function cellColor(metric, v, L){
   return 'rgb(' + [0, 1, 2].map(function(i){ return Math.round(a[i] + (b[i] - a[i]) * u); }).join(',') + ')';
 }
 function fmt(metric, r){ if(!r) return '—'; var v = r[metric]; if(v == null || !isFinite(v)) return '—'; return metric === 'dscr' || metric === 'moic' ? X(v) : P(v, 1); }
-function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function box(h){ h = String(h).replace(/^<div style="font-weight:700;margin-bottom:6px">([\s\S]*?)<\/div>/, '<p class="bk-sx-title">$1</p>'); return '<div class="bk-sx-card" style="font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 
 function render(){
   var s = safe(function(){ return bkLoad(); }, null), hdr = { title:'Financing Lab', crumbs:'Debt', desc:'Buy this property today at a market cap rate and try different loans. Nothing here changes the deal.', sidebar:'', meta:{ Property:s && s.name } };
@@ -23778,6 +23835,7 @@ function card(){ var s = bkLoad(), cont = typeof bkConventions === 'function' ? 
 .ae-grid{ border-collapse:collapse; width:100%; background:var(--ae-cell); font-variant-numeric:tabular-nums; }
 .ae-grid th{ background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border:1px solid var(--ae-line); padding:4px 8px; font-weight:600; text-align:left; color:var(--ae-ink); white-space:nowrap; }
 .ae-grid th.grp{ text-align:center; background:var(--ae-head); }
+.ae-grid th.r{ text-align:right; }   /* a numeric column's heading sits over its figures */
 .ae-grid td{ border:1px solid var(--ae-line); padding:0; }
 .ae-grid td.c{ padding:4px 8px; } .ae-grid td.r{ text-align:right; } .ae-grid td.ro{ background:var(--ae-cell-ro); color:var(--ae-dim); }
 .ae-grid td input, .ae-grid td select{ width:100%; border:0; background:transparent; color:var(--ae-ink); font:inherit; padding:4px 8px; box-sizing:border-box; border-radius:0; }
@@ -23880,7 +23938,7 @@ function lineRows(s, items, egi){ var u = Math.max(1, num(s.units)), g = Math.ma
       + '<td><input type="text" id="' + id + '" class="num" value="' + esc(fmtIn(+(pctBasis ? amount * 100 : amount).toFixed(4), 'num')) + '" autocomplete="off" onchange="bkEdLine(\'' + key + '\',\'amount\',this.value)"></td>'
       + '<td>' + (pctBasis ? '<span class="ae-unit" style="padding:4px 8px;display:block">-</span>' : '<select onchange="bkEdLine(\'' + key + '\',\'freq\',this.value)"><option' + (f === 'A' ? ' selected' : '') + '>Annually</option><option' + (f === 'M' ? ' selected' : '') + '>Monthly</option></select>') + '</td>'
       + '<td class="c r ro">' + money(total) + '</td><td class="c r ro">' + money(total / u) + '</td><td class="c r ro">' + money(total / g, 2) + '</td><td class="c r ro">' + (egi > 0 ? pct(total / egi, 1) : '-') + '</td><td class="c ro">' + esc(it[2] || '') + '</td></tr>'; }).join(''); }
-function lineGrid(s, items, egi){ return '<div class="ae-panel"><table class="ae-grid"><thead><tr><th class="grp" colspan="1">General</th><th class="grp" colspan="3">Amount</th><th class="grp" colspan="4">Year 1</th><th class="grp">Inflation</th></tr><tr><th>Name</th><th>How Input</th><th>Amount</th><th>Frequency</th><th>Annual Total</th><th>$ / Unit</th><th>$ / GSF</th><th>% of EGI</th><th>Rate</th></tr></thead><tbody>' + lineRows(s, items, egi) + '</tbody></table></div>'; }
+function lineGrid(s, items, egi){ return '<div class="ae-panel"><table class="ae-grid"><thead><tr><th class="grp" colspan="1">General</th><th class="grp" colspan="3">Amount</th><th class="grp" colspan="4">Year 1</th><th class="grp">Inflation</th></tr><tr><th>Name</th><th>How Input</th><th class="r">Amount</th><th>Frequency</th><th class="r">Annual Total</th><th class="r">$ / Unit</th><th class="r">$ / GSF</th><th class="r">% of EGI</th><th>Rate</th></tr></thead><tbody>' + lineRows(s, items, egi) + '</tbody></table></div>'; }
 /* ---------- PROPERTY ---------- */
 var TYPES = ['Multifamily', 'Mixed-Use', 'Industrial', 'Retail', 'Office', 'Hospitality', 'Land', 'Other'], STATUS = ['Pipeline', 'Under Contract', 'Owned', 'Sold', 'Dead'];
 var TPLKEY = 'bkcapital.templates.v1';
@@ -25689,8 +25747,8 @@ function devPanel(){
   return '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div><b>Development deal: acquisition conventions do not apply.</b> '
     + 'Construction-loan sizing, construction-period cash flows, lease-up and annual growth follow the development methodology and are not affected by these settings. '
     + 'Configurable conventions for development deals would be a separate extension.</div></div>'
-    + '<div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions - Acquisition Deals Only</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
-    + '<th style="text-align:left">Applies to this deal</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    + '<details class="bk-conv-na"><summary style="cursor:pointer;font-size:12px;color:var(--bk-na-ink);margin:0 0 8px">Show the acquisition-only settings (not used on this deal)</summary><div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions - Acquisition Deals Only</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
+    + '<th style="text-align:left">Applies to this deal</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div></details>';
 }
 function panel(){
   var s = bkLoad(), cv = bkConventions(s);
@@ -26141,7 +26199,7 @@ html body #viewport .bk-dui.bk-tabs .bk-dt.na::before{ background:var(--bk-na-in
 html body #viewport .bk-dui.bk-tabs .bk-dt.empty{ opacity:.45; pointer-events:none; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-n{ min-width:17px; height:17px; padding:0 5px; border-radius:9px; background:var(--bk-attn-red); color:#fff; font:700 10.5px/17px Inter,system-ui,sans-serif; text-align:center; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-na{ font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--bk-na-ink); border:1px solid var(--bk-na-ink); border-radius:2px; padding:1px 4px; }
-html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto; position:sticky; right:0; height:auto; padding:0 11px !important; background:var(--ae-bg) !important; border:0 !important; border-left:1px solid var(--ae-line) !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 11.5px/1 Inter,system-ui,sans-serif !important; cursor:pointer; white-space:nowrap; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto; position:static; height:auto; padding:0 11px !important; background:var(--ae-bg) !important; border:0 !important; border-left:1px solid var(--ae-line) !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 11.5px/1 Inter,system-ui,sans-serif !important; cursor:pointer; white-space:nowrap; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-all:hover{ color:var(--ae-ink) !important; }
 html body #viewport .tbl-wrap.bk-grp-hide{ display:none !important; }
 @media print{ html body #viewport .tbl-wrap.bk-grp-hide{ display:block !important; } }
@@ -26399,6 +26457,42 @@ html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.warn .v{ color:#f
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.pass .v, html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.ok .v{ color:#7fd4a0; }
 html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-theme="light"]) #viewport button[class=""]{ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
 }
+
+/* Visual QA: wide tables. One cue on every screen size: a "scroll sideways" line that stays put while the table moves, plus a shaded edge on whichever side still has columns hidden, so the last column is always reachable. */
+html body #viewport .tbl-wrap.bk-scrollable, html body #viewport table.rp-tbl.bk-scrollable, html body #viewport .ae div.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+  background:linear-gradient(to right,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 0 0/40px 100% no-repeat local,
+             linear-gradient(to left,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 100% 0/40px 100% no-repeat local,
+             linear-gradient(to right,rgba(14,42,74,.22),rgba(14,42,74,0)) 0 0/10px 100% no-repeat scroll,
+             linear-gradient(to left,rgba(14,42,74,.22),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll,
+             var(--ae-cell-ro) !important; }
+html body #viewport .tbl-wrap.bk-scrollable::before, html body #viewport table.rp-tbl.bk-scrollable::before, html body #viewport .ae div.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
+@media print{ html body #viewport .tbl-wrap.bk-scrollable::before{ display:none !important; } }
+
+/* Visual QA: empty-state kinds are visibly different (see emptyKinds in 162b). Zero stays a plain number. */
+html body #viewport [data-bk-v="blank"]{ color:var(--bk-na-ink) !important; opacity:.8; }
+html body #viewport [data-bk-v="na"]{ color:var(--bk-na-ink) !important; font-size:.86em; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+html body #viewport [data-bk-v="unavail"]{ color:var(--bk-attn-amber) !important; font-style:italic; }
+
+/* Visual QA: the section-tab strip never hides a label behind the "Show as tabs" button; the button scrolls with the strip, tabs keep their full label, and an edge shade shows when more tabs are off-screen. */
+html body #viewport .bk-dui.bk-tabs .bk-dt{ padding:0 9px !important; gap:5px; }
+html body #viewport .bk-dui.bk-tabs{ scroll-padding:0 40px; background:linear-gradient(to left,rgba(14,42,74,.16),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll, var(--ae-bg) !important; }
+
+/* Polish: a header cell with no value says so instead of leaving a gap; editor grids and the step strip scroll with a visible edge instead of clipping. */
+html body #viewport .meta-strip .v[data-bk-v="unset"]::before{ content:'Not set'; color:var(--bk-na-ink); font-weight:500; font-style:italic; }
+html body .ae .ae-panel{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+html body .bk-steps{ background:linear-gradient(to left,rgba(14,42,74,.14),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll; }
+
+/* Polish: on a wide screen the section tabs wrap onto a second row rather than hiding a label; on a phone they scroll. */
+@media (min-width:761px){ html body #viewport .bk-dui.bk-tabs{ flex-wrap:wrap; overflow:visible; background:var(--ae-bg) !important; } html body #viewport .bk-dui.bk-tabs .bk-dt-all{ margin-left:auto; } }
+
+/* Polish: an unfinished deal gets a neutral notice, not a red alarm. */
+html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
+html body #viewport details.bk-conv-na > summary{ list-style:revert; }
+
+/* Polish: chart cards on the pro-forma sheets carry the same lettered title bar as every other section. */
+html body #viewport .pf-card{ padding:0 0 12px; }
+html body #viewport .pf-card > *{ margin-left:12px; margin-right:12px; }
+html body #viewport .pf-card > .t{ display:flex; align-items:center; margin:0 0 10px; padding:6px 10px; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border-bottom:1px solid var(--ae-line); color:var(--ae-ink); font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif; letter-spacing:.01em; text-transform:none; }
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */
@@ -26412,7 +26506,7 @@ function setCollapsed(v){ html.classList.toggle('bk-rail-collapsed', !!v); store
 window.bkRailCollapse = function(v){ setCollapsed(v === undefined ? !html.classList.contains('bk-rail-collapsed') : v); };
 function icons(root){
   /* the letter is an attribute drawn by CSS (::before), so no text is added to the headers and nothing that reads them changes */
-  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
+  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head, .bk-sx-card > .bk-sx-title, .pf-card > .t'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
   [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
 /* EVERY PERCENTAGE IS SHOWN WITH TWO DECIMALS ("12%" and "12.0%" both read 12.00%). One rule for every sheet, chart label, input unit and the PDF summary. */
@@ -26428,6 +26522,14 @@ function pctDom(root){
     if(!unitPct) return; var nv = /%/.test(v) ? pct2(v) : (/^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v).toFixed(2) : v); if(nv !== v && el.type !== 'number') el.value = nv; else if(nv !== v && el.type === 'number'){ el.value = nv; } });
 }
 /* plain analysis tables (class bk-stk) label every figure with its column heading, so the phone layout can stack them */
+/* EMPTY-STATE CONVENTION (display only - no value is changed): a dash is "no value entered / nothing in this period"; "Unavailable" is "cannot be calculated yet"; "N/A" is "does not apply to this deal"; a real zero is always shown as a number ($0, 0.00%). Each kind gets its own tint so they are never read as the same thing. */
+function emptyKinds(root){
+  [].forEach.call(root.querySelectorAll('td, .kv-v, .bk-snap td, .meta-strip .v'), function(c){
+    if(c.children.length) return; var t = (c.textContent || '').trim(), k = '';
+    if(!t && c.matches('.meta-strip .v')) k = 'unset'; else if(/^[-\u2013\u2014]$/.test(t)) k = 'blank'; else if(/^n\/a$/i.test(t)) k = 'na'; else if(/^(unavailable|not available)$/i.test(t)) k = 'unavail';
+    if(k){ if(c.getAttribute('data-bk-v') !== k) c.setAttribute('data-bk-v', k); } else if(c.hasAttribute('data-bk-v')) c.removeAttribute('data-bk-v');
+  });
+}
 function stkLabels(root){
   [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
     [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
@@ -26501,7 +26603,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
@@ -28900,7 +29002,7 @@ window.bkDevReportPages = function(){ var D = build(), r = riskPage(D); return {
 (function(){
 'use strict';
 if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'function' || typeof window.bkNotReadyPanel !== 'function') return;
-['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo'].forEach(function(name){
+['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns'].forEach(function(name){
   var orig = RENDERERS[name]; if(typeof orig !== 'function' || orig.__bkResultGate) return;
   var gated = function(){
     try { var r = window.bkDealReadiness(); if(r && r.state !== 'NO DEAL' && !r.canCalculate) return window.bkNotReadyPanel(name); } catch(e){}
@@ -28911,5 +29013,108 @@ if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'functi
 });
 })();
 </script>
+<style id="bk-palette-css">/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.
+   Navy is the brand and the structure (chrome, section bars, the key rule). Slate greys carry the neutral surfaces. One blue is the accent.
+   Four semantic colours, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
+   The cell convention is unchanged: blue text on pale yellow is an input. This part loads after every other style so it settles the tokens; it changes colours only. */
+:root{
+  --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
+  --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
+  --ae-ink:#14212F; --ae-dim:#566577; --ae-accent:#1F4E8C; --ae-hint:#F3F6FA;
+  --bk-key-fill:#DDE7F4; --bk-key-ink:#0B2545; --bk-key-rule:#1F4E8C; --bk-key-line:rgba(31,78,140,.25);
+  --bk-link-ink:#1B7A4B; --bk-attn-red:#C0392B; --bk-attn-amber:#B7791F; --bk-na-ink:#6B7785;
+  --bk-in-line:#D6C57A; --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
+}
+html.bk-auth-ok body, html body{ background:var(--ae-bg); }
+/* section bars and column headings: flat slate with a navy base line, so structure reads at a glance */
+html body #viewport table.fin caption, html body #viewport .card-head, html body #viewport .bk-snap > .card-head, html body #viewport .bk-sx-card > .bk-sx-title, html body #viewport .pf-card > .t{
+  background:var(--ae-head) !important; border-bottom:2px solid var(--bk-navy) !important; color:var(--bk-navy) !important; }
+html body #viewport table.fin th{ background:var(--ae-head2) !important; color:var(--ae-ink) !important; border-color:var(--ae-line) !important; }
+html body #viewport table.fin thead tr:last-child th{ border-bottom:1px solid var(--bk-navy-2) !important; }
+html body #viewport [data-ic]::before{ background:var(--bk-navy) !important; }
+html body #viewport table.fin tr.grandtotal td:first-child, html body #viewport table.fin tr.tot td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+/* chips: one background and one ink per meaning */
+html body .status-chip.pass{ background:var(--bk-ok-bg) !important; color:var(--bk-link-ink) !important; }
+html body .status-chip.warn{ background:var(--bk-warn-bg) !important; color:#8A5A12 !important; }
+html body .status-chip.fail{ background:var(--bk-fail-bg) !important; color:#A32F24 !important; }
+/* the page title and headline figures take the navy */
+html body #viewport .title-block h2{ color:var(--bk-navy); }
+html body #viewport a{ color:var(--ae-accent); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(111,180,242,.14); --bk-key-ink:#e8eef5; --bk-key-rule:#6fb4f2; --bk-key-line:rgba(111,180,242,.3); --bk-ok-bg:rgba(98,215,159,.14); --bk-warn-bg:rgba(240,184,74,.15); --bk-fail-bg:rgba(255,122,110,.16); } 
+  html body #viewport table.fin caption, html body #viewport .card-head, html body #viewport .bk-snap > .card-head, html body #viewport .bk-sx-card > .bk-sx-title, html body #viewport .pf-card > .t{ background:var(--ae-head) !important; color:var(--ae-ink) !important; border-bottom-color:var(--ae-accent) !important; } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(111,180,242,.14); --bk-key-ink:#e8eef5; --bk-key-rule:#6fb4f2; --bk-key-line:rgba(111,180,242,.3); --bk-ok-bg:rgba(98,215,159,.14); --bk-warn-bg:rgba(240,184,74,.15); --bk-fail-bg:rgba(255,122,110,.16); }
+:root[data-theme="dark"] body #viewport table.fin caption, :root[data-theme="dark"] body #viewport .card-head, :root[data-theme="dark"] body #viewport .bk-snap > .card-head, :root[data-theme="dark"] body #viewport .bk-sx-card > .bk-sx-title, :root[data-theme="dark"] body #viewport .pf-card > .t{ background:var(--ae-head) !important; color:var(--ae-ink) !important; border-bottom-color:var(--ae-accent) !important; }
+:root[data-theme="dark"] body, :root[data-theme="dark"] html body{ background:var(--ae-bg); }
+
+/* LAYOUT: one left edge. The page title, the header strip and every section start at the same x (22px gutter); sections sit 16px below the header and 12px apart. */
+@media (min-width:901px){ html body .main-col{ padding:16px 22px 40px; } html body #viewport .main-col > .note-flag:first-child{ margin-top:0; } }
+
+/* KEY-FIGURE BAR: a deep-navy strip at the foot of the window with the headline figures, large and plain. */
+#bk-kpibar{ position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex; align-items:stretch; background:var(--bk-navy); color:#EAF0F7; border-top:2px solid var(--bk-navy-2); font-family:Inter,"Segoe UI",system-ui,sans-serif; }
+#bk-kpibar[hidden]{ display:none; }
+#bk-kpibar .kb-c{ flex:1 1 0; min-width:0; padding:7px 14px 6px; border-left:1px solid rgba(255,255,255,.14); }
+#bk-kpibar .kb-c:first-child{ border-left:0; }
+#bk-kpibar .kb-k{ font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:#9FB3CC; font-weight:600; }
+#bk-kpibar .kb-v{ font-size:21px; line-height:1.15; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#bk-kpibar .kb-s{ font-size:10.5px; color:#8FB4E3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.bk-has-kpibar{ padding-bottom:68px; }
+@media (max-width:900px){ #bk-kpibar{ display:none !important; } body.bk-has-kpibar{ padding-bottom:0; } }
+@media print{ #bk-kpibar{ display:none !important; } body.bk-has-kpibar{ padding-bottom:0; } }
+
+/* FLAT AND SQUARE. Controls, cards, chips and tiles are rectangles with hairline borders; no rounded corners, no pills, no shadows. Status dots become small squares. */
+html body .grp-btn, html body .note-flag, html body button, html body .bk-sx-chip, html body .glyph, html body .bk-seg, html body .bk-save, html body details.bk-notes, html body .bk-tile, html body .bk-tile.hero, html body .bk-req, html body .bk-sx-seg, html body .pl-search, html body .status-chip, html body td, html body .bar, html body .ae-tab, html body .pf-print{ border-radius:0 !important; box-shadow:none; }
+html body .dot{ border-radius:0 !important; width:6px; height:6px; }
+html body #viewport .bk-tile, html body #viewport .bk-tile.hero{ border:1px solid var(--ae-line); background:var(--ae-cell); }
+@media (min-width:901px){ body.bk-has-kpibar .rail{ max-height:calc(100vh - 68px); overflow-y:auto; } }
+
+/* TREE NAVIGATION: the sidebar is a tree. Each group has a square +/- expander, the open group's sheets hang from a dotted line, the current sheet is a flat selected row. */
+html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-item{ display:none !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label{ cursor:pointer !important; position:relative; padding-left:26px !important; color:var(--bk-navy); font-weight:700; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ content:"\2212"; position:absolute; left:6px; top:50%; margin-top:-6px; width:11px; height:11px; box-sizing:border-box; border:1px solid #7B8794; background:#fff; color:var(--bk-navy); font:700 10px/9px Inter,system-ui,sans-serif; text-align:center; border-radius:0; }
+html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-group-label::before{ content:"+"; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed){ position:relative; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed)::after{ content:""; position:absolute; left:11px; top:30px; bottom:10px; border-left:1px dotted #8A96A5; pointer-events:none; }
+html:not(.bk-rail-collapsed) body .rail .rail-item{ position:relative; padding-left:34px !important; border-radius:0 !important; border:0 !important; background:transparent; box-shadow:none !important; color:var(--ae-ink); }
+html:not(.bk-rail-collapsed) body .rail .rail-item::before{ content:""; position:absolute; left:11px; top:50%; width:14px; border-top:1px dotted #8A96A5; }
+html:not(.bk-rail-collapsed) body .rail .rail-item .dot{ display:none; }
+html:not(.bk-rail-collapsed) body .rail .rail-item:hover{ background:var(--ae-head2); }
+html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:var(--ae-sel) !important; color:var(--bk-navy) !important; font-weight:700; box-shadow:inset 3px 0 0 var(--bk-key-rule) !important; }
+
+/* RIBBON: under the tab row, the active tab's sheets are large labelled buttons, then Deal and View command groups, each with its caption underneath. */
+.bk-ribbon{ display:flex; align-items:stretch; gap:0; background:var(--ae-head2); border-bottom:1px solid var(--ae-line); padding:4px 10px 0; overflow-x:auto; font-family:Inter,"Segoe UI",system-ui,sans-serif; }
+.bk-ribbon .rb-g{ display:flex; flex-direction:column; border-right:1px solid var(--ae-line); padding:0 8px; flex:0 0 auto; min-width:0; }
+.bk-ribbon .rb-g:last-child{ border-right:0; }
+.bk-ribbon .rb-row{ display:flex; gap:2px; align-items:stretch; flex:1 1 auto; }
+.bk-ribbon .rb-b{ display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:3px; min-width:58px; max-width:88px; padding:5px 5px 4px; border:1px solid transparent; background:transparent; color:var(--ae-ink); font:500 11px/1.2 Inter,system-ui,sans-serif; text-align:center; cursor:pointer; border-radius:0; }
+.bk-ribbon .rb-b svg{ width:26px; height:26px; flex:0 0 auto; stroke:var(--bk-navy-2); fill:none; stroke-width:1.5; stroke-linecap:square; stroke-linejoin:miter; }
+.bk-ribbon .rb-b:hover{ background:var(--ae-sel); border-color:var(--ae-line); }
+.bk-ribbon .rb-b.on{ background:#fff; border-color:var(--ae-line); border-bottom-color:#fff; box-shadow:inset 0 2px 0 var(--bk-key-rule); font-weight:700; color:var(--bk-navy); }
+.bk-ribbon .rb-cap{ text-align:center; font:600 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--bk-navy-2); background:var(--ae-head); margin:3px -8px 0; padding:4px 0; border-top:1px solid var(--ae-line); }
+.bk-ribbon .rb-g.active .rb-cap{ background:var(--bk-navy); color:#fff; }
+@media (max-width:900px){ .bk-ribbon{ display:none; } }
+@media print{ .bk-ribbon{ display:none !important; } }
+
+/* INPUT GRIDS, CLEANED UP: one row height, everything centred vertically; the Units column is quiet and left; the Status column is centred with chips of one width and one height; an input cell has ONE amber hairline, not a border plus an inner ring; dropdowns show a caret. */
+html body #viewport table.fin.bk-grid4 tbody tr > td, html body #viewport table.fin.bk-grid3 tbody tr > td{ vertical-align:middle; }
+html body #viewport table.fin.bk-grid4 tbody tr:not(.total):not(.grandtotal):not(.sec) > td, html body #viewport table.fin.bk-grid3 tbody tr:not(.total):not(.grandtotal):not(.sec) > td{ height:36px; padding-top:4px !important; padding-bottom:4px !important; }
+html body #viewport table.fin.bk-grid4 tbody tr > td:nth-child(3){ text-align:left !important; color:var(--ae-dim) !important; font-size:12px !important; }
+html body #viewport table.fin.bk-grid4 tbody tr > td:nth-child(3)[data-bk-v="blank"]{ color:var(--bk-na-ink); }
+html body #viewport table.fin.bk-grid4 thead th:last-child, html body #viewport table.fin.bk-grid4 tbody tr > td:last-child{ text-align:center; width:132px; }
+html body #viewport table.fin .status-chip{ display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; min-width:104px; height:20px; padding:0 8px; font:600 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.05em; white-space:nowrap; }
+html body #viewport table.fin tr.input td.v, html body #viewport table.fin td.v:has(select){ box-shadow:none !important; border-color:var(--bk-in-line) !important; }
+html body #viewport table.fin tr.input td.v:hover{ box-shadow:none !important; border-color:var(--bk-attn-amber) !important; }
+html body #viewport table.fin tr.input td.v select, html body #viewport table.fin td.v select{ appearance:none; -webkit-appearance:none; padding-right:20px; background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231B3F66' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 4px center !important; border:0 !important; text-align:right; text-align-last:right; }
+html body #viewport table.fin td.v select option{ color:#14212F; background:#fff; }
+html body #viewport table.fin td.bk-uom, html body #viewport table.fin.bk-grid4 tbody tr > td.bk-uom{ color:var(--ae-dim) !important; font-size:12px !important; text-align:left !important; }
+html body #viewport table.fin tr.input td.v input:not([type=checkbox]){ text-align:right; padding-right:20px !important; width:100% !important; box-sizing:border-box; }
+html body #viewport table.fin tr.input td.v input::placeholder{ color:var(--bk-na-ink); opacity:1; font-weight:500; }
+
+/* NOTES: explanatory notes are quiet paper, not blue. White card, hairline border, a slate rule on the left. Alerts keep their own amber / red rule. */
+html body #viewport .pf-ins li, html body #viewport .note-flag:not(.bk-fail-banner):not(.bk-controls-flag){ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
+html body #viewport .pf-ins li b, html body #viewport .note-flag b{ color:var(--bk-navy); }
+html body #viewport .ae-hint, html body #viewport .ae .ae-hint{ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--bk-navy-2); padding-right:10px; border-right:1px solid var(--ae-line); }
+</style>
 </body>
 </html>

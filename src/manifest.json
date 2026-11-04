@@ -945,6 +945,11 @@
 "close": "</script>"
 },
 {
+"file": "182-bk-palette.css",
+"open": "\n<style id=\"bk-palette-css\">",
+"close": "</style>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""

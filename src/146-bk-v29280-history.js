@@ -83,7 +83,7 @@ window.bkHistoryRestoreAsk = function(vid){ var v = hist(bkLoad()).versions.filt
 window.bkHistoryCompare = function(vid){ sel = sel === vid ? null : vid; showSheet('Version History'); };
 window.bkHistorySaveFromForm = function(){ var e = document.getElementById('bk-ver-name'); bkHistorySaveVersion(e && e.value.trim() ? e.value.trim() : '', false); showSheet('Version History'); };
 
-function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function box(h){ h = String(h).replace(/^<div style="font-weight:700;margin-bottom:6px">([\s\S]*?)<\/div>/, '<p class="bk-sx-title">$1</p>'); return '<div class="bk-sx-card" style="font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 function render(){
   flush();
   var s = safe(function(){ return bkLoad(); }, null), h = hist(s), cur = headline(), hdr = { title:'Version History', crumbs:'QA', desc:'Every input change on this deal, and named versions you can compare and restore.', meta:{ Property:s && s.name, Versions:h.versions.length, Changes:h.log.length }, sidebar:'' };

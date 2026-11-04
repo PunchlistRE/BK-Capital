@@ -63,7 +63,7 @@ html body #viewport .bk-dui.bk-tabs .bk-dt.na::before{ background:var(--bk-na-in
 html body #viewport .bk-dui.bk-tabs .bk-dt.empty{ opacity:.45; pointer-events:none; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-n{ min-width:17px; height:17px; padding:0 5px; border-radius:9px; background:var(--bk-attn-red); color:#fff; font:700 10.5px/17px Inter,system-ui,sans-serif; text-align:center; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-na{ font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--bk-na-ink); border:1px solid var(--bk-na-ink); border-radius:2px; padding:1px 4px; }
-html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto; position:sticky; right:0; height:auto; padding:0 11px !important; background:var(--ae-bg) !important; border:0 !important; border-left:1px solid var(--ae-line) !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 11.5px/1 Inter,system-ui,sans-serif !important; cursor:pointer; white-space:nowrap; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto; position:static; height:auto; padding:0 11px !important; background:var(--ae-bg) !important; border:0 !important; border-left:1px solid var(--ae-line) !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 11.5px/1 Inter,system-ui,sans-serif !important; cursor:pointer; white-space:nowrap; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-all:hover{ color:var(--ae-ink) !important; }
 html body #viewport .tbl-wrap.bk-grp-hide{ display:none !important; }
 @media print{ html body #viewport .tbl-wrap.bk-grp-hide{ display:block !important; } }
@@ -321,3 +321,39 @@ html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.warn .v{ color:#f
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.pass .v, html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.ok .v{ color:#7fd4a0; }
 html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-theme="light"]) #viewport button[class=""]{ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
 }
+
+/* Visual QA: wide tables. One cue on every screen size: a "scroll sideways" line that stays put while the table moves, plus a shaded edge on whichever side still has columns hidden, so the last column is always reachable. */
+html body #viewport .tbl-wrap.bk-scrollable, html body #viewport table.rp-tbl.bk-scrollable, html body #viewport .ae div.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+  background:linear-gradient(to right,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 0 0/40px 100% no-repeat local,
+             linear-gradient(to left,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 100% 0/40px 100% no-repeat local,
+             linear-gradient(to right,rgba(14,42,74,.22),rgba(14,42,74,0)) 0 0/10px 100% no-repeat scroll,
+             linear-gradient(to left,rgba(14,42,74,.22),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll,
+             var(--ae-cell-ro) !important; }
+html body #viewport .tbl-wrap.bk-scrollable::before, html body #viewport table.rp-tbl.bk-scrollable::before, html body #viewport .ae div.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
+@media print{ html body #viewport .tbl-wrap.bk-scrollable::before{ display:none !important; } }
+
+/* Visual QA: empty-state kinds are visibly different (see emptyKinds in 162b). Zero stays a plain number. */
+html body #viewport [data-bk-v="blank"]{ color:var(--bk-na-ink) !important; opacity:.8; }
+html body #viewport [data-bk-v="na"]{ color:var(--bk-na-ink) !important; font-size:.86em; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+html body #viewport [data-bk-v="unavail"]{ color:var(--bk-attn-amber) !important; font-style:italic; }
+
+/* Visual QA: the section-tab strip never hides a label behind the "Show as tabs" button; the button scrolls with the strip, tabs keep their full label, and an edge shade shows when more tabs are off-screen. */
+html body #viewport .bk-dui.bk-tabs .bk-dt{ padding:0 9px !important; gap:5px; }
+html body #viewport .bk-dui.bk-tabs{ scroll-padding:0 40px; background:linear-gradient(to left,rgba(14,42,74,.16),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll, var(--ae-bg) !important; }
+
+/* Polish: a header cell with no value says so instead of leaving a gap; editor grids and the step strip scroll with a visible edge instead of clipping. */
+html body #viewport .meta-strip .v[data-bk-v="unset"]::before{ content:'Not set'; color:var(--bk-na-ink); font-weight:500; font-style:italic; }
+html body .ae .ae-panel{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+html body .bk-steps{ background:linear-gradient(to left,rgba(14,42,74,.14),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll; }
+
+/* Polish: on a wide screen the section tabs wrap onto a second row rather than hiding a label; on a phone they scroll. */
+@media (min-width:761px){ html body #viewport .bk-dui.bk-tabs{ flex-wrap:wrap; overflow:visible; background:var(--ae-bg) !important; } html body #viewport .bk-dui.bk-tabs .bk-dt-all{ margin-left:auto; } }
+
+/* Polish: an unfinished deal gets a neutral notice, not a red alarm. */
+html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
+html body #viewport details.bk-conv-na > summary{ list-style:revert; }
+
+/* Polish: chart cards on the pro-forma sheets carry the same lettered title bar as every other section. */
+html body #viewport .pf-card{ padding:0 0 12px; }
+html body #viewport .pf-card > *{ margin-left:12px; margin-right:12px; }
+html body #viewport .pf-card > .t{ display:flex; align-items:center; margin:0 0 10px; padding:6px 10px; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border-bottom:1px solid var(--ae-line); color:var(--ae-ink); font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif; letter-spacing:.01em; text-transform:none; }
