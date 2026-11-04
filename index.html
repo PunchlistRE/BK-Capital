@@ -20438,6 +20438,15 @@ var render = function(){
   }).join('') || '<tr><td class="rowlabel" colspan="4">No conflicting inputs found.</td></tr>';
   var main = '<div class="tbl-wrap"><table class="fin bk-mc"><caption>Conflicting Inputs and Their Consequences</caption><thead><tr><th class="rowlabel-h">Severity</th><th style="text-align:left">Finding and why it matters</th><th>Fix on</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
     + '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div><b>How to read this.</b> <b>ERROR</b>: the inputs contradict each other or are impossible, so results are wrong; the deal is not decision-grade until fixed. <b>WARN</b>: calculable, but likely to disagree with a lender, a tax return, a JV agreement or another figure in the model - acknowledge it once you have decided it is intended. <b>INFO</b>: an assumption worth stating. These checks compare inputs and engine outputs; they never change a number. A card appears whenever an edit creates a new ERROR or WARN.</div></div>';
+  /* the engine's own arithmetic, recomputed independently (src/178): failed checks, warnings and checks that do not apply are kept apart */
+  var ig = typeof window.bkIntegrity === 'function' ? window.bkIntegrity() : null;
+  if(ig){
+    var irow = ig.checks.map(function(c){ var k = c.status === 'hard' ? 'fail' : c.status === 'warn' ? 'warn' : c.status === 'pass' ? 'pass' : '', lab = c.status === 'hard' ? 'FAILED' : c.status === 'warn' ? 'WARNING' : c.status === 'na' ? 'N/A' : 'PASS';
+      return '<tr' + (c.status === 'na' ? ' style="opacity:.6"' : '') + '><td class="rowlabel" style="vertical-align:top">' + chip(k, lab) + '<div style="margin-top:4px;font-size:11px">' + esc(c.group) + '</div></td><td data-bk-align="text" style="vertical-align:top"><b>' + esc(c.label) + '</b><div style="margin-top:4px;font-size:12px;color:#555">' + esc(c.detail) + '</div></td></tr>'; }).join('');
+    main += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-mc"><caption>Calculation Integrity - recomputed independently (' + esc(ig.text) + ')</caption><thead><tr><th class="rowlabel-h">Result</th><th style="text-align:left">Check and what it found</th></tr></thead><tbody>' + irow + '</tbody></table></div>'
+      + '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div><b>How to read this.</b> <b>FAILED</b>: a result does not tie to its inputs, so it must not be relied on and the credit gate is held. <b>WARNING</b>: the figures tie, but something material is true that a reader must know. <b>N/A</b>: the check does not apply to this deal. These checks never change a number.</div></div>';
+    n.ERROR += ig.hard.length; n.WARN += ig.warn.length;
+  }
   var side = (typeof sidebarShell === 'function') ? sidebarShell('<div class="card"><div class="card-head">Model Checks</div><div class="metric-list"><div class="metric-row"><span class="k">Errors</span><span class="v">' + n.ERROR + '</span></div><div class="metric-row"><span class="k">Warnings</span><span class="v">' + n.WARN + '</span></div><div class="metric-row"><span class="k">Notes</span><span class="v">' + n.INFO + '</span></div><div class="metric-row"><span class="k">Rules</span><span class="v">' + window.BK_CONFLICT_RULES.length + '</span></div></div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : '';
   return { title:'Model Checks', crumbs:'Credit & IC', desc:'Combinations of inputs that contradict each other or quietly create an accounting, tax or credit discrepancy.',
     meta:{ Property:s.name, Errors:n.ERROR, Warnings:n.WARN }, main:main, sidebar:side };
@@ -22326,7 +22335,25 @@ var CSS = '@page{size:8.5in 11in;margin:0}*{box-sizing:border-box}html,body{marg
  + 'th{background:#e8ecf0;color:#25313d;border-bottom:1px solid #aeb7c0}tr.sec td{background:#f1f3f5;color:#25313d}tr.sub td{background:#f6f7f9}tr.tot td{background:#eaeff4;color:#14283d;border-top:2px solid #25313d}tr.tot .neg{color:#B23A2C}.pill{border-radius:2px}.hm td,.hm th{border-radius:2px}.bar,.rng,.rng i{border-radius:1px}body{background:#d5d9de}.ck .k{min-height:2.4em}'
  + '.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kv td{font-size:9.5px;padding:3px 4px}.kv tr.tot td{font-size:9.5px}.bx .kv{margin-top:6px}'
  + '.cft{table-layout:fixed}.cft th,.cft td{font-size:8px;padding:2.6px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cft th:first-child,.cft td:first-child{width:1.62in}.cft td:first-child{padding-left:8px}.cft tr.sub td:first-child,.cft tr.tot td:first-child,.cft tr.sec td{padding-left:3px}'
- + '.cft tr.sec td{font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;padding-top:6px}.cft td.c0{background:#f6f7f9}.cft tr.sub td{font-weight:700}.cft tr.tot td{font-weight:800}.cft .neg{color:#B23A2C}.cc svg{max-height:2.25in}.mtx{margin-top:10px}.mtx td{color:#25313d}.rr td,.rr th{white-space:nowrap;font-size:9px;padding:3px 5px}.rrc{table-layout:fixed}.rrc td{overflow:hidden;text-overflow:ellipsis}.rrc td:first-child,.rrc th:first-child{width:50%}.wft th:first-child,.wft td:first-child{width:2.05in}.cft th{letter-spacing:.03em;text-overflow:clip}.drw th:first-child,.drw td:first-child{width:1.75in}.cft.dense td,.cft.dense th{font-size:7.2px;padding-left:2px;padding-right:2px}.cft.dense th:first-child,.cft.dense td:first-child{width:1.45in}.cft.short{width:auto;min-width:72%;table-layout:auto}.cft.short th:first-child,.cft.short td:first-child{width:2.6in}.cft.short th:not(:first-child),.cft.short td:not(:first-child){min-width:.95in}.drw tr.ph td{font-size:7px;color:#566a80;line-height:1.25;text-align:right}.drw tr.ph td:first-child{text-align:left}.wfh{margin-bottom:10px}.wfh .bx{padding:8px 10px}.wfh .kv td,.wfh .kv th{font-size:8.5px;padding:2px 4px;white-space:nowrap}.wft td,.wft th{padding-top:1.8px;padding-bottom:1.8px}';
+ + '.cft tr.sec td{font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;padding-top:6px}.cft td.c0{background:#f6f7f9}.cft tr.sub td{font-weight:700}.cft tr.tot td{font-weight:800}.cft .neg{color:#B23A2C}.cc svg{max-height:2.25in}.mtx{margin-top:10px}.mtx td{color:#25313d}.rr td,.rr th{white-space:nowrap;font-size:9px;padding:3px 5px}.rrc{table-layout:fixed}.rrc td{overflow:hidden;text-overflow:ellipsis}.rrc td:first-child,.rrc th:first-child{width:50%}.wft th:first-child,.wft td:first-child{width:2.05in}.cft th{letter-spacing:.03em;text-overflow:clip}.drw th:first-child,.drw td:first-child{width:1.75in}.drw th,.drw td{font-size:7.4px;padding-left:2px;padding-right:2px;letter-spacing:0}.drw tr.ph td{font-size:6.4px}.cft.dense td,.cft.dense th{font-size:7.2px;padding-left:2px;padding-right:2px}.cft.dense th:first-child,.cft.dense td:first-child{width:1.45in}.cft.short{width:auto;min-width:72%;table-layout:auto}.cft.short th:first-child,.cft.short td:first-child{width:2.6in}.cft.short th:not(:first-child),.cft.short td:not(:first-child){min-width:.95in}.drw tr.ph td{font-size:7px;color:#566a80;line-height:1.25;text-align:right}.drw tr.ph td:first-child{text-align:left}.wfh{margin-bottom:10px}.wfh .bx{padding:8px 10px}.wfh .kv td,.wfh .kv th{font-size:8.5px;padding:2px 4px;white-space:nowrap}.wft td,.wft th{padding-top:1.8px;padding-bottom:1.8px}';
+
+/* SUMMARY OF INVESTMENT: two short paragraphs that say what the deal is, what it costs and how it is funded, what it returns, what the return rests on and how much room it has. Built only from the figures
+   it is given and worded to read correctly for any deal (a development or an acquisition); a sentence is left out when its figures are not available. */
+function investSummary(f){
+  var ok = function(v){ return v != null && isFinite(v); }, art = /^[aeiou]/i.test(f.type || '') ? 'an' : 'a', kind = f.dev ? 'ground-up development' : 'acquisition';
+  var p1 = '<b>' + esc(f.name || 'This property') + '</b> is ' + art + ' ' + (f.units ? f.units + '-unit ' : '') + esc(String(f.type || 'commercial').toLowerCase()) + ' ' + kind + (f.location ? ' in ' + esc(f.location) : '') + (f.sf ? ' of about ' + Math.round(f.sf).toLocaleString('en-US') + ' SF' : '') + '. ';
+  if(f.dev) p1 += 'The plan is to buy the site for ' + M(f.price) + ', build over ' + f.conMo + ' months, lease up over ' + f.luMo + ' months to stabilisation in month ' + f.stab + ', and sell in month ' + f.holdMonths + '. ';
+  else p1 += 'The plan is to buy it for ' + M(f.price) + (f.units ? ' (' + F(f.price / f.units) + ' a unit' + (ok(f.goingIn) ? ', a ' + P(f.goingIn, 2) + ' going-in yield' : '') + ')' : '') + ', hold it ' + f.holdYears + ' years and sell at a ' + P(f.exitCap, 2) + ' cap rate. ';
+  p1 += 'Total cost is ' + M(f.cost) + (f.units ? ' (' + F(f.cost / f.units) + ' a unit)' : '') + ', funded by ' + M(f.equity) + ' of equity (' + P(f.cost ? f.equity / f.cost : null, 0) + ') and ' + (f.loan > 0 ? 'a ' + M(f.loan) + (f.dev ? ' construction' : '') + ' loan' + (ok(f.rate) ? ' at ' + P(f.rate, 2) : '') + (ok(f.ltc) ? ' (' + P(f.ltc, 0) + ' of cost)' : '') : 'no debt') + '.';
+  var diff = (f.irr - f.hurdle) * 100;
+  var p2 = 'In the ' + esc(f.caseName || 'Base') + ' case the deal returns <b>' + P(f.irr, 1) + '</b> levered and <b>' + X(f.moic) + '</b> (' + M(f.profit) + ' of profit on ' + M(f.equity) + ' of equity)' + (ok(f.uirr) ? ', and ' + P(f.uirr, 1) + ' before financing' : '') + ': ' + (Math.abs(diff) < 0.05 ? 'in line with' : '<b>' + Math.abs(diff).toFixed(1) + ' points ' + (diff > 0 ? 'above' : 'below') + '</b>') + ' the ' + P(f.hurdle, 1) + ' hurdle. ';
+  if(ok(f.yoc)) p2 += 'The return rests on a ' + P(f.yoc, 2) + ' stabilised ' + (f.dev ? 'yield on cost against a ' + P(f.exitCap, 2) + ' exit cap (' + Math.round((f.yoc - f.exitCap) * 10000) + ' bps of development spread)' : 'yield on cost and ' + P(f.rentGrowth, 1) + ' rent growth') + (ok(f.saleShare) ? ', and ' + Math.round(f.saleShare * 100) + '% of what equity gets back arrives at the sale' : '') + '. ';
+  var room = []; if(ok(f.capBps)) room.push('the exit cap widens by up to ' + Math.round(f.capBps) + ' bps'); if(ok(f.rentPct)) room.push('rents fall ' + Math.abs(Math.round(f.rentPct * 100)) + '%'); if(ok(f.costPct)) room.push('hard costs overrun by ' + Math.round(f.costPct * 100) + '%');
+  if(room.length && diff > 0) p2 += 'It stays above the hurdle if ' + room.join(', or ') + ', one at a time.';
+  else if(diff <= 0) p2 += 'It does not clear the hurdle in this case.';
+  var p3 = (f.integrity ? 'Model checks: ' + esc(f.integrity.text) + (f.integrity.warn.length ? '; to know: ' + f.integrity.warn.map(function(c){ return esc(c.label.charAt(0).toLowerCase() + c.label.slice(1)); }).join('; ') : '') + '. ' : '') + (f.verdict ? 'Credit gate: <b>' + esc(f.verdict) + '</b>. ' : '') + 'These are projections from the assumptions entered, not guarantees; see the pages that follow for the basis of each figure.';
+  return '<div class="bx" style="margin:10px 0 0;padding:7px 10px"><div class="t">Summary of investment</div><div style="font-size:9.2px;line-height:1.38;color:#25313d"><p style="margin:2px 0">' + p1 + '</p><p style="margin:2px 0">' + p2 + '</p><p style="margin:2px 0;color:#5b6773">' + p3 + '</p></div></div>';
+}
 
 function page(inner, n, N, D, cover){
   var s = D.s;
@@ -22414,7 +22441,7 @@ function drawPage(fund, D, n, N){
   var land = q('land'), hard = q('hard'), soft = q('soft'), lease = q('lease'), fees = q('fees'), need = q('need'), eq = q('eq'), ov = q('overflow'), draw = q('loanDraw'), ci = q('capInt'), ex = q('excess');
   var src = eq.map(function(v, j){ return v + ov[j] + draw[j]; }), cum = q('cumNeed', 'end'), beg = q('beg', 'beg'), end = q('end', 'end');
   var ltc = end.map(function(v, j){ var c = cum[j] + sum(ci.slice(0, j === Q ? Q : j + 1)); return c ? v / c : null; });
-  var phase = function(k){ var m0 = k * 3 + 1, ph = (fund.phases || []).filter(function(p){ return m0 >= p[1] && m0 <= p[2]; })[0]; return ph ? ph[0].replace(/^Pre-Development$/, 'Pre-dev').replace(/^Construction$/, 'Constr.').replace(/^Lease.*$/i, 'Lease-up').replace(/^Stabili[sz]ed.*$/i, 'Stab.') : ''; };
+  var phase = function(k){ var m0 = k * 3 + 1, ph = (fund.phases || []).filter(function(p){ return m0 >= p[1] && m0 <= p[2]; })[0]; return ph ? ph[0].replace(/^Pre-Development$/, 'Pre-dev').replace(/^Construction$/, 'Constr.').replace(/^Lease.*$/i, 'Lease').replace(/^Stabili[sz]ed.*$/i, 'Stab.') : ''; };
   var head = '<tr><th>$ thousands</th>' + Array.apply(null, { length:Q }).map(function(_, k){ return '<th>Q' + (k + 1) + '</th>'; }).join('') + '<th>Total</th></tr>'
     + '<tr class="ph"><td>Phase · months</td>' + Array.apply(null, { length:Q }).map(function(_, k){ return '<td>' + esc(phase(k)) + '<br>' + (k * 3 + 1) + '–' + Math.min(last, k * 3 + 3) + '</td>'; }).join('') + '<td class="c0"></td></tr>';
   var tbl = '<table class="cft drw"><thead>' + head + '</thead><tbody>'
@@ -22466,9 +22493,10 @@ function buildDev(){
   var ins = ['<div>Equity of <b>' + M(D.eq) + '</b> builds a ' + (D.units ? D.units + '-unit ' : '') + 'project for <b>' + M(allIn) + '</b> all-in and returns <b>' + M(m.dist) + '</b> over ' + H + ' years: <b>' + X(D.moic) + '</b> and a <b>' + P(D.irr, 1) + '</b> levered IRR, ' + (ok ? '<b>' + ((D.irr - hurdle) * 100).toFixed(1) + ' points above</b>' : '<b>' + ((hurdle - D.irr) * 100).toFixed(1) + ' points below</b>') + ' the ' + P(hurdle, 1) + ' hurdle.</div>',
     '<div>Stabilised NOI of <b>' + M(stabNOI) + '</b> gives a <b>' + P(yoc, 2) + '</b> yield on cost' + (isFinite(Number(s.exitCap)) ? ', <b>' + Math.round((yoc - Number(s.exitCap)) * 10000) + ' bps</b> over the ' + P(Number(s.exitCap), 2) + ' exit cap' : '') + (spRow ? ' (policy minimum ' + Math.round(spRow.threshold) + ' bps)' : '') + '.</div>',
     '<div>' + (opShare == null ? '' : 'Operations return about <b>' + Math.round(opShare * 100) + '%</b> of what equity gets back; the sale and refinancing return <b>' + Math.round((1 - opShare) * 100) + '%</b>. ') + (tk.conHeldToSale ? 'There is no permanent takeout: the <b>' + M(tk.conHeldBalance) + '</b> construction loan stays outstanding after stabilisation and is repaid from the sale proceeds at month ' + fund.hold + '.' : 'The permanent loan of <b>' + M(tk.permLoan) + '</b> takes out the construction loan' + (tk.refiShortfall > 1 ? ', leaving a <b>' + M(tk.refiShortfall) + '</b> shortfall equity must fund' : '') + '.') + '</div>'].join('');
+  var cu = (typeof window.bkDevReportData === 'function' ? safe(function(){ return window.bkDevReportData().cush; }, null) : null) || {}, uIR = safe(function(){ return m.u.irr; }, null), narr = investSummary({ dev:true, name:s.name, type:s.propertyType, location:s.location, units:D.units, sf:Number(s.gsf), price:Number(s.purchasePrice), conMo:fund.conMo, luMo:fund.luMo, stab:fund.stab, holdMonths:fund.hold, holdYears:H, exitCap:Number(s.exitCap), cost:allIn, equity:fund.equityTotal, loan:loanDrawn, rate:fund.rate, ltc:ltc, irr:D.irr, moic:D.moic, profit:m.dist - m.contrib, hurdle:hurdle, uirr:uIR, yoc:yoc, saleShare:opShare == null ? null : 1 - opShare, capBps:cu.capBps, rentPct:cu.rentPct, costPct:cu.costPct, caseName:caseName, integrity:gate.integrity, verdict:gate.verdict });
   pages.push(page('<h2>Dashboard</h2><div class="kp"><div class="c hl"><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 2) + '</div><div class="d">' + esc(caseName) + ' case</div></div><div class="c hl"><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(tot.profit) + ' profit</div></div><div class="c"><div class="k">Net LP IRR</div><div class="v">' + (lpRow ? P(lpRow.value, 2) : '—') + '</div><div class="d">after promote</div></div><div class="c"><div class="k">Yield on cost</div><div class="v">' + P(yoc, 2) + '</div><div class="d">stabilised NOI ' + M(stabNOI) + '</div></div>'
     + '<div class="c"><div class="k">Development spread</div><div class="v">' + (spRow ? Math.round(spRow.value) + ' bps' : '—') + '</div><div class="d">over exit cap · policy ' + (spRow ? Math.round(spRow.threshold) : '—') + '</div></div><div class="c"><div class="k">Project cost</div><div class="v">' + M(allIn) + '</div><div class="d">' + M(fund.unlev) + ' before financing</div></div><div class="c"><div class="k">Stabilised value</div><div class="v">' + M(tk.stabVal) + '</div><div class="d">at ' + P(Number(s.exitCap), 2) + ' exit cap</div></div><div class="c"><div class="k">Construction loan</div><div class="v">' + M(fund.commit) + '</div><div class="d">' + P(ltc, 0) + ' of cost · ' + P(fund.rate, 2) + '</div></div></div>'
-    + '<div class="bx mt"><div class="t">Levered return against the hurdle</div>' + K.gauge(D) + '</div><div class="ins">' + ins + '</div>'
+    + narr + '<div class="bx mt"><div class="t">Levered return against the hurdle</div>' + K.gauge(D) + '</div>'
     + '<div class="g1 mt"><div class="bx"><div class="t">Equity cash flow</div><div class="s">Each year\'s cash to equity; the line is the running total. Equity is funded through construction and lease-up, then returned from operations, the takeout and the sale.</div>' + K.chartCash(D) + '</div></div>', 2, N, D));
   /* 3 budget, funding and timeline */
   var items = [['Land', fund.land], ['Closing costs', fund.close], ['Acquisition fee', fund.acq], ['Pre-development', fund.pre], ['Hard costs', fund.hard], ['Soft costs', fund.soft], ['Capitalised interest', fund.actualCapInt], ['Interest paid by equity beyond the loan commitment', excessInt], ['Loan fees', fund.upfrontFees]], totUses = allIn || sum(items.map(function(a){ return a[1]; }));
@@ -22507,6 +22535,11 @@ function buildDev(){
     + (ig ? ig.hard.map(function(c){ return '<div><b>Model check failed:</b> ' + esc(c.label) + '</div>'; }).join('') + ig.warn.map(function(c){ return '<div><b>Model warning:</b> ' + esc(c.label) + '</div>'; }).join('') + '<div class="note" style="margin-top:4px">Model integrity: ' + esc(ig.text) + '.</div>' : '');
   pages.push(page('<h2>Credit decision</h2><div class="g2" style="grid-template-columns:1.3fr .9fr"><div>' + gateTbl + '</div><div><div class="bx" style="padding:10px 12px"><div class="t">Decision: ' + esc(gate.verdict || 'Not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div>' + (exc ? '<div class="ins" style="margin-top:4px">' + exc + '</div>' : '') + (gate.action ? '<div class="note" style="margin-top:7px"><b>Next step:</b> ' + esc(gate.action) + '</div>' : '') + '</div></div></div>'
     + '<h2 style="margin-top:16px">Delay and exit stress</h2>' + stress + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid and stress tests rerun the model. Development returns depend heavily on cost, schedule and exit assumptions. This summary is an analytical aid, not an offer or a fairness opinion. Check it against your own model before relying on it.</div></div>', N, N, D));
+  /* the pages that explain the investment (src/179), placed where a reader needs them; footers are renumbered over the final page list */
+  var XP = typeof window.bkDevReportPages === 'function' ? safe(function(){ return window.bkDevReportPages(); }, null) : null;
+  if(XP){ var pgx = function(inner){ return page(inner, 0, 0, D); };
+    pages.push(pgx(XP.portfolio)); pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance)); pages.splice(2, 0, pgx(XP.returns));
+    pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); }
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Development Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 
@@ -22534,11 +22567,12 @@ function build(){
     '<div>Year 1 NOI after reserves is <b>' + M(y1.noiAfter) + '</b> (' + P(goingIn, 2) + ' on price), covering debt service <b>' + X(y1.dscr) + '</b> against a ' + X(D.pol.minDSCR) + ' policy minimum.</div>'].filter(function(x){ return x.length > 12; }).join('');
   var scenHtml = scen && scen.cases ? '<div class="sc mt">' + scen.cases.map(function(c){ return '<div class="c' + (c.name === caseName ? ' cur' : '') + '"><div class="n">' + esc(c.name) + ' · ' + Math.round((c.p || 0) * 100) + '% likely</div><div class="v" style="color:' + (c.irr >= hurdle ? '#1F7A4C' : c.irr < 0 ? '#B23A2C' : '#0e2a4a') + '">' + P(c.irr, 1) + '</div><div class="d">' + X(c.moic) + ' multiple · ' + M(c.profit) + ' profit</div></div>'; }).join('') + '</div>'
     + '<div class="note" style="margin-top:6px">Probability-weighted: expected profit <b>' + M(scen.expProfit) + '</b>, expected multiple <b>' + X(scen.expMoic) + '</b>, IRR of expected cash flow <b>' + P(scen.irrOfExpectedCF, 1) + '</b>; chance of missing the hurdle <b>' + Math.round((scen.pMiss || 0) * 100) + '%</b>, of losing money <b>' + Math.round((scen.pLoss || 0) * 100) + '%</b>.</div>' : '';
+  var cuA = gate.cushions || {}, narrA = investSummary({ dev:false, name:s.name, type:s.propertyType, location:s.location, units:D.units, sf:Number(s.gsf), price:price, holdYears:Number(s.holdYears), exitCap:Number(s.exitCap), goingIn:goingIn, cost:basis, equity:D.eq, loan:Number(d.loan) || 0, rate:Number(d.coupon), ltc:Number(d.ltc), irr:D.irr, moic:D.moic, profit:D.tot.profit, hurdle:hurdle, uirr:safe(function(){ return D.u.irr; }, null), yoc:yoc, rentGrowth:Number(s.rentGrowth), saleShare:opShare == null ? null : 1 - opShare, capBps:cuA.exitCapCushionBps, rentPct:cuA.rentCushion == null ? null : -Math.abs(cuA.rentCushion), caseName:caseName, integrity:gate.integrity, verdict:gate.verdict });
   pages.push(page('<h2>Dashboard</h2><div class="kp"><div class="c hl"><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 2) + '</div><div class="d">' + esc(caseName) + ' case</div></div><div class="c hl"><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(D.tot.profit) + ' profit</div></div><div class="c"><div class="k">Unlevered IRR</div><div class="v">' + P(D.u.irr, 2) + '</div><div class="d">' + X(D.u.moic) + ' multiple</div></div><div class="c"><div class="k">Net LP IRR</div><div class="v">' + (lp ? P(lp.value, 2) : '—') + '</div><div class="d">after promote</div></div>'
     + '<div class="c"><div class="k">Going-in cap</div><div class="v">' + P(goingIn, 2) + '</div><div class="d">Y1 NOI after reserves / price</div></div><div class="c"><div class="k">Yield on cost</div><div class="v">' + P(yoc, 2) + '</div><div class="d">on total basis ' + M(basis) + '</div></div><div class="c"><div class="k">Year 1 DSCR</div><div class="v">' + X(y1.dscr) + '</div><div class="d">minimum ' + X(D.pol.minDSCR) + '</div></div><div class="c"><div class="k">Leverage</div><div class="v">' + P(d.ltv, 0) + ' LTV</div><div class="d">' + P(d.ltc, 0) + ' LTC · ' + P(d.coupon, 2) + ' rate</div></div></div>'
-    + '<div class="bx mt"><div class="t">Levered return against the hurdle</div>' + K.gauge(D) + '</div><div class="ins">' + ins + '</div>'
+    + narrA + '<div class="bx mt"><div class="t">Levered return against the hurdle</div>' + K.gauge(D) + '</div>'
     + '<div class="g1 mt"><div class="bx"><div class="t">Equity cash flow</div><div class="s">Each year\'s cash to equity; the line is the running total. Year 1 includes the equity invested at close.</div><div class="cc">' + K.chartCash(D) + '</div></div></div>'
-    + '<h2 class="mt" style="margin-top:16px">How it holds up by case</h2>' + scenHtml, 2, N, D));
+    + '<h2 class="mt" style="margin-top:8px">How it holds up by case</h2>' + scenHtml, 2, N, D));
   /* 3 financial summary: sources and uses, the loan, the exit, the returns, and what the income is made of */
   var closing = price * (Number(s.closingCostsPct) || 0), acqFee = price * (Number(s.acqFeePct) || 0), other = basis - price - closing - acqFee, loanFee = Number(d.fee) || 0, totUses = basis + loanFee;
   function su(label, v, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td' + (cls ? '' : ' class="l"') + '>' + label + '</td><td>' + F(v) + '</td><td>' + (totUses ? P(v / totUses, 1) : '') + '</td></tr>'; }
@@ -22629,6 +22663,8 @@ function build(){
   pages.push(page('<h2>Credit and market</h2><div class="g2" style="grid-template-columns:1.3fr .9fr"><div>' + gateTbl + '</div><div><div class="bx" style="padding:10px 12px"><div class="t">Decision: ' + esc(gate.verdict || 'Not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div>' + (exc ? '<div class="ins" style="margin-top:4px">' + exc + '</div>' : '') + (gate.action ? '<div class="note" style="margin-top:7px"><b>Next step:</b> ' + esc(gate.action) + '</div>' : '') + '</div></div></div>'
     + '<h2 style="margin-top:16px">Against the market</h2>' + mTbl
     + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid reruns the model for each cell. This summary is an analytical aid, not an offer or a fairness opinion, and is only as good as the assumptions behind it. Check it against your own model before relying on it.</div></div>', N, N, D));
+  /* impact to portfolio (src/179): near the end, before the credit page's closing notes; footers renumbered over the final list */
+  if(typeof window.bkPortfolioImpactPage === 'function'){ var pgi = safe(function(){ return window.bkPortfolioImpactPage(); }, null); if(pgi){ pages.push(page(pgi, 0, 0, D)); pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); } }
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Investment Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 
@@ -22636,6 +22672,32 @@ window.bkReportHTML = function(){ var s = safe(function(){ return bkLoad(); }, n
 window.bkReportClose = function(){ var e = document.getElementById('pl-report'); if(e) e.remove(); document.documentElement.style.overflow = ''; };
 window.bkReportPrint = function(){ var f = document.getElementById('pl-report-frame'); if(f && f.contentWindow){ f.contentWindow.focus(); f.contentWindow.print(); } };
 window.bkReportOpen = function(){ var go = function(){ return bkReportOpenNow(); }; return Promise.resolve(typeof window.bkDocsWarm === 'function' ? window.bkDocsWarm() : '').then(go, go); };
+/* the cover photo: one clear control on the preview. It sets or changes the deal's photo (the same photo as on Deal Documents and the Overview), redraws the summary at once, and can remove it. */
+function photoCtl(){
+  var has = !!safe(function(){ return window.bkDealPhotoURL(); }, ''), id = 'pl-photo-in', btn = 'border-radius:999px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.04em;';
+  return '<span id="pl-photo-ctl" style="display:inline-flex;align-items:center;gap:8px;padding-right:12px;margin-right:4px;border-right:1px solid rgba(255,255,255,.25)">'
+    + (has ? '<img alt="" src="' + safe(function(){ return window.bkDealPhotoURL(); }, '') + '" style="width:34px;height:26px;object-fit:cover;border-radius:3px;border:1px solid rgba(255,255,255,.5)">' : '<span style="width:34px;height:26px;border-radius:3px;border:1px dashed rgba(255,255,255,.5);display:inline-block"></span>')
+    + '<span style="font-size:11px;color:#B9C8D8;line-height:1.2;max-width:120px">' + (has ? 'Cover photo set' : 'No cover photo yet') + '</span>'
+    + '<label for="' + id + '" style="' + btn + 'background:#fff;color:#0e2a4a;padding:8px 14px;border:0;display:inline-block">' + (has ? 'CHANGE PHOTO' : 'SET COVER PHOTO') + '</label><input id="' + id + '" type="file" accept="image/*" style="display:none" onchange="bkReportPhotoPick(this)">'
+    + (has ? '<button type="button" onclick="bkReportPhotoRemove()" style="' + btn + 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:7px 12px;font-weight:600">Remove</button>' : '') + '</span>';
+}
+function redrawSummary(){
+  var f = document.getElementById('pl-report-frame'), h = safe(window.bkReportHTML, null); if(!f || !h) return;
+  var y = 0; try { y = f.contentWindow.scrollY || 0; } catch(e){}
+  f.addEventListener('load', function again(){ f.removeEventListener('load', again); try { f.contentWindow.scrollTo(0, y); } catch(e){} });
+  f.srcdoc = h; var c = document.getElementById('pl-photo-ctl'); if(c){ var t = document.createElement('div'); t.innerHTML = photoCtl(); c.replaceWith(t.firstChild); }
+}
+window.bkReportPhotoPick = function(input){
+  var file = input && input.files && input.files[0]; if(!file) return;
+  if(!/^image\//.test(file.type)){ alert('Choose an image file (JPEG, PNG or similar).'); input.value = ''; return; }
+  if(typeof window.bkDocsSetPhoto !== 'function'){ alert('Photos are not available in this build.'); return; }
+  var lab = document.querySelector('#pl-photo-ctl label'); if(lab) lab.textContent = 'SAVING…';
+  window.bkDocsSetPhoto(file).then(function(){ redrawSummary(); }, function(e){ alert('The photo could not be saved: ' + (e && e.message || e)); redrawSummary(); });
+};
+window.bkReportPhotoRemove = function(){
+  if(typeof window.bkDocsClearPhoto !== 'function') return;
+  window.bkDocsClearPhoto().then(function(){ redrawSummary(); }, function(){ redrawSummary(); });
+};
 function bkReportOpenNow(){
   var s = safe(function(){ return bkLoad(); }, null), msg = null;
   if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())) msg = 'Open or create a deal first.';
@@ -22645,7 +22707,7 @@ function bkReportOpenNow(){
   bkReportClose();
   var o = document.createElement('div'); o.id = 'pl-report';
   o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#081a30;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif';
-  o.innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0e2a4a;border-bottom:2px solid #3E9AE6;color:#fff"><b style="font-size:13px;letter-spacing:.06em">INVESTMENT SUMMARY</b><span style="font-size:12px;color:#B9C8D8">' + esc(s.name || '') + ' · ' + ((html.match(/<section class="page/g) || []).length) + ' pages · Letter</span><span style="flex:1"></span><button type="button" onclick="bkReportPrint()" style="background:#3E9AE6;color:#081a30;border:0;border-radius:999px;padding:8px 18px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.06em">SAVE AS PDF</button><button type="button" onclick="bkReportClose()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:7px 14px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer">Close</button></div>'
+  o.innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0e2a4a;border-bottom:2px solid #3E9AE6;color:#fff"><b style="font-size:13px;letter-spacing:.06em">INVESTMENT SUMMARY</b><span style="font-size:12px;color:#B9C8D8">' + esc(s.name || '') + ' · ' + ((html.match(/<section class="page/g) || []).length) + ' pages · Letter</span><span style="flex:1"></span>' + photoCtl() + '<button type="button" onclick="bkReportPrint()" style="background:#3E9AE6;color:#081a30;border:0;border-radius:999px;padding:8px 18px;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.06em">SAVE AS PDF</button><button type="button" onclick="bkReportClose()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:7px 14px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer">Close</button></div>'
     + '<iframe id="pl-report-frame" title="Investment summary preview" style="flex:1;border:0;width:100%;background:#c9d6e2"></iframe>';
   document.body.appendChild(o); document.documentElement.style.overflow = 'hidden';
   var f = document.getElementById('pl-report-frame');
@@ -22894,6 +22956,8 @@ window.bkDocsSetPhoto = function(file, id){ id = id == null ? dealId() : String(
 window.bkDocsWarm = function(){ var id = dealId(); if(!id) return Promise.resolve(''); if(cache[id] !== undefined) return Promise.resolve(cache[id]); return window.bkDocsList(id).then(function(a){ var p = a.filter(function(f){ return f.slot === 'photo'; })[0]; return p ? toDataURL(p.blob) : ''; }).then(function(u){ cache[id] = u || ''; return cache[id]; }).catch(function(){ cache[id] = ''; return ''; }); };
 window.bkDealPhotoURL = function(){ var id = dealId(); return (id && cache[id]) || ''; };
 window.bkDocsPhotoCache = cache;
+/* remove the deal's photo (no question asked: the caller has its own control) */
+window.bkDocsClearPhoto = function(){ var id = dealId(); if(!id) return Promise.resolve(); return window.bkDocsList(id).then(function(a){ var p = a.filter(function(f){ return f.slot === 'photo'; })[0]; delete cache[id]; return p ? window.bkDocsRemove(p.id) : null; }).then(function(){ cache[id] = ''; }); };
 
 var busy = '';
 function fmtSize(n){ return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
@@ -27499,6 +27563,237 @@ function summarize(C){
   o.ok = o.hard.length === 0; o.text = o.hard.length + ' failed, ' + o.warn.length + ' warning' + (o.warn.length === 1 ? '' : 's') + ', ' + o.pass.length + ' passed, ' + o.na.length + ' not applicable'; return o;
 }
 window.bkIntegrity = function(){ try { return run(); } catch(e){ return summarize([{ id:'crash', group:'Engine', label:'Integrity checks ran', status:'hard', detail:'The checks themselves failed: ' + e.message }]); } };
+})();
+</script>
+<script id="bk-devreport-extra">/* ===========================================================================
+   DEVELOPMENT INVESTMENT SUMMARY - the pages that explain the investment: returns and what they rest on, operations and lease-up, financing and coverage, what breaks the deal
+   (break-evens, single-variable and combined-downside sensitivities), and the model's own integrity findings and limits. Every figure is read from the engine's calls or from a rerun of
+   the engine with one input changed (bkRunWith); nothing is estimated here. Results are memoised on the deal's contents, so re-opening the summary (or changing the photo) is instant.
+   =========================================================================== */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || typeof window.bkRunWith !== 'function') return;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+function usd(v){ return v == null || !isFinite(v) ? '—' : (v < 0 ? '($' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US') + (v < 0 ? ')' : ''); }
+function mil(v){ return v == null || !isFinite(v) ? '—' : (v < 0 ? '($' : '$') + (Math.abs(v) / 1e6).toFixed(2) + 'M' + (v < 0 ? ')' : ''); }
+function pct(v, d){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
+function mult(v){ return v == null || !isFinite(v) || v <= 0 ? '—' : v.toFixed(2) + 'x'; }
+var memo = null;
+
+/* one engine run, reduced to what the tables show */
+function metrics(){
+  var o = {};
+  try {
+    var m = bkMonthlyReturns(), f = bkDevFundingV10(), t = bkDevTakeoutV11(), s = bkLoad(), w = safe(function(){ return bkWaterfallSummary(); }, null), rows = m.rows, last = rows[rows.length - 1] || {};
+    var stabNOI = num(t.stabPointNOI || t.noi), held = !!t.conHeldToSale, bal = held ? num(t.conHeldBalance) : num(t.permLoan), ds = held ? bal * num(s.conRate) : num(t.permPmt) * 12;
+    var opDist = rows.reduce(function(a, r, i){ return a + (i < rows.length - 1 ? Math.max(0, num(r.wfDist)) : Math.max(0, num(r.noi) - num(r.ds) - num(r.assetFee))); }, 0);
+    var net = num(last.sale) - num(last.dispoFee);
+    o = { irr:m.irr, moic:m.moic, uirr:m.u && m.u.irr, umoic:m.u && m.u.moic, uprofit:m.u && m.u.profit, profit:num(m.dist) - num(m.contrib), contrib:num(m.contrib), dist:num(m.dist), grossSale:num(last.grossSale), netSale:net, payoff:num(last.payoff),
+      lpIRR:w ? w.lp.irr : null, gpIRR:w ? w.gp.irr : null, lpMOIC:w ? w.lp.moic : null, gpMOIC:w ? w.gp.moic : null, lpDist:w ? w.lp.dist : null, gpDist:w ? w.gp.dist : null, lpContrib:w ? w.lp.contributed : null, gpContrib:w ? w.gp.contributed : null, promote:w ? w.gp.promote : null,
+      extraEq:num(f.overflowTotal), dscr:ds > 0 ? stabNOI / ds : null, ds:ds, bal:bal, stabNOI:stabNOI, commit:num(f.commit), capInt:num(f.actualCapInt), unlev:num(f.unlev), levered:num(f.levered), equityTotal:num(f.equityTotal), stabVal:num(t.stabVal), hold:num(f.hold), stab:num(f.stab),
+      beSale:(num(last.payoff) + num(m.contrib) - opDist) / (1 - num(s.saleCostPct) - num(s.dispositionFeePct)) };
+  } catch(e){ o.err = e.message; }
+  return o;
+}
+function run(ov){ return window.bkRunWith(ov || {}, metrics); }
+function irrOf(ov){ return window.bkRunWith(ov, function(){ return safe(function(){ return bkMonthlyReturns().irr; }, NaN); }); }
+/* find x in [lo, hi] where f(x) = target; f is monotone over the range. Returns { x } or { bound:'<'|'>' } when the range never reaches the target. */
+function solve(f, lo, hi, target){
+  /* scan a grid (the IRR solver can fail at the extremes), then bisect inside the first cell the target falls in */
+  var N = 12, pts = [], i; for(i = 0; i <= N; i++){ var x = lo + (hi - lo) * i / N, y = f(x); if(isFinite(y)) pts.push([x, y - target]); }
+  if(pts.length < 2) return { x:null, bound:'n/a' };
+  for(i = 0; i < pts.length - 1; i++){ if(pts[i][1] * pts[i + 1][1] <= 0){ var a = pts[i][0], b = pts[i + 1][0], fa = pts[i][1];
+    for(var k = 0; k < 16; k++){ var mid = (a + b) / 2, c = f(mid) - target; if(!isFinite(c)) break; if(fa * c <= 0) b = mid; else { a = mid; fa = c; } } return { x:(a + b) / 2 }; } }
+  var lowEnd = Math.abs(pts[0][1]) < Math.abs(pts[pts.length - 1][1]); return { x:null, bound:lowEnd ? 'low' : 'high', at:lowEnd ? pts[0][0] : pts[pts.length - 1][0] };
+}
+
+function build(){
+  var s = bkLoad(), key = JSON.stringify(s); if(memo && memo.key === key) return memo.d;
+  var hurdle = num(safe(function(){ return bkPolicy().targetIRR; }, 0.12)) || 0.12, base = run({}), cm = num(s.constructionMonths), lu = num(s.leaseupMonths), hy = num(s.holdYears), rate = num(s.conRate), rent = num(s.avgRent), cap = num(s.exitCap);
+  var D = { s:s, hurdle:hurdle, base:base, tables:[], be:{} };
+  var T = function(name, rows){ D.tables.push({ name:name, rows:rows.map(function(r){ return Object.assign({ label:r[0] }, run(r[1])); }) }); };
+  T('Exit capitalisation rate', [-0.0050, -0.0025, 0, 0.0025, 0.0050, 0.0075, 0.0100].map(function(d){ return [(d === 0 ? 'Base ' : (d > 0 ? '+' : '') + Math.round(d * 10000) + ' bps ') + '(' + pct(cap + d, 2) + ')', { exitCap:cap + d }]; }));
+  T('Average monthly rent', [-0.15, -0.10, -0.05, 0, 0.05, 0.10].map(function(d){ return [(d === 0 ? 'Base ' : (d > 0 ? '+' : '') + Math.round(d * 100) + '% ') + '($' + Math.round(rent * (1 + d)).toLocaleString('en-US') + ')', { avgRent:rent * (1 + d) }]; }));
+  T('Construction cost (hard, incl. contingency)', [0, 0.05, 0.10, 0.15, 0.20].map(function(d){ return [d === 0 ? 'Base budget' : '+' + Math.round(d * 100) + '%', { scnHardPct:num(s.scnHardPct) + d }]; }));
+  T('Construction loan rate', [0, 100, 200, 300].map(function(d){ return [d === 0 ? 'Base (' + pct(rate, 2) + ')' : '+' + d + ' bps', { conRate:rate + d / 10000 }]; }));
+  T('Construction delay (exit moves with it)', [0, 3, 6, 12].map(function(n){ return [n === 0 ? 'Base schedule' : n + ' months', { constructionMonths:cm + n, holdYears:hy + n / 12 }]; }));
+  T('Lease-up delay (exit moves with it)', [0, 3, 6, 12].map(function(n){ return [n === 0 ? 'Base schedule' : n + ' months', { leaseupMonths:lu + n, holdYears:hy + n / 12 }]; }));
+  D.combined = [
+    ['1. Cost +10, rent −5, cap +50', { scnHardPct:num(s.scnHardPct) + 0.10, avgRent:rent * 0.95, exitCap:cap + 0.005 }],
+    ['2. Cost +15, rate +200, delay 6 mo', { scnHardPct:num(s.scnHardPct) + 0.15, conRate:rate + 0.02, constructionMonths:cm + 6, holdYears:hy + 0.5 }],
+    ['3. Rent −10, lease-up +6 mo, cap +100', { avgRent:rent * 0.90, leaseupMonths:lu + 6, holdYears:hy + 0.5, exitCap:cap + 0.01 }],
+    ['4. Cost +20, rate +300, rent −10, cap +100', { scnHardPct:num(s.scnHardPct) + 0.20, conRate:rate + 0.03, avgRent:rent * 0.90, exitCap:cap + 0.01 }]].map(function(r){ return Object.assign({ label:r[0] }, run(r[1])); });
+  /* what breaks the deal */
+  var be = D.be, hit = function(sol, fmt, base0){ return sol.x != null ? fmt(sol.x) : (sol.bound === 'n/a' ? 'not calculable' : (sol.bound === 'low' ? 'still above the hurdle at ' + fmt(sol.at) : 'already below the hurdle at ' + fmt(sol.at))); };
+  var capSol = solve(function(c){ return irrOf({ exitCap:c }); }, 0.02, 0.14, hurdle);
+  var capMoic = solve(function(c){ return window.bkRunWith({ exitCap:c }, function(){ return safe(function(){ return bkMonthlyReturns().moic; }, NaN); }); }, 0.02, 0.30, 1);
+  var rentSol = solve(function(r){ return irrOf({ avgRent:r }); }, rent * 0.4, rent * 1.3, hurdle);
+  var costSol = solve(function(d){ return irrOf({ scnHardPct:num(s.scnHardPct) + d }); }, 0, 1.0, hurdle);
+  var landSol = solve(function(f){ return irrOf({ purchasePrice:num(s.purchasePrice) * f }); }, 0.3, 3, hurdle);
+  var stabNOIAt = function(ov){ return window.bkRunWith(ov, function(){ return safe(function(){ return bkCalc().after; }, NaN); }); }, ds = base.ds || 0;
+  var rentDscr = ds > 0 ? solve(function(r){ return stabNOIAt({ avgRent:r }); }, rent * 0.2, rent * 1.5, ds) : { x:null, bound:'n/a' };
+  var vacDscr = ds > 0 ? solve(function(v){ return stabNOIAt({ vacancy:v }); }, 0, 0.95, ds) : { x:null, bound:'n/a' };
+  var delay = null; for(var n = 0; n <= 36; n += 3){ var r = irrOf({ constructionMonths:cm + n, holdYears:hy + n / 12 }); if(!isFinite(r) || r < hurdle){ delay = n; break; } }
+  be.rows = [
+    ['Exit cap rate at which the levered IRR equals the ' + pct(hurdle, 1) + ' hurdle', hit(capSol, function(c){ return pct(c, 2) + ' (' + (c >= cap ? '+' : '') + Math.round((c - cap) * 10000) + ' bps)'; })],
+    ['Exit cap rate at which equity gets its money back (1.00x)', capMoic.x != null ? pct(capMoic.x, 2) + ' (+' + Math.round((capMoic.x - cap) * 10000) + ' bps)' : 'not reached below ' + pct(0.30, 0) ],
+    ['Break-even sale value (equity profit zero)', mil(base.beSale) + ' against ' + mil(base.grossSale) + ' base (' + pct(1 - base.beSale / base.grossSale, 0) + ' cushion)'],
+    ['Average rent at which the levered IRR equals the hurdle', hit(rentSol, function(r){ return usd(r) + ' (' + Math.round((r / rent - 1) * 100) + '% vs base)'; })],
+    ['Average rent for 1.00x coverage of ' + (base.ds > 0 ? 'the stabilised debt service of ' + usd(base.ds) : 'debt service'), ds > 0 ? hit(rentDscr, function(r){ return usd(r) + ' (' + Math.round((r / rent - 1) * 100) + '% vs base)'; }) : 'no debt service after stabilisation'],
+    ['Break-even occupancy for 1.00x coverage', ds > 0 ? (vacDscr.x != null ? pct(1 - vacDscr.x, 1) + ' (base ' + pct(1 - num(s.vacancy), 1) + ')' : 'not calculable') : 'no debt service after stabilisation'],
+    ['Hard-cost overrun at which the levered IRR equals the hurdle', hit(costSol, function(d){ return '+' + Math.round(d * 100) + '%'; })],
+    ['Land price at which the levered IRR equals the hurdle', hit(landSol, function(f){ return usd(num(s.purchasePrice) * f) + ' (' + Math.round((f - 1) * 100) + '% vs base)'; })],
+    ['Construction delay the deal can absorb before the IRR falls below the hurdle', delay == null ? 'more than 36 months' : (delay === 0 ? 'none: the base case is already below the hurdle' : 'under ' + delay + ' months')]];
+  /* operating statement, lease-up and unit economics */
+  D.beNum = { cap:capSol.x, capMoic:capMoic.x, rent:rentSol.x, cost:costSol.x, land:landSol.x, rentDscr:rentDscr.x, vacDscr:vacDscr.x };
+  D.cush = { capBps:capSol.x != null ? (capSol.x - cap) * 10000 : null, rentPct:rentSol.x != null ? rentSol.x / rent - 1 : null, costPct:costSol.x != null ? costSol.x : null };
+  D.calc = safe(function(){ return bkCalc(); }, {});
+  D.ramp = safe(function(){ return bkDevV09().leaseupRamp || []; }, []);
+  D.dev = safe(function(){ return bkDevV09(); }, {});
+  D.fund = safe(function(){ return bkDevFundingV10(); }, {});
+  D.tk = safe(function(){ return bkDevTakeoutV11(); }, {});
+  D.refi = window.bkRunWith({ refiAtStab:1, permDSCR:0 }, function(){ var t = bkDevTakeoutV11(); return { permLoan:t.permLoan, conPayoff:t.conPayoff, fee:t.permFee, cashOut:t.refiProceeds, shortfall:t.refiShortfall, ds:num(t.permPmt) * 12, noi:num(t.noi), value:num(t.stabVal), rate:num(bkLoad().permRate), amort:num(bkLoad().permAmort), ltvCap:num(t.ltvCap), dscrLoan:num(t.dscrLoan), bind:t.bindingTest }; });
+  D.integrity = safe(function(){ return bkIntegrity(); }, null);
+  D.gate = safe(function(){ return bkDealGate(); }, null);
+  memo = { key:key, d:D }; return D;
+}
+
+/* ------------------------------------------------------------ pages (inner HTML; the report wraps them) */
+function tbl(head, rows, cls){ return '<table' + (cls ? ' class="' + cls + '"' : '') + '><thead><tr>' + head.map(function(h, i){ return '<th' + (i ? '' : ' class="l"') + '>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table>'; }
+function trl(cells, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' + cells.map(function(c, i){ return '<td class="' + (i === cells.length - 1 ? '' : 'l') + '">' + c + '</td>'; }).join('') + '</tr>'; }
+function tr(cells, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' + cells.map(function(c, i){ return '<td' + (i ? '' : ' class="l"') + '>' + c + '</td>'; }).join('') + '</tr>'; }
+
+function returnsPage(D){
+  var b = D.base, s = D.s, hurdle = D.hurdle, units = num(s.units), gsf = num(s.gsf);
+  var prop = [['Total development cost (before financing)', usd(b.unlev) + (units ? ' · ' + usd(b.unlev / units) + ' per unit' : '') + (gsf ? ' · $' + Math.round(b.unlev / gsf) + ' per GSF' : '')], ['All-in cost (with fees and interest)', usd(b.levered + (D.fund.months || []).reduce(function(a, z){ return a + num(z.excess); }, 0))],
+    ['Stabilised NOI (after reserves)', usd(b.stabNOI)], ['Yield on cost', pct(b.unlev ? b.stabNOI / b.unlev : null)], ['Development spread over exit cap', b.unlev ? Math.round((b.stabNOI / b.unlev - num(s.exitCap)) * 10000) + ' bps' : '—'],
+    ['Gross / net sale value', mil(b.grossSale) + ' / ' + mil(b.netSale)], ['Unlevered profit', usd(b.uprofit)], ['Unlevered IRR / multiple', pct(b.uirr) + ' / ' + mult(b.umoic)]];
+  var eq = [['Equity requirement (peak contributed)', usd(b.equityTotal)], ['Total contributions / distributions', usd(b.contrib) + ' / ' + usd(b.dist)], ['Levered profit', usd(b.profit)], ['Levered IRR / multiple', pct(b.irr) + ' / ' + mult(b.moic)],
+    ['Equity beyond the planned amount', usd(b.extraEq)], ['LP: contributed · IRR · multiple', usd(b.lpContrib) + ' · ' + pct(b.lpIRR) + ' · ' + mult(b.lpMOIC)], ['GP: contributed · IRR · multiple', usd(b.gpContrib) + ' · ' + pct(b.gpIRR) + ' · ' + mult(b.gpMOIC)], ['GP promote', usd(b.promote)]];
+  var pb = null, cum = 0; safe(function(){ bkMonthlyReturns().rows.forEach(function(r, i){ cum += num(r.cf); if(pb == null && cum > 0 && i > 0) pb = i + 1; }); });
+  var where = b.dist > 0 ? [['Return of capital', b.contrib], ['Profit', b.profit]] : [];
+  var src = '<div class="note" style="margin-top:6px">Contributions and distributions are gross: equity called, and any month\'s cash shortfall the partners fund, are contributions; the surplus is a distribution. The multiple is total distributions over total contributions. IRRs are XIRR on actual dated cash flows. Equity payback is month ' + (pb || '—') + ' of ' + b.hold + '.</div>';
+  var drivers = '<div class="ins"><div>The deal clears its ' + pct(hurdle, 1) + ' hurdle by <b>' + ((b.irr - hurdle) * 100).toFixed(1) + ' points</b> at ' + pct(b.irr, 1) + ' levered (' + pct(b.uirr, 1) + ' unlevered): leverage adds about ' + ((b.irr - b.uirr) * 100).toFixed(1) + ' points, at the cost of ' + usd(b.capInt) + ' of capitalised interest' + (D.fund.months && b.extraEq > 0 ? ' and equity paying ' + usd(b.extraEq) + ' beyond the plan' : '') + '.</div>'
+    + '<div>The return is mostly a sale return: ' + mil(b.netSale - b.payoff) + ' comes back at exit after repaying ' + mil(b.payoff) + ' of debt. The stabilised yield on cost of ' + pct(b.unlev ? b.stabNOI / b.unlev : null) + ' against a ' + pct(num(s.exitCap)) + ' exit cap is the whole development spread: each 25 bps of exit cap moves the sale value by about ' + mil(b.grossSale - b.grossSale * num(s.exitCap) / (num(s.exitCap) + 0.0025)) + '.</div></div>';
+  return '<h2>Returns and what they rest on</h2><div class="g2"><div><h2 style="font-size:11px">Property</h2><table><tbody>' + prop.map(function(r){ return tr(r); }).join('') + '</tbody></table></div><div><h2 style="font-size:11px">Equity, LP and GP</h2><table><tbody>' + eq.map(function(r){ return tr(r); }).join('') + '</tbody></table></div></div>' + src + drivers;
+}
+
+function opsPage(D){
+  var s = D.s, c = D.calc, units = num(s.units), ramp = D.ramp, dev = D.dev, mixTbl = '';
+  var sch = safe(function(){ return window.bkDevUnitOn && bkDevUnitOn(s) ? s.devLeaseup.types : null; }, null), gsf = num(s.gsf), gpr = num(c.gpr);
+  if(sch){ mixTbl = tbl(['Unit type', 'Units', 'Rent / month', 'Annual rent', 'Share'], sch.filter(function(t){ return num(t.units) > 0; }).map(function(t){ return tr([esc(t.name || 'Unit'), num(t.units), usd(num(t.rent)), usd(num(t.units) * num(t.rent) * 12), pct(num(t.units) / units, 0)]); }).concat([tr(['Total / weighted average', units, usd(gpr / 12 / Math.max(1, units)), usd(gpr), '100%'], 'tot')])); }
+  else mixTbl = '<table><tbody>' + [['Units', String(units)], ['Average rent / unit / month', usd(num(s.avgRent))], ['Annual potential rent', usd(gpr)], ['Rent per unit per year', usd(gpr / Math.max(1, units))], ['Rent per GSF per month', gsf ? '$' + (gpr / 12 / gsf).toFixed(2) : '—']].map(function(r){ return tr(r); }).join('') + '</tbody></table><div class="note" style="margin-top:4px">The unit mix by type is not entered for this deal; the model uses the units at an average rent. Enter it on Dev Lease-Up (by unit type) to show it here.</div>';
+  var neg = function(v){ return v < 0 ? '(' + usd(-v).replace(/[()]/g, '') + ')' : usd(v); };
+  var op = [['Gross potential rent', usd(gpr)], ['Vacancy and credit loss', neg(num(c.vacancy) + num(c.bad))], ['Other income', usd(num(c.other))], ['Effective gross income', usd(num(c.egi)), 'sub'],
+    ['Operating expenses (incl. management ' + usd(num(c.mgmt)) + ')', neg(-num(c.total))], ['Net operating income (before reserves)', usd(num(c.noi)), 'sub'], ['Replacement reserves', neg(-(num(c.noi) - num(c.after)))], ['Cash flow after reserves', usd(num(c.after)), 'tot']];
+  var opTbl = '<table><tbody>' + op.map(function(r){ return tr([r[0], r[1]], r[2]); }).join('') + '</tbody></table><div class="note" style="margin-top:4px">Stabilised NOI is derived from the rent and expense inputs; it is never forced to a target. Expense ratio ' + pct(num(c.expenseRatio), 1) + ' of EGI.</div>';
+  var q = [], k = 0; ramp.forEach(function(r){ var qi = Math.floor(k / 3); (q[qi] = q[qi] || []).push(r); k++; });
+  var luTbl = ramp.length ? tbl(['Months', 'Occupancy (end)', 'EGI', 'NOI after reserves'], q.map(function(g){ var a = g[0].mo, bz = g[g.length - 1].mo; return tr(['Months ' + a + '–' + bz, pct(g[g.length - 1].occ, 0), usd(g.reduce(function(t, z){ return t + num(z.egi); }, 0)), neg(g.reduce(function(t, z){ return t + num(z.after); }, 0))]); })) : '<div class="note">No lease-up: stabilised at completion.</div>';
+  var svg = ''; if(ramp.length){ var W = 330, H = 90, mx = ramp.length; svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 18) + '" style="width:100%;height:auto;color:#0e2a4a"><rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none" stroke="rgba(120,120,120,.35)"/>' + ramp.map(function(r, i){ var h = Math.max(1, r.occ * (H - 6)), x0 = 4 + i * ((W - 8) / mx); return '<rect x="' + x0.toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + Math.max(2, (W - 8) / mx - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="#3E9AE6"/>'; }).join('') + '<text x="4" y="' + (H + 12) + '" font-size="8" fill="currentColor" opacity=".7">month ' + ramp[0].mo + '</text><text x="' + (W - 4) + '" y="' + (H + 12) + '" font-size="8" text-anchor="end" fill="currentColor" opacity=".7">month ' + ramp[mx - 1].mo + ' · ' + pct(ramp[mx - 1].occ, 0) + ' occupied</text></svg>'; }
+  return '<h2>Unit economics, operations and lease-up</h2><div class="g2"><div><h2 style="font-size:11px">Units and rent</h2>' + mixTbl + '</div><div><h2 style="font-size:11px">Stabilised operating statement (annual)</h2>' + opTbl + '</div></div>'
+    + '<div class="bx mt"><div class="t">Lease-up schedule</div><div class="s">Construction completes in month ' + dev.co + '; leasing runs ' + (dev.luMo || 0) + ' months to stabilisation in month ' + dev.stab + '. Occupancy ramps ' + (sch ? 'by unit type as scheduled' : 'in a straight line') + '; fixed costs run in full from completion, so the early months lose money.</div>' + svg + luTbl + '</div>'
+    + '<div class="note" style="margin-top:6px">Rent growth ' + pct(num(s.rentGrowth), 1) + ' and expense growth ' + pct(num(s.opexGrowth), 1) + ' a year apply after stabilisation. Concessions: ' + (num(s.concessionLeaseUpPct) ? pct(num(s.concessionLeaseUpPct), 1) + ' of lease-up rent' : 'none') + '.</div>';
+}
+
+function financePage(D){
+  var b = D.base, s = D.s, f = D.fund, t = D.tk, r = D.refi, ms = f.months || [], peak = Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0])), excess = ms.reduce(function(a, z){ return a + num(z.excess); }, 0), draws = ms.reduce(function(a, z){ return a + num(z.loanDraw); }, 0);
+  var held = !!t.conHeldToSale, val = b.stabVal, bal = b.bal, noi = b.stabNOI;
+  var fac = [['Facility commitment (LTC ' + pct(num(s.conLTC), 0) + ' formula)', usd(b.commit)], ['Interest rate / origination fee', pct(num(s.conRate), 2) + ' / ' + pct(num(s.conOrigFee), 2)], ['Loan draws', usd(draws)], ['Capitalised interest', usd(b.capInt)],
+    ['Interest paid by equity once the commitment is full', usd(excess)], ['Peak balance (before sale)', usd(peak)], ['Headroom left in the commitment', usd(b.commit - peak)], ['Unused-commitment fee', 'not modelled'],
+    ['Repayment', held ? 'Held after stabilisation (interest paid currently); ' + usd(bal) + ' repaid from the sale' : 'Taken out at stabilisation by a ' + usd(t.permLoan) + ' permanent loan']];
+  var cov = [['Loan to cost (all-in)', pct(b.levered ? b.bal / (b.levered + excess) : null)], ['Loan to value (stabilised value ' + mil(val) + ')', pct(val ? bal / val : null)], ['Debt yield (NOI / loan)', pct(bal ? noi / bal : null)], ['Debt service coverage (stabilised NOI / annual debt service)', b.dscr ? mult(b.dscr) : '—'],
+    ['Interest coverage', b.dscr ? mult(b.dscr) + (held ? ' (interest only)' : '') : '—'], ['Annual debt service after stabilisation', usd(b.ds)]];
+  var refi = r && r.permLoan > 0 ? [['Permanent loan (65% LTV, no coverage test)', usd(r.permLoan)], ['Rate / amortisation', pct(r.rate, 2) + ' / ' + r.amort + ' years'], ['Repays the construction loan', usd(r.conPayoff)], ['Refinance fees', usd(r.fee)], ['Net cash out to equity', usd(r.cashOut)], ['Takeout shortfall equity must fund', usd(r.shortfall)], ['Annual debt service', usd(r.ds)],
+    ['DSCR / debt yield / LTV', mult(r.ds ? r.noi / r.ds : null) + ' / ' + pct(r.permLoan ? r.noi / r.permLoan : null) + ' / ' + pct(r.value ? r.permLoan / r.value : null)], ['Value of the retained property (' + pct(num(s.exitCap)) + ' cap)', usd(r.value)], ['Equity left in the deal', usd(r.value - r.permLoan)]] : [];
+  var note = refi.length ? '<div class="note" style="margin-top:4px">Sized at the model\'s permanent-loan LTV with the coverage test switched off, so the coverage shown is what that loan would run at. A lender testing ' + mult(num(s.permDSCR) || 1.25) + ' coverage would lend less. This is a stabilisation-date illustration: the model still values and sells the property at the end of the hold; it does not model holding it afterwards.</div>' : '';
+  return '<h2>Financing and debt metrics</h2><div class="g2"><div><h2 style="font-size:11px">Construction facility</h2><table><tbody>' + fac.map(function(x){ return tr(x); }).join('') + '</tbody></table></div><div><h2 style="font-size:11px">Coverage and leverage</h2><table><tbody>' + cov.map(function(x){ return tr(x); }).join('') + '</tbody></table></div></div>'
+    + (refi.length ? '<h2 style="margin-top:14px">Refinance alternative at stabilisation (month ' + b.stab + ')</h2><table><tbody>' + refi.map(function(x){ return tr(x); }).join('') + '</tbody></table>' + note : '');
+}
+
+var COLS = '<colgroup>' + [30, 8.5, 7.5, 8.5, 8, 7.5, 7.5, 6.5, 9.5, 6.5].map(function(w){ return '<col style="width:' + w + '%">'; }).join('') + '</colgroup>';
+function riskPage(D){
+  var b = D.base, hurdle = D.hurdle, head = ['Case', 'Sale value', 'Profit', 'Unlev. IRR', 'Lev. IRR', 'LP IRR', 'GP IRR', 'LP x', 'Extra equity', 'DSCR'];
+  var cell = function(q){ var cls = isFinite(q.irr) && q.irr < hurdle ? ' class="neg"' : ''; return '<tr><td class="l">' + esc(q.label) + '</td><td>' + mil(q.grossSale) + '</td><td>' + mil(q.profit) + '</td><td>' + pct(q.uirr, 1) + '</td><td' + cls + '>' + pct(q.irr, 1) + '</td><td>' + pct(q.lpIRR, 1) + '</td><td>' + pct(q.gpIRR, 0) + '</td><td>' + mult(q.lpMOIC) + '</td><td>' + mil(q.extraEq) + '</td><td>' + (q.dscr ? mult(q.dscr) : '—') + '</td></tr>'; };
+  var tables = D.tables.map(function(t){ return '<h2 style="font-size:10px;margin:8px 0 2px">' + esc(t.name) + '</h2><table class="rr" style="table-layout:fixed">' + COLS + '<thead><tr>' + head.map(function(h, i){ return '<th' + (i ? '' : ' class="l"') + ' style="font-size:6.4px;letter-spacing:0;padding:3px 2px">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + t.rows.map(cell).join('') + '</tbody></table>'; });
+  var be = '<table><tbody>' + D.be.rows.map(function(r){ return tr(r); }).join('') + '</tbody></table>';
+  var a = '<h2>What breaks the deal</h2><div class="note" style="margin:0 0 4px">Each break-even reruns the full model with one input moved until the levered IRR reaches the ' + pct(hurdle, 1) + ' hurdle (or equity just gets its money back). Red = below the hurdle. In the combined cases cost is the hard-cost overrun in %, rent the change in %, rate and cap the change in bps.</div>' + be;
+  var comb = '<h2>Combined downside cases</h2><table class="rr" style="table-layout:fixed">' + COLS + '<thead><tr>' + head.map(function(h, i){ return '<th' + (i ? '' : ' class="l"') + ' style="font-size:6.4px;letter-spacing:0;padding:3px 2px">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + cell(Object.assign({ label:'Base case' }, b)) + D.combined.map(cell).join('') + '</tbody></table>';
+  return { a:a + '<div class="note" style="margin-top:4px">Delays move the sale by the same number of months. Cost overrun applies to hard cost including contingency. DSCR is stabilised NOI over annual debt service after stabilisation.</div>' + comb, b:'<h2>Single-variable sensitivities</h2>' + tables.join('') };
+}
+
+function integrityPage(D){
+  var g = D.integrity, gate = D.gate || {}, s = D.s;
+  var rows = g ? g.checks.map(function(c){ var k = c.status === 'pass' ? 'pass' : c.status === 'hard' ? 'fail' : c.status === 'warn' ? 'warn' : ''; return '<tr><td class="l" style="white-space:normal;line-height:1.1">' + esc(c.group) + '</td><td class="l" style="white-space:normal;line-height:1.15">' + esc(c.label) + '</td><td style="white-space:nowrap"><span class="pill ' + k + '">' + (c.status === 'hard' ? 'FAILED' : c.status === 'warn' ? 'WARNING' : c.status === 'na' ? 'N/A' : 'PASS') + '</span></td></tr>'; }).join('') : '';
+  var detail = g ? g.hard.concat(g.warn).map(function(c){ return '<div><b>' + (c.status === 'hard' ? 'Failed: ' : 'Warning: ') + '</b>' + esc(c.label) + ' — ' + esc(c.detail) + '</div>'; }).join('') : '';
+  var lim = ['Costs are entered as 13 hard-cost trades and 16 soft-cost lines; lines in a brief are merged to fit, and each cannot be escalated or reforecast on its own.', 'Contingency and initial reserves are not tracked or released as separate balances.', 'The construction loan is sized by an LTC formula; a fixed commitment, a facility ceiling, an equity-first threshold and an unused-commitment fee cannot be entered.',
+    'The GP catch-up is a share-of-profit target (100% until the GP holds that share), not a catch-up rate; the preferred return is shared by LP and GP unless hurdles are tested on LP flows.', 'A refinance is illustrated at stabilisation; the property is still sold at the end of the hold.', 'Source citations, extraction confidence and broker-versus-model discrepancy reporting are not part of this summary.'];
+  return '<h2>Model integrity and limits</h2><div class="g2" style="grid-template-columns:1.25fr .85fr"><div><div class="note" style="margin:0 0 4px">Every line is recomputed independently of the engine (' + esc(g ? g.text : 'not available') + '). A failed check holds the credit gate; a warning caps it at conditional.</div><table style="table-layout:fixed;font-size:8px"><colgroup><col style="width:15%"><col style="width:67%"><col style="width:18%"></colgroup><thead><tr><th class="l">Area</th><th class="l">Check</th><th>Result</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div><div class="bx" style="padding:10px 12px"><div class="t">Credit gate: ' + esc(gate.verdict || 'not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div><div class="ins" style="margin-top:4px">' + detail + '</div></div><h2 style="margin-top:10px">What this model cannot yet do</h2><div class="note">' + lim.map(function(x){ return '• ' + esc(x); }).join('<br>') + '</div></div></div>';
+}
+
+
+/* ------------------------------------------------------------ impact to portfolio (development and acquisition summaries) */
+var pmemo = null;
+function typeOf(sn){ return String(sn.propertyType || 'Unspecified'); }
+function kindOf(sn){ return /develop/i.test(String(sn.dealType || '')) ? 'Development' : 'Acquisition'; }
+function portfolioData(){
+  var s = bkLoad(), saved = safe(function(){ return bkPortfolioLoad(); }, []), curKey = safe(function(){ return bkPortfolioKey(s); }, ''), key = JSON.stringify([saved, s]);
+  if(pmemo && pmemo.key === key) return pmemo.d;
+  var one = function(sn, isCur){
+    var mt = safe(function(){ return bkPortfolioMetricsFor(sn); }, null), mr = safe(function(){ return bkPortfolioMonthlyFor(sn); }, null);
+    if(!mt || !mt.ok || !mr || !mr.ok) return null;
+    var r = mr.r, rows = r.rows || [];
+    return { name:sn.name || sn.dealId || 'Untitled', type:typeOf(sn), kind:kindOf(sn), location:sn.location || '', equity:num(r.contrib), cost:num(mt.purchasePrice), loan:num(mt.loan), irr:mt.irr, moic:num(r.moic), dist:num(r.dist), profit:num(r.dist) - num(r.contrib), cur:isCur,
+      flows:rows.map(function(x){ return { dt:x.dt, cf:num(x.cf) }; }), close:r.closeDt, eq0:num(rows[0] && rows[0].eqDraw) };
+  };
+  var others = saved.filter(function(sn){ return safe(function(){ return bkPortfolioKey(sn); }, '') !== curKey; }).map(function(sn){ return one(sn, false); }).filter(Boolean), me = one(s, true);
+  var D = { me:me, others:others, first:others.length === 0 };
+  var agg = function(list){
+    var eq = list.reduce(function(a, x){ return a + x.equity; }, 0), cost = list.reduce(function(a, x){ return a + x.cost; }, 0), loan = list.reduce(function(a, x){ return a + x.loan; }, 0), dist = list.reduce(function(a, x){ return a + x.dist; }, 0), prof = list.reduce(function(a, x){ return a + x.profit; }, 0);
+    var wirr = eq > 0 ? list.reduce(function(a, x){ return a + (isFinite(x.irr) ? x.irr * x.equity : 0); }, 0) / eq : null;
+    var vals = [], dates = []; list.forEach(function(x){ if(x.close && x.eq0){ vals.push(-x.eq0); dates.push(x.close); } x.flows.forEach(function(f, i){ vals.push(f.cf + (i === 0 ? x.eq0 : 0)); dates.push(f.dt); }); });
+    var order = dates.map(function(d, i){ return i; }).sort(function(a, b){ return +new Date(dates[a]) - +new Date(dates[b]); }), cirr = list.length ? window.bkIrrIndependent(order.map(function(i){ return vals[i]; }), order.map(function(i){ return dates[i]; })) : null;
+    var by = function(f){ var m = {}; list.forEach(function(x){ m[f(x)] = (m[f(x)] || 0) + x.equity; }); return m; };
+    var big = list.reduce(function(a, x){ return Math.max(a, x.equity); }, 0);
+    return { n:list.length, eq:eq, cost:cost, loan:loan, lev:cost > 0 ? loan / cost : null, wirr:wirr, cirr:isFinite(cirr) ? cirr : null, moic:eq > 0 ? dist / eq : null, profit:prof, dev:eq > 0 ? list.filter(function(x){ return x.kind === 'Development'; }).reduce(function(a, x){ return a + x.equity; }, 0) / eq : null,
+      big:eq > 0 ? big / eq : null, byType:by(typeOf_), byKind:by(function(x){ return x.kind; }), types:Object.keys(by(typeOf_)).length };
+  };
+  function typeOf_(x){ return x.type; }
+  D.before = agg(others); D.after = me ? agg(others.concat([me])) : null; pmemo = { key:key, d:D }; return D;
+}
+
+function portfolioPage(){
+  var D = safe(portfolioData, null); if(!D || !D.me) return '<h2>Impact to portfolio</h2><div class="note">The portfolio comparison could not be calculated for this deal.</div>';
+  var me = D.me, b = D.before, a = D.after, own = '<table><tbody>' + [['This deal on its own', me.kind + ' · ' + esc(me.type)], ['Equity invested / total cost', usd(me.equity) + ' / ' + usd(me.cost)], ['Levered profit', usd(me.profit)], ['Levered IRR / multiple', pct(me.irr) + ' / ' + mult(me.moic)]].map(function(r){ return tr(r); }).join('') + '</tbody></table>';
+  if(D.first){
+    return '<h2>Impact to portfolio</h2><div class="bx" style="padding:10px 12px"><div class="t">First deal in the portfolio: N/A</div><div class="s">No other underwritten assets are saved in BK Capital, so there is no portfolio to compare against. This deal would be the first asset; the figures below are the deal on its own.</div></div><div class="mt">' + own + '</div>'
+      + '<div class="note" style="margin-top:8px">Once other deals are saved to the portfolio, this page shows the current assets and what adding this one changes: equity and leverage, the equity-weighted and combined (dated cash flow) IRR, the multiple, concentration in the largest asset, and the mix by property type and by development versus acquisition.</div>';
+  }
+  var asset = function(x){ return tr([esc(x.name) + '<div style="font-size:7px;opacity:.7">' + esc(x.kind + ' · ' + x.type) + '</div>', usd(x.equity), usd(x.cost), pct(x.irr, 1), mult(x.moic), pct(b.eq ? x.equity / b.eq : null, 0)]); };
+  var cur = '<table class="rr"><thead><tr><th class="l">Asset on file</th><th>Equity</th><th>Cost</th><th>Lev. IRR</th><th>Multiple</th><th>Share of equity</th></tr></thead><tbody>' + D.others.map(asset).join('') + tr(['Portfolio (' + b.n + ' asset' + (b.n === 1 ? '' : 's') + ')', usd(b.eq), usd(b.cost), pct(b.wirr, 1), mult(b.moic), '100%'], 'tot') + '</tbody></table>';
+  var row = function(label, x, y, fmt, delta){ var d = (x == null || y == null || !isFinite(x) || !isFinite(y)) ? '—' : delta(y - x); return tr([label, fmt(x), fmt(y), d]); };
+  var pts = function(v){ return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + ' pts'; }, dm = function(v){ return (v >= 0 ? '+' : '−') + usd(Math.abs(v)).replace(/[()]/g, ''); }, dx = function(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + 'x'; }, dn = function(v){ return (v >= 0 ? '+' : '−') + Math.abs(v); };
+  var cmp = '<table><thead><tr><th class="l">Portfolio measure</th><th>Before</th><th>With this deal</th><th>Change</th></tr></thead><tbody>'
+    + row('Assets', b.n, a.n, String, dn) + row('Equity invested', b.eq, a.eq, usd, dm) + row('Total cost', b.cost, a.cost, usd, dm) + row('Debt', b.loan, a.loan, usd, dm) + row('Leverage (debt / cost)', b.lev, a.lev, function(v){ return pct(v, 1); }, pts)
+    + row('Levered IRR, equity-weighted', b.wirr, a.wirr, function(v){ return pct(v, 2); }, pts) + row('Levered IRR, combined dated cash flows', b.cirr, a.cirr, function(v){ return pct(v, 2); }, pts) + row('Equity multiple', b.moic, a.moic, mult, dx) + row('Levered profit', b.profit, a.profit, usd, dm)
+    + row('Development share of equity', b.dev, a.dev, function(v){ return pct(v, 0); }, pts) + row('Largest single asset, share of equity', b.big, a.big, function(v){ return pct(v, 0); }, pts) + row('Property types held', b.types, a.types, String, dn) + '</tbody></table>';
+  var mix = function(m, tot){ return Object.keys(m).sort(function(x, y){ return m[y] - m[x]; }).map(function(k){ return esc(k) + ' ' + pct(tot ? m[k] / tot : null, 0); }).join(' · '); };
+  var share = a.eq ? me.equity / a.eq : null, newType = !(b.byType[me.type] > 0), newKind = !(b.byKind[me.kind] > 0);
+  var lines = ['Adds <b>' + usd(me.equity) + '</b> of equity, <b>' + pct(share, 0) + '</b> of the combined portfolio, and <b>' + usd(me.profit) + '</b> of levered profit (' + pct(me.irr, 1) + ', ' + mult(me.moic) + ').',
+    (a.cirr != null && b.cirr != null ? 'Portfolio levered IRR on combined dated cash flows moves from <b>' + pct(b.cirr, 2) + '</b> to <b>' + pct(a.cirr, 2) + '</b> (' + pts(a.cirr - b.cirr) + '); the equity-weighted figure moves ' + pts(a.wirr - b.wirr) + '. The deal is ' + (me.irr > b.wirr ? 'accretive to' : 'dilutive to') + ' the portfolio\'s return.' : ''),
+    'Diversification: ' + (newType ? 'a <b>new property type</b> (' + esc(me.type) + ')' : 'the same property type as existing assets (' + esc(me.type) + ', ' + pct(b.byType[me.type] / b.eq, 0) + ' of current equity)') + '; ' + (newKind ? 'it adds <b>' + me.kind.toLowerCase() + ' exposure</b> the portfolio did not have' : 'it adds more ' + me.kind.toLowerCase() + ' exposure') + '. Development share of equity goes from ' + pct(b.dev, 0) + ' to ' + pct(a.dev, 0) + '.',
+    'Concentration: the largest single asset is ' + pct(b.big, 0) + ' of equity before and ' + pct(a.big, 0) + ' with this deal' + (me.equity >= Math.max.apply(null, D.others.map(function(x){ return x.equity; })) ? ' (this deal would be the largest)' : '') + '. Leverage moves from ' + pct(b.lev, 1) + ' to ' + pct(a.lev, 1) + '.'].filter(Boolean);
+  return '<h2>Impact to portfolio</h2><div class="g2" style="grid-template-columns:1.2fr 1fr"><div><h2 style="font-size:11px">Current portfolio on file</h2>' + cur + '<div class="note" style="margin-top:3px">Assets are the underwritten deals saved in BK Capital, each shown on its own saved assumptions. Mix by property type: ' + mix(b.byType, b.eq) + '.</div></div><div>' + own + '</div></div>'
+    + '<h2 style="margin-top:12px">What adding this asset changes</h2>' + cmp + '<div class="note" style="margin-top:3px">After: ' + mix(a.byType, a.eq) + '. Development ' + pct(a.dev, 0) + ' of equity.</div>'
+    + '<div class="ins" style="margin-top:8px">' + lines.map(function(l){ return '<div>' + l + '</div>'; }).join('') + '</div>';
+}
+window.bkPortfolioImpact = portfolioData;
+window.bkPortfolioImpactPage = portfolioPage;
+
+window.bkDevReportData = build;
+window.bkDevReportPages = function(){ var D = build(), r = riskPage(D); return { portfolio:portfolioPage(), returns:returnsPage(D), ops:opsPage(D), finance:financePage(D), risk:r.a, sens:r.b, integrity:integrityPage(D), data:D }; };
 })();
 </script>
 </body>

@@ -26,6 +26,8 @@ window.bkDocsSetPhoto = function(file, id){ id = id == null ? dealId() : String(
 window.bkDocsWarm = function(){ var id = dealId(); if(!id) return Promise.resolve(''); if(cache[id] !== undefined) return Promise.resolve(cache[id]); return window.bkDocsList(id).then(function(a){ var p = a.filter(function(f){ return f.slot === 'photo'; })[0]; return p ? toDataURL(p.blob) : ''; }).then(function(u){ cache[id] = u || ''; return cache[id]; }).catch(function(){ cache[id] = ''; return ''; }); };
 window.bkDealPhotoURL = function(){ var id = dealId(); return (id && cache[id]) || ''; };
 window.bkDocsPhotoCache = cache;
+/* remove the deal's photo (no question asked: the caller has its own control) */
+window.bkDocsClearPhoto = function(){ var id = dealId(); if(!id) return Promise.resolve(); return window.bkDocsList(id).then(function(a){ var p = a.filter(function(f){ return f.slot === 'photo'; })[0]; delete cache[id]; return p ? window.bkDocsRemove(p.id) : null; }).then(function(){ cache[id] = ''; }); };
 
 var busy = '';
 function fmtSize(n){ return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
