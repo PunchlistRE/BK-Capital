@@ -20,5 +20,7 @@ module.exports = {
   sc_testing: psf(150000 + 100000), sc_marketing: psf(250000), sc_retaxconst: psf(450000), cmFeePct: 350000 / 26950000, sc_entitlement: psf(150000 + 150000),
   devFeePct: 0, softContPct: 0, sc_sustainability: 0, sc_technology: 0, sc_ti: 0, sc_ffe: 0, sc_title: 0,
   conLTC: 0.65, conRate: 0.0725, conOrigFee: 0.01, conUtil: 0.6, conCapCost: 0, lenderLegal: 0,
-  refiAtStab: 0, permRate: 0.0625, permAmort: 30, permOrigFee: 0.01, permLTV: 0.65,   // the brief's refinance terms (used by the refinance illustration) gpShare: 0.10, pref: 0.08, hurdle2: 0.12, hurdle3: 0.18, hurdleBasis: 1, gpCatchup: 1, gpCatchupTarget: 0.20, t2LP: 0.80, t3LP: 0.70, t4LP: 0.60,
+  refiAtStab: 0, permRate: 0.0625, permAmort: 30, permOrigFee: 0.01, permLTV: 0.65,   // the brief's refinance terms (used by the refinance illustration)
+  // waterfall terms as mapped from the brief in the original build (#76, #79); a Stage C edit had moved them into the comment above, so the deal ran on template hurdles
+  gpShare: 0.10, pref: 0.08, hurdle2: 0.12, hurdle3: 0.18, hurdleBasis: 1, gpCatchup: 1, gpCatchupTarget: 0.20, t2LP: 0.80, t3LP: 0.70, t4LP: 0.60,
 };

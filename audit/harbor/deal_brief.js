@@ -1,5 +1,6 @@
 // Harbor Point with the brief's own financing, reserve and waterfall terms switched on (the terms the base deal.js could not enter).
-// Where the brief is silent the choice is stated here: four reserve buckets are shown as the three the model can hold (operating / lease-up at completion; debt service and the rest held at closing).
+// Where the brief is silent the choice is stated here: four reserve buckets are shown as three (operating / lease-up at completion; debt service and the rest held at closing).
+// Two waterfall terms are NOT in the brief and must be confirmed by the deal team: the 20%-of-profit catch-up target (the original build's mapping) and an LP-only preferred return.
 const D = require('./deal.js');
 module.exports = Object.assign({}, D, {
   conFixedAmt: 27300000, conCeiling: 34000000, conEquityFirst: 14700000, conUnusedFeePct: 0.005,   // fixed $27.3M facility, $34M ceiling, equity funds the first $14.7M, 0.5% on the undrawn principal
