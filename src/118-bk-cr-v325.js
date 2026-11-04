@@ -93,11 +93,13 @@ try{
     if(Number(x.pre)>0.5) uses.push(['Predevelopment Carry', x.pre]);
     uses.push(['Hard Costs', x.hard],['Soft Costs', x.soft]);
     if(Number(x.leaseDef)>0.5) uses.push(['Lease-Up Operating Deficit', x.leaseDef]);
-    uses.push(['Construction Facility Upfront Fees', x.upfrontFees],['Capitalized Construction Interest', x.actualCapInt],['Interest Funded by Equity Beyond the Commitment', excess]);
+    uses.push(['Construction Facility Fees (origination and unused commitment)', x.upfrontFees],['Capitalized Construction Interest', x.actualCapInt],['Interest Funded by Equity Beyond the Commitment', excess]);
+    if(Number(x.resFunded)>0.5) uses.push(['Initial Reserves Funded', x.resFunded]);
     var totalUses = uses.reduce(function(t,u){ return t+(Number(u[1])||0); },0);
     var srcs = [['Construction Facility - draws', draws],['Construction Facility - capitalized interest', capIntSched],['Equity - equity-first funding', eqPlan]];
     if(Math.abs(eqOver)>0.5) srcs.push(['Equity - cost overflow beyond the commitment', eqOver]);
     if(Math.abs(excess)>0.5) srcs.push(['Equity - interest beyond the commitment', excess]);
+    if(Number(x.resDrawn)>0.5) srcs.push(['Initial reserves - drawn for the lease-up shortfall and interest', x.resDrawn]);
     var totalSrc = srcs.reduce(function(t,u){ return t+u[1]; },0);
     var delta = totalSrc - totalUses, ok = Math.abs(delta) < 1;
     var facility = draws + capIntSched, equity = totalSrc - facility;

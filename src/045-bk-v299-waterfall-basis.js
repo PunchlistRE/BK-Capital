@@ -57,6 +57,7 @@
     const opL=[Number(s.t2LP||0),Number(s.t3LP||0),Number(s.t4LP||0)], pick=(k,d)=>(s[k]===undefined||s[k]===null||s[k]==='')?d:Number(s[k]);
     const saleL=[pick('t2LPs',opL[0]),pick('t3LPs',opL[1]),pick('t4LPs',opL[2])];
     const TM=window.bkWfTiming(x);
+    const cr=(s.gpCatchupRate===undefined||s.gpCatchupRate===null||s.gpCatchupRate==='')?1:Math.min(1,Math.max(0,Number(s.gpCatchupRate))), lpOnly=Number(s.prefLPOnly)===1;
     let ib1=0,ib2=0,ib3=0,cumCon=0,cumDist=0,cumProm=0,lpCumCon=0,cumLPDist=0; const rows=[];
     const comb=(a,e)=>mode==='IRR'?a:mode==='EM'?e:(all?Math.max(a,e):Math.min(a,e));
     for(let i=0;i<n;i++){
@@ -69,12 +70,12 @@
       const segs=split?[{d:opD,l:opL,sale:false},{d:saleD,l:saleL,sale:true}]:[{d:dist,l:opL,sale:false}];
       let lpGot=0, T1=0,CU=0,T2=0,T3=0,T4=0, gpD=0, lpD=0, promOp=0, promSale=0;
       segs.forEach(sg=>{ if(!(sg.d>0)) return; const d=sg.d, L=sg.l, e1=Math.max(0,R1-lpGot), e2=Math.max(0,R2-lpGot), e3=Math.max(0,R3-lpGot);
-        const t1=lpS>0?Math.min(d,e1/lpS):d, lp1=t1*lpS, preCatchProfit=Math.max(0,(cumDist+t1)-cumCon), rem1=Math.max(0,d-t1);
-        const tg=Number(s.gpCatchupTarget||0), catchup=Number(s.gpCatchup)&&tg<1?Math.min(rem1,Math.max(0,(tg*preCatchProfit-cumProm)/(1-tg))):0;
-        const need2=Math.max(0,e2-lp1), t2=L[0]>0?Math.min(Math.max(0,d-t1-catchup),need2/L[0]):0, lp2=t2*L[0];
-        const need3=Math.max(0,e3-lp1-lp2), t3=L[1]>0?Math.min(Math.max(0,d-t1-catchup-t2),need3/L[1]):0, lp3=t3*L[1];
-        const t4=Math.max(0,d-t1-catchup-t2-t3), lp4=t4*L[2], lpRecv=lp1+lp2+lp3+lp4, gp=t1*gs+catchup+t2*(1-L[0])+t3*(1-L[1])+t4*(1-L[2]);
-        const prom=Math.max(0,gp-gs*(t1+catchup+t2+t3+t4)); cumProm+=prom; cumDist+=t1+catchup+t2+t3+t4; lpGot+=lpRecv; cumLPDist+=lpRecv;
+        const t1=lpOnly?Math.min(d,e1):(lpS>0?Math.min(d,e1/lpS):d), lp1=lpOnly?t1:t1*lpS, preCatchProfit=Math.max(0,(cumDist+t1)-cumCon), rem1=Math.max(0,d-t1);
+        const tg=Number(s.gpCatchupTarget||0), catchup=Number(s.gpCatchup)&&tg<1?(cr>tg?Math.min(rem1,Math.max(0,(tg*preCatchProfit-cumProm)/(cr-tg))):rem1):0, lpCU=(1-cr)*catchup;
+        const need2=Math.max(0,e2-lp1-lpCU), t2=L[0]>0?Math.min(Math.max(0,d-t1-catchup),need2/L[0]):0, lp2=t2*L[0];
+        const need3=Math.max(0,e3-lp1-lpCU-lp2), t3=L[1]>0?Math.min(Math.max(0,d-t1-catchup-t2),need3/L[1]):0, lp3=t3*L[1];
+        const t4=Math.max(0,d-t1-catchup-t2-t3), lp4=t4*L[2], lpRecv=lp1+lpCU+lp2+lp3+lp4, gp=(lpOnly?0:t1*gs)+catchup*cr+t2*(1-L[0])+t3*(1-L[1])+t4*(1-L[2]);
+        const prom=Math.max(0,gp-gs*((lpOnly?0:t1)+catchup+t2+t3+t4)); cumProm+=prom; cumDist+=t1+catchup+t2+t3+t4; lpGot+=lpRecv; cumLPDist+=lpRecv;
         T1+=t1;CU+=catchup;T2+=t2;T3+=t3;T4+=t4;lpD+=lpRecv;gpD+=gp; if(sg.sale) promSale+=prom; else promOp+=prom; });
       ib1=Math.max(0,a1-lpGot); ib2=Math.max(0,a2-lpGot); ib3=Math.max(0,a3-lpGot);
       const lpCon=-lc, gpCon=-con*gs, promote=promOp+promSale;
@@ -93,6 +94,7 @@
 
     const n=x.rows.length, gpShare=Number(s.gpShare||0), lpShare=1-gpShare;
     const em1=Math.max(0,Number(s.em1||0)), em2=Math.max(em1,Number(s.em2||0)), em3=Math.max(em2,Number(s.em3||0));
+    const cr=(s.gpCatchupRate===undefined||s.gpCatchupRate===null||s.gpCatchupRate==='')?1:Math.min(1,Math.max(0,Number(s.gpCatchupRate))), lpOnly=Number(s.prefLPOnly)===1;
     let cumCon=0,cumDist=0,cumProm=0,cumLPDist=0;
     const rows=[];
     for(let i=0;i<n;i++){
@@ -104,15 +106,15 @@
 
       // Tier 1: pari passu until LP cumulative distributions reach EM1 on cumulative LP contributions.
       const needLP1=Math.max(0,lpCumCon*em1-cumLPDist);
-      const t1=lpShare>0?Math.min(rem,needLP1/lpShare):0; rem-=t1;
-      let lpDist=t1*lpShare, gpDist=t1*gpShare;
-      cumLPDist+=t1*lpShare;
+      const t1=lpOnly?Math.min(rem,needLP1):(lpShare>0?Math.min(rem,needLP1/lpShare):0); rem-=t1;
+      let lpDist=lpOnly?t1:t1*lpShare, gpDist=lpOnly?0:t1*gpShare;
+      cumLPDist+=lpOnly?t1:t1*lpShare;
 
       // Existing GP catch-up convention retained after Tier 1.
       const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
       const target=Math.max(0,Math.min(.999999,Number(s.gpCatchupTarget||0)));
-      const catchup=Number(s.gpCatchup)&&target<1 ? Math.min(rem,Math.max(0,(target*preCatchProfit-cumProm)/(1-target))) : 0;
-      rem-=catchup; gpDist+=catchup;
+      const catchup=Number(s.gpCatchup)&&target<1 ? (cr>target?Math.min(rem,Math.max(0,(target*preCatchProfit-cumProm)/(cr-target))):rem) : 0;
+      rem-=catchup; gpDist+=catchup*cr; lpDist+=(1-cr)*catchup; cumLPDist+=(1-cr)*catchup;
 
       // Tier 2 / 3: allocate at the selected promote split until LP reaches each EM threshold.
       const t2LP=Number(s.t2LP||0), t3LP=Number(s.t3LP||0), t4LP=Number(s.t4LP||0);
@@ -123,7 +125,7 @@
       const t4=Math.max(0,rem); lpDist+=t4*t4LP; gpDist+=t4*(1-t4LP); cumLPDist+=t4*t4LP;
 
       const lpCon=-con*lpShare, gpCon=-con*gpShare;
-      const promote=Math.max(0,gpDist-gpShare*(t1+catchup+t2+t3+t4));
+      const promote=Math.max(0,gpDist-gpShare*((lpOnly?0:t1)+catchup+t2+t3+t4));
       cumProm+=promote; cumDist+=t1+catchup+t2+t3+t4;
       rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1:Math.max(0,lpCumCon*em1-cumLPDist),b2:Math.max(0,lpCumCon*em2-cumLPDist),b3:Math.max(0,lpCumCon*em3-cumLPDist)});
     }

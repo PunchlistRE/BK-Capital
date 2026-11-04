@@ -1,0 +1,574 @@
+PUNCHLIST CAPITAL · DEVELOPMENT SUMMARY
+Harbor Point Residences
+Stamford, CT · Multifamily · 120 units · 132,000 SF
+DEVELOPMENT
+24-MONTH CONSTRUCTION
+STABILISED MONTH 43
+BASE CASE
+CLOSING 1/1/2027
+CREDIT GATE
+CONDITIONAL
+LEVERED IRR
+33.09%
+hurdle 12.00%
+EQUITY MULTIPLE
+2.71x
+$28.69M profit
+TOTAL PROJECT COST
+$44.64M
+$372,009 per unit
+EQUITY REQUIREMENT
+$16.57M
+$28.07M construction loan
+Prepared November 4, 2026
+Punchlist Capital · Beta · HARBOR-POINT
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+DASHBOARD
+LEVERED IRR
+33.09%
+Base case
+EQUITY MULTIPLE
+2.71x
+$28.69M profit
+NET LP IRR
+26.77%
+after promote
+YIELD ON COST
+8.91%
+stabilised NOI $3.56M
+DEVELOPMENT SPREAD
+330 bps
+over exit cap · policy 150
+PROJECT COST
+$44.64M
+$39.95M before financing
+STABILISED VALUE
+$72.08M
+at 5.00% exit cap
+CONSTRUCTION LOAN
+$28.07M
+63.00% of cost · 7.25%
+Summary of investment
+
+Harbor Point Residences is a 120-unit multifamily ground-up development in Stamford, CT of about 132,000 SF. The plan is to buy the site for $7.00M, build over 24 months, lease up over 17 months to stabilisation in month 43, and sell in month 48. Total cost is $44.64M ($372,009 a unit), funded by $16.57M of equity (37.00%) and a $28.07M construction loan at 7.25% (63.00% of cost). There is no permanent takeout: the $28.07M construction loan stays outstanding after stabilisation and is repaid from the sale proceeds at month 48.
+
+In the Base case the deal returns 33.09% levered and 2.71x ($28.69M of profit on $16.57M of equity), and 22.32% before financing: 21.1 points above the 12.00% hurdle. The return rests on a 8.91% stabilised yield on cost against a 5.00% exit cap (391 bps of development spread), and 94.00% of what equity gets back arrives at the sale. It stays above the hurdle if the exit cap widens by up to 208 bps, or rents fall 23.00%, or hard costs overrun by 56.00%, one at a time.
+
+Model checks: 0 failed, 2 warnings, 21 passed, 0 not applicable; to know: interest accrues beyond the loan commitment; costs exceed what equity plus the commitment can fund. Credit gate: CONDITIONAL. These are projections from the assumptions entered, not guarantees; see the pages that follow for the basis of each figure.
+
+Levered return against the hurdle
+hurdle 12.00%
+levered IRR 33.09%
+Equity cash flow
+Each year's cash to equity; the line is the running total. Equity is funded through construction and lease-up, then returned from operations, the takeout and the sale.
+-$20M
+-$2.5M
+$15M
+$33M
+$50M
+-$15M
+Year 1
+$0
+Year 2
+$226K
+Year 3
+$44M
+Year 4
+money back
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 2 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+RETURNS AND WHAT THEY REST ON
+PROPERTY
+Total development cost (before financing)	$39,950,000 · $332,917 per unit · $303 per GSF
+All-in cost (with fees and interest)	$44,641,091
+Stabilised NOI (after reserves)	$3,558,877
+Yield on cost	8.91%
+Development spread over exit cap	391 bps
+Gross / net sale value	$72.25M / $70.80M
+Unlevered profit	$34,229,818
+Unlevered IRR / multiple	22.32% / 1.86x
+EQUITY, LP AND GP
+Equity requirement (peak contributed)	$16,574,091
+Total contributions / distributions	$16,782,457 / $45,473,327
+Levered profit	$28,690,870
+Levered IRR / multiple	33.09% / 2.71x
+Equity beyond the planned amount	$1,459,877
+LP: contributed · IRR · multiple	$15,104,211 · 26.77% · 2.27x
+GP: contributed · IRR · multiple	$1,678,246 · 69.76% · 6.63x
+GP promote	$6,572,919
+Contributions and distributions are gross: equity called, and any month's cash shortfall the partners fund, are contributions; the surplus is a distribution. The multiple is total distributions over total contributions. IRRs are XIRR on actual dated cash flows. Equity payback is month 48 of 48.
+The deal clears its 12.00% hurdle by 21.1 points at 33.10% levered (22.30% unlevered): leverage adds about 10.8 points, at the cost of $3,185,837 of capitalised interest and equity paying $1,459,877 beyond the plan.
+The return is mostly a sale return: $42.73M comes back at exit after repaying $28.07M of debt. The stabilised yield on cost of 8.91% against a 5.00% exit cap is the whole development spread: each 25 bps of exit cap moves the sale value by about $3.44M.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 3 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+BUDGET AND FUNDING
+SOURCES	AMOUNT	%
+Construction loan - draws	$24,881,163	55.74%
+Construction loan - interest capitalised	$3,185,837	7.14%
+Equity	$16,574,091	37.13%
+Total sources	$44,641,091	100.00%
+Equity requirement includes any overflow beyond planned equity. Returns are measured on cash actually contributed, net of lease-up income ($16.78M).
+USES	AMOUNT	%
+Land	$7,000,000	15.68%
+Closing costs	$250,000	0.56%
+Pre-development	$750,000	1.68%
+Hard costs	$26,950,000	60.37%
+Soft costs	$5,000,000	11.20%
+Capitalised interest	$3,185,837	7.14%
+Interest paid by equity beyond the loan commitment	$1,224,583	2.74%
+Loan fees	$280,670	0.63%
+Total project cost	$44,641,091	100.00%
+Land 16.00%
+Closing costs 1.00%
+Pre-development 2.00%
+Hard costs 60.00%
+Soft costs 11.00%
+Capitalised interest 7.00%
+Interest paid by equity beyond the loan commitment 3.00%
+Loan fees 1.00%
+Development timeline
+Month numbers from closing.
+Pre-Development
+1–2
+Construction
+3–26
+Certificate of Occupancy
+month 26
+Lease-Up / Absorption
+27–43
+Stabilized Operations
+43–48
+Sale / Exit
+month 48
+month 1
+month 48
+DEBT AT SALE
+Permanent loan	None
+Construction loan after stabilisation	Stays outstanding; interest paid currently at 7.25%
+Repaid from sale proceeds at month 48	$28.07M
+Debt at sale	$28.07M
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 4 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+CONSTRUCTION FUNDING
+Loan
+Commitment	$28,067,000
+Rate	7.25%
+Drawn	$24,881,163
+Interest capitalised	$3,185,837
+Balance at takeout	$28,067,000
+Equity
+Planned	$15,114,213
+Over plan	$1,459,877
+Total	$16,574,091
+Share of cost	38.17%
+Timeline
+Pre-development	2 months
+Construction	24 months
+Completion	month 26
+Lease-up	17 months
+Stabilised	month 43
+$ THOUSANDS	Q1	Q2	Q3	Q4	Q5	Q6	Q7	Q8	Q9	Q10	Q11	Q12	Q13	Q14	Q15	TOTAL
+Phase · months	Pre-dev
+1–3	Constr.
+4–6	Constr.
+7–9	Constr.
+10–12	Constr.
+13–15	Constr.
+16–18	Constr.
+19–21	Constr.
+22–24	Constr.
+25–27	Lease
+28–30	Lease
+31–33	Lease
+34–36	Lease
+37–39	Lease
+40–42	Lease
+43–43	
+COSTS
+Land and closing	8,000	–	–	–	–	–	–	–	–	–	–	–	–	–	–	8,000
+Hard costs	12	247	1,687	5,594	9,030	7,107	2,725	508	41	–	–	–	–	–	–	26,950
+Soft costs and fees	1,415	116	317	595	766	675	408	169	68	88	88	88	88	88	29	5,000
+Financing fees	281	–	–	–	–	–	–	–	–	–	–	–	–	–	–	281
+Total costs	9,707	362	2,004	6,189	9,796	7,783	3,133	676	110	88	88	88	88	88	29	40,231
+FUNDED BY
+Equity	9,707	362	2,004	3,041	–	–	–	–	–	–	–	–	–	–	–	15,114
+Equity over plan	–	–	–	–	–	–	–	–	–	–	–	29	88	88	29	235
+Construction loan draws	–	–	–	3,148	9,796	7,783	3,133	676	110	88	88	59	–	–	–	24,881
+Total sources	9,707	362	2,004	6,189	9,796	7,783	3,133	676	110	88	88	88	88	88	29	40,231
+CONSTRUCTION LOAN
+Beginning balance	–	–	–	–	3,151	13,062	21,136	24,679	25,811	26,393	26,963	27,543	28,067	28,067	28,067	
+Draws	–	–	–	3,148	9,796	7,783	3,133	676	110	88	88	59	–	–	–	24,881
+Interest capitalised	–	–	–	3	115	292	410	456	471	482	492	465	–	–	–	3,186
+Ending balance	–	–	–	3,151	13,062	21,136	24,679	25,811	26,393	26,963	27,543	28,067	28,067	28,067	28,067	28,067
+Interest over commitment (cash)	–	–	–	–	–	–	–	–	–	–	–	38	509	509	170	1,225
+Loan to cost (incl. interest)	0.00%	0.00%	0.00%	17.25%	46.36%	58.31%	62.02%	63.07%	63.59%	64.08%	64.57%	64.95%	64.82%	64.69%	64.65%	64.65%
+Cumulative cost	9,707	10,070	12,073	18,262	28,058	35,841	38,974	39,650	39,760	39,848	39,937	40,025	40,113	40,201	40,231	40,231
+Cost to date and loan balance
+Cumulative cost including capitalised interest (dark) and the construction loan balance (blue), by month from closing.
+$0M
+$22M
+$43M
+month 1
+month 22
+month 43
+Figures in thousands of dollars. Each quarter's costs are funded by equity first, then the construction loan; interest is capitalised into the loan up to the commitment. Every figure is the funding engine's monthly schedule rolled up by quarter, through stabilisation.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 5 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+UNIT ECONOMICS, OPERATIONS AND LEASE-UP
+UNITS AND RENT
+Units	120
+Average rent / unit / month	$3,310
+Annual potential rent	$4,766,400
+Rent per unit per year	$39,720
+Rent per GSF per month	$3.01
+The unit mix by type is not entered for this deal; the model uses the units at an average rent. Enter it on Dev Lease-Up (by unit type) to show it here.
+STABILISED OPERATING STATEMENT (ANNUAL)
+Gross potential rent	$4,766,400
+Vacancy and credit loss	($238,320)
+Other income	$252,000
+Effective gross income	$4,780,080
+Operating expenses (incl. management $191,203)	($1,185,203)
+Net operating income (before reserves)	$3,594,877
+Replacement reserves	($36,000)
+Cash flow after reserves	$3,558,877
+Stabilised NOI is derived from the rent and expense inputs; it is never forced to a target. Expense ratio 24.80% of EGI.
+Lease-up schedule
+Construction completes in month 26; leasing runs 17 months to stabilisation in month 43. Occupancy ramps in a straight line; fixed costs run in full from completion, so the early months lose money.
+month 26
+month 42 · 94.00% occupied
+MONTHS	OCCUPANCY (END)	EGI	NOI AFTER RESERVES
+Months 26–28	12.00%	$70,295	($190,017)
+Months 29–31	29.00%	$281,181	$12,434
+Months 32–34	47.00%	$492,067	$214,884
+Months 35–37	65.00%	$702,953	$417,335
+Months 38–40	82.00%	$913,839	$619,785
+Months 41–42	94.00%	$726,385	$525,663
+Rent growth 3.00% and expense growth 3.00% a year apply after stabilisation. Concessions: none.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 6 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+FINANCING AND DEBT METRICS
+CONSTRUCTION FACILITY
+Facility commitment (LTC 65.00% formula)	$28,067,000
+Interest rate / origination fee	7.25% / 1.00%
+Loan draws	$24,881,163
+Capitalised interest	$3,185,837
+Interest paid by equity once the commitment is full	$1,224,583
+Peak balance (before sale)	$28,067,000
+Headroom left in the commitment	$0
+Unused-commitment fee	not modelled
+Repayment	Held after stabilisation (interest paid currently); $28,067,000 repaid from the sale
+COVERAGE AND LEVERAGE
+Loan to cost (all-in)	62.87%
+Loan to value (stabilised value $72.08M)	38.94%
+Debt yield (NOI / loan)	12.68%
+Debt service coverage (stabilised NOI / annual debt service)	1.75x
+Interest coverage	1.75x (interest only)
+Annual debt service after stabilisation	$2,034,857
+REFINANCE ALTERNATIVE AT STABILISATION (MONTH 43)
+Permanent loan (65.00% LTV, no coverage test)	$46,850,000
+Rate / amortisation	6.25% / 30 years
+Repays the construction loan	$28,067,000
+Refinance fees	$468,500
+Net cash out to equity	$18,314,500
+Takeout shortfall equity must fund	$0
+Annual debt service	$3,461,562
+DSCR / debt yield / LTV	1.04x / 7.69% / 65.00%
+Value of the retained property (5.00% cap)	$72,077,280
+Equity left in the deal	$25,227,280
+Sized at the model's permanent-loan LTV with the coverage test switched off, so the coverage shown is what that loan would run at. A lender testing 1.25x coverage would lend less. This is a stabilisation-date illustration: the model still values and sells the property at the end of the hold; it does not model holding it afterwards.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 7 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+PERFORMANCE AND SENSITIVITY
+ANNUAL CASH FLOW	YEAR 1	YEAR 2	YEAR 3	YEAR 4
+Net operating income	–	–	293,031	3,086,492
+Debt service	–	–	–	(847,857)
+Asset management fee	–	–	–	–
+Costs, takeout, sale and other	(15,114,213)	–	(66,995)	41,340,412
+Net cash flow to equity	(15,114,213)	–	226,036	43,579,048
+Cumulative	(15,114,213)	(15,114,213)	(14,888,178)	28,690,870
+Where the profit comes from
+Equity in, operating cash flow, then takeout and sale proceeds net of the loan.
+($15.37M)
+Equity
+invested
+$2.53M
+Operating cash
+flow
+$41.53M
+Sale and refinance,
+after debt
+$28.69M
+Equity
+profit
+Return sensitivity
+Levered IRR as exit cap and rent growth move.
+	4.50%	4.75%	5.00%	5.25%	5.50%
+2.00%	38.80%	35.74%	32.81%	29.99%	27.27%
+2.50%	38.94%	35.88%	32.95%	30.13%	27.42%
+3.00%	39.08%	36.02%	33.09%	30.28%	27.57%
+3.50%	39.22%	36.16%	33.24%	30.42%	27.71%
+4.00%	39.36%	36.30%	33.38%	30.57%	27.86%
+Levered IRR. Columns: exit cap rate. Rows: annual rent growth. Green meets the 12.00% hurdle, red is furthest below it. Outlined cell is the base case.
+KEY ASSUMPTIONS
+Land	$7.00M
+Hard costs	$26.95M ($224,583/unit)
+Soft costs	$5.00M
+Construction	24 months
+Lease-up	17 months
+Exit cap rate	5.00%
+Rent growth	3.00% / yr
+Hold	4 years
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 8 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+WHAT BREAKS THE DEAL
+Each break-even reruns the full model with one input moved until the levered IRR reaches the 12.00% hurdle (or equity just gets its money back). Red = below the hurdle. In the combined cases cost is the hard-cost overrun in %, rent the change in %, rate and cap the change in bps.
+Exit cap rate at which the levered IRR equals the 12.00% hurdle	7.08% (+208 bps)
+Exit cap rate at which equity gets its money back (1.00x)	8.41% (+341 bps)
+Break-even sale value (equity profit zero)	$42.97M against $72.25M base (41.00% cushion)
+Average rent at which the levered IRR equals the hurdle	$2,561 (-23.00% vs base)
+Average rent for 1.00x coverage of the stabilised debt service of $2,034,857	$2,150 (-35.00% vs base)
+Break-even occupancy for 1.00x coverage	61.70% (base 95.00%)
+Hard-cost overrun at which the levered IRR equals the hurdle	+56.00%
+Land price at which the levered IRR equals the hurdle	$20,759,470 (197.00% vs base)
+Construction delay the deal can absorb before the IRR falls below the hurdle	more than 36 months
+Delays move the sale by the same number of months. Cost overrun applies to hard cost including contingency. DSCR is stabilised NOI over annual debt service after stabilisation.
+COMBINED DOWNSIDE CASES
+CASE	SALE VALUE	PROFIT	UNLEV. IRR	LEV. IRR	LP IRR	GP IRR	LP X	EXTRA EQUITY	DSCR
+Base case	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
+1. Cost +10, rent −5, cap +50	$61.67M	$14.81M	13.90%	19.30%	16.30%	40.00%	1.67x	$1.55M	1.53x
+2. Cost +15, rate +200, delay 6 mo	$72.25M	$21.47M	16.70%	21.80%	18.40%	44.00%	1.89x	$1.97M	1.20x
+3. Rent −10, lease-up +6 mo, cap +100	$52.85M	$8.68M	9.60%	11.30%	9.40%	24.00%	1.40x	$2.03M	1.52x
+4. Cost +20, rate +300, rent −10, cap +100	$52.85M	$0.05M	6.10%	0.10%	0.10%	0.00%	1.00x	$2.25M	0.92x
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 9 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+SINGLE-VARIABLE SENSITIVITIES
+EXIT CAPITALISATION RATE
+CASE	SALE VALUE	PROFIT	UNLEV. IRR	LEV. IRR	LP IRR	GP IRR	LP X	EXTRA EQUITY	DSCR
+-50 bps (4.50%)	$80.27M	$36.56M	26.30%	39.10%	31.40%	81.00%	2.59x	$1.46M	1.75x
+-25 bps (4.75%)	$76.05M	$32.42M	24.30%	36.00%	29.00%	76.00%	2.42x	$1.46M	1.75x
+Base (5.00%)	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
++25 bps (5.25%)	$68.80M	$25.32M	20.50%	30.30%	24.60%	64.00%	2.14x	$1.46M	1.75x
++50 bps (5.50%)	$65.68M	$22.25M	18.80%	27.60%	22.60%	58.00%	2.02x	$1.46M	1.75x
++75 bps (5.75%)	$62.82M	$19.46M	17.20%	24.90%	20.70%	52.00%	1.91x	$1.46M	1.75x
++100 bps (6.00%)	$60.20M	$16.89M	15.70%	22.40%	18.80%	46.00%	1.81x	$1.46M	1.75x
+AVERAGE MONTHLY RENT
+CASE	SALE VALUE	PROFIT	UNLEV. IRR	LEV. IRR	LP IRR	GP IRR	LP X	EXTRA EQUITY	DSCR
+-15.00% ($2,814)	$59.01M	$14.96M	14.50%	20.30%	17.10%	42.00%	1.72x	$1.46M	1.43x
+-10.00% ($2,979)	$63.42M	$19.54M	17.20%	24.90%	20.70%	52.00%	1.91x	$1.46M	1.54x
+-5.00% ($3,145)	$67.83M	$24.11M	19.80%	29.20%	23.80%	62.00%	2.09x	$1.46M	1.64x
+Base ($3,310)	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
++5.00% ($3,476)	$76.66M	$33.27M	24.70%	36.70%	29.60%	77.00%	2.46x	$1.46M	1.86x
++10.00% ($3,641)	$81.07M	$37.85M	27.00%	40.10%	32.20%	83.00%	2.64x	$1.46M	1.96x
+CONSTRUCTION COST (HARD, INCL. CONTINGENCY)
+CASE	SALE VALUE	PROFIT	UNLEV. IRR	LEV. IRR	LP IRR	GP IRR	LP X	EXTRA EQUITY	DSCR
+Base budget	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
++5.00%	$72.25M	$27.06M	21.00%	31.10%	25.30%	66.00%	2.17x	$1.51M	1.69x
++10.00%	$72.25M	$25.43M	19.70%	29.20%	23.80%	62.00%	2.08x	$1.55M	1.63x
++15.00%	$72.25M	$23.79M	18.50%	27.20%	22.30%	58.00%	1.99x	$1.60M	1.58x
++20.00%	$72.25M	$22.16M	17.30%	25.30%	20.90%	53.00%	1.90x	$1.65M	1.53x
+CONSTRUCTION LOAN RATE
+CASE	SALE VALUE	PROFIT	UNLEV. IRR	LEV. IRR	LP IRR	GP IRR	LP X	EXTRA EQUITY	DSCR
+Base (7.25%)	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
++100 bps	$72.25M	$27.94M	22.30%	32.30%	26.10%	68.00%	2.22x	$1.64M	1.52x
++200 bps	$72.25M	$27.18M	22.30%	31.40%	25.50%	66.00%	2.17x	$1.82M	1.34x
++300 bps	$72.25M	$26.41M	22.30%	30.60%	24.90%	65.00%	2.12x	$1.99M	1.20x
+CONSTRUCTION DELAY (EXIT MOVES WITH IT)
+CASE	SALE VALUE	PROFIT	UNLEV. IRR	LEV. IRR	LP IRR	GP IRR	LP X	EXTRA EQUITY	DSCR
+Base schedule	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
+3 months	$72.25M	$28.46M	21.10%	30.70%	25.00%	64.00%	2.27x	$1.46M	1.74x
+6 months	$72.25M	$28.24M	20.10%	28.60%	23.50%	58.00%	2.27x	$1.46M	1.73x
+12 months	$72.25M	$27.78M	18.20%	25.00%	20.90%	49.00%	2.26x	$1.46M	1.71x
+LEASE-UP DELAY (EXIT MOVES WITH IT)
+CASE	SALE VALUE	PROFIT	UNLEV. IRR	LEV. IRR	LP IRR	GP IRR	LP X	EXTRA EQUITY	DSCR
+Base schedule	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
+3 months	$72.25M	$28.50M	20.70%	30.50%	24.90%	63.00%	2.25x	$1.74M	1.74x
+6 months	$72.25M	$28.30M	19.30%	28.30%	23.30%	57.00%	2.23x	$2.03M	1.73x
+12 months	$72.25M	$27.90M	17.00%	24.50%	20.60%	48.00%	2.19x	$2.60M	1.71x
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 10 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+DISTRIBUTION WATERFALL
+EQUITY	%	AMOUNT
+LP	90.00%	$15,104,211
+GP (sponsor)	10.00%	$1,678,246
+Total equity	100.00%	$16,782,457
+PROMOTE	HURDLE	LP	GP
+Tier 1	8.00% pref	90.00%	10.00%
+Catch-up	20.00% of profit	0.00%	100.00%
+Tier 2	12.00% IRR	80.00%	20.00%
+Tier 3	18.00% IRR	70.00%	30.00%
+Tier 4	above	60.00%	40.00%
+RESULTS	LP	GP
+Contributed	$15,104,211	$1,678,246
+Distributed	$34,353,075	$11,120,252
+Profit	$19,248,864	$9,442,006
+Return of capital	$15,104,211	$1,678,246
+Preferred return	$4,479,746	$497,750
+Excess cash flow	$14,769,118	$2,371,337
+Promote	—	$6,572,919
+IRR	26.77%	69.76%
+Equity multiple	2.27x	6.63x
+GP promote		$6,572,919
+WATERFALL	CLOSE	YEAR 1	YEAR 2	YEAR 3	YEAR 4
+Cash flow available for distribution	($8,700,000)	($6,414,213)	–	$226,036	$43,579,048
+TIER 1 · RETURN OF CAPITAL + 8.00% PREFERRED RETURN
+Beginning balance	–	$7,830,000	$14,369,998	$15,522,871	$16,567,398
+Preferred return accrued	–	$805,006	$1,149,611	$1,249,318	$1,319,658
+Contributions	$7,830,000	$5,772,792	–	$247,825	$1,253,594
+Distributions applied	–	($37,800)	$3,261	($452,616)	($19,140,650)
+Ending balance	$7,830,000	$14,369,998	$15,522,871	$16,567,398	–
+  Distributed to LP (90.00%)	–	–	–	$451,257	$19,132,701
+  Distributed to GP (10.00%)	–	–	–	$50,140	$2,125,856
+GP CATCH-UP · TO 20.00% OF PROFIT
+  Distributed to GP (100.00%)	–	–	–	–	$1,244,374
+TIER 2 · TO 12.00% IRR
+Beginning balance	–	$7,830,000	$14,751,632	$16,526,959	$18,315,986
+Return accrued at 12.00% IRR	–	$1,204,500	$1,770,223	$1,994,282	$2,189,173
+Contributions	$7,830,000	$5,772,792	–	$247,825	$1,253,594
+Distributions applied	–	($55,660)	$5,103	($453,079)	($21,758,754)
+Ending balance	$7,830,000	$14,751,632	$16,526,959	$18,315,986	–
+  Distributed to LP (80.00%)	–	–	–	–	$2,614,542
+  Distributed to GP (20.00%)	–	–	–	–	$653,636
+TIER 3 · TO 18.00% IRR
+Beginning balance	–	$7,830,000	$15,321,832	$18,087,962	$21,154,265
+Return accrued at 18.00% IRR	–	$1,800,320	$2,757,997	$3,271,944	$3,794,234
+Contributions	$7,830,000	$5,772,792	–	$247,825	$1,253,594
+Distributions applied	–	($81,280)	$8,133	($453,467)	($26,202,093)
+Ending balance	$7,830,000	$15,321,832	$18,087,962	$21,154,265	–
+  Distributed to LP (70.00%)	–	–	–	–	$4,438,574
+  Distributed to GP (30.00%)	–	–	–	–	$1,902,246
+TIER 4 · ABOVE 18.00% IRR
+  Distributed to LP (60.00%)	–	–	–	–	$7,716,001
+  Distributed to GP (40.00%)	–	–	–	–	$5,144,001
+PARTNER CASH FLOWS
+LP cash flow	($7,830,000)	($5,772,792)	–	$203,432	$32,648,224
+GP cash flow	($870,000)	($641,421)	–	$22,604	$10,930,824
+GP promote (above its 10.00% pro rata share)	–	–	–	–	$6,572,919
+Hurdle accounts accrue monthly at each hurdle rate on the LP's own contributions and are reduced only by what the LP receives, so a tier opens once the LP has reached that return. Close is the equity contributed at closing. Every figure is the engine's monthly waterfall rolled up by year.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 11 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+CREDIT DECISION
+CREDIT GATE	DEAL	POLICY	RESULT
+Gross levered IRR (property) (hard)	33.09%	>= 12.00%	PASS
+Net LP IRR (after promote) (hard)	26.77%	>= 12.00%	PASS
+Net LP equity multiple	2.27x	>= 2.00x	PASS
+High or critical risks	0	<= 2	PASS
+Development spread (bps, development only) (hard)	330.07	>= 150	PASS
+Decision: CONDITIONAL
+CONDITIONAL — 2 MODEL WARNINGS
+Model warning: Interest accrues beyond the loan commitment
+Model warning: Costs exceed what equity plus the commitment can fund
+Model integrity: 0 failed, 2 warnings, 21 passed, 0 not applicable.
+Next step: The credit gates pass, but 2 model warnings stand: Interest accrues beyond the loan commitment; Costs exceed what equity plus the commitment can fund. Approval is conditional on resolving or accepting them.
+DELAY AND EXIT STRESS
+STRESS TEST	LEVERED IRR	MULTIPLE	PROFIT	VS HURDLE
+Base case	33.09%	2.71x	$28.69M	MEETS
+Construction 6 months longer	31.58%	2.60x	$26.60M	MEETS
+Lease-up 6 months slower	31.19%	2.54x	$26.67M	MEETS
+Exit cap 50 bps higher	27.57%	2.33x	$22.25M	MEETS
+Rent growth 1 point lower	32.81%	2.69x	$28.34M	MEETS
+Delays and exit cap together	18.52%	1.79x	$13.25M	MEETS
+Each row reruns the full model with the change shown. Cost-overrun stress is not shown: with the budget set from a source total, hard-cost changes are absorbed in the calibration.
+ABOUT THIS SUMMARY
+Prepared November 4, 2026 from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the Base case; the sensitivity grid and stress tests rerun the model. Development returns depend heavily on cost, schedule and exit assumptions. This summary is an analytical aid, not an offer or a fairness opinion. Check it against your own model before relying on it.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 12 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+IMPACT TO PORTFOLIO
+First deal in the portfolio: N/A
+No other underwritten assets are saved in BK Capital, so there is no portfolio to compare against. This deal would be the first asset; the figures below are the deal on its own.
+This deal on its own	Development · Multifamily
+Equity invested / total cost	$16,782,457 / $39,950,000
+Levered profit	$28,690,870
+Levered IRR / multiple	33.09% / 2.71x
+Once other deals are saved to the portfolio, this page shows the current assets and what adding this one changes: equity and leverage, the equity-weighted and combined (dated cash flow) IRR, the multiple, concentration in the largest asset, and the mix by property type and by development versus acquisition.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 13 of 14
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+MODEL INTEGRITY AND LIMITS
+Every line is recomputed independently of the engine (0 failed, 2 warnings, 21 passed, 0 not applicable). A failed check holds the credit gate; a warning caps it at conditional.
+AREA	CHECK	RESULT
+Budget	Hard and soft cost totals equal the sum of their lines	PASS
+Budget	Cost before financing equals land + closing + acquisition fee + pre-development + hard + soft + lease-up deficit	PASS
+Sources & Uses	Total sources equal total uses	PASS
+Debt	Every month's cost is paid by equity or a loan draw (debt draws follow costs)	PASS
+Debt	Capitalised interest equals the opening balance x rate / 12 each month, and the balance rolls forward	PASS
+Debt	The loan balance never exceeds the commitment	PASS
+Debt	The debt repaid at sale equals the outstanding balance	PASS
+Exit	Net sale proceeds equal the gross sale value less selling costs	PASS
+Equity	The equity charged in the returns cash flow equals the equity in the funding ledger	PASS
+Equity	LP + GP contributions equal total contributions: the equity ledger plus any operating shortfall the partners fund	PASS
+Returns	Unlevered IRR and multiple are calculated	PASS
+Debt	Interest accrues beyond the loan commitment	WARNING
+Equity	Costs exceed what equity plus the commitment can fund	WARNING
+Returns	Levered IRR equals an independent XIRR of the dated cash flows	PASS
+Returns	Equity multiple equals total distributions / total contributions	PASS
+Waterfall	Tier 1 · preferred return	PASS
+Waterfall	Tier 2 hurdle	PASS
+Waterfall	Tier 3 hurdle	PASS
+Waterfall	Tiers are paid in order	PASS
+Waterfall	Every dollar is distributed once	PASS
+Waterfall	Promote is the GP's excess over its pro-rata share	PASS
+Waterfall	Distribution categories add to each partner's distributions	PASS
+Waterfall	LP IRR equals an independent XIRR of the dated LP cash flows	PASS
+Credit gate: CONDITIONAL
+CONDITIONAL — 2 MODEL WARNINGS
+Warning: Interest accrues beyond the loan commitment — $1,224,583 of interest accrues after the commitment is full and is paid by equity. Either the commitment is too small for the plan or the interest reserve is short.
+Warning: Costs exceed what equity plus the commitment can fund — $235,294 of costs are funded by equity over the planned amount ($15,114,213).
+WHAT THIS MODEL CANNOT YET DO
+• Costs are entered as 13 hard-cost trades and 16 soft-cost lines; lines in a brief are merged to fit, and each cannot be escalated or reforecast on its own.
+• Contingency and initial reserves are not tracked or released as separate balances.
+• The construction loan is sized by an LTC formula; a fixed commitment, a facility ceiling, an equity-first threshold and an unused-commitment fee cannot be entered.
+• The GP catch-up is a share-of-profit target (100.00% until the GP holds that share), not a catch-up rate; the preferred return is shared by LP and GP unless hurdles are tested on LP flows.
+• A refinance is illustrated at stabilisation; the property is still sold at the end of the hold.
+• Source citations, extraction confidence and broker-versus-model discrepancy reporting are not part of this summary.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 14 of 14
