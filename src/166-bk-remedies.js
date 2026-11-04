@@ -125,7 +125,7 @@ function render(){
   else if(z && z.last) cols.push({ k:'occ', head:'Occupancy required', sn:z.last, what:'100% occupancy. Still fails', delta:'Occupancy ' + P(1 - base.vacancy, 1) + ' → 100% (best case, still fails)' });
   var row = function(l, f, em){ return '<tr><td style="' + cell + (em ? ';font-weight:700' : '') + '">' + l + '</td>' + cols.map(function(c){ return '<td style="' + cell + ';text-align:right' + (em ? ';font-weight:700' : '') + '">' + f(c.sn, c) + '</td>'; }).join('') + '</tr>'; };
   var rows = row('What changes', function(sn, c){ return '<span style="font-size:12px">' + esc(c.delta || c.what) + '</span>'; })
-    + row('Credit verdict', function(sn){ var col = sn.verdict === 'APPROVE' ? '#1a7f37' : sn.verdict === 'DECLINE' ? '#b42318' : '#b26a00'; return '<span style="color:' + col + ';font-weight:700">' + esc(sn.verdict) + '</span>'; }, true)
+    + row('Credit verdict', function(sn){ var col = sn.verdict === 'APPROVE' ? '#1a7f37' : /^(DECLINE|HOLD)$/.test(sn.verdict) ? '#b42318' : '#b26a00'; return '<span style="color:' + col + ';font-weight:700">' + esc(sn.verdict) + '</span>'; }, true)
     + row('HARD / SOFT exceptions', function(sn){ return sn.hard + ' / ' + sn.soft; })
     + row('Purchase price', function(sn){ return M(sn.price); }) + row('Price per unit', function(sn){ return sn.units > 0 ? M(sn.price / sn.units) : '—'; })
     + row('Senior loan', function(sn){ return M(sn.loan); }) + row('Equity at closing', function(sn){ return M(sn.equity); }) + row('Additional equity vs today', function(sn){ return sn === base ? '—' : (sn.equity - base.equity >= 0 ? '+' : '') + M(sn.equity - base.equity); })

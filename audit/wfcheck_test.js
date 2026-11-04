@@ -17,13 +17,13 @@ const A = require(path.join(__dirname, 'deal.js'));
   /* 1. a deal that clears all three hurdles: each replayed IRR is the hurdle rate */
   await load({ purchasePrice: 17000000 });
   const hi = await get();
-  check('all three hurdles reached: each replayed IRR equals its rate within 5 bps (7.00%, 10.00%, 15.00%)', hi.h.every((h, i) => h.st === 'pass' && h.cleared && Math.abs(h.m - [0.07, 0.10, 0.15][i]) <= 0.0005), hi.h.map(h => (h.m * 100).toFixed(3)).join(' / '));
+  check('all three hurdles reached: each replayed IRR equals its rate within half a basis point (7.00%, 10.00%, 15.00%)', hi.h.every((h, i) => h.st === 'pass' && h.cleared && Math.abs(h.m - [0.07, 0.10, 0.15][i]) <= 0.00005), hi.h.map(h => (h.m * 100).toFixed(3)).join(' / '));
   check('every other check passes too (tier order, conservation, promote), so the verification passes in full', hi.ok && hi.o.every(o => o.st === 'pass') && hi.fail === 0, hi.pass + ' pass');
   /* independent replay from the LP's distributions alone, with a separate IRR solver */
   const rep = await p.evaluate(() => { const w = bkWaterfallV07(), s = w.s, rows = w.rows, x = w.x, lpS = 1 - Number(s.gpShare), out = []; const mrate = r => Math.pow(1 + r, 1 / 12) - 1;
     const day = d => Date.UTC(new Date(d).getFullYear(), new Date(d).getMonth(), new Date(d).getDate()) / 86400000;
     [Number(s.pref), Number(s.hurdle2), Number(s.hurdle3)].forEach(rate => { let bal = 0, flows = [], ds = []; const r = mrate(rate);
-      rows.forEach((row, i) => { const lc = -row.lpCon, a = (bal + lc) * (1 + r), ap = Math.min(a, row.lpDist); bal = a - ap; flows.push(ap - lc); ds.push(day(row.dt)); });
+      rows.forEach((row, i) => { const lc = -row.lpCon, cl = i === 0 ? Math.min(row.con, Number(x.rows[0].eqDraw) || 0) * lpS : 0, dd0 = day(row.dt) - (i ? day(rows[i - 1].dt) : day(x.closeDt)), a = (bal + cl) * Math.pow(1 + rate, dd0 / 365) + (lc - cl), ap = Math.min(a, row.lpDist); bal = a - ap; flows.push(ap - lc); ds.push(day(row.dt)); });   /* accrues on the dated cash flows: a contribution from its date, each period (1 + rate) ^ (days / 365) */
       const eq0 = (Number(x.rows[0].eqDraw) || 0) * lpS, c0 = day(x.closeDt); const v = [-eq0, flows[0] + eq0].concat(flows.slice(1)), dd = [c0].concat(ds);
       const f = rr => v.reduce((t, q, i) => t + q / Math.pow(1 + rr, (dd[i] - dd[0]) / 365), 0); let lo = -0.5, hi = 2; for (let k = 0; k < 200; k++) { const m = (lo + hi) / 2; (f(m) > 0 ? lo = m : hi = m); } out.push({ irr: (lo + hi) / 2, bal }); });
     return out; });

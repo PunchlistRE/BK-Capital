@@ -88,7 +88,7 @@ def model(s, acq_fee=0.01):
     # ---- equity waterfall: monthly IRR-hurdle accounts
     gs = N('gpShare'); ls = 1 - gs
     mr = lambda a: (1 + a) ** (1 / 12) - 1
-    rates = [mr(N('pref')), mr(N('hurdle2')), mr(N('hurdle3'))]
+    arates = [N('pref'), N('hurdle2'), N('hurdle3')]   # hurdle accounts accrue on the dated cash flows: (1 + rate) ^ (actual days / 365) per period, a contribution from its date
     split_lp = [ls, N('t2LP'), N('t3LP'), N('t4LP')]
     tgt = N('gpCatchupTarget')
     acct = [0.0, 0.0, 0.0]; cumCon = cumDist = cumProm = 0.0
@@ -97,9 +97,10 @@ def model(s, acq_fee=0.01):
     for i, cf in enumerate(lev):
         con = (equity if i == 0 else 0.0) + max(0.0, -cf)      # a monthly shortfall is an equity call
         dist = max(0.0, cf)
+        rates = [(1 + a) ** ((dts[i + 1] - dts[i]).days / 365.0) for a in arates]; cl = equity if i == 0 else 0.0
         if c['cvHurdleBasis'] == 'lp':
             lc = con * ls
-            acct = [(a + lc) * (1 + rt) for a, rt in zip(acct, rates)]
+            acct = [(a + cl * ls) * f + (lc - cl * ls) for a, f in zip(acct, rates)]
             t1 = min(dist, acct[0] / ls) if ls > 0 else dist
             got = t1 * ls
             cumCon += con; pre = max(0.0, cumDist + t1 - cumCon)
@@ -114,7 +115,7 @@ def model(s, acq_fee=0.01):
             t1, cu, t2, t3, t4 = tiers
             lpd = got
         else:
-            req = [(a + con) * (1 + rt) for a, rt in zip(acct, rates)]
+            req = [(a + cl) * f + (con - cl) for a, f in zip(acct, rates)]
             t1 = min(dist, req[0]); acct[0] = req[0] - t1
             cumCon += con; pre = max(0.0, cumDist + t1 - cumCon)
             cu = min(max(0.0, dist - t1), max(0.0, (tgt * pre - cumProm) / (1 - tgt))) if N('gpCatchup') else 0.0

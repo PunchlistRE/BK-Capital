@@ -12,7 +12,7 @@ const DEV = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(_
   const SNAP = () => { const x = bkDevV09(), m = bkMonthlyReturns(), f = bkDevFundingV10(); return { lu: x.luMo, stab: x.stab, def: x.leaseDef, ramp: x.leaseupRamp.map(r => [r.mo, r.egi, r.after]), irr: m.irr, moic: m.moic, lev: f.levered, need: f.months.map(z => z.need), rows: m.rows.map((r, i) => [r.noi, r.egi, r.cf, (f.months[i] || {}).excess || 0]) }; }; /* The returns now carry interest funded by equity beyond the facility commitment (Harbor Point fix). Against the older reference build a month's cash flow is compared before that charge (cf + excess), and IRR / multiple, which the charge moves by design, are compared only between runs of this build. */
   window_SNAP = SNAP.toString();
   const snapOf = (d) => p.evaluate(([d, src]) => { bkCreateNewDeal(d); return eval('(' + src + ')')(); }, [d, window_SNAP]);
-  const vsRef = (o, cur) => Object.assign({}, o, { irr: 0, moic: 0, rows: o.rows.map(r => [r[0], r[1], r[2] + (cur ? r[3] : 0)]) });
+  const vsRef = (o, cur) => Object.assign({}, o, { moic: 0 });   /* the equity multiple is not compared with the reference build: contributions are now gross, so it moved by design (Harbor Point stage B); IRR, funding and every monthly cash flow are compared */
   const same = (a, b2, tol) => JSON.stringify(a, (k, v) => typeof v === 'number' ? Math.round(v / (tol || 1e-7)) : v) === JSON.stringify(b2, (k, v) => typeof v === 'number' ? Math.round(v / (tol || 1e-7)) : v);
 
   /* ---- 1. existing deals untouched ---- */

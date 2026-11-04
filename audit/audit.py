@@ -105,7 +105,7 @@ def lp_waterfall():
     hs = [N('pref'),N('hurdle2'),N('hurdle3')]; splits=[1-gs, N('t2LP'), N('t3LP'), N('t4LP')]
     bals=[equity*(1-gs)]*3; lpd=[]
     for i in range(1,H+1):
-        bals=[b*(1+mr(h)) for b,h in zip(bals,hs)]
+        bals=[b*(1+h)**((dts[i]-dts[i-1]).days/365.0) for b,h in zip(bals,hs)]   # accrue on actual days / 365, as the XIRR the hurdle is tested with
         avail = max(0, lev[i]); lp=0
         for t in range(4):
             if avail<=0: break

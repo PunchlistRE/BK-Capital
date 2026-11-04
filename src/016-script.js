@@ -10,10 +10,19 @@
 // it. One engine, many scopes - the same pattern bkPortfolioMetricsFor() and bkSolve()
 // already use. If this had been done by copying the tier loop, the two copies would
 // drift the first time a hurdle convention changed.
+/* Hurdle accounts follow the dated cash flows: a contribution is dated where the returns put it (the closing day for the closing equity, the month-end for the rest) and accrues from then;
+   each period accrues (1 + rate) ^ (actual days / 365), the same basis as the XIRR the hurdle is tested with. closing = the part of the first row dated at closing. */
+function bkWfTiming(x){
+ const rows=x.rows||[], eq0=Number(rows[0]&&rows[0].eqDraw)||0;
+ const dn=v=>{ const d=new Date(v); return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000; };   /* calendar days (the date as written, not elapsed milliseconds), so the viewer's time zone cannot move a result */
+ const days=rows.map((r,i)=>{ const t=dn(r.dt), p=i?dn(rows[i-1].dt):(x.closeDt?dn(x.closeDt):NaN); const d=t-p; return isFinite(d)&&d>0?d:365/12; });
+ return { eq0, f:(rate,i)=>Math.pow(1+Number(rate||0),days[i]/365), closing:(con,i)=>i===0?Math.min(con,eq0):0 };
+}
+window.bkWfTiming=bkWfTiming;
 function bkWaterfallV07(opts){
  const x=(opts&&opts.x)?opts.x:bkMonthlyReturns(),s=(opts&&opts.s)?opts.s:x.s,n=x.rows.length;
  const mr=a=>Math.pow(1+Number(a||0),1/12)-1;
- const r1=mr(s.pref),r2=mr(s.hurdle2),r3=mr(s.hurdle3);
+ const r1=mr(s.pref),r2=mr(s.hurdle2),r3=mr(s.hurdle3), TM=bkWfTiming(x);
  let b1=0,b2=0,b3=0,cumCon=0,cumDist=0,cumProm=0;
  const rows=[];
  /* CONVENTION cvHurdleBasis. 'lp': every hurdle account accrues on the LP's own contributions and is
@@ -28,7 +37,8 @@ function bkWaterfallV07(opts){
    const con=(x.rows[i].wfContrib!=null?x.rows[i].wfContrib:Math.max(0,-x.rows[i].cf)), dist=(x.rows[i].wfDist!=null?x.rows[i].wfDist:Math.max(0,x.rows[i].cf));
    if(lpMode){
      const lc=con*lpS, gs=Number(s.gpShare||0);
-     let a1=b1+lc+(b1+lc)*r1, a2=b2+lc+(b2+lc)*r2, a3=b3+lc+(b3+lc)*r3;
+     const clc=TM.closing(con,i)*lpS;
+     let a1=(b1+clc)*TM.f(s.pref,i)+(lc-clc), a2=(b2+clc)*TM.f(s.hurdle2,i)+(lc-clc), a3=(b3+clc)*TM.f(s.hurdle3,i)+(lc-clc);
      // Tier 1: pari passu until the LP's preferred-return account is cleared
      const t1=lpS>0?Math.min(dist,a1/lpS):dist, lp1=t1*lpS;
      cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
@@ -47,13 +57,13 @@ function bkWaterfallV07(opts){
      rows.push({m:i+1,dt:x.rows[i].dt,con,dist,t1,catchup,t2,t3,t4,lpCon,gpCon,lpDist,gpDist,promote,lpCF:lpCon+lpDist,gpCF:gpCon+gpDist,b1,b2,b3});
      continue;
    }
-   const beg1=b1, acc1=(beg1+con)*r1, req1=beg1+con+acc1, t1=Math.min(dist,req1); b1=req1-t1;
+   const cl=TM.closing(con,i), beg1=b1, req1=(beg1+cl)*TM.f(s.pref,i)+(con-cl), t1=Math.min(dist,req1); b1=req1-t1;
    cumCon+=con; const preCatchProfit=Math.max(0,(cumDist+t1)-cumCon);
    const rem1=Math.max(0,dist-t1);
    const catchup=Number(s.gpCatchup)?Math.min(rem1,Math.max(0,(Number(s.gpCatchupTarget)*preCatchProfit-cumProm)/(1-Number(s.gpCatchupTarget)))):0;
-   const beg2=b2,acc2=(beg2+con)*r2,req2=beg2+con+acc2;
+   const beg2=b2,req2=(beg2+cl)*TM.f(s.hurdle2,i)+(con-cl);
    const t2=Math.min(Math.max(0,dist-t1-catchup),Math.max(0,req2-t1-catchup)); b2=Math.max(0,req2-t1-catchup-t2);
-   const beg3=b3,acc3=(beg3+con)*r3,req3=beg3+con+acc3;
+   const beg3=b3,req3=(beg3+cl)*TM.f(s.hurdle3,i)+(con-cl);
    const t3=Math.min(Math.max(0,dist-t1-catchup-t2),Math.max(0,req3-t1-catchup-t2)); b3=Math.max(0,req3-t1-catchup-t2-t3);
    const t4=Math.max(0,dist-t1-catchup-t2-t3);
    const lpCon=-con*(1-Number(s.gpShare)), gpCon=-con*Number(s.gpShare);

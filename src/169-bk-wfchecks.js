@@ -15,7 +15,7 @@ function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c
 function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
 function P2(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
-var TOL_IRR = 0.0005, TOL_USD = 1;          /* the IRR is dated (actual days / 365) while the accounts accrue monthly: 5 bps; money to the dollar */
+var TOL_IRR = 0.00005, TOL_USD = 1;         /* the accounts accrue on the same dated, actual-days / 365 basis as the XIRR they are tested with: half a basis point; money to the dollar */
 
 function run(opts){
   var w = (opts && opts.w) || window.bkWaterfallV07(), s = w.s, rows = w.rows, x = w.x, n = rows.length, gs = num(s.gpShare) || 0, lpS = 1 - gs;
@@ -23,21 +23,21 @@ function run(opts){
   var out = { basis:em ? 'EM' : both ? 'BOTH' : 'IRR', rule:rule, lpMode:lpMode, hurdles:[], other:[], rows:n };
   var last = rows[n - 1] || {}, bal = function(k){ return num(last['b' + k]) || 0; };
   var eq0 = num(x.rows[0] && x.rows[0].eqDraw) || 0, closeDt = x.closeDt, dates = rows.map(function(r){ return r.dt; });
-  var rates = [num(s.pref), num(s.hurdle2), num(s.hurdle3)], ems = [num(s.em1), num(s.em2), num(s.em3)];
+  var TM = window.bkWfTiming(x), rates = [num(s.pref), num(s.hurdle2), num(s.hurdle3)], ems = [num(s.em1), num(s.em2), num(s.em3)];
   var xirr = function(v, closeAmt){ return typeof bkXirrClose === 'function' ? bkXirrClose(v, dates, closeDt, closeAmt) : (typeof bkXirr === 'function' ? bkXirr(v, dates) : NaN); };
   for(var k = 1; k <= 3; k++){
     var h = { k:k, name:k === 1 ? 'Tier 1 · preferred return' : 'Tier ' + k + ' hurdle', balance:bal(k) }, cleared = h.balance <= TOL_USD;
     if(both){
-      var rt = rates[k - 1], hm2 = ems[k - 1], mr2 = Math.pow(1 + rt, 1 / 12) - 1, b2 = 0, fl = [], ap2 = 0, lpC = w.lp ? w.lp.contrib : NaN, cum = rows.reduce(function(t, r){ return t + r.lpDist; }, 0);
-      for(var i2 = 0; i2 < n; i2++){ var q = rows[i2], inf = -q.lpCon, a2 = (b2 + inf) * (1 + mr2), ib = num(q['ib' + k]) || 0, ap = a2 - ib; fl.push(-inf + ap); ap2 += ap; b2 = ib; }
+      var rt = rates[k - 1], hm2 = ems[k - 1], b2 = 0, fl = [], ap2 = 0, lpC = w.lp ? w.lp.contrib : NaN, cum = rows.reduce(function(t, r){ return t + r.lpDist; }, 0);
+      for(var i2 = 0; i2 < n; i2++){ var q = rows[i2], inf = -q.lpCon, cl2 = TM.closing(q.con, i2) * lpS, a2 = (b2 + cl2) * TM.f(rt, i2) + (inf - cl2), ib = num(q['ib' + k]) || 0, ap = a2 - ib; fl.push(-inf + ap); ap2 += ap; b2 = ib; }
       var irr2 = xirr(fl, -eq0 * lpS), mult = lpC > 0 ? cum / lpC : NaN, irrSat = (num(last['ib' + k]) || 0) <= TOL_USD, emSat = !(hm2 > 0) || (isFinite(mult) && mult >= hm2 - 1e-6), reachedRule = rule === 'all' ? irrSat && emSat : irrSat || emSat;
       var irrOk = irrSat ? (isFinite(irr2) && Math.abs(irr2 - rt) <= TOL_IRR) : (!isFinite(irr2) ? ap2 <= TOL_USD : irr2 < rt + 1e-9), emOk = true;
       Object.assign(h, { name:'Tier ' + k + (k === 1 ? ' · first hurdle' : ' hurdle'), rate:rt, em:hm2, target:rt, measured:irr2, multiple:mult, unit:'both', cleared:cleared, irrMet:irrSat, emMet:emSat });
       h.status = irrOk && cleared === reachedRule ? 'pass' : 'fail';
       h.detail = 'IRR test ' + (irrSat ? 'met' : 'not met') + ' (replayed ' + P2(irr2) + ' vs ' + P2(rt) + '); multiple test ' + (emSat ? 'met' : 'not met') + ' (LP ' + (isFinite(mult) ? mult.toFixed(3) : '—') + 'x vs ' + hm2.toFixed(2) + 'x). ' + (rule === 'all' ? 'Both are required' : 'Either is enough') + ', so the tier is ' + (reachedRule ? 'reached' : 'open') + '; the waterfall shows it ' + (cleared ? 'reached' : 'open (' + M(h.balance) + ' still owed)') + (h.status === 'pass' ? '.' : ': they disagree.');
     } else if(!em){
-      var rate = rates[k - 1], mr = Math.pow(1 + rate, 1 / 12) - 1, b = 0, flows = [], applied = 0, contrib = 0;
-      for(var i = 0; i < n; i++){ var r = rows[i], inflow = lpMode ? (-r.lpCon) : r.con, a = (b + inflow) * (1 + mr), bk = num(r['b' + k]) || 0, ap = a - bk; flows.push(-inflow + ap); applied += ap; contrib += inflow; b = bk; }
+      var rate = rates[k - 1], b = 0, flows = [], applied = 0, contrib = 0;
+      for(var i = 0; i < n; i++){ var r = rows[i], inflow = lpMode ? (-r.lpCon) : r.con, cl = TM.closing(r.con, i) * (lpMode ? lpS : 1), a = (b + cl) * TM.f(rate, i) + (inflow - cl), bk = num(r['b' + k]) || 0, ap = a - bk; flows.push(-inflow + ap); applied += ap; contrib += inflow; b = bk; }
       var irr = xirr(flows, -eq0 * (lpMode ? lpS : 1));
       Object.assign(h, { rate:rate, measured:irr, target:rate, unit:'irr', applied:applied, contributed:contrib, cleared:cleared });
       if(!isFinite(rate) || rate <= 0){ h.status = 'na'; h.detail = 'This hurdle has no rate.'; }
@@ -94,10 +94,11 @@ function summary(opts){
   var w = (opts && opts.w) || window.bkWaterfallV07(), s = w.s, rows = w.rows, n = rows.length, gs = num(s.gpShare) || 0, lpS = 1 - gs;
   var em = String(s.hurdleBasis) === '2', lpMode = String(s.hurdleBasis) === '3' ? true : safe(function(){ return bkConventions(s).cvHurdleBasis === 'lp'; }, true), r1 = Math.pow(1 + (num(s.pref) || 0), 1 / 12) - 1;
   var P = 0, capLeft = 0, acc = { roc:0, pref:0 }, prevB = 0, lpT1 = 0;
-  rows.forEach(function(r){
+  var TM2 = window.bkWfTiming(w.x);
+  rows.forEach(function(r, i2){
     var inflow = lpMode ? -r.lpCon : r.con, T1 = lpMode ? r.t1 * lpS : r.t1, rocM = 0, prefM = 0;
     capLeft += inflow;
-    if(!em){ P += (prevB + inflow) * r1; prefM = Math.min(T1, Math.max(0, P)); P -= prefM; rocM = Math.min(T1 - prefM, Math.max(0, capLeft)); prefM = T1 - rocM; /* tier-1 cash beyond capital and the accrued preference (a multiple hurdle) is hurdle return too */ capLeft -= rocM; }
+    if(!em){ P += (prevB + TM2.closing(r.con, i2) * (lpMode ? lpS : 1)) * (TM2.f(s.pref, i2) - 1); prefM = Math.min(T1, Math.max(0, P)); P -= prefM; rocM = Math.min(T1 - prefM, Math.max(0, capLeft)); prefM = T1 - rocM; /* tier-1 cash beyond capital and the accrued preference (a multiple hurdle) is hurdle return too */ capLeft -= rocM; }
     else { rocM = Math.min(T1, Math.max(0, capLeft)); capLeft -= rocM; prefM = T1 - rocM; }
     prevB = num(r.ib1 != null ? r.ib1 : r.b1) || 0; acc.roc += rocM; acc.pref += prefM; lpT1 += lpMode ? T1 : T1 * lpS; });
   var scaleLP = lpMode ? 1 : lpS, scaleGP = lpMode ? gs / lpS : gs;

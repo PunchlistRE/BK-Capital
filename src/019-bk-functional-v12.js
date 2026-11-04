@@ -44,10 +44,12 @@ function bkDevMonthlyReturnsV12(){
    const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo;
    /* unlevered flow: every project cost as it falls (no financing fee, no interest), the property's own income, and the sale net of selling costs; no loan, no refinance, no equity split */
    uCost.push(Number(funding.land||0)+Number(funding.hard||0)+Number(funding.soft||0)+Number(funding.lease||0)); uVals.push(-uCost[uCost.length-1]+noi-assetFee-leaseCapMo+sale-dispoFee);
-   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale});
+   /* investors contribute and receive gross: the equity called (and any shortfall in the month's other cash) is a contribution, the surplus of the other cash is a distribution; they are never netted against each other */
+   const otherCF=cf+equityDraw+refiEq, wfContrib=equityDraw+refiEq+Math.max(0,-otherCF), wfDist=Math.max(0,otherCF);
+   rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale,wfContrib,wfDist});
    values.push(cf);dates.push(dt);
  }
- const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=values.reduce((z,v)=>z+Math.max(0,v),0),contrib=values.reduce((z,v)=>z+Math.max(0,-v),0),moic=contrib?dist/contrib:0;
+ const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=rows.reduce((z,r)=>z+r.wfDist,0),contrib=rows.reduce((z,r)=>z+r.wfContrib,0),moic=contrib?dist/contrib:0;
  const grossSale=(rows[rows.length-1]||{}).grossSale||0;
  const uIRR=bkXirrClose(uVals,dates,start,-(uCost[0]||0)), uPos=uVals.reduce((z,v)=>z+Math.max(0,v),0), uNeg=uVals.reduce((z,v)=>z+Math.max(0,-v),0);
  return {s,u:{irr:uIRR,moic:uNeg?uPos/uNeg:0,profit:uPos-uNeg,cost:uNeg,flows:uVals,grossSale,netSale:(rows[rows.length-1]||{}).sale||0},d:{equity:contrib,debtAtSale:(rows[rows.length-1]||{}).payoff||0},x,rows,values,dates,irr,moic,dist,contrib,isDevelopment:true,closeDt:new Date(start)};

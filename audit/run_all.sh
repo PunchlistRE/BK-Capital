@@ -57,5 +57,6 @@ echo "== persistence";                        node audit/persistence_test.js ind
 echo "== Required marker and Status chip agree (one source, N/A on non-applicable tables)"; node audit/required_status_test.js index.html | tail -1
 echo "== Undo / Redo for every function (all stores, exact, labelled, drastic-change confirmation)"; node audit/undo_test.js index.html | tail -1
 echo "== Harbor Point stage A (development Snapshot, Sources = Uses in sheet and PDF, takeout wording, unlevered returns)"; node audit/harbor_stageA_test.js index.html | tail -1
+echo "== Harbor Point stage B (hurdle replay, gross contributions, integrity checks fail visibly, credit gate, independent second model)"; node audit/harbor_stageB_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"

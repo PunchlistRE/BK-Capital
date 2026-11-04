@@ -91,7 +91,7 @@ function stepStatus(){
   out.returns = !r.canCalculate ? { st:'', tip:'Results withheld until inputs are complete' } : !isFinite(irr) ? { st:'warn', tip:'Levered IRR not finite' } : (hur && irr < hur) ? { st:'warn', tip:'Levered IRR ' + pct(irr) + ' is below the ' + pct(hur) + ' hurdle' } : { st:'done', tip:'Levered IRR ' + pct(irr) };
   var nFail = ctls.filter(function(c){ return c.level === 'FAIL'; }).length;
   out.review = nFail ? { st:'fail', tip:nFail + ' model error' + (nFail > 1 ? 's' : '') + ' to fix' }
-             : (gate && gate.verdict === 'DECLINE') ? { st:'fail', tip:'Credit gate: ' + String(gate.status || 'decline') }
+             : (gate && /^(DECLINE|HOLD)$/.test(gate.verdict)) ? { st:'fail', tip:'Credit gate: ' + String(gate.status || 'decline') }
              : r.state === 'INVESTMENT READY' && !r.sourceReview ? { st:'done', tip:'Investment ready' }
              : r.state === 'NOT DECISION-GRADE' || r.sourceReview || r.state === 'BLOCKED' ? { st:'warn', tip:r.state + (r.sourceReview ? ' - source review' : '') }
              : { st:'', tip:r.state };

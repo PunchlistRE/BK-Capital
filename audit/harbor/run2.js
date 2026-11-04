@@ -14,7 +14,7 @@ const { chromium } = require('playwright'); const path = require('path'); const 
       Object.assign(o, { grossSale: last.grossSale, netSale: last.sale - last.dispoFee, payoff: last.payoff, profit: m.dist - m.contrib, contrib: m.contrib, dist: m.dist, uIRR: m.u && m.u.irr, uMOIC: m.u && m.u.moic, irr: m.irr, moic: m.moic,
         lpIRR: w && w.lp.irr, gpIRR: w && w.gp.irr, lpMOIC: w && w.lp.moic, gpMOIC: w && w.gp.moic, lpContrib: w && w.lp.contributed, gpContrib: w && w.gp.contributed, lpDist: w && w.lp.dist, gpDist: w && w.gp.dist, promote: w && w.gp.promote, lpPref: w && w.lp.pref, lpRoc: w && w.lp.roc, lpProfit: w && w.lp.profit, gpProfit: w && w.gp.profit,
         commit: f.commit, capInt: f.actualCapInt, upfront: f.upfrontFees, overflowEquity: f.overflowTotal, equityTotal: f.equityTotal, peakDebt: Math.max.apply(null, f.months.map(z => z.end)), levered: f.levered,
-        dscr: ds12 ? noi12 / ds12 : null, noi12, ds12, breakEvenSale: (last.payoff + m.contrib - opDist) / (1 - Number(s.saleCostPct || 0)), hold: f.hold, stab: f.stab, unlev: f.unlev, hardTotal: f.hard, softTotal: f.soft, stabNOI: bkCalc().noi, capHeadroom: null, shortfall: f.overflowTotal });
+        dscr: ds12 ? noi12 / ds12 : null, noi12, ds12, breakEvenSale: (last.payoff + m.contrib - opDist) / (1 - Number(s.saleCostPct || 0)), hold: f.hold, stab: f.stab, excess: f.months.reduce((a, z) => a + (z.excess || 0), 0), unlev: f.unlev, hardTotal: f.hard, softTotal: f.soft, stabNOI: bkCalc().noi, capHeadroom: null, shortfall: f.overflowTotal });
     } catch (e) { o.err = e.message; } return o; };
     R.base = metrics();
     R.chk = (() => { try { const c = bkWaterfallChecks(); return { hurdles: c.hurdles.map(h => [h.name, h.status, h.detail]), other: c.other.map(h => [h.label, h.status, h.detail.slice(0, 200)]) }; } catch (e) { return e.message; } })();
@@ -44,6 +44,10 @@ const { chromium } = require('playwright'); const path = require('path'); const 
     // rows for the reconciliation
     const m = bkMonthlyReturns(), f = bkDevFundingV10(); R.months = f.months.map(z => ({ mo: z.mo, land: z.land, hard: z.hard, soft: z.soft, lease: z.lease, fees: z.fees, need: z.need, eq: z.eq, loanDraw: z.loanDraw, capInt: z.capInt, end: z.end, overflow: z.overflow }));
     R.flows = m.rows.map(r => ({ m: r.m, cf: r.cf, eqDraw: r.eqDraw, noi: r.noi, ds: r.ds, sale: r.sale, payoff: r.payoff })); R.dev = { land: f.land, close: f.close, pre: f.pre, hard: f.hard, soft: f.soft, leaseDef: f.leaseDef, unlev: f.unlev, upfront: f.upfrontFees, estInt: f.estInt };
-    R.calc = bkCalc(); R.keys = Object.keys(bkLoad()).length; return R; }, D);
+    R.calc = bkCalc(); R.keys = Object.keys(bkLoad()).length;
+    R.integrity = (() => { const g = bkIntegrity(); return { text: g.text, checks: g.checks.map(c => [c.id, c.group, c.label, c.status, c.detail]) }; })();
+    R.gate = (() => { const g = bkDealGate(); return { verdict: g.verdict, status: g.status, action: g.action }; })();
+    R.inputs = JSON.parse(JSON.stringify(bkLoad())); return R; }, D);
+  fs.writeFileSync(path.join(__dirname, 'inputs.json'), JSON.stringify(out.inputs)); delete out.inputs;
   fs.writeFileSync(path.join(__dirname, 'results.json'), JSON.stringify(out, null, 1)); console.log('errs', p.errs); console.log(JSON.stringify(out.base)); console.log(JSON.stringify(out.refi)); await b.close();
 })();

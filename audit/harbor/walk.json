@@ -1,0 +1,58 @@
+[
+ {
+  "step": "BK Capital as modelled (independent model, no switches)",
+  "irr": 0.33093175745123304,
+  "moic": 2.709575057234367,
+  "uirr": 0.22324341166517525,
+  "equity": 16574090.698979387,
+  "capInt": 3185837.492647057
+ },
+ {
+  "step": "Other income paid by occupied units only, as the brief says (BK charges all 120 units)",
+  "irr": 0.328840024634799,
+  "moic": 2.69435960836898,
+  "uirr": 0.22188568818462395,
+  "equity": 16574090.698979387,
+  "capInt": 3185837.492647057
+ },
+ {
+  "step": "Exit value on stabilised NOI before reserves (the reference build's simplification; BK uses next-12-months NOI after reserves, with growth)",
+  "irr": 0.3260883232924313,
+  "moic": 2.6742703921828306,
+  "uirr": 0.22009704108084482,
+  "equity": 16574090.698979387,
+  "capInt": 3185837.492647057
+ },
+ {
+  "step": "Interest capitalised to the sale with no current-pay (BK stops capitalising at stabilisation, then pays interest from cash flow)",
+  "irr": 0.3260883232924313,
+  "moic": 2.5937548842496914,
+  "uirr": 0.22009704108084482,
+  "equity": 17421947.990646053,
+  "capInt": 3185837.492647057
+ },
+ {
+  "step": "The workbook's lease-up occupancy ramp (BK derives a straight-line ramp from the lease-up months)",
+  "irr": 0.33496728220357086,
+  "moic": 2.6465229180147776,
+  "uirr": 0.22525540230779317,
+  "equity": 17421947.990646053,
+  "capInt": 3185837.492647057
+ },
+ {
+  "step": "$2.0M initial reserves funded, lease-up shortfalls paid from them, balance released at sale (BK has no reserves)",
+  "irr": 0.3181948904917492,
+  "moic": 2.462383094993672,
+  "uirr": 0.22525540230779317,
+  "equity": 19600784.94344007,
+  "capInt": 1706542.8601067294
+ },
+ {
+  "step": "Fixed $27.3M facility, $34M ceiling, $14.7M equity first, $273k fee, 0.5% unused fee (BK sizes the loan by LTC on all-in cost)",
+  "irr": 0.324358934794582,
+  "moic": 2.8565301560228016,
+  "uirr": 0.22525540230779317,
+  "equity": 14700000.0,
+  "capInt": 5794161.341647763
+ }
+]

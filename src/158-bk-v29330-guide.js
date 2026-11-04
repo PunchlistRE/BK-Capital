@@ -81,7 +81,7 @@ function advice(s){
     var mk = safe(function(){ return bkMarketCompare(); }, null); if(mk && mk.rows){ mk.rows.forEach(function(r){ if(r.status !== 'IN RANGE' && (r.id === 'rate' || r.id === 'ltv')) add('debt', 'info', r.label + ' is ' + (r.id === 'ltv' ? pc(r.value, 0) : pc(r.value, 2)) + ', ' + r.status.toLowerCase() + ' (' + (r.id === 'ltv' ? pc(r.low, 0) + ' to ' + pc(r.high, 0) : pc(r.low, 2) + ' to ' + pc(r.high, 2)) + ').'); if(r.status !== 'IN RANGE' && r.id === 'opexUnit') add('expenses', 'info', 'Operating expenses per unit are ' + money0(r.value) + ', ' + r.status.toLowerCase() + ' (' + money0(r.low) + ' to ' + money0(r.high) + ').'); }); }
   }
   if(dev){ var cm = Number(s.constructionMonths) || 0; if(cm && (cm < 12 || cm > 30)) add('land', 'info', 'A construction period of ' + cm + ' months is outside the usual 12 to 30.'); var gate = safe(function(){ return bkDealGate(); }, null); var sp = gate && gate.rows ? gate.rows.filter(function(r){ return r.id === 'devSpread' && r.applicable; })[0] : null; if(sp && sp.value != null && sp.value < sp.threshold) add('exit', 'warn', 'The yield on cost is only ' + Math.round(sp.value) + ' bps over the exit cap; the house wants ' + Math.round(sp.threshold) + '. Development risk needs a bigger cushion than that.'); }
-  var gt = safe(function(){ return bkDealGate(); }, null); if(gt && /DECLINE/i.test(gt.verdict || '') && gt.action) add('review', 'warn', 'The credit gate says decline: ' + gt.action);
+  var gt = safe(function(){ return bkDealGate(); }, null); if(gt && /DECLINE|HOLD/i.test(gt.verdict || '') && gt.action) add('review', 'warn', 'The credit gate says decline: ' + gt.action);
   return out;
 }
 function secOf(secs, id){ return secs.filter(function(x){ return x.id === id; })[0]; }

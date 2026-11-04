@@ -65,7 +65,7 @@ function build(s, oldMain){
   var next;
   if(!can){ var miss = (ready && ready.missing || []).slice(0, 4).map(function(m){ return m.label; }); next = ['Finish the required inputs', (ready ? ready.missing.length : 'Some') + ' still missing' + (miss.length ? ': ' + miss.join(', ') + (ready.missing.length > 4 ? '…' : '') : '') + '. Results stay hidden until they are in.', 'Deal Underwrite', 'Go to Deal Underwrite']; }
   else if(fails.length) next = ['Fix ' + fails.length + ' model error' + (fails.length === 1 ? '' : 's'), esc(fails[0].area + ': ' + String(fails[0].msg).split(' Why it matters')[0]), 'Model Checks', 'Open Model Checks'];
-  else if(gate && gate.verdict === 'DECLINE') next = ['Credit gate says decline', 'The deal fails ' + gate.hard + ' hard and ' + gate.soft + ' soft policy tests. Resize the debt, change the price, or record a documented override.', 'Debt Capacity', 'Open Debt Capacity'];
+  else if(gate && /^(DECLINE|HOLD)$/.test(gate.verdict)) next = ['Credit gate says decline', 'The deal fails ' + gate.hard + ' hard and ' + gate.soft + ' soft policy tests. Resize the debt, change the price, or record a documented override.', 'Debt Capacity', 'Open Debt Capacity'];
   else if(warns.length) next = ['Review ' + warns.length + ' warning' + (warns.length === 1 ? '' : 's'), esc(warns[0].area + ': ' + String(warns[0].msg).split(' Why it matters')[0]), 'Model Checks', 'Open Model Checks'];
   else next = ['Ready for committee', 'Inputs are complete and no checks are open. Stress the deal, then open the IC memo.', 'IC Memo', 'Open the IC memo'];
   var rows = [];
@@ -73,7 +73,7 @@ function build(s, oldMain){
   if(can && h){
     rows.push([irrOk || '', 'Returns vs hurdle', 'Levered IRR ' + P(h.levIRR) + ' against a ' + P(hurdle) + ' target; ' + X(h.levMOIC) + ' multiple', 'Returns']);
     if(!dev){ var cap = gate && gate.capacity; rows.push([cap ? (cap.overage > 0 ? 'warn' : 'pass') : '', 'Debt against policy', cap ? (cap.overage > 0 ? 'Loan is ' + M(cap.overage) + ' above what policy supports (' + M(cap.capacity) + ', binding on ' + esc(cap.binding && cap.binding.name || 'policy') + ')' : 'Loan is within policy capacity (' + M(cap.capacity) + ')') : 'DSCR ' + X(h.dscr), 'Debt Capacity']); }
-    if(gate) rows.push([gate.verdict === 'APPROVE' ? 'pass' : gate.verdict === 'DECLINE' ? 'fail' : 'warn', 'Credit decision', esc(String(gate.status || gate.verdict).replace(/\s+—\s+/, ': ')), 'IC Memo']);
+    if(gate) rows.push([gate.verdict === 'APPROVE' ? 'pass' : /^(DECLINE|HOLD)$/.test(gate.verdict) ? 'fail' : 'warn', 'Credit decision', esc(String(gate.status || gate.verdict).replace(/\s+—\s+/, ': ')), 'IC Memo']);
     if(!dev){ var rk = safe(function(){ return bkRiskScenarios(); }, null); if(rk) rows.push([rk.pLoss > 0.2 ? 'warn' : 'pass', 'Downside odds', 'Scenario-weighted: ' + P(rk.pLoss, 0) + ' chance of losing money, ' + P(rk.pMiss, 0) + ' chance of missing the hurdle; expected IRR ' + P(rk.irrOfExpectedCF), 'Probability-Weighted']); }
   }
   if(!dev) rows.push([Array.isArray(s.rentRoll) && s.rentRoll.length ? 'pass' : 'warn', 'Rent roll', Array.isArray(s.rentRoll) && s.rentRoll.length ? s.rentRoll.length + ' units loaded; revenue is built from them' : 'No unit rent roll: revenue uses the flat average rent per unit, with no loss to lease or rollover', 'Import Rent Roll']);

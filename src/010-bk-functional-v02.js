@@ -53,6 +53,8 @@ function bkConventions(s){
   if(out.isDevelopment){
     Object.keys(BK_CV_LEGACY).forEach(function(k){ out[k] = BK_CV_LEGACY[k]; });
     out.legacyFields = Object.keys(BK_CV_LEGACY);
+    /* the one development-specific choice: whether the hurdles are tested on the LP's own dated cash flows ('lp') or on total equity ('deal', the legacy method and the default) */
+    if(s.devHurdleBasis === 'lp'){ out.cvHurdleBasis = 'lp'; out.legacyFields = out.legacyFields.filter(function(k){ return k !== 'cvHurdleBasis'; }); }
   }
   out.isLegacy = out.legacyFields.length === Object.keys(BK_CV_LEGACY).length;
   out.isStandard = Object.keys(BK_CV_STANDARD).every(function(k){ return out[k] === BK_CV_STANDARD[k]; });

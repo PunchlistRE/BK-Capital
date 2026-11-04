@@ -104,7 +104,8 @@ function listEditor(list, label, placeholder){
 function ic(){ return bkLoad()._ic || {}; }
 register('IC Memo', function(){
   var s = bkLoad(), g = window.bkDealGate(), I = ic(), c = g.cushions, cap = g.capacity, ret = g.ret, w = g.waterfall;
-  var banner = '<div class="note-flag" style="margin-top:0;border-left:4px solid ' + (g.verdict === 'APPROVE' ? '#3F6B4A' : g.verdict === 'CONDITIONAL' ? '#B8860B' : '#A93B2C') + '"><span>' + (g.verdict === 'APPROVE' ? '&#10003;' : '&#9888;') + '</span><div><b>' + esc(g.status) + '</b><br>' + esc(g.action) + '</div></div>';
+  var banner = '<div class="note-flag" style="margin-top:0;border-left:4px solid ' + (g.verdict === 'APPROVE' ? '#3F6B4A' : g.verdict === 'CONDITIONAL' ? '#B8860B' : '#A93B2C') + '"><span>' + (g.verdict === 'APPROVE' ? '&#10003;' : '&#9888;') + '</span><div><b>' + esc(g.status) + '</b><br>' + esc(g.action) + '</div></div>'
+    + (g.integrity ? '<div class="note-flag" style="margin-top:6px;border-left:4px solid ' + (g.integrity.hard.length ? '#A93B2C' : g.integrity.warn.length ? '#B8860B' : '#3F6B4A') + '"><span>' + (g.integrity.hard.length ? '&#9888;' : g.integrity.warn.length ? '&#9888;' : '&#10003;') + '</span><div><b>Model integrity: ' + esc(g.integrity.text) + '</b>' + g.integrity.hard.map(function(c){ return '<br><b>Failed:</b> ' + esc(c.label) + ' — ' + esc(c.detail); }).join('') + g.integrity.warn.map(function(c){ return '<br><b>Warning:</b> ' + esc(c.label) + ' — ' + esc(c.detail); }).join('') + '</div></div>' : '');
   var thesis = (I.thesis || []).concat(['', '', '']).slice(0, Math.max(3, (I.thesis || []).length + 1));
   var thesisHtml = thesis.map(function(t, i){ return '<tr><td class="rowlabel">' + (i + 1) + '</td><td data-bk-align="text" colspan="3"><input type="text" style="width:100%" value="' + esc(t) + '" placeholder="Thesis point" onchange="bkICSet(\'thesis.' + i + '\',this.value)"></td></tr>'; }).join('');
   var dealRows = [

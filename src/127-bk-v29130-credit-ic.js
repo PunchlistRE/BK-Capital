@@ -237,6 +237,10 @@ function dealGate(){
   else if(hard === 0 && score >= p.advanceScore) verdict = 'APPROVE';
   else if(score >= p.conditionalScore || (hard === 0 && soft <= 2)) verdict = 'CONDITIONAL';
   else verdict = 'DECLINE';
+  /* the gate reflects the validation results, not just whether the engine finished: a result that does not reconcile cannot be approved, and an approval cannot say "no exceptions" while a model warning stands */
+  var integ = typeof window.bkIntegrity === 'function' ? window.bkIntegrity() : null, integHard = integ ? integ.hard.length : 0, integWarn = integ ? integ.warn.length : 0;
+  if(integHard > 0) verdict = 'HOLD';
+  else if(integWarn > 0 && verdict === 'APPROVE') verdict = 'CONDITIONAL';
   var exceptions = live.filter(function(r){ return !r.pass; }).sort(function(a, b){ return (a.severity === b.severity ? 0 : a.severity === 'HARD' ? -1 : 1) || (b.weight - a.weight); }).map(function(r){
     var gap = r.dir === '>=' ? r.threshold - r.value : r.value - r.threshold, msg;
     if(r.id === 'capacity') msg = 'Debt: ' + fmtVal(r.value - r.threshold, 'usd') + ' above capacity (' + fmtVal(r.value, 'usd') + ' vs ' + fmtVal(cap.capacity, 'usd') + ')';
@@ -244,13 +248,15 @@ function dealGate(){
     else msg = r.label.replace(/ \(.*/, '') + ': ' + fmtVal(r.value, r.type) + ' vs ' + fmtVal(r.threshold, r.type) + ' required';
     return { severity:r.severity, id:r.id, message:msg };
   });
-  var action = verdict === 'APPROVE' ? 'Proceed to close on the selected structure; satisfy the conditions precedent.'
+  var action = verdict === 'HOLD' ? 'The model failed ' + integHard + ' integrity check' + (integHard > 1 ? 's' : '') + ' (' + integ.hard.map(function(c){ return c.label; }).slice(0, 3).join('; ') + (integHard > 3 ? '; ...' : '') + '). Fix them before this result is used for a decision.'
+    : (verdict === 'CONDITIONAL' && integWarn > 0 && hard + soft === 0) ? 'The credit gates pass, but ' + integWarn + ' model warning' + (integWarn > 1 ? 's stand' : ' stands') + ': ' + integ.warn.map(function(c){ return c.label; }).join('; ') + '. Approval is conditional on resolving or accepting them.'
+    : verdict === 'APPROVE' ? 'Proceed to close on the selected structure; satisfy the conditions precedent.'
     : (overage > p.maxDebtOverage && !overrideValid) ? 'Resize senior debt to <= ' + fmtVal(cap.capacity, 'usd') + ', renegotiate price / economics, or record a documented credit override.'
     : hard > 0 ? 'Resolve the hard exceptions before returning to committee.' : 'Resolve or accept the soft exceptions; conditional approval is available at the committee’s discretion.';
-  var status = verdict + ' — ' + (hard + soft === 0 ? 'NO MATERIAL EXCEPTIONS' : hard + ' HARD / ' + soft + ' SOFT EXCEPTION' + (hard + soft > 1 ? 'S' : ''));
+  var status = verdict + ' — ' + (integHard > 0 ? integHard + ' MODEL CHECK' + (integHard > 1 ? 'S' : '') + ' FAILED' + (hard + soft > 0 ? ' / ' + hard + ' HARD / ' + soft + ' SOFT' : '') : (hard + soft === 0 ? (integWarn > 0 ? integWarn + ' MODEL WARNING' + (integWarn > 1 ? 'S' : '') : 'NO MATERIAL EXCEPTIONS') : hard + ' HARD / ' + soft + ' SOFT EXCEPTION' + (hard + soft > 1 ? 'S' : '') + (integWarn > 0 ? ' / ' + integWarn + ' MODEL WARNING' + (integWarn > 1 ? 'S' : '') : '')));
   return { policy:p, rows:rows, score:score, weightTotal:wTotal, weightsOk:Math.abs(wTotal - 1) < 1e-9, passed:live.filter(function(r){ return r.pass; }).length, applicable:live.length,
     hard:hard, soft:soft, overage:overage, overrideValid:overrideValid, override:ov, verdict:verdict, status:status, action:action, exceptions:exceptions,
-    capacity:cap, cushions:rc, ret:ret, waterfall:w, register:rr, development:dev };
+    capacity:cap, cushions:rc, ret:ret, waterfall:w, register:rr, development:dev, integrity:integ };
 }
 /* The gate re-runs the engine dozens of times (capacity ladder, cushions), about half a second. It is a pure function of the deal, so the last few results are kept by the deal's own contents. */
 var gateMemo = [];

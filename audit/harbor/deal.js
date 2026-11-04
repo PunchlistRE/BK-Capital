@@ -5,6 +5,9 @@ module.exports = {
   dealId: 'HARBOR-POINT', name: 'Harbor Point Residences', dealType: 'Development', propertyType: 'Multifamily', location: 'Stamford, CT', closing: '1/1/2027',
   units: 120, gsf: GSF, avgRent: 3310, otherIncomePerUnit: 2100, vacancy: 0.05, purchasePrice: 7000000, closingPct: 250000 / 7000000, acqFeePct: 0,
   taxes: 400000, insurance: 120000, utilities: 150000, rm: 144000, payroll: 180000, contract: 0, turnover: 0, marketing: 0, ga: 0, reserves: 36000, mgmtPct: 0.04,
+  // the brief has no asset-management or disposition fee: BK Capital's defaults (1% of EGI, 0.5% of sale) are switched off rather than silently charged
+  assetMgmtPct: 0, dispositionFeePct: 0,
+  devHurdleBasis: 'lp',   // the brief: hurdles are tested on the LP's own dated cash flows (the development default tests them on total equity)
   rentGrowth: 0.03, opexGrowth: 0.03, taxGrowth: 0.03, exitCap: 0.05, saleCostPct: 0.02, holdYears: 4,
   predevMonths: 2, constructionMonths: 24, leaseupMonths: 17, predevCarry: 750000,
   devBudgetMode: 'PARAMETRIC',
