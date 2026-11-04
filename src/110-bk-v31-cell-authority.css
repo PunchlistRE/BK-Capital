@@ -197,10 +197,12 @@ html body #viewport table.fin.bk-tt2, html body #viewport table.fin.bk-tt3, html
 html body #viewport table.fin.bk-tt2 tr > :nth-child(1), html body #viewport table.fin.bk-tt3 tr > :nth-child(1), html body #viewport table.fin.bk-tt4 tr > :nth-child(1){ width:36% !important; }
 html body #viewport table.fin.bk-tt2 tr > :nth-child(2):not([colspan]){ width:64% !important; }
 html body #viewport table.fin.bk-tt2.wrap tbody td:nth-child(2){ vertical-align:middle; }
-html body #viewport table.fin.bk-tt3 tr > :nth-child(2), html body #viewport table.fin.bk-tt4 tr > :nth-child(2){ width:24% !important; }
-html body #viewport table.fin.bk-tt3 tr > :nth-child(3){ width:40% !important; }
-html body #viewport table.fin.bk-tt4 tr > :nth-child(3){ width:24% !important; }
-html body #viewport table.fin.bk-tt4 tr > :nth-child(4){ width:16% !important; }
+html body #viewport table.fin.bk-tt3 tr > :nth-child(2){ width:18% !important; }
+html body #viewport table.fin.bk-tt4 tr > :nth-child(1){ width:28% !important; }
+html body #viewport table.fin.bk-tt4 tr > :nth-child(2){ width:22% !important; }
+html body #viewport table.fin.bk-tt3 tr > :nth-child(3){ width:46% !important; }
+html body #viewport table.fin.bk-tt4 tr > :nth-child(3){ width:36% !important; }
+html body #viewport table.fin.bk-tt4 tr > :nth-child(4){ width:14% !important; }
 html body #viewport table.fin.bk-tt2 td, html body #viewport table.fin.bk-tt3 td, html body #viewport table.fin.bk-tt4 td { white-space:normal; overflow-wrap:break-word; }
 html body #viewport table.fin.bk-tt2 tbody tr:not(.section) > td:nth-child(2), html body #viewport table.fin.bk-tt3 tbody tr:not(.section) > td:nth-child(2), html body #viewport table.fin.bk-tt4 tbody tr:not(.section) > td:nth-child(2),
 html body #viewport table.fin.bk-tt2 thead th:nth-child(2), html body #viewport table.fin.bk-tt3 thead th:nth-child(2), html body #viewport table.fin.bk-tt4 thead th:nth-child(2) { text-align:left !important; }

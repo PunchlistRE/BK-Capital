@@ -571,7 +571,7 @@ function ribbon(frame, sheet){
   var tab = (typeof NAV_TABS !== 'undefined' ? NAV_TABS : []).find(function(t){ return t.groups.some(function(id){ var x = GROUPS.find(function(y){ return y.id === id; }); return x && x.sheets.indexOf(sheet) > -1; }); });
   var gs = tab ? tab.groups.map(function(id){ return GROUPS.find(function(x){ return x.id === id; }); }).filter(function(x){ return x && !x.hidden && (x.id !== 'dev' || dev || x.sheets.indexOf(sheet) > -1); }) : [];
   var sub = gs.map(function(g){ return g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); }).filter(Boolean).join('<span class="rb-sep" aria-hidden="true"></span>');
-  var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
+  var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" title="' + esc(label) + '" aria-label="' + esc(label) + '" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
   var h = '<div class="bk-ribbon" role="toolbar" aria-label="Pages and commands"><div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
     + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
   nav.insertAdjacentHTML('afterend', h);

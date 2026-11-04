@@ -219,7 +219,7 @@ function ganttSheet(M, o){
   for(var c = 1; c <= N; c++) h += '<col>';
   h += '</colgroup><thead><tr><th style="' + th + ';text-align:center" rowspan="2">#</th><th style="' + th + ';text-align:left" rowspan="2">Task</th><th style="' + th + ';text-align:right" rowspan="2">Start</th><th style="' + th + ';text-align:right" rowspan="2">End</th><th style="' + th + ';text-align:right" rowspan="2">Months</th><th style="' + th + ';text-align:left" rowspan="2" title="Predecessor rows; +n / -n is a lag / overlap in months">Pred.</th>';
   yearRuns.forEach(function(r){ h += '<th colspan="' + r.n + '" style="' + th + ';text-align:center">' + (r.n >= 3 ? r.y : '') + '</th>'; });
-  h += '</tr><tr>'; for(var c2 = 1; c2 <= N; c2++) h += '<th style="' + th + ';text-align:center;font-size:9px;padding:2px 0;font-weight:500;overflow:hidden">' + (N <= 18 || (N <= 36 && c2 % 3 === 1) || (N > 36 && c2 % 6 === 1) ? c2 : '') + '</th>'; h += '</tr></thead><tbody>';
+  h += '</tr><tr>'; for(var c2 = 1; c2 <= N; c2++) h += '<th style="' + th + ';text-align:left;font-size:9px;padding:2px 0 2px 1px;font-weight:500;overflow:visible">' + (N <= 18 || (N <= 36 && c2 % 3 === 1) || (N > 36 && c2 % 6 === 1) ? c2 : '') + '</th>'; h += '</tr></thead><tbody>';
   var cellsFor = function(rowBars, ms, bold, crit){
     var out = ''; for(var m2 = 1; m2 <= N; m2++){ var inBar = rowBars && m2 >= rowBars.a && m2 <= rowBars.b, edge = (inBar ? '' : ''), bg = inBar ? rowBars.col : (bold ? GX.band : (colAlt(m2) ? GX.cellAlt : GX.cell));
       var mark = ms && m2 === ms.m ? '<span title="' + esc(ms.label) + '" style="display:block;width:11px;height:11px;margin:0 auto;background:' + GX.ms + ';transform:rotate(45deg)"></span>' : '';

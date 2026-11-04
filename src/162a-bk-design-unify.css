@@ -248,9 +248,9 @@ html body #viewport table.fin td.v > .status-chip, html body #viewport table.fin
 /* Sponsor CF: the four-column tables (setting / value / basis / status) share one grid and one row height */
 @media (min-width:761px){
   html body #viewport table.fin.bk-sp4{ table-layout:fixed !important; width:100% !important; }
-  html body #viewport table.fin.bk-sp4 tr > :nth-child(1){ width:28% !important; }
+  html body #viewport table.fin.bk-sp4 tr > :nth-child(1){ width:26% !important; }
   html body #viewport table.fin.bk-sp4 tr > :nth-child(2){ width:16% !important; }
-  html body #viewport table.fin.bk-sp4 tr > :nth-child(3){ width:26% !important; }
+  html body #viewport table.fin.bk-sp4 tr > :nth-child(3){ width:34% !important; }
   html body #viewport table.fin.bk-sp4 tr > :nth-child(4){ width:24% !important; }
   html body #viewport table.fin.bk-sp4 .status-chip{ white-space:nowrap !important; }
   html body #viewport table.fin.bk-sp4 tbody td{ height:40px; vertical-align:middle; white-space:normal; }
@@ -275,10 +275,10 @@ html body #viewport table.fin td .status-chip[data-bk-nowrap], html body #viewpo
 html body #viewport table.fin.bk-mc button{ width:auto !important; min-width:0 !important; max-width:100%; }
 /* conventions / depreciation settings: the value column is wide enough for a full option label */
 @media (min-width:761px){
-  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(1){ width:22% !important; }
-  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(2){ width:37% !important; }
-  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(3){ width:26% !important; }
-  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(4){ width:15% !important; }
+  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(1){ width:20% !important; }
+  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(2){ width:33% !important; }
+  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(3){ width:35% !important; }
+  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(4){ width:12% !important; }
 }
 /* the editor's total rows follow the same fill rule: a total is KEY, not HEADER */
 html body #viewport .ae-grid tr.tot td{ background:var(--bk-fill-key) !important; color:var(--bk-key-ink); box-shadow:none; }

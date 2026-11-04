@@ -238,3 +238,42 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
 /* the centre title of the header gives way before it can run into the buttons */
 @media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
 @media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }
+
+/* PHONE: the navigation above the content is compact. The stepper scrolls sideways in one line next to the Sheets button, the case switcher, save status and undo share one row, the editor's own tab strip is one scrolling row, and the print button under the title is hidden (the ribbon above has it). */
+@media (max-width:760px){
+  html body .bk-flow{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:6px 10px; }
+  html body .bk-flow .bk-menu-btn{ flex:0 0 auto; }
+  html body .bk-flow .bk-steps{ flex:1 1 0; min-width:0; overflow-x:auto; flex-wrap:nowrap; scrollbar-width:none; gap:2px; }
+  html body .bk-flow .bk-steps::-webkit-scrollbar{ display:none; }
+  html body .bk-flow .bk-step{ flex:0 0 auto; padding:0 8px; font-size:12px; }
+  html body .bk-flow .bk-step-sep{ flex:0 0 8px; width:8px; }
+  html body .bk-flow .bk-flow-right{ flex:1 1 100%; display:flex; flex-wrap:nowrap; align-items:center; gap:6px; overflow-x:auto; scrollbar-width:none; }
+  html body .bk-flow .bk-flow-right::-webkit-scrollbar{ display:none; }
+  html body .bk-flow .bk-flow-right > *{ flex:0 0 auto; }
+  html body .bk-flow .bk-save{ max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  html body #viewport .bk-print-btn{ display:none; }
+  html body #viewport .ae-tabs{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  html body #viewport .ae-tabs::-webkit-scrollbar{ display:none; }
+  html body #viewport .ae-tabs .ae-tab{ flex:0 0 auto; }
+}
+
+/* FEWER STRIPS ON A DESKTOP SCREEN: the ribbon commands are icons (the names show on hover) so the page tabs fit one row, and the stepper, case switcher and save status share one row. */
+@media (min-width:1200px){
+  html body .bk-ribbon .rb-cmds .rb-c span{ display:none; }
+  html body .bk-ribbon .rb-cmds .rb-c{ padding:0 9px; }
+  html body .bk-ribbon .rb-t{ padding:0 9px; }
+}
+@media (min-width:1200px){
+  html body .bk-flow{ flex-wrap:nowrap; align-items:center; }
+  html body .bk-flow .bk-steps{ flex:1 1 auto; min-width:0; gap:2px; }
+  html body .bk-flow .bk-flow-right{ flex:0 0 auto; flex-wrap:nowrap; }
+  html body .bk-flow .bk-save{ max-width:none; white-space:nowrap; }
+}
+
+/* LESS TALL ROWS: the explanation column of the four-column readout tables is the widest one, so a sentence wraps in two lines, not five. Label 26%, value 17%, explanation 43%, status 14%. */
+@media (min-width:761px){
+  html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(1), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(1){ width:26% !important; }
+  html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(2), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(2){ width:17% !important; }
+  html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(3), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(3){ width:43% !important; }
+  html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(4), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(4){ width:14% !important; }
+}
