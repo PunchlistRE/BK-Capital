@@ -28976,5 +28976,41 @@ if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'functi
 });
 })();
 </script>
+<style id="bk-palette-css">/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.
+   Navy is the brand and the structure (chrome, section bars, the key rule). Slate greys carry the neutral surfaces. One blue is the accent.
+   Four semantic colours, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
+   The cell convention is unchanged: blue text on pale yellow is an input. This part loads after every other style so it settles the tokens; it changes colours only. */
+:root{
+  --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
+  --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
+  --ae-ink:#14212F; --ae-dim:#566577; --ae-accent:#1F4E8C; --ae-hint:#F3F6FA;
+  --bk-key-fill:#DDE7F4; --bk-key-ink:#0B2545; --bk-key-rule:#1F4E8C; --bk-key-line:rgba(31,78,140,.25);
+  --bk-link-ink:#1B7A4B; --bk-attn-red:#C0392B; --bk-attn-amber:#B7791F; --bk-na-ink:#6B7785;
+  --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
+}
+html.bk-auth-ok body, html body{ background:var(--ae-bg); }
+/* section bars and column headings: flat slate with a navy base line, so structure reads at a glance */
+html body #viewport table.fin caption, html body #viewport .card-head, html body #viewport .bk-snap > .card-head, html body #viewport .bk-sx-card > .bk-sx-title, html body #viewport .pf-card > .t{
+  background:var(--ae-head) !important; border-bottom:2px solid var(--bk-navy) !important; color:var(--bk-navy) !important; }
+html body #viewport table.fin th{ background:var(--ae-head2) !important; color:var(--ae-ink) !important; border-color:var(--ae-line) !important; }
+html body #viewport table.fin thead tr:last-child th{ border-bottom:1px solid var(--bk-navy-2) !important; }
+html body #viewport [data-ic]::before{ background:var(--bk-navy) !important; }
+html body #viewport table.fin tr.grandtotal td:first-child, html body #viewport table.fin tr.tot td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+/* chips: one background and one ink per meaning */
+html body .status-chip.pass{ background:var(--bk-ok-bg) !important; color:var(--bk-link-ink) !important; }
+html body .status-chip.warn{ background:var(--bk-warn-bg) !important; color:#8A5A12 !important; }
+html body .status-chip.fail{ background:var(--bk-fail-bg) !important; color:#A32F24 !important; }
+/* the page title and headline figures take the navy */
+html body #viewport .title-block h2{ color:var(--bk-navy); }
+html body #viewport a{ color:var(--ae-accent); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(111,180,242,.14); --bk-key-ink:#e8eef5; --bk-key-rule:#6fb4f2; --bk-key-line:rgba(111,180,242,.3); --bk-ok-bg:rgba(98,215,159,.14); --bk-warn-bg:rgba(240,184,74,.15); --bk-fail-bg:rgba(255,122,110,.16); } 
+  html body #viewport table.fin caption, html body #viewport .card-head, html body #viewport .bk-snap > .card-head, html body #viewport .bk-sx-card > .bk-sx-title, html body #viewport .pf-card > .t{ background:var(--ae-head) !important; color:var(--ae-ink) !important; border-bottom-color:var(--ae-accent) !important; } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(111,180,242,.14); --bk-key-ink:#e8eef5; --bk-key-rule:#6fb4f2; --bk-key-line:rgba(111,180,242,.3); --bk-ok-bg:rgba(98,215,159,.14); --bk-warn-bg:rgba(240,184,74,.15); --bk-fail-bg:rgba(255,122,110,.16); }
+:root[data-theme="dark"] body #viewport table.fin caption, :root[data-theme="dark"] body #viewport .card-head, :root[data-theme="dark"] body #viewport .bk-snap > .card-head, :root[data-theme="dark"] body #viewport .bk-sx-card > .bk-sx-title, :root[data-theme="dark"] body #viewport .pf-card > .t{ background:var(--ae-head) !important; color:var(--ae-ink) !important; border-bottom-color:var(--ae-accent) !important; }
+:root[data-theme="dark"] body, :root[data-theme="dark"] html body{ background:var(--ae-bg); }
+
+/* LAYOUT: one left edge. The page title, the header strip and every section start at the same x (22px gutter); sections sit 16px below the header and 12px apart. */
+@media (min-width:901px){ html body .main-col{ padding:16px 22px 40px; } html body #viewport .main-col > .note-flag:first-child{ margin-top:0; } }
+</style>
 </body>
 </html>
