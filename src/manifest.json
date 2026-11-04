@@ -965,6 +965,11 @@
 "close": "</script>"
 },
 {
+"file": "184b-bk-perf.js",
+"open": "\n<script id=\"bk-perf\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"

@@ -40,7 +40,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
     const snap = await p.evaluate(() => ({ chip: /ALL INPUTS TIE/.test(document.body.innerText), bar: !!document.querySelector('#bk-kpibar') && /ALL INPUTS TIE/.test(document.getElementById('bk-kpibar').innerText) }));
     check(tag + ': ALL INPUTS TIE shows on the Home checklist, the Deal Snapshot and the key-figure bar', home && snap.chip && snap.bar, JSON.stringify([home, snap]));
     /* tamper: the indicator must fail visibly when a figure no longer ties */
-    const t = await p.evaluate(() => { const o = window.bkMonthlyReturns; window.bkMonthlyReturns = function () { const r = o.apply(this, arguments); r.contrib = r.contrib + 5000; return r; }; const a = bkAllInputsTie(); window.bkMonthlyReturns = o; return { ok: a.ok, n: a.failed.length }; });
+    const t = await p.evaluate(() => { const o = window.bkMonthlyReturns; window.bkMonthlyReturns = function () { const r = o.apply(this, arguments); return Object.assign({}, r, { contrib: r.contrib + 5000 }); }; bkPerfClear(); const a = bkAllInputsTie(); window.bkMonthlyReturns = o; bkPerfClear(); return { ok: a.ok, n: a.failed.length }; });
     check(tag + ': tamper test: $5,000 added to the returns contributions makes the indicator fail (it is not a constant)', t.ok === false && t.n > 0, JSON.stringify(t));
     check(tag + ': no page errors', p.errs.length === 0, p.errs.join('|')); await p.close();
   }
