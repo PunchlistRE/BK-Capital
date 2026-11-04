@@ -20,7 +20,7 @@ R.addRules([
   X('portfolioTies', 'Consolidated flows equal the sum of the holdings; nothing counted twice', 'planned', { planned:true }), X('bizTies', 'EBITDA, free cash flow and value reconcile', 'planned', { planned:true })
 ]);
 var CORE = ['readiness', 'conflicts', 'sale', 'payoff', 'eqret', 'contrib', 'unlev_irr', 'irr', 'moic', 'waterfall', 'credit'];
-R.addChecks('acquisition', CORE);
+R.addChecks('acquisition', ['budget', 'unlev', 'su', 'capint', 'facility'].concat(CORE));   /* the acquisition engine reports sources and uses, interest and the loan balance too */
 R.addChecks('development', ['budget', 'unlev', 'su', 'draws', 'capint', 'facility', 'fixed'].concat(CORE));
 R.addChecks('valuation', ['readiness', 'conflicts', 'noiTies', 'valueTies', 'noDebt']);
 R.addChecks('refinance', ['readiness', 'conflicts', 'noiTies', 'payoffTies', 'sizingTies']);
@@ -29,5 +29,7 @@ R.addChecks('comprehensive', CORE.concat(['capitalTies', 'basisTies']));
 R.addChecks('portfolio', ['portfolioTies']);
 R.addChecks('business', ['readiness', 'bizTies']);
 /* applies(analysisId, integrityCheckId): false means N/A for this analysis */
+/* does any rule name this integrity check (unnamed checks always apply) */
+R.mapsCheck = function(checkId){ return Object.keys(R._raw.rules).some(function(id){ var r = R._raw.rules[id]; return r.source === 'integrity:' + checkId; }); };
 R.applies = function(aid, checkId){ var ids = R.checks(aid); return ids.some(function(id){ var r = R.rule(id); return r && (r.source === 'integrity:' + checkId || id === checkId); }); };
 })();

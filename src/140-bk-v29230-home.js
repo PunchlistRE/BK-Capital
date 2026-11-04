@@ -66,10 +66,12 @@ function build(s, oldMain){
   var irrOk = h && isFinite(h.levIRR) ? (h.levIRR >= hurdle ? 'pass' : (h.levIRR >= hurdle - 0.03 ? 'warn' : 'fail')) : '';
   var dscrOk = h && isFinite(h.dscr) && h.dscr ? (h.dscr >= mind ? 'pass' : 'fail') : '';
   var price = Number(s.purchasePrice) || 0, loan = h ? Number(h.loan) || 0 : 0;
-  var kpis = can && h ? [
-    ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns'], ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns'],
-    [dev ? 'Yield on cost' : 'Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite'], ['Year-1 DSCR', X(h.dscr), 'policy min ' + X(mind), dscrOk, 'Debt'],
-    ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt'], ['Equity', M(h.equity), price ? 'price ' + M(price) : '', '', 'Sources & Uses']] : [];
+  /* the tiles: which figures lead, and in what order, come from the analysis registry (src/139h); each is read from the same headline as the Deal Snapshot */
+  var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
+    yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Year-1 DSCR', X(h.dscr), 'policy min ' + X(mind), dscrOk, 'Debt']; },
+    loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ return ['Equity', M(h.equity), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };
+  var tileIds = safe(function(){ return window.BKReg.tiles(window.BKReg.of(s).id); }, null) || ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
+  var kpis = can && h ? tileIds.filter(function(id){ return TILE[id]; }).map(function(id){ return TILE[id](); }) : [];
   var next;
   if(!can){ var miss = (ready && ready.missing || []).slice(0, 4).map(function(m){ return m.label; }); next = ['Finish the required inputs', (ready ? ready.missing.length : 'Some') + ' still missing' + (miss.length ? ': ' + miss.join(', ') + (ready.missing.length > 4 ? '…' : '') : '') + '. Results stay hidden until they are in.', 'Deal Underwrite', 'Go to Deal Underwrite']; }
   else if(fails.length) next = ['Fix ' + fails.length + ' model error' + (fails.length === 1 ? '' : 's'), esc(fails[0].area + ': ' + String(fails[0].msg).split(' Why it matters')[0]), 'Model Checks', 'Open Model Checks'];

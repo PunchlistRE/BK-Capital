@@ -60,7 +60,8 @@ function headline(){
 }
 
 /* ---------------------------------------------------------------- 1. workflow */
-var STEPS = [
+/* the step bar's stages come from the analysis registry (src/139h): the deal's analysis decides them. STEPS0 is the fallback with no registry. */
+var STEPS0 = [
   { id:'setup', label:'Setup',      sheets:['Home'] },
   { id:'inputs', label:'Inputs',    sheets:['Deal Underwrite','Rent Roll','Import','Depreciation','Source Data'] },
   { id:'ops', label:'Operations',   sheets:['Operating Underwrite','Property CF'] },
@@ -68,21 +69,28 @@ var STEPS = [
   { id:'returns', label:'Returns',  sheets:['Returns','Equity Waterfall','After-Tax'] },
   { id:'review', label:'Review',    sheets:['Sensitivity','Reverse Solve','QA'] }
 ];
-function stepOf(sheet){ for(var i = 0; i < STEPS.length; i++) if(STEPS[i].sheets.indexOf(sheet) > -1) return i; return -1; }
+function stagesNow(){ var R = window.BKReg; try { if(R && typeof R.stages === 'function'){ var d = hasDeal() ? bkLoad() : {}; return R.stages(R.of(d).id); } } catch(e){} return STEPS0.map(function(x){ return Object.assign({ judge:{ setup:'identity', inputs:'inputs', ops:'operations', debt:'debt', returns:'returns', review:'review' }[x.id] }, x); }); }
+function stepOf(sheet){ var S = stagesNow(); for(var i = 0; i < S.length; i++) if(S[i].sheets.indexOf(sheet) > -1) return i; return -1; }
+/* each stage's status, by its rule: the six rules below (as they have always been), or 'steps' (the registry's workflow steps are complete) */
 function stepStatus(){
+  var S = stagesNow(), J = judges(), out = {}, R = window.BKReg, d = hasDeal() ? bkLoad() : null;
+  S.forEach(function(g){ out[g.id] = g.judge === 'steps' ? (J.none ? J.none : (R ? R.stageFromSteps(g, d) : { st:'', tip:'' })) : (J[g.judge] || { st:'', tip:'' }); });
+  return out;
+}
+function judges(){
   var r = readiness(), out = {};
-  if(!r || r.state === 'NO DEAL'){ STEPS.forEach(function(st){ out[st.id] = { st:'', tip:'No deal loaded' }; }); return out; }
+  if(!r || r.state === 'NO DEAL'){ return { none:{ st:'', tip:'No deal loaded' } }; }
   var s = bkLoad();
   var idMiss = r.missing.filter(function(m){ return m.group === 'Identity'; });
-  out.setup = idMiss.length ? { st:'warn', tip:'Missing: ' + idMiss.map(function(m){ return m.label; }).join(', ') } : { st:'done', tip:'Deal identity complete' };
+  out.identity = idMiss.length ? { st:'warn', tip:'Missing: ' + idMiss.map(function(m){ return m.label; }).join(', ') } : { st:'done', tip:'Deal identity complete' };
   out.inputs = r.missing.length ? { st:'warn', tip:r.missing.length + ' required input' + (r.missing.length > 1 ? 's' : '') + ' missing' } : { st:'done', tip:'All required inputs entered' };
   var noi = NaN; try { noi = bkCalc().noi; } catch(e){}
-  out.ops = (r.canCalculate && isFinite(noi)) ? (noi > 0 ? { st:'done', tip:'Year-1 NOI ' + money(noi) } : { st:'warn', tip:'Year-1 NOI is not positive' }) : { st:'', tip:'Needs complete inputs' };
+  out.operations = (r.canCalculate && isFinite(noi)) ? (noi > 0 ? { st:'done', tip:'Year-1 NOI ' + money(noi) } : { st:'warn', tip:'Year-1 NOI is not positive' }) : { st:'', tip:'Needs complete inputs' };
   var debtMiss = r.investMissing.some(function(m){ return m.key === 'debt'; });
   var gate = null, pol = {}, ctls = [];
   if(r.canCalculate){
     if(!isDev(s)){ try { gate = window.bkDealGatePeek ? window.bkDealGatePeek() : null; } catch(e){}
-      if(!gate && window.bkDealGate && !stepStatus.__pending){ stepStatus.__pending = true; setTimeout(function(){ stepStatus.__pending = false; try { window.bkDealGate(); } catch(e){} patchSteps(); }, 60); } }
+      if(!gate && window.bkDealGate && !judges.__pending){ judges.__pending = true; setTimeout(function(){ judges.__pending = false; try { window.bkDealGate(); } catch(e){} patchSteps(); }, 60); } }
     try { pol = window.bkPolicy ? window.bkPolicy() : {}; } catch(e){} try { ctls = window.bkModelControls ? window.bkModelControls() : []; } catch(e){} }
   var over = gate && gate.capacity && gate.capacity.overage > 0 ? gate.capacity.overage : 0;
   out.debt = !r.canCalculate ? { st:'', tip:'Needs complete inputs' } : debtMiss ? { st:'warn', tip:'Debt rate / amortization missing' } : over ? { st:'warn', tip:'Loan is ' + money(over) + ' above what policy supports' } : { st:'done', tip:s.debtEnabled === false ? 'Unlevered (debt off)' : 'Loan sized, within policy' };
@@ -100,7 +108,7 @@ function stepStatus(){
 /* the credit gate takes about half a second, so a render shows the step bar from what is already known and this refreshes it once the gate has been worked out */
 function patchSteps(){
   var st = stepStatus();
-  [].forEach.call(document.querySelectorAll('.bk-step'), function(btn){ var i = +btn.getAttribute('data-bk-step'), x = STEPS[i]; if(!x) return; var o = st[x.id] || {}, cur = btn.classList.contains('cur');
+  [].forEach.call(document.querySelectorAll('.bk-step'), function(btn){ var i = +btn.getAttribute('data-bk-step'), x = stagesNow()[i]; if(!x) return; var o = st[x.id] || {}, cur = btn.classList.contains('cur');
     btn.className = 'bk-step ' + (o.st || '') + (cur ? ' cur' : ''); btn.title = o.tip || ''; var n = btn.querySelector('.n'); if(n) n.textContent = o.st === 'done' ? '\u2713' : o.st === 'fail' ? '\u2715' : o.st === 'warn' ? '!' : String(i + 1); });
 }
 function saveStatus(){
@@ -119,7 +127,7 @@ function saveStatus(){
 }
 function flowBar(sheet){
   var st = stepStatus(), si = stepOf(sheet), s = hasDeal() ? bkLoad() : {};
-  var steps = STEPS.map(function(x, i){
+  var steps = stagesNow().map(function(x, i){
     var o = st[x.id] || {}, cls = (o.st || '') + (i === si ? ' cur' : '');
     var mark = o.st === 'done' ? '✓' : o.st === 'fail' ? '✕' : o.st === 'warn' ? '!' : String(i + 1);
     return (i ? '<span class="bk-step-sep"></span>' : '') + '<button type="button" class="bk-step ' + cls + '" data-bk-step="' + i + '" title="' + esc(o.tip || '') + '"><span class="n">' + mark + '</span>' + x.label + '</button>';
@@ -135,9 +143,9 @@ function flowBar(sheet){
 }
 function stepNav(sheet){
   var si = stepOf(sheet); if(si < 0) return '';
-  var prev = si > 0 ? STEPS[si-1] : null, next = si < STEPS.length - 1 ? STEPS[si+1] : null;
+  var SG = stagesNow(), prev = si > 0 ? SG[si-1] : null, next = si < SG.length - 1 ? SG[si+1] : null;
   // within a step, "next" walks the step's own sheets first
-  var inStep = STEPS[si].sheets.filter(function(x){ return RENDERERS[x]; }), k = inStep.indexOf(sheet);
+  var inStep = SG[si].sheets.filter(function(x){ return RENDERERS[x]; }), k = inStep.indexOf(sheet);
   var nextSheet = k > -1 && k < inStep.length - 1 ? inStep[k+1] : (next ? next.sheets[0] : null);
   var prevSheet = k > 0 ? inStep[k-1] : (prev ? prev.sheets[0] : null);
   return '<div class="bk-stepnav">'
@@ -584,7 +592,7 @@ try { showSheet = window.showSheet; } catch(e){}
 document.addEventListener('click', function(e){
   var t = e.target && e.target.closest ? e.target : null; if(!t) return;
   var el;
-  if((el = t.closest('[data-bk-step]'))){ var st = STEPS[+el.getAttribute('data-bk-step')]; var first = st.sheets.find(function(x){ return RENDERERS[x]; }); if(first) showSheet(first); return; }
+  if((el = t.closest('[data-bk-step]'))){ var st = stagesNow()[+el.getAttribute('data-bk-step')]; var first = st.sheets.find(function(x){ return RENDERERS[x]; }); if(first) showSheet(first); return; }
   if((el = t.closest('[data-goto-sheet2]'))){ showSheet(el.getAttribute('data-goto-sheet2')); window.scrollTo(0, 0); return; }
   if((el = t.closest('[data-bk-case]'))){ var s = bkLoad(), c = el.getAttribute('data-bk-case'); if(String(s.scenarioCase || 'Base') !== c){ s.scenarioCase = c; bkSave(s); } rerender(); return; }
   if((el = t.closest('[data-bk-undo]'))){ undo(); return; }

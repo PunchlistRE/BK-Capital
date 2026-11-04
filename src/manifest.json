@@ -735,6 +735,11 @@
 "close": "</script>"
 },
 {
+"file": "139h-bk-reg-stages.js",
+"open": "\n\n<script id=\"bk-reg-stages\">",
+"close": "</script>"
+},
+{
 "file": "140-bk-v29230-home.js",
 "open": "\n\n<script id=\"bk-v29230-home\">",
 "close": "</script>"

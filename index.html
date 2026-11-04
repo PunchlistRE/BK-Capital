@@ -18773,7 +18773,8 @@ function headline(){
 }
 
 /* ---------------------------------------------------------------- 1. workflow */
-var STEPS = [
+/* the step bar's stages come from the analysis registry (src/139h): the deal's analysis decides them. STEPS0 is the fallback with no registry. */
+var STEPS0 = [
   { id:'setup', label:'Setup',      sheets:['Home'] },
   { id:'inputs', label:'Inputs',    sheets:['Deal Underwrite','Rent Roll','Import','Depreciation','Source Data'] },
   { id:'ops', label:'Operations',   sheets:['Operating Underwrite','Property CF'] },
@@ -18781,21 +18782,28 @@ var STEPS = [
   { id:'returns', label:'Returns',  sheets:['Returns','Equity Waterfall','After-Tax'] },
   { id:'review', label:'Review',    sheets:['Sensitivity','Reverse Solve','QA'] }
 ];
-function stepOf(sheet){ for(var i = 0; i < STEPS.length; i++) if(STEPS[i].sheets.indexOf(sheet) > -1) return i; return -1; }
+function stagesNow(){ var R = window.BKReg; try { if(R && typeof R.stages === 'function'){ var d = hasDeal() ? bkLoad() : {}; return R.stages(R.of(d).id); } } catch(e){} return STEPS0.map(function(x){ return Object.assign({ judge:{ setup:'identity', inputs:'inputs', ops:'operations', debt:'debt', returns:'returns', review:'review' }[x.id] }, x); }); }
+function stepOf(sheet){ var S = stagesNow(); for(var i = 0; i < S.length; i++) if(S[i].sheets.indexOf(sheet) > -1) return i; return -1; }
+/* each stage's status, by its rule: the six rules below (as they have always been), or 'steps' (the registry's workflow steps are complete) */
 function stepStatus(){
+  var S = stagesNow(), J = judges(), out = {}, R = window.BKReg, d = hasDeal() ? bkLoad() : null;
+  S.forEach(function(g){ out[g.id] = g.judge === 'steps' ? (J.none ? J.none : (R ? R.stageFromSteps(g, d) : { st:'', tip:'' })) : (J[g.judge] || { st:'', tip:'' }); });
+  return out;
+}
+function judges(){
   var r = readiness(), out = {};
-  if(!r || r.state === 'NO DEAL'){ STEPS.forEach(function(st){ out[st.id] = { st:'', tip:'No deal loaded' }; }); return out; }
+  if(!r || r.state === 'NO DEAL'){ return { none:{ st:'', tip:'No deal loaded' } }; }
   var s = bkLoad();
   var idMiss = r.missing.filter(function(m){ return m.group === 'Identity'; });
-  out.setup = idMiss.length ? { st:'warn', tip:'Missing: ' + idMiss.map(function(m){ return m.label; }).join(', ') } : { st:'done', tip:'Deal identity complete' };
+  out.identity = idMiss.length ? { st:'warn', tip:'Missing: ' + idMiss.map(function(m){ return m.label; }).join(', ') } : { st:'done', tip:'Deal identity complete' };
   out.inputs = r.missing.length ? { st:'warn', tip:r.missing.length + ' required input' + (r.missing.length > 1 ? 's' : '') + ' missing' } : { st:'done', tip:'All required inputs entered' };
   var noi = NaN; try { noi = bkCalc().noi; } catch(e){}
-  out.ops = (r.canCalculate && isFinite(noi)) ? (noi > 0 ? { st:'done', tip:'Year-1 NOI ' + money(noi) } : { st:'warn', tip:'Year-1 NOI is not positive' }) : { st:'', tip:'Needs complete inputs' };
+  out.operations = (r.canCalculate && isFinite(noi)) ? (noi > 0 ? { st:'done', tip:'Year-1 NOI ' + money(noi) } : { st:'warn', tip:'Year-1 NOI is not positive' }) : { st:'', tip:'Needs complete inputs' };
   var debtMiss = r.investMissing.some(function(m){ return m.key === 'debt'; });
   var gate = null, pol = {}, ctls = [];
   if(r.canCalculate){
     if(!isDev(s)){ try { gate = window.bkDealGatePeek ? window.bkDealGatePeek() : null; } catch(e){}
-      if(!gate && window.bkDealGate && !stepStatus.__pending){ stepStatus.__pending = true; setTimeout(function(){ stepStatus.__pending = false; try { window.bkDealGate(); } catch(e){} patchSteps(); }, 60); } }
+      if(!gate && window.bkDealGate && !judges.__pending){ judges.__pending = true; setTimeout(function(){ judges.__pending = false; try { window.bkDealGate(); } catch(e){} patchSteps(); }, 60); } }
     try { pol = window.bkPolicy ? window.bkPolicy() : {}; } catch(e){} try { ctls = window.bkModelControls ? window.bkModelControls() : []; } catch(e){} }
   var over = gate && gate.capacity && gate.capacity.overage > 0 ? gate.capacity.overage : 0;
   out.debt = !r.canCalculate ? { st:'', tip:'Needs complete inputs' } : debtMiss ? { st:'warn', tip:'Debt rate / amortization missing' } : over ? { st:'warn', tip:'Loan is ' + money(over) + ' above what policy supports' } : { st:'done', tip:s.debtEnabled === false ? 'Unlevered (debt off)' : 'Loan sized, within policy' };
@@ -18813,7 +18821,7 @@ function stepStatus(){
 /* the credit gate takes about half a second, so a render shows the step bar from what is already known and this refreshes it once the gate has been worked out */
 function patchSteps(){
   var st = stepStatus();
-  [].forEach.call(document.querySelectorAll('.bk-step'), function(btn){ var i = +btn.getAttribute('data-bk-step'), x = STEPS[i]; if(!x) return; var o = st[x.id] || {}, cur = btn.classList.contains('cur');
+  [].forEach.call(document.querySelectorAll('.bk-step'), function(btn){ var i = +btn.getAttribute('data-bk-step'), x = stagesNow()[i]; if(!x) return; var o = st[x.id] || {}, cur = btn.classList.contains('cur');
     btn.className = 'bk-step ' + (o.st || '') + (cur ? ' cur' : ''); btn.title = o.tip || ''; var n = btn.querySelector('.n'); if(n) n.textContent = o.st === 'done' ? '\u2713' : o.st === 'fail' ? '\u2715' : o.st === 'warn' ? '!' : String(i + 1); });
 }
 function saveStatus(){
@@ -18832,7 +18840,7 @@ function saveStatus(){
 }
 function flowBar(sheet){
   var st = stepStatus(), si = stepOf(sheet), s = hasDeal() ? bkLoad() : {};
-  var steps = STEPS.map(function(x, i){
+  var steps = stagesNow().map(function(x, i){
     var o = st[x.id] || {}, cls = (o.st || '') + (i === si ? ' cur' : '');
     var mark = o.st === 'done' ? '✓' : o.st === 'fail' ? '✕' : o.st === 'warn' ? '!' : String(i + 1);
     return (i ? '<span class="bk-step-sep"></span>' : '') + '<button type="button" class="bk-step ' + cls + '" data-bk-step="' + i + '" title="' + esc(o.tip || '') + '"><span class="n">' + mark + '</span>' + x.label + '</button>';
@@ -18848,9 +18856,9 @@ function flowBar(sheet){
 }
 function stepNav(sheet){
   var si = stepOf(sheet); if(si < 0) return '';
-  var prev = si > 0 ? STEPS[si-1] : null, next = si < STEPS.length - 1 ? STEPS[si+1] : null;
+  var SG = stagesNow(), prev = si > 0 ? SG[si-1] : null, next = si < SG.length - 1 ? SG[si+1] : null;
   // within a step, "next" walks the step's own sheets first
-  var inStep = STEPS[si].sheets.filter(function(x){ return RENDERERS[x]; }), k = inStep.indexOf(sheet);
+  var inStep = SG[si].sheets.filter(function(x){ return RENDERERS[x]; }), k = inStep.indexOf(sheet);
   var nextSheet = k > -1 && k < inStep.length - 1 ? inStep[k+1] : (next ? next.sheets[0] : null);
   var prevSheet = k > 0 ? inStep[k-1] : (prev ? prev.sheets[0] : null);
   return '<div class="bk-stepnav">'
@@ -19297,7 +19305,7 @@ try { showSheet = window.showSheet; } catch(e){}
 document.addEventListener('click', function(e){
   var t = e.target && e.target.closest ? e.target : null; if(!t) return;
   var el;
-  if((el = t.closest('[data-bk-step]'))){ var st = STEPS[+el.getAttribute('data-bk-step')]; var first = st.sheets.find(function(x){ return RENDERERS[x]; }); if(first) showSheet(first); return; }
+  if((el = t.closest('[data-bk-step]'))){ var st = stagesNow()[+el.getAttribute('data-bk-step')]; var first = st.sheets.find(function(x){ return RENDERERS[x]; }); if(first) showSheet(first); return; }
   if((el = t.closest('[data-goto-sheet2]'))){ showSheet(el.getAttribute('data-goto-sheet2')); window.scrollTo(0, 0); return; }
   if((el = t.closest('[data-bk-case]'))){ var s = bkLoad(), c = el.getAttribute('data-bk-case'); if(String(s.scenarioCase || 'Base') !== c){ s.scenarioCase = c; bkSave(s); } rerender(); return; }
   if((el = t.closest('[data-bk-undo]'))){ undo(); return; }
@@ -22307,7 +22315,7 @@ function P(id, label, fmt){ return M(id, label, fmt, function(){ return null; },
 function ctx(s){ var c = { s:s }, memo = {};
   var lazy = function(k, f){ Object.defineProperty(c, k, { get:function(){ if(!(k in memo)) memo[k] = safe(f, null); return memo[k]; } }); };
   lazy('calc', function(){ return bkCalc(); }); lazy('debt', function(){ return bkDebt(); }); lazy('ret', function(){ return bkMonthlyReturns(); }); lazy('acf', function(){ return bkAnnualCF(); });
-  lazy('dev', function(){ return bkDevV09(); }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
+  lazy('dev', function(){ return bkDevV09(); }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
   return c; }
 var price = function(c){ return pos(Number(c.s.purchasePrice)); };
 R.addMetrics([
@@ -22319,15 +22327,15 @@ R.addMetrics([
   /* acquisition */
   M('price', 'Purchase price', 'money', function(c){ return price(c); }),
   M('totalCost', 'Total acquisition cost', 'money', function(c){ return c.acf ? pos(-c.acf.initial) : null; }, { note:'price, closing costs and acquisition fee' }),
-  M('equity', 'Equity required', 'money', function(c){ return c.debt ? pos(c.debt.equity) : null; }),
-  M('loan', 'Loan', 'money', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.loan) : null; }),
+  M('equity', 'Equity required', 'money', function(c){ return c.head ? pos(c.head.equity) : c.debt ? pos(c.debt.equity) : null; }),
+  M('loan', 'Loan', 'money', function(c){ if(c.s.debtEnabled === false && !/develop/i.test(String(c.s.dealType || ''))) return null; return c.head ? fin(c.head.loan) : c.debt ? fin(c.debt.loan) : null; }),
   M('ltv', 'Loan to value', 'pct', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.ltv) : null; }),
-  M('dscr', 'Going-in DSCR', 'x', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.dscr) : null; }),
+  M('dscr', 'Year-1 DSCR', 'x', function(c){ if(c.s.debtEnabled === false && !/develop/i.test(String(c.s.dealType || ''))) return null; return c.head ? fin(c.head.dscr) : c.debt ? fin(c.debt.dscr) : null; }),
   M('goingInCap', 'Going-in cap rate', 'pct', function(c){ var p = price(c); return p && c.calc ? fin(c.calc.noi / p) : null; }),
   M('cashOnCash', 'Year-1 cash-on-cash', 'pct', function(c){ var r = c.ret, e = c.debt ? pos(c.debt.equity) : null; if(!r || !e) return null; var y = (r.rows || []).slice(0, 12).reduce(function(t, x){ return t + (Number(x.noi) || 0) - (Number(x.reserve) || 0) - (Number(x.ds) || 0) - (Number(x.assetFee) || 0); }, 0); return fin(y / e); }, { note:'first twelve months of cash after debt service / equity' }),
-  M('leveredIRR', 'Levered IRR', 'pct', function(c){ return c.ret ? fin(c.ret.irr) : null; }),
+  M('leveredIRR', 'Levered IRR', 'pct', function(c){ return c.head ? fin(c.head.levIRR) : c.ret ? fin(c.ret.irr) : null; }),
   M('unleveredIRR', 'Unlevered IRR', 'pct', function(c){ var r = c.ret; if(!r) return null; return fin(r.u && r.u.irr != null ? r.u.irr : (c.acf ? c.acf.irr : null)); }),
-  M('moic', 'Equity multiple', 'x', function(c){ return c.ret ? fin(c.ret.moic) : null; }),
+  M('moic', 'Equity multiple', 'x', function(c){ return c.head ? fin(c.head.levMOIC) : c.ret ? fin(c.ret.moic) : null; }),
   M('grossSale', 'Gross sale price', 'money', function(c){ var r = c.ret, last = r && r.rows ? r.rows[r.rows.length - 1] : null; return fin(c.acf && !/develop/i.test(String(c.s.dealType || '')) ? c.acf.grossSale : last && last.grossSale); }),
   /* development */
   M('land', 'Land cost', 'money', function(c){ return c.dev ? pos(c.dev.land) : null; }),
@@ -22339,7 +22347,7 @@ R.addMetrics([
   M('capInt', 'Capitalized interest', 'money', function(c){ return c.fund ? fin(c.fund.actualCapInt) : null; }),
   M('timeline', 'Months to stabilization', 'int', function(c){ return c.dev ? pos(c.dev.stab) : null; }),
   M('stabNOI', 'Stabilized NOI', 'money', function(c){ return c.calc ? fin(c.calc.noi) : null; }),
-  M('yieldOnCost', 'Yield on cost', 'pct', function(c){ return c.calc && c.dev && c.dev.unlev > 0 ? fin(c.calc.noi / c.dev.unlev) : null; }),
+  M('yieldOnCost', 'Yield on cost', 'pct', function(c){ if(c.head) return fin(c.head.yoc); return c.calc && c.dev && c.dev.unlev > 0 ? fin(c.calc.noi / c.dev.unlev) : null; }),
   M('stabValue', 'Stabilized value', 'money', function(c){ return c.take ? pos(c.take.stabVal) : null; }),
   M('devSpread', 'Development spread (yield on cost less exit cap)', 'bps', function(c){ var e = pos(Number(c.s.exitCap)); return c.calc && c.dev && c.dev.unlev > 0 && e ? fin((c.calc.noi / c.dev.unlev - e) * 10000) : null; }),
   /* planned */
@@ -22432,7 +22440,7 @@ R.addRules([
   X('portfolioTies', 'Consolidated flows equal the sum of the holdings; nothing counted twice', 'planned', { planned:true }), X('bizTies', 'EBITDA, free cash flow and value reconcile', 'planned', { planned:true })
 ]);
 var CORE = ['readiness', 'conflicts', 'sale', 'payoff', 'eqret', 'contrib', 'unlev_irr', 'irr', 'moic', 'waterfall', 'credit'];
-R.addChecks('acquisition', CORE);
+R.addChecks('acquisition', ['budget', 'unlev', 'su', 'capint', 'facility'].concat(CORE));   /* the acquisition engine reports sources and uses, interest and the loan balance too */
 R.addChecks('development', ['budget', 'unlev', 'su', 'draws', 'capint', 'facility', 'fixed'].concat(CORE));
 R.addChecks('valuation', ['readiness', 'conflicts', 'noiTies', 'valueTies', 'noDebt']);
 R.addChecks('refinance', ['readiness', 'conflicts', 'noiTies', 'payoffTies', 'sizingTies']);
@@ -22441,7 +22449,68 @@ R.addChecks('comprehensive', CORE.concat(['capitalTies', 'basisTies']));
 R.addChecks('portfolio', ['portfolioTies']);
 R.addChecks('business', ['readiness', 'bizTies']);
 /* applies(analysisId, integrityCheckId): false means N/A for this analysis */
+/* does any rule name this integrity check (unnamed checks always apply) */
+R.mapsCheck = function(checkId){ return Object.keys(R._raw.rules).some(function(id){ var r = R._raw.rules[id]; return r.source === 'integrity:' + checkId; }); };
 R.applies = function(aid, checkId){ var ids = R.checks(aid); return ids.some(function(id){ var r = R.rule(id); return r && (r.source === 'integrity:' + checkId || id === checkId); }); };
+})();
+</script>
+
+<script id="bk-reg-stages">/* ANALYSIS REGISTRY - STAGES. The step bar across the top of every sheet: each analysis's stages, the sheets that belong to each, and how each stage's
+   status is judged. 'judge' names a status rule in the step bar (src/124): identity, inputs, operations, debt, returns and review are the rules the
+   Acquisition and Development stages have always used; 'steps' marks a stage done when the listed workflow steps (src/139d) are complete, which is how
+   the analyses that are not built yet will be judged. Acquisition and Development reproduce today's step bar exactly. Also: the tiles the Overview leads with. */
+(function(){
+'use strict';
+if(!window.BKReg) return;
+var R = window.BKReg, ST = {}, TILES = {};
+function G(id, label, sheets, judge, steps){ return { id:id, label:label, sheets:sheets, judge:judge, steps:steps || [] }; }
+var CORE = [
+  G('setup', 'Setup', ['Home'], 'identity'),
+  G('inputs', 'Inputs', ['Deal Underwrite', 'Rent Roll', 'Import', 'Depreciation', 'Source Data'], 'inputs'),
+  G('ops', 'Operations', ['Operating Underwrite', 'Property CF'], 'operations'),
+  G('debt', 'Debt', ['Debt', 'Debt Schedule', 'Covenant Monitor'], 'debt'),
+  G('returns', 'Returns', ['Returns', 'Equity Waterfall', 'After-Tax'], 'returns'),
+  G('review', 'Review', ['Sensitivity', 'Reverse Solve', 'QA'], 'review')];
+ST.acquisition = CORE; ST.development = CORE;
+ST.valuation = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'mix']), G('income', 'Income', ['Rent Roll', 'Revenues'], 'steps', ['inplace', 'market', 'vacancy']),
+  G('expenses', 'Expenses', ['Expenses'], 'steps', ['expenses']), G('value', 'Value', ['Valuation'], 'steps', ['noi', 'caprate', 'value']), G('review', 'Report', ['Valuation Report'], 'steps', ['review'])];
+ST.refinance = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'ops', 'value']), G('existing', 'Existing loan', ['Debt'], 'steps', ['existing']),
+  G('proposed', 'New loan', ['Debt', 'Financing Compare'], 'steps', ['proposed', 'lender', 'sizing', 'costs']), G('proceeds', 'Proceeds', ['Debt'], 'steps', ['proceeds', 'alts']), G('review', 'Report', ['Reports'], 'steps', ['review'])];
+ST.hold = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'ops', 'value']), G('forward', 'Hold case', ['Market', 'Expenses', 'Debt'], 'steps', ['forward', 'capex', 'debt', 'period']),
+  G('exit', 'Sale case', ['Valuation', 'Depreciation'], 'steps', ['exit', 'tax']), G('compare', 'Hold vs sell', ['Returns', 'Sensitivity'], 'steps', ['compare', 'sens']), G('review', 'Report', ['Reports'], 'steps', ['review'])];
+ST.comprehensive = [G('setup', 'Setup', ['Home', 'Property'], 'steps', ['property', 'acq']), G('ops', 'Operations', ['Rent Roll', 'Market', 'Expenses'], 'steps', ['mix', 'revenue', 'vacancy', 'expenses', 'capital']),
+  G('capital', 'Capital and debt', ['Investment', 'Sources & Uses', 'Debt Schedule'], 'steps', ['financing', 'su', 'debtsched', 'reserves']), G('tax', 'Tax', ['Depreciation', 'After-Tax'], 'steps', ['depr', 'aftertax']),
+  G('returns', 'Partners and returns', ['Investors', 'Equity Waterfall', 'Returns'], 'steps', ['refi', 'exit', 'investors', 'waterfall', 'returns']), G('review', 'Review', ['Sensitivity', 'Reports'], 'steps', ['sens', 'review'])];
+ST.portfolio = [G('setup', 'Holdings', ['Portfolio'], 'steps', ['overview', 'select', 'assets']), G('perf', 'Performance', ['Portfolio Dashboard'], 'steps', ['values', 'ops', 'capital', 'debt', 'tax']),
+  G('consolidate', 'Consolidation', ['Portfolio M', 'Portfolio Rollup'], 'steps', ['consolidate', 'compare', 'risk']), G('scenarios', 'Scenarios', ['Portfolio'], 'steps', ['scenarios']), G('review', 'Report', ['Reports'], 'steps', ['review'])];
+ST.business = [G('setup', 'Company', ['Business Model'], 'steps', ['company']), G('ops', 'Operations', ['Business Model'], 'steps', ['revenue', 'costs', 'ebitda', 'wc', 'capex']),
+  G('value', 'Value', ['Business Valuation'], 'steps', ['fcf', 'valuation', 'financing']), G('review', 'Review', ['Business Valuation', 'Reports'], 'steps', ['sens', 'review'])];
+/* the Overview tiles: the figures each analysis leads with (metric ids from src/139e) */
+TILES.acquisition = ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
+TILES.development = ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
+TILES.valuation = ['marketValue', 'noiInPlace', 'capRate', 'valuePerUnit', 'valuePerSF', 'egi'];
+TILES.refinance = ['netProceeds', 'newLoan', 'newLTV', 'newDSCR', 'existingPayoff', 'equityRetained'];
+TILES.hold = ['holdIRR', 'netSaleNow', 'currentValue', 'forwardNOI', 'capitalRequired', 'saleTax'];
+TILES.comprehensive = ['leveredIRR', 'moic', 'afterTaxIRR', 'dscr', 'loan', 'equity'];
+TILES.portfolio = ['portfolioIRR', 'gav', 'portfolioDebt', 'portfolioEquity', 'portfolioNOI', 'maturityExposure'];
+TILES.business = ['bizValue', 'bizRevenue', 'bizEBITDA', 'bizFCF', 'bizMultiple'];
+R.stages = function(id){ return ST[id] || CORE; };
+R.tiles = function(id){ return TILES[id] || TILES.acquisition; };
+/* a 'steps' stage's status, from the deal: done when every listed workflow step is complete */
+R.stageFromSteps = function(stage, s){ var wf = R.workflow(R.of(s).id), miss = [];
+  stage.steps.forEach(function(sid){ var st = wf.filter(function(x){ return x.id === sid; })[0]; if(st){ var x = R.stepState(st, s); miss = miss.concat(x.missing); } });
+  return miss.length ? { st:'warn', tip:'Missing: ' + miss.map(function(k){ var f = R.field(k); return f ? f.label : k; }).join(', ') } : { st:'done', tip:'Complete' }; };
+/* the workflow's completion, step by step: the same figures the guide shows */
+R.workflowState = function(s){ var a = R.of(s); return R.workflow(a.id).map(function(st){ var x = R.stepState(st, s); return { id:st.id, title:st.title, complete:x.complete, missing:x.missing, skippable:!!st.skippable }; }); };
+/* readiness carries the analysis and its workflow completion. Whether results are shown is still decided by the readiness rules themselves (the engine's critical inputs); the workflow adds the analysis-specific steps on top, for the guide and the step bar. */
+if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg){ var rd0 = window.bkDealReadiness, rd = function(){ var r = rd0.apply(this, arguments); try { if(r && typeof r === 'object'){ var d = bkLoad(); r.analysis = R.of(d).id; r.workflow = R.workflowState(d); r.workflowMissing = r.workflow.reduce(function(t, x){ return t + (x.skippable ? 0 : x.missing.length); }, 0); } } catch(e){} return r; }; rd.__reg = true; window.bkDealReadiness = rd; }
+var lint0 = R.lint;
+R.lint = function(){ var bad = lint0.call(R), JUDGE = ['identity', 'inputs', 'operations', 'debt', 'returns', 'review', 'steps'];
+  R.analyses().forEach(function(a){ var wf = R.workflow(a.id).map(function(x){ return x.id; });
+    R.stages(a.id).forEach(function(g){ if(JUDGE.indexOf(g.judge) < 0) bad.push(a.id + ': stage ' + g.id + ' has no status rule');
+      g.steps.forEach(function(sid){ if(wf.indexOf(sid) < 0) bad.push(a.id + ': stage ' + g.id + ' lists unknown step ' + sid); }); });
+    R.tiles(a.id).forEach(function(m){ var d = R.metric(m); if(!d) bad.push(a.id + ': unknown tile ' + m); else if(a.live && d.planned) bad.push(a.id + ': live analysis shows planned tile ' + m); }); });
+  return bad; };
 })();
 </script>
 
@@ -22513,10 +22582,12 @@ function build(s, oldMain){
   var irrOk = h && isFinite(h.levIRR) ? (h.levIRR >= hurdle ? 'pass' : (h.levIRR >= hurdle - 0.03 ? 'warn' : 'fail')) : '';
   var dscrOk = h && isFinite(h.dscr) && h.dscr ? (h.dscr >= mind ? 'pass' : 'fail') : '';
   var price = Number(s.purchasePrice) || 0, loan = h ? Number(h.loan) || 0 : 0;
-  var kpis = can && h ? [
-    ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns'], ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns'],
-    [dev ? 'Yield on cost' : 'Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite'], ['Year-1 DSCR', X(h.dscr), 'policy min ' + X(mind), dscrOk, 'Debt'],
-    ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt'], ['Equity', M(h.equity), price ? 'price ' + M(price) : '', '', 'Sources & Uses']] : [];
+  /* the tiles: which figures lead, and in what order, come from the analysis registry (src/139h); each is read from the same headline as the Deal Snapshot */
+  var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
+    yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Year-1 DSCR', X(h.dscr), 'policy min ' + X(mind), dscrOk, 'Debt']; },
+    loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ return ['Equity', M(h.equity), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };
+  var tileIds = safe(function(){ return window.BKReg.tiles(window.BKReg.of(s).id); }, null) || ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
+  var kpis = can && h ? tileIds.filter(function(id){ return TILE[id]; }).map(function(id){ return TILE[id](); }) : [];
   var next;
   if(!can){ var miss = (ready && ready.missing || []).slice(0, 4).map(function(m){ return m.label; }); next = ['Finish the required inputs', (ready ? ready.missing.length : 'Some') + ' still missing' + (miss.length ? ': ' + miss.join(', ') + (ready.missing.length > 4 ? '…' : '') : '') + '. Results stay hidden until they are in.', 'Deal Underwrite', 'Go to Deal Underwrite']; }
   else if(fails.length) next = ['Fix ' + fails.length + ' model error' + (fails.length === 1 ? '' : 's'), esc(fails[0].area + ': ' + String(fails[0].msg).split(' Why it matters')[0]), 'Model Checks', 'Open Model Checks'];
@@ -28679,7 +28750,9 @@ window.bkIrrIndependent = xirr;
 
 function run(){
   var s = bkLoad(), dev = /develop/i.test(String(s.dealType || '')), C = [];
-  var add = function(id, group, label, status, detail){ C.push({ id:id, group:group, label:label, status:status, detail:detail }); };
+  /* a check the deal's analysis does not use (src/139g) reads N/A, never a failure */
+  var aid = safe(function(){ return window.BKReg ? window.BKReg.of(s).id : null; }, null);
+  var add = function(id, group, label, status, detail){ if(aid && window.BKReg.applies && window.BKReg.mapsCheck && window.BKReg.mapsCheck(id) && !window.BKReg.applies(aid, id)){ status = 'na'; detail = 'Not used by this analysis. ' + detail; } C.push({ id:id, group:group, label:label, status:status, detail:detail }); };
   var tie = function(a, b, tol){ return Math.abs(a - b) <= (tol == null ? TOL : tol); };
   var m = safe(function(){ return bkMonthlyReturns(); }, null);
   if(!m){ add('calc', 'Engine', 'The engine produced results', 'hard', 'The returns could not be calculated.'); return summarize(C); }

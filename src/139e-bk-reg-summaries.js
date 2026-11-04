@@ -15,7 +15,7 @@ function P(id, label, fmt){ return M(id, label, fmt, function(){ return null; },
 function ctx(s){ var c = { s:s }, memo = {};
   var lazy = function(k, f){ Object.defineProperty(c, k, { get:function(){ if(!(k in memo)) memo[k] = safe(f, null); return memo[k]; } }); };
   lazy('calc', function(){ return bkCalc(); }); lazy('debt', function(){ return bkDebt(); }); lazy('ret', function(){ return bkMonthlyReturns(); }); lazy('acf', function(){ return bkAnnualCF(); });
-  lazy('dev', function(){ return bkDevV09(); }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
+  lazy('dev', function(){ return bkDevV09(); }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
   return c; }
 var price = function(c){ return pos(Number(c.s.purchasePrice)); };
 R.addMetrics([
@@ -27,15 +27,15 @@ R.addMetrics([
   /* acquisition */
   M('price', 'Purchase price', 'money', function(c){ return price(c); }),
   M('totalCost', 'Total acquisition cost', 'money', function(c){ return c.acf ? pos(-c.acf.initial) : null; }, { note:'price, closing costs and acquisition fee' }),
-  M('equity', 'Equity required', 'money', function(c){ return c.debt ? pos(c.debt.equity) : null; }),
-  M('loan', 'Loan', 'money', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.loan) : null; }),
+  M('equity', 'Equity required', 'money', function(c){ return c.head ? pos(c.head.equity) : c.debt ? pos(c.debt.equity) : null; }),
+  M('loan', 'Loan', 'money', function(c){ if(c.s.debtEnabled === false && !/develop/i.test(String(c.s.dealType || ''))) return null; return c.head ? fin(c.head.loan) : c.debt ? fin(c.debt.loan) : null; }),
   M('ltv', 'Loan to value', 'pct', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.ltv) : null; }),
-  M('dscr', 'Going-in DSCR', 'x', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.dscr) : null; }),
+  M('dscr', 'Year-1 DSCR', 'x', function(c){ if(c.s.debtEnabled === false && !/develop/i.test(String(c.s.dealType || ''))) return null; return c.head ? fin(c.head.dscr) : c.debt ? fin(c.debt.dscr) : null; }),
   M('goingInCap', 'Going-in cap rate', 'pct', function(c){ var p = price(c); return p && c.calc ? fin(c.calc.noi / p) : null; }),
   M('cashOnCash', 'Year-1 cash-on-cash', 'pct', function(c){ var r = c.ret, e = c.debt ? pos(c.debt.equity) : null; if(!r || !e) return null; var y = (r.rows || []).slice(0, 12).reduce(function(t, x){ return t + (Number(x.noi) || 0) - (Number(x.reserve) || 0) - (Number(x.ds) || 0) - (Number(x.assetFee) || 0); }, 0); return fin(y / e); }, { note:'first twelve months of cash after debt service / equity' }),
-  M('leveredIRR', 'Levered IRR', 'pct', function(c){ return c.ret ? fin(c.ret.irr) : null; }),
+  M('leveredIRR', 'Levered IRR', 'pct', function(c){ return c.head ? fin(c.head.levIRR) : c.ret ? fin(c.ret.irr) : null; }),
   M('unleveredIRR', 'Unlevered IRR', 'pct', function(c){ var r = c.ret; if(!r) return null; return fin(r.u && r.u.irr != null ? r.u.irr : (c.acf ? c.acf.irr : null)); }),
-  M('moic', 'Equity multiple', 'x', function(c){ return c.ret ? fin(c.ret.moic) : null; }),
+  M('moic', 'Equity multiple', 'x', function(c){ return c.head ? fin(c.head.levMOIC) : c.ret ? fin(c.ret.moic) : null; }),
   M('grossSale', 'Gross sale price', 'money', function(c){ var r = c.ret, last = r && r.rows ? r.rows[r.rows.length - 1] : null; return fin(c.acf && !/develop/i.test(String(c.s.dealType || '')) ? c.acf.grossSale : last && last.grossSale); }),
   /* development */
   M('land', 'Land cost', 'money', function(c){ return c.dev ? pos(c.dev.land) : null; }),
@@ -47,7 +47,7 @@ R.addMetrics([
   M('capInt', 'Capitalized interest', 'money', function(c){ return c.fund ? fin(c.fund.actualCapInt) : null; }),
   M('timeline', 'Months to stabilization', 'int', function(c){ return c.dev ? pos(c.dev.stab) : null; }),
   M('stabNOI', 'Stabilized NOI', 'money', function(c){ return c.calc ? fin(c.calc.noi) : null; }),
-  M('yieldOnCost', 'Yield on cost', 'pct', function(c){ return c.calc && c.dev && c.dev.unlev > 0 ? fin(c.calc.noi / c.dev.unlev) : null; }),
+  M('yieldOnCost', 'Yield on cost', 'pct', function(c){ if(c.head) return fin(c.head.yoc); return c.calc && c.dev && c.dev.unlev > 0 ? fin(c.calc.noi / c.dev.unlev) : null; }),
   M('stabValue', 'Stabilized value', 'money', function(c){ return c.take ? pos(c.take.stabVal) : null; }),
   M('devSpread', 'Development spread (yield on cost less exit cap)', 'bps', function(c){ var e = pos(Number(c.s.exitCap)); return c.calc && c.dev && c.dev.unlev > 0 && e ? fin((c.calc.noi / c.dev.unlev - e) * 10000) : null; }),
   /* planned */
