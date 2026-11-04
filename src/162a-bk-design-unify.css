@@ -17,13 +17,32 @@ html body #viewport table.fin tr.grandtotal td, html body #viewport table.fin tr
 html body #viewport table.fin tr.sec td{ background:var(--ae-head) !important; font-weight:700; }
 html body #viewport table.fin td.neg{ color:#c0392b; }
 /* the cell-authority layer paints inputs, calculated cells and totals from these variables: point them at the editor's tokens */
-html body #viewport{ --bk-in-fill:var(--ae-cell); --bk-in-ink:var(--ae-ink); --bk-in-line:transparent; --bk-calc-fill:var(--ae-cell-ro); --bk-total-fill:var(--bk-key-fill); --bk-total-ink:var(--bk-key-ink); }
+/* CELL CONVENTION (the financial-modelling standard, on every input sheet):
+     input       blue text on a pale yellow fill, with a thin amber edge      you can type here
+     calculated  black text, no fill                                           worked out from other cells
+     linked      green text, no fill                                           shown here, edited on another sheet
+     N/A         grey text                                                     does not apply to this deal
+     attention   a red outline (missing, required) or an amber outline (template value / needed for returns)
+   The tokens are set once on :root so the light and dark themes carry the same meaning. */
+:root{ --bk-in-fill:#fdfae6; --bk-in-ink:#1a44c2; --bk-in-line:#e4d9a3; --bk-in-hover:#f9f2c9; --bk-link-ink:#13774a; --bk-na-ink:#69747f; --bk-attn-red:#d1433a; --bk-attn-amber:#d99a1f; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-in-fill:#34301d; --bk-in-ink:#9bbcff; --bk-in-line:#6f6531; --bk-in-hover:#403b22; --bk-link-ink:#62d79f; --bk-na-ink:#7f8a97; --bk-attn-red:#ff7a6e; --bk-attn-amber:#f0b84a; } }
+:root[data-theme="dark"]{ --bk-in-fill:#34301d; --bk-in-ink:#9bbcff; --bk-in-line:#6f6531; --bk-in-hover:#403b22; --bk-link-ink:#62d79f; --bk-na-ink:#7f8a97; --bk-attn-red:#ff7a6e; --bk-attn-amber:#f0b84a; }
+html body #viewport{ --bk-calc-fill:transparent; --bk-total-fill:var(--bk-key-fill); --bk-total-ink:var(--bk-key-ink); }
 /* input cells: a boxed field, as in the editor */
-html body #viewport table.fin tr.input td.v{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; box-shadow:inset 0 0 0 1px var(--ae-accent); font-weight:600; }
+html body #viewport table.fin tr.input td.v{ background:var(--bk-in-fill) !important; color:var(--bk-in-ink) !important; box-shadow:inset 0 0 0 1px var(--bk-in-line); font-weight:600; }
 html body #viewport table.fin tr.input td.v *{ background:transparent !important; border-color:transparent !important; text-decoration:none !important; color:inherit !important; box-shadow:none !important; }
-html body #viewport table.fin td.v:has(select){ box-shadow:inset 0 0 0 1px var(--ae-accent); }
-html body #viewport table.fin tr.input td.v:hover{ box-shadow:inset 0 0 0 2px var(--ae-accent); }
-html body #viewport input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), html body #viewport select, html body #viewport textarea{ border:1px solid var(--ae-line); background:var(--ae-cell); color:var(--ae-ink); border-radius:0; }
+html body #viewport table.fin td.v:has(select){ box-shadow:inset 0 0 0 1px var(--bk-in-line); }
+html body #viewport table.fin tr.input td.v:hover{ box-shadow:inset 0 0 0 2px var(--bk-in-line); background:var(--bk-in-hover) !important; }
+html body #viewport input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]), html body #viewport select, html body #viewport textarea{ border:1px solid var(--bk-in-line); background:var(--bk-in-fill); color:var(--bk-in-ink); font-weight:600; border-radius:0; }
+html body #viewport input::placeholder, html body #viewport textarea::placeholder{ color:var(--bk-in-ink); opacity:.45; font-weight:400; }
+/* calculated: black, no fill. linked: green. N/A: grey. attention: a red or amber outline on the value cell */
+html body .keyrow .keyswatch{ width:30px; height:18px; margin-top:0; display:inline-flex; align-items:center; justify-content:center; font:600 10px/1 Inter,system-ui,sans-serif; border-radius:2px; }
+html body #viewport .ae-ro{ background:transparent; color:var(--ae-ink); }
+html body #viewport .bk-link, html body #viewport td.bk-link, html body #viewport .ae-ro.bk-link, html body #viewport [data-bk-link]{ color:var(--bk-link-ink) !important; font-weight:600; }
+html body #viewport table.fin tbody tr.bk-na:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind]:not(:last-child), html body #viewport table.fin tbody tr.bk-na > td:not(:last-child){ opacity:1 !important; color:var(--bk-na-ink) !important; background:transparent !important; background-color:transparent !important; box-shadow:none !important; }
+html body #viewport table.fin tbody tr.bk-na > td:not(:last-child) *, html body #viewport table.fin tbody tr.bk-na td[data-bk-kind^="input"] select, html body #viewport table.fin tbody tr.bk-na td[data-bk-kind^="input"] input{ color:var(--bk-na-ink) !important; background-color:transparent !important; }
+html body #viewport table.fin tbody tr.bk-attn > td.v{ box-shadow:inset 0 0 0 2px var(--bk-attn-amber) !important; }
+html body #viewport table.fin tbody tr.bk-req-missing > td.v{ box-shadow:inset 0 0 0 2px var(--bk-attn-red) !important; }
 html body #viewport input:focus, html body #viewport select:focus, html body #viewport textarea:focus{ outline:2px solid var(--ae-accent); outline-offset:-1px; }
 /* cards and side panels: a panel with a header bar */
 html body #viewport .card, html body #viewport .bk-snap{ border:1px solid var(--ae-line) !important; border-radius:0 !important; background:var(--ae-cell-ro) !important; box-shadow:none !important; }
@@ -31,16 +50,24 @@ html body #viewport .card-head, html body #viewport .bk-snap > .card-head{ backg
 html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 /* the letter icon the decorator puts in each panel header (same square as the editor's) */
 html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
-/* section jumps as a tab strip */
-/* Deal Underwrite index: grouped jump links, not tabs. A coloured label per group, plain names, and the section you are reading filled in. */
-html body #viewport .bk-dui{ position:static; display:flex; flex-direction:column; align-items:stretch; gap:2px; overflow-x:visible; background:var(--ae-bg); border:1px solid var(--ae-line); border-radius:0; padding:8px 10px; box-shadow:none; }
-html body #viewport .bk-dui .bk-dg{ display:flex; flex-wrap:wrap; align-items:center; gap:2px 2px; border-left:3px solid var(--g,#6a7480); padding-left:8px; }
-html body #viewport .bk-dui .bk-dgl{ flex:0 0 112px; margin-right:4px; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--g,#6a7480); }
-html body #viewport .bk-dui button{ flex:0 0 auto; white-space:nowrap; padding:3px 9px !important; background:transparent !important; border:1px solid transparent !important; border-radius:12px !important; color:var(--ae-ink) !important; font-size:12px !important; margin:0; box-shadow:none !important; }
-html body #viewport .bk-dui button:hover{ border-color:var(--g,var(--ae-line)) !important; text-decoration:none; }
-html body #viewport .bk-dui .bk-dg button:hover{ border-color:var(--g) !important; }
-html body #viewport .bk-dui button.miss{ color:#d9534f !important; font-weight:700 !important; }
-html body #viewport .bk-dui .bk-dg button.on{ background:var(--g) !important; border-color:var(--g) !important; color:#fff !important; font-weight:700 !important; }
+/* DEAL UNDERWRITE TAB BAR: one horizontal row of seven group tabs, sticky under the pinned header, scrolling sideways on a phone (never wrapping to a second row). The open tab has a
+   coloured underline and a raised fill; a red count marks required inputs still missing in that group; a group that does not apply reads N/A. */
+html body #viewport .bk-dui.bk-tabs{ position:sticky; top:var(--bk-stick,0px); z-index:12; display:flex; flex-direction:row; flex-wrap:nowrap; align-items:stretch; gap:0; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:thin; background:var(--ae-bg); border:1px solid var(--ae-line); border-bottom:2px solid var(--ae-line); border-radius:0; padding:0; margin:0 0 12px; box-shadow:0 1px 0 rgba(0,0,0,.04); }
+html body #viewport .bk-dui.bk-tabs .bk-dt{ flex:0 0 auto; position:relative; display:inline-flex; align-items:center; gap:6px; height:38px; margin:0 0 -2px; padding:0 10px !important; background:transparent !important; border:0 !important; border-bottom:3px solid transparent !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 12px/1 Inter,system-ui,sans-serif !important; letter-spacing:0; white-space:nowrap; cursor:pointer; }
+html body #viewport .bk-dui.bk-tabs .bk-dt::before{ content:''; width:8px; height:8px; border-radius:2px; background:var(--g,#6a7480); flex:0 0 auto; }
+html body #viewport .bk-dui.bk-tabs .bk-dt:hover{ color:var(--ae-ink) !important; background:color-mix(in srgb,var(--g,#6a7480) 9%,transparent) !important; }
+html body #viewport .bk-dui.bk-tabs .bk-dt.on{ color:var(--ae-ink) !important; background:var(--ae-tab-on,#fff) !important; border-bottom-color:var(--g,#6a7480) !important; font-weight:700 !important; }
+html body #viewport .bk-dui.bk-tabs .bk-dt:focus-visible{ outline:2px solid var(--g,#2f5f9e); outline-offset:-3px; }
+html body #viewport .bk-dui.bk-tabs .bk-dt.na{ color:var(--bk-na-ink) !important; }
+html body #viewport .bk-dui.bk-tabs .bk-dt.na::before{ background:var(--bk-na-ink); }
+html body #viewport .bk-dui.bk-tabs .bk-dt.empty{ opacity:.45; pointer-events:none; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-n{ min-width:17px; height:17px; padding:0 5px; border-radius:9px; background:var(--bk-attn-red); color:#fff; font:700 10.5px/17px Inter,system-ui,sans-serif; text-align:center; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-na{ font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--bk-na-ink); border:1px solid var(--bk-na-ink); border-radius:2px; padding:1px 4px; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto; position:sticky; right:0; height:auto; padding:0 11px !important; background:var(--ae-bg) !important; border:0 !important; border-left:1px solid var(--ae-line) !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 11.5px/1 Inter,system-ui,sans-serif !important; cursor:pointer; white-space:nowrap; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-all:hover{ color:var(--ae-ink) !important; }
+html body #viewport .tbl-wrap.bk-grp-hide{ display:none !important; }
+@media print{ html body #viewport .tbl-wrap.bk-grp-hide{ display:block !important; } }
+@media (max-width:760px){ html body #viewport .bk-dui.bk-tabs .bk-dt{ height:42px; padding:0 13px !important; } }
 /* buttons */
 html body #viewport .bk-btn, html body #viewport button.pl-hbtn{ border:1px solid var(--ae-line) !important; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-radius:2px !important; box-shadow:none !important; }
 html body #viewport .bk-btn.primary, html body #viewport button.pl-hbtn.primary{ background:var(--ae-accent) !important; border-color:var(--ae-accent) !important; color:#fff !important; }
@@ -293,5 +320,4 @@ html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.fail .v{ color:#f
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.warn .v{ color:#f0c060; }
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.pass .v, html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.ok .v{ color:#7fd4a0; }
 html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-theme="light"]) #viewport button[class=""]{ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
-html:not([data-theme="light"]) #viewport .bk-dui .bk-dgl{ color:color-mix(in srgb, var(--g) 50%, #ffffff) !important; }
 }

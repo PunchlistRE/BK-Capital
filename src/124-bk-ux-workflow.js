@@ -251,21 +251,38 @@ function decorateNotes(frame){
 }
 
 /* ---------------------------------------------------------------- 3. Deal Underwrite */
-/* mark the section being read in the Deal Underwrite index */
-var spyOn = false;
-function duSpy(main){
-  if(spyOn) { return; } spyOn = true;
-  var tick = false;
-  function mark(){ tick = false;
-    var bar = document.querySelector('#viewport .bk-dui'); if(!bar){ return; }
-    var btns = [].slice.call(bar.querySelectorAll('button[data-bk-jump]')), cur = null, edge = 190;   /* just under the pinned header and case bar */
-    btns.forEach(function(b){ var el = document.getElementById(b.getAttribute('data-bk-jump')); if(el && el.getBoundingClientRect().top <= edge) cur = b; });
-    if(!cur) cur = btns[0];
-    btns.forEach(function(b){ b.classList.toggle('on', b === cur); if(b === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); }); }
-  function later(){ if(!tick){ tick = true; (window.requestAnimationFrame || setTimeout)(mark); } }
-  document.addEventListener('scroll', later, { capture:true, passive:true }); window.addEventListener('resize', later);
-  new MutationObserver(function(){ if(document.querySelector('#viewport .bk-dui:not([data-bk-spy])')){ var b = document.querySelector('#viewport .bk-dui'); b.setAttribute('data-bk-spy', '1'); later(); } }).observe(document.getElementById('viewport') || document.body, { childList:true, subtree:true });
-  later();
+/* the Deal Underwrite tab bar: which group is open, kept for the session; "Show all" shares the panel-tab switch (and starts on under automated test) */
+var DU_KEY = 'bk-du-tab';
+function duShowAll(){ var v = null; try { v = localStorage.getItem('bk-pt-all'); } catch(e){} if(v === '1') return true; if(v === '0') return false; return !!(navigator && navigator.webdriver); }
+function duStick(){ var f = document.querySelector('.bk-flow'), px = 0; try { if(f && getComputedStyle(f).position === 'sticky') px = Math.round(f.getBoundingClientRect().height); } catch(e){} document.documentElement.style.setProperty('--bk-stick', px + 'px'); }
+function duOpen(main, groups, k, opts){
+  opts = opts || {}; var all = duShowAll(), bar = main.querySelector('.bk-dui'); if(!bar) return;
+  groups.forEach(function(g, i){ g.panels.forEach(function(w){ w.classList.toggle('bk-grp-hide', !all && i !== k); }); });
+  bar.querySelectorAll('.bk-dt').forEach(function(b, i){ var on = i === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.setAttribute('tabindex', on ? '0' : '-1'); });
+  var tg = bar.querySelector('.bk-dt-all'); if(tg){ tg.textContent = all ? 'Show as tabs' : 'Show all'; tg.setAttribute('aria-pressed', all ? 'true' : 'false'); }
+  bar.classList.toggle('bk-showall', all);
+  if(opts.user){ try { localStorage.setItem(DU_KEY, String(k)); } catch(e){} }   /* remembered only when the person chose it */
+  var on = bar.querySelector('.bk-dt.on'); if(on){ var bl = bar.getBoundingClientRect(), ol = on.getBoundingClientRect(); if(ol.left < bl.left + 4) bar.scrollLeft += ol.left - bl.left - 12; else if(ol.right > bl.right - 4) bar.scrollLeft += ol.right - bl.right + 12; }
+  if(opts.scroll){ var first = groups[k].panels[0]; if(first){ var top = first.getBoundingClientRect().top, stick = bar.getBoundingClientRect().bottom + 6; if(top < stick - 1 || all) window.scrollBy({ top:top - stick, behavior:'smooth' }); } }
+}
+window.bkDuShowFor = function(el){   /* make sure the panel that holds this element is showing (a "Missing: ..." jump, a guide pointer) */
+  var main = document.querySelector('#viewport .main-col'), w = el && el.closest ? el.closest('.tbl-wrap[data-bk-grp]') : null; if(!main || !w || !w.classList.contains('bk-grp-hide')) return false;
+  var g = main.__bkDuGroups; if(!g) return false; duOpen(main, g, Number(w.getAttribute('data-bk-grp')), {}); return true; };
+function duTabs(main, groups){
+  main.__bkDuGroups = groups; duStick();
+  if(!main.__bkDuBound){ main.__bkDuBound = true; window.addEventListener('resize', duStick); }
+  var saved = NaN; try { var sv = localStorage.getItem(DU_KEY); saved = sv === null || sv === '' ? NaN : Number(sv); } catch(e){}
+  var k = isFinite(saved) && saved >= 0 && saved < groups.length && groups[saved].panels.length ? saved : -1;
+  if(k < 0){ groups.some(function(g, i){ if(g.miss){ k = i; return true; } return false; }); }
+  if(k < 0) k = 0;
+  duOpen(main, groups, k, {});
+  var bar = main.querySelector('.bk-dui');
+  bar.addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return;
+    if(b.hasAttribute('data-bk-all')){ try { localStorage.setItem('bk-pt-all', duShowAll() ? '0' : '1'); } catch(x){} var cur = Number(bar.querySelector('.bk-dt.on') ? bar.querySelector('.bk-dt.on').getAttribute('data-bk-grp') : 0); duOpen(main, groups, cur, { user:true }); return; }
+    var i = Number(b.getAttribute('data-bk-grp')); if(!isFinite(i)) return; duOpen(main, groups, i, { scroll:true, user:true }); });
+  bar.addEventListener('keydown', function(e){ var tabs = [].slice.call(bar.querySelectorAll('.bk-dt')), i = tabs.indexOf(document.activeElement); if(i < 0) return; var j = i;
+    if(e.key === 'ArrowRight') j = (i + 1) % tabs.length; else if(e.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length; else if(e.key === 'Home') j = 0; else if(e.key === 'End') j = tabs.length - 1; else return;
+    e.preventDefault(); tabs[j].focus(); duOpen(main, groups, j, { user:true }); });
 }
 
 var REQ_KEYS = { size:'units', revenue:'avgRent' };
@@ -273,7 +290,9 @@ function decorateUnderwrite(frame){
   var main = frame.querySelector('.main-col'); if(!main || main.querySelector('.bk-dui')) return;
   var r = readiness(); if(!r || r.state === 'NO DEAL') return;
   var missKeys = typeof window.bkRequiredRows === 'function' ? Object.keys(window.bkRequiredRows().core) : r.missing.map(function(m){ return REQ_KEYS[m.key] || m.key; });
-  main.querySelectorAll('tr[data-bk-key]').forEach(function(tr){ tr.classList.toggle('bk-req-missing', missKeys.indexOf(tr.getAttribute('data-bk-key')) > -1); });
+  main.querySelectorAll('tr[data-bk-key]').forEach(function(tr){ var k = tr.getAttribute('data-bk-key'); tr.classList.toggle('bk-req-missing', missKeys.indexOf(k) > -1);
+    /* amber: the value is a template default, or is not required to calculate but is needed for returns */
+    var st = null; try { st = typeof window.bkFieldStatus === 'function' ? window.bkFieldStatus(k) : null; } catch(e){} tr.classList.toggle('bk-attn', !!(st && st.cls === 'warn' && st.state === 'needed' && missKeys.indexOf(k) < 0));   /* amber is for a value the returns need; a template default already says so in its chip */ });
   /* Rows that do not apply to this kind of deal say so: the development tables on an acquisition, the acquisition-only conventions on a development. A row whose field is also
      used in a table that does apply (building area) is left alone. */
   (function(){ var dev = isDev(bkLoad()), NA_DEV = /^(Development\b|Construction Facility|Permanent \/ Stabilized Debt)/, NA_ACQ = /Acquisition Deals Only/, shared = {}, na = [];
@@ -292,19 +311,22 @@ function decorateUnderwrite(frame){
     ['Development', '#b0592a', /^Development\b/], ['Tax & rules', '#6a7480', /^(After-Tax|Underwriting Cases|Underwriting Conventions)/]];
   var SHORT = [[/^Operating Assumptions/, 'Operating'], [/^Source Economics/, 'Source economics'], [/^Growth & Sale/, 'Growth & sale'], [/^Permanent/, 'Permanent debt'], [/^Construction Facility/, 'Construction loan'], [/^Debt Maturity/, 'Maturity & refi'],
     [/^Audit-Fixed/, 'Risk inputs'], [/^What Each Debt/, 'Constraint basis'], [/^JV Structure/, 'JV & fees'], [/^Underwriting Cases/, 'Cases'], [/^Underwriting Conventions/, 'Conventions'], [/^Exit & Hold/, 'Exit & hold']];
-  var groups = DUG.map(function(g){ return { name:g[0], color:g[1], rx:g[2], items:[] }; }), other = { name:'Other', color:'#6a7480', items:[] };
+  /* THE TAB BAR: one row of seven group tabs, sticky under the header. A tab opens its panels directly below; nothing is navigated away from. A red count marks a group with required
+     inputs missing; a group that does not apply to this kind of deal reads N/A. "Show all" puts every panel on the page again (and a printed page always carries every panel). */
+  var groups = DUG.map(function(g){ return { name:g[0], color:g[1], rx:g[2], panels:[], miss:0, na:0 }; });
   main.querySelectorAll('.tbl-wrap').forEach(function(w, i){
     var cap = w.querySelector('caption'); if(!cap) return;
     var id = 'bk-du-' + i; w.id = id;
-    var full = cap.textContent.replace(/\s+/g, ' ').trim(), head = full.replace(/\s+-\s+.*$/, '').trim(), tail = (full.match(/\s+-\s+(.*)$/) || [])[1] || '', short = head;
-    if(/^Development\b/.test(head)) short = /Hard Cost/i.test(tail) ? 'Hard costs' : /Soft Cost/i.test(tail) ? 'Soft costs' : 'Program & budget';
-    else SHORT.forEach(function(sh){ if(sh[0].test(head)) short = sh[1]; });
-    var miss = !!w.querySelector('tr.bk-req-missing'), g = groups.filter(function(x){ return x.rx.test(head); })[0] || other;
-    g.items.push('<button type="button" data-bk-jump="' + id + '" class="' + (miss ? 'miss' : '') + '" title="' + esc(full) + '">' + esc(short) + '</button>');
+    var full = cap.textContent.replace(/\s+/g, ' ').trim(), head = full.replace(/\s+-\s+.*$/, '').trim();
+    var gi = -1; groups.forEach(function(g, k){ if(gi < 0 && g.rx.test(head)) gi = k; }); if(gi < 0) gi = groups.length - 1;
+    var g = groups[gi]; g.panels.push(w); w.setAttribute('data-bk-grp', String(gi)); w.setAttribute('role', 'tabpanel'); w.setAttribute('aria-labelledby', 'bk-dtab-' + gi);
+    g.miss += w.querySelectorAll('tr.bk-req-missing').length; if(w.hasAttribute('data-bk-na')) g.na++;
   });
-  var caps = groups.concat([other]).filter(function(g){ return g.items.length; }).map(function(g){ return '<div class="bk-dg" style="--g:' + g.color + '"><span class="bk-dgl">' + esc(g.name) + '</span>' + g.items.join('') + '</div>'; });
-  main.insertAdjacentHTML('afterbegin', '<div class="bk-dui" role="navigation" aria-label="Deal Underwrite sections">' + caps.join('') + '</div>' + req);
-  duSpy(main);
+  var tabsHtml = groups.map(function(g, k){ var allNA = g.panels.length > 0 && g.na === g.panels.length, empty = !g.panels.length;
+    return '<button type="button" role="tab" id="bk-dtab-' + k + '" class="bk-dt' + (allNA ? ' na' : '') + (empty ? ' empty' : '') + '" data-bk-grp="' + k + '" aria-selected="false" tabindex="-1" style="--g:' + g.color + '" title="' + esc(g.name + ' - ' + g.panels.length + ' panel' + (g.panels.length === 1 ? '' : 's') + (allNA ? ' (does not apply to this deal)' : '') + (g.miss ? ' - ' + g.miss + ' required input' + (g.miss === 1 ? '' : 's') + ' missing' : '')) + '"><span class="nm">' + esc(g.name) + '</span>'
+      + (g.miss ? '<span class="bk-dt-n" aria-label="' + g.miss + ' required missing">' + g.miss + '</span>' : '') + (allNA ? '<span class="bk-dt-na">N/A</span>' : '') + '</button>'; }).join('');
+  main.insertAdjacentHTML('afterbegin', '<div class="bk-dui bk-tabs" role="tablist" aria-label="Deal Underwrite sections">' + tabsHtml + '<button type="button" class="bk-dt-all" data-bk-all="1" title="Put every panel on one page">Show all</button></div>' + req);
+  duTabs(main, groups);
   // fields changed this session
   var base = U.baseline && U.baseline.id === dealKey() ? U.baseline.s : null;
   if(base){
@@ -531,7 +553,7 @@ document.addEventListener('click', function(e){
   if((el = t.closest('[data-bk-more-group]'))){ var g = GROUPS.find(function(x){ return x.id === el.getAttribute('data-bk-more-group'); }); if(g) showSheet(g.sheets[0]); return; }
   if((el = t.closest('[data-bk-jump]'))){ var tgt = document.getElementById(el.getAttribute('data-bk-jump')); if(tgt){ tgt.scrollIntoView({ behavior:'smooth', block:'start' }); } return; }
   if((el = t.closest('[data-bk-jump-key]'))){ var row = document.querySelector('#viewport tr[data-bk-key="' + el.getAttribute('data-bk-jump-key') + '"]');
-    if(row){ row.scrollIntoView({ behavior:'smooth', block:'center' }); row.classList.add('bk-flash'); setTimeout(function(){ row.classList.remove('bk-flash'); }, 1700);
+    if(row){ if(typeof window.bkDuShowFor === 'function') window.bkDuShowFor(row); row.scrollIntoView({ behavior:'smooth', block:'center' }); row.classList.add('bk-flash'); setTimeout(function(){ row.classList.remove('bk-flash'); }, 1700);
       var cell = row.querySelector('td.v'); if(cell && cell.isContentEditable) setTimeout(function(){ cell.focus(); }, 350); } return; }
   // close pop-ups on outside click
   document.querySelectorAll('.bk-more.open').forEach(function(m){ if(!m.contains(t)) m.classList.remove('open'); });

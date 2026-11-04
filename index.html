@@ -557,14 +557,17 @@ function sidebarShell(bodyHtml, opts){
 }
 
 function colorKeyCard(){
+  /* the swatches are the real styles: input = blue on pale yellow; calculated = black; linked = green; N/A = grey; attention = red / amber outline */
+  var sw = function(style, txt){ return '<span class="keyswatch" style="' + style + '"><b>' + txt + '</b></span>'; };
   return `<div class="card">
     <div class="card-head">Color &amp; Formatting Key</div>
     <div>
-      <div class="keyrow"><span class="keyswatch" style="background:var(--gold-100); border-color:var(--input-blue);"></span><div><b style="color:var(--input-blue)">Input Cell</b><span>Direct user assumption or hardcode. Only cells to type in.</span></div></div>
-      <div class="keyrow"><span class="keyswatch" style="background:#fff; border:1px solid var(--line);"></span><div><b>Formula</b><span>Calculated on this sheet.</span></div></div>
-      <div class="keyrow"><span class="keyswatch" style="background:#fff;"></span><div><b style="color:var(--linked-green)">Linked Formula</b><span>Pulled from another worksheet.</span></div></div>
-      <div class="keyrow"><span class="keyswatch" style="background:#fff;"></span><div><b style="color:var(--external-red)">External Link</b><span>References another workbook.</span></div></div>
-      <div class="keyrow"><span class="keyswatch" style="background:#EFEDE7;"></span><div><b style="color:var(--stored-grey)">Stored Value</b><span>Written by Save Deal / regression. Never typed.</span></div></div>
+      <div class="keyrow">${sw('background:var(--bk-in-fill,#fdfae6);border:1px solid var(--bk-in-line,#e4d9a3);color:var(--bk-in-ink,#1a44c2)', '12')}<div><b style="color:var(--bk-in-ink,#1a44c2)">Input</b><span>Blue text on a pale yellow cell. You can type here.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--ae-ink,#10233a)', '12')}<div><b>Calculated</b><span>Black text, no fill. Worked out from other cells; not typed.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-link-ink,#13774a)', '12')}<div><b style="color:var(--bk-link-ink,#13774a)">Linked</b><span>Green text. Shown here, but set or worked out on another sheet.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-na-ink,#69747f)', 'n/a')}<div><b style="color:var(--bk-na-ink,#69747f)">N/A</b><span>Grey text. Does not apply to this kind of deal.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;box-shadow:inset 0 0 0 2px var(--bk-attn-red,#d1433a);border:0', '')}<div><b style="color:var(--bk-attn-red,#d1433a)">Required / missing</b><span>Red outline. The model cannot calculate until it is entered.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;box-shadow:inset 0 0 0 2px var(--bk-attn-amber,#d99a1f);border:0', '')}<div><b style="color:var(--bk-attn-amber,#b9780f)">Needs a look</b><span>Amber outline. Not required to calculate, but the returns need it.</span></div></div>
     </div>
   </div>`;
 }
@@ -16571,7 +16574,7 @@ html body #viewport table.fin td[data-bk-kind^="input"] select,
 html body #viewport table.fin td[data-bk-kind^="input"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
   -webkit-appearance:none; appearance:none; box-sizing:border-box;
   height:22px !important; min-width:0 !important; width:100% !important; max-width:none !important;
-  margin:0 !important; padding:1px 20px 1px 0 !important; border:0 !important; border-bottom:1px solid var(--bk-in-line) !important;
+  margin:0 !important; padding:1px 20px 1px 0 !important; border:0 !important; border-bottom:0 !important;
   border-radius:0 !important; background-color:transparent !important; color:var(--bk-in-ink) !important;
   font-weight:600 !important; font-size:12px !important; line-height:20px !important; font-family:inherit !important; box-shadow:none !important; }
 html body #viewport table.fin td[data-bk-kind="input-text"] select,
@@ -16621,10 +16624,9 @@ html body #viewport table.fin tbody tr.total > td, html body #viewport table.fin
 html body #viewport table.fin tbody tr.grandtotal .status-chip, html body #viewport table.fin tbody tr.total .status-chip {
   background:transparent !important; color:var(--bk-total-ink) !important; border-color:rgba(244,239,225,.55) !important; }
 
-/* ---- V32.1: one underline for EVERY editable cell (typed cells and dropdowns alike) ---- */
+/* ---- editable cells are marked by the fill and the thin edge, not by an inner underline ---- */
 html body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind^="input"]:not(:has(select,input,textarea)) {
-  background-image:linear-gradient(var(--bk-in-line),var(--bk-in-line)) !important; background-repeat:no-repeat !important;
-  background-size:calc(100% - 20px) 1px !important; background-position:10px calc(100% - 6px) !important;
+  background-image:none !important;   /* the filled cell is the field: no inner underline */
   line-height:22px !important; }
 /* a mixed column (figures + dropdowns) has ONE alignment: dropdown text follows the figures */
 html body #viewport table.fin td[data-bk-kind="input-text"][data-bk-col="num"] select,
@@ -18833,21 +18835,38 @@ function decorateNotes(frame){
 }
 
 /* ---------------------------------------------------------------- 3. Deal Underwrite */
-/* mark the section being read in the Deal Underwrite index */
-var spyOn = false;
-function duSpy(main){
-  if(spyOn) { return; } spyOn = true;
-  var tick = false;
-  function mark(){ tick = false;
-    var bar = document.querySelector('#viewport .bk-dui'); if(!bar){ return; }
-    var btns = [].slice.call(bar.querySelectorAll('button[data-bk-jump]')), cur = null, edge = 190;   /* just under the pinned header and case bar */
-    btns.forEach(function(b){ var el = document.getElementById(b.getAttribute('data-bk-jump')); if(el && el.getBoundingClientRect().top <= edge) cur = b; });
-    if(!cur) cur = btns[0];
-    btns.forEach(function(b){ b.classList.toggle('on', b === cur); if(b === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); }); }
-  function later(){ if(!tick){ tick = true; (window.requestAnimationFrame || setTimeout)(mark); } }
-  document.addEventListener('scroll', later, { capture:true, passive:true }); window.addEventListener('resize', later);
-  new MutationObserver(function(){ if(document.querySelector('#viewport .bk-dui:not([data-bk-spy])')){ var b = document.querySelector('#viewport .bk-dui'); b.setAttribute('data-bk-spy', '1'); later(); } }).observe(document.getElementById('viewport') || document.body, { childList:true, subtree:true });
-  later();
+/* the Deal Underwrite tab bar: which group is open, kept for the session; "Show all" shares the panel-tab switch (and starts on under automated test) */
+var DU_KEY = 'bk-du-tab';
+function duShowAll(){ var v = null; try { v = localStorage.getItem('bk-pt-all'); } catch(e){} if(v === '1') return true; if(v === '0') return false; return !!(navigator && navigator.webdriver); }
+function duStick(){ var f = document.querySelector('.bk-flow'), px = 0; try { if(f && getComputedStyle(f).position === 'sticky') px = Math.round(f.getBoundingClientRect().height); } catch(e){} document.documentElement.style.setProperty('--bk-stick', px + 'px'); }
+function duOpen(main, groups, k, opts){
+  opts = opts || {}; var all = duShowAll(), bar = main.querySelector('.bk-dui'); if(!bar) return;
+  groups.forEach(function(g, i){ g.panels.forEach(function(w){ w.classList.toggle('bk-grp-hide', !all && i !== k); }); });
+  bar.querySelectorAll('.bk-dt').forEach(function(b, i){ var on = i === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.setAttribute('tabindex', on ? '0' : '-1'); });
+  var tg = bar.querySelector('.bk-dt-all'); if(tg){ tg.textContent = all ? 'Show as tabs' : 'Show all'; tg.setAttribute('aria-pressed', all ? 'true' : 'false'); }
+  bar.classList.toggle('bk-showall', all);
+  if(opts.user){ try { localStorage.setItem(DU_KEY, String(k)); } catch(e){} }   /* remembered only when the person chose it */
+  var on = bar.querySelector('.bk-dt.on'); if(on){ var bl = bar.getBoundingClientRect(), ol = on.getBoundingClientRect(); if(ol.left < bl.left + 4) bar.scrollLeft += ol.left - bl.left - 12; else if(ol.right > bl.right - 4) bar.scrollLeft += ol.right - bl.right + 12; }
+  if(opts.scroll){ var first = groups[k].panels[0]; if(first){ var top = first.getBoundingClientRect().top, stick = bar.getBoundingClientRect().bottom + 6; if(top < stick - 1 || all) window.scrollBy({ top:top - stick, behavior:'smooth' }); } }
+}
+window.bkDuShowFor = function(el){   /* make sure the panel that holds this element is showing (a "Missing: ..." jump, a guide pointer) */
+  var main = document.querySelector('#viewport .main-col'), w = el && el.closest ? el.closest('.tbl-wrap[data-bk-grp]') : null; if(!main || !w || !w.classList.contains('bk-grp-hide')) return false;
+  var g = main.__bkDuGroups; if(!g) return false; duOpen(main, g, Number(w.getAttribute('data-bk-grp')), {}); return true; };
+function duTabs(main, groups){
+  main.__bkDuGroups = groups; duStick();
+  if(!main.__bkDuBound){ main.__bkDuBound = true; window.addEventListener('resize', duStick); }
+  var saved = NaN; try { var sv = localStorage.getItem(DU_KEY); saved = sv === null || sv === '' ? NaN : Number(sv); } catch(e){}
+  var k = isFinite(saved) && saved >= 0 && saved < groups.length && groups[saved].panels.length ? saved : -1;
+  if(k < 0){ groups.some(function(g, i){ if(g.miss){ k = i; return true; } return false; }); }
+  if(k < 0) k = 0;
+  duOpen(main, groups, k, {});
+  var bar = main.querySelector('.bk-dui');
+  bar.addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return;
+    if(b.hasAttribute('data-bk-all')){ try { localStorage.setItem('bk-pt-all', duShowAll() ? '0' : '1'); } catch(x){} var cur = Number(bar.querySelector('.bk-dt.on') ? bar.querySelector('.bk-dt.on').getAttribute('data-bk-grp') : 0); duOpen(main, groups, cur, { user:true }); return; }
+    var i = Number(b.getAttribute('data-bk-grp')); if(!isFinite(i)) return; duOpen(main, groups, i, { scroll:true, user:true }); });
+  bar.addEventListener('keydown', function(e){ var tabs = [].slice.call(bar.querySelectorAll('.bk-dt')), i = tabs.indexOf(document.activeElement); if(i < 0) return; var j = i;
+    if(e.key === 'ArrowRight') j = (i + 1) % tabs.length; else if(e.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length; else if(e.key === 'Home') j = 0; else if(e.key === 'End') j = tabs.length - 1; else return;
+    e.preventDefault(); tabs[j].focus(); duOpen(main, groups, j, { user:true }); });
 }
 
 var REQ_KEYS = { size:'units', revenue:'avgRent' };
@@ -18855,7 +18874,9 @@ function decorateUnderwrite(frame){
   var main = frame.querySelector('.main-col'); if(!main || main.querySelector('.bk-dui')) return;
   var r = readiness(); if(!r || r.state === 'NO DEAL') return;
   var missKeys = typeof window.bkRequiredRows === 'function' ? Object.keys(window.bkRequiredRows().core) : r.missing.map(function(m){ return REQ_KEYS[m.key] || m.key; });
-  main.querySelectorAll('tr[data-bk-key]').forEach(function(tr){ tr.classList.toggle('bk-req-missing', missKeys.indexOf(tr.getAttribute('data-bk-key')) > -1); });
+  main.querySelectorAll('tr[data-bk-key]').forEach(function(tr){ var k = tr.getAttribute('data-bk-key'); tr.classList.toggle('bk-req-missing', missKeys.indexOf(k) > -1);
+    /* amber: the value is a template default, or is not required to calculate but is needed for returns */
+    var st = null; try { st = typeof window.bkFieldStatus === 'function' ? window.bkFieldStatus(k) : null; } catch(e){} tr.classList.toggle('bk-attn', !!(st && st.cls === 'warn' && st.state === 'needed' && missKeys.indexOf(k) < 0));   /* amber is for a value the returns need; a template default already says so in its chip */ });
   /* Rows that do not apply to this kind of deal say so: the development tables on an acquisition, the acquisition-only conventions on a development. A row whose field is also
      used in a table that does apply (building area) is left alone. */
   (function(){ var dev = isDev(bkLoad()), NA_DEV = /^(Development\b|Construction Facility|Permanent \/ Stabilized Debt)/, NA_ACQ = /Acquisition Deals Only/, shared = {}, na = [];
@@ -18874,19 +18895,22 @@ function decorateUnderwrite(frame){
     ['Development', '#b0592a', /^Development\b/], ['Tax & rules', '#6a7480', /^(After-Tax|Underwriting Cases|Underwriting Conventions)/]];
   var SHORT = [[/^Operating Assumptions/, 'Operating'], [/^Source Economics/, 'Source economics'], [/^Growth & Sale/, 'Growth & sale'], [/^Permanent/, 'Permanent debt'], [/^Construction Facility/, 'Construction loan'], [/^Debt Maturity/, 'Maturity & refi'],
     [/^Audit-Fixed/, 'Risk inputs'], [/^What Each Debt/, 'Constraint basis'], [/^JV Structure/, 'JV & fees'], [/^Underwriting Cases/, 'Cases'], [/^Underwriting Conventions/, 'Conventions'], [/^Exit & Hold/, 'Exit & hold']];
-  var groups = DUG.map(function(g){ return { name:g[0], color:g[1], rx:g[2], items:[] }; }), other = { name:'Other', color:'#6a7480', items:[] };
+  /* THE TAB BAR: one row of seven group tabs, sticky under the header. A tab opens its panels directly below; nothing is navigated away from. A red count marks a group with required
+     inputs missing; a group that does not apply to this kind of deal reads N/A. "Show all" puts every panel on the page again (and a printed page always carries every panel). */
+  var groups = DUG.map(function(g){ return { name:g[0], color:g[1], rx:g[2], panels:[], miss:0, na:0 }; });
   main.querySelectorAll('.tbl-wrap').forEach(function(w, i){
     var cap = w.querySelector('caption'); if(!cap) return;
     var id = 'bk-du-' + i; w.id = id;
-    var full = cap.textContent.replace(/\s+/g, ' ').trim(), head = full.replace(/\s+-\s+.*$/, '').trim(), tail = (full.match(/\s+-\s+(.*)$/) || [])[1] || '', short = head;
-    if(/^Development\b/.test(head)) short = /Hard Cost/i.test(tail) ? 'Hard costs' : /Soft Cost/i.test(tail) ? 'Soft costs' : 'Program & budget';
-    else SHORT.forEach(function(sh){ if(sh[0].test(head)) short = sh[1]; });
-    var miss = !!w.querySelector('tr.bk-req-missing'), g = groups.filter(function(x){ return x.rx.test(head); })[0] || other;
-    g.items.push('<button type="button" data-bk-jump="' + id + '" class="' + (miss ? 'miss' : '') + '" title="' + esc(full) + '">' + esc(short) + '</button>');
+    var full = cap.textContent.replace(/\s+/g, ' ').trim(), head = full.replace(/\s+-\s+.*$/, '').trim();
+    var gi = -1; groups.forEach(function(g, k){ if(gi < 0 && g.rx.test(head)) gi = k; }); if(gi < 0) gi = groups.length - 1;
+    var g = groups[gi]; g.panels.push(w); w.setAttribute('data-bk-grp', String(gi)); w.setAttribute('role', 'tabpanel'); w.setAttribute('aria-labelledby', 'bk-dtab-' + gi);
+    g.miss += w.querySelectorAll('tr.bk-req-missing').length; if(w.hasAttribute('data-bk-na')) g.na++;
   });
-  var caps = groups.concat([other]).filter(function(g){ return g.items.length; }).map(function(g){ return '<div class="bk-dg" style="--g:' + g.color + '"><span class="bk-dgl">' + esc(g.name) + '</span>' + g.items.join('') + '</div>'; });
-  main.insertAdjacentHTML('afterbegin', '<div class="bk-dui" role="navigation" aria-label="Deal Underwrite sections">' + caps.join('') + '</div>' + req);
-  duSpy(main);
+  var tabsHtml = groups.map(function(g, k){ var allNA = g.panels.length > 0 && g.na === g.panels.length, empty = !g.panels.length;
+    return '<button type="button" role="tab" id="bk-dtab-' + k + '" class="bk-dt' + (allNA ? ' na' : '') + (empty ? ' empty' : '') + '" data-bk-grp="' + k + '" aria-selected="false" tabindex="-1" style="--g:' + g.color + '" title="' + esc(g.name + ' - ' + g.panels.length + ' panel' + (g.panels.length === 1 ? '' : 's') + (allNA ? ' (does not apply to this deal)' : '') + (g.miss ? ' - ' + g.miss + ' required input' + (g.miss === 1 ? '' : 's') + ' missing' : '')) + '"><span class="nm">' + esc(g.name) + '</span>'
+      + (g.miss ? '<span class="bk-dt-n" aria-label="' + g.miss + ' required missing">' + g.miss + '</span>' : '') + (allNA ? '<span class="bk-dt-na">N/A</span>' : '') + '</button>'; }).join('');
+  main.insertAdjacentHTML('afterbegin', '<div class="bk-dui bk-tabs" role="tablist" aria-label="Deal Underwrite sections">' + tabsHtml + '<button type="button" class="bk-dt-all" data-bk-all="1" title="Put every panel on one page">Show all</button></div>' + req);
+  duTabs(main, groups);
   // fields changed this session
   var base = U.baseline && U.baseline.id === dealKey() ? U.baseline.s : null;
   if(base){
@@ -19113,7 +19137,7 @@ document.addEventListener('click', function(e){
   if((el = t.closest('[data-bk-more-group]'))){ var g = GROUPS.find(function(x){ return x.id === el.getAttribute('data-bk-more-group'); }); if(g) showSheet(g.sheets[0]); return; }
   if((el = t.closest('[data-bk-jump]'))){ var tgt = document.getElementById(el.getAttribute('data-bk-jump')); if(tgt){ tgt.scrollIntoView({ behavior:'smooth', block:'start' }); } return; }
   if((el = t.closest('[data-bk-jump-key]'))){ var row = document.querySelector('#viewport tr[data-bk-key="' + el.getAttribute('data-bk-jump-key') + '"]');
-    if(row){ row.scrollIntoView({ behavior:'smooth', block:'center' }); row.classList.add('bk-flash'); setTimeout(function(){ row.classList.remove('bk-flash'); }, 1700);
+    if(row){ if(typeof window.bkDuShowFor === 'function') window.bkDuShowFor(row); row.scrollIntoView({ behavior:'smooth', block:'center' }); row.classList.add('bk-flash'); setTimeout(function(){ row.classList.remove('bk-flash'); }, 1700);
       var cell = row.querySelector('td.v'); if(cell && cell.isContentEditable) setTimeout(function(){ cell.focus(); }, 350); } return; }
   // close pop-ups on outside click
   document.querySelectorAll('.bk-more.open').forEach(function(m){ if(!m.contains(t)) m.classList.remove('open'); });
@@ -23098,7 +23122,7 @@ function card(){ var s = bkLoad(), cont = typeof bkConventions === 'function' ? 
 .ae-form > label{ padding:5px 8px 5px 0; color:var(--ae-dim); }
 .ae-form > div{ padding:3px 0; display:flex; gap:8px; align-items:center; }
 .ae-form .note{ grid-column:1 / -1; color:var(--ae-dim); font-size:11.5px; padding:2px 0 6px; }
-.ae-in, .ae-sel{ width:100%; max-width:300px; box-sizing:border-box; padding:4px 7px; border:1px solid var(--ae-line); background:var(--ae-cell); color:var(--ae-ink); font:inherit; border-radius:0; }
+.ae-in, .ae-sel{ width:100%; max-width:300px; box-sizing:border-box; padding:4px 7px; border:1px solid var(--bk-in-line,var(--ae-line)); background:var(--bk-in-fill,var(--ae-cell)); color:var(--bk-in-ink,var(--ae-ink)); font:inherit; font-weight:600; border-radius:0; }
 .ae-in.num{ text-align:right; max-width:150px; } .ae-in:focus, .ae-sel:focus{ outline:2px solid var(--ae-accent); outline-offset:-1px; }
 .ae-ro{ padding:4px 7px; background:var(--ae-cell-ro); border:1px solid var(--ae-line); min-width:90px; text-align:right; font-variant-numeric:tabular-nums; }
 .ae-unit{ color:var(--ae-dim); font-size:11.5px; }
@@ -23187,7 +23211,8 @@ function NOTE(t){ return { note:t }; }
 function hint(t){ return '<div class="ae-hint">' + t + '</div>'; }
 function btn(label, onclick, pri){ return '<button type="button" class="ae-btn' + (pri ? ' pri' : '') + '" onclick="' + onclick + '">' + esc(label) + '</button>'; }
 function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
-function summaryTable(title, rows){ return '<div class="ae-panel ae-sum"><div class="ae-ph"><i>=</i>' + esc(title) + '</div><table class="ae-grid"><tbody>' + rows.map(function(r){ return '<tr class="' + (r[3] || '') + '"><td class="c">' + esc(r[0]) + '</td><td class="c r">' + r[1] + '</td><td class="c r ro">' + (r[2] || '') + '</td></tr>'; }).join('') + '</tbody></table></div>'; }
+/* link = the figures are shown here but come from another sheet (the returns engine), so they read as linked (green), not calculated on this page */
+function summaryTable(title, rows, link){ return '<div class="ae-panel ae-sum"><div class="ae-ph"><i>=</i>' + esc(title) + '</div><table class="ae-grid"><tbody>' + rows.map(function(r){ return '<tr class="' + (r[3] || '') + '"><td class="c">' + esc(r[0]) + '</td><td class="c r' + (link ? ' bk-link' : '') + '"' + (link ? ' title="Linked: this figure comes from the returns engine (Returns)"' : '') + '>' + r[1] + '</td><td class="c r ro">' + (r[2] || '') + '</td></tr>'; }).join('') + '</tbody></table></div>'; }
 /* a line grid for operating-style amounts: How Input, Amount, Frequency, Annual Total and the shares of income and per unit */
 /* Basis and amount use the app's existing input-basis system (the same one Deal Underwrite uses), so a basis picked here is the basis shown there. Frequency (annual or monthly) is an extra display layer kept in _ed. */
 var BLAB = { DOLLARS_YR:'$ / Year (Total)', DOLLARS_UNIT_YR:'$ / Unit / Year', DOLLARS_GSF_YR:'$ / GSF / Year', PCT_EGI:'% of EGI' };
@@ -23435,7 +23460,7 @@ function pSum(s){ var dev = isDev(s), c = calc(), m = safe(function(){ return bk
   rows.push(['Year-1 Net Operating Income', money(c.after), 'after reserves']);
   if(!dev){ rows.push(['Going-In Cap Rate', price > 0 ? pct(num(c.noi) / price, 2) : '-', 'NOI before reserves / price']); rows.push(['Direct Capitalization Value', num(s.exitCap) > 0 ? money(num(c.noi) / num(s.exitCap)) : '-', 'year-1 NOI / exit cap']); if(ac) rows.push(['Gross Sale Price', money(ac.grossSale), 'at exit', 'tot']); rows.push(['Unlevered IRR', ac ? pct(ac.irr, 2) : '-', ac ? 'multiple ' + x2(ac.moic) : '']); }
   rows.push(['Levered IRR', pct(m.irr, 2), 'multiple ' + x2(m.moic)]); rows.push(['Equity Required', money(dev ? m.contrib : (d && d.equity)), '']); rows.push(['Profit to Equity', money(num(m.dist) - num(m.contrib)), 'distributions less contributions', 'tot']);
-  return summaryTable('Value and Returns', rows) + '<div class="ae-row">' + btn('Returns', 'showSheet(\'Returns\')', true) + btn('Sensitivity', 'showSheet(\'Sensitivity\')') + btn('Equity waterfall', 'showSheet(\'Equity Waterfall\')') + btn('Cash flow', 'showSheet(\'Property CF\')') + '</div>'; }
+  return summaryTable('Value and Returns', rows, true) + '<div class="ae-row">' + btn('Returns', 'showSheet(\'Returns\')', true) + btn('Sensitivity', 'showSheet(\'Sensitivity\')') + btn('Equity waterfall', 'showSheet(\'Equity Waterfall\')') + btn('Cash flow', 'showSheet(\'Property CF\')') + '</div>'; }
 /* ---------- assembly ---------- */
 var PANELS = {
   Property: { desc:pDesc, loc:pLoc, area:pArea, analysis:pAnalysis, tpl:pTpl }, Market: { infl:pInfl, vac:pVac, credit:pCredit, lease:pLease, rent:pRent },
@@ -25137,13 +25162,32 @@ html body #viewport table.fin tr.grandtotal td, html body #viewport table.fin tr
 html body #viewport table.fin tr.sec td{ background:var(--ae-head) !important; font-weight:700; }
 html body #viewport table.fin td.neg{ color:#c0392b; }
 /* the cell-authority layer paints inputs, calculated cells and totals from these variables: point them at the editor's tokens */
-html body #viewport{ --bk-in-fill:var(--ae-cell); --bk-in-ink:var(--ae-ink); --bk-in-line:transparent; --bk-calc-fill:var(--ae-cell-ro); --bk-total-fill:var(--bk-key-fill); --bk-total-ink:var(--bk-key-ink); }
+/* CELL CONVENTION (the financial-modelling standard, on every input sheet):
+     input       blue text on a pale yellow fill, with a thin amber edge      you can type here
+     calculated  black text, no fill                                           worked out from other cells
+     linked      green text, no fill                                           shown here, edited on another sheet
+     N/A         grey text                                                     does not apply to this deal
+     attention   a red outline (missing, required) or an amber outline (template value / needed for returns)
+   The tokens are set once on :root so the light and dark themes carry the same meaning. */
+:root{ --bk-in-fill:#fdfae6; --bk-in-ink:#1a44c2; --bk-in-line:#e4d9a3; --bk-in-hover:#f9f2c9; --bk-link-ink:#13774a; --bk-na-ink:#69747f; --bk-attn-red:#d1433a; --bk-attn-amber:#d99a1f; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-in-fill:#34301d; --bk-in-ink:#9bbcff; --bk-in-line:#6f6531; --bk-in-hover:#403b22; --bk-link-ink:#62d79f; --bk-na-ink:#7f8a97; --bk-attn-red:#ff7a6e; --bk-attn-amber:#f0b84a; } }
+:root[data-theme="dark"]{ --bk-in-fill:#34301d; --bk-in-ink:#9bbcff; --bk-in-line:#6f6531; --bk-in-hover:#403b22; --bk-link-ink:#62d79f; --bk-na-ink:#7f8a97; --bk-attn-red:#ff7a6e; --bk-attn-amber:#f0b84a; }
+html body #viewport{ --bk-calc-fill:transparent; --bk-total-fill:var(--bk-key-fill); --bk-total-ink:var(--bk-key-ink); }
 /* input cells: a boxed field, as in the editor */
-html body #viewport table.fin tr.input td.v{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; box-shadow:inset 0 0 0 1px var(--ae-accent); font-weight:600; }
+html body #viewport table.fin tr.input td.v{ background:var(--bk-in-fill) !important; color:var(--bk-in-ink) !important; box-shadow:inset 0 0 0 1px var(--bk-in-line); font-weight:600; }
 html body #viewport table.fin tr.input td.v *{ background:transparent !important; border-color:transparent !important; text-decoration:none !important; color:inherit !important; box-shadow:none !important; }
-html body #viewport table.fin td.v:has(select){ box-shadow:inset 0 0 0 1px var(--ae-accent); }
-html body #viewport table.fin tr.input td.v:hover{ box-shadow:inset 0 0 0 2px var(--ae-accent); }
-html body #viewport input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), html body #viewport select, html body #viewport textarea{ border:1px solid var(--ae-line); background:var(--ae-cell); color:var(--ae-ink); border-radius:0; }
+html body #viewport table.fin td.v:has(select){ box-shadow:inset 0 0 0 1px var(--bk-in-line); }
+html body #viewport table.fin tr.input td.v:hover{ box-shadow:inset 0 0 0 2px var(--bk-in-line); background:var(--bk-in-hover) !important; }
+html body #viewport input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]), html body #viewport select, html body #viewport textarea{ border:1px solid var(--bk-in-line); background:var(--bk-in-fill); color:var(--bk-in-ink); font-weight:600; border-radius:0; }
+html body #viewport input::placeholder, html body #viewport textarea::placeholder{ color:var(--bk-in-ink); opacity:.45; font-weight:400; }
+/* calculated: black, no fill. linked: green. N/A: grey. attention: a red or amber outline on the value cell */
+html body .keyrow .keyswatch{ width:30px; height:18px; margin-top:0; display:inline-flex; align-items:center; justify-content:center; font:600 10px/1 Inter,system-ui,sans-serif; border-radius:2px; }
+html body #viewport .ae-ro{ background:transparent; color:var(--ae-ink); }
+html body #viewport .bk-link, html body #viewport td.bk-link, html body #viewport .ae-ro.bk-link, html body #viewport [data-bk-link]{ color:var(--bk-link-ink) !important; font-weight:600; }
+html body #viewport table.fin tbody tr.bk-na:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind]:not(:last-child), html body #viewport table.fin tbody tr.bk-na > td:not(:last-child){ opacity:1 !important; color:var(--bk-na-ink) !important; background:transparent !important; background-color:transparent !important; box-shadow:none !important; }
+html body #viewport table.fin tbody tr.bk-na > td:not(:last-child) *, html body #viewport table.fin tbody tr.bk-na td[data-bk-kind^="input"] select, html body #viewport table.fin tbody tr.bk-na td[data-bk-kind^="input"] input{ color:var(--bk-na-ink) !important; background-color:transparent !important; }
+html body #viewport table.fin tbody tr.bk-attn > td.v{ box-shadow:inset 0 0 0 2px var(--bk-attn-amber) !important; }
+html body #viewport table.fin tbody tr.bk-req-missing > td.v{ box-shadow:inset 0 0 0 2px var(--bk-attn-red) !important; }
 html body #viewport input:focus, html body #viewport select:focus, html body #viewport textarea:focus{ outline:2px solid var(--ae-accent); outline-offset:-1px; }
 /* cards and side panels: a panel with a header bar */
 html body #viewport .card, html body #viewport .bk-snap{ border:1px solid var(--ae-line) !important; border-radius:0 !important; background:var(--ae-cell-ro) !important; box-shadow:none !important; }
@@ -25151,16 +25195,24 @@ html body #viewport .card-head, html body #viewport .bk-snap > .card-head{ backg
 html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 /* the letter icon the decorator puts in each panel header (same square as the editor's) */
 html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
-/* section jumps as a tab strip */
-/* Deal Underwrite index: grouped jump links, not tabs. A coloured label per group, plain names, and the section you are reading filled in. */
-html body #viewport .bk-dui{ position:static; display:flex; flex-direction:column; align-items:stretch; gap:2px; overflow-x:visible; background:var(--ae-bg); border:1px solid var(--ae-line); border-radius:0; padding:8px 10px; box-shadow:none; }
-html body #viewport .bk-dui .bk-dg{ display:flex; flex-wrap:wrap; align-items:center; gap:2px 2px; border-left:3px solid var(--g,#6a7480); padding-left:8px; }
-html body #viewport .bk-dui .bk-dgl{ flex:0 0 112px; margin-right:4px; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--g,#6a7480); }
-html body #viewport .bk-dui button{ flex:0 0 auto; white-space:nowrap; padding:3px 9px !important; background:transparent !important; border:1px solid transparent !important; border-radius:12px !important; color:var(--ae-ink) !important; font-size:12px !important; margin:0; box-shadow:none !important; }
-html body #viewport .bk-dui button:hover{ border-color:var(--g,var(--ae-line)) !important; text-decoration:none; }
-html body #viewport .bk-dui .bk-dg button:hover{ border-color:var(--g) !important; }
-html body #viewport .bk-dui button.miss{ color:#d9534f !important; font-weight:700 !important; }
-html body #viewport .bk-dui .bk-dg button.on{ background:var(--g) !important; border-color:var(--g) !important; color:#fff !important; font-weight:700 !important; }
+/* DEAL UNDERWRITE TAB BAR: one horizontal row of seven group tabs, sticky under the pinned header, scrolling sideways on a phone (never wrapping to a second row). The open tab has a
+   coloured underline and a raised fill; a red count marks required inputs still missing in that group; a group that does not apply reads N/A. */
+html body #viewport .bk-dui.bk-tabs{ position:sticky; top:var(--bk-stick,0px); z-index:12; display:flex; flex-direction:row; flex-wrap:nowrap; align-items:stretch; gap:0; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:thin; background:var(--ae-bg); border:1px solid var(--ae-line); border-bottom:2px solid var(--ae-line); border-radius:0; padding:0; margin:0 0 12px; box-shadow:0 1px 0 rgba(0,0,0,.04); }
+html body #viewport .bk-dui.bk-tabs .bk-dt{ flex:0 0 auto; position:relative; display:inline-flex; align-items:center; gap:6px; height:38px; margin:0 0 -2px; padding:0 10px !important; background:transparent !important; border:0 !important; border-bottom:3px solid transparent !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 12px/1 Inter,system-ui,sans-serif !important; letter-spacing:0; white-space:nowrap; cursor:pointer; }
+html body #viewport .bk-dui.bk-tabs .bk-dt::before{ content:''; width:8px; height:8px; border-radius:2px; background:var(--g,#6a7480); flex:0 0 auto; }
+html body #viewport .bk-dui.bk-tabs .bk-dt:hover{ color:var(--ae-ink) !important; background:color-mix(in srgb,var(--g,#6a7480) 9%,transparent) !important; }
+html body #viewport .bk-dui.bk-tabs .bk-dt.on{ color:var(--ae-ink) !important; background:var(--ae-tab-on,#fff) !important; border-bottom-color:var(--g,#6a7480) !important; font-weight:700 !important; }
+html body #viewport .bk-dui.bk-tabs .bk-dt:focus-visible{ outline:2px solid var(--g,#2f5f9e); outline-offset:-3px; }
+html body #viewport .bk-dui.bk-tabs .bk-dt.na{ color:var(--bk-na-ink) !important; }
+html body #viewport .bk-dui.bk-tabs .bk-dt.na::before{ background:var(--bk-na-ink); }
+html body #viewport .bk-dui.bk-tabs .bk-dt.empty{ opacity:.45; pointer-events:none; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-n{ min-width:17px; height:17px; padding:0 5px; border-radius:9px; background:var(--bk-attn-red); color:#fff; font:700 10.5px/17px Inter,system-ui,sans-serif; text-align:center; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-na{ font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--bk-na-ink); border:1px solid var(--bk-na-ink); border-radius:2px; padding:1px 4px; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto; position:sticky; right:0; height:auto; padding:0 11px !important; background:var(--ae-bg) !important; border:0 !important; border-left:1px solid var(--ae-line) !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 11.5px/1 Inter,system-ui,sans-serif !important; cursor:pointer; white-space:nowrap; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-all:hover{ color:var(--ae-ink) !important; }
+html body #viewport .tbl-wrap.bk-grp-hide{ display:none !important; }
+@media print{ html body #viewport .tbl-wrap.bk-grp-hide{ display:block !important; } }
+@media (max-width:760px){ html body #viewport .bk-dui.bk-tabs .bk-dt{ height:42px; padding:0 13px !important; } }
 /* buttons */
 html body #viewport .bk-btn, html body #viewport button.pl-hbtn{ border:1px solid var(--ae-line) !important; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-radius:2px !important; box-shadow:none !important; }
 html body #viewport .bk-btn.primary, html body #viewport button.pl-hbtn.primary{ background:var(--ae-accent) !important; border-color:var(--ae-accent) !important; color:#fff !important; }
@@ -25413,7 +25465,6 @@ html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.fail .v{ color:#f
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.warn .v{ color:#f0c060; }
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.pass .v, html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.ok .v{ color:#7fd4a0; }
 html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-theme="light"]) #viewport button[class=""]{ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
-html:not([data-theme="light"]) #viewport .bk-dui .bk-dgl{ color:color-mix(in srgb, var(--g) 50%, #ffffff) !important; }
 }
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
