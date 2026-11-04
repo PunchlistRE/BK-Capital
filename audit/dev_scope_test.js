@@ -36,6 +36,9 @@ async function metrics(file, ov) {
 (async () => {
   const [ref, cur] = [process.argv[2], process.argv[3]];
   const base = await metrics(ref, LEGACY);
+  /* Returns now carry the interest funded by equity beyond the facility commitment (Harbor Point fix), so the reference build's return figures are no longer the right yardstick: the return
+     figures are compared with this build's own legacy run (conventions must not move them), and every other figure with the reference build. */
+  const RET = ['irr', 'moic', 'contrib', 'dist', 'lpIRR', 'gpIRR', 'lpDist', 'gpDist'], curBase = await metrics(cur, LEGACY);
   let fails = 0, checks = 0;
   if (!base.r.isDev || !(base.r.commit > 0)) { console.log('FAIL fixture is not a funded development deal', base.r); process.exit(1); }
   for (const [name, ov] of [['legacy (no fields)', LEGACY], ['standard conventions', STD], ['different conventions', ODD]]) {
@@ -45,7 +48,7 @@ async function metrics(file, ov) {
     for (const k of Object.keys(base.r)) {
       if (k === 'scope') continue;
       checks++;
-      const a = base.r[k], b = got.r[k];
+      const a = RET.indexOf(k) >= 0 ? curBase.r[k] : base.r[k], b = got.r[k];
       const same = (typeof a === 'number' && typeof b === 'number') ? (Object.is(a, b) || Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a))) : a === b;
       if (!same) { fails++; console.log(`FAIL ${name}: ${k} reference ${a} vs now ${b}`); }
     }

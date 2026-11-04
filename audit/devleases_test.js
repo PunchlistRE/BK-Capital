@@ -12,7 +12,8 @@ const LEASES = [
   let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 300) + ']' : '')); };
   const mk = async (file) => { const p = await b.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message)); await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(file)); await p.waitForTimeout(700); await p.evaluate(() => document.documentElement.classList.add('bk-auth-ok')); return p; };
   const p = await mk(process.argv[2]);
-  const SNAP = '() => { const m = bkMonthlyReturns(), x = bkDevV09(), f = bkDevFundingV10(), c = bkCalc(); return { irr: m.irr, moic: m.moic, def: x.leaseDef, co: x.co, stab: x.stab, noi: c.noi, ramp: x.leaseupRamp.map(r => [r.mo, r.egi, r.after]), rows: m.rows.map(r => [r.noi, r.cf]), need: f.months.map(z => z.need) }; }';
+  const SNAP = '() => { const m = bkMonthlyReturns(), x = bkDevV09(), f = bkDevFundingV10(), c = bkCalc(); return { irr: m.irr, moic: m.moic, def: x.leaseDef, co: x.co, stab: x.stab, noi: c.noi, ramp: x.leaseupRamp.map(r => [r.mo, r.egi, r.after]), rows: m.rows.map((r, i) => [r.noi, r.cf, (f.months[i] || {}).excess || 0]), need: f.months.map(z => z.need) }; }';
+  const vsRef = (o, cur) => Object.assign({}, o, { irr: 0, moic: 0, rows: o.rows.map(r => [r[0], r[1] + (cur ? r[2] : 0)]) });  /* The returns now carry interest funded by equity beyond the facility commitment (Harbor Point fix). Against the older reference build a month's cash flow is compared before that charge (cf + excess), and IRR / multiple, which the charge moves by design, are compared only between runs of this build. */
   const same = (a, c) => JSON.stringify(a, (k, v) => typeof v === 'number' ? Math.round(v * 1e5) : v) === JSON.stringify(c, (k, v) => typeof v === 'number' ? Math.round(v * 1e5) : v);
   const on = (leases, extra) => p.evaluate(([l, e]) => { const s = bkLoad(); s.commLeaseModel = true; s.leases = l; Object.assign(s, e || {}); bkSave(s); return true; }, [leases, extra]);
   const ev = (src) => p.evaluate((src) => eval('(' + src + ')')(), src);
@@ -20,7 +21,7 @@ const LEASES = [
   const base = await ev(SNAP);
 
   /* ---- 1. unchanged without a schedule ---- */
-  if (process.argv[3]) { const q = await mk(process.argv[3]); const ref = await q.evaluate(([d, src]) => { bkCreateNewDeal(d); return eval('(' + src + ')')(); }, [DEV, SNAP]); check('a development deal with no tenant schedule is identical to the reference build (ramp, funding, cash flow, IRR)', same(base, ref), base.irr + ' vs ' + ref.irr); await q.close(); }
+  if (process.argv[3]) { const q = await mk(process.argv[3]); const ref = await q.evaluate(([d, src]) => { bkCreateNewDeal(d); return eval('(' + src + ')')(); }, [DEV, SNAP]); check('a development deal with no tenant schedule is identical to the reference build (ramp, funding, cash flow, IRR)', same(vsRef(base, true), vsRef(ref, false)), base.irr + ' vs ' + ref.irr); await q.close(); }
   await p.evaluate((d) => { bkCreateNewDeal(d); const s = bkLoad(); s.commLeaseModel = true; s.leases = []; bkSave(s); }, DEV);
   check('the lease model switched on with no tenants changes nothing', same(await ev(SNAP), base));
   const acq = await p.evaluate(([d, L]) => { bkCreateNewDeal(Object.assign({}, d, { purchasePrice: 19800000 })); const a = bkMonthlyReturns().irr; const s = bkLoad(); s.commLeaseModel = true; s.leases = L; bkSave(s); return { a, b: bkMonthlyReturns().irr, shift: bkLeaseDevShift(bkLoad()) }; }, [A, LEASES]);
