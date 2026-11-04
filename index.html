@@ -29023,7 +29023,7 @@ if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'functi
   --ae-ink:#14212F; --ae-dim:#566577; --ae-accent:#1F4E8C; --ae-hint:#F3F6FA;
   --bk-key-fill:#DDE7F4; --bk-key-ink:#0B2545; --bk-key-rule:#1F4E8C; --bk-key-line:rgba(31,78,140,.25);
   --bk-link-ink:#1B7A4B; --bk-attn-red:#C0392B; --bk-attn-amber:#B7791F; --bk-na-ink:#6B7785;
-  --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
+  --bk-in-line:#D6C57A; --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
 }
 html.bk-auth-ok body, html body{ background:var(--ae-bg); }
 /* section bars and column headings: flat slate with a navy base line, so structure reads at a glance */
@@ -29093,6 +29093,21 @@ html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:var(--ae-s
 .bk-ribbon .rb-g.active .rb-cap{ background:var(--bk-navy); color:#fff; }
 @media (max-width:900px){ .bk-ribbon{ display:none; } }
 @media print{ .bk-ribbon{ display:none !important; } }
+
+/* INPUT GRIDS, CLEANED UP: one row height, everything centred vertically; the Units column is quiet and left; the Status column is centred with chips of one width and one height; an input cell has ONE amber hairline, not a border plus an inner ring; dropdowns show a caret. */
+html body #viewport table.fin.bk-grid4 tbody tr > td, html body #viewport table.fin.bk-grid3 tbody tr > td{ vertical-align:middle; }
+html body #viewport table.fin.bk-grid4 tbody tr:not(.total):not(.grandtotal):not(.sec) > td, html body #viewport table.fin.bk-grid3 tbody tr:not(.total):not(.grandtotal):not(.sec) > td{ height:36px; padding-top:4px !important; padding-bottom:4px !important; }
+html body #viewport table.fin.bk-grid4 tbody tr > td:nth-child(3){ text-align:left !important; color:var(--ae-dim) !important; font-size:12px !important; }
+html body #viewport table.fin.bk-grid4 tbody tr > td:nth-child(3)[data-bk-v="blank"]{ color:var(--bk-na-ink); }
+html body #viewport table.fin.bk-grid4 thead th:last-child, html body #viewport table.fin.bk-grid4 tbody tr > td:last-child{ text-align:center; width:132px; }
+html body #viewport table.fin .status-chip{ display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; min-width:104px; height:20px; padding:0 8px; font:600 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.05em; white-space:nowrap; }
+html body #viewport table.fin tr.input td.v, html body #viewport table.fin td.v:has(select){ box-shadow:none !important; border-color:var(--bk-in-line) !important; }
+html body #viewport table.fin tr.input td.v:hover{ box-shadow:none !important; border-color:var(--bk-attn-amber) !important; }
+html body #viewport table.fin tr.input td.v select, html body #viewport table.fin td.v select{ appearance:none; -webkit-appearance:none; padding-right:20px; background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231B3F66' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 4px center !important; border:0 !important; text-align:right; text-align-last:right; }
+html body #viewport table.fin td.v select option{ color:#14212F; background:#fff; }
+html body #viewport table.fin td.bk-uom, html body #viewport table.fin.bk-grid4 tbody tr > td.bk-uom{ color:var(--ae-dim) !important; font-size:12px !important; text-align:left !important; }
+html body #viewport table.fin tr.input td.v input:not([type=checkbox]){ text-align:right; padding-right:20px !important; width:100% !important; box-sizing:border-box; }
+html body #viewport table.fin tr.input td.v input::placeholder{ color:var(--bk-na-ink); opacity:1; font-weight:500; }
 </style>
 </body>
 </html>
