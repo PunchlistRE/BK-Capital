@@ -544,7 +544,7 @@ function ribbon(frame, sheet){
     + rbBtn('trash', 'Clear inputs', 'onclick="showSheet(\'Home\');setTimeout(function(){if(window.bkClearInputsDialog)bkClearInputsDialog();},50)"') + rbBtn('print', 'Print / Save PDF', 'onclick="bkPrintSection()"')
     + '</div><div class="rb-cap">Deal</div></div>';
   h += '<div class="rb-g"><div class="rb-row">'
-    + rbBtn('swatch', 'Colour key', 'onclick="var b=document.querySelector(\'[data-bk-key-toggle]\');if(b)b.click()"') + rbBtn('book', 'Guide', 'data-goto-sheet2="Guide"') + rbBtn('side', 'Sidebar', 'onclick="bkRailCollapse()"')
+    + rbBtn('swatch', 'Colour key', 'data-bk-key-toggle="1"') + rbBtn('book', 'Guide', 'data-goto-sheet2="Guide"') + rbBtn('side', 'Sidebar', 'onclick="bkRailCollapse()"')
     + '</div><div class="rb-cap">View</div></div></div>';
   nav.insertAdjacentHTML('afterend', h);
 }
@@ -587,7 +587,7 @@ document.addEventListener('click', function(e){
   if((el = t.closest('[data-bk-undo]'))){ undo(); return; }
   if((el = t.closest('[data-bk-redo]'))){ redo(); return; }
   if((el = t.closest('[data-bk-menu]'))){ var rail = document.getElementById('rail'); if(rail) rail.classList.toggle('open'); return; }
-  if((el = t.closest('[data-bk-key-toggle]'))){ var w = el.closest('.bk-key-wrap'); var o = w.classList.toggle('open'); el.setAttribute('aria-expanded', String(o)); return; }
+  if((el = t.closest('[data-bk-key-toggle]'))){ var w = el.closest('.bk-key-wrap') || document.querySelector('.bk-key-wrap'); if(!w) return; var o = w.classList.toggle('open'); el.setAttribute('aria-expanded', String(o)); return; }
   if((el = t.closest('[data-bk-more]'))){ var mw = el.closest('.bk-more'), pop = mw.querySelector('.bk-more-pop'), rc = el.getBoundingClientRect();
     /* the nav strip scrolls horizontally, so the menu is positioned against the window to avoid being clipped */
     pop.style.position = 'fixed'; pop.style.top = (rc.bottom + 4) + 'px'; pop.style.left = Math.max(8, Math.min(rc.left, window.innerWidth - 236)) + 'px'; pop.style.right = 'auto';

@@ -23,7 +23,8 @@
     else if(Math.round(hold)!==hold) add('WARN','Exit','Hold period of '+hold+' years is not a whole number - the engine rounds it to '+Math.round(hold)+' years.');
     if(!(cap>0)) add('FAIL','Exit','Exit cap rate must be greater than zero - no sale value can be calculated.');
     else if(cap<0.03 || cap>0.15) add('WARN','Exit','Exit cap rate of '+(cap*100).toFixed(2)+'% is outside a typical 3%-15% range.');
-    if(!(vac>=0 && vac<=1)) add('FAIL','Revenue','Vacancy must be between 0% and 100%.');
+    if(s.vacancy === '' || s.vacancy === null || s.vacancy === undefined){ /* nothing entered: not an error, the required-inputs list says what is missing */ }
+    else if(!(vac>=0 && vac<=1)) add('FAIL','Revenue','Vacancy must be between 0% and 100%.');
     else if(vac>=0.5) add('WARN','Revenue','Vacancy of '+(vac*100).toFixed(1)+'% is very high.');
     if(!(num(s.units)>0) && !(num(s.commercialArea)>0) && !(num(s.gsf)>0)) add('WARN','Property','No units, commercial area or GSF entered - per-unit and per-SF metrics cannot be calculated.');
     [['acqLTV','Acquisition LTV'],['acqLTC','Acquisition LTC'],['permLTV','Permanent LTV']].forEach(function(k){

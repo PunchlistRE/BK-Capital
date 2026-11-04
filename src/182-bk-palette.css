@@ -112,7 +112,7 @@ html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,syste
 .bk-ribbon .rb-g:first-child{ flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
 .bk-ribbon .rb-g:not(:first-child){ flex:0 0 auto; }
 /* the ribbon carries Print and Colour key on wide screens, so the copies beside the page title go */
-@media (min-width:901px){ html body #viewport .title-block .bk-print-btn, html body #viewport .title-block .bk-key-wrap{ display:none; } }
+@media (min-width:901px){ html body #viewport .title-block .bk-print-btn, html body #viewport .title-block .bk-key-wrap > button{ display:none; } }
 
 /* Phones have no side-by-side cells, so an input keeps its box outline there. */
 @media (max-width:760px){ html body #viewport table.fin tr.input td.v{ box-shadow:inset 0 0 0 1px var(--bk-in-line) !important; } }
@@ -171,3 +171,11 @@ html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
 .pl-from > span{ display:block; font:700 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--ae-dim); margin-bottom:8px; }
 .pl-from > div{ display:flex; flex-wrap:wrap; gap:6px; }
 .pl-from .pl-hbtn{ flex:1 1 auto; }
+
+/* STATUS CHIPS: INPUT is light blue (you can type here), NOT APPLIED / N/A is grey (does not apply), OPTIONAL is plain outline. */
+html body #viewport .status-chip[data-bk-chip="input"]{ background:#E3EEFB !important; color:#1A4B8C !important; }
+html body #viewport .status-chip[data-bk-chip="na"]{ background:#ECEFF2 !important; color:#6B7785 !important; }
+html body #viewport .status-chip[data-bk-chip="optional"]{ background:transparent !important; color:var(--ae-dim) !important; box-shadow:inset 0 0 0 1px var(--ae-line); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; } :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; } }
+:root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; }
+:root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; }
