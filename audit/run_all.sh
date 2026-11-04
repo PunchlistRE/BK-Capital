@@ -63,6 +63,7 @@ echo "== Harbor Point investor PDF, Development budget page (budget, contingency
 echo "== Import OM, LoopNet listings (52 Hoyt St with financials, 743-751 Arctic St without; draft PDF for a deal with no income)"; node audit/loopnet_import_test.js index.html | tail -1
 echo "== Harbor Point PDF fixture labels (base vs deal brief on the cover, footer and title; display only)"; node audit/harbor_fixture_label_test.js index.html | tail -1
 echo "== Intake readers (property list, spreadsheet statement found by its arithmetic, facts-only flyer; REAL and SYNTHETIC inputs labelled)"; node audit/intake_test.js index.html | tail -1
+echo "== Blank start (a new deal is all cash with one investor; debt sections appear with financing; clear inputs; empty development schedule)"; node audit/blank_start_test.js index.html | tail -1
 echo "== Harbor Point stage C (investor summary pages, summary of investment, portfolio impact, cover photo, Model Checks)"; node audit/harbor_stageC_test.js index.html | tail -1
 echo "== Harbor Point stage E (fixed facility, equity first, unused fee, initial reserves, contingency register, LP-only pref, catch-up rate, independent model)"; node audit/harbor_stageE_test.js index.html | tail -1
 echo "== Portfolio IRR on the combined dated cash flow (independent XIRR, reconciliation, no averaged IRR)"; node audit/portfolio_irr_test.js index.html | tail -1

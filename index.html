@@ -2387,7 +2387,7 @@ function sheetDevelopmentV09(){
    `;
  }
  const main=`<div class="tbl-wrap"><table class="fin"><caption>Development - Cost Basis Summary</caption><thead><tr><th class="rowlabel-h">Cost Concept</th><th>Total</th><th>$ / GSF</th><th>Lineage</th></tr></thead><tbody><tr><td class="rowlabel">Land / Purchase Price</td><td>${m(x.land)}</td><td>${psf(x.land)}</td><td>SOURCE</td></tr><tr><td class="rowlabel">Closing / Diligence Costs</td><td>${m(x.close)}</td><td>${psf(x.close)}</td><td>UNDERWRITING</td></tr><tr><td class="rowlabel">Acquisition Fee</td><td>${m(x.acq)}</td><td>${psf(x.acq)}</td><td>UNDERWRITING</td></tr><tr><td class="rowlabel">Predevelopment Carry</td><td>${m(x.pre)}</td><td>${psf(x.pre)}</td><td>UNDERWRITING</td></tr><tr><td class="rowlabel">Hard Costs (itemized below)</td><td>${m(x.hard)}</td><td>${psf(x.hard)}</td><td>CALCULATED</td></tr><tr><td class="rowlabel">Soft Costs (itemized below)</td><td>${m(x.soft)}</td><td>${psf(x.soft)}</td><td>CALCULATED</td></tr><tr><td class="rowlabel">Lease-Up Operating Deficit</td><td>${m(x.leaseDef)}</td><td>${psf(x.leaseDef)}</td><td>CALCULATED</td></tr><tr class="grandtotal"><td class="rowlabel">UNLEVERED ALL-IN COST</td><td>${m(x.unlev)}</td><td>${psf(x.unlev)}</td><td>CALCULATED</td></tr></tbody></table></div>${ladderHtml}<div class="note-flag"><span>&#10003;</span><div><b>Development engine -</b> the workbook's actual 14-trade hard-cost ladder (with General Conditions -> Contractor Fee -> Risk/Bonds -> Contingency cascading exactly as Development!F39-F44) and 16-line soft-cost ladder (each on its own basis, Development!F48-F63) are now itemized in-browser instead of a blended $/GSF proxy. Acquisition deals correctly suppress development-only costs.</div></div>`;return{title:'Development',crumbs:'Development',desc:'Budget, itemized cost ladder and development capitalization.',meta:{Property:x.s.name,'Deal Type':x.s.dealType||'Acquisition',Mode:x.isDev?x.s.devBudgetMode:'N/A',Status:x.isDev?'Live - itemized ladder':'Acquisition - N/A'},main,sidebar:sidebarShell(`<div class="card"><div class="card-head">Cost Ladder</div><div class="metric-list"><div class="metric-row"><span class="k">Land</span><span class="v">${m(x.land)}</span></div><div class="metric-row"><span class="k">Hard Costs</span><span class="v">${m(x.hard)}</span></div><div class="metric-row"><span class="k">Soft Costs</span><span class="v">${m(x.soft)}</span></div><div class="metric-row"><span class="k">Unlevered All-In</span><span class="v">${m(x.unlev)}</span></div></div></div>${colorKeyCard()}`)};}
-function sheetDevScheduleV09(){const x=bkDevV09();const rows=x.phases.map(p=>`<tr><td class="rowlabel">${p[0]}</td><td>${p[1]}</td><td>${p[2]}</td><td>${p[3]||'-'}</td></tr>`).join('');const main=`<div class="tbl-wrap"><table class="fin"><caption>Development Schedule & Milestone Timeline</caption><thead><tr><th class="rowlabel-h">Phase</th><th>Start Mo</th><th>End Mo</th><th>Months</th></tr></thead><tbody>${rows}<tr class="grandtotal"><td class="rowlabel">TOTAL HOLD PERIOD</td><td colspan="2">${x.hold} months</td><td>${Number(x.s.holdYears||0).toFixed(1)} yrs</td></tr></tbody></table></div>`;return{title:'Dev Schedule',crumbs:'Development',desc:'Pre-development, construction, CO, lease-up, stabilization and exit timeline.',meta:{Property:x.s.name,'Pre-Dev':x.preMo+' mo','Construction':x.conMo+' mo','Lease-Up':x.luMo+' mo',Status:x.isDev?'Live':'Acquisition - N/A'},main,sidebar:sidebarShell(`<div class="card"><div class="card-head">Milestones</div><div class="metric-list"><div class="metric-row"><span class="k">CO Month</span><span class="v">${x.co||'-'}</span></div><div class="metric-row"><span class="k">Stabilization</span><span class="v">${x.stab}</span></div><div class="metric-row"><span class="k">Exit</span><span class="v">${x.hold}</span></div></div></div>${colorKeyCard()}`)};}
+function sheetDevScheduleV09(){const x=bkDevV09();const rows=x.phases.map(p=>`<tr><td class="rowlabel">${p[0]}</td><td>${p[1]}</td><td>${p[2]}</td><td>${p[3]||'-'}</td></tr>`).join('');const main=`<div class="tbl-wrap"><table class="fin"><caption>Development Schedule & Milestone Timeline</caption><thead><tr><th class="rowlabel-h">Phase</th><th>Start Mo</th><th>End Mo</th><th>Months</th></tr></thead><tbody>${rows}<tr class="grandtotal"><td class="rowlabel">TOTAL HOLD PERIOD</td><td colspan="2">${x.hold} months</td><td>${(Number(x.hold||0)/12).toFixed(1)} yrs</td></tr></tbody></table></div>`;return{title:'Dev Schedule',crumbs:'Development',desc:'Pre-development, construction, CO, lease-up, stabilization and exit timeline.',meta:{Property:x.s.name,'Pre-Dev':x.preMo+' mo','Construction':x.conMo+' mo','Lease-Up':x.luMo+' mo',Status:x.isDev?'Live':'Acquisition - N/A'},main,sidebar:sidebarShell(`<div class="card"><div class="card-head">Milestones</div><div class="metric-list"><div class="metric-row"><span class="k">CO Month</span><span class="v">${x.co||'-'}</span></div><div class="metric-row"><span class="k">Stabilization</span><span class="v">${x.stab}</span></div><div class="metric-row"><span class="k">Exit</span><span class="v">${x.hold}</span></div></div></div>${colorKeyCard()}`)};}
 function sheetResidualLandV09(){const x=bkDevV09(),s=x.s;const main=`<div class="tbl-wrap"><table class="fin"><caption>Residual Land Value</caption><thead><tr><th class="rowlabel-h">Item</th><th>Value</th><th style="text-align:left">Units</th><th style="text-align:left">Note</th></tr></thead><tbody>${bkYesNo('Use Residual Land Value','landOverrideOn','')}${Number(s.landOverrideOn)?bkInput('Land value used (override)','residualLandValue','$'):''}<tr><td class="rowlabel">Effective Land / Purchase Price<span class="bk-sub">Used by development cost ladder</span></td><td>$${bkFmt(x.land)}</td><td data-bk-align="text">$</td><td><span class="status-chip">CALC</span></td></tr><tr><td class="rowlabel">Workbook Stored Solve<span class="bk-sub">Reference value from Residual Land C20</span></td><td>$5,288,519</td><td data-bk-align="text">$</td><td><span class="status-chip">STORED</span></td></tr></tbody></table></div>`;return{title:'Residual Land',crumbs:'Development',desc:'Residual land override and effective land basis.',meta:{Property:s.name,Override:Number(s.landOverrideOn)?'On':'Off','Effective Land':bkFmt(x.land),Status:'Mapped'},main,sidebar:sidebarShell(colorKeyCard())};}
 function sheetDevDrawsV09(){const x=bkDevV09(), months=Math.max(1,x.conMo||1), draw=x.isDev?x.hard/months:0, rows=Array.from({length:Math.min(months,36)},(_,i)=>`<tr><td class="rowlabel">${i+1+x.preMo}</td><td>${bkFmt(draw)}</td><td>${bkFmt(draw)}</td><td>${bkFmt(draw*(i+1))}</td></tr>`).join('');const main=`<div class="tbl-wrap"><table class="fin"><caption>Development Draws - Monthly Schedule</caption><thead><tr><th class="rowlabel-h">Month</th><th>Hard Cost Draw</th><th>Total Funding Need</th><th>Cumulative</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel">N/A</td><td colspan="3">Acquisition deal - no development draws.</td></tr>'}</tbody></table></div><div class="note-flag"><span>&#9888;</span><div><b>Simplified draw schedule -</b> hard costs are spread evenly across the construction period. Curve-weighted (S-curve) draws, soft-cost slices, lease-up deficit and capitalised construction interest are not modelled on this page yet, so treat the monthly figures as indicative.</div></div>`;return{title:'Dev Draws',crumbs:'Development',desc:'Monthly development funding schedule.',meta:{Property:x.s.name,Months:x.conMo,Curve:'Initial / flat',Status:x.isDev?'Live / expanding':'Acquisition - N/A'},main,sidebar:sidebarShell(colorKeyCard())};}
 RENDERERS['Development']=sheetDevelopmentV09;RENDERERS['Dev Schedule']=sheetDevScheduleV09;RENDERERS['Dev Draws']=sheetDevDrawsV09;RENDERERS['Residual Land']=sheetResidualLandV09;
@@ -7118,7 +7118,7 @@ try{implement(document);}catch(e){}
   const _du=sheetDealUnderwrite;
   window.sheetDealUnderwrite=function(){const o=_du(),s=bkEnsureV04();
     const debtRisk=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Debt Maturity / Refinance Risk</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('Loan Term / Maturity','debtTerm','years')}${String(s.debtRateType||'Fixed')==='Floating'?bkInput('Rate Cap Premium / Cost','rateCapCost','$','money'):''}${bkYesNo('Refinance at Maturity','refiAtMaturity')}${Number(s.refiAtMaturity)?bkInput('Refinance Rate','refiRate','%','pct')+bkInput('Refinance Amortization','refiAmort','years')+bkInput('Refinance Max LTV','refiLTV','%','pct')+bkInput('Refinance Min DSCR','refiDSCR','x')+bkInput('Refinance Origination Fee','refiOrigFee','%','pct'):''}</tbody></table></div>`;
-    const scen=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Underwriting Cases - Saved Scenario Definitions</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkSelect('Displayed / Analysis Case','scenarioCase',[['Base','Base'],['Upside','Upside'],['Downside','Downside']],'-')}${bkInput('Upside Rent Growth Delta','upRentGrowthDelta','%','pct')}${bkInput('Upside Exit Cap Delta','upExitCapDelta','%','pct')}${bkInput('Upside Debt Rate Delta','upDebtRateDelta','%','pct')}${bkInput('Downside Rent Growth Delta','downRentGrowthDelta','%','pct')}${bkInput('Downside Exit Cap Delta','downExitCapDelta','%','pct')}${bkInput('Downside Debt Rate Delta','downDebtRateDelta','%','pct')}</tbody></table></div>`;
+    const scen=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Underwriting Cases - Saved Scenario Definitions</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkSelect('Displayed / Analysis Case','scenarioCase',[['Base','Base'],['Upside','Upside'],['Downside','Downside']],'-')}${bkInput('Upside Rent Growth Delta','upRentGrowthDelta','%','pct')}${bkInput('Upside Exit Cap Delta','upExitCapDelta','%','pct')}${(function(){var x=bkLoad();return Number(x.acqLTV)>0||Number(x.acqLTC)>0||Number(x.acqRate)>0||Number(x.conLTC)>0;})()?bkInput('Upside Debt Rate Delta','upDebtRateDelta','%','pct'):''}${bkInput('Downside Rent Growth Delta','downRentGrowthDelta','%','pct')}${bkInput('Downside Exit Cap Delta','downExitCapDelta','%','pct')}${(function(){var x=bkLoad();return Number(x.acqLTV)>0||Number(x.acqLTC)>0||Number(x.acqRate)>0||Number(x.conLTC)>0;})()?bkInput('Downside Debt Rate Delta','downDebtRateDelta','%','pct'):''}</tbody></table></div>`;
     o.main+=debtRisk+scen;return o;};
 
   // Rebuild monthly acquisition returns so variable-rate debt service is truly monthly,
@@ -7175,7 +7175,7 @@ try{implement(document);}catch(e){}
 
   // Deal-underwrite addendum: separate refi valuation and true cap-strike metadata.
   const _du=sheetDealUnderwrite;
-  window.sheetDealUnderwrite=function(){const o=_du(),s=bkEnsureV04();o.main+=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Audit-Fixed Debt Risk Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${Number(s.refiAtMaturity)?bkInput('Refinance Valuation Cap Rate','refiCapRate','%','pct'):''}${String(s.debtRateType||'Fixed')==='Floating'?bkInput('Rate Cap Index Strike','rateCapStrike','%','pct'):''}</tbody></table></div>`;return o;};
+  window.sheetDealUnderwrite=function(){const o=_du(),s=bkEnsureV04();const rows=`${Number(s.refiAtMaturity)?bkInput('Refinance Valuation Cap Rate','refiCapRate','%','pct'):''}${String(s.debtRateType||'Fixed')==='Floating'?bkInput('Rate Cap Index Strike','rateCapStrike','%','pct'):''}`;if(rows.trim())o.main+=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Audit-Fixed Debt Risk Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;return o;};
 
   // Contractual maturity: old loan is paid at maturity. If no refi, equity funds balloon then.
   // If refi, new proceeds fund old balance + fee; shortfall is equity, excess is distribution.
@@ -7643,8 +7643,11 @@ window.bkClearTemplateValues = function(){
   Object.keys(t.values||{}).forEach(function(k){ s[k] = 0; });
   delete s._template; bkSave(s); if(typeof currentSheet !== 'undefined') showSheet(currentSheet); return true;
 };
+/* A deal started by a person (the New analysis dialog, Clear inputs, an import) is ALL CASH with ONE investor: no financing, no closing or sale costs, no fees and no partner structure until the guided steps add them
+   (blankStructure:true). The named template still applies to programmatic callers, so every saved deal and every audit deck keeps its own terms. With no GP, the LP takes every tier. */
 window.bkCreateNewDeal = function(opts){
   opts = opts || {};
+  if(opts.blankStructure){ opts = Object.assign({}, opts, { template:'Blank', gpShare:0, t2LP:1, t3LP:1, t4LP:1 }); ['closingCostsPct', 'closingPct', 'saleCostPct', 'acqFeePct', 'acquisitionFeePct'].forEach(function(k){ delete opts[k]; }); }
   var blank = {
     dealId       : opts.dealId       || '',
     name         : opts.name         || '',
@@ -7681,7 +7684,7 @@ window.bkCreateNewDeal = function(opts){
      it. Identity and economic fields are applied AFTER the zeroed template, so
      nothing the caller asked for is silently discarded. */
   Object.keys(opts).forEach(function(k){
-    if(k.charAt(0) === '_' || k === 'template') return;
+    if(k.charAt(0) === '_' || k === 'template' || k === 'blankStructure') return;
     blank[k] = opts[k];
   });
   try { localStorage.removeItem('bkcapital.cre.v02'); } catch(e){}
@@ -11800,10 +11803,11 @@ extend('Dev Schedule','w1DevSchedule', function(o){
     return d.toLocaleDateString('en-US',{year:'numeric',month:'short'});
   }
   var rows = dv.phases.map(function(p){
-    return '<tr>'+lbl(esc(p[0]))+val(intf(p[1]))+val(intf(p[2]))+val(intf(p[3]))
-      + txt(dateAt(p[1])+' - '+dateAt(p[2]))+'</tr>';
+    var none = !(Number(p[3]) > 0);   /* a phase with no months is not on the calendar */
+    return '<tr>'+lbl(esc(p[0]))+val(none ? '-' : intf(p[1]))+val(none ? '-' : intf(p[2]))+val(none ? '-' : intf(p[3]))
+      + txt(none ? '-' : dateAt(p[1])+' - '+dateAt(p[2]))+'</tr>';
   }).join('');
-  var holdMo = Math.round((Number(s.holdYears)||10)*12);
+  var holdMo = Number(dv.hold) > 0 ? Math.round(Number(dv.hold)) : Math.round((Number(s.holdYears)||0)*12);   /* the modelled hold, as the schedule above uses it (no 10-year stand-in) */
   var last = dv.phases.length ? Number(dv.phases[dv.phases.length-1][2]) : 0;
   var ok = last <= holdMo;
   rows += '<tr class="grandtotal">'+lbl('TOTAL HOLD PERIOD')+val('1')+val(intf(holdMo))+val(intf(holdMo))
@@ -15676,6 +15680,9 @@ extend('Deal Underwrite','clarityInputs', function(o){
     // total cost basis = price plus closing costs plus the acquisition fee, which is
     // what the LTC constraint is measured against
     var basisCost = price * (1 + (Number(s.closingCostsPct)||0) + (Number(s.acqFeePct)||0));
+    var _hasDebt = (Number(s.acqLTV)||0) > 0 || (Number(s.acqLTC)||0) > 0 || (Number(s.acqRate)||0) > 0;
+    if(!_hasDebt){ o.main = (o.main||'') + note('&#9432;','<b>This deal has no financing: it is all cash.</b> Debt constraints (maximum LTV, LTC and minimum DSCR), the loan rate in the cases and refinance settings appear once financing is added on the Debt step.'); }
+    else
     o.main = (o.main||'')
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-constraint-grid">'
       + '<caption>What Each Debt Constraint Is Measured Against</caption>'
@@ -22590,19 +22597,25 @@ window.bkNewDealGo = function(){
   var a = (R && R.analysis(aid)) || { id:'acquisition', dealType:'Acquisition', live:true }; if(!a.live) return;
   snapshot(); closeModal();
   var id = nm ? nm.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase().slice(0, 24) : 'NEW-' + Date.now().toString(36).toUpperCase();
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id });
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id, blankStructure:true });
   if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
 window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import Deal'); };
 
 window.bkClearInputsDialog = function(){
-  var s = safe(function(){ return bkLoad(); }, {}), keep = [s.name, s.dealType, s.propertyType, s.closing].filter(Boolean).join(' · ');
-  modal('<h3>Clear all inputs?</h3><p>Every input on this deal goes back to blank or zero: income, expenses, debt, rent roll, tax and the saved cases.' + (keep ? ' The deal’s identity (<b>' + esc(keep) + '</b>) is kept.' : '') + ' Nothing is calculated again until the required inputs are re-entered.</p>'
-    + saveFirstBox('Save a copy of') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn danger" onclick="bkClearInputsGo()">Clear inputs</button></div>');
+  var s = safe(function(){ return bkLoad(); }, {}), was = [s.name, s.location].filter(Boolean).join(' · ');
+  modal('<h3>Clear all inputs?</h3><p>Everything on this deal is removed' + (was ? ' (<b>' + esc(was) + '</b>)' : '') + ': its name, location and type, income, expenses, debt, rent roll, tax, partners and the saved cases. The deal goes back to a blank one. <b>Nothing is lost:</b> the deal as it is now is saved to Version History first, and you can restore it from there.</p>'
+    + saveFirstBox('Also save a copy of') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn danger" onclick="bkClearInputsGo()">Clear inputs</button></div>');
 };
 window.bkClearInputsGo = function(){
-  var s = safe(function(){ return bkLoad(); }, null); if(!s) return; snapshot(); closeModal();
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, name:s.name, location:s.location, dealType:s.dealType, propertyType:s.propertyType, status:s.status, closing:s.closing });
+  var s = safe(function(){ return bkLoad(); }, null); if(!s) return; snapshot();
+  /* the data stays saved: a version of the deal as it was is kept before anything is removed */
+  try { if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before clearing all inputs', true); } catch(e){}
+  var h = safe(function(){ return bkLoad()._history; }, null);
+  closeModal();
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, blankStructure:true });
+  /* the cleared deal keeps the record of what it was: its version history comes with it */
+  if(h) safe(function(){ var n = bkLoad(); n._history = h; bkSave(n); });
 };
 
 RENDERERS['Home'] = function(){
@@ -24936,6 +24949,7 @@ window.bkOMParse = parseOM; window.bkOMBuild = buildDeal; window.bkOMPageJpegs =
 window.bkOMCreate = function(){ if(!S.om || !((S.om.price || S.mPrice) && (S.om.units || S.mUnits))) return; window.__bkOMLast = { sources:S.om.sources || null }; var b = buildDeal(S.om, S.basis, S.file && S.file.name), file = S.file, info = S.info;
   if(b.needs && b.needs.length) return;   /* a decision the OM cannot make for you is still open */
   stampImp(b.deal, confOM(S.om, b, info, S.basis), S.file && S.file.name);
+  b.deal.blankStructure = true;   /* all cash, one investor: financing, costs and partners come from the guided steps */
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
   /* the OM's printed figures and the user's decisions travel with the deal (bkCreateNewDeal keeps only the deal fields) */
   if(b.deal._imp || b.deal._omReported || b.deal._omDecisions){ var si = bkLoad(); if(b.deal._imp) si._imp = b.deal._imp; if(b.deal._omReported) si._omReported = b.deal._omReported; if(b.deal._omDecisions) si._omDecisions = b.deal._omDecisions; bkSave(si); }
@@ -25164,6 +25178,7 @@ function listingDeal(om){
 }
 window.bkOMCreateListing = function(){ if(!S.om || !S.listingOnly || !(S.om.price || S.mPrice) || !(S.om.units || S.mUnits)) return; var b = listingDeal(S.om), file = S.file, info = S.info; stampImp(b.deal, b, S.file && S.file.name);
   window.__bkOMLast = { sources:S.om.sources || null };
+  b.deal.blankStructure = true;
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
   var si = bkLoad(); if(b.deal._imp) si._imp = b.deal._imp; si._omListing = { source:S.file && S.file.name, pages:S.om.sources, printedCapRate:S.om.capRates ? S.om.capRates.cur : null, unitMix:(S.om.unitMix || []).map(function(m){ return { type:m.type, units:m.units }; }), flags:S.om.flags || [] }; bkSave(si);
   var id = String(b.deal.dealId), jobs = []; if(file && typeof window.bkDocsAdd === 'function') jobs.push(window.bkDocsAdd('om', file, id));
@@ -25194,7 +25209,7 @@ window.bkOMIndexCreate = function(i){ var om = S.om, r = om && om.listRows && om
   var d = { dealId:'LST-' + slug(r.name + ' ' + (r.city || '')), name:r.name, location:[r.city, r.state].filter(Boolean).join(', '), dealType:'Acquisition', propertyType:mapT, status:'Pipeline', closing:'1/1/2027', units:0, gsf:single ? r.sizeLow : 0, purchasePrice:r.price, holdYears:5, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, closingCostsPct:0.02, saleCostPct:0.02 };
   var F = { purchasePrice:{ l:'check', why:'Read from the list; no listing page to confirm it.' }, units:{ l:'low', why:'The list states no unit count.' }, avgRent:{ l:'low', why:'The list states no rents.' }, taxes:{ l:'low', why:'The list states no expenses.' }, t12noi:{ l:'low', why:'The list states no NOI.' } };
   if(!single) F.gsf = { l:'low', why: r.sizeLow ? 'The list gives a size range of ' + r.sizeLow.toLocaleString('en-US') + ' to ' + r.sizeHigh.toLocaleString('en-US') + ' SF for ' + (r.properties || 'several') + ' properties; enter the building area.' : 'The list states no size.' };
-  stampImp(d, { fields:F, sum:confSummary(F) }, S.file && S.file.name); if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d);
+  stampImp(d, { fields:F, sum:confSummary(F) }, S.file && S.file.name); d.blankStructure = true; if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d);
   var si = bkLoad(); if(d._imp) si._imp = d._imp; si._omListing = { source:S.file && S.file.name, printedCapRate:r.capPrinted, listRow:r, page:r.page }; bkSave(si); if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Home'); };
 function renderIndex(body){
   var om = S.om, R = om.listRows, ok = om.listCount == null || om.listCount === R.length;
@@ -27716,8 +27731,8 @@ RENDERERS['Dev Schedule'] = function(){
     var M = window.bkDevGanttModel(s), x = M.x, on = M.on, sc = M.sc, tasks = sc.tasks, warnings = M.warnings, rows = M.rows, html;
     var head = '<div class="ae-form" style="margin:0 0 8px"><label style="font-weight:600">Schedule</label> <select onchange="bkDevGanttMode(this.value)"><option value="phases"' + (on ? '' : ' selected') + '>Phase durations (pre-development, construction, lease-up)</option><option value="tasks"' + (on ? ' selected' : '') + '>Task schedule (overlaps, dependencies, critical path)</option></select></div>';
     var chartBox = '<div class="tbl-wrap" style="margin-top:16px"><div style="padding:10px 12px"><b>Gantt chart, by month</b>' + head
-      + tilesHtml(M) + '<div class="bk-gs-bar"><button type="button" class="bk-btn primary" onclick="bkDevScheduleReport()">Schedule summary (PDF)</button><span style="font-size:12px;opacity:.8">A full printable summary: key dates, the Gantt chart, the task schedule, the funding timeline and what a delay costs.</span></div>'
-      + '<div>' + ganttSvg(rows, sc, s, { id:'pg' }) + '</div>'
+      + ((!on && !(num(x.preMo) + num(x.conMo) + num(x.luMo) > 0)) ? '' : tilesHtml(M)) + '<div class="bk-gs-bar"><button type="button" class="bk-btn primary" onclick="bkDevScheduleReport()">Schedule summary (PDF)</button><span style="font-size:12px;opacity:.8">A full printable summary: key dates, the Gantt chart, the task schedule, the funding timeline and what a delay costs.</span></div>'
+      + ((!on && !(num(x.preMo) + num(x.conMo) + num(x.luMo) > 0)) ? '<div class="note-flag" style="margin-top:10px"><span>&#9432;</span><div><b>No schedule to draw yet.</b> Pre-development, construction and lease-up months are all blank, so there are no phases to chart. Enter them under the development inputs (or choose Task schedule) and the Gantt chart appears here.</div></div>' : '<div>' + ganttSvg(rows, sc, s, { id:'pg' }) + '</div>')
       + legendHtml(false)
       + (on ? '' : '<div class="note-flag" style="margin-top:8px"><span>&#9432;</span><div><b>Drawn from the phase durations.</b> Choose <b>Task schedule</b> to break construction into overlapping tasks with dependencies. It starts as tasks that reproduce these phases exactly, so nothing moves until you edit them.</div></div>') + '</div></div>';
     var table = '';

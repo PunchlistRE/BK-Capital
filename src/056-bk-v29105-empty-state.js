@@ -89,8 +89,11 @@ window.bkClearTemplateValues = function(){
   Object.keys(t.values||{}).forEach(function(k){ s[k] = 0; });
   delete s._template; bkSave(s); if(typeof currentSheet !== 'undefined') showSheet(currentSheet); return true;
 };
+/* A deal started by a person (the New analysis dialog, Clear inputs, an import) is ALL CASH with ONE investor: no financing, no closing or sale costs, no fees and no partner structure until the guided steps add them
+   (blankStructure:true). The named template still applies to programmatic callers, so every saved deal and every audit deck keeps its own terms. With no GP, the LP takes every tier. */
 window.bkCreateNewDeal = function(opts){
   opts = opts || {};
+  if(opts.blankStructure){ opts = Object.assign({}, opts, { template:'Blank', gpShare:0, t2LP:1, t3LP:1, t4LP:1 }); ['closingCostsPct', 'closingPct', 'saleCostPct', 'acqFeePct', 'acquisitionFeePct'].forEach(function(k){ delete opts[k]; }); }
   var blank = {
     dealId       : opts.dealId       || '',
     name         : opts.name         || '',
@@ -127,7 +130,7 @@ window.bkCreateNewDeal = function(opts){
      it. Identity and economic fields are applied AFTER the zeroed template, so
      nothing the caller asked for is silently discarded. */
   Object.keys(opts).forEach(function(k){
-    if(k.charAt(0) === '_' || k === 'template') return;
+    if(k.charAt(0) === '_' || k === 'template' || k === 'blankStructure') return;
     blank[k] = opts[k];
   });
   try { localStorage.removeItem('bkcapital.cre.v02'); } catch(e){}

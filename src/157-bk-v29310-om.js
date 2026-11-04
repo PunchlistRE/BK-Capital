@@ -691,6 +691,7 @@ window.bkOMParse = parseOM; window.bkOMBuild = buildDeal; window.bkOMPageJpegs =
 window.bkOMCreate = function(){ if(!S.om || !((S.om.price || S.mPrice) && (S.om.units || S.mUnits))) return; window.__bkOMLast = { sources:S.om.sources || null }; var b = buildDeal(S.om, S.basis, S.file && S.file.name), file = S.file, info = S.info;
   if(b.needs && b.needs.length) return;   /* a decision the OM cannot make for you is still open */
   stampImp(b.deal, confOM(S.om, b, info, S.basis), S.file && S.file.name);
+  b.deal.blankStructure = true;   /* all cash, one investor: financing, costs and partners come from the guided steps */
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
   /* the OM's printed figures and the user's decisions travel with the deal (bkCreateNewDeal keeps only the deal fields) */
   if(b.deal._imp || b.deal._omReported || b.deal._omDecisions){ var si = bkLoad(); if(b.deal._imp) si._imp = b.deal._imp; if(b.deal._omReported) si._omReported = b.deal._omReported; if(b.deal._omDecisions) si._omDecisions = b.deal._omDecisions; bkSave(si); }
@@ -919,6 +920,7 @@ function listingDeal(om){
 }
 window.bkOMCreateListing = function(){ if(!S.om || !S.listingOnly || !(S.om.price || S.mPrice) || !(S.om.units || S.mUnits)) return; var b = listingDeal(S.om), file = S.file, info = S.info; stampImp(b.deal, b, S.file && S.file.name);
   window.__bkOMLast = { sources:S.om.sources || null };
+  b.deal.blankStructure = true;
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
   var si = bkLoad(); if(b.deal._imp) si._imp = b.deal._imp; si._omListing = { source:S.file && S.file.name, pages:S.om.sources, printedCapRate:S.om.capRates ? S.om.capRates.cur : null, unitMix:(S.om.unitMix || []).map(function(m){ return { type:m.type, units:m.units }; }), flags:S.om.flags || [] }; bkSave(si);
   var id = String(b.deal.dealId), jobs = []; if(file && typeof window.bkDocsAdd === 'function') jobs.push(window.bkDocsAdd('om', file, id));
@@ -949,7 +951,7 @@ window.bkOMIndexCreate = function(i){ var om = S.om, r = om && om.listRows && om
   var d = { dealId:'LST-' + slug(r.name + ' ' + (r.city || '')), name:r.name, location:[r.city, r.state].filter(Boolean).join(', '), dealType:'Acquisition', propertyType:mapT, status:'Pipeline', closing:'1/1/2027', units:0, gsf:single ? r.sizeLow : 0, purchasePrice:r.price, holdYears:5, rentGrowth:0.03, otherGrowth:0.02, opexGrowth:0.03, taxGrowth:0.02, closingCostsPct:0.02, saleCostPct:0.02 };
   var F = { purchasePrice:{ l:'check', why:'Read from the list; no listing page to confirm it.' }, units:{ l:'low', why:'The list states no unit count.' }, avgRent:{ l:'low', why:'The list states no rents.' }, taxes:{ l:'low', why:'The list states no expenses.' }, t12noi:{ l:'low', why:'The list states no NOI.' } };
   if(!single) F.gsf = { l:'low', why: r.sizeLow ? 'The list gives a size range of ' + r.sizeLow.toLocaleString('en-US') + ' to ' + r.sizeHigh.toLocaleString('en-US') + ' SF for ' + (r.properties || 'several') + ' properties; enter the building area.' : 'The list states no size.' };
-  stampImp(d, { fields:F, sum:confSummary(F) }, S.file && S.file.name); if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d);
+  stampImp(d, { fields:F, sum:confSummary(F) }, S.file && S.file.name); d.blankStructure = true; if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(d);
   var si = bkLoad(); if(d._imp) si._imp = d._imp; si._omListing = { source:S.file && S.file.name, printedCapRate:r.capPrinted, listRow:r, page:r.page }; bkSave(si); if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Home'); };
 function renderIndex(body){
   var om = S.om, R = om.listRows, ok = om.listCount == null || om.listCount === R.length;

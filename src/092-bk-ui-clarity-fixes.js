@@ -307,6 +307,9 @@ extend('Deal Underwrite','clarityInputs', function(o){
     // total cost basis = price plus closing costs plus the acquisition fee, which is
     // what the LTC constraint is measured against
     var basisCost = price * (1 + (Number(s.closingCostsPct)||0) + (Number(s.acqFeePct)||0));
+    var _hasDebt = (Number(s.acqLTV)||0) > 0 || (Number(s.acqLTC)||0) > 0 || (Number(s.acqRate)||0) > 0;
+    if(!_hasDebt){ o.main = (o.main||'') + note('&#9432;','<b>This deal has no financing: it is all cash.</b> Debt constraints (maximum LTV, LTC and minimum DSCR), the loan rate in the cases and refinance settings appear once financing is added on the Debt step.'); }
+    else
     o.main = (o.main||'')
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-constraint-grid">'
       + '<caption>What Each Debt Constraint Is Measured Against</caption>'

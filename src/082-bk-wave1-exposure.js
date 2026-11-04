@@ -989,10 +989,11 @@ extend('Dev Schedule','w1DevSchedule', function(o){
     return d.toLocaleDateString('en-US',{year:'numeric',month:'short'});
   }
   var rows = dv.phases.map(function(p){
-    return '<tr>'+lbl(esc(p[0]))+val(intf(p[1]))+val(intf(p[2]))+val(intf(p[3]))
-      + txt(dateAt(p[1])+' - '+dateAt(p[2]))+'</tr>';
+    var none = !(Number(p[3]) > 0);   /* a phase with no months is not on the calendar */
+    return '<tr>'+lbl(esc(p[0]))+val(none ? '-' : intf(p[1]))+val(none ? '-' : intf(p[2]))+val(none ? '-' : intf(p[3]))
+      + txt(none ? '-' : dateAt(p[1])+' - '+dateAt(p[2]))+'</tr>';
   }).join('');
-  var holdMo = Math.round((Number(s.holdYears)||10)*12);
+  var holdMo = Number(dv.hold) > 0 ? Math.round(Number(dv.hold)) : Math.round((Number(s.holdYears)||0)*12);   /* the modelled hold, as the schedule above uses it (no 10-year stand-in) */
   var last = dv.phases.length ? Number(dv.phases[dv.phases.length-1][2]) : 0;
   var ok = last <= holdMo;
   rows += '<tr class="grandtotal">'+lbl('TOTAL HOLD PERIOD')+val('1')+val(intf(holdMo))+val(intf(holdMo))
