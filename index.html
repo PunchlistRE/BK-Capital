@@ -22685,6 +22685,7 @@ window.bkNewDealDialog = function(id){
     + (a ? '<input type="hidden" id="pl-an" value="' + a.id + '">' : '<label class="f" for="pl-an">Analysis</label><select id="pl-an" class="left">' + analysisOptions('acquisition') + '</select>')
     + '<label class="f" for="pl-nm">Name</label><input type="text" id="pl-nm" class="left" placeholder="e.g. 14 Main Street" autocomplete="off">'
     + '<label class="chk"><input type="checkbox" id="pl-guide"> <span>Guide me step by step</span></label>'
+    + '<div class="pl-from"><span>Or start from a document</span><div><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import OM\')">Listing summary</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import OM\')">Offering memorandum</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import Deal\')">T-12</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import Rent Roll\')">Rent roll</button></div></div>'
     + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create</button></div>');
   var nm = document.getElementById('pl-nm'); if(nm){ nm.focus(); nm.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); bkNewDealGo(); } }); }
 };
@@ -22696,6 +22697,7 @@ window.bkNewDealGo = function(){
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id, blankStructure:true });
   if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
+window.bkNewDealFrom = function(sheet){ snapshot(); closeModal(); showSheet(sheet); };
 window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import Deal'); };
 
 window.bkClearInputsDialog = function(){
@@ -29186,6 +29188,12 @@ html body .rail .bk-adv-head{ color:#9BA6B2 !important; border-color:#40474F !im
 html body .rail .rail-group.bk-adv .rail-group-label, html body .rail .rail-group.bk-adv .rail-item{ opacity:.85; }
 html body .rail .bk-rail-toggle{ background:#363C44 !important; color:#fff !important; border-color:#4B545D !important; }
 html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
+
+/* New analysis dialog: start from a document */
+.pl-from{ margin:14px 0 4px; padding-top:12px; border-top:1px solid var(--ae-line); }
+.pl-from > span{ display:block; font:700 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--ae-dim); margin-bottom:8px; }
+.pl-from > div{ display:flex; flex-wrap:wrap; gap:6px; }
+.pl-from .pl-hbtn{ flex:1 1 auto; }
 </style>
 </body>
 </html>

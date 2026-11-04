@@ -31,6 +31,7 @@ window.bkNewDealDialog = function(id){
     + (a ? '<input type="hidden" id="pl-an" value="' + a.id + '">' : '<label class="f" for="pl-an">Analysis</label><select id="pl-an" class="left">' + analysisOptions('acquisition') + '</select>')
     + '<label class="f" for="pl-nm">Name</label><input type="text" id="pl-nm" class="left" placeholder="e.g. 14 Main Street" autocomplete="off">'
     + '<label class="chk"><input type="checkbox" id="pl-guide"> <span>Guide me step by step</span></label>'
+    + '<div class="pl-from"><span>Or start from a document</span><div><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import OM\')">Listing summary</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import OM\')">Offering memorandum</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import Deal\')">T-12</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import Rent Roll\')">Rent roll</button></div></div>'
     + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create</button></div>');
   var nm = document.getElementById('pl-nm'); if(nm){ nm.focus(); nm.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); bkNewDealGo(); } }); }
 };
@@ -42,6 +43,7 @@ window.bkNewDealGo = function(){
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id, blankStructure:true });
   if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
+window.bkNewDealFrom = function(sheet){ snapshot(); closeModal(); showSheet(sheet); };
 window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import Deal'); };
 
 window.bkClearInputsDialog = function(){

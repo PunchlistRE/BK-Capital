@@ -165,3 +165,9 @@ html body .rail .bk-adv-head{ color:#9BA6B2 !important; border-color:#40474F !im
 html body .rail .rail-group.bk-adv .rail-group-label, html body .rail .rail-group.bk-adv .rail-item{ opacity:.85; }
 html body .rail .bk-rail-toggle{ background:#363C44 !important; color:#fff !important; border-color:#4B545D !important; }
 html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
+
+/* New analysis dialog: start from a document */
+.pl-from{ margin:14px 0 4px; padding-top:12px; border-top:1px solid var(--ae-line); }
+.pl-from > span{ display:block; font:700 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--ae-dim); margin-bottom:8px; }
+.pl-from > div{ display:flex; flex-wrap:wrap; gap:6px; }
+.pl-from .pl-hbtn{ flex:1 1 auto; }
