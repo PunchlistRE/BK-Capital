@@ -234,3 +234,23 @@ html body .bk-ribbon .rb-tabs{ flex-wrap:wrap; overflow:visible; row-gap:0; }
 html body .bk-ribbon .rb-t{ line-height:34px; }
 html body .bk-ribbon .rb-t{ padding:0 9px; font-size:12.5px; }
 html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
+
+/* SUB-TABS, ONE ROW PER GROUP. A long section reads as a few short, named lists; every page is a boxed button; the current page is filled; rows alternate so they are told apart; nothing overlaps. */
+html body .bk-ribbon .rb-tabs{ display:flex; flex-direction:column; flex-wrap:nowrap; overflow:visible; gap:0; align-items:stretch; }
+html body .bk-ribbon .rb-row{ display:flex; align-items:flex-start; gap:12px; padding:5px 0; border-bottom:1px solid var(--ae-line); }
+html body .bk-ribbon .rb-row:nth-child(even){ background:var(--ae-cell-ro); margin:0 -12px; padding-left:12px; padding-right:12px; }
+html body .bk-ribbon .rb-row:last-child{ border-bottom:0; }
+html body .bk-ribbon .rb-gl{ flex:0 0 118px; padding-top:7px; font:700 10.5px/1.25 Inter,system-ui,sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ae-dim); }
+html body .bk-ribbon .rb-pages{ display:flex; flex-wrap:wrap; gap:4px; flex:1 1 auto; min-width:0; }
+html body .bk-ribbon .rb-t{ position:static; flex:0 0 auto; border:1px solid var(--ae-line); border-bottom-width:1px; background:var(--ae-cell); padding:0 11px; font:500 12.5px/26px Inter,"Segoe UI",system-ui,sans-serif; opacity:1; color:var(--ae-ink); }
+html body .bk-ribbon .rb-t + .rb-t::before{ display:none; }
+html body .bk-ribbon .rb-t:hover{ background:var(--ae-sel); border-color:var(--bk-navy-2); }
+html body .bk-ribbon .rb-t.on{ background:var(--bk-navy); border-color:var(--bk-navy); color:#fff; font-weight:650; box-shadow:none; }
+html[data-theme="dark"] body .bk-ribbon .rb-t.on{ background:#1f4e8c; border-color:#6fb4f2; color:#fff !important; }
+@media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on{ background:#1f4e8c; border-color:#6fb4f2; color:#fff !important; } }
+html body .bk-ribbon .rb-sep{ display:none; }
+html body .bk-ribbon .rb-cmds{ align-self:flex-start; padding-top:5px; }
+@media (max-width:760px){ html body .bk-ribbon .rb-gl{ flex-basis:84px; } }
+/* the centre title of the header gives way before it can run into the buttons */
+@media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
+@media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }

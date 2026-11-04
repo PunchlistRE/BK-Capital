@@ -19276,7 +19276,9 @@ function ribbon(frame, sheet){
   var dev = false; try { var d = bkLoad(); dev = !!d && /develop/i.test(String(d.dealType || '')); } catch(e){}
   var tab = (typeof NAV_TABS !== 'undefined' ? NAV_TABS : []).find(function(t){ return t.groups.some(function(id){ var x = GROUPS.find(function(y){ return y.id === id; }); return x && x.sheets.indexOf(sheet) > -1; }); });
   var gs = tab ? tab.groups.map(function(id){ return GROUPS.find(function(x){ return x.id === id; }); }).filter(function(x){ return x && !x.hidden && (x.id !== 'dev' || dev || x.sheets.indexOf(sheet) > -1); }) : [];
-  var sub = gs.map(function(g){ return g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); }).filter(Boolean).join('<span class="rb-sep" aria-hidden="true"></span>');
+  /* each group of the section is its own row, named at the left when there is more than one, so a long section reads as a few short lists rather than one wrapped line */
+  var multi = gs.filter(function(g){ return g.sheets.some(function(n){ return typeof RENDERERS[n] === 'function'; }); }).length > 1;
+  var sub = gs.map(function(g){ var btns = g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); return btns ? '<div class="rb-row">' + (multi ? '<span class="rb-gl">' + esc(g.label) + '</span>' : '') + '<div class="rb-pages">' + btns + '</div></div>' : ''; }).join('');
   var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
   var h = '<div class="bk-ribbon" role="toolbar" aria-label="Pages and commands"><div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
     + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
@@ -22099,9 +22101,15 @@ window.BKReg.addFields([
   F('opexGrowth', 'Annual expense growth', 'pct', { zeroOk:true, sug:sug(0.03, 'Expenses usually grow at about 3% a year.') }),
   F('saleCostPct', 'Cost of sale, % of price', 'pct', { zeroOk:true, sug:sug(0.02, 'Broker and closing costs on a sale are about 2%.') }),
   /* partnership */
-  F('gpShare', 'GP / sponsor equity share', 'pct', { zeroOk:true, help:'Blank or 0% means one investor owns all of it.' }), F('pref', 'Preferred return', 'pct', { zeroOk:true }),
-  F('hurdle2', 'Second hurdle (IRR)', 'pct', { zeroOk:true }), F('hurdle3', 'Third hurdle (IRR)', 'pct', { zeroOk:true }),
-  F('t2LP', 'LP share above the preferred return', 'pct', { zeroOk:true }), F('t3LP', 'LP share above the second hurdle', 'pct', { zeroOk:true }), F('t4LP', 'LP share above the third hurdle', 'pct', { zeroOk:true }),
+  F('gpShare', 'GP / sponsor equity share', 'pct', { zeroOk:true, help:'The share of the equity cheque the GP puts in; LPs put in the rest. Type 10 for 10%. Blank or 0% means one investor puts in all of it.' }), F('pref', 'Preferred return', 'pct', { zeroOk:true, help:'The yearly return LPs receive first, before the GP shares in profit. Type 8 for 8%. Typical: 6% to 10%.' }),
+  F('hurdle2', 'Second hurdle (IRR)', 'pct', { zeroOk:true, help:'The IRR LPs must reach before the split changes. Type 12 for 12%. Must be above the preferred return. Typical: 10% to 15%.' }), F('hurdle3', 'Third hurdle (IRR)', 'pct', { zeroOk:true, help:'A higher IRR where the split changes again. Type 18 for 18%. Must be above the second hurdle. Typical: 15% to 20%.' }),
+  F('t2LP', 'LP share above the preferred return', 'pct', { zeroOk:true, help:'Of each extra dollar of profit above the preferred return, the LP keeps this share and the GP gets the rest (the promote). Type 80 for an 80/20 split. Typical: 70% to 90%.' }), F('t3LP', 'LP share above the second hurdle', 'pct', { zeroOk:true, help:'The LP share once the second hurdle is passed. Usually lower than the share before it. Typical: 60% to 80%.' }), F('t4LP', 'LP share above the third hurdle', 'pct', { zeroOk:true, help:'The LP share once the third hurdle is passed. Usually the lowest. Typical: 50% to 70%.' }),
+  /* decision thresholds: the lines the Hold / Refinance / Sell tests are measured against */
+  F('capRefiHeadroom', 'Refinance: minimum headroom, $', 'money', { zeroOk:true, help:'How much cash a refinance must free up above the loan you have now before the test says refinance. Typical: $500,000 to $1,000,000 on a small deal.', sug:sug(1000000, 'The workbook default is $1,000,000; set it to what is worth the cost and effort of a refinance for you.') }),
+  F('capRefiDebtYield', 'Refinance: minimum debt yield', 'pct', { zeroOk:true, help:'Year-1 NOI divided by the new loan. Lenders want at least this much income per dollar lent. Type 10 for 10%. Typical: 8% to 11%.', sug:sug(0.1, 'The workbook default is 10%.') }),
+  F('capSellCoE', 'Sell: cash-on-equity below', 'pct', { zeroOk:true, help:'If yearly cash flow after debt service divided by equity falls below this, the test says sell. Type 4 for 4%. Typical: 3% to 6%.', sug:sug(0.04, 'The workbook default is 4%.') }),
+  F('capSellNOIGrowth', 'Sell: NOI growth below', 'pct', { zeroOk:true, help:'If underwritten growth falls below this, the test says sell. Type 2 for 2%. Typical: 1% to 3%.', sug:sug(0.02, 'The workbook default is 2%.') }),
+  F('capKeepCoE', 'Keep: cash-on-equity at or above', 'pct', { zeroOk:true, help:'At or above this cash-on-equity the test says keep holding. It must not be lower than the sell level. Type 5.5 for 5.5%. Typical: 5% to 8%.', sug:sug(0.055, 'The workbook default is 5.5%.') }),
   F('sourcesUses', 'Sources and uses', 'derived'),
   /* development */
   F('sourceConstruction', 'Construction budget (hard + soft)', 'money', { help:'Hard and soft costs together; the cost ladder is scaled to it.' }),
@@ -22207,10 +22215,11 @@ R.addWorkflow('acquisition', [
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
-  S('sources', 'Sources and uses', 'What the deal costs in total and where the money comes from: your equity and the loan. It is read from the model, not typed; check that sources equal uses.', 'Sources & Uses', [q('sourcesUses', 'derived')], { skippable:true }),
-  S('partners', 'Investors and LP / GP economics', 'A new deal has one investor who owns all of it. If there are other partners, enter the GP share, the preferred return and how profit splits above each hurdle. Skip it to keep one investor.', 'Deal Underwrite',
-    [q('gpShare'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
-  EXIT ]);
+  S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Costs and the loan are read from the model; the GP share is the one thing to enter here.', 'Sources & Uses', [q('gpShare', 'optional', { label:'GP / sponsor share of the equity' })], { skippable:true }),
+  S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
+    [q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
+  EXIT,
+  S('decision', 'Decision thresholds', 'The lines the hold, refinance or sell tests are measured against. Without them the decision test has nothing to compare to. Skip to keep the standard ones.', 'Capital Allocation', [q('capRefiHeadroom'), q('capRefiDebtYield'), q('capSellCoE'), q('capSellNOIGrowth'), q('capKeepCoE')], { skippable:true }) ]);
 
 R.addWorkflow('development', [
   S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' })]),
@@ -22218,9 +22227,9 @@ R.addWorkflow('development', [
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilized.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
-  S('sources', 'Sources and uses', 'What the deal costs in total and where the money comes from: your equity and the loan. It is read from the model, not typed; check that sources equal uses.', 'Sources & Uses', [q('sourcesUses', 'derived')], { skippable:true }),
-  S('partners', 'Investors and LP / GP economics', 'A new deal has one investor who owns all of it. If there are other partners, enter the GP share, the preferred return and how profit splits above each hurdle. Skip it to keep one investor.', 'Deal Underwrite',
-    [q('gpShare'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
+  S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Costs and the loan are read from the model; the GP share is the one thing to enter here.', 'Sources & Uses', [q('gpShare', 'optional', { label:'GP / sponsor share of the equity' })], { skippable:true }),
+  S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
+    [q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT ]);
 
 R.addWorkflow('valuation', [
@@ -25641,8 +25650,74 @@ function readLine(id, s){
   return '';
 }
 
+/* ------------------------------------------------------------ safeguards: a figure that cannot be right is stopped (red, and the step will not continue); one that is unusual is flagged (amber) with what is typical */
+var LIM = { acqLTV:{ hi:1, soft:[0.4, 0.8], say:'Lenders rarely go above 75% on stabilized multifamily; above 80% is unusual.' }, conLTC:{ hi:1, soft:[0.5, 0.75], say:'Construction lenders usually lend 60% to 70% of cost.' },
+  acqRate:{ hi:0.25, soft:[0.03, 0.12], say:'Rates between 4% and 9% are typical today.' }, conRate:{ hi:0.25, soft:[0.04, 0.12], say:'Construction rates are usually 6% to 10%.' }, permRate:{ hi:0.25, soft:[0.03, 0.12], say:'Permanent rates are usually 4% to 8%.' },
+  acqAmort:{ hi:40, soft:[20, 30], say:'25 to 30 years is standard.' }, permAmort:{ hi:40, soft:[20, 30], say:'25 to 30 years is standard.' }, acqIO:{ hi:10, soft:[0, 5], say:'Interest-only periods are usually 0 to 3 years.' },
+  acqOrigFee:{ hi:0.1, soft:[0, 0.02], say:'Origination fees are usually 0.5% to 1.5%.' }, closingCostsPct:{ hi:0.15, soft:[0.005, 0.04], say:'Closing costs are usually 1.5% to 3% of price.' },
+  vacancy:{ hi:0.9, soft:[0.03, 0.2], say:'Vacancy is usually 5% to 10%.' }, mgmtPct:{ hi:0.15, soft:[0.02, 0.06], say:'Management fees are usually 3% to 5% of income.' },
+  exitCap:{ hi:0.25, lo:0.02, soft:[0.04, 0.09], say:'Exit cap rates are usually 4.5% to 8%.' }, rentGrowth:{ hi:0.15, soft:[0, 0.05], say:'Long-run rent growth is usually 2% to 3.5%.' }, opexGrowth:{ hi:0.15, soft:[0, 0.05], say:'Expense growth is usually about 3%.' },
+  saleCostPct:{ hi:0.15, soft:[0.005, 0.04], say:'Selling costs are usually about 2%.' }, holdYears:{ hi:15, lo:1, soft:[3, 10], say:'The model runs up to 15 years; five to seven is typical.' },
+  gpShare:{ hi:1, soft:[0, 0.5], say:'GP co-investment is usually 5% to 20% of the equity. Above 50% the sponsor puts in most of it.' }, pref:{ hi:1, soft:[0.05, 0.12], say:'Preferred returns are usually 6% to 10%.' },
+  hurdle2:{ hi:1, soft:[0.08, 0.25], say:'A second hurdle is usually 10% to 15%.' }, hurdle3:{ hi:1, soft:[0.1, 0.3], say:'A third hurdle is usually 15% to 20%.' },
+  t2LP:{ hi:1, soft:[0.4, 1], say:'LP shares above the preferred return are usually 70% to 90%.' }, t3LP:{ hi:1, soft:[0.4, 1], say:'LP shares fall as the hurdles are passed: usually 60% to 80% here.' }, t4LP:{ hi:1, soft:[0.4, 1], say:'LP shares fall as the hurdles are passed: usually 50% to 70% here.' },
+  predevMonths:{ hi:60, soft:[0, 18], say:'Pre-development usually takes 3 to 12 months.' }, constructionMonths:{ hi:84, soft:[12, 30], say:'Mid-rise buildings usually take 16 to 24 months.' }, leaseupMonths:{ hi:60, soft:[3, 24], say:'Lease-up usually takes 10 to 16 months.' },
+  capRefiDebtYield:{ hi:1, soft:[0.06, 0.13], say:'Lenders usually want a debt yield of 8% to 11%.' }, capSellCoE:{ hi:1, soft:[0.01, 0.1], say:'Sell levels for cash-on-equity are usually 3% to 6%.' }, capSellNOIGrowth:{ hi:1, soft:[0, 0.05], say:'Growth sell levels are usually 1% to 3%.' }, capKeepCoE:{ hi:1, soft:[0.03, 0.15], say:'Keep levels for cash-on-equity are usually 5% to 8%.' },
+  capRefiHeadroom:{ hi:1e9, say:'' },
+  units:{ hi:20000 } };
+function pctTxt(v){ return (Math.round(v * 10000) / 100) + '%'; }
+function checks(sec, s){
+  var out = {}, val = function(k){ var fl = null; sec.fields.forEach(function(x){ if(x.k === k) fl = x; }); return fl ? cur(s, fl) : s[k]; }, num = function(k){ var v = val(k); return v === '' || v == null ? NaN : Number(v); };
+  function add(k, lvl, text){ (out[k] = out[k] || []).push({ lvl:lvl, text:text }); }
+  sec.fields.forEach(function(fl){ if(fl.t === 'text' || fl.t === 'bool') return; var v = num(fl.k); if(!isFinite(v) || v === 0 && !LIM[fl.k]) return; var L = LIM[fl.k] || {}, p = fl.t === 'pct', show = p ? pctTxt(v) : v.toLocaleString('en-US');
+    if(v < 0){ add(fl.k, 'err', show + ' is negative. This cannot be below zero.'); return; }
+    if(p && v > (L.hi != null ? L.hi : 1)){ add(fl.k, 'err', show + ' is more than ' + pctTxt(L.hi != null ? L.hi : 1) + (L.hi == null || L.hi === 1 ? '. A percentage cannot be over 100 percent: type 8 for 8 percent.' : '. That cannot be right: type 8 for 8 percent.') + (L.say ? ' ' + L.say : '')); return; }
+    if(!p && L.hi != null && v > L.hi){ add(fl.k, 'err', show + ' is more than the model allows (' + L.hi.toLocaleString('en-US') + '). ' + (L.say || '')); return; }
+    if(L.lo != null && v > 0 && v < L.lo){ add(fl.k, 'err', show + ' is below ' + (p ? pctTxt(L.lo) : L.lo) + ', which is not a credible figure here. Percentages are typed as whole numbers: 5 means 5 percent.'); return; }
+    if(v === 0) return;
+    if(p && v < 0.01 && L.soft && L.soft[0] >= 0.03) add(fl.k, 'warn', show + ' is very small. Percentages are typed as whole numbers: did you mean ' + (v * 100) + ' percent?');
+    else if(L.soft && (v < L.soft[0] || v > L.soft[1])) add(fl.k, 'warn', show + ' is outside the usual range. ' + (L.say || '')); });
+  /* between fields */
+  var pref = num('pref'), h2 = num('hurdle2'), h3 = num('hurdle3'), t2 = num('t2LP'), t3 = num('t3LP'), t4 = num('t4LP'), gp = num('gpShare'), io = num('acqIO'), am = num('acqAmort');
+  if(isFinite(h2) && isFinite(pref) && h2 > 0 && pref > 0 && h2 <= pref) add('hurdle2', 'err', 'The second hurdle (' + pctTxt(h2) + ') must be higher than the preferred return (' + pctTxt(pref) + '); otherwise the split above the pref never applies.');
+  if(isFinite(h3) && isFinite(h2) && h3 > 0 && h2 > 0 && h3 <= h2) add('hurdle3', 'err', 'The third hurdle (' + pctTxt(h3) + ') must be higher than the second hurdle (' + pctTxt(h2) + ').');
+  if(isFinite(h3) && h3 > 0 && !(h2 > 0)) add('hurdle3', 'warn', 'A third hurdle needs a second hurdle below it.');
+  if(isFinite(t3) && isFinite(t2) && t3 > t2) add('t3LP', 'warn', 'The LP share usually falls as the hurdles are passed, but this (' + pctTxt(t3) + ') is higher than the share before it (' + pctTxt(t2) + ').');
+  if(isFinite(t4) && isFinite(t3) && t4 > t3) add('t4LP', 'warn', 'The LP share usually falls as the hurdles are passed, but this (' + pctTxt(t4) + ') is higher than the share before it (' + pctTxt(t3) + ').');
+  if(isFinite(gp) && gp > 0 && !(pref > 0) && sec.fields.some(function(x){ return x.k === 'pref'; })) add('pref', 'info', 'There is a GP share but no preferred return. Without one, profit is split from the first dollar.');
+  var ks = num('capSellCoE'), kk = num('capKeepCoE'); if(isFinite(ks) && isFinite(kk) && ks > 0 && kk > 0 && kk < ks) add('capKeepCoE', 'err', 'The keep level (' + pctTxt(kk) + ') cannot be lower than the sell level (' + pctTxt(ks) + '); between them the test would say both keep and sell.');
+  if(isFinite(io) && isFinite(am) && am > 0 && io > am) add('acqIO', 'err', 'Interest-only years (' + io + ') cannot be longer than the amortization (' + am + ' years).');
+  return out; }
+function msgHtml(list){ return (list || []).map(function(m){ return '<div class="' + m.lvl + '">' + (m.lvl === 'err' ? 'Fix this: ' : m.lvl === 'warn' ? 'Check this: ' : '') + esc(m.text) + '</div>'; }).join(''); }
+function errorsOf(sec, s){ var m = checks(sec, s), o = []; Object.keys(m).forEach(function(k){ m[k].forEach(function(x){ if(x.lvl === 'err') o.push({ k:k, text:x.text }); }); }); return o; }
+function paintMsgs(sec){ var s = bkLoad(), m = checks(sec, s); sec.fields.forEach(function(fl){ var el = document.getElementById('gdm-' + fl.k); if(el) el.innerHTML = msgHtml(m[fl.k]); });
+  var errs = errorsOf(sec, s), btn = document.getElementById('gd-next'); if(btn){ btn.disabled = errs.length > 0; btn.title = errs.length ? 'Fix the red items first' : ''; btn.textContent = errs.length ? 'Fix the red items to continue' : 'Looks right, continue'; btn.style.opacity = errs.length ? '.55' : ''; } }
+/* sources and uses: what the deal costs, what the loan covers, and who puts up the equity. Read from the engine under the figures being edited. */
+function isDevS(s){ return /develop/i.test(String(s.dealType || '')); }
+function suInner(s0){
+  var dev = isDevS(s0), run = function(fn){ return safe(function(){ return window.bkRunWith(Object.assign({}, st.draft), fn); }, null); };
+  var d = run(function(){ return bkDebt(); }), uses = [], loan = 0, equity = 0, total = 0, note = '';
+  if(dev){ var f = run(function(){ return bkDevFundingV10(); }); if(!f || !isFinite(f.levered) || !(f.levered > 0)) return '<div class="gd-card" style="font-size:13px">Enter the land price, the construction budget and the financing first; then the cost, the loan and the equity appear here.</div>';
+    total = f.levered; loan = Number(f.commit) || 0; equity = Number(f.equityTotal) || Math.max(0, total - loan); uses = [['Total project cost, including interest and fees', total]]; note = 'The construction loan funds up to its commitment; the equity pays the rest, and goes in first.'; }
+  else { var p = Number(s0.purchasePrice) || 0, v = Object.assign({}, s0, st.draft), cl = p * Number(v.closingCostsPct || 0), af = p * (safe(function(){ return bkAcqFeePct(v); }, 0) || 0), lf = d && d.fee ? Number(d.fee) : 0;
+    if(!(p > 0)) return '<div class="gd-card" style="font-size:13px">Enter the purchase price and the financing first; then the cost, the loan and the equity appear here.</div>';
+    uses = [['Purchase price', p], ['Closing costs', cl], ['Acquisition fee', af], ['Loan origination fee', lf]].filter(function(r){ return r[1] > 0; }); total = uses.reduce(function(t, r){ return t + r[1]; }, 0);
+    loan = d && v.debtEnabled !== false ? Number(d.loan) || 0 : 0; equity = Math.max(0, total - loan); note = loan ? 'Equity is the cost left after the loan.' : 'No loan: the equity pays for everything (all cash).'; }
+  var v2 = Object.assign({}, s0, st.draft), gp = Number(v2.gpShare) || 0, gpD = equity * gp, lpD = equity - gpD, tie = Math.abs(loan + equity - total) < 1;
+  function row(a, b, c, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + esc(a) + '</td><td style="text-align:right">' + (b == null ? '' : money0(b)) + '</td><td style="text-align:right">' + (c == null ? '' : esc(c)) + '</td></tr>'; }
+  var T = 'width:100%;border-collapse:collapse;font-size:13px', cells = 'padding:6px 8px;border-bottom:1px solid var(--line,#e3e8ee)';
+  return '<div class="gd-card gd-su"><style>.gd-su td,.gd-su th{' + cells + '}.gd-su th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500,#566a80)}.gd-su tr.t td{font-weight:700;border-top:2px solid #0e2a4a}</style>'
+   + '<table style="' + T + '"><thead><tr><th>Uses: what the deal costs</th><th style="text-align:right">$</th><th></th></tr></thead><tbody>' + uses.map(function(r){ return row(r[0], r[1]); }).join('') + row('Total uses', total, null, 't') + '</tbody></table>'
+   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Sources: where the money comes from</th><th style="text-align:right">$</th><th style="text-align:right">% of cost</th></tr></thead><tbody>'
+   + row(dev ? 'Construction loan' : 'Loan', loan, total ? pctTxt(loan / total) : '') + row('Equity', equity, total ? pctTxt(equity / total) : '') + row('Total sources', loan + equity, null, 't') + '</tbody></table>'
+   + '<table style="' + T + ';margin-top:14px"><thead><tr><th>Who puts up the equity</th><th style="text-align:right">$</th><th style="text-align:right">% of equity</th></tr></thead><tbody>'
+   + row('GP / sponsor', gpD, gp ? pctTxt(gp) : '0% (none)') + row('Limited partners (LPs)', lpD, pctTxt(1 - gp)) + row('Total equity', equity, null, 't') + '</tbody></table>'
+   + '<div style="font-size:12.5px;margin-top:10px;color:var(--ink-500,#566a80)">' + esc(note) + (tie ? '' : ' <b style="color:#a32f24">Sources and uses differ by ' + money0(Math.abs(loan + equity - total)) + '.</b>') + (gp ? '' : ' With no GP share, one investor puts up all of the equity; add a GP share above if the sponsor co-invests.') + ' LP names and amounts are added on the Investors page.</div></div>'; }
+function paintSU(sec){ var el = document.getElementById('gd-su'); if(el) el.innerHTML = suInner(bkLoad()); }
+
 /* ------------------------------------------------------------ pages */
-function css(){ return '<style id="bk-guide-css">html.bk-guide .rail,html.bk-guide .tabnav,html.bk-guide .bk-flow,html.bk-guide .side-col,html.bk-guide .bk-stepnav,html.bk-guide .title-block,html.bk-guide .pl-toolbar{display:none !important}html.bk-guide .shell{grid-template-columns:1fr !important}'
+function css(){ return css0() + '<style id="bk-guide-safe">.gd-m{grid-column:1/-1;font-size:12.5px}.gd-m div{padding:5px 9px;border-left:3px solid;margin-top:5px;line-height:1.4}.gd-m .err{color:#a32f24;background:#fbe6e3;border-color:#c0392b}.gd-m .warn{color:#8a5a12;background:#fbf1dc;border-color:#b7791f}.gd-m .info{color:#1b3f66;background:#eaf1fa;border-color:#1f4e8c}#gd-next:disabled{cursor:not-allowed}</style>'; }
+function css0(){ return '<style id="bk-guide-css">html.bk-guide .rail,html.bk-guide .tabnav,html.bk-guide .bk-flow,html.bk-guide .side-col,html.bk-guide .bk-stepnav,html.bk-guide .title-block,html.bk-guide .pl-toolbar{display:none !important}html.bk-guide .shell{grid-template-columns:1fr !important}'
  + '.gd{max-width:780px;margin:0 auto;padding:26px 18px 90px}.gd h1{font-size:26px;margin:6px 0 4px}.gd .sub{color:var(--ink-500,#566a80);font-size:14px;margin:0 0 18px;line-height:1.5}.gd-prog{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 22px}.gd-chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line,#dbe4ec);background:var(--surface,#fff);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;color:inherit}.gd-chip i{font-style:normal;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;background:#e8eef5}.gd-chip.cur{border-color:#1a7fd6;box-shadow:0 0 0 1px #1a7fd6 inset;font-weight:700}.gd-chip.done i{background:#2e8b57;color:#fff}.gd-chip.skipped i{background:#e3a72f;color:#fff}.gd-chip.partial i{background:#e3a72f;color:#fff}.gd-chip.filled i{background:#bfdbf5;color:#12609f}'
  + '.gd-card{background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:12px;padding:18px 20px;margin-bottom:14px}.gd-f{display:grid;grid-template-columns:1fr 190px;gap:6px 16px;align-items:center;padding:10px 0;border-top:1px solid var(--line,#eef2f6)}.gd-f:first-child{border-top:0}.gd-f label{font-size:14px;font-weight:600}.gd-f .h{font-size:12px;color:var(--ink-500,#566a80);font-weight:400;display:block;margin-top:2px}.gd-f input[type=text]{width:100%;padding:9px 11px;border:1px solid var(--line,#dbe4ec);border-radius:8px;font:inherit;font-size:15px;text-align:right}.gd-f input.chg{border-color:#1a7fd6;background:#f0f7fe}'
  + '.gd-view{font-size:11px;margin-left:6px;color:#12609f}.gd-chk{font-size:12.5px;font-weight:400 !important;color:var(--ink-500,#566a80);display:flex;gap:6px;align-items:center}.gd-adv{background:#fffaf0;border:1px solid #f0dfb4;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13.5px}.gd-adv b{display:block;margin-bottom:6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a6410}.gd-adv .it{display:flex;gap:10px;align-items:center;padding:5px 0;border-top:1px solid #f4e8c8}.gd-adv .it:first-of-type{border-top:0}.gd-adv .it span{flex:1}.gd-imp{font-size:13px;background:#f0f7fe;border:1px solid #bfdbf5;border-radius:10px;padding:9px 14px;margin-bottom:14px;display:flex;gap:16px;flex-wrap:wrap}.gd-imp b{font-size:15px}.gd-dbt{font-size:13px;background:#f6f8fb;border-radius:10px;padding:10px 14px;margin-top:12px;line-height:1.55}.gd-where{display:grid;grid-template-columns:1fr;gap:8px}.gd-w{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line,#dbe4ec);background:var(--surface,#fff);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;font:inherit;color:inherit}.gd-w:hover{border-color:#1a7fd6}.gd-w i{font-style:normal;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;background:#e8eef5}.gd-w.done i{background:#2e8b57;color:#fff}.gd-w.filled i{background:#bfdbf5;color:#12609f}.gd-w.skipped i,.gd-w.partial i{background:#e3a72f;color:#fff}.gd-w small{display:block;color:var(--ink-500,#566a80);font-size:12.5px;margin-top:2px}.gd-sug{grid-column:1/-1;font-size:12.5px;background:#eef5fc;border-left:3px solid #1a7fd6;border-radius:0 8px 8px 0;padding:7px 11px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.gd-sug button{margin-left:auto}.gd-tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:middle}.gd-tag.from{background:#e3f3ea;color:#1f7a4c}.gd-tag.assumed{background:#fbf1d9;color:#8a6410}'
@@ -25673,7 +25748,7 @@ function fieldRow(fl, s, g){
   var sug = fl.sug ? safe(function(){ return fl.sug(Object.assign({}, s, st.draft)); }, null) : null, empty = fl.t === 'text' ? !String(v || '').trim() : !(Number(v) > 0), same = sug && Math.abs(Number(v) - sug.v) < 1e-9;
   var sugRow = sug && !same && (empty || (g.assumed.indexOf(fl.k) >= 0 && !g.confirmed[fl.k])) ? '<div class="gd-sug"><span>I suggest <b>' + esc(fmt(fl, sug.v)) + (fl.t === 'pct' ? '%' : '') + '</b>. ' + esc(sug.why) + '</span><button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideUse(\'' + fl.k + '\')">Use this</button></div>' : '';
   var chk = unchecked || flagged ? (flagged ? '<div style="font-size:12px;margin:0 0 4px">' + esc(imp.why) + '</div>' : '') + '<label class="gd-chk"><input type="checkbox" onchange="bkGuideCheck(\'' + fl.k + '\',this.checked)"> I have checked this figure</label>' : '';
-  return '<div class="gd-f"><label for="' + id + '">' + esc(fl.label + (fl.t === 'pct' && fl.label.indexOf('%') < 0 ? ' (%)' : '')) + (fl.req ? ' <span style="color:#b23a2c">*</span>' : '') + tag + (fl.help ? '<span class="h">' + esc(fl.help) + '</span>' : '') + '</label>' + input + sugRow + (chk ? '<div style="grid-column:1/-1">' + chk + '</div>' : '') + '</div>';
+  return '<div class="gd-f"><label for="' + id + '">' + esc(fl.label + (fl.t === 'pct' && fl.label.indexOf('%') < 0 ? ' (%)' : '')) + (fl.req ? ' <span style="color:#b23a2c">*</span>' : '') + tag + (fl.help ? '<span class="h">' + esc(fl.help) + '</span>' : '') + '</label>' + input + '<div class="gd-m" id="gdm-' + fl.k + '">' + msgHtml((st.msgs || {})[fl.k]) + '</div>' + sugRow + (chk ? '<div style="grid-column:1/-1">' + chk + '</div>' : '') + '</div>';
 }
 function changeList(s, sec){ var rows = Object.keys(st.draft).map(function(k){ var fl = sec.fields.filter(function(x){ return x.k === k; })[0]; if(!fl) return ''; var a = fmt(fl, s[k]), b = fmt(fl, st.draft[k]), sfx = fl.t === 'pct' ? '%' : ''; return esc(fl.label) + ': ' + (a === '' ? '(blank)' : esc(a) + sfx) + ' → <b style="display:inline">' + esc(b) + sfx + '</b>'; }).filter(Boolean); return rows; }
 function resultStrip(s, sec){
@@ -25690,8 +25765,9 @@ function stepScreen(secs, sec, s, g){
   var adv = advice(s).filter(function(a){ return a.sec === sec.id; }).slice(0, 3);
   var advBox = adv.length ? '<div class="gd-adv"><b>Worth a look, from what is entered now</b>' + adv.map(function(a){ return '<div class="it"><span>' + esc(a.text) + '</span>' + (a.fix ? '<button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideProp(\'' + a.fix.k + '\',' + a.fix.v + ')">' + esc(a.fix.label) + '</button>' : '') + '</div>'; }).join('') + '</div>' : '';
   var rr = sec.id === 'income' ? rentRollNote(s) : '';
+  st.msgs = checks(sec, s);
   body += fromNote + advBox + '<div id="gd-imp"></div><div class="gd-card">' + sec.fields.map(function(fl){ return fieldRow(fl, s, g); }).join('') + rr + resultStrip(s, sec) + '</div>' + (sec.id === 'debt' && !/develop/i.test(String(s.dealType || '')) ? '<div id="gd-dbt"></div>' : '');
-  body += '<div id="gd-chg"></div>';
+  body += (sec.id === 'sources' ? '<div id="gd-su">' + suInner(s) + '</div>' : '') + '<div id="gd-chg"></div>';
   body += '<div class="gd-act"><button type="button" class="gd-btn" id="gd-next" onclick="bkGuideNext()">Looks right, continue</button><button type="button" class="gd-btn ghost" onclick="bkGuideSkip()">Skip for now</button>' + (i > 0 ? '<button type="button" class="gd-btn link" onclick="bkGuideBack()">Back</button>' : '') + '<button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideDetail(\'' + sec.sheet + '\')">Add more detail on the full sheet</button></div><div style="margin-top:6px"><button type="button" class="gd-btn link" onclick="bkGuideNew()">Start a different deal</button></div>';
   body += (miss.length ? '<p class="sub" style="margin-top:10px">Still needed here: ' + miss.map(function(m){ return esc(m.label.toLowerCase()); }).join(', ') + '.</p>' : '') + '</div>';
   return body;
@@ -25753,8 +25829,9 @@ function impact(sec){
   el.innerHTML = '<div class="gd-imp">' + ds + '</div>';
   var db = document.getElementById('gd-dbt'); if(db && sec.id === 'debt'){ var d = safe(function(){ return window.bkRunWith(Object.assign({}, st.draft), function(){ return bkDebt(); }); }, null); if(d && d.loan){ var bd = d.binding === 'DSCR' ? 'the coverage requirement' : d.binding === 'LTC' ? 'cost' : d.binding === 'LTV' ? 'loan-to-value' : d.binding; db.innerHTML = '<div class="gd-dbt"><b>What the lender would actually give</b><br>Loan <b>' + money0(d.loan) + '</b> (' + pc(d.ltv, 1) + ' of price), sized by <b>' + esc(bd) + '</b>. At the loan-to-value alone it would be ' + money0(d.byLTV) + (d.byDSCR ? ', and the coverage limit is ' + money0(d.byDSCR) : '') + '. Year-1 coverage ' + (d.dscr ? d.dscr.toFixed(2) + 'x' : '—') + ', equity needed <b>' + money0(d.equity) + '</b>.</div>'; } else db.innerHTML = ''; }
 }
-function refreshChanges(sec){ var s = bkLoad(), rows = changeList(s, sec), el = document.getElementById('gd-chg'), btn = document.getElementById('gd-next'); impact(sec); if(el) el.innerHTML = rows.length ? '<div class="gd-chg"><b>You are about to change</b>' + rows.join('<br>') + '</div>' : ''; if(btn) btn.textContent = rows.length ? 'Confirm ' + rows.length + ' change' + (rows.length === 1 ? '' : 's') + ' and continue' : 'Looks right, continue';
+function refreshChanges(sec){ var s = bkLoad(), rows = changeList(s, sec), el = document.getElementById('gd-chg'), btn = document.getElementById('gd-next'); impact(sec); if(sec.id === 'sources') paintSU(sec); if(el) el.innerHTML = rows.length ? '<div class="gd-chg"><b>You are about to change</b>' + rows.join('<br>') + '</div>' : ''; if(btn) btn.textContent = rows.length ? 'Confirm ' + rows.length + ' change' + (rows.length === 1 ? '' : 's') + ' and continue' : 'Looks right, continue';
   [].forEach.call(document.querySelectorAll('.gd-f input[type=text]'), function(i){ var k = (i.id || '').replace('gdf-', ''); i.classList.toggle('chg', Object.prototype.hasOwnProperty.call(st.draft, k)); }); }
+var refreshChanges0 = refreshChanges; refreshChanges = function(sec){ refreshChanges0(sec); paintMsgs(sec); };
 window.bkGuideCheck = function(k, on){ if(on) st.checked[k] = 1; else delete st.checked[k]; };
 window.bkGuideProp = function(k, v){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0]; if(!sec) return; st.step = sec.id; st.screen = ''; st.draft = {}; st.draft[k] = v; show(); setTimeout(function(){ refreshChanges(sec); }, 0); };
 window.bkGuideWhere = function(){ st.screen = 'where'; st.draft = {}; show(); };
@@ -25766,7 +25843,7 @@ function apply(sec){ var s = bkLoad(), g = gstate(s), ch = st.draft, keys = Obje
   if(s._imp && s._imp.fields) sec.fields.forEach(function(fl){ if(st.checked[fl.k] || fl.k in ch) delete s._imp.fields[fl.k]; });
   g.done[sec.id] = 1; delete g.skipped[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.checked = {}; }
 function nextId(secs, cur){ var i = secs.findIndex(function(x){ return x.id === cur; }); return i + 1 < secs.length ? secs[i + 1].id : 'review'; }
-window.bkGuideNext = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; apply(sec); st.step = nextId(secs, sec.id); show(); };
+window.bkGuideNext = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var bad = errorsOf(sec, s); if(bad.length){ paintMsgs(sec); var first = document.getElementById('gdf-' + bad[0].k); if(first && first.focus) first.focus(); return; } apply(sec); st.step = nextId(secs, sec.id); show(); };
 window.bkGuideSkip = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var g = gstate(s); g.skipped[sec.id] = 1; delete g.done[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.step = nextId(secs, sec.id); show(); };
 window.bkGuideBack = function(){ var s = bkLoad(), secs = sections(s), i = st.step === 'review' ? secs.length : secs.findIndex(function(x){ return x.id === st.step; }); st.draft = {}; st.step = i > 0 ? secs[i - 1].id : secs[0].id; show(); };
 window.bkGuideDetail = function(sheet){ document.documentElement.classList.remove('bk-guide'); if(typeof showSheet === 'function') showSheet(sheet); };
@@ -29896,6 +29973,26 @@ html body .bk-ribbon .rb-tabs{ flex-wrap:wrap; overflow:visible; row-gap:0; }
 html body .bk-ribbon .rb-t{ line-height:34px; }
 html body .bk-ribbon .rb-t{ padding:0 9px; font-size:12.5px; }
 html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
+
+/* SUB-TABS, ONE ROW PER GROUP. A long section reads as a few short, named lists; every page is a boxed button; the current page is filled; rows alternate so they are told apart; nothing overlaps. */
+html body .bk-ribbon .rb-tabs{ display:flex; flex-direction:column; flex-wrap:nowrap; overflow:visible; gap:0; align-items:stretch; }
+html body .bk-ribbon .rb-row{ display:flex; align-items:flex-start; gap:12px; padding:5px 0; border-bottom:1px solid var(--ae-line); }
+html body .bk-ribbon .rb-row:nth-child(even){ background:var(--ae-cell-ro); margin:0 -12px; padding-left:12px; padding-right:12px; }
+html body .bk-ribbon .rb-row:last-child{ border-bottom:0; }
+html body .bk-ribbon .rb-gl{ flex:0 0 118px; padding-top:7px; font:700 10.5px/1.25 Inter,system-ui,sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ae-dim); }
+html body .bk-ribbon .rb-pages{ display:flex; flex-wrap:wrap; gap:4px; flex:1 1 auto; min-width:0; }
+html body .bk-ribbon .rb-t{ position:static; flex:0 0 auto; border:1px solid var(--ae-line); border-bottom-width:1px; background:var(--ae-cell); padding:0 11px; font:500 12.5px/26px Inter,"Segoe UI",system-ui,sans-serif; opacity:1; color:var(--ae-ink); }
+html body .bk-ribbon .rb-t + .rb-t::before{ display:none; }
+html body .bk-ribbon .rb-t:hover{ background:var(--ae-sel); border-color:var(--bk-navy-2); }
+html body .bk-ribbon .rb-t.on{ background:var(--bk-navy); border-color:var(--bk-navy); color:#fff; font-weight:650; box-shadow:none; }
+html[data-theme="dark"] body .bk-ribbon .rb-t.on{ background:#1f4e8c; border-color:#6fb4f2; color:#fff !important; }
+@media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on{ background:#1f4e8c; border-color:#6fb4f2; color:#fff !important; } }
+html body .bk-ribbon .rb-sep{ display:none; }
+html body .bk-ribbon .rb-cmds{ align-self:flex-start; padding-top:5px; }
+@media (max-width:760px){ html body .bk-ribbon .rb-gl{ flex-basis:84px; } }
+/* the centre title of the header gives way before it can run into the buttons */
+@media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
+@media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }
 </style>
 </body>
 </html>
