@@ -24,6 +24,9 @@ R.addWorkflow('acquisition', [
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
+  S('sources', 'Sources and uses', 'What the deal costs in total and where the money comes from: your equity and the loan. It is read from the model, not typed; check that sources equal uses.', 'Sources & Uses', [q('sourcesUses', 'derived')], { skippable:true }),
+  S('partners', 'Investors and LP / GP economics', 'A new deal has one investor who owns all of it. If there are other partners, enter the GP share, the preferred return and how profit splits above each hurdle. Skip it to keep one investor.', 'Deal Underwrite',
+    [q('gpShare'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT ]);
 
 R.addWorkflow('development', [
@@ -32,6 +35,9 @@ R.addWorkflow('development', [
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilised.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
+  S('sources', 'Sources and uses', 'What the deal costs in total and where the money comes from: your equity and the loan. It is read from the model, not typed; check that sources equal uses.', 'Sources & Uses', [q('sourcesUses', 'derived')], { skippable:true }),
+  S('partners', 'Investors and LP / GP economics', 'A new deal has one investor who owns all of it. If there are other partners, enter the GP share, the preferred return and how profit splits above each hurdle. Skip it to keep one investor.', 'Deal Underwrite',
+    [q('gpShare'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT ]);
 
 R.addWorkflow('valuation', [

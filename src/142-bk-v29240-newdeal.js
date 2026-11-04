@@ -39,19 +39,25 @@ window.bkNewDealGo = function(){
   var a = (R && R.analysis(aid)) || { id:'acquisition', dealType:'Acquisition', live:true }; if(!a.live) return;
   snapshot(); closeModal();
   var id = nm ? nm.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase().slice(0, 24) : 'NEW-' + Date.now().toString(36).toUpperCase();
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id });
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id, blankStructure:true });
   if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
 window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import Deal'); };
 
 window.bkClearInputsDialog = function(){
-  var s = safe(function(){ return bkLoad(); }, {}), keep = [s.name, s.dealType, s.propertyType, s.closing].filter(Boolean).join(' · ');
-  modal('<h3>Clear all inputs?</h3><p>Every input on this deal goes back to blank or zero: income, expenses, debt, rent roll, tax and the saved cases.' + (keep ? ' The deal’s identity (<b>' + esc(keep) + '</b>) is kept.' : '') + ' Nothing is calculated again until the required inputs are re-entered.</p>'
-    + saveFirstBox('Save a copy of') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn danger" onclick="bkClearInputsGo()">Clear inputs</button></div>');
+  var s = safe(function(){ return bkLoad(); }, {}), was = [s.name, s.location].filter(Boolean).join(' · ');
+  modal('<h3>Clear all inputs?</h3><p>Everything on this deal is removed' + (was ? ' (<b>' + esc(was) + '</b>)' : '') + ': its name, location and type, income, expenses, debt, rent roll, tax, partners and the saved cases. The deal goes back to a blank one of the same kind of analysis (' + esc(s.dealType || 'Acquisition') + '). <b>Nothing is lost:</b> the deal as it is now is saved to Version History first, and you can restore it from there.</p>'
+    + saveFirstBox('Also save a copy of') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn danger" onclick="bkClearInputsGo()">Clear inputs</button></div>');
 };
 window.bkClearInputsGo = function(){
-  var s = safe(function(){ return bkLoad(); }, null); if(!s) return; snapshot(); closeModal();
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, name:s.name, location:s.location, dealType:s.dealType, propertyType:s.propertyType, status:s.status, closing:s.closing });
+  var s = safe(function(){ return bkLoad(); }, null); if(!s) return; snapshot();
+  /* the data stays saved: a version of the deal as it was is kept before anything is removed */
+  try { if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before clearing all inputs', true); } catch(e){}
+  var h = safe(function(){ return bkLoad()._history; }, null);
+  closeModal();
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, dealType:s.dealType, analysisType:s.analysisType, blankStructure:true });   /* the kind of analysis is kept (a Development stays a Development); everything about the property and its terms is removed */
+  /* the cleared deal keeps the record of what it was: its version history comes with it */
+  if(h) safe(function(){ var n = bkLoad(); n._history = h; bkSave(n); });
 };
 
 RENDERERS['Home'] = function(){

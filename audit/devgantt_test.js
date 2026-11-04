@@ -4,6 +4,15 @@
 //   node audit/devgantt_test.js index.html [reference.html]
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');
 const DEV = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(__dirname, 'deal.js'));
+
+/* the original three-task construction seed, written out, so the checks that edit tasks by position do not depend on the detailed starting schedule (which has its own check above) */
+const LEG = `(function(){ const s = bkLoad(), pre = Math.round(Number(s.predevMonths) || 0), con = Math.round(Number(s.constructionMonths) || 0), T = [];
+  if (pre > 0) T.push({ id: 't1', name: 'Entitlements, design and permits', group: 'predev', start: 1, dur: pre, preds: [] });
+  const base = pre > 0 ? [{ id: 't1', lag: 0 }] : [], st = pre > 0 ? null : 1, id = () => 't' + (T.length + 1);
+  if (con < 4) T.push({ id: id(), name: 'Construction', group: 'construction', start: st, dur: con, preds: base });
+  else { const a = Math.max(1, Math.round(con * 0.2)), b = Math.max(2, Math.round(con * 0.5)); let over = Math.min(Math.max(1, Math.round(b * 0.3)), b - 1), c = con - a - b + over; let bb = b; while (c < 1) { bb--; over = Math.min(over, bb - 1); c = con - a - bb + over; }
+    const ia = id(); T.push({ id: ia, name: 'Site work and foundations', group: 'construction', start: st, dur: a, preds: base }); const ib = id(); T.push({ id: ib, name: 'Structure and envelope', group: 'construction', start: null, dur: bb, preds: [{ id: ia, lag: 0 }] }); T.push({ id: id(), name: 'MEP, interiors and finishes', group: 'construction', start: null, dur: c, preds: [{ id: ib, lag: -over }] }); }
+  s.devGantt = Object.assign({}, s.devGantt || {}, { mode: 'tasks', tasks: T }); bkDevGanttSync(s); bkSave(s); })()`;
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 300) + ']' : '')); };
@@ -48,28 +57,29 @@ const DEV = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(_
   /* ---- 3. the schedule drives the engine ---- */
   await p.evaluate((d) => bkCreateNewDeal(d), DEV);
   const w0 = await p.evaluate(() => { bkDevGanttMode('tasks'); const s = bkLoad(); return { n: s.devGantt.tasks.length, names: s.devGantt.tasks.map(t => t.name), pre: s.predevMonths, con: s.constructionMonths }; });
-  check('the seeded schedule is a pre-development task and three overlapping construction tasks', w0.n === 4 && w0.pre === 6 && w0.con === 18, JSON.stringify(w0.names));
+  check('the seeded schedule is a detailed one: five pre-development tasks and eleven overlapping construction tasks, reproducing the 6 and 18 months of the phases', w0.n === 16 && w0.pre === 6 && w0.con === 18 && w0.names.indexOf('Foundations') > 5 && w0.names[0] === 'Site assessment and due diligence', JSON.stringify(w0.names));
   const base = await p.evaluate((src) => eval('(' + src + ')')(), SNAP);
-  const longer = await p.evaluate((src) => { bkDevGanttField(2, 'dur', String(bkLoad().devGantt.tasks[2].dur + 3)); const s = bkLoad(); return Object.assign({ s: [s.predevMonths, s.constructionMonths] }, eval('(' + src + ')')()); }, SNAP);
+  const longer = await p.evaluate((src) => { const k = bkLoad().devGantt.tasks.findIndex(t => t.name === 'Structure: podium and frame'); bkDevGanttField(k, 'dur', String(bkLoad().devGantt.tasks[k].dur + 3)); const s = bkLoad(); return Object.assign({ s: [s.predevMonths, s.constructionMonths] }, eval('(' + src + ')')()); }, SNAP);
   check('lengthening a construction task by 3 months lengthens construction to 21 months and moves the certificate of occupancy to month 27', longer.con === 21 && longer.pre === 6 && longer.co === 27 && longer.stab === base.stab + 3 && JSON.stringify(longer.s) === '[6,21]', JSON.stringify(longer.s) + ' co ' + longer.co);
   const lm = await p.evaluate(() => { const f = bkDevFundingV10(), H = f.months.filter(z => z.hard > 1e-6).map(z => z.mo); return { first: H[0], last: H[H.length - 1], sumH: f.months.reduce((a, z) => a + z.hard, 0), hard: f.hard }; });
   check('the construction draws follow: hard costs are drawn across months 7 to 27 and add up to the full hard-cost budget', lm.first >= 7 && lm.last <= 27 && Math.abs(lm.sumH - lm.hard) < 1, JSON.stringify(lm));
   check('a longer build lowers the return (more carry, later income)', longer.irr < base.irr, (base.irr * 100).toFixed(2) + '% → ' + (longer.irr * 100).toFixed(2) + '%');
   const su = await p.evaluate(() => { const f = bkDevFundingV10(), M = f.months, S = k => M.reduce((a, z) => a + (z[k] || 0), 0); return { row: Math.max(...M.map(z => Math.abs(z.loanDraw + z.eq + z.overflow - z.need))), roll: Math.max(...M.map(z => Math.abs(z.end - (z.beg + z.capInt + z.loanDraw)))), tie: S('need') - (S('land') + S('hard') + S('soft') + S('lease') + S('fees')), lev: f.levered - (S('need') + S('capInt')) }; });
   check('sources and uses still balance after the schedule changes (monthly draws fund the need, the need ties to the cost ladder, the loan rolls forward)', su.row < 0.01 && su.roll < 0.01 && Math.abs(su.tie) < 1 && Math.abs(su.lev) < 1, JSON.stringify(su));
+  await p.evaluate((src) => eval(src), LEG);
   const ov = await p.evaluate((src) => { bkDevGanttField(2, 'dur', String(bkLoad().devGantt.tasks[2].dur - 3)); bkDevGanttField(3, 'preds', '3-8'); const s = bkLoad(); return { c: s.constructionMonths, ES: bkDevGanttSchedule().tasks[3].ES, t2: bkDevGanttSchedule().tasks[2].EF }; }, SNAP);
   check('increasing the overlap between structure and finishes (a 8-month lead instead of 3) shortens construction', ov.c < 18, JSON.stringify(ov));
-  await p.evaluate((d) => { bkCreateNewDeal(d); bkDevGanttMode('tasks'); }, DEV);
+  await p.evaluate(([d, src]) => { bkCreateNewDeal(d); bkDevGanttMode('tasks'); eval(src); }, [DEV, LEG]);
   const pdv = await p.evaluate((src) => { bkDevGanttField(0, 'dur', '9'); const s = bkLoad(); return Object.assign({ s: [s.predevMonths, s.constructionMonths] }, eval('(' + src + ')')()); }, SNAP);
   check('a longer pre-development task (9 months) pushes construction back: pre-development 9, construction still 18, certificate of occupancy month 27', JSON.stringify(pdv.s) === '[9,18]' && pdv.co === 27, JSON.stringify(pdv.s) + ' co ' + pdv.co);
   const gap = await p.evaluate((src) => { bkDevGanttField(1, 'start', '12'); const s = bkLoad(); return { s: [s.predevMonths, s.constructionMonths] }; }, SNAP);
   check('holding the first construction task back to month 12 sets 11 months before construction and shortens nothing else', gap.s[0] === 11 && gap.s[1] >= 18 - 0 - 0 || gap.s[0] === 11, JSON.stringify(gap.s));
   /* lease-up window moves with construction (unit-level lease-up) */
-  const lu = await p.evaluate((d) => { bkCreateNewDeal(d); bkDevUnitMode('units'); const a = bkDevV09(); bkDevGanttMode('tasks'); bkDevGanttField(1, 'dur', String(bkLoad().devGantt.tasks[1].dur + 4)); const c = bkDevV09(); return { co0: a.co, co1: c.co, first0: a.leaseupRamp[0].mo, first1: c.leaseupRamp[0].mo, lu0: a.luMo, lu1: c.luMo }; }, DEV);
+  const lu = await p.evaluate(([d, src]) => { bkCreateNewDeal(d); bkDevUnitMode('units'); const a = bkDevV09(); bkDevGanttMode('tasks'); eval(src); bkDevGanttField(1, 'dur', String(bkLoad().devGantt.tasks[1].dur + 4)); const c = bkDevV09(); return { co0: a.co, co1: c.co, first0: a.leaseupRamp[0].mo, first1: c.leaseupRamp[0].mo, lu0: a.luMo, lu1: c.luMo }; }, [DEV, LEG]);
   check('the lease-up window moves with the certificate of occupancy when the schedule changes, and its length is unchanged', lu.co1 === lu.co0 + 4 && lu.first1 === lu.first0 + 4 && lu.lu0 === lu.lu1, JSON.stringify(lu));
 
   /* ---- 4. editing ---- */
-  await p.evaluate((d) => { bkCreateNewDeal(d); bkDevGanttMode('tasks'); }, DEV);
+  await p.evaluate(([d, src]) => { bkCreateNewDeal(d); bkDevGanttMode('tasks'); eval(src); }, [DEV, LEG]);
   const ed = await p.evaluate(() => {
     bkDevGanttField(0, 'name', 'Design & permits'); bkDevGanttField(1, 'preds', '1, 2'); const t1 = bkLoad().devGantt.tasks[1].preds.length;
     bkDevGanttField(2, 'preds', '2-3'); const lag = bkLoad().devGantt.tasks[2].preds[0].lag;
@@ -86,14 +96,14 @@ const DEV = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(_
 
   /* ---- 5. the chart and the sheet ---- */
   await p.evaluate((d) => { bkCreateNewDeal(d); }, DEV);
-  const ph = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 900)); const v = document.querySelector('#viewport'), svg = v.querySelector('svg[aria-label^="Development schedule Gantt"]'); return { svg: !!svg, rects: svg ? svg.querySelectorAll('rect[rx]').length : 0, dia: svg ? svg.querySelectorAll('path[fill]').length : 0, q: /Phase Timeline - by quarter/.test(v.innerText), t: v.innerText }; });
-  check('in phase mode the sheet draws a monthly Gantt of the phases (bars, milestones) and the old quarterly picture is gone', ph.svg && ph.rects >= 4 && ph.dia >= 2 && !ph.q && /Gantt chart, by month/.test(ph.t) && /Drawn from the phase durations/.test(ph.t), JSON.stringify({ r: ph.rects, d: ph.dia }));
-  const tk = await p.evaluate(async () => { bkDevGanttMode('tasks'); await new Promise(r => setTimeout(r, 300)); showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 900)); const v = document.querySelector('#viewport'), svg = v.querySelector('svg[aria-label^="Development schedule Gantt"]'); return { rects: svg.querySelectorAll('rect[rx]').length, crit: svg.querySelectorAll('rect[stroke="#b3392c"]').length, dep: svg.querySelectorAll('path[marker-end]').length, inputs: v.querySelectorAll('tr.input input').length, t: v.innerText, chips: v.querySelectorAll('.status-chip.fail').length }; });
+  const ph = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 900)); const v = document.querySelector('#viewport'), svg = v.querySelector('.bk-gx'); return { svg: !!svg, rects: svg ? new Set([...svg.querySelectorAll('td[data-bar]')].map(c => c.parentNode)).size : 0, dia: svg ? svg.querySelectorAll('td[data-ms]').length : 0, q: /Phase Timeline - by quarter/.test(v.innerText), t: v.innerText }; });
+  check('in phase mode the sheet draws a monthly Gantt sheet of the phases (phase bands, task bars, milestones) and the old quarterly picture is gone', ph.svg && ph.rects >= 4 && ph.dia >= 2 && !ph.q && /Gantt chart, by month/.test(ph.t) && /Drawn from the phase durations/.test(ph.t), JSON.stringify({ r: ph.rects, d: ph.dia }));
+  const tk = await p.evaluate(async () => { bkDevGanttMode('tasks'); await new Promise(r => setTimeout(r, 300)); showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 900)); const v = document.querySelector('#viewport'), svg = v.querySelector('.bk-gx'); const rowsWith = sel => new Set([...svg.querySelectorAll(sel)].map(c => c.parentNode)).size; return { rects: rowsWith('td[data-bar="task"]'), crit: rowsWith('td[data-crit]'), dep: [...svg.querySelectorAll('tbody tr')].filter(r => (r.children[5] || {}).innerText && /\d/.test(r.children[5].innerText)).length, inputs: v.querySelectorAll('tr.input input').length, t: v.innerText, chips: v.querySelectorAll('.status-chip.fail').length }; });
   check('in task mode the Gantt shows each task as a bar, the critical ones outlined, with dependency lines, an editable task table and the linked rows (certificate of occupancy, lease-up, stabilised, exit)', tk.rects >= 6 && tk.crit >= 2 && tk.dep >= 3 && tk.inputs >= 20 && /Certificate of occupancy/.test(tk.t) && /Sale \/ exit/.test(tk.t) && /What the schedule drives/.test(tk.t) && tk.chips >= 2, JSON.stringify({ r: tk.rects, c: tk.crit, d: tk.dep, i: tk.inputs }));
   const keep = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 700)); return /Development Schedule & Milestone Timeline/.test(document.querySelector('#viewport').innerText) && /Milestone Timeline with Calendar Dates/.test(document.querySelector('#viewport').innerText); });
   check('the phase table and the milestone calendar are still on the sheet', keep);
   const edr = await p.evaluate(async () => { const s = bkLoad(); return /from the task schedule on Dev Schedule/.test(await (async () => { bkEdGo && bkEdGo('Property', 'Investment'); return document.querySelector('#viewport') ? document.querySelector('#viewport').innerText : ''; })()) || true; });
-  const acq = await p.evaluate(async (d) => { bkCreateNewDeal(d); showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 700)); const v = document.querySelector('#viewport'); return { svg: !!v.querySelector('svg[aria-label^="Development schedule Gantt"]'), t: v.innerText.slice(0, 200) }; }, Object.assign({}, A));
+  const acq = await p.evaluate(async (d) => { bkCreateNewDeal(d); showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 700)); const v = document.querySelector('#viewport'); return { svg: !!v.querySelector('.bk-gx'), t: v.innerText.slice(0, 200) }; }, Object.assign({}, A));
   check('an acquisition deal gets no Gantt (the sheet says it does not apply, as before)', acq.svg === false);
   check('no page errors', p.errs.length === 0, p.errs.slice(0, 2).join(' | '));
   await b.close(); console.log(checks + ' checks, ' + fails + ' failures'); process.exit(fails ? 1 : 0);

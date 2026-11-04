@@ -335,23 +335,23 @@ extend('Sensitivity','w3cDrivers', function(o){
     ['Construction Duration',   'ConstructionMoDelta',  'mo',  'Added to the construction period'],
     ['Absorption',              'AbsorptionFactor',     'pct', 'Scales the lease-up period']
   ];
-  var body = DRIVERS.map(function(d){
+  var isDevDeal = /develop/i.test(String(s.dealType || '')), DEVONLY = { HardCostVariance:1, SoftCostVariance:1, ConstructionMoDelta:1, AbsorptionFactor:1 };
+  var body = DRIVERS.filter(function(d){ return isDevDeal || !DEVONLY[d[1]]; }).map(function(d){
     var upK = 'up'+d[1], dnK = 'down'+d[1];
     var up = Number(s[upK])||0, dn = Number(s[dnK])||0;
-    var fmt = function(v){ return d[2]==='pct' ? (v*100).toFixed(2) : String(v); };
+    var fmt = function(v){ return d[2]==='pct' ? (v*100).toFixed(2) : String(v); }, suf = d[2]==='pct' ? '%' : ' mo';
+    var cell = function(k, v){ return '<td class="v" data-bk-align="num"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end"><input type="number" step="'+(d[2]==='pct' ? '0.01' : '1')+'" style="width:88px;text-align:right" value="'+fmt(v)+'" onchange="bkSetScenarioDriver(\''+k+'\',this.value,\''+d[2]+'\')"><span style="width:2.2em;text-align:left;opacity:.7">'+suf+'</span></span></td>'; };
     return '<tr>'+lbl(d[0])
-      + '<td class="v"><input type="number" step="0.01" style="width:96px" value="'+fmt(dn)+'"'
-      +   ' onchange="bkSetScenarioDriver(\''+dnK+'\',this.value,\''+d[2]+'\')"></td>'
-      + '<td class="v">-</td>'
-      + '<td class="v"><input type="number" step="0.01" style="width:96px" value="'+fmt(up)+'"'
-      +   ' onchange="bkSetScenarioDriver(\''+upK+'\',this.value,\''+d[2]+'\')"></td>'
-      + txt(d[3] + (d[2]==='pct' ? ' (%)' : ' (months)'))
+      + cell(dnK, dn)
+      + '<td class="v" data-bk-align="num" style="text-align:center">&mdash;</td>'
+      + cell(upK, up)
+      + txt(d[3] + (d[2]==='pct' ? ' (percentage points)' : ' (months)'))
       + '<td class="v">'+((up||dn)?chip('pass','ACTIVE'):chip('','INERT'))+'</td></tr>';
   }).join('');
   o.main = (o.main||'') + wrapTable('Scenario Drivers - Downside and Upside deltas against Base',
       '<tr><th class="rowlabel-h">Driver</th><th>Downside</th><th>Base</th><th>Upside</th>'
       + '<th style="text-align:left">Effect</th><th>Status</th></tr>', body)
-    + note('&#9432;','All nine workbook drivers are here. The three original ones (exit cap, rent growth, loan rate) have standard values. The other six default to zero on an acquisition, '
+    + note('&#9432;','' + (isDevDeal ? 'All nine workbook drivers are here. ' : 'The five drivers that apply to an acquisition are here; hard cost, soft cost, construction duration and absorption appear on a development. ') + 'The three original ones (exit cap, rent growth, loan rate) have standard values. The other six default to zero on an acquisition, '
       + 'so Base and both cases move only on those three until you set one; a new development starts with construction risk in its Downside (hard-cost contingency, extra months, slower lease-up). A driver reading INERT is not a '
       + 'broken control - it is a delta of zero.');
 });

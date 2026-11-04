@@ -12,7 +12,7 @@
 
   // Deal-underwrite addendum: separate refi valuation and true cap-strike metadata.
   const _du=sheetDealUnderwrite;
-  window.sheetDealUnderwrite=function(){const o=_du(),s=bkEnsureV04();o.main+=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Audit-Fixed Debt Risk Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${Number(s.refiAtMaturity)?bkInput('Refinance Valuation Cap Rate','refiCapRate','%','pct'):''}${String(s.debtRateType||'Fixed')==='Floating'?bkInput('Rate Cap Index Strike','rateCapStrike','%','pct'):''}</tbody></table></div>`;return o;};
+  window.sheetDealUnderwrite=function(){const o=_du(),s=bkEnsureV04();const rows=`${Number(s.refiAtMaturity)?bkInput('Refinance Valuation Cap Rate','refiCapRate','%','pct'):''}${String(s.debtRateType||'Fixed')==='Floating'?bkInput('Rate Cap Index Strike','rateCapStrike','%','pct'):''}`;if(rows.trim())o.main+=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Audit-Fixed Debt Risk Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;return o;};
 
   // Contractual maturity: old loan is paid at maturity. If no refi, equity funds balloon then.
   // If refi, new proceeds fund old balance + fee; shortfall is equity, excess is distribution.

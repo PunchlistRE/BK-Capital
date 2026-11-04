@@ -4,18 +4,20 @@
 //   node audit/registry_test.js index.html
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');
 const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirname, 'devdeal.js'));
-/* today's guide steps, written out from the guide as it was before the registry (ids, keys, which are required, labels) */
+/* the guide's steps, written out (ids, keys, which are required, labels): the original steps plus Sources and uses and Investors / LP-GP economics after Financing */
 const GUIDE_ACQ = [['property', [['name', 1, 'Name'], ['location', 0, 'City, state'], ['units', 1, 'Units'], ['gsf', 0, 'Building area, SF']]],
   ['price', [['purchasePrice', 1, 'Purchase price'], ['closingCostsPct', 1, 'Closing costs, % of price'], ['closing', 0, 'Closing date']]],
   ['income', [['avgRent', 1, 'Average rent per unit, per month'], ['otherIncomePerUnit', 0, 'Other income per unit, per year'], ['vacancy', 1, 'Vacancy']]],
   ['expenses', [['taxes', 1, 'Real estate taxes, per year'], ['insurance', 1, 'Insurance, per year'], ['utilities', 0, 'Utilities the owner pays, per year'], ['rm', 1, 'Repairs and maintenance, per year'], ['mgmtPct', 1, 'Management fee, % of income'], ['payroll', 0, 'On-site payroll, per year'], ['contract', 0, 'Contract services (landscaping, snow, pest), per year'], ['ga', 0, 'General, admin and other, per year'], ['reserves', 0, 'Replacement reserves, per year']]],
   ['debt', [['debtEnabled', 0, 'Use acquisition debt'], ['acqLTV', 1, 'Loan-to-value, max'], ['acqRate', 1, 'Interest rate'], ['acqAmort', 0, 'Amortisation, years'], ['acqIO', 0, 'Interest-only years'], ['acqOrigFee', 0, 'Origination fee, %']]],
+  ['sources', []],
+  ['partners', [['gpShare', 0, 'GP / sponsor equity share'], ['pref', 0, 'Preferred return'], ['hurdle2', 0, 'Second hurdle (IRR)'], ['hurdle3', 0, 'Third hurdle (IRR)'], ['t2LP', 0, 'LP share above the preferred return'], ['t3LP', 0, 'LP share above the second hurdle'], ['t4LP', 0, 'LP share above the third hurdle']]],
   ['exit', [['holdYears', 1, 'Hold period, years'], ['exitCap', 1, 'Exit cap rate'], ['rentGrowth', 0, 'Annual rent growth'], ['opexGrowth', 0, 'Annual expense growth'], ['saleCostPct', 0, 'Cost of sale, % of price']]]];
 const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, state'], ['units', 1, 'Residential units'], ['gsf', 0, 'Gross building area, SF']]],
   ['land', [['purchasePrice', 1, 'Land price'], ['sourceConstruction', 1, 'Construction budget (hard + soft)'], ['closing', 0, 'Closing date'], ['predevMonths', 0, 'Pre-development, months'], ['constructionMonths', 1, 'Construction, months'], ['leaseupMonths', 0, 'Lease-up, months']]],
   GUIDE_ACQ[2], GUIDE_ACQ[3],
   ['debt', [['conLTC', 1, 'Construction loan, % of cost'], ['conRate', 1, 'Construction loan rate'], ['permRate', 0, 'Permanent loan rate'], ['permAmort', 0, 'Permanent amortisation, years']]],
-  GUIDE_ACQ[5]];
+  GUIDE_ACQ[5], GUIDE_ACQ[6], GUIDE_ACQ[7]];
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined }); const p = await b.newPage({ viewport: { width: 1360, height: 900 } }); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
@@ -80,7 +82,7 @@ const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
   await p.evaluate(() => { document.documentElement.classList.add('bk-auth-ok'); showSheet('Home'); }); await p.waitForTimeout(400);
   await p.click('.pl-an[data-analysis="development"]'); await p.waitForTimeout(250); await p.check('#pl-guide'); await p.click('#pl-modal button:has-text("Create")'); await p.waitForTimeout(600);
   const gd = await p.evaluate(() => ({ sheet: currentSheet, a: bkLoad().analysisType, t: bkLoad().dealType, id: bkLoad().dealId, steps: bkGuideSections(bkLoad()).map(s => s.id).join(), txt: document.querySelector('#viewport').innerText.slice(0, 400) }));
-  check('"Guide me step by step" opens the guide on the new deal (no second deal), with the development steps', gd.sheet === 'Guide' && gd.a === 'development' && gd.t === 'Development' && /^NEW-/.test(gd.id) && gd.steps === 'property,land,income,expenses,debt,exit', JSON.stringify(gd));
+  check('"Guide me step by step" opens the guide on the new deal (no second deal), with the development steps', gd.sheet === 'Guide' && gd.a === 'development' && gd.t === 'Development' && /^NEW-/.test(gd.id) && gd.steps === 'property,land,income,expenses,debt,sources,partners,exit', JSON.stringify(gd));
   /* 7 theme and phone */
   for (const [w, theme] of [[390, 'dark'], [1360, 'dark'], [390, 'light']]) {
     await p.setViewportSize({ width: w, height: 900 }); await p.evaluate((t) => { localStorage.removeItem('bkcapital.cre.v02'); try { localStorage.setItem('bk-theme', t); } catch (e) {} }, theme); await p.reload(); await p.waitForTimeout(900);

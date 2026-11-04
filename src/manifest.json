@@ -940,6 +940,11 @@
 "close": "</script>"
 },
 {
+"file": "181-bk-result-gate.js",
+"open": "\n<script id=\"bk-result-gate\">",
+"close": "</script>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""

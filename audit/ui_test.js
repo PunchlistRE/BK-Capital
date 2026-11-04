@@ -201,13 +201,13 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('Create opens an empty deal with that name and type, and saved the previous one', nd.n === 'Test Heights' && nd.t === 'Development' && nd.a === 'development' && !(nd.price > 0) && nd.port === portBefore + 1 && !nd.open, JSON.stringify(nd));
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(300);
   await p.click('.pl-toolbar button:has-text("Clear inputs")'); await p.waitForTimeout(250);
-  check('Clear inputs says what it will do before it does it', await p.evaluate(() => /Clear all inputs/.test(document.getElementById('pl-modal').innerText) && /kept/.test(document.getElementById('pl-modal').innerText)));
+  check('Clear inputs says what it will do before it does it', await p.evaluate(() => /Clear all inputs/.test(document.getElementById('pl-modal').innerText) && /Nothing is lost/.test(document.getElementById('pl-modal').innerText) && /Version History/.test(document.getElementById('pl-modal').innerText)));
   await p.click('#pl-modal button:has-text("Cancel")'); await p.waitForTimeout(150);
   check('Cancel leaves the deal untouched', await p.evaluate(() => bkLoad().purchasePrice > 0 && !document.getElementById('pl-modal').classList.contains('open')));
   const nm0 = await p.evaluate(() => bkLoad().name);
   await p.click('.pl-toolbar button:has-text("Clear inputs")'); await p.waitForTimeout(200); await p.click('#pl-modal button.danger'); await p.waitForTimeout(500);
-  const cl = await p.evaluate(() => { const s = bkLoad(); return { name: s.name, price: s.purchasePrice, units: s.units, taxes: s.taxes, rr: (s.rentRoll || []).length, type: s.dealType }; });
-  check('Clear inputs blanks the numbers and keeps the deal identity', cl.name === nm0 && cl.price === 0 && cl.taxes === 0 && cl.rr === 0 && cl.type === 'Acquisition', JSON.stringify(cl));
+  const cl = await p.evaluate(() => { const s = bkLoad(); return { name: s.name, loc: s.location, price: s.purchasePrice, units: s.units, taxes: s.taxes, rr: (s.rentRoll || []).length, type: s.dealType, vers: ((s._history || {}).versions || []).map(v => v.note), saved: ((s._history || {}).versions || []).some(v => /Before clearing all inputs/.test(v.note) && JSON.parse(v.j).purchasePrice > 0) }; });
+  check('Clear inputs removes all deal information (name, location, numbers) and the previous deal stays saved in Version History', !cl.name && !cl.loc && cl.name !== nm0 && !(cl.price > 0) && !(cl.taxes > 0) && cl.rr === 0 && cl.saved, JSON.stringify(cl));
   // 14. Flow: step bar reflects the decision, one-step loan sizing, glossary hints, methodology after the deal's own inputs, import lands on Home
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, A_); await p.waitForTimeout(600);
   const stp = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('.bk-step')].map((x, i) => [i, x.className])));

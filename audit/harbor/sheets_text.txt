@@ -6844,7 +6844,7 @@ app.schema.v01
 cre.provisioned.v01
 1 B
 cre.v02
-4,058 B
+5,080 B
 pl.recent.v1
 126 B
 
@@ -7198,7 +7198,7 @@ How the two differ	The workbook fixes the store at ten slots because it is a gri
 Parity classification	BACKEND-ONLY
 Live readout - from the engine named above, on the active deal
 Measure	Value
-Attributes on the active deal record	226
+Attributes on the active deal record	227
 Properties in the portfolio	0
 Rent-roll rows on the active deal	0
 MODEL NOTES (1)
@@ -8904,10 +8904,10 @@ Versions
 No versions yet. Save one before a big change.
 Change log
 WHEN	WHAT	FROM	TO
-Nov 4 8:38 AM	Down Absorption Factor	0	0.25
-Nov 4 8:38 AM	Up Absorption Factor	0	-0.1
-Nov 4 8:38 AM	Down Construction Mo Delta	0	3
-Nov 4 8:38 AM	Down Hard Cost Variance	0	0.05
+Nov 4 9:00 AM	Down Absorption Factor	0	0.25
+Nov 4 9:00 AM	Up Absorption Factor	0	-0.1
+Nov 4 9:00 AM	Down Construction Mo Delta	0	3
+Nov 4 9:00 AM	Down Hard Cost Variance	0	0.05
 
 #### Financing Lab
 PUNCHLIST CAPITAL BETA
@@ -10109,10 +10109,10 @@ Cost of sale	2.00%
 Exit NOI basis	-		
 Recent Changes
 When	Input	From	To
-Nov 4, 8:38 AM	downAbsorptionFactor	0	0.25
-Nov 4, 8:38 AM	upAbsorptionFactor	0	(0.10)
-Nov 4, 8:38 AM	downConstructionMoDelta	0	3
-Nov 4, 8:38 AM	downHardCostVariance	0	0.05
+Nov 4, 9:00 AM	downAbsorptionFactor	0	0.25
+Nov 4, 9:00 AM	upAbsorptionFactor	0	(0.10)
+Nov 4, 9:00 AM	downConstructionMoDelta	0	3
+Nov 4, 9:00 AM	downHardCostVariance	0	0.05
 Version history
 Model checks
 

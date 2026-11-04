@@ -24,7 +24,7 @@
 .bk-sx-chip i{ width:10px; height:10px; border-radius:50%; background:var(--c); opacity:.35; }
 .bk-sx-chip[aria-pressed="true"]{ color:var(--sx-ink); border-color:var(--c); }
 .bk-sx-chip[aria-pressed="true"] i{ opacity:1; }
-.bk-sx svg{ display:block; width:100%; height:auto; overflow:visible; font-family:inherit; }
+.bk-sx svg{ display:block; width:100%; max-width:900px; margin:0 auto; height:auto; overflow:visible; font-family:inherit; }   /* capped so the chart text never scales past about 1.2x on a wide screen */
 .bk-sx-svgwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
 @media (max-width:760px){ .bk-sx-svgwrap svg{ min-width:640px; } }
 .bk-sx svg text{ fill:var(--sx-ink2); font-size:11px; }
