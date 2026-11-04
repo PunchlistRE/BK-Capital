@@ -72,7 +72,7 @@ var F = {
   rm:{ lab:'Repairs and maintenance (annual $)', kind:'money', rx:[/^repairs?( (&|and) maintenance)?$/, /^maintenance( (&|and) repairs?)?$/, /^r ?& ?m$/, /^(repairs|maintenance)( and| &)? ?(repairs|maintenance)?$/], no:/reserve|capital|cap ?ex/ },
   payroll:{ lab:'Payroll / administration (annual $)', kind:'money', rx:[/^payroll/, /^(general )?(&|and)? ?admin(istration|istrative)?$/, /^(on.?site )?(staff|personnel|salaries)/] },
   mgmtPct:{ lab:'Management fee (% of income)', kind:'pct', max:0.2, rx:[/^(property |asset )?(management|mgmt|manager)( fee)?$/] },
-  sourceConstruction:{ lab:'Hard construction cost', kind:'money', min:10000, rx:[/^(total )?hard (costs?|construction( costs?)?)$/, /^construction (hard )?costs?$/, /^hard construction$/, /^base building (cost|construction)$/, /^(total )?construction (budget|cost)$/], no:/contingen|per |psf/ },
+  sourceConstruction:{ lab:'Construction budget (hard + soft)', kind:'money', min:10000, rx:[/^(total )?hard (costs?|construction( costs?)?)$/, /^construction (hard )?costs?$/, /^hard construction$/, /^base building (cost|construction)$/, /^(total )?construction (budget|cost)$/], no:/contingen|per |psf/ },
   predevMonths:{ lab:'Pre-development period (months)', kind:'months', rx:[/pre.?development (period|duration|months|term)/, /entitlement (period|duration|months)/] },
   constructionMonths:{ lab:'Construction period (months)', kind:'months', rx:[/construction (period|duration|months|term|schedule)\b/, /^months of construction/, /^build.?out (period|months)/] },
   leaseupMonths:{ lab:'Lease-up period (months)', kind:'months', rx:[/lease.?up (period|duration|months|term)/, /absorption (period|months)/] },
@@ -162,7 +162,7 @@ function tables(sh, file, out, ctx){
       var m;
       if(/preferred return|pref\b/.test(L) && (m = /(\d+(?:\.\d+)?)\s*%/.exec(desc))) out.push({ label:'pref', v:{ n:parseFloat(m[1]) / 100, unit:'pct', text:m[1] + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:full.slice(0, 90), derived:true, direct:'pref' });
       if(/catch.?up/.test(L) && gpv != null) out.push({ label:'gpCatchup', v:{ n:gpv, unit:'pct', text:(gpv * 100) + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:'GP share during catch-up: ' + full.slice(0, 80), derived:true, direct:'gpCatchup' });
-      if(/return of (contributed )?capital|return of capital|pro.?rata/.test(L) && gpv != null && gpv > 0) out.push({ label:'gpShare', v:{ n:gpv, unit:'pct', text:(gpv * 100) + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:'GP share of capital: ' + full.slice(0, 80), derived:true, direct:'gpShare' });
+      if(strs.some(function(x){ return /return of (contributed )?capital|pro.?rata/.test(nl(x)); }) && gpv != null && gpv > 0) out.push({ label:'gpShare', v:{ n:gpv, unit:'pct', text:(gpv * 100) + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:'GP share of capital: ' + full.slice(0, 80), derived:true, direct:'gpShare' });
       var tiers = /irr/.test(L) ? desc.match(/(\d+(?:\.\d+)?)\s*%/g) : null; if(tiers && lpv != null){ var hi = parseFloat(tiers[tiers.length - 1]) / 100, key = /above|over|exceed|>/.test(L) ? 'tier4' : /\bfrom\b|between/.test(L) && tiers.length > 1 ? 'tier3' : 'tier2'; out.push({ label:'tier:' + key, v:{ n:hi, unit:'pct', text:(hi * 100) + '%' }, lp:lpv, file:file, sheet:sh.name, row:b.row + 1, note:desc.slice(0, 100), derived:true }); } }); }
     r = k - 1;
   }
@@ -236,6 +236,10 @@ function choose(res, ctx){
   if(out.units && cand.units && cand.units.length > 1) { /* resolved above */ }
   var cont = res.extra.filter(function(e){ return e.key === 'contingency' || e.label === 'Contingency'; })[0];
   if(cont && out.sourceConstruction){ var cv = parseFloat(String(cont.text).replace(/[^0-9.]/g, '')); if(cv > 0 && out.sourceConstruction.val > 0){ out.hardContPct = { val:Math.round(cv / out.sourceConstruction.val * 10000) / 10000, conf:'low', why:'Contingency ' + cont.text + ' over hard cost ' + $(out.sourceConstruction.val) + '; the document does not say which costs contingency applies to', src:[cont.f] }; } }
+  /* the engine's construction budget is hard AND soft together (the ladder is scaled to it): add the soft costs when the documents give them, and say so */
+  if(out.sourceConstruction){ var sf = res.extra.filter(function(e){ return e.key === 'soft' || /^soft costs?$/i.test(e.label); })[0], sv = sf ? parseFloat(String(sf.text).replace(/[^0-9.]/g, '')) : 0, hv = out.sourceConstruction.val;
+    if(sv > 0 && hv > 0){ out.sourceConstruction = { val:hv + sv, conf:out.sourceConstruction.conf === 'verified' ? 'check' : out.sourceConstruction.conf, why:'Hard costs ' + $(hv) + ' + soft costs ' + $(sv) + ' (the budget input is hard and soft together; contingency and reserves are separate)', src:(out.sourceConstruction.src || []).concat([sf.f]) }; }
+    else out.sourceConstruction.why = (out.sourceConstruction.why || '') + ' - hard costs only: no soft-cost total was found, so add the soft costs to this budget'; }
   return { fields:out, conflicts:conflicts };
 }
 var PCT = { acqRate:1, conLTC:1, conRate:1, conOrigFee:1, acqLTV:1, exitCap:1, saleCostPct:1, rentGrowth:1, opexGrowth:1, vacancy:1, mgmtPct:1, pref:1, gpShare:1, hurdle2:1, hurdle3:1, t2LP:1, t3LP:1, t4LP:1, hardContPct:1, gpCatchup:1 };
@@ -322,7 +326,8 @@ window.bkImportHubCreate = function(){
   var dev = S.dev || fl.sourceConstruction != null || fl.constructionMonths != null, d = Object.assign({}, fl); delete d.name;
   var loc = fl.location || ''; var m = /,\s*([A-Za-z .]+?),?\s*([A-Z]{2})\b\s*\d{0,5}/.exec(loc); if(m) d.location = m[1].trim() + ', ' + m[2];
   if(dev){ d.devBudgetMode = 'SOURCE'; } if(fl.propertyType){ d.propertyType = /apart|multi|residential|mf/i.test(fl.propertyType) ? 'Multifamily' : /office/i.test(fl.propertyType) ? 'Office' : /industrial|flex|warehouse/i.test(fl.propertyType) ? 'Industrial' : /retail|shop/i.test(fl.propertyType) ? 'Retail' : fl.propertyType; } else if(/multifamily|apartment/i.test(JSON.stringify(fl))) { /* not inferred */ }
-  var deal = Object.assign({ name:nm, dealId:'IMP-' + slug, dealType:dev ? 'Development' : 'Acquisition', analysisType:dev ? 'development' : 'acquisition', blankStructure:true }, d);
+  var shape = (dev && fl.sourceConstruction != null && typeof window.bkDevLadderShape === 'function') ? window.bkDevLadderShape() : {};   /* a total budget with no trade lines: the cost ladder takes the app's standard split, scaled to that total */
+  var deal = Object.assign({ name:nm, dealId:'IMP-' + slug, dealType:dev ? 'Development' : 'Acquisition', analysisType:dev ? 'development' : 'acquisition', blankStructure:true }, shape, d);
   if(fl.propertyType && /multi|apart/i.test(fl.propertyType + ' ' + (fl.name || ''))) deal.propertyType = 'Multifamily';
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(deal);
   var C = { fields:{} }; Object.keys(S.pick.fields).forEach(function(k){ var f = S.pick.fields[k]; if(!f.skip) C.fields[k] = { l:f.conf, why:f.why }; });
