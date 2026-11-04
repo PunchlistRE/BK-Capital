@@ -6,7 +6,7 @@
       with live completion status, previous/next step buttons, and an
       "Advanced" area for Monthly Engine, Portfolio Database and - on
       acquisitions - Development.
-   2. Deal snapshot card replaces the photo placeholder; the colour key is a
+   2. Deal snapshot card replaces the photo placeholder; the color key is a
       pop-up instead of a card on every page.
    3. Deal Underwrite: sticky section index and required-input highlights.
    4. Base / Upside / Downside case switcher (writes the deal's existing
@@ -85,7 +85,7 @@ function stepStatus(){
       if(!gate && window.bkDealGate && !stepStatus.__pending){ stepStatus.__pending = true; setTimeout(function(){ stepStatus.__pending = false; try { window.bkDealGate(); } catch(e){} patchSteps(); }, 60); } }
     try { pol = window.bkPolicy ? window.bkPolicy() : {}; } catch(e){} try { ctls = window.bkModelControls ? window.bkModelControls() : []; } catch(e){} }
   var over = gate && gate.capacity && gate.capacity.overage > 0 ? gate.capacity.overage : 0;
-  out.debt = !r.canCalculate ? { st:'', tip:'Needs complete inputs' } : debtMiss ? { st:'warn', tip:'Debt rate / amortisation missing' } : over ? { st:'warn', tip:'Loan is ' + money(over) + ' above what policy supports' } : { st:'done', tip:s.debtEnabled === false ? 'Unlevered (debt off)' : 'Loan sized, within policy' };
+  out.debt = !r.canCalculate ? { st:'', tip:'Needs complete inputs' } : debtMiss ? { st:'warn', tip:'Debt rate / amortization missing' } : over ? { st:'warn', tip:'Loan is ' + money(over) + ' above what policy supports' } : { st:'done', tip:s.debtEnabled === false ? 'Unlevered (debt off)' : 'Loan sized, within policy' };
   var irr = NaN; if(r.canCalculate){ try { irr = bkMonthlyReturns().irr; } catch(e){} }
   var hur = Number(pol.targetIRR) || 0;
   out.returns = !r.canCalculate ? { st:'', tip:'Results withheld until inputs are complete' } : !isFinite(irr) ? { st:'warn', tip:'Levered IRR not finite' } : (hur && irr < hur) ? { st:'warn', tip:'Levered IRR ' + pct(irr) + ' is below the ' + pct(hur) + ' hurdle' } : { st:'done', tip:'Levered IRR ' + pct(irr) };
@@ -226,7 +226,7 @@ function decorateSide(frame){
   if(snap) side.insertAdjacentHTML('afterbegin', snap);
   if(keyHtml){
     var tb = frame.querySelector('.title-block');
-    if(tb && !tb.querySelector('.bk-key-wrap')) tb.insertAdjacentHTML('beforeend', '<div class="bk-key-wrap"><button type="button" class="bk-btn" data-bk-key-toggle="1" aria-expanded="false">Colour key</button><div class="bk-key-pop">' + keyHtml + '</div></div>');
+    if(tb && !tb.querySelector('.bk-key-wrap')) tb.insertAdjacentHTML('beforeend', '<div class="bk-key-wrap"><button type="button" class="bk-btn" data-bk-key-toggle="1" aria-expanded="false">Color key</button><div class="bk-key-pop">' + keyHtml + '</div></div>');
   }
   if(!side.children.length) side.style.display = 'none';
 }
@@ -368,7 +368,7 @@ function changedCount(){
 }
 
 /* ---- words for a step ---- */
-var FLABEL = { exitCap:'Exit cap', purchasePrice:'Purchase price', holdYears:'Hold period', avgRent:'Average rent', vacancy:'Vacancy', rentGrowth:'Rent growth', opexGrowth:'Expense growth', acqLTV:'Max LTV', acqLTC:'Max LTC', acqRate:'Loan rate', acqAmort:'Amortisation', acqDSCR:'Min DSCR',
+var FLABEL = { exitCap:'Exit cap', purchasePrice:'Purchase price', holdYears:'Hold period', avgRent:'Average rent', vacancy:'Vacancy', rentGrowth:'Rent growth', opexGrowth:'Expense growth', acqLTV:'Max LTV', acqLTC:'Max LTC', acqRate:'Loan rate', acqAmort:'Amortization', acqDSCR:'Min DSCR',
   units:'Units', gsf:'Building area', closing:'Closing date', name:'Name', dealId:'Deal ID', location:'Location', propertyType:'Property type', dealType:'Deal type', scenarioCase:'Case', gpShare:'GP share', pref:'Preferred return', saleCostPct:'Cost of sale', mgmtPct:'Management fee',
   constructionMonths:'Construction months', predevMonths:'Pre-development months', leaseupMonths:'Lease-up months', conLTC:'Construction loan LTC', conRate:'Construction loan rate', taxes:'Real estate taxes', insurance:'Insurance', reserves:'Reserves', rentRoll:'Rent roll', devGantt:'Development schedule',
   investors:'Investors', leases:'Tenant leases', devUnits:'Unit lease-up', _template:'Assumption template', _conv:'Conventions' };
@@ -520,8 +520,14 @@ function decorate(sheet){
   decorateNotes(frame);
   decorateRail();
   ribbon(frame, sheet);
+  noGpSplits(frame);
   kpiBar(sheet);
 }
+/* with no GP partner the tier splits are not inputs: the LP takes every tier (kept at 100% for the engine). They read "Not set (no GP)" and cannot be edited until a GP share is entered. */
+function noGpSplits(frame){ if(!hasDeal()) return; var s; try { s = bkLoad(); } catch(e){ return; } if(Number(s.gpShare) > 0) return;
+  ['t2LP', 't3LP', 't4LP'].forEach(function(k){
+    [].forEach.call(frame.querySelectorAll('tr[data-bk-key="' + k + '"] td.v'), function(td){ td.removeAttribute('contenteditable'); td.innerHTML = '<span class="bk-nogp">Not set (no GP)</span>'; td.title = 'Enter a GP share to set the splits.'; var tr = td.parentNode; tr.classList.remove('input'); tr.classList.add('bk-nogp-row'); });
+    var el = frame.querySelector('#ae-' + k); if(el){ el.value = ''; el.placeholder = 'Not set (no GP)'; el.disabled = true; el.title = 'Enter a GP share to set the splits.'; } }); }
 /* RIBBON: the command bar under the group tabs. It only carries existing commands (open a sheet, new analysis, import, clear, print, key, guide, sidebar); nothing new is calculated. */
 var RB = { doc:'M6 3h9l4 4v14H6z M15 3v4h4 M9 12h7 M9 16h7', grid:'M4 5h16v14H4z M4 10h16 M4 15h16 M10 5v14', chart:'M4 20V4 M4 20h16 M8 16v-5 M12 16V8 M16 16v-8', bank:'M3 9l9-5 9 5 M5 9v9 M10 9v9 M14 9v9 M19 9v9 M3 20h18', key:'M8 14a4 4 0 1 1 3-6.5L21 17v3h-3v-2h-2v-2h-2l-1.5-1.5', plus:'M12 5v14 M5 12h14', up:'M12 16V5 M7 10l5-5 5 5 M5 19h14', trash:'M5 7h14 M9 7V4h6v3 M7 7l1 13h8l1-13', print:'M7 9V3h10v6 M7 17H4v-7h16v7h-3 M7 14h10v7H7z', book:'M5 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H5z M19 4h-6 M19 4v14h-6', side:'M4 5h16v14H4z M9 5v14', swatch:'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z', people:'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M3 20v-2a5 5 0 0 1 10 0v2 M16 6a3 3 0 0 1 0 6 M21 20v-2a5 5 0 0 0-3-4.5', cal:'M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4', calc:'M6 3h12v18H6z M9 7h6 M9 12h2 M13 12h2 M9 16h2 M13 16h2' };
 var RB_OF = { overview:'grid', inputs:'doc', editor:'grid', reports:'doc', propops:'chart', dev:'cal', debt:'bank', returns:'chart', biz:'calc', credit:'bank', tools:'calc', portfolio:'people', qa:'doc' };
@@ -535,17 +541,14 @@ function ribbon(frame, sheet){
   tabHeight(frame);
   if(!frame || frame.querySelector('.bk-ribbon')) return;
   var nav = frame.querySelector('.tabnav'); if(!nav) return;
-  var g = typeof groupOf === 'function' ? groupOf(sheet) : null, adv = advancedIds ? advancedIds() : [];
-  var sheets = g ? g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }) : [], ic = RB_OF[g && g.id] || 'doc';
-  var h = '<div class="bk-ribbon" role="toolbar" aria-label="Commands">';
-  h += '<div class="rb-g active"><div class="rb-row">' + sheets.map(function(n){ return rbBtn(RB_SHEET[n] || ic, n, 'data-goto-sheet2="' + esc(n) + '"', n === sheet); }).join('') + '</div><div class="rb-cap">' + esc(g ? g.label : 'Sheets') + '</div></div>';
-  h += '<div class="rb-g"><div class="rb-row">'
-    + rbBtn('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + rbBtn('up', 'Import', 'data-goto-sheet2="Import"')
-    + rbBtn('trash', 'Clear inputs', 'onclick="showSheet(\'Home\');setTimeout(function(){if(window.bkClearInputsDialog)bkClearInputsDialog();},50)"') + rbBtn('print', 'Print / Save PDF', 'onclick="bkPrintSection()"')
-    + '</div><div class="rb-cap">Deal</div></div>';
-  h += '<div class="rb-g"><div class="rb-row">'
-    + rbBtn('swatch', 'Colour key', 'data-bk-key-toggle="1"') + rbBtn('book', 'Guide', 'data-goto-sheet2="Guide"') + rbBtn('side', 'Sidebar', 'onclick="bkRailCollapse()"')
-    + '</div><div class="rb-cap">View</div></div></div>';
+  /* the sub-tabs: every page of the current section tab (all its groups), the one way to a page together with the section tabs and the sidebar */
+  var dev = false; try { var d = bkLoad(); dev = !!d && /develop/i.test(String(d.dealType || '')); } catch(e){}
+  var tab = (typeof NAV_TABS !== 'undefined' ? NAV_TABS : []).find(function(t){ return t.groups.some(function(id){ var x = GROUPS.find(function(y){ return y.id === id; }); return x && x.sheets.indexOf(sheet) > -1; }); });
+  var gs = tab ? tab.groups.map(function(id){ return GROUPS.find(function(x){ return x.id === id; }); }).filter(function(x){ return x && !x.hidden && (x.id !== 'dev' || dev || x.sheets.indexOf(sheet) > -1); }) : [];
+  var sub = gs.map(function(g){ return g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); }).filter(Boolean).join('<span class="rb-sep" aria-hidden="true"></span>');
+  var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
+  var h = '<div class="bk-ribbon" role="toolbar" aria-label="Pages and commands"><div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
+    + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
   nav.insertAdjacentHTML('afterend', h);
 }
 /* KEY-FIGURE BAR: the headline figures stay at the foot of every deal sheet, read from the same headline() as the Deal Snapshot, so they cannot differ from it. */

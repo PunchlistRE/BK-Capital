@@ -24,7 +24,7 @@
    1. NO AUTOMATIC WRITES. Until a deal is deliberately provisioned, bkSave()
       is inert. Every bkEnsureVxx() still runs and still returns a fully
       populated object, because bkLoad() merges BK_BASE in memory regardless -
-      only the PERSISTENCE is withheld. Zero engine behaviour changes.
+      only the PERSISTENCE is withheld. Zero engine behavior changes.
 
    2. NEVER DESTROY. This layer never calls localStorage.clear() and never
       deletes a user value. Legacy state is QUARANTINED - copied to a
@@ -135,7 +135,7 @@ function classifyDeal(raw){
     if(o._srcSeeded === true)
       return { cls:'DEVELOPMENT', why:'carries _srcSeeded, the development source-tag seeding marker' };
   }
-  return { cls:'UNKNOWN', why:'no provenance stamp and no recognised development signature' };
+  return { cls:'UNKNOWN', why:'no provenance stamp and no recognized development signature' };
 }
 window.bkClassifyLegacyDeal = classifyDeal;
 

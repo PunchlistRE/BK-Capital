@@ -67,22 +67,22 @@ function pct(sorted, p){ var n = sorted.length; if(!n) return null; var i = (n -
 function stats(arr){ var a = arr.filter(function(v){ return isFinite(v); }).sort(function(x, y){ return x - y; }), n = a.length; if(!n) return null;
   var mean = a.reduce(function(t, v){ return t + v; }, 0) / n, sd = Math.sqrt(a.reduce(function(t, v){ return t + (v - mean) * (v - mean); }, 0) / Math.max(1, n - 1));
   return { n:n, mean:mean, sd:sd, min:a[0], max:a[n - 1], p5:pct(a, 0.05), p10:pct(a, 0.10), p25:pct(a, 0.25), p50:pct(a, 0.50), p75:pct(a, 0.75), p90:pct(a, 0.90), p95:pct(a, 0.95), sorted:a }; }
-function summarise(runs, hurdle, minDSCR){
+function summarize(runs, hurdle, minDSCR){
   var n = runs.length, share = function(f){ return runs.filter(f).length / (n || 1); };
   return { n:n, irr:stats(runs.map(function(x){ return x.irr; })), moic:stats(runs.map(function(x){ return x.moic; })), profit:stats(runs.map(function(x){ return x.profit; })), dscr:stats(runs.map(function(x){ return x.dscr; })),
     pLoss:share(function(x){ return x.profit < 0; }), pMiss:share(function(x){ return !(x.irr >= hurdle); }), pDscr:share(function(x){ return x.dscr != null && x.dscr < minDSCR; }), pIrrDefined:share(function(x){ return isFinite(x.irr); }), hurdle:hurdle, minDSCR:minDSCR };
 }
-window.bkRiskSummarise = summarise;
+window.bkRiskSummarise = summarize;
 function sigOf(s){ var o = {}; Object.keys(s).forEach(function(k){ if(k.charAt(0) !== '_' && k !== 'seededAt') o[k] = s[k]; }); return JSON.stringify(o) + JSON.stringify(risk(s)); }
 window.bkRiskRunSync = function(n){ var s = bkLoad(), R = risk(s); n = n || R.n; var dr = draws(s, R, n), pol = bkPolicy(), runs = dr.map(function(d){ var m = metrics(d.ov); return { irr:m.irr, moic:m.moic, profit:m.profit, dscr:m.dscr, shifts:d.shifts }; });
-  return { runs:runs, summary:summarise(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25) }; };
+  return { runs:runs, summary:summarize(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25) }; };
 window.bkRiskRun = function(){
   var s = bkLoad(); if(!s || !isAcq(s) || MC.running) return; var R = risk(s), pol = bkPolicy(), dr = draws(s, R, R.n), runs = [], i = 0, sig = sigOf(s);
   MC = { sig:sig, runs:null, running:true, done:0, total:R.n };
   function tick(){ var t0 = Date.now();
     while(i < dr.length && Date.now() - t0 < 40){ var m = metrics(dr[i].ov); runs.push({ irr:m.irr, moic:m.moic, profit:m.profit, dscr:m.dscr, shifts:dr[i].shifts }); i++; }
     MC.done = i; var el = document.getElementById('bkRiskProg'); if(el) el.textContent = 'Running: ' + i + ' of ' + dr.length + ' draws';
-    if(i < dr.length) setTimeout(tick, 0); else { MC.running = false; MC.runs = runs; MC.summary = summarise(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25); MC.R = R; if(typeof showSheet === 'function') showSheet('Probability-Weighted'); } }
+    if(i < dr.length) setTimeout(tick, 0); else { MC.running = false; MC.runs = runs; MC.summary = summarize(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25); MC.R = R; if(typeof showSheet === 'function') showSheet('Probability-Weighted'); } }
   var el0 = document.getElementById('bkRiskProg'); if(el0) el0.textContent = 'Running: 0 of ' + dr.length + ' draws'; setTimeout(tick, 0);
 };
 

@@ -83,9 +83,9 @@ const A = require(path.join(__dirname, 'deal.js'));
     [...t.querySelectorAll('tbody tr')].forEach(tr => { const c = [...tr.cells].map(x => x.innerText); if (c.length > 2) R[c[0].trim()] = c.slice(1).map(num); }); return { R, pages: document.querySelectorAll('.page').length }; });
   const lastOf = a => a[a.length - 1], nearK = (a, b) => Math.abs(a * 1000 - b) <= 1000;
   check('development: a construction funding page, and 5-year waterfall pages (6-year hold)', F && F.pages === 15 + (Math.ceil(6 / 5) - 1));
-  check('construction funding: total costs, equity, loan draws and capitalised interest equal the funding engine\'s', nearK(lastOf(F.R['Total costs']), fd.need) && nearK(lastOf(F.R['Construction loan draws']), fd.draw) && nearK(lastOf(F.R['Interest capitalised']), fd.ci) && nearK(lastOf(F.R['Equity']) + (F.R['Equity over plan'] ? lastOf(F.R['Equity over plan']) : 0), fd.eq));
+  check('construction funding: total costs, equity, loan draws and capitalized interest equal the funding engine\'s', nearK(lastOf(F.R['Total costs']), fd.need) && nearK(lastOf(F.R['Construction loan draws']), fd.draw) && nearK(lastOf(F.R['Interest capitalized']), fd.ci) && nearK(lastOf(F.R['Equity']) + (F.R['Equity over plan'] ? lastOf(F.R['Equity over plan']) : 0), fd.eq));
   check('construction funding: every quarter\'s sources equal its costs', F.R['Total sources'].every((v, j) => Math.abs(v - F.R['Total costs'][j]) <= 1));
-  check('construction funding: the loan rolls forward each quarter (beginning + draws + interest = ending)', F.R['Ending balance'].slice(0, -1).every((e, j) => Math.abs(F.R['Beginning balance'][j] + F.R['Draws'][j] + F.R['Interest capitalised'][j] - e) <= 2) && nearK(lastOf(F.R['Ending balance']), fd.end));
+  check('construction funding: the loan rolls forward each quarter (beginning + draws + interest = ending)', F.R['Ending balance'].slice(0, -1).every((e, j) => Math.abs(F.R['Beginning balance'][j] + F.R['Draws'][j] + F.R['Interest capitalized'][j] - e) <= 2) && nearK(lastOf(F.R['Ending balance']), fd.end));
   /* the development summary shares the page styles */
   const dv = await p.evaluate(d => { bkCreateNewDeal(d); return bkReportHTML(); }, require(path.join(__dirname, 'devdeal.js')));
   await doc.setContent(dv); await doc.waitForTimeout(300);

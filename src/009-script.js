@@ -72,6 +72,7 @@ const NAV_TABS = [
 ];
 function buildChrome(sheet){
   const g = groupOf(sheet);
+  try{ const tt = NAV_TABS.find(t=>t.groups.some(id=>{ const x = GROUPS.find(y=>y.id===id); return x && x.sheets.includes(sheet); })); if(tt){ window.__bkLastInTab = window.__bkLastInTab || {}; window.__bkLastInTab[tt.id] = sheet; } }catch(e){}
   let isDevDeal = false; try{ const d = bkLoad(); isDevDeal = !!d && d.dealType==='Development'; }catch(e){}
   const primary = NAV_TABS.map(t=>{
     const gs = t.groups.map(id=>GROUPS.find(x=>x.id===id)).filter(x=>x && !x.hidden && (x.id!=='dev' || isDevDeal || x.sheets.includes(sheet)));
@@ -79,10 +80,9 @@ function buildChrome(sheet){
     const count = gs.reduce((n,x)=>n+x.sheets.length,0);
     const color = gs[0] ? gs[0].color : '#7a8da1';
     const cur = on && count>1 ? `<span class="cur">${sheet}</span>` : '';
-    if(count===1) return `<div class="grp-btn ${on?'on':''}" data-goto-sheet="${gs[0].sheets[0]}"><span class="sw" style="background:${color}"></span>${t.label}</div>`;
-    const pop = gs.map(x=>`<div class="lab"><span class="sw" style="background:${x.color}"></span>${x.label}</div>`
-      + x.sheets.map(s=>`<div class="it ${s===sheet?'on':''} ${RENDERERS[s]?'':'stub'}" data-goto-sheet="${s}">${s}</div>`).join('')).join('');
-    return `<div class="bk-more bk-nav"><div class="grp-btn ${on?'on':''}" data-bk-more="1" role="button" aria-haspopup="true"><span class="sw" style="background:${color}"></span>${t.label}${cur}<span class="car">&#9662;</span></div><div class="bk-more-pop bk-nav-pop">${pop}</div></div>`;
+    /* one path: a section tab opens its section (the page last open there, else its first page); the section's pages are the sub-tabs under it. No dropdown. */
+    const pages = gs.flatMap(x=>x.sheets), last = (window.__bkLastInTab||{})[t.id], dest = on ? sheet : (last && pages.includes(last) ? last : pages[0]);
+    return `<div class="grp-btn ${on?'on':''}" data-goto-sheet="${dest}" data-nav-tab="${t.id}"><span class="sw" style="background:${color}"></span>${t.label}</div>`;
   }).join('');
   return `
   <div class="brand-bar">
@@ -239,7 +239,7 @@ function bkActiveDealKey(){
 // M/D/YYYY is read month-first because that is already this app's effective
 // convention: bare `new Date('1/1/2027')` is parsed month-first by JS, which is
 // how every non-crashing path in the build has always interpreted these
-// strings. This preserves existing behaviour rather than introducing a new one.
+// strings. This preserves existing behavior rather than introducing a new one.
 // ---------------------------------------------------------------------------
 // V29.7 CANONICAL ACQUISITION FEE  (duplicate-input consolidation)
 // ---------------------------------------------------------------------------
@@ -319,7 +319,7 @@ function bkParseDealDate(str, fallbackISO){
     if(m) { const d = new Date(+m[1], +m[2]-1, +m[3]); return isNaN(d.getTime())?null:d; }
     m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);            // M/D/YYYY
     if(m) { const d = new Date(+m[3], +m[1]-1, +m[2]); return isNaN(d.getTime())?null:d; }
-    return null;                                                // unrecognised - do NOT guess
+    return null;                                                // unrecognized - do NOT guess
   };
   return tryParse(str) || tryParse(fallbackISO) || null;
 }
@@ -385,7 +385,7 @@ function sheetHome(){
 
     <div class="tbl-wrap">
       <table class="fin">
-        <caption>Tab Colour Legend (by function)</caption>
+        <caption>Tab Color Legend (by function)</caption>
         <tbody>
           <tr><td class="rowlabel" style="width:32%"><span class="keyswatch" style="background:#7a8da1;display:inline-block;vertical-align:-2px;margin-right:6px;"></span>Overview</td><td class="rowlabel">Home - this page.</td></tr>
           <tr><td class="rowlabel"><span class="keyswatch" style="background:#3E9AE6;display:inline-block;vertical-align:-2px;margin-right:6px;"></span>Gold</td><td class="rowlabel">Inputs - Deal Underwrite, Rent Roll. The only tabs you type into.</td></tr>
@@ -396,11 +396,11 @@ function sheetHome(){
           <tr><td class="rowlabel"><span class="keyswatch" style="background:#5B4B8A;display:inline-block;vertical-align:-2px;margin-right:6px;"></span>Purple</td><td class="rowlabel">Analytical tools - Sensitivity, Reverse Solve.</td></tr>
           <tr><td class="rowlabel"><span class="keyswatch" style="background:#5A6B7A;display:inline-block;vertical-align:-2px;margin-right:6px;"></span>Slate</td><td class="rowlabel">Portfolio &amp; investors - snapshot-driven views.</td></tr>
           <tr><td class="rowlabel"><span class="keyswatch" style="background:#A93B2C;display:inline-block;vertical-align:-2px;margin-right:6px;"></span>Red</td><td class="rowlabel">QA - controls, regression, certification.</td></tr>
-          <tr><td class="rowlabel"><span class="keyswatch" style="background:#5f6f82;display:inline-block;vertical-align:-2px;margin-right:6px;"></span>Grey</td><td class="rowlabel">SYS_ engine sheets - hidden, uncoloured by design.</td></tr>
+          <tr><td class="rowlabel"><span class="keyswatch" style="background:#5f6f82;display:inline-block;vertical-align:-2px;margin-right:6px;"></span>Grey</td><td class="rowlabel">SYS_ engine sheets - hidden, uncolored by design.</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="note-flag"><span>&#9888;</span><div><b>Audit finding -</b> this legend is already written on your live Home tab, but no sheet actually carries these tab colours today (everything reads flat gold or navy, SYS_ sheets are all visible). The rebuild applies this legend for real - correct tab colours, and SYS_ sheets re-hidden.</div></div>
+    <div class="note-flag"><span>&#9888;</span><div><b>Audit finding -</b> this legend is already written on your live Home tab, but no sheet actually carries these tab colors today (everything reads flat gold or navy, SYS_ sheets are all visible). The rebuild applies this legend for real - correct tab colors, and SYS_ sheets re-hidden.</div></div>
   `;
   const sidebar = sidebarShell(`
     ${modelInfoCard(`

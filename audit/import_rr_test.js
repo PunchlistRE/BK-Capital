@@ -1,5 +1,5 @@
 // Import Rent Roll: reads synthetic Yardi-style rent rolls (CSV, XLSX, and a PDF printed from the same data) and checks every unit, the
-// summary, the deal's revenue and the apply / replace / add behaviour against audit/fixtures/rent_roll_expected.json (made by make_rent_roll.py).
+// summary, the deal's revenue and the apply / replace / add behavior against audit/fixtures/rent_roll_expected.json (made by make_rent_roll.py).
 //   node audit/import_rr_test.js index.html
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const path = require('path'), fs = require('fs');

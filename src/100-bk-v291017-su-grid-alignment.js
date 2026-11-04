@@ -11,7 +11,7 @@ function fix(){
    if(!isSU)return;
    t.classList.add('bk-su-grid');
    if(hs[1].textContent!=='Total ($)') hs[1].textContent='Total ($)';
-   if(hs[2].textContent!=='$/unit') hs[2].textContent='$/unit';
+   if(hs[2].textContent!=='$ / Unit') hs[2].textContent='$ / Unit';
    if(hs[3].textContent!=='$/SF') hs[3].textContent='$/SF';
    if(hs[4].textContent!=='% of Uses') hs[4].textContent='% of Uses';
  });

@@ -395,22 +395,22 @@ window.bkCallFundAll = function(idx){
    7. SPONSOR FEE INCOME - the explicit toggle
    ---------------------------------------------------------------
    PROJECT ECONOMICS NEVER MOVE. The development fee and the construction
-   management fee stay capitalised into the development cost ladder in every
+   management fee stay capitalized into the development cost ladder in every
    toggle state, exactly as bkDevV09() already computes them - so total
    development cost, yield on cost, project NOI and every return figure are
    identical whatever this is set to. That is asserted by the verification,
    not asserted here.
 
    What the toggle changes is SPONSOR economics only: whether fee income is
-   recognised in the sponsor's own cash flow. Two settings, because the
+   recognized in the sponsor's own cash flow. Two settings, because the
    application already treated two groups of fees differently and hiding that
    would be worse than showing it:
      - sponsorFeeIncome        (default Included) - acquisition, asset
        management and disposition fees, which bkSponsorV08() has always
        included in sponsor CF.
      - sponsorDevFeeIncome     (default Excluded) - the development and
-       construction management fees, which this engine has always capitalised
-       and never recognised as sponsor revenue. Turning it on is the
+       construction management fees, which this engine has always capitalized
+       and never recognized as sponsor revenue. Turning it on is the
        workbook's own treatment: the fee is a project cost AND sponsor income.
    Both defaults reproduce today's figures exactly, which is why turning the
    second one on is a deliberate act rather than a silent change.

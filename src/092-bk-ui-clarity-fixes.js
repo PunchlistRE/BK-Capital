@@ -42,7 +42,7 @@
 
    FIX 3 - "LTV" DID NOT SAY WHAT THE V WAS.
    The engine is right and is doing something sensible: it sizes LTV against
-   UNDERWRITTEN VALUE (Year-1 NOI capitalised at the exit cap), which is how a
+   UNDERWRITTEN VALUE (Year-1 NOI capitalized at the exit cap), which is how a
    lender sizes. But a user typing 65% against a $10,000,000 purchase price
    reasonably expects $6,500,000 and gets $6,136,000, because the app valued
    the property at $9,440,000. The labels now say which basis each constraint
@@ -330,7 +330,7 @@ extend('Deal Underwrite','clarityInputs', function(o){
       + '</tbody></table></div>'
       + (_lb === 'price' ? note('&#9432;','<b>LTV is measured against the purchase price</b> (this deal&rsquo;s LTV basis setting). '
         + 'LTC is measured against the total cost basis and DSCR against Year-1 NOI; the loan is the lowest of them.') :
-        note('&#9432;','<b>Underwritten value is not the purchase price.</b> It is Year-1 NOI capitalised at the exit cap - '
+        note('&#9432;','<b>Underwritten value is not the purchase price.</b> It is Year-1 NOI capitalized at the exit cap - '
         + (isFinite(_uv) ? (money(noi)+' &divide; '+pct(cap)+' = '+money(_uv)) : 'NOI &divide; exit cap')
         + ' - which is how a lender sizes against value rather than against what you paid. '
         + (isFinite(uwValue) && price > 0 && Math.abs(uwValue-price) > price*0.005

@@ -1,5 +1,5 @@
 /* ANALYSIS REGISTRY - WORKFLOWS. Each analysis's own steps, in order. A step names the fields it asks for and, for each, whether it is required,
-   optional, conditional (with its condition), not applicable or derived; label and suggestion can be specialised for the step. 'sheet' is where the
+   optional, conditional (with its condition), not applicable or derived; label and suggestion can be specialized for the step. 'sheet' is where the
    detail lives in the full model. Completion is computed from the deal itself (BKReg.stepState), so the guide and the full model never disagree.
    Acquisition and Development reproduce today's guide exactly; their longer workflows come with Phase 10. The other six are their full workflows;
    their steps that need inputs not yet built use planned fields and open once those analyses are built. */
@@ -34,7 +34,7 @@ R.addWorkflow('development', [
   S('land', 'Land and budget', 'The two big costs. Land is the price; the construction budget is hard and soft costs together.', 'Deal Underwrite',
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
   INCOME, EXPENSES,
-  S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilised.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
+  S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilized.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
   S('sources', 'Sources and uses', 'What the deal costs in total and where the money comes from: your equity and the loan. It is read from the model, not typed; check that sources equal uses.', 'Sources & Uses', [q('sourcesUses', 'derived')], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'A new deal has one investor who owns all of it. If there are other partners, enter the GP share, the preferred return and how profit splits above each hurdle. Skip it to keep one investor.', 'Deal Underwrite',
     [q('gpShare'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),

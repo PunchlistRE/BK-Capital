@@ -21,7 +21,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
     const T = (re) => { const m = r.su.match(re); return m ? num(m[1]) : NaN; };
     check(tag + ': Deal Snapshot loan is the construction facility', Math.abs(r.h.loan - r.f.commit) < 1, r.h.loan + ' vs ' + r.f.commit);
     check(tag + ': Deal Snapshot equity is the development equity requirement', Math.abs(r.h.equity - r.f.equityTotal) < 1, r.h.equity + ' vs ' + r.f.equityTotal);
-    check(tag + ': Deal Snapshot yield on cost is stabilised NOI over cost before financing', Math.abs(r.h.yoc - r.t.stabNOI / r.f.unlev) < 1e-9, r.h.yoc);
+    check(tag + ': Deal Snapshot yield on cost is stabilized NOI over cost before financing', Math.abs(r.h.yoc - r.t.stabNOI / r.f.unlev) < 1e-9, r.h.yoc);
     check(tag + ': Deal Snapshot coverage is a development figure, not the acquisition loan\'s', isFinite(r.h.dscr) ? (r.h.dscr > 0.3 && r.h.dscr < 6) : true, r.h.dscr);
     const uses = T(/TOTAL USES \$([\d,]+)/), src = T(/TOTAL SOURCES \$([\d,]+)/);
     check(tag + ': Sources & Uses sheet: total sources equal total uses', uses > 0 && Math.abs(uses - src) < 1, uses + ' / ' + src);
@@ -30,7 +30,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
     const pdfUses = (r.txt.match(/Total project cost \$([\d,]{6,})/) || [])[1], pdfSrc = (r.txt.match(/Total sources \$([\d,]{6,})/) || [])[1];
     check(tag + ': PDF total project cost equals the Sources & Uses sheet total uses', pdfUses && Math.abs(num(pdfUses) - uses) < 1, pdfUses + ' vs ' + uses);
     check(tag + ': PDF total sources equal the PDF total project cost', pdfSrc && Math.abs(num(pdfSrc) - num(pdfUses)) < 1, pdfSrc + ' vs ' + pdfUses);
-    check(tag + ': PDF loan source is draws plus capitalised interest, not a plug', Math.abs((r.f.draws + r.f.capInt) - (num((r.txt.match(/Construction loan - draws\s*\$([\d,]+)/) || [0, 0])[1]) + num((r.txt.match(/interest capitalised\s*\$([\d,]+)/) || [0, 0])[1]))) < 2);
+    check(tag + ': PDF loan source is draws plus capitalized interest, not a plug', Math.abs((r.f.draws + r.f.capInt) - (num((r.txt.match(/Construction loan - draws\s*\$([\d,]+)/) || [0, 0])[1]) + num((r.txt.match(/interest capitalized\s*\$([\d,]+)/) || [0, 0])[1]))) < 2);
     if (takeout) check(tag + ': PDF describes the permanent takeout', /takes out the construction loan/.test(r.txt) && /Permanent takeout/.test(r.txt));
     else {
       check(tag + ': PDF says the construction loan is repaid from sale proceeds', /repaid from the sale proceeds/.test(r.txt) && /Debt at sale/.test(r.txt));

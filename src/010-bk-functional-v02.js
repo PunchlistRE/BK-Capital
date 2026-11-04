@@ -17,7 +17,7 @@ const BK_BASE={
   gpr:1086996,badDebtPct:0.005,misc:7620.5
 };
 /* UNDERWRITING CONVENTIONS (CV-2026.10). Each is a per-deal setting. A deal that does not carry
-   the field resolves to the LEGACY behaviour it was underwritten with, so no saved deal changes
+   the field resolves to the LEGACY behavior it was underwritten with, so no saved deal changes
    unless someone changes its setting. New deals are stamped with the current standard by
    bkCreateNewDeal(). This is the only place the fallbacks are defined.
      cvRentGrowthStart  'year2'  Year 1 at underwritten rents/expenses, annual step growth from Year 2
@@ -202,7 +202,7 @@ function bkParse(el){const raw=el.textContent.replace(/\u00a0/g,' ').trim(); con
   let n=parseFloat(m[3].replace(/,/g,'')); if(m[1]||m[2]) n=-n;
   return fmt==='pct' ? n/100 : n;}
 function bkWire(){document.querySelectorAll('#viewport tr.input[data-bk-key] td.v').forEach(el=>{if(el.dataset.bkWired==='1')return;el.dataset.bkWired='1';el.contentEditable='true';el.spellcheck=false;
-  // V30: spreadsheet behaviour - entering a cell selects its contents, so typing replaces the
+  // V30: spreadsheet behavior - entering a cell selects its contents, so typing replaces the
   // displayed value instead of being prepended to it ("$0" + "5000" used to become "5000$0").
   const selAll=()=>{const r=document.createRange();r.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);};
   el.addEventListener('mousedown',e=>{if(document.activeElement!==el){e.preventDefault();el.focus();selAll();}});

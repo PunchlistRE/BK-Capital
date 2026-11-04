@@ -11,7 +11,7 @@
    * the cell you were heading for is re-focused after the re-render (found by position and row label)
    * Arrow Down / Arrow Up commit the current input and move to the next / previous one. Entering a new
      section scrolls that section to the top of the view and focuses its first input, so the next section
-     "pops up". Selects keep their own arrow-key behaviour; Enter and Escape are unchanged.
+     "pops up". Selects keep their own arrow-key behavior; Enter and Escape are unchanged.
    =========================================================================== */
 (function(){
 'use strict';

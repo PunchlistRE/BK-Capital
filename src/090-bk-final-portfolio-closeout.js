@@ -126,7 +126,7 @@ extend('Portfolio CF','fbChecks', function(o){
       // Route B for debt service must read the facility the deal ACTUALLY carries.
       // bkDebt() is the acquisition sizing engine; on a development deal the operative
       // facility after completion is the permanent loan from bkDevTakeoutV11(), and the
-      // construction facility's interest is capitalised rather than paid in cash. Reading
+      // construction facility's interest is capitalized rather than paid in cash. Reading
       // bkDebt() for every deal compared an acquisition loan that the development deal
       // does not have against levered rows that carry its permanent loan - a $5.2m
       // apparent break that was entirely the wrong Route B.

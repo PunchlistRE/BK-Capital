@@ -113,8 +113,8 @@ function rail(){
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
 var queued = false;
-/* a cell filled with a heat colour (sensitivity grids and the like) keeps type that reads on it: whichever of near-black or white has more contrast with the fill, whenever the
-   theme's own type colour would fall short (light type from the night palette on a pale or mid-tone fill) */
+/* a cell filled with a heat color (sensitivity grids and the like) keeps type that reads on it: whichever of near-black or white has more contrast with the fill, whenever the
+   theme's own type color would fall short (light type from the night palette on a pale or mid-tone fill) */
 function heatInk(v){
   var lum = function(c){ var m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/.exec(c); if(!m || (m[4] !== undefined && +m[4] < 0.5)) return null; var f = function(x){ x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }; return .2126 * f(+m[1]) + .7152 * f(+m[2]) + .0722 * f(+m[3]); };
   var ratio = function(a, b){ return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); };

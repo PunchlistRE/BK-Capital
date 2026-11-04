@@ -109,13 +109,13 @@ function parseUnits(){
   if(map.start == null && map.end == null) warn.push('No lease dates mapped: the Lease Cohort and rollover views will have nothing to work with.');
   if(S.fromPdf) warn.push('PDF columns are read by position: check the preview carefully (a vacant unit with a blank tenant cell can shift its row).');
   var flagged = out.filter(function(u){ return u._w.length; }).length; if(flagged) warn.push(flagged + ' unit' + (flagged === 1 ? ' has' : 's have') + ' a warning (see the Notes column).');
-  var stats = summarise(out), recon = null;
+  var stats = summarize(out), recon = null;
   if(totalRow){ var tin = map.inplace != null ? num(totalRow[map.inplace]) : null, tsf = map.sf != null ? num(totalRow[map.sf]) : null;
     var sumIn = out.reduce(function(a, u){ return a + (u.status === 'Occupied' ? u.inPlaceRent : 0) * (S.basis === 'monthly' ? 1 : 1); }, 0), sumSF = out.reduce(function(a, u){ return a + u.sf; }, 0);
     recon = { rentPrinted:tin, rentSum:sumIn, sfPrinted:tsf, sfSum:sumSF, rentOk:tin == null || S.basis !== 'monthly' ? null : Math.abs(tin - out.reduce(function(a, u){ return a + u.inPlaceRent; }, 0)) < 1, sfOk:tsf == null ? null : Math.abs(tsf - sumSF) < 1 }; }
   return { units:out, warnings:warn, stats:stats, recon:recon, skipped:skipped };
 }
-function summarise(us){
+function summarize(us){
   var res = us.filter(function(u){ return u.tenantType === 'Residential'; }), com = us.filter(function(u){ return u.tenantType === 'Commercial'; });
   var s = function(a, k){ return a.reduce(function(t, u){ return t + (Number(u[k]) || 0); }, 0); }, occ = function(a, k){ return s(a.filter(function(u){ return u.status === 'Occupied'; }), k); }, vac = function(a, k){ return s(a.filter(function(u){ return u.status !== 'Occupied'; }), k); };
   var occN = us.filter(function(u){ return u.status === 'Occupied'; }).length;

@@ -46,7 +46,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   /* the print button: top right of the header, not loose under the strip; not duplicated on report pages that have their own */
   await show(p, 'Sponsor CF');
   const pb = await p.evaluate(() => { const tb = document.querySelector('#viewport .title-block'), b = tb.querySelector('.bk-print-btn'), k = tb.querySelector('.bk-key-wrap'), h = tb.querySelector('h2'); if (!b) return null; const r = b.getBoundingClientRect(), t = tb.getBoundingClientRect(), hh = h.getBoundingClientRect(), kk = k && k.getBoundingClientRect(); return { top: r.top - t.top, right: t.right - r.right, belowTitle: r.top >= hh.top - 4 && r.bottom <= hh.bottom + 60, leftOfKey: !kk || r.right <= kk.left + 1 }; });
-  check('Print / Save PDF sits in the header band at the top right, beside the Colour key', pb && pb.top < 40 && pb.right > 100 && pb.leftOfKey, JSON.stringify(pb));
+  check('Print / PDF sits in the header band at the top right, beside the Color key', pb && pb.top < 40 && pb.right > 100 && pb.leftOfKey, JSON.stringify(pb));
   await show(p, 'Cash Flow Report', 900); check('a report that has its own Print button does not get a second one', await p.evaluate(() => document.querySelectorAll('#viewport .bk-print-btn').length === 0));
 
   /* edit controls: a unit sits in its own slot and headers line up with the figures */

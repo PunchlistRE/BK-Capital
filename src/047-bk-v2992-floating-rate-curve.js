@@ -81,7 +81,7 @@
     const ltvValue=ltvBasis==='price'?price:ltvBasis==='lesser'?(stab>0?Math.min(price,stab):price):stab;
     const byLTV=Number(s.acqLTV)*ltvValue,byLTC=Number(s.acqLTC)>0?Number(s.acqLTC)*basis:Infinity;
     const coupon=bkDebtRateForMonth(s,1),amortMonths=Math.max(1,Math.round(Number(s.acqAmort)*12)),unitPmt=bkPmt(coupon/12,amortMonths,1);
-    /* lenderNoiBasis (optional): 'after' runs the lender tests (DSCR, and LTV when it is measured on value) on NOI after replacement reserves, as many lenders do; blank = NOI before reserves, the original behaviour. */
+    /* lenderNoiBasis (optional): 'after' runs the lender tests (DSCR, and LTV when it is measured on value) on NOI after replacement reserves, as many lenders do; blank = NOI before reserves, the original behavior. */
     const dscrNoi=(s.lenderNoiBasis==='after'&&isFinite(op.after))?op.after:op.noi;
     const byDSCR=(Number(s.acqDSCR)>0&&unitPmt>0)?(dscrNoi/Number(s.acqDSCR))/(unitPmt*12):Infinity;
     /* V29.11.0 - fourth ORIGINATION constraint. Uses op.noi, the SAME underwriting NOI the

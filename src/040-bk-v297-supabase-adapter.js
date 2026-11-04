@@ -118,7 +118,7 @@ function saveSession(s){
 }
 
 /* The token the adapter should present. Null when signed out, in which case the
-   adapter falls back to its previous behaviour (publishable key as bearer). */
+   adapter falls back to its previous behavior (publishable key as bearer). */
 window.bkAuthToken = function(){
   var s = loadSession();
   return (s && s.access_token) ? s.access_token : null;
@@ -239,7 +239,7 @@ function bkSbOnce(pathAndQuery, opts){
   // PostgREST derives auth.uid() from the BEARER token, so ownership RLS cannot
   // work while the publishable key is the bearer. Signed in, we present the
   // user's session token; signed out, this is byte-for-byte the previous
-  // behaviour. 'apikey' remains the publishable key either way, which is what
+  // behavior. 'apikey' remains the publishable key either way, which is what
   // Supabase's gateway authenticates the project with.
   // No request path, verb order, table, column or mapping function is changed.
   var bearer = bkAuthToken();

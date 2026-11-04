@@ -130,14 +130,15 @@ window.bkCreateNewDeal = function(opts){
      it. Identity and economic fields are applied AFTER the zeroed template, so
      nothing the caller asked for is silently discarded. */
   Object.keys(opts).forEach(function(k){
-    if(k.charAt(0) === '_' || k === 'template' || k === 'blankStructure') return;
+    if(k.charAt(0) === '_' || k === 'template' || k === 'blankStructure' || k === 'clearAll') return;
     blank[k] = opts[k];
   });
   try { localStorage.removeItem('bkcapital.cre.v02'); } catch(e){}
   var merged = Object.assign({}, bkLoad(), blank);
   /* A blank start has NO values, not zeros: every numeric input that is 0 becomes empty, so the sheets show empty cells and the status chips say what is missing. Switches, tier splits, curve shapes and conventions are settings, not inputs, and keep their value. The engine reads an empty cell as 0, so no calculation changes. */
   if(opts.blankStructure){ var KEEP = /On$|^refiAt|Enabled$|^t[234]LP$|Basis$|Steepness$|^_|^cv/; Object.keys(merged).forEach(function(k){ if(typeof merged[k] === 'number' && merged[k] === 0 && !KEEP.test(k)) merged[k] = ''; }); }
-  if(opts.blankStructure){ merged.debtRateType = ''; }   /* the engine reads an empty rate type as Fixed */
+  if(opts.blankStructure){ merged.debtRateType = ''; }
+  if(opts.clearAll){ merged.status = ''; }   /* Clear inputs removes everything the user set, the deal status included; only the kind of analysis stays */   /* the engine reads an empty rate type as Fixed */
   window.bkProvision('new-deal', merged);
   if(typeof currentSheet !== 'undefined') showSheet('Deal Underwrite');
   return window.bkProductionCounts();

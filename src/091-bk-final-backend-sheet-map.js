@@ -124,7 +124,7 @@ var MAP = {
   },
   'SYS_Curves': {
     title: 'SYS_Curves',
-    what: 'Normalised S-curve or straight-line monthly disbursement weights for five cost categories across 180 months, '
+    what: 'Normalized S-curve or straight-line monthly disbursement weights for five cost categories across 180 months, '
         + 'with self-tests that each curve sums to one.',
     where: '<code>bkCurveShare()</code>, consumed by <code>bkDevV09()</code> and <code>bkDevFundingV10()</code>. The curve '
          + 'settings are on Dev Draws, and the same self-test runs there as a live control.',

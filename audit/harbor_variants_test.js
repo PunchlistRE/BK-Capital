@@ -19,7 +19,7 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), B = require(path.j
   const KEYS = ['commit', 'capInt', 'equityTotal', 'sale', 'payoff', 'irr', 'moic', 'contrib', 'dist', 'lpIRR', 'gpIRR', 'lpDist', 'gpDist', 'promote'];
   const diff = (a, r) => KEYS.filter(k => !(Math.abs(a[k] - r[k]) < (Math.abs(a[k]) > 100 ? 1 : 1e-6))).map(k => k + ' ' + a[k] + ' vs ' + r[k]).join('; ');
   const run = async (tag, deal) => { const p = await open(deal); const a = await p.evaluate(figures); const r = ref(a.s);
-    check(tag + ': the independent model matches the engine (facility, capitalised interest, equity, sale, payoff, IRR, multiple, contributions, distributions, LP/GP, promote)', !!r && diff(a, r) === '', r ? diff(a, r) : 'reference failed');
+    check(tag + ': the independent model matches the engine (facility, capitalized interest, equity, sale, payoff, IRR, multiple, contributions, distributions, LP/GP, promote)', !!r && diff(a, r) === '', r ? diff(a, r) : 'reference failed');
     check(tag + ': no failed integrity check and every waterfall check passes', a.hard.length === 0 && a.wfFail === 0, a.hard.join('|') + ' wf ' + a.wfFail);
     check(tag + ': equity in the returns cash flow equals the funding ledger (total and month by month)', Math.abs(a.eqRows - a.equityTotal) < 1 && a.maxMonthGap < 0.01, a.eqRows + ' vs ' + a.equityTotal + ' / ' + a.maxMonthGap);
     check(tag + ': no page errors', p.errs.length === 0, p.errs.join('|')); await p.close(); return a; };

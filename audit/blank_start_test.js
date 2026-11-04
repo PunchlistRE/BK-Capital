@@ -27,7 +27,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); con
   /* a blank deal shows no returns-derived figures: the missing inputs, units first, are listed instead */
   await p.evaluate(() => bkCreateNewDeal({ name: 'Blank', dealId: 'BL2', dealType: 'Acquisition', blankStructure: true }));
   for (const sh of ['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns']) { const tx = await text(sh);
-    check(sh + ': a blank deal shows "Results Withheld" with the missing inputs (Units, Purchase Price, Revenue Basis, Hold Period, Exit Capitalisation Rate), and no IRR figure', /Results Withheld/i.test(tx) && /Units/.test(tx) && /Purchase Price/.test(tx) && /Revenue Basis/.test(tx) && /Exit Capitalisation Rate/.test(tx) && !/\b\d{3,}\.\d\d%/.test(tx), tx.slice(0, 120)); }
+    check(sh + ': a blank deal shows "Results Withheld" with the missing inputs (Units, Purchase Price, Revenue Basis, Hold Period, Exit Capitalization Rate), and no IRR figure', /Results Withheld/i.test(tx) && /Units/.test(tx) && /Purchase Price/.test(tx) && /Revenue Basis/.test(tx) && /Exit Capitalization Rate/.test(tx) && !/\b\d{3,}\.\d\d%/.test(tx), tx.slice(0, 120)); }
   await p.evaluate(() => { const s = bkLoad(); Object.assign(s, { propertyType: 'Multifamily', closing: '1/1/2027', gsf: 9000, purchasePrice: 2000000, avgRent: 2000, vacancy: 0.05, taxes: 40000, insurance: 12000, exitCap: 0.06, holdYears: 5 }); bkSave(s); });
   let tx2 = await text('Sensitivity');
   check('with building area but NO unit count the deal is still not ready, and Units is named as missing', /Results Withheld/i.test(tx2) && /Units/.test(tx2), tx2.slice(0, 80));
@@ -45,7 +45,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); con
   /* development schedule empty state */
   await p.evaluate(() => bkCreateNewDeal({ name: 'Dev Blank', dealId: 'DB', dealType: 'Development', blankStructure: true }));
   t = await text('Dev Schedule');
-  check('a development deal with no phase months shows "No schedule to draw yet" instead of a chart or invented key dates, and the hold total is consistent (60 months = 5.0 years, no 120-month stand-in)', /No schedule to draw yet/.test(t) && !/TO STABILISATION/.test(t) && !/Stabilised · Jan/.test(t) && /60 months\s+5\.0 yrs/.test(t) && !/\b120\b/.test(t), t.slice(t.indexOf('TOTAL HOLD'), t.indexOf('TOTAL HOLD') + 100));
+  check('a development deal with no phase months shows "No schedule to draw yet" instead of a chart or invented key dates, and the hold total is consistent (60 months = 5.0 years, no 120-month stand-in)', /No schedule to draw yet/.test(t) && !/TO STABILISATION/.test(t) && !/Stabilized · Jan/.test(t) && /60 months\s+5\.0 yrs/.test(t) && !/\b120\b/.test(t), t.slice(t.indexOf('TOTAL HOLD'), t.indexOf('TOTAL HOLD') + 100));
   check('no page errors', errs.length === 0, errs.join('|'));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();

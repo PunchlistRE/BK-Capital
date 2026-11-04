@@ -21,7 +21,7 @@
    exceptions mean "a number may be superseded", not "this cannot be computed",
    so it is surfaced without suppressing results.
 
-   Requirements are DEAL-TYPE AWARE (section AM): a stabilised acquisition is
+   Requirements are DEAL-TYPE AWARE (section AM): a stabilized acquisition is
    not asked for construction inputs, and a ground-up development is.
 
    WHAT SUPPRESSION MEANS. Only RESULT sheets are suppressed, and only in DRAFT
@@ -55,7 +55,7 @@ function requirements(s){
     {key:'revenue',      label:'Revenue Basis (rent roll, average rent or commercial rent)', group:'Operations',
        ok:((s.rentRoll||[]).length>0 || num(s.avgRent)>0 || num(s.commercialRent)>0)},
     {key:'holdYears',    label:'Hold Period',            group:'Exit',        ok:num(s.holdYears)>0},
-    {key:'exitCap',      label:'Exit Capitalisation Rate',group:'Exit',       ok:num(s.exitCap)>0}
+    {key:'exitCap',      label:'Exit Capitalization Rate',group:'Exit',       ok:num(s.exitCap)>0}
   ];
   if(isDev){
     core.push({key:'constructionMonths', label:'Construction Period', group:'Development',
@@ -68,7 +68,7 @@ function requirements(s){
   }
   /* Investment-ready adds financing, exit mechanics and promote structure. */
   var invest = [
-    {key:'debt', label:'Debt Assumptions (rate and amortisation, or Debt switched off)', group:'Debt',
+    {key:'debt', label:'Debt Assumptions (rate and amortization, or Debt switched off)', group:'Debt',
        ok:(s.debtEnabled === false) || (num(s.acqRate)>0 && num(s.acqAmort)>0)},
     {key:'saleCostPct', label:'Cost of Sale', group:'Exit', ok:s.saleCostPct !== undefined},
     {key:'gpShare', label:'GP / LP Equity Split', group:'Equity', ok:s.gpShare !== undefined},
@@ -204,13 +204,13 @@ function notReadyPanel(sheet){
   if(r.missing.length){
     main += '<div class="tbl-wrap" style="margin-top:14px"><table class="fin wrap">'
       + '<caption>Required Inputs Still Missing</caption>'
-      + '<thead><tr><th class="rowlabel-h">Area</th><th style="text-align:left">Input</th></tr></thead>'
+      + '<thead><tr><th class="rowlabel-h" style="width:180px">Area</th><th style="text-align:left">Input</th></tr></thead>'
       + '<tbody>'+groupList(r.missing)+'</tbody></table></div>';
   }
   if(r.met.length){
     main += '<div class="tbl-wrap" style="margin-top:14px"><table class="fin wrap">'
       + '<caption>Inputs Already Complete</caption>'
-      + '<thead><tr><th class="rowlabel-h">Area</th><th style="text-align:left">Input</th></tr></thead>'
+      + '<thead><tr><th class="rowlabel-h" style="width:180px">Area</th><th style="text-align:left">Input</th></tr></thead>'
       + '<tbody>'+groupList(r.met)+'</tbody></table></div>';
   }
   main += '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">'

@@ -52,7 +52,7 @@ const TWO = [
 
   /* 1. one building: two-column page (rent roll beside the expense list), monthly and annual rent columns, a broken NOI */
   let r = await run(ONE);
-  check('rent-roll layout recognised', r.om.layout === 'rentroll');
+  check('rent-roll layout recognized', r.om.layout === 'rentroll');
   check('name and place from the cover, with its lost spaces restored', r.om.name === '14 North Maple Avenue' && r.om.city === 'White Plains' && r.om.state === 'NY' && r.om.zip === '10601', `${r.om.name} / ${r.om.city}, ${r.om.state} ${r.om.zip}`);
   check('price read from the line after "Price to Sell:"', r.om.price === 2400000, r.om.price);
   check('building area from the property overview', r.om.sf === 12400, r.om.sf);

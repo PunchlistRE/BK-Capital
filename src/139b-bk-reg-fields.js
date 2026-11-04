@@ -26,8 +26,8 @@ window.BKReg.addFields([
   /* income */
   F('avgRent', 'Average rent per unit, per month', 'money', { help:'Total monthly scheduled rent divided by units.', ex:'$1,650' }),
   F('otherIncomePerUnit', 'Other income per unit, per year', 'money', { zeroOk:true, help:'Laundry, parking, fees, utility bill-back.' }),
-  F('vacancy', 'Vacancy', 'pct', { zeroOk:true, sug:sug(0.05, 'Stabilised multifamily is usually underwritten at 5%. Use more if the building is not full.') }),
-  F('badDebtPct', 'Credit loss', 'pct', { zeroOk:true, sug:sug(0.01, 'About 1% of rent for a stabilised building.') }),
+  F('vacancy', 'Vacancy', 'pct', { zeroOk:true, sug:sug(0.05, 'Stabilized multifamily is usually underwritten at 5%. Use more if the building is not full.') }),
+  F('badDebtPct', 'Credit loss', 'pct', { zeroOk:true, sug:sug(0.01, 'About 1% of rent for a stabilized building.') }),
   F('concessionPct', 'Concessions', 'pct', { zeroOk:true }),
   F('lossToLeasePct', 'Loss to lease', 'pct', { zeroOk:true }),
   /* expenses */
@@ -41,7 +41,7 @@ window.BKReg.addFields([
   F('debtEnabled', 'Use acquisition debt', 'bool'),
   F('acqLTV', 'Loan-to-value, max', 'pct', { sug:sug(0.65, 'Most lenders cap multifamily at 65% to 75%; 65% is a safe starting point.') }),
   F('acqRate', 'Interest rate', 'pct', { sug:sug(0.0675, 'A placeholder until you have a lender quote.') }),
-  F('acqAmort', 'Amortisation, years', 'int', { sug:sug(30, '30 years is standard.') }),
+  F('acqAmort', 'Amortization, years', 'int', { sug:sug(30, '30 years is standard.') }),
   F('acqIO', 'Interest-only years', 'num', { zeroOk:true, help:'0 if none.' }),
   F('acqOrigFee', 'Origination fee, %', 'pct', { zeroOk:true, sug:sug(0.01, '1% is typical.') }),
   F('acqDSCR', 'Minimum DSCR', 'num'),
@@ -66,7 +66,7 @@ window.BKReg.addFields([
   F('conRate', 'Construction loan rate', 'pct', { sug:sug(0.075, 'A placeholder until you have a quote.') }),
   F('conFixedAmt', 'Fixed facility amount', 'money', { zeroOk:true, help:'Blank sizes the loan from loan to cost.' }),
   F('permRate', 'Permanent loan rate', 'pct', { sug:sug(0.0675, 'A placeholder until you have a quote.') }),
-  F('permAmort', 'Permanent amortisation, years', 'int', { sug:sug(30, '30 years is standard.') }),
+  F('permAmort', 'Permanent amortization, years', 'int', { sug:sug(30, '30 years is standard.') }),
   F('initReserves', 'Initial reserves', 'table', { sheet:'Investment' }),
   /* tax (exists today for acquisitions) */
   F('_depr', 'Depreciation and cost segregation', 'table', { sheet:'Depreciation', help:'Land allocation, components and recovery periods.' }),

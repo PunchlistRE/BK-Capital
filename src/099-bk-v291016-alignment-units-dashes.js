@@ -23,9 +23,9 @@ function normalize(root){
     /* Canonical unit headers. */
     hs.forEach(function(h){
       var x=txt(h);
-      x=x.replace(/^\$\s*\/\s*Unit$/i,'$/unit')
-         .replace(/^\$\s*\/\s*SF$/i,'$/SF')
-         .replace(/^\$\s*\/\s*GSF$/i,'$/GSF')
+      x=x.replace(/^\$\s*\/\s*Unit$/i,'$ / Unit')
+         .replace(/^\$\s*\/\s*SF$/i,'$ / SF')
+         .replace(/^\$\s*\/\s*GSF$/i,'$ / GSF')
          .replace(/^%\s+of\s+Uses$/i,'% of Uses');
       if(txt(h)!==x) h.textContent=x;
     });

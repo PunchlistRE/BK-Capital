@@ -452,12 +452,12 @@ extend('Sponsor CF','invSponsorToggle', function(o){
     '<tr><th class="rowlabel-h">Measure</th><th>Value</th><th style="text-align:left">Basis</th><th style="min-width:140px">Status</th></tr>',
       (devUnlev !== null
         ? '<tr>'+lbl('Development Cost - before financing')+val(money(devUnlev))
-          + txt('Land, hard, soft and lease-up deficit. The development and CM fee are capitalised into this figure.')
+          + txt('Land, hard, soft and lease-up deficit. The development and CM fee are capitalized into this figure.')
           + '<td class="v">'+chip('pass','FIXED')+'</td></tr>'
         : '')
     + '<tr>'+lbl(proj&&proj.isDev?'Total Development Cost - all-in':'All-In Acquisition Basis')+val(money(basis))
         + txt(proj&&proj.isDev
-              ? 'Plus capitalised interest and loan fees. This is the yield-on-cost basis, and it is the same in EVERY toggle state.'
+              ? 'Plus capitalized interest and loan fees. This is the yield-on-cost basis, and it is the same in EVERY toggle state.'
               : 'Purchase price plus closing costs and the acquisition fee')
         + '<td class="v">'+chip('pass','FIXED')+'</td></tr>'
     + '<tr>'+lbl('Year-1 Net Operating Income')+val(money(noi))+txt('Property operations')
@@ -477,12 +477,12 @@ extend('Sponsor CF','invSponsorToggle', function(o){
       + txt('Acquisition, asset management, disposition')
       + '<td class="v">'+chip(e.includeOps?'pass':'', e.includeOps?'INCLUDED':'EXCLUDED')+'</td></tr>'
     + '<tr>'+lbl('Development Fee')+val(fees.hasDev?money(fees.devFee):'-')
-      + txt(fees.hasDev?'Charged on hard cost plus soft subtotal, capitalised into project cost':'Not a development deal')
+      + txt(fees.hasDev?'Charged on hard cost plus soft subtotal, capitalized into project cost':'Not a development deal')
       + '<td class="v">'+chip(e.includeDev?'pass':'', fees.hasDev?(e.includeDev?'RECOGNISED':'CAPITALISED ONLY'):'N/A')+'</td></tr>'
     + '<tr>'+lbl('Construction Management Fee')+val(fees.hasDev?money(fees.cmFee):'-')
-      + txt(fees.hasDev?'Charged on hard cost, capitalised into project cost':'Not a development deal')
+      + txt(fees.hasDev?'Charged on hard cost, capitalized into project cost':'Not a development deal')
       + '<td class="v">'+chip(e.includeDev?'pass':'', fees.hasDev?(e.includeDev?'RECOGNISED':'CAPITALISED ONLY'):'N/A')+'</td></tr>'
-    + '<tr>'+lbl('Total Fee Income Recognised')+val(money(e.totalFeeIncome))+txt('What the toggle lets through')
+    + '<tr>'+lbl('Total Fee Income Recognized')+val(money(e.totalFeeIncome))+txt('What the toggle lets through')
       + '<td class="v">'+chip('','SPONSOR SIDE')+'</td></tr>'
     + '<tr class="grandtotal">'+lbl('SPONSOR ALL-IN XIRR')+val(isFinite(e.sponsorXIRR)?pct(e.sponsorXIRR):'-')
       + txt('Co-invest + promote + fee income')
@@ -493,8 +493,8 @@ extend('Sponsor CF','invSponsorToggle', function(o){
     + note('&#9888;','<b>The fee is a project cost in every setting.</b> Turning on development and CM fee income does not take the fee '
       + 'out of the cost ladder - total development cost, yield on cost and the project return are identical whatever this is set '
       + 'to, which is what the FIXED chips above mean and what the regression asserts. What changes is only whether the sponsor '
-      + 'recognises that fee as revenue on their own side. Recognising it is the workbook&rsquo;s treatment, where the fee is booked as '
-      + 'income AND as cost; leaving it off is this engine&rsquo;s historical treatment, where it is capitalised and never appears as '
+      + 'recognizes that fee as revenue on their own side. Recognising it is the workbook&rsquo;s treatment, where the fee is booked as '
+      + 'income AND as cost; leaving it off is this engine&rsquo;s historical treatment, where it is capitalized and never appears as '
       + 'sponsor revenue. Both are defensible, they answer different questions, and neither is now happening silently.');
 });
 

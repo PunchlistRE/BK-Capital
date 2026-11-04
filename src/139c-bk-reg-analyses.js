@@ -24,7 +24,7 @@ var R = window.BKReg;
     engines:['business'], about:'Revenue, EBITDA, working capital, free cash flow and valuation for an operating company, kept separate from property underwriting.' }
 ].forEach(function(a){ R.addAnalysis(a); });
 
-/* line icons (20px, current text colour) */
+/* line icons (20px, current text color) */
 var P = {
   value:'<path d="M4 17V9l6-5 6 5v8z"/><path d="M8 17v-4h4v4"/>',
   key:'<circle cx="7" cy="10" r="3"/><path d="M10 10h7M14 10v3M17 10v2"/>',

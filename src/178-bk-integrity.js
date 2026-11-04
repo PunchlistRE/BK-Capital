@@ -47,16 +47,16 @@ function run(){
     add('unlev', 'Budget', 'Cost before financing equals land + closing + acquisition fee + pre-development + hard + soft + lease-up deficit', tie(unlevSum, x.unlev) ? 'pass' : 'hard', M(unlevSum) + ' vs ' + M(x.unlev) + '.');
     /* 2 sources = uses */
     var excess = sum('excess'), draws = sum('loanDraw'), capInt = num(f.actualCapInt), uses = x.unlev + num(f.upfrontFees) + capInt + excess + num(f.resFunded), sources = draws + capInt + num(f.equityTotal) + num(f.resDrawn);
-    add('su', 'Sources & Uses', 'Total sources equal total uses', tie(uses, sources) ? 'pass' : 'hard', 'Uses ' + M(uses) + ' (cost ' + M(x.unlev) + ' + fees ' + M(f.upfrontFees) + ' + capitalised interest ' + M(capInt) + ' + interest paid by equity beyond the commitment ' + M(excess) + '); sources ' + M(sources) + ' (draws ' + M(draws) + ' + capitalised interest ' + M(capInt) + ' + equity ' + M(f.equityTotal) + ').');
+    add('su', 'Sources & Uses', 'Total sources equal total uses', tie(uses, sources) ? 'pass' : 'hard', 'Uses ' + M(uses) + ' (cost ' + M(x.unlev) + ' + fees ' + M(f.upfrontFees) + ' + capitalized interest ' + M(capInt) + ' + interest paid by equity beyond the commitment ' + M(excess) + '); sources ' + M(sources) + ' (draws ' + M(draws) + ' + capitalized interest ' + M(capInt) + ' + equity ' + M(f.equityTotal) + ').');
     /* 3 draws follow eligible costs */
     var costs = sum('need') - sum('resLease'); var fundedCosts = sum('eq') + draws + sum('overflow');
     add('draws', 'Debt', 'Every month\'s cost is paid by equity or a loan draw (debt draws follow costs)', tie(costs, fundedCosts) ? 'pass' : 'hard', 'Costs ' + M(costs) + ' = equity ' + M(sum('eq') + sum('overflow')) + ' + draws ' + M(draws) + ' (' + M(costs - fundedCosts) + ' difference).');
-    /* 4 capitalised interest recomputed month by month */
+    /* 4 capitalized interest recomputed month by month */
     var bal = 0, bad = [], accrued = 0, rate = num(s.conRate) / 1, commit = num(f.commit), bcap = num(f.balCap) || commit, payoff = Number(s.refiAtStab || 0) ? x.stab : x.hold;
     ms.forEach(function(z){ var interest = (commit > 0 && z.mo <= x.stab && z.mo < payoff) ? bal * rate / 12 : 0, cap = Math.min(interest, Math.max(0, bcap - bal));
       if(!tie(cap, z.capInt, 0.5) || !tie(interest - cap, z.excess, 0.5)) bad.push('month ' + z.mo + ': interest ' + M(interest) + ' vs ' + M(num(z.capInt) + num(z.excess)));
       accrued += interest; bal += cap + num(z.loanDraw); if(!tie(bal, z.end, 0.5)) bad.push('month ' + z.mo + ': balance ' + M(bal) + ' vs ' + M(z.end)); });
-    add('capint', 'Debt', 'Capitalised interest equals the opening balance x rate / 12 each month, and the balance rolls forward', bad.length ? 'hard' : 'pass', bad.length ? bad.slice(0, 3).join('; ') : 'Interest accrued ' + M(accrued) + ' = capitalised ' + M(capInt) + ' + paid by equity beyond the commitment ' + M(excess) + '; closing balance ' + M(bal) + '.');
+    add('capint', 'Debt', 'Capitalized interest equals the opening balance x rate / 12 each month, and the balance rolls forward', bad.length ? 'hard' : 'pass', bad.length ? bad.slice(0, 3).join('; ') : 'Interest accrued ' + M(accrued) + ' = capitalized ' + M(capInt) + ' + paid by equity beyond the commitment ' + M(excess) + '; closing balance ' + M(bal) + '.');
     add('facility', 'Debt', 'The loan balance never exceeds the commitment', Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0])) <= bcap + TOL ? 'pass' : 'hard', 'Peak balance ' + M(Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0]))) + ' vs ' + (bcap > commit + TOL ? 'ceiling ' + M(bcap) + ' (principal commitment ' + M(commit) + ')' : 'commitment ' + M(commit)) + '.');
     if(f.fixedFacility){ var pr = ms.reduce(function(a, z){ return a + num(z.loanDraw); }, 0); add('fixed', 'Debt', 'Principal drawn does not exceed the fixed facility amount', pr <= commit + TOL ? 'pass' : 'hard', 'Principal drawn ' + M(pr) + ' vs facility ' + M(commit) + (num(s.conEquityFirst) > 0 ? '; equity called ' + M(f.equityTotal) + ' against the equity-first amount ' + M(num(s.conEquityFirst)) : '') + '.'); }
     /* 5 payoff and sale */
@@ -76,12 +76,12 @@ function run(){
     if(excess > 1) add('w_interest', 'Debt', 'Interest accrues beyond the loan commitment', 'warn', M(excess) + ' of interest accrues after the commitment is full and is paid by equity. Either the commitment is too small for the plan or the interest reserve is short.');
     var over = num(f.overflowTotal) - excess;
     if(over > 1) add('w_overflow', 'Equity', 'Costs exceed what equity plus the commitment can fund', 'warn', M(over) + ' of costs are funded by equity over the planned amount (' + M(f.eqTarget) + ').');
-    if(t.saleBeforeTakeout || x.hold < x.stab) add('w_sale', 'Exit', 'The sale falls before the project stabilises', 'warn', 'Stabilisation is month ' + x.stab + '; the hold ends at month ' + x.hold + '.');
+    if(t.saleBeforeTakeout || x.hold < x.stab) add('w_sale', 'Exit', 'The sale falls before the project stabilizes', 'warn', 'Stabilization is month ' + x.stab + '; the hold ends at month ' + x.hold + '.');
     if(!held && !Number(s.refiAtStab || 0)) add('w_nodebt', 'Debt', 'No takeout and no construction loan', 'na', 'All-equity deal.');
   } else {
     var d = safe(function(){ return bkDebt(); }, null), fee = d ? num(d.fee) : 0;
     if(d){ var uses2 = num(d.basis) + fee, src2 = num(d.loan) + num(d.equity); add('su', 'Sources & Uses', 'Total sources equal total uses', tie(uses2, src2, 2) ? 'pass' : 'hard', 'Uses ' + M(uses2) + ' (basis ' + M(d.basis) + ' + fee ' + M(fee) + '); sources ' + M(src2) + ' (loan ' + M(d.loan) + ' + equity ' + M(d.equity) + ').'); }
-    ['budget', 'capint', 'facility'].forEach(function(id){ add(id, 'Development', id === 'budget' ? 'Development budget ties to its lines' : id === 'capint' ? 'Capitalised interest' : 'Construction facility', 'na', 'Development deals only.'); });
+    ['budget', 'capint', 'facility'].forEach(function(id){ add(id, 'Development', id === 'budget' ? 'Development budget ties to its lines' : id === 'capint' ? 'Capitalized interest' : 'Construction facility', 'na', 'Development deals only.'); });
   }
   /* common: IRR and multiple recomputed, waterfall */
   var vals = rows.map(function(r){ return num(r.cf); }), dts = rows.map(function(r){ return r.dt; }), eq0 = num(rows[0] && rows[0].eqDraw), irr2 = xirr(vals, dts, m.closeDt, -eq0);

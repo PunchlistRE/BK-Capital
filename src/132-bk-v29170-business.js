@@ -124,7 +124,7 @@ function place(){
   var norm = clone(b);
   if(pl.rentIdx >= 0) norm.opex[pl.rentIdx].annual = pl.marketRent; else if(pl.marketRent > 0) norm.opex.push({ name:'Rent (market, normalised)', annual:pl.marketRent, cls:'Fixed' });
   var Pn = pnl(norm), normDcf = dcf(norm, Pn), c = b.dcf.cases[CASES[(num(b.dcf.case) || 2) - 1]];
-  /* The property: Year-1 NOI after reserves over the cap rate (or an appraised value you enter), plus the rent it does not yet earn from this tenant, capitalised. */
+  /* The property: Year-1 NOI after reserves over the cap rate (or an appraised value you enter), plus the rent it does not yet earn from this tenant, capitalized. */
   var noi = 0, cap = num(s.exitCap); try { noi = bkAnnualCF().arr[0].after; } catch(e){}
   var uplift = pl.marketRent - pl.rentIncludedInNOI, propBase = pl.propertyValue > 0 ? pl.propertyValue : (cap > 0 ? noi / cap : 0);
   var propValue = propBase + (cap > 0 ? uplift / cap : 0), propNOI = noi + uplift, saleCost = num(s.saleCostPct) || 0.02;

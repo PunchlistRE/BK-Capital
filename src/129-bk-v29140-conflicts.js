@@ -73,7 +73,7 @@ rule('dep.placed-vs-closing', 'WARN', 'Depreciation', 'Depreciation', function(s
   if(days < -1) return { msg:'Placed-in-service date (' + (d.placedInService || d.closeDate) + ') is before the closing date (' + s.closing + ').',
     why:'Depreciation starts when the property is placed in service by its owner. A date before closing puts deductions in a tax year (or on an owner) that does not hold the asset, shifts the mid-quarter / mid-month convention, and the first-year amount will not agree with the return.' };
   if(days > 366) return { msg:'Placed-in-service date is more than a year after closing.',
-    why:'A stabilised acquisition is normally in service at closing. A long gap is only right for property under construction or renovation; otherwise the first year of depreciation is deferred and early taxable income is overstated.' };
+    why:'A stabilized acquisition is normally in service at closing. A long gap is only right for property under construction or renovation; otherwise the first year of depreciation is deferred and early taxable income is overstated.' };
 });
 rule('dep.placed-after-sale', 'ERROR', 'Depreciation', 'Depreciation', function(s){
   var d = dep(s), p = parseD(d.placedInService || d.closeDate), c = parseD(s.closing), h = num(s.holdYears); if(!p || !c || !(h > 0)) return;
@@ -190,6 +190,7 @@ rule('acct.units-vs-gsf', 'WARN', 'Property', 'Deal Underwrite', function(s){
 });
 rule('acct.noi-not-positive', 'WARN', 'Operations', 'Operating Underwrite', function(s){
   if(isDev(s)) return; var c = safe(function(){ return bkCalc(); }, null);
+  if(c && !(c.egi > 0) && !(c.total > 0)) return;   /* nothing entered yet: the missing inputs are listed by readiness, not reported as a $0 NOI */
   if(c && !(c.after > 0)) return { msg:'Year-1 NOI after reserves is ' + $(c.after) + '.', why:'With no positive NOI there is no loan, no valuation and no meaningful return. Check expenses, rent and units for an entry error before reading any result.' };
 });
 rule('acct.expense-ratio', 'WARN', 'Operations', 'Operating Underwrite', function(s){
@@ -220,7 +221,7 @@ rule('debt.floating-zero-index', 'ERROR', 'Debt', 'Debt', function(s){
 });
 rule('debt.io-longer-than-term', 'WARN', 'Debt', 'Debt', function(s){
   if(isDev(s) || s.debtEnabled === false) return; var io = num(s.acqIO), t = num(s.debtTerm);
-  if(io > 0 && t > 0 && io > t + 1e-9) return { msg:'Interest-only period (' + io + ' years) is longer than the loan term (' + t + ' years).', why:'The interest-only period is entered in years. If it exceeds the term the loan never amortises, the balloon equals the full loan, and the amortisation and DSCR you see are not what a lender would underwrite.' };
+  if(io > 0 && t > 0 && io > t + 1e-9) return { msg:'Interest-only period (' + io + ' years) is longer than the loan term (' + t + ' years).', why:'The interest-only period is entered in years. If it exceeds the term the loan never amortises, the balloon equals the full loan, and the amortization and DSCR you see are not what a lender would underwrite.' };
 });
 rule('debt.dscr-below-one', 'WARN', 'Debt', 'Covenant Monitor', function(s){
   if(isDev(s) || s.debtEnabled === false) return; var u = safe(function(){ return bkAnnualCF(); }, null), d = safe(function(){ return bkDebt(); }, null);
@@ -262,10 +263,10 @@ rule('dev.no-construction', 'ERROR', 'Development', 'Development', function(s){
   if(isDev(s) && !(num(s.constructionMonths) > 0)) return { msg:'Development deal with a construction period of zero months.', why:'There is nothing to build: no costs are drawn on a schedule, no construction interest accrues, and lease-up starts at closing. Set the construction months, or change the deal type to Acquisition.' };
 });
 rule('dev.con-loan-zero-rate', 'ERROR', 'Development', 'Development', function(s){
-  if(isDev(s) && num(s.conLTC) > 0 && !(num(s.conRate) > 0)) return { msg:'A construction loan is sized (' + pc(num(s.conLTC), 0) + ' LTC) with a 0% interest rate.', why:'Capitalised construction interest, which is a major cost line, would be zero. Total cost, the loan commitment and the equity requirement are all understated.' };
+  if(isDev(s) && num(s.conLTC) > 0 && !(num(s.conRate) > 0)) return { msg:'A construction loan is sized (' + pc(num(s.conLTC), 0) + ' LTC) with a 0% interest rate.', why:'Capitalized construction interest, which is a major cost line, would be zero. Total cost, the loan commitment and the equity requirement are all understated.' };
 });
 rule('dev.no-leaseup', 'WARN', 'Development', 'Development', function(s){
-  if(isDev(s) && num(s.constructionMonths) > 0 && !(num(s.leaseupMonths) > 0)) return { msg:'No lease-up period after construction.', why:'The building is assumed fully income-producing the day it is completed. New buildings take months to fill; this overstates early NOI, skips the lease-up operating deficit and moves stabilisation (and the refinance) too early.' };
+  if(isDev(s) && num(s.constructionMonths) > 0 && !(num(s.leaseupMonths) > 0)) return { msg:'No lease-up period after construction.', why:'The building is assumed fully income-producing the day it is completed. New buildings take months to fill; this overstates early NOI, skips the lease-up operating deficit and moves stabilization (and the refinance) too early.' };
 });
 rule('dev.takeout-shortfall', 'WARN', 'Development', 'Debt', function(s){
   if(!isDev(s) || !num(s.refiAtStab) || typeof bkDevTakeoutV11 !== 'function') return; var t = safe(function(){ return bkDevTakeoutV11(); }, null);

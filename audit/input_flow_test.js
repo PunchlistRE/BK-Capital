@@ -69,7 +69,7 @@ const path = require('path'); const A = require(path.join(__dirname, 'deal.js'))
   /* the dropdown's change redraws the sheet (a few hundred ms on this sheet); focus is handed back 25 ms after the redraw, so allow for that */
   await p.waitForFunction(() => document.activeElement.tagName === 'SELECT', null, { timeout: 2000 }).catch(() => {});
   const after = await p.evaluate(() => document.activeElement.tagName + ' ' + (document.querySelectorAll('#viewport select').length));
-  check('a select keeps its own arrow-key behaviour (focus stays on it)', before === 'SELECT' && /^SELECT/.test(after), JSON.stringify({ before, after }));
+  check('a select keeps its own arrow-key behavior (focus stays on it)', before === 'SELECT' && /^SELECT/.test(after), JSON.stringify({ before, after }));
   check('no page errors', errs.length === 0, errs.join(' | '));
   await b.close(); console.log(`${checks} checks, ${fails} failures`); process.exit(fails ? 1 : 0);
 })();

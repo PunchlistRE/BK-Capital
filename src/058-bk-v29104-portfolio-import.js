@@ -74,7 +74,7 @@ function sheetPortfolioImport(){
     + 'master workbook would make source-to-property resolution deterministic rather than name-dependent.</div></div>';
 
   return { title:'Portfolio Import', crumbs:'Portfolio & Investors',
-    desc:'Establish recognised properties from a master workbook. Identity only - no underwriting is written.',
+    desc:'Establish recognized properties from a master workbook. Identity only - no underwriting is written.',
     meta:{ 'Master Properties':master.length, 'Active Deal': (typeof bkProductionCounts==='function' ? (bkProductionCounts().activeDeal||'None') : '-') },
     main:main,
     sidebar:(typeof sidebarShell==='function') ? sidebarShell(
