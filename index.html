@@ -18961,7 +18961,7 @@ function decorateNotes(frame){
 /* the Deal Underwrite tab bar: which group is open, kept for the session; "Show all" shares the panel-tab switch (and starts on under automated test) */
 var DU_KEY = 'bk-du-tab';
 function duShowAll(){ var v = null; try { v = localStorage.getItem('bk-pt-all'); } catch(e){} if(v === '1') return true; if(v === '0') return false; return !!(navigator && navigator.webdriver); }
-function duStick(){ var f = document.querySelector('.bk-flow'), px = 0; try { if(f && getComputedStyle(f).position === 'sticky') px = Math.round(f.getBoundingClientRect().height); } catch(e){} document.documentElement.style.setProperty('--bk-stick', px + 'px'); }
+function duStick(){ var f = document.querySelector('.bk-flow'), px = 0; try { if(window.innerWidth <= 900) px = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bk-tabh'), 10) || 0; else if(f && getComputedStyle(f).position === 'sticky') px = Math.round(f.getBoundingClientRect().height); } catch(e){} document.documentElement.style.setProperty('--bk-stick', px + 'px'); }
 function duOpen(main, groups, k, opts){
   opts = opts || {}; var all = duShowAll(), bar = main.querySelector('.bk-dui'); if(!bar) return;
   groups.forEach(function(g, i){ g.panels.forEach(function(w){ w.classList.toggle('bk-grp-hide', !all && i !== k); }); });
@@ -19236,7 +19236,10 @@ var RB_SHEET = {"Home":"home","Property":"pin","Market":"trend","Revenues":"doll
 var RB2 = {"home":"M3 11l9-8 9 8 M5 10v10h5v-6h4v6h5V10","pin":"M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10z M12 8.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z","trend":"M3 17l6-6 4 4 8-8 M15 7h6v6","dollar":"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 7v10 M14.5 9.5c0-1-1-1.5-2.5-1.5S9.5 8.7 9.5 9.8s1 1.4 2.5 1.7 2.5.7 2.5 1.8-1 1.7-2.5 1.7-2.5-.6-2.5-1.5","receipt":"M6 3h12v18l-3-2-3 2-3-2-3 2z M9 8h6 M9 12h6","case":"M4 8h16v12H4z M9 8V5h6v3 M4 13h16","tag":"M3 12l9-9h8v8l-9 9z M16 8h.01","cashflow":"M3 8h15 M14 4l4 4-4 4 M21 16H6 M10 12l-4 4 4 4","idcard":"M3 6h18v12H3z M7 12a2 2 0 1 0 0-.01 M12 10h6 M12 14h6","magnify":"M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12z M15 15l5 5","sliders":"M4 7h10 M18 7h2 M14 5v4 M4 17h2 M10 17h10 M6 15v4 M4 12h16","folder":"M3 6h6l2 2h10v11H3z","list":"M8 6h12 M8 12h12 M8 18h12 M4 6h.01 M4 12h.01 M4 18h.01","funnel":"M3 5h18l-7 8v6l-4 2v-8z","download":"M12 4v11 M7 10l5 5 5-5 M5 20h14","docin":"M6 3h9l4 4v14H6z M12 10v7 M9 14l3 3 3-3","tablein":"M3 4h18v6H3z M3 14h12v6H3z M18 13v7 M15 17l3 3 3-3","decline":"M3 5v14h18 M6 8l4 4 3-2 5 7","bench":"M4 20h16 M6 20v-6 M11 20v-10 M16 20v-4 M4 8h16","calc":"M6 3h12v18H6z M9 7h6 M9 12h2 M13 12h2 M9 16h2 M13 16h2","steps":"M4 20h16 M6 20v-6h4v-4h4V6h4","crane":"M4 21h16 M7 21V6h8 M7 10h8 M15 6l5 4 M15 10v6 M13 16h4v3h-4z","gantt":"M4 4v16 M8 6h8 M10 11h10 M14 16h6","key":"M8 14a4 4 0 1 1 3-6.5L21 17v3h-3v-2h-2v-2h-2l-1.5-1.5","stairs":"M3 20h5v-5h5v-5h5V5h3","hill":"M3 19l6-10 4 6 3-4 5 8z","bank":"M3 9l9-5 9 5 M5 9v9 M10 9v9 M14 9v9 M19 9v9 M3 20h18","sched":"M4 5h16v15H4z M4 10h16 M8 3v4 M16 3v4 M8 14h3 M13 14h3 M8 17h3","gauge":"M4 17a8 8 0 1 1 16 0 M12 17l4-5 M4 17h16","refresh":"M20 11a8 8 0 0 0-14-4 M6 3v4h4 M4 13a8 8 0 0 0 14 4 M18 21v-4h-4","flask":"M9 3h6 M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3","balance":"M12 4v16 M5 8h14 M5 8l-3 7h6z M19 8l-3 7h6z M8 20h8","rise":"M3 20h18 M5 16l5-5 3 3 6-7","wfall":"M4 5h5v5h5v5h6","percent":"M6 18L18 6 M7 8a1.5 1.5 0 1 0 0-.01 M17 16a1.5 1.5 0 1 0 0-.01","bell":"M3 18c3 0 4-12 9-12s6 12 9 12 M3 18h18","flag":"M5 21V4 M5 5h12l-2 4 2 4H5","layers":"M12 4l9 5-9 5-9-5z M3 14l9 5 9-5","pie":"M12 3v9h9 M20 15a9 9 0 1 1-8-12","swap":"M4 8h14 M14 4l4 4-4 4 M20 16H6 M10 12l-4 4 4 4","memo":"M5 3h14v18H5z M8 8h8 M8 12h8 M8 16h5","battery":"M4 8h15v8H4z M19 10h2v4h-2z M7 11v2 M10 11v2 M13 11v2","shield":"M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z","wrench":"M14 6a4 4 0 0 0 5 5l-9 9a2 2 0 0 1-3-3l9-9a4 4 0 0 1-2-2z","checkc":"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M8 12l3 3 5-6","tornado":"M12 3v18 M5 6h7 M12 10h7 M8 14h4 M12 18h5","undo":"M9 7H4V2 M4 7a9 9 0 1 1-1 7","brief2":"M3 7h18v13H3z M8 7V4h8v3","people":"M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M3 20v-2a5 5 0 0 1 10 0v2 M16 6a3 3 0 0 1 0 6 M21 20v-2a5 5 0 0 0-3-4.5","cal":"M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4","drop":"M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z","dash":"M3 4h8v8H3z M13 4h8v5h-8z M13 11h8v9h-8z M3 14h8v6H3z","upload":"M12 15V4 M7 9l5-5 5 5 M5 20h14","person":"M12 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M5 20c0-4 3-6 7-6s7 2 7 6","bars":"M3 20h18 M6 20v-8 M10 20V6 M14 20v-10 M18 20V9","vector":"M4 20L10 6l4 8 2-4 4 10","book":"M5 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H5z M19 4h-6 M19 4v14h-6","dbcyl":"M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3z M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6 M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3","partners":"M8 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M16 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M2 20c0-3 2.5-5 6-5 M22 20c0-3-2.5-5-6-5 M8 20c0-3 1.5-5 4-5s4 2 4 5","clip":"M8 4h8v3H8z M6 5h12v16H6z M9 12h6 M9 16h6","intobox":"M12 3v10 M8 9l4 4 4-4 M4 15v5h16v-5","srcuse":"M7 4v16 M3 8l4-4 4 4 M17 20V4 M13 16l4 4 4-4","bug":"M8 8h8v8a4 4 0 0 1-8 0z M9 4l-2-2 M15 4l2-2 M4 12h4 M16 12h4","clock":"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 7v5l3 2","camera":"M4 8h4l2-3h4l2 3h4v11H4z M12 11a3 3 0 1 0 0 6 3 3 0 0 0 0-6z","star":"M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.2 6.5 20.2l1-6.2L3 9.6l6.2-.9z","print":"M7 9V3h10v6 M7 17H4v-7h16v7h-3 M7 14h10v7H7z","wave":"M3 16c3-8 6-8 9 0s6 8 9 0","grid":"M4 5h16v14H4z M4 10h16 M4 15h16 M10 5v14","doc":"M6 3h9l4 4v14H6z M15 3v4h4 M9 12h7 M9 16h7"};
 function rbIcon(k){ return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (RB2[k] || RB[k] || RB.doc) + '"/></svg>'; }
 function rbBtn(icon, label, attrs, on){ return '<button type="button" class="rb-b' + (on ? ' on' : '') + '" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; }
+function tabHeight(frame){ var n = frame && frame.querySelector('.tabnav'); if(n) document.documentElement.style.setProperty('--bk-tabh', Math.round(n.getBoundingClientRect().height) + 'px'); }
+window.addEventListener('resize', function(){ tabHeight(document.querySelector('.sheet-frame.active')); });
 function ribbon(frame, sheet){
+  tabHeight(frame);
   if(!frame || frame.querySelector('.bk-ribbon')) return;
   var nav = frame.querySelector('.tabnav'); if(!nav) return;
   var g = typeof groupOf === 'function' ? groupOf(sheet) : null, adv = advancedIds ? advancedIds() : [];
@@ -22682,6 +22685,7 @@ window.bkNewDealDialog = function(id){
     + (a ? '<input type="hidden" id="pl-an" value="' + a.id + '">' : '<label class="f" for="pl-an">Analysis</label><select id="pl-an" class="left">' + analysisOptions('acquisition') + '</select>')
     + '<label class="f" for="pl-nm">Name</label><input type="text" id="pl-nm" class="left" placeholder="e.g. 14 Main Street" autocomplete="off">'
     + '<label class="chk"><input type="checkbox" id="pl-guide"> <span>Guide me step by step</span></label>'
+    + '<div class="pl-from"><span>Or start from a document</span><div><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import OM\')">Listing summary</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import OM\')">Offering memorandum</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import Deal\')">T-12</button><button type="button" class="pl-hbtn" onclick="bkNewDealFrom(\'Import Rent Roll\')">Rent roll</button></div></div>'
     + saveFirstBox('Save the current deal') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn primary" onclick="bkNewDealGo()">Create</button></div>');
   var nm = document.getElementById('pl-nm'); if(nm){ nm.focus(); nm.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); bkNewDealGo(); } }); }
 };
@@ -22693,6 +22697,7 @@ window.bkNewDealGo = function(){
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id, blankStructure:true });
   if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
+window.bkNewDealFrom = function(sheet){ snapshot(); closeModal(); showSheet(sheet); };
 window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import Deal'); };
 
 window.bkClearInputsDialog = function(){
@@ -29007,6 +29012,7 @@ if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'functi
 ['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns'].forEach(function(name){
   var orig = RENDERERS[name]; if(typeof orig !== 'function' || orig.__bkResultGate) return;
   var gated = function(){
+    try { if(name === 'Financing Compare' && /develop/i.test(String((typeof bkLoad === 'function' && bkLoad() || {}).dealType || ''))) return orig.apply(this, arguments); } catch(e){}
     try { var r = window.bkDealReadiness(); if(r && r.state !== 'NO DEAL' && !r.canCalculate) return window.bkNotReadyPanel(name); } catch(e){}
     return orig.apply(this, arguments);
   };
@@ -29023,7 +29029,7 @@ if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'functi
   --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
   --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
   --ae-ink:#14212F; --ae-dim:#566577; --ae-accent:#1F4E8C; --ae-hint:#F3F6FA;
-  --bk-key-fill:#DDE7F4; --bk-key-ink:#0B2545; --bk-key-rule:#1F4E8C; --bk-key-line:rgba(31,78,140,.25);
+  --bk-key-fill:#F6EEDA; --bk-key-ink:#1F2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28);
   --bk-link-ink:#1B7A4B; --bk-attn-red:#C0392B; --bk-attn-amber:#B7791F; --bk-na-ink:#6B7785;
   --bk-in-line:#D6C57A; --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
 }
@@ -29072,7 +29078,7 @@ html body #viewport .bk-tile, html body #viewport .bk-tile.hero{ border:1px soli
 /* TREE NAVIGATION: the sidebar is a tree. Each group has a square +/- expander, the open group's sheets hang from a dotted line, the current sheet is a flat selected row. */
 html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-item{ display:none !important; }
 html:not(.bk-rail-collapsed) body .rail .rail-group-label{ cursor:pointer !important; position:relative; padding-left:26px !important; color:var(--bk-navy); font-weight:700; }
-html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ content:"\2212"; position:absolute; left:6px; top:50%; margin-top:-6px; width:11px; height:11px; box-sizing:border-box; border:1px solid #7B8794; background:#fff; color:var(--bk-navy); font:700 10px/9px Inter,system-ui,sans-serif; text-align:center; border-radius:0; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ content:"\2212"; position:absolute; left:6px; top:50%; margin-top:-6px; width:11px; height:11px; box-sizing:border-box; border:1px solid #7B8794; background:var(--ae-cell); color:var(--bk-navy); font:700 10px/9px Inter,system-ui,sans-serif; text-align:center; border-radius:0; }
 html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-group-label::before{ content:"+"; }
 html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed){ position:relative; }
 html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed)::after{ content:""; position:absolute; left:11px; top:30px; bottom:10px; border-left:1px dotted #8A96A5; pointer-events:none; }
@@ -29090,7 +29096,7 @@ html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:var(--ae-s
 .bk-ribbon .rb-b{ display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:3px; min-width:58px; max-width:88px; padding:5px 5px 4px; border:1px solid transparent; background:transparent; color:var(--ae-ink); font:500 11px/1.2 Inter,system-ui,sans-serif; text-align:center; cursor:pointer; border-radius:0; }
 .bk-ribbon .rb-b svg{ width:26px; height:26px; flex:0 0 auto; stroke:var(--bk-navy-2); fill:none; stroke-width:1.5; stroke-linecap:square; stroke-linejoin:miter; }
 .bk-ribbon .rb-b:hover{ background:var(--ae-sel); border-color:var(--ae-line); }
-.bk-ribbon .rb-b.on{ background:#fff; border-color:var(--ae-line); border-bottom-color:#fff; box-shadow:inset 0 2px 0 var(--bk-key-rule); font-weight:700; color:var(--bk-navy); }
+.bk-ribbon .rb-b.on{ background:var(--ae-cell); border-color:var(--ae-line); border-bottom-color:var(--ae-cell); box-shadow:inset 0 2px 0 var(--bk-key-rule); font-weight:700; color:var(--ae-ink); }
 .bk-ribbon .rb-cap{ text-align:center; font:600 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--bk-navy-2); background:var(--ae-head); margin:3px -8px 0; padding:4px 0; border-top:1px solid var(--ae-line); }
 .bk-ribbon .rb-g.active .rb-cap{ background:var(--bk-navy); color:#fff; }
 @media (max-width:900px){ .bk-ribbon{ display:none; } }
@@ -29106,23 +29112,88 @@ html body #viewport table.fin .status-chip{ display:inline-flex; align-items:cen
 html body #viewport table.fin tr.input td.v, html body #viewport table.fin td.v:has(select){ box-shadow:none !important; border-color:var(--bk-in-line) !important; }
 html body #viewport table.fin tr.input td.v:hover{ box-shadow:none !important; border-color:var(--bk-attn-amber) !important; }
 html body #viewport table.fin tr.input td.v select, html body #viewport table.fin td.v select{ appearance:none; -webkit-appearance:none; padding-right:20px; background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231B3F66' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 4px center !important; border:0 !important; text-align:right; text-align-last:right; }
-html body #viewport table.fin td.v select option{ color:#14212F; background:#fff; }
+html body #viewport table.fin td.v select option{ color:#14212F; background:var(--ae-cell); }
 html body #viewport table.fin td.bk-uom, html body #viewport table.fin.bk-grid4 tbody tr > td.bk-uom{ color:var(--ae-dim) !important; font-size:12px !important; text-align:left !important; }
 html body #viewport table.fin tr.input td.v input:not([type=checkbox]){ text-align:right; padding-right:20px !important; width:100% !important; box-sizing:border-box; }
 html body #viewport table.fin tr.input td.v input::placeholder{ color:var(--bk-na-ink); opacity:1; font-weight:500; }
 
 /* NOTES: explanatory notes are quiet paper, not blue. White card, hairline border, a slate rule on the left. Alerts keep their own amber / red rule. */
-html body #viewport .pf-ins li, html body #viewport .note-flag:not(.bk-fail-banner):not(.bk-controls-flag){ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .pf-ins li, html body #viewport .note-flag:not(.bk-fail-banner):not(.bk-controls-flag){ background:var(--ae-cell) !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
 html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
-html body #viewport .pf-ins li b, html body #viewport .note-flag b{ color:var(--bk-navy); }
-html body #viewport .ae-hint, html body #viewport .ae .ae-hint{ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .pf-ins li b, html body #viewport .note-flag b{ color:var(--ae-ink); }
+html body #viewport .ae-hint, html body #viewport .ae .ae-hint{ background:var(--ae-cell) !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
 html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--bk-navy-2); padding-right:10px; border-right:1px solid var(--ae-line); }
 
 /* FLOW: on a wide screen the step strip and the case / save / undo controls share one row, which gives the page back about 45px. */
-@media (min-width:1200px){ html body .bk-flow{ flex-wrap:nowrap; } html body .bk-flow .bk-steps{ flex:1 1 auto; min-width:0; gap:2px; } html body .bk-flow .bk-step-sep{ flex:0 0 10px; width:10px; min-width:10px; } html body .bk-flow .bk-flow-right{ flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap; } }
+@media (min-width:1600px){ html body .bk-flow{ flex-wrap:nowrap; } html body .bk-flow .bk-steps{ flex:1 1 auto; min-width:0; gap:2px; } html body .bk-flow .bk-step-sep{ flex:0 0 10px; width:10px; min-width:10px; } html body .bk-flow .bk-flow-right{ flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap; } }
 
 /* The ribbon already lists the seven Property Editor sheets, so the second row of the same seven tabs inside the page is hidden on wide screens; the sub-tabs (Acquisition, Financing ...) stay. Phones, which have no ribbon, keep it. */
 @media (min-width:901px){ html body #viewport .ae > .ae-tabs, html body #viewport .ae .ae-tabs{ display:none; } }
+
+/* RIBBON FIT: the sheet group takes the free width and scrolls inside itself; Deal and View keep their size, so nothing is cut off. */
+.bk-ribbon{ overflow:hidden; }
+.bk-ribbon .rb-g:first-child{ flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
+.bk-ribbon .rb-g:not(:first-child){ flex:0 0 auto; }
+/* the ribbon carries Print and Colour key on wide screens, so the copies beside the page title go */
+@media (min-width:901px){ html body #viewport .title-block .bk-print-btn, html body #viewport .title-block .bk-key-wrap{ display:none; } }
+
+/* Phones have no side-by-side cells, so an input keeps its box outline there. */
+@media (max-width:760px){ html body #viewport table.fin tr.input td.v{ box-shadow:inset 0 0 0 1px var(--bk-in-line) !important; } }
+
+/* HEADER BANDS: each row of the header is its own band, so the eye can tell them apart.
+   1 group tabs   deep navy strip, light labels, the open tab is a white tab with a blue top edge
+   2 ribbon       white, with a navy caption bar under each command group
+   3 steps        a pale blue-grey strip with numbered square steps; the current step is solid navy
+   4 case / save  same strip as the steps (they share a row)
+   5 page title   white, then a hairline, then the grey canvas */
+html body .tabnav{ background:var(--bk-navy-2) !important; border-bottom:0 !important; }
+html body .tabnav .grp-btn{ background:transparent !important; color:#C9D6E6 !important; border-color:transparent !important; }
+html body .tabnav .grp-btn:hover{ background:rgba(255,255,255,.08) !important; color:#fff !important; }
+html body .tabnav .grp-btn.on{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; box-shadow:inset 0 3px 0 var(--ae-accent); }
+html body .tabnav .bk-more.bk-nav > .grp-btn, html body .tabnav .bk-more > .grp-btn{ color:inherit; }
+html body .tabnav .nav-chev{ background:var(--bk-navy-2) !important; color:#C9D6E6 !important; }
+.bk-ribbon{ background:var(--ae-cell); border-bottom:1px solid var(--ae-line); padding-top:6px; }
+.bk-ribbon .rb-g{ border-right:1px solid var(--ae-line); }
+.bk-ribbon .rb-cap{ background:var(--bk-navy-2); color:#E6EDF6; margin-top:4px; }
+.bk-ribbon .rb-g.active .rb-cap{ background:var(--bk-navy); }
+html body .bk-flow{ background:var(--ae-head2) !important; border-top:0; border-bottom:1px solid var(--ae-line) !important; }
+html body .bk-flow .bk-step{ border-radius:0 !important; }
+html body .bk-flow .bk-step .n{ border-radius:0 !important; }
+html body .bk-flow .bk-step.cur{ background:var(--bk-navy) !important; color:#fff !important; border-color:var(--bk-navy) !important; }
+html body .bk-flow .bk-step.cur .n{ background:var(--ae-cell) !important; color:var(--bk-navy) !important; }
+html body .title-block{ background:var(--ae-cell) !important; border-bottom:1px solid var(--ae-line) !important; }
+html body #viewport .meta-strip{ background:var(--ae-cell); border-color:var(--ae-line); }
+html body #viewport .meta-strip .cell:nth-child(odd){ background:var(--ae-cell); }
+/* the day / night toggle stays round (an earlier requirement) */
+html body #bk-theme-btn{ border-radius:50% !important; }
+
+/* PHONE: the group tabs stay pinned at the top while you scroll, and the step bar sits directly under them, so navigation is never scrolled away. */
+@media (max-width:900px){ html body .tabnav{ position:sticky; top:0; z-index:30; } html body .bk-flow{ position:static; } }
+
+/* EXPERIMENT: dark grey sidebar. Remove this whole block to go back to the light sidebar. */
+html body .rail{ background:#2A2F35 !important; border-right:1px solid #1B1F23 !important; color:#D5DBE2; }
+html body .rail .rail-head{ border-bottom-color:#40474F !important; }
+html body .rail .rail-head .eyebrow{ color:#8FB4E3 !important; }
+html body .rail .rail-head h1{ color:#fff !important; }
+html body .rail .rail-head p, html body .rail .rail-foot, html body .rail .rail-foot *{ color:#9BA6B2 !important; }
+html body .rail hr, html body .rail .bk-adv-sep{ border-color:#40474F !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label{ color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label .grp-tag{ background:#3A424A !important; color:#C3CCD6 !important; border-color:#4B545D !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ background:#2A2F35 !important; border-color:#9BA6B2 !important; color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed)::after, html:not(.bk-rail-collapsed) body .rail .rail-item::before{ border-color:#6B7683 !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item{ color:#D5DBE2 !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item:hover{ background:#363C44 !important; color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:#414A54 !important; color:#fff !important; box-shadow:inset 3px 0 0 #6FB4F2 !important; }
+html body .rail .bk-adv-head{ color:#9BA6B2 !important; border-color:#40474F !important; }
+html body .rail .rail-group.bk-adv .rail-group-label, html body .rail .rail-group.bk-adv .rail-item{ opacity:.85; }
+html body .rail .bk-rail-toggle{ background:#363C44 !important; color:#fff !important; border-color:#4B545D !important; }
+html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
+
+/* New analysis dialog: start from a document */
+.pl-from{ margin:14px 0 4px; padding-top:12px; border-top:1px solid var(--ae-line); }
+.pl-from > span{ display:block; font:700 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--ae-dim); margin-bottom:8px; }
+.pl-from > div{ display:flex; flex-wrap:wrap; gap:6px; }
+.pl-from .pl-hbtn{ flex:1 1 auto; }
 </style>
 </body>
 </html>

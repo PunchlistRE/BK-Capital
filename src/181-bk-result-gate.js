@@ -7,6 +7,7 @@ if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'functi
 ['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns'].forEach(function(name){
   var orig = RENDERERS[name]; if(typeof orig !== 'function' || orig.__bkResultGate) return;
   var gated = function(){
+    try { if(name === 'Financing Compare' && /develop/i.test(String((typeof bkLoad === 'function' && bkLoad() || {}).dealType || ''))) return orig.apply(this, arguments); } catch(e){}
     try { var r = window.bkDealReadiness(); if(r && r.state !== 'NO DEAL' && !r.canCalculate) return window.bkNotReadyPanel(name); } catch(e){}
     return orig.apply(this, arguments);
   };

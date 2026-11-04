@@ -6,7 +6,7 @@
   --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
   --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
   --ae-ink:#14212F; --ae-dim:#566577; --ae-accent:#1F4E8C; --ae-hint:#F3F6FA;
-  --bk-key-fill:#DDE7F4; --bk-key-ink:#0B2545; --bk-key-rule:#1F4E8C; --bk-key-line:rgba(31,78,140,.25);
+  --bk-key-fill:#F6EEDA; --bk-key-ink:#1F2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28);
   --bk-link-ink:#1B7A4B; --bk-attn-red:#C0392B; --bk-attn-amber:#B7791F; --bk-na-ink:#6B7785;
   --bk-in-line:#D6C57A; --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
 }
@@ -55,7 +55,7 @@ html body #viewport .bk-tile, html body #viewport .bk-tile.hero{ border:1px soli
 /* TREE NAVIGATION: the sidebar is a tree. Each group has a square +/- expander, the open group's sheets hang from a dotted line, the current sheet is a flat selected row. */
 html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-item{ display:none !important; }
 html:not(.bk-rail-collapsed) body .rail .rail-group-label{ cursor:pointer !important; position:relative; padding-left:26px !important; color:var(--bk-navy); font-weight:700; }
-html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ content:"\2212"; position:absolute; left:6px; top:50%; margin-top:-6px; width:11px; height:11px; box-sizing:border-box; border:1px solid #7B8794; background:#fff; color:var(--bk-navy); font:700 10px/9px Inter,system-ui,sans-serif; text-align:center; border-radius:0; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ content:"\2212"; position:absolute; left:6px; top:50%; margin-top:-6px; width:11px; height:11px; box-sizing:border-box; border:1px solid #7B8794; background:var(--ae-cell); color:var(--bk-navy); font:700 10px/9px Inter,system-ui,sans-serif; text-align:center; border-radius:0; }
 html:not(.bk-rail-collapsed) body .rail .rail-group.pl-collapsed .rail-group-label::before{ content:"+"; }
 html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed){ position:relative; }
 html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed)::after{ content:""; position:absolute; left:11px; top:30px; bottom:10px; border-left:1px dotted #8A96A5; pointer-events:none; }
@@ -73,7 +73,7 @@ html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:var(--ae-s
 .bk-ribbon .rb-b{ display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:3px; min-width:58px; max-width:88px; padding:5px 5px 4px; border:1px solid transparent; background:transparent; color:var(--ae-ink); font:500 11px/1.2 Inter,system-ui,sans-serif; text-align:center; cursor:pointer; border-radius:0; }
 .bk-ribbon .rb-b svg{ width:26px; height:26px; flex:0 0 auto; stroke:var(--bk-navy-2); fill:none; stroke-width:1.5; stroke-linecap:square; stroke-linejoin:miter; }
 .bk-ribbon .rb-b:hover{ background:var(--ae-sel); border-color:var(--ae-line); }
-.bk-ribbon .rb-b.on{ background:#fff; border-color:var(--ae-line); border-bottom-color:#fff; box-shadow:inset 0 2px 0 var(--bk-key-rule); font-weight:700; color:var(--bk-navy); }
+.bk-ribbon .rb-b.on{ background:var(--ae-cell); border-color:var(--ae-line); border-bottom-color:var(--ae-cell); box-shadow:inset 0 2px 0 var(--bk-key-rule); font-weight:700; color:var(--ae-ink); }
 .bk-ribbon .rb-cap{ text-align:center; font:600 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--bk-navy-2); background:var(--ae-head); margin:3px -8px 0; padding:4px 0; border-top:1px solid var(--ae-line); }
 .bk-ribbon .rb-g.active .rb-cap{ background:var(--bk-navy); color:#fff; }
 @media (max-width:900px){ .bk-ribbon{ display:none; } }
@@ -89,20 +89,85 @@ html body #viewport table.fin .status-chip{ display:inline-flex; align-items:cen
 html body #viewport table.fin tr.input td.v, html body #viewport table.fin td.v:has(select){ box-shadow:none !important; border-color:var(--bk-in-line) !important; }
 html body #viewport table.fin tr.input td.v:hover{ box-shadow:none !important; border-color:var(--bk-attn-amber) !important; }
 html body #viewport table.fin tr.input td.v select, html body #viewport table.fin td.v select{ appearance:none; -webkit-appearance:none; padding-right:20px; background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231B3F66' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 4px center !important; border:0 !important; text-align:right; text-align-last:right; }
-html body #viewport table.fin td.v select option{ color:#14212F; background:#fff; }
+html body #viewport table.fin td.v select option{ color:#14212F; background:var(--ae-cell); }
 html body #viewport table.fin td.bk-uom, html body #viewport table.fin.bk-grid4 tbody tr > td.bk-uom{ color:var(--ae-dim) !important; font-size:12px !important; text-align:left !important; }
 html body #viewport table.fin tr.input td.v input:not([type=checkbox]){ text-align:right; padding-right:20px !important; width:100% !important; box-sizing:border-box; }
 html body #viewport table.fin tr.input td.v input::placeholder{ color:var(--bk-na-ink); opacity:1; font-weight:500; }
 
 /* NOTES: explanatory notes are quiet paper, not blue. White card, hairline border, a slate rule on the left. Alerts keep their own amber / red rule. */
-html body #viewport .pf-ins li, html body #viewport .note-flag:not(.bk-fail-banner):not(.bk-controls-flag){ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .pf-ins li, html body #viewport .note-flag:not(.bk-fail-banner):not(.bk-controls-flag){ background:var(--ae-cell) !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
 html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
-html body #viewport .pf-ins li b, html body #viewport .note-flag b{ color:var(--bk-navy); }
-html body #viewport .ae-hint, html body #viewport .ae .ae-hint{ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .pf-ins li b, html body #viewport .note-flag b{ color:var(--ae-ink); }
+html body #viewport .ae-hint, html body #viewport .ae .ae-hint{ background:var(--ae-cell) !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
 html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--bk-navy-2); padding-right:10px; border-right:1px solid var(--ae-line); }
 
 /* FLOW: on a wide screen the step strip and the case / save / undo controls share one row, which gives the page back about 45px. */
-@media (min-width:1200px){ html body .bk-flow{ flex-wrap:nowrap; } html body .bk-flow .bk-steps{ flex:1 1 auto; min-width:0; gap:2px; } html body .bk-flow .bk-step-sep{ flex:0 0 10px; width:10px; min-width:10px; } html body .bk-flow .bk-flow-right{ flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap; } }
+@media (min-width:1600px){ html body .bk-flow{ flex-wrap:nowrap; } html body .bk-flow .bk-steps{ flex:1 1 auto; min-width:0; gap:2px; } html body .bk-flow .bk-step-sep{ flex:0 0 10px; width:10px; min-width:10px; } html body .bk-flow .bk-flow-right{ flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap; } }
 
 /* The ribbon already lists the seven Property Editor sheets, so the second row of the same seven tabs inside the page is hidden on wide screens; the sub-tabs (Acquisition, Financing ...) stay. Phones, which have no ribbon, keep it. */
 @media (min-width:901px){ html body #viewport .ae > .ae-tabs, html body #viewport .ae .ae-tabs{ display:none; } }
+
+/* RIBBON FIT: the sheet group takes the free width and scrolls inside itself; Deal and View keep their size, so nothing is cut off. */
+.bk-ribbon{ overflow:hidden; }
+.bk-ribbon .rb-g:first-child{ flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
+.bk-ribbon .rb-g:not(:first-child){ flex:0 0 auto; }
+/* the ribbon carries Print and Colour key on wide screens, so the copies beside the page title go */
+@media (min-width:901px){ html body #viewport .title-block .bk-print-btn, html body #viewport .title-block .bk-key-wrap{ display:none; } }
+
+/* Phones have no side-by-side cells, so an input keeps its box outline there. */
+@media (max-width:760px){ html body #viewport table.fin tr.input td.v{ box-shadow:inset 0 0 0 1px var(--bk-in-line) !important; } }
+
+/* HEADER BANDS: each row of the header is its own band, so the eye can tell them apart.
+   1 group tabs   deep navy strip, light labels, the open tab is a white tab with a blue top edge
+   2 ribbon       white, with a navy caption bar under each command group
+   3 steps        a pale blue-grey strip with numbered square steps; the current step is solid navy
+   4 case / save  same strip as the steps (they share a row)
+   5 page title   white, then a hairline, then the grey canvas */
+html body .tabnav{ background:var(--bk-navy-2) !important; border-bottom:0 !important; }
+html body .tabnav .grp-btn{ background:transparent !important; color:#C9D6E6 !important; border-color:transparent !important; }
+html body .tabnav .grp-btn:hover{ background:rgba(255,255,255,.08) !important; color:#fff !important; }
+html body .tabnav .grp-btn.on{ background:var(--ae-cell) !important; color:var(--ae-ink) !important; box-shadow:inset 0 3px 0 var(--ae-accent); }
+html body .tabnav .bk-more.bk-nav > .grp-btn, html body .tabnav .bk-more > .grp-btn{ color:inherit; }
+html body .tabnav .nav-chev{ background:var(--bk-navy-2) !important; color:#C9D6E6 !important; }
+.bk-ribbon{ background:var(--ae-cell); border-bottom:1px solid var(--ae-line); padding-top:6px; }
+.bk-ribbon .rb-g{ border-right:1px solid var(--ae-line); }
+.bk-ribbon .rb-cap{ background:var(--bk-navy-2); color:#E6EDF6; margin-top:4px; }
+.bk-ribbon .rb-g.active .rb-cap{ background:var(--bk-navy); }
+html body .bk-flow{ background:var(--ae-head2) !important; border-top:0; border-bottom:1px solid var(--ae-line) !important; }
+html body .bk-flow .bk-step{ border-radius:0 !important; }
+html body .bk-flow .bk-step .n{ border-radius:0 !important; }
+html body .bk-flow .bk-step.cur{ background:var(--bk-navy) !important; color:#fff !important; border-color:var(--bk-navy) !important; }
+html body .bk-flow .bk-step.cur .n{ background:var(--ae-cell) !important; color:var(--bk-navy) !important; }
+html body .title-block{ background:var(--ae-cell) !important; border-bottom:1px solid var(--ae-line) !important; }
+html body #viewport .meta-strip{ background:var(--ae-cell); border-color:var(--ae-line); }
+html body #viewport .meta-strip .cell:nth-child(odd){ background:var(--ae-cell); }
+/* the day / night toggle stays round (an earlier requirement) */
+html body #bk-theme-btn{ border-radius:50% !important; }
+
+/* PHONE: the group tabs stay pinned at the top while you scroll, and the step bar sits directly under them, so navigation is never scrolled away. */
+@media (max-width:900px){ html body .tabnav{ position:sticky; top:0; z-index:30; } html body .bk-flow{ position:static; } }
+
+/* EXPERIMENT: dark grey sidebar. Remove this whole block to go back to the light sidebar. */
+html body .rail{ background:#2A2F35 !important; border-right:1px solid #1B1F23 !important; color:#D5DBE2; }
+html body .rail .rail-head{ border-bottom-color:#40474F !important; }
+html body .rail .rail-head .eyebrow{ color:#8FB4E3 !important; }
+html body .rail .rail-head h1{ color:#fff !important; }
+html body .rail .rail-head p, html body .rail .rail-foot, html body .rail .rail-foot *{ color:#9BA6B2 !important; }
+html body .rail hr, html body .rail .bk-adv-sep{ border-color:#40474F !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label{ color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label .grp-tag{ background:#3A424A !important; color:#C3CCD6 !important; border-color:#4B545D !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ background:#2A2F35 !important; border-color:#9BA6B2 !important; color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed)::after, html:not(.bk-rail-collapsed) body .rail .rail-item::before{ border-color:#6B7683 !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item{ color:#D5DBE2 !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item:hover{ background:#363C44 !important; color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:#414A54 !important; color:#fff !important; box-shadow:inset 3px 0 0 #6FB4F2 !important; }
+html body .rail .bk-adv-head{ color:#9BA6B2 !important; border-color:#40474F !important; }
+html body .rail .rail-group.bk-adv .rail-group-label, html body .rail .rail-group.bk-adv .rail-item{ opacity:.85; }
+html body .rail .bk-rail-toggle{ background:#363C44 !important; color:#fff !important; border-color:#4B545D !important; }
+html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
+
+/* New analysis dialog: start from a document */
+.pl-from{ margin:14px 0 4px; padding-top:12px; border-top:1px solid var(--ae-line); }
+.pl-from > span{ display:block; font:700 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--ae-dim); margin-bottom:8px; }
+.pl-from > div{ display:flex; flex-wrap:wrap; gap:6px; }
+.pl-from .pl-hbtn{ flex:1 1 auto; }

@@ -22,12 +22,16 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
       coDate: new Date(new Date(2027, 0, 1).getFullYear(), 0 + x.co, 0).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) }; });
 
   /* ---- the chart on the Dev Schedule page ---- */
-  const pg = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 900)); const svg = document.querySelector('#viewport svg[aria-label*="Gantt"]'); if (!svg) return null;
-    const texts = [...svg.querySelectorAll('text')].map(t => ({ t: t.textContent, y: Math.round(+t.getAttribute('y')), x: Math.round(+t.getAttribute('x')) })), rects = [...svg.querySelectorAll('rect')];
-    return { vb: svg.getAttribute('viewBox'), w: svg.getAttribute('width'), texts, crit: rects.filter(r => /b3392c/i.test(r.getAttribute('stroke') || '')).length, arrows: [...svg.querySelectorAll('path[marker-end]')].length, tiles: document.querySelectorAll('.bk-gs-tile').length,
-      btn: !!document.querySelector('#viewport button[onclick*="bkDevScheduleReport"]'), legend: !!document.querySelector('.bk-gs-legend'), tileText: [...document.querySelectorAll('.bk-gs-tile')].map(e => e.innerText.replace(/\s+/g, ' ')).join(' | ') }; });
-  check('the Dev Schedule page has the summary tiles (7), the legend and a "Schedule summary (PDF)" button', pg && pg.tiles === 7 && pg.legend && pg.btn, pg && pg.tileText);
-  check('the chart scales to its space (viewBox, width 100%) instead of scrolling sideways', pg && /^0 0 \d+ \d+$/.test(pg.vb) && pg.w === '100%');
+  /* the Dev Schedule PAGE is the Smartsheet-style HTML sheet (.bk-gx); the printable summary still draws the SVG chart, so the chart checks below read that SVG, built from the same model */
+  const pg = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 900)); const gx = document.querySelector('.bk-gx'); if (!gx) return null;
+    const M = bkDevGanttModel(); const host = document.createElement('div'); host.style.cssText = 'position:absolute;left:-9999px;top:0'; host.innerHTML = M.svg(M.rows, M.sc, M.s, { print: true, W: 931, id: 'tst' }); document.body.appendChild(host);
+    const svg = host.querySelector('svg'); const texts = [...svg.querySelectorAll('text')].map(t => ({ t: t.textContent, y: Math.round(+t.getAttribute('y')), x: Math.round(+t.getAttribute('x')) })), rects = [...svg.querySelectorAll('rect')];
+    const out = { gx: true, wide: gx.scrollWidth, vb: svg.getAttribute('viewBox'), w: svg.getAttribute('width'), texts, crit: rects.filter(r => /b3392c/i.test(r.getAttribute('stroke') || '')).length, arrows: [...svg.querySelectorAll('path[marker-end]')].length,
+      tiles: document.querySelectorAll('.bk-gs-tile').length, btn: !!document.querySelector('#viewport button[onclick*="bkDevScheduleReport"]'), legend: !!M.legend(true), tileText: [...document.querySelectorAll('.bk-gs-tile')].map(e => e.innerText.replace(/\s+/g, ' ')).join(' | ') };
+    host.remove(); return out; });
+  check('the Dev Schedule page has the summary tiles (7), the Gantt sheet and a "Schedule summary (PDF)" button', pg && pg.tiles === 7 && pg.gx && pg.btn && pg.legend, pg && pg.tileText);
+  check('the Gantt sheet is present and has width', pg && pg.wide > 300);
+  check('the summary chart scales to its space (viewBox) rather than a fixed size', pg && /^0 0 \d+ \d+$/.test(pg.vb));
   check('every task name is on the chart, with its number', E.names.every(n => pg.texts.some(t => t.t.indexOf(n.slice(0, 20)) === 0)) && E.names.every((n, i) => pg.texts.some(t => t.t === String(i + 1))));
   check('the calendar years are across the top and the three milestones are flagged with their dates', ['2027', '2028', '2029', '2030', '2031', '2032'].every(y => pg.texts.some(t => t.t === y)) && pg.texts.some(t => /^Certificate of occupancy · /.test(t.t)) && pg.texts.some(t => /^Stabilised · /.test(t.t)) && pg.texts.some(t => /^Sale \/ exit · /.test(t.t)) && pg.texts.some(t => t.t.endsWith(E.coDate)), JSON.stringify(pg.texts.filter(t => / · /.test(t.t))));
   const flags = pg.texts.filter(t => / · (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$/.test(t.t) && t.y < 60);
