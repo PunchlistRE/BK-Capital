@@ -700,6 +700,41 @@
 "close": "</script>"
 },
 {
+"file": "139a-bk-reg-core.js",
+"open": "\n\n<script id=\"bk-reg-core\">",
+"close": "</script>"
+},
+{
+"file": "139b-bk-reg-fields.js",
+"open": "\n\n<script id=\"bk-reg-fields\">",
+"close": "</script>"
+},
+{
+"file": "139c-bk-reg-analyses.js",
+"open": "\n\n<script id=\"bk-reg-analyses\">",
+"close": "</script>"
+},
+{
+"file": "139d-bk-reg-workflows.js",
+"open": "\n\n<script id=\"bk-reg-workflows\">",
+"close": "</script>"
+},
+{
+"file": "139e-bk-reg-summaries.js",
+"open": "\n\n<script id=\"bk-reg-summaries\">",
+"close": "</script>"
+},
+{
+"file": "139f-bk-reg-reports.js",
+"open": "\n\n<script id=\"bk-reg-reports\">",
+"close": "</script>"
+},
+{
+"file": "139g-bk-reg-checks.js",
+"open": "\n\n<script id=\"bk-reg-checks\">",
+"close": "</script>"
+},
+{
 "file": "140-bk-v29230-home.js",
 "open": "\n\n<script id=\"bk-v29230-home\">",
 "close": "</script>"
