@@ -10,7 +10,7 @@ function setCollapsed(v){ html.classList.toggle('bk-rail-collapsed', !!v); store
 window.bkRailCollapse = function(v){ setCollapsed(v === undefined ? !html.classList.contains('bk-rail-collapsed') : v); };
 function icons(root){
   /* the letter is an attribute drawn by CSS (::before), so no text is added to the headers and nothing that reads them changes */
-  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
+  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head, .bk-sx-card > .bk-sx-title'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
   [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
 /* EVERY PERCENTAGE IS SHOWN WITH TWO DECIMALS ("12%" and "12.0%" both read 12.00%). One rule for every sheet, chart label, input unit and the PDF summary. */
@@ -26,6 +26,14 @@ function pctDom(root){
     if(!unitPct) return; var nv = /%/.test(v) ? pct2(v) : (/^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v).toFixed(2) : v); if(nv !== v && el.type !== 'number') el.value = nv; else if(nv !== v && el.type === 'number'){ el.value = nv; } });
 }
 /* plain analysis tables (class bk-stk) label every figure with its column heading, so the phone layout can stack them */
+/* EMPTY-STATE CONVENTION (display only - no value is changed): a dash is "no value entered / nothing in this period"; "Unavailable" is "cannot be calculated yet"; "N/A" is "does not apply to this deal"; a real zero is always shown as a number ($0, 0.00%). Each kind gets its own tint so they are never read as the same thing. */
+function emptyKinds(root){
+  [].forEach.call(root.querySelectorAll('td, .kv-v, .bk-snap td'), function(c){
+    if(c.children.length) return; var t = (c.textContent || '').trim(), k = '';
+    if(/^[-\u2013\u2014]$/.test(t)) k = 'blank'; else if(/^n\/a$/i.test(t)) k = 'na'; else if(/^(unavailable|not available)$/i.test(t)) k = 'unavail';
+    if(k){ if(c.getAttribute('data-bk-v') !== k) c.setAttribute('data-bk-v', k); } else if(c.hasAttribute('data-bk-v')) c.removeAttribute('data-bk-v');
+  });
+}
 function stkLabels(root){
   [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
     [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
@@ -99,7 +107,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');

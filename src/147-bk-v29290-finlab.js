@@ -41,7 +41,7 @@ function cellColor(metric, v, L){
   return 'rgb(' + [0, 1, 2].map(function(i){ return Math.round(a[i] + (b[i] - a[i]) * u); }).join(',') + ')';
 }
 function fmt(metric, r){ if(!r) return '—'; var v = r[metric]; if(v == null || !isFinite(v)) return '—'; return metric === 'dscr' || metric === 'moic' ? X(v) : P(v, 1); }
-function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function box(h){ h = String(h).replace(/^<div style="font-weight:700;margin-bottom:6px">([\s\S]*?)<\/div>/, '<p class="bk-sx-title">$1</p>'); return '<div class="bk-sx-card" style="font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 
 function render(){
   var s = safe(function(){ return bkLoad(); }, null), hdr = { title:'Financing Lab', crumbs:'Debt', desc:'Buy this property today at a market cap rate and try different loans. Nothing here changes the deal.', sidebar:'', meta:{ Property:s && s.name } };

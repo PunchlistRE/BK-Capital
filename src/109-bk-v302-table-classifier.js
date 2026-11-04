@@ -29,12 +29,16 @@
         });
       }
       var w=t.closest('.tbl-wrap');
-      if(w){ var sc = want==='bk-m-scroll' && w.scrollWidth > w.clientWidth + 2;
+      if(w){ var sc = w.scrollWidth > w.clientWidth + 2; /* any table wider than its card, on any screen, gets the scroll cue */
         if(sc && !w.classList.contains('bk-scrollable')) w.classList.add('bk-scrollable');
         if(!sc && w.classList.contains('bk-scrollable')) w.classList.remove('bk-scrollable'); }
     });
   }
-  var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); }catch(e){} }); }
+  /* report tables (class rp-tbl) scroll themselves, so they get the same cue */
+  function runRp(){ var vp=document.getElementById('viewport'); if(!vp) return;
+    vp.querySelectorAll('table.rp-tbl').forEach(function(t){ var sc = t.scrollWidth > t.clientWidth + 2;
+      if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); }); }
+  var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
   if(typeof window.bkDisplayPass==='function') window.bkDisplayPass(schedule);
   window.addEventListener('resize', schedule);
 })();

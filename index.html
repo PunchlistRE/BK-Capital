@@ -566,6 +566,7 @@ function colorKeyCard(){
       <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--ae-ink,#10233a)', '12')}<div><b>Calculated</b><span>Black text, no fill. Worked out from other cells; not typed.</span></div></div>
       <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-link-ink,#13774a)', '12')}<div><b style="color:var(--bk-link-ink,#13774a)">Linked</b><span>Green text. Shown here, but set or worked out on another sheet.</span></div></div>
       <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-na-ink,#69747f)', 'n/a')}<div><b style="color:var(--bk-na-ink,#69747f)">N/A</b><span>Grey text. Does not apply to this kind of deal.</span></div></div>
+      <div class="keyrow">${sw('background:transparent;border:1px solid var(--line,#c9d1da);color:var(--bk-na-ink,#69747f)', '\u2014')}<div><b>Dash, Unavailable, N/A, zero</b><span>A dash means nothing entered or nothing in that period. Unavailable means it cannot be calculated yet. N/A means it does not apply to this deal. A real zero is always shown as a number.</span></div></div>
       <div class="keyrow">${sw('background:transparent;box-shadow:inset 0 0 0 2px var(--bk-attn-red,#d1433a);border:0', '')}<div><b style="color:var(--bk-attn-red,#d1433a)">Required / missing</b><span>Red outline. The model cannot calculate until it is entered.</span></div></div>
       <div class="keyrow">${sw('background:transparent;box-shadow:inset 0 0 0 2px var(--bk-attn-amber,#d99a1f);border:0', '')}<div><b style="color:var(--bk-attn-amber,#b9780f)">Needs a look</b><span>Amber outline. Not required to calculate, but the returns need it.</span></div></div>
     </div>
@@ -16622,12 +16623,16 @@ html.bk-auth-ok body { background: #F4EFE3; }
         });
       }
       var w=t.closest('.tbl-wrap');
-      if(w){ var sc = want==='bk-m-scroll' && w.scrollWidth > w.clientWidth + 2;
+      if(w){ var sc = w.scrollWidth > w.clientWidth + 2; /* any table wider than its card, on any screen, gets the scroll cue */
         if(sc && !w.classList.contains('bk-scrollable')) w.classList.add('bk-scrollable');
         if(!sc && w.classList.contains('bk-scrollable')) w.classList.remove('bk-scrollable'); }
     });
   }
-  var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); }catch(e){} }); }
+  /* report tables (class rp-tbl) scroll themselves, so they get the same cue */
+  function runRp(){ var vp=document.getElementById('viewport'); if(!vp) return;
+    vp.querySelectorAll('table.rp-tbl').forEach(function(t){ var sc = t.scrollWidth > t.clientWidth + 2;
+      if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); }); }
+  var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
   if(typeof window.bkDisplayPass==='function') window.bkDisplayPass(schedule);
   window.addEventListener('resize', schedule);
 })();
@@ -18189,6 +18194,11 @@ schedule();
 .bk-sx-be th:first-child, .bk-sx-be td:first-child{ text-align:left; }
 .bk-sx-be td.cushion-neg{ color:var(--sx-dn); font-weight:700; }
 .bk-sx-tip{ position:fixed; z-index:9999; pointer-events:none; background:#0e2a4a; color:#eaf0f6; font-size:11.5px; line-height:1.35; padding:6px 9px; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.25); max-width:260px; display:none; }
+
+/* Visual QA: the analysis cards (Sensitivity, Financing Lab/Compare, Version History) use the same lettered title bar as every other section. Hierarchy is kept: the card body keeps its own padding and the chart stays inside. */
+html body #viewport .bk-sx-card{ background:var(--ae-cell-ro,var(--sx-surface)); border:1px solid var(--ae-line,var(--sx-line)); border-radius:0; box-shadow:none; padding:0 0 12px; margin-top:12px; }
+html body #viewport .bk-sx-card > *{ margin-left:12px; margin-right:12px; }
+html body #viewport .bk-sx-card > .bk-sx-title{ display:flex; align-items:center; gap:0; margin:0 0 10px; padding:6px 10px; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border-bottom:1px solid var(--ae-line); color:var(--ae-ink); font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif; letter-spacing:.01em; text-transform:none; }
 </style>
 <script id="bk-sensitivity-explorer">
 /* ===========================================================================
@@ -23477,7 +23487,7 @@ window.bkHistoryRestoreAsk = function(vid){ var v = hist(bkLoad()).versions.filt
 window.bkHistoryCompare = function(vid){ sel = sel === vid ? null : vid; showSheet('Version History'); };
 window.bkHistorySaveFromForm = function(){ var e = document.getElementById('bk-ver-name'); bkHistorySaveVersion(e && e.value.trim() ? e.value.trim() : '', false); showSheet('Version History'); };
 
-function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function box(h){ h = String(h).replace(/^<div style="font-weight:700;margin-bottom:6px">([\s\S]*?)<\/div>/, '<p class="bk-sx-title">$1</p>'); return '<div class="bk-sx-card" style="font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 function render(){
   flush();
   var s = safe(function(){ return bkLoad(); }, null), h = hist(s), cur = headline(), hdr = { title:'Version History', crumbs:'QA', desc:'Every input change on this deal, and named versions you can compare and restore.', meta:{ Property:s && s.name, Versions:h.versions.length, Changes:h.log.length }, sidebar:'' };
@@ -23541,7 +23551,7 @@ function cellColor(metric, v, L){
   return 'rgb(' + [0, 1, 2].map(function(i){ return Math.round(a[i] + (b[i] - a[i]) * u); }).join(',') + ')';
 }
 function fmt(metric, r){ if(!r) return '—'; var v = r[metric]; if(v == null || !isFinite(v)) return '—'; return metric === 'dscr' || metric === 'moic' ? X(v) : P(v, 1); }
-function box(h){ return '<div style="background:var(--surface,#fff);border:1px solid var(--line,#dbe4ec);border-radius:8px;padding:14px 16px;margin-top:12px;font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
+function box(h){ h = String(h).replace(/^<div style="font-weight:700;margin-bottom:6px">([\s\S]*?)<\/div>/, '<p class="bk-sx-title">$1</p>'); return '<div class="bk-sx-card" style="font-size:13px;line-height:1.55;max-width:1000px">' + h + '</div>'; }
 
 function render(){
   var s = safe(function(){ return bkLoad(); }, null), hdr = { title:'Financing Lab', crumbs:'Debt', desc:'Buy this property today at a market cap rate and try different loans. Nothing here changes the deal.', sidebar:'', meta:{ Property:s && s.name } };
@@ -26142,7 +26152,7 @@ html body #viewport .bk-dui.bk-tabs .bk-dt.na::before{ background:var(--bk-na-in
 html body #viewport .bk-dui.bk-tabs .bk-dt.empty{ opacity:.45; pointer-events:none; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-n{ min-width:17px; height:17px; padding:0 5px; border-radius:9px; background:var(--bk-attn-red); color:#fff; font:700 10.5px/17px Inter,system-ui,sans-serif; text-align:center; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-na{ font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--bk-na-ink); border:1px solid var(--bk-na-ink); border-radius:2px; padding:1px 4px; }
-html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto; position:sticky; right:0; height:auto; padding:0 11px !important; background:var(--ae-bg) !important; border:0 !important; border-left:1px solid var(--ae-line) !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 11.5px/1 Inter,system-ui,sans-serif !important; cursor:pointer; white-space:nowrap; }
+html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto; position:static; height:auto; padding:0 11px !important; background:var(--ae-bg) !important; border:0 !important; border-left:1px solid var(--ae-line) !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 11.5px/1 Inter,system-ui,sans-serif !important; cursor:pointer; white-space:nowrap; }
 html body #viewport .bk-dui.bk-tabs .bk-dt-all:hover{ color:var(--ae-ink) !important; }
 html body #viewport .tbl-wrap.bk-grp-hide{ display:none !important; }
 @media print{ html body #viewport .tbl-wrap.bk-grp-hide{ display:block !important; } }
@@ -26400,6 +26410,25 @@ html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.warn .v{ color:#f
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.pass .v, html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.ok .v{ color:#7fd4a0; }
 html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-theme="light"]) #viewport button[class=""]{ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
 }
+
+/* Visual QA: wide tables. One cue on every screen size: a "scroll sideways" line that stays put while the table moves, plus a shaded edge on whichever side still has columns hidden, so the last column is always reachable. */
+html body #viewport .tbl-wrap.bk-scrollable, html body #viewport table.rp-tbl.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+  background:linear-gradient(to right,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 0 0/40px 100% no-repeat local,
+             linear-gradient(to left,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 100% 0/40px 100% no-repeat local,
+             linear-gradient(to right,rgba(14,42,74,.22),rgba(14,42,74,0)) 0 0/10px 100% no-repeat scroll,
+             linear-gradient(to left,rgba(14,42,74,.22),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll,
+             var(--ae-cell-ro) !important; }
+html body #viewport .tbl-wrap.bk-scrollable::before, html body #viewport table.rp-tbl.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
+@media print{ html body #viewport .tbl-wrap.bk-scrollable::before{ display:none !important; } }
+
+/* Visual QA: empty-state kinds are visibly different (see emptyKinds in 162b). Zero stays a plain number. */
+html body #viewport [data-bk-v="blank"]{ color:var(--bk-na-ink) !important; opacity:.8; }
+html body #viewport [data-bk-v="na"]{ color:var(--bk-na-ink) !important; font-size:.86em; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+html body #viewport [data-bk-v="unavail"]{ color:var(--bk-attn-amber) !important; font-style:italic; }
+
+/* Visual QA: the section-tab strip never hides a label behind the "Show as tabs" button; the button scrolls with the strip, tabs keep their full label, and an edge shade shows when more tabs are off-screen. */
+html body #viewport .bk-dui.bk-tabs .bk-dt{ padding:0 9px !important; gap:5px; }
+html body #viewport .bk-dui.bk-tabs{ scroll-padding:0 40px; background:linear-gradient(to left,rgba(14,42,74,.16),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll, var(--ae-bg) !important; }
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */
@@ -26413,7 +26442,7 @@ function setCollapsed(v){ html.classList.toggle('bk-rail-collapsed', !!v); store
 window.bkRailCollapse = function(v){ setCollapsed(v === undefined ? !html.classList.contains('bk-rail-collapsed') : v); };
 function icons(root){
   /* the letter is an attribute drawn by CSS (::before), so no text is added to the headers and nothing that reads them changes */
-  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
+  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head, .bk-sx-card > .bk-sx-title'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
   [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
 /* EVERY PERCENTAGE IS SHOWN WITH TWO DECIMALS ("12%" and "12.0%" both read 12.00%). One rule for every sheet, chart label, input unit and the PDF summary. */
@@ -26429,6 +26458,14 @@ function pctDom(root){
     if(!unitPct) return; var nv = /%/.test(v) ? pct2(v) : (/^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v).toFixed(2) : v); if(nv !== v && el.type !== 'number') el.value = nv; else if(nv !== v && el.type === 'number'){ el.value = nv; } });
 }
 /* plain analysis tables (class bk-stk) label every figure with its column heading, so the phone layout can stack them */
+/* EMPTY-STATE CONVENTION (display only - no value is changed): a dash is "no value entered / nothing in this period"; "Unavailable" is "cannot be calculated yet"; "N/A" is "does not apply to this deal"; a real zero is always shown as a number ($0, 0.00%). Each kind gets its own tint so they are never read as the same thing. */
+function emptyKinds(root){
+  [].forEach.call(root.querySelectorAll('td, .kv-v, .bk-snap td'), function(c){
+    if(c.children.length) return; var t = (c.textContent || '').trim(), k = '';
+    if(/^[-\u2013\u2014]$/.test(t)) k = 'blank'; else if(/^n\/a$/i.test(t)) k = 'na'; else if(/^(unavailable|not available)$/i.test(t)) k = 'unavail';
+    if(k){ if(c.getAttribute('data-bk-v') !== k) c.setAttribute('data-bk-v', k); } else if(c.hasAttribute('data-bk-v')) c.removeAttribute('data-bk-v');
+  });
+}
 function stkLabels(root){
   [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
     [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
@@ -26502,7 +26539,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
