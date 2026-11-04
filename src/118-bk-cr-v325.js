@@ -341,7 +341,7 @@ try{
     var ms = saved.map(function(sn){ return {snap:sn, m:window.bkPortfolioMetricsFor(sn)}; }).filter(function(x){ return x.m && x.m.ok; });
     var und = ms.filter(function(x){ return !fin(x.m.irr); }), devs = ms.filter(function(x){ return x.m.isDev; });
     var h = '';
-    if(und.length) h += CR.note('&#9888;','<b>Equity-weighted IRR excludes '+und.length+' deal(s) whose IRR is undefined:</b> '+und.map(function(x){ return CR.esc(x.snap.name||'Deal'); }).join(', ')+'. Undefined means the equity cash flow has no sign change; it is not counted as zero. These deals remain in the equity, debt, price and NOI totals.');
+    if(und.length) h += CR.note('&#9888;','<b>'+und.length+' deal(s) have no IRR of their own:</b> '+und.map(function(x){ return CR.esc(x.snap.name||'Deal'); }).join(', ')+'. That means the deal\'s equity cash flow has no sign change. Their dated cash flows still count in the combined portfolio cash flow, and they remain in the equity, debt, price and NOI totals.');
     if(devs.length) h += CR.note('&#9432;','<b>Development deals in this portfolio ('+devs.length+')</b> contribute peak funded development debt, equity contributed in the returns cash flow, and total development cost in place of purchase price; Year 1 NOI is the first 12 months of the development monthly returns.');
     if(h) o.main = (o.main||'') + h;
   }

@@ -55,7 +55,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('Credit Policy: the figures end on one line, the unit never spills into the next column, and the header sits over the figures (within 8px)', al.spread < 1.5 && al.spill === 0 && Math.abs(al.headRight - al.figRight) < 8, JSON.stringify(al));
   /* key metrics read differently from header bands; status / result columns of chips are centred (header too), a mixed N/A column stays left */
   await show(p, 'Portfolio Dashboard', 900);
-  const kc = await p.evaluate(() => { const row = [...document.querySelectorAll('#viewport tr')].find(r => /Equity-Weighted Levered IRR|Equity - Weighted Levered IRR/.test(r.textContent.replace(/\s+/g, ' ')) || /Weighted Levered IRR/.test(r.textContent)); const cap = document.querySelector('#viewport table.fin caption, #viewport table.fin th'); if (!row) return null; return { row: getComputedStyle(row.cells[0]).backgroundColor, head: getComputedStyle(cap).backgroundImage + getComputedStyle(cap).backgroundColor }; });
+  const kc = await p.evaluate(() => { const row = [...document.querySelectorAll('#viewport tr')].find(r => /Portfolio Levered IRR/.test(r.textContent)); const cap = document.querySelector('#viewport table.fin caption, #viewport table.fin th'); if (!row) return null; return { row: getComputedStyle(row.cells[0]).backgroundColor, head: getComputedStyle(cap).backgroundImage + getComputedStyle(cap).backgroundColor }; });
   const tone = c => { const n = c.match(/\d+/g).map(Number); return { r: n[0], g: n[1], b: n[2] }; };
   check('a key-metric row (weighted IRR) is a warm band: more red than blue, unlike the blue-grey header bands', kc && (t => t.r > t.b + 10)(tone(kc.row)), kc && kc.row);
   await show(p, 'QA', 1200);

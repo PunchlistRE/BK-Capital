@@ -117,7 +117,7 @@ RENDERERS['Portfolio M'] = function(){
     <div class="metric-row"><span class="k">Deals Included</span><span class="v">${perDeal.length}</span></div>
     <div class="metric-row"><span class="k">Calendar Years Shown</span><span class="v">${years.length}</span></div>
   </div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Monthly Engine</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
-  return {title:'Portfolio M', crumbs:'Monthly Engine', desc:'Calendar-aligned monthly cash flow aggregated across every saved portfolio deal.', meta:{Deals:perDeal.length,Years:years.length,Currency:'USD'}, main, sidebar};
+  return {title:'Portfolio M', crumbs:'Monthly Engine', desc:'Calendar-aligned monthly cash flow aggregated across every saved portfolio deal.', meta:{Deals:perDeal.length,Years:years.length,'Portfolio IRR':(typeof bkPortfolioIRRText==='function'?bkPortfolioIRRText():'-'),Currency:'USD'}, main:main+(typeof bkPortfolioMBlock==='function'?bkPortfolioMBlock():''), sidebar};
 };
 
 // ---- Deal Vectors (M): raw per-month vectors for the active deal -- what every other
