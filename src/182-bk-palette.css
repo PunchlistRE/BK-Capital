@@ -256,3 +256,16 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
   html body #viewport .ae-tabs::-webkit-scrollbar{ display:none; }
   html body #viewport .ae-tabs .ae-tab{ flex:0 0 auto; }
 }
+
+/* FEWER STRIPS ON A DESKTOP SCREEN: the ribbon commands are icons (the names show on hover) so the page tabs fit one row, and the stepper, case switcher and save status share one row. */
+@media (min-width:1200px){
+  html body .bk-ribbon .rb-cmds .rb-c span{ display:none; }
+  html body .bk-ribbon .rb-cmds .rb-c{ padding:0 9px; }
+  html body .bk-ribbon .rb-t{ padding:0 9px; }
+}
+@media (min-width:1200px){
+  html body .bk-flow{ flex-wrap:nowrap; align-items:center; }
+  html body .bk-flow .bk-steps{ flex:1 1 auto; min-width:0; gap:2px; }
+  html body .bk-flow .bk-flow-right{ flex:0 0 auto; flex-wrap:nowrap; }
+  html body .bk-flow .bk-save{ max-width:none; white-space:nowrap; }
+}
