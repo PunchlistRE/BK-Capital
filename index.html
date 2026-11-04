@@ -7689,7 +7689,10 @@ window.bkCreateNewDeal = function(opts){
     blank[k] = opts[k];
   });
   try { localStorage.removeItem('bkcapital.cre.v02'); } catch(e){}
-  window.bkProvision('new-deal', Object.assign({}, bkLoad(), blank));
+  var merged = Object.assign({}, bkLoad(), blank);
+  /* A blank start has NO values, not zeros: every numeric input that is 0 becomes empty, so the sheets show empty cells and the status chips say what is missing. Switches, tier splits, curve shapes and conventions are settings, not inputs, and keep their value. The engine reads an empty cell as 0, so no calculation changes. */
+  if(opts.blankStructure){ var KEEP = /On$|^refiAt|Enabled$|^t[234]LP$|Basis$|Steepness$|^_|^cv/; Object.keys(merged).forEach(function(k){ if(typeof merged[k] === 'number' && merged[k] === 0 && !KEEP.test(k)) merged[k] = ''; }); }
+  window.bkProvision('new-deal', merged);
   if(typeof currentSheet !== 'undefined') showSheet('Deal Underwrite');
   return window.bkProductionCounts();
 };
@@ -16462,7 +16465,8 @@ go();
     else if(Math.round(hold)!==hold) add('WARN','Exit','Hold period of '+hold+' years is not a whole number - the engine rounds it to '+Math.round(hold)+' years.');
     if(!(cap>0)) add('FAIL','Exit','Exit cap rate must be greater than zero - no sale value can be calculated.');
     else if(cap<0.03 || cap>0.15) add('WARN','Exit','Exit cap rate of '+(cap*100).toFixed(2)+'% is outside a typical 3%-15% range.');
-    if(!(vac>=0 && vac<=1)) add('FAIL','Revenue','Vacancy must be between 0% and 100%.');
+    if(s.vacancy === '' || s.vacancy === null || s.vacancy === undefined){ /* nothing entered: not an error, the required-inputs list says what is missing */ }
+    else if(!(vac>=0 && vac<=1)) add('FAIL','Revenue','Vacancy must be between 0% and 100%.');
     else if(vac>=0.5) add('WARN','Revenue','Vacancy of '+(vac*100).toFixed(1)+'% is very high.');
     if(!(num(s.units)>0) && !(num(s.commercialArea)>0) && !(num(s.gsf)>0)) add('WARN','Property','No units, commercial area or GSF entered - per-unit and per-SF metrics cannot be calculated.');
     [['acqLTV','Acquisition LTV'],['acqLTC','Acquisition LTC'],['permLTV','Permanent LTV']].forEach(function(k){
@@ -19251,7 +19255,7 @@ function ribbon(frame, sheet){
     + rbBtn('trash', 'Clear inputs', 'onclick="showSheet(\'Home\');setTimeout(function(){if(window.bkClearInputsDialog)bkClearInputsDialog();},50)"') + rbBtn('print', 'Print / Save PDF', 'onclick="bkPrintSection()"')
     + '</div><div class="rb-cap">Deal</div></div>';
   h += '<div class="rb-g"><div class="rb-row">'
-    + rbBtn('swatch', 'Colour key', 'onclick="var b=document.querySelector(\'[data-bk-key-toggle]\');if(b)b.click()"') + rbBtn('book', 'Guide', 'data-goto-sheet2="Guide"') + rbBtn('side', 'Sidebar', 'onclick="bkRailCollapse()"')
+    + rbBtn('swatch', 'Colour key', 'data-bk-key-toggle="1"') + rbBtn('book', 'Guide', 'data-goto-sheet2="Guide"') + rbBtn('side', 'Sidebar', 'onclick="bkRailCollapse()"')
     + '</div><div class="rb-cap">View</div></div></div>';
   nav.insertAdjacentHTML('afterend', h);
 }
@@ -19294,7 +19298,7 @@ document.addEventListener('click', function(e){
   if((el = t.closest('[data-bk-undo]'))){ undo(); return; }
   if((el = t.closest('[data-bk-redo]'))){ redo(); return; }
   if((el = t.closest('[data-bk-menu]'))){ var rail = document.getElementById('rail'); if(rail) rail.classList.toggle('open'); return; }
-  if((el = t.closest('[data-bk-key-toggle]'))){ var w = el.closest('.bk-key-wrap'); var o = w.classList.toggle('open'); el.setAttribute('aria-expanded', String(o)); return; }
+  if((el = t.closest('[data-bk-key-toggle]'))){ var w = el.closest('.bk-key-wrap') || document.querySelector('.bk-key-wrap'); if(!w) return; var o = w.classList.toggle('open'); el.setAttribute('aria-expanded', String(o)); return; }
   if((el = t.closest('[data-bk-more]'))){ var mw = el.closest('.bk-more'), pop = mw.querySelector('.bk-more-pop'), rc = el.getBoundingClientRect();
     /* the nav strip scrolls horizontally, so the menu is positioned against the window to avoid being clipped */
     pop.style.position = 'fixed'; pop.style.top = (rc.bottom + 4) + 'px'; pop.style.left = Math.max(8, Math.min(rc.left, window.innerWidth - 236)) + 'px'; pop.style.right = 'auto';
@@ -26537,6 +26541,14 @@ function emptyKinds(root){
     if(k){ if(c.getAttribute('data-bk-v') !== k) c.setAttribute('data-bk-v', k); } else if(c.hasAttribute('data-bk-v')) c.removeAttribute('data-bk-v');
   });
 }
+/* status chips get a kind from their words, so INPUT (light blue), NOT APPLIED / N/A (grey) and the rest can be coloured apart without touching the code that writes them */
+function chipKinds(root){
+  [].forEach.call(root.querySelectorAll('.status-chip'), function(c){
+    var t = (c.textContent || '').trim().toUpperCase(), k = '';
+    if(t === 'INPUT') k = 'input'; else if(/^(NOT APPLIED|N\/A|NOT APPLICABLE)$/.test(t)) k = 'na'; else if(t === 'OPTIONAL') k = 'optional';
+    if(k){ if(c.getAttribute('data-bk-chip') !== k) c.setAttribute('data-bk-chip', k); } else if(c.hasAttribute('data-bk-chip')) c.removeAttribute('data-bk-chip');
+  });
+}
 function stkLabels(root){
   [].forEach.call(root.querySelectorAll('table.bk-stk'), function(t){ var hr = t.tHead && t.tHead.rows[0]; if(!hr) return; var hs = [].map.call(hr.cells, function(c){ var i = c.querySelector('input'); return c.textContent.trim() || (i ? i.value : ''); });
     [].forEach.call(t.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ var col = 0; [].forEach.call(r.cells, function(c){ if(c.colSpan === 1 && !c.hasAttribute('data-l') && hs[col]) c.setAttribute('data-l', hs[col]); col += c.colSpan; }); }); }); });
@@ -26610,7 +26622,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
@@ -29012,7 +29024,7 @@ if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'functi
 ['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns'].forEach(function(name){
   var orig = RENDERERS[name]; if(typeof orig !== 'function' || orig.__bkResultGate) return;
   var gated = function(){
-    try { if(name === 'Financing Compare' && /develop/i.test(String((typeof bkLoad === 'function' && bkLoad() || {}).dealType || ''))) return orig.apply(this, arguments); } catch(e){}
+    try { if((name === 'Financing Compare' || name === 'Probability-Weighted') && /develop/i.test(String((typeof bkLoad === 'function' && bkLoad() || {}).dealType || ''))) return orig.apply(this, arguments); } catch(e){}
     try { var r = window.bkDealReadiness(); if(r && r.state !== 'NO DEAL' && !r.canCalculate) return window.bkNotReadyPanel(name); } catch(e){}
     return orig.apply(this, arguments);
   };
@@ -29135,7 +29147,7 @@ html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,syste
 .bk-ribbon .rb-g:first-child{ flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
 .bk-ribbon .rb-g:not(:first-child){ flex:0 0 auto; }
 /* the ribbon carries Print and Colour key on wide screens, so the copies beside the page title go */
-@media (min-width:901px){ html body #viewport .title-block .bk-print-btn, html body #viewport .title-block .bk-key-wrap{ display:none; } }
+@media (min-width:901px){ html body #viewport .title-block .bk-print-btn, html body #viewport .title-block .bk-key-wrap > button{ display:none; } }
 
 /* Phones have no side-by-side cells, so an input keeps its box outline there. */
 @media (max-width:760px){ html body #viewport table.fin tr.input td.v{ box-shadow:inset 0 0 0 1px var(--bk-in-line) !important; } }
@@ -29194,6 +29206,14 @@ html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
 .pl-from > span{ display:block; font:700 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--ae-dim); margin-bottom:8px; }
 .pl-from > div{ display:flex; flex-wrap:wrap; gap:6px; }
 .pl-from .pl-hbtn{ flex:1 1 auto; }
+
+/* STATUS CHIPS: INPUT is light blue (you can type here), NOT APPLIED / N/A is grey (does not apply), OPTIONAL is plain outline. */
+html body #viewport .status-chip[data-bk-chip="input"]{ background:#E3EEFB !important; color:#1A4B8C !important; }
+html body #viewport .status-chip[data-bk-chip="na"]{ background:#ECEFF2 !important; color:#6B7785 !important; }
+html body #viewport .status-chip[data-bk-chip="optional"]{ background:transparent !important; color:var(--ae-dim) !important; box-shadow:inset 0 0 0 1px var(--ae-line); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; } :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; } }
+:root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; }
+:root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; }
 </style>
 </body>
 </html>

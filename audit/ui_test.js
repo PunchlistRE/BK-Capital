@@ -397,7 +397,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('the Overview is the normal page while the guide is off', await p.evaluate(() => !document.documentElement.classList.contains('bk-guide') && !document.querySelector('.gd')));
   await p.evaluate(() => bkGuideOn()); await p.waitForTimeout(500);
   await p.evaluate(() => bkGuideBlank('Acquisition')); await p.waitForTimeout(500);
-  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 6/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
+  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 8/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
   await p.fill('#gdf-name', 'Guide Court'); await p.dispatchEvent('#gdf-name', 'change'); await p.fill('#gdf-units', '14'); await p.dispatchEvent('#gdf-units', 'change');
   const g1 = await p.evaluate(() => ({ name: bkLoad().name, units: bkLoad().units, panel: document.getElementById('gd-chg').innerText, btn: document.getElementById('gd-next').innerText }));
   check('typed values are only proposed: nothing is saved until the change is confirmed', g1.units !== 14 && g1.name !== 'Guide Court' && /Guide Court/.test(g1.panel) && /2 change/i.test(g1.btn), JSON.stringify(g1));
