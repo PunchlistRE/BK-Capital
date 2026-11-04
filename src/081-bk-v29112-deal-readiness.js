@@ -154,6 +154,8 @@ window.bkFieldStatus = function(key){
   if(Object.prototype.hasOwnProperty.call(rr.core, key)) return { state:'missing', label:'MISSING', cls:'fail', tip:'Required to calculate returns: ' + rr.core[key] };
   if(Object.prototype.hasOwnProperty.call(rr.invest, key)) return { state:'needed', label:'NEEDED', cls:'warn', tip:'Needed before the deal is investment-ready: ' + rr.invest[key] };
   try { var s = bkLoad(), t = s._template; if(t && t.values && Object.prototype.hasOwnProperty.call(t.values, key) && s[key] === t.values[key]) return { state:'template', label:'TEMPLATE', cls:'warn', tip:'Pre-filled from the assumption template; edit it to make it yours' }; } catch(e){}
+  /* a field that is not required and has nothing in it is not "OK": it is simply blank */
+  try { var sv = bkLoad()[key]; if(sv === '' || sv === null) return { state:'blank', label:'OPTIONAL', cls:'', tip:'Not required, and nothing entered' }; } catch(e){}
   return { state:'ok', label:'OK', cls:'pass', tip:'' };
 };
 

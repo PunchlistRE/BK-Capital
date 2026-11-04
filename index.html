@@ -10671,6 +10671,8 @@ window.bkFieldStatus = function(key){
   if(Object.prototype.hasOwnProperty.call(rr.core, key)) return { state:'missing', label:'MISSING', cls:'fail', tip:'Required to calculate returns: ' + rr.core[key] };
   if(Object.prototype.hasOwnProperty.call(rr.invest, key)) return { state:'needed', label:'NEEDED', cls:'warn', tip:'Needed before the deal is investment-ready: ' + rr.invest[key] };
   try { var s = bkLoad(), t = s._template; if(t && t.values && Object.prototype.hasOwnProperty.call(t.values, key) && s[key] === t.values[key]) return { state:'template', label:'TEMPLATE', cls:'warn', tip:'Pre-filled from the assumption template; edit it to make it yours' }; } catch(e){}
+  /* a field that is not required and has nothing in it is not "OK": it is simply blank */
+  try { var sv = bkLoad()[key]; if(sv === '' || sv === null) return { state:'blank', label:'OPTIONAL', cls:'', tip:'Not required, and nothing entered' }; } catch(e){}
   return { state:'ok', label:'OK', cls:'pass', tip:'' };
 };
 
@@ -16320,6 +16322,12 @@ go();
         var n=fails(), vp=document.getElementById('viewport'), mc=vp && vp.querySelector('.main-col');
         if(n && mc && !mc.querySelector('.bk-fail-banner')){
           var d=document.createElement('div'); d.className='note-flag bk-fail-banner';
+          var rd=null; try{ rd=(typeof bkDealReadiness==='function')?bkDealReadiness():null; }catch(e){}
+          if(rd && rd.state==='DRAFT' && rd.missing && rd.missing.length && !(rd.blockers && rd.blockers.length)){
+            /* an unfinished deal is not a failed deal: say what is missing, in a neutral tone; the red banner stays for complete deals that fail */
+            d.className='note-flag bk-fail-banner bk-draft-banner';
+            d.innerHTML='<span>&#9432;</span><div><b>Draft - '+rd.missing.length+' required input'+(rd.missing.length===1?'':'s')+' still to enter.</b> Results on this page are withheld until they are. Go to Deal Underwrite to complete them.</div>';
+          } else
           d.innerHTML='<span>&#9888;</span><div><b class="bk-ctl-FAIL">FAIL - '+n+' model-control failure'+(n===1?'':'s')+'.</b> Figures on this page are diagnostic and are not decision-grade until resolved. See Home or Deal Underwrite for the list.</div>';
           mc.insertBefore(d, mc.firstChild);
         }
@@ -25702,8 +25710,8 @@ function devPanel(){
   return '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div><b>Development deal: acquisition conventions do not apply.</b> '
     + 'Construction-loan sizing, construction-period cash flows, lease-up and annual growth follow the development methodology and are not affected by these settings. '
     + 'Configurable conventions for development deals would be a separate extension.</div></div>'
-    + '<div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions - Acquisition Deals Only</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
-    + '<th style="text-align:left">Applies to this deal</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    + '<details class="bk-conv-na"><summary style="cursor:pointer;font-size:12px;color:var(--bk-na-ink);margin:0 0 8px">Show the acquisition-only settings (not used on this deal)</summary><div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions - Acquisition Deals Only</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
+    + '<th style="text-align:left">Applies to this deal</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div></details>';
 }
 function panel(){
   var s = bkLoad(), cv = bkConventions(s);
@@ -26439,6 +26447,15 @@ html body .bk-steps{ background:linear-gradient(to left,rgba(14,42,74,.14),rgba(
 
 /* Polish: on a wide screen the section tabs wrap onto a second row rather than hiding a label; on a phone they scroll. */
 @media (min-width:761px){ html body #viewport .bk-dui.bk-tabs{ flex-wrap:wrap; overflow:visible; background:var(--ae-bg) !important; } html body #viewport .bk-dui.bk-tabs .bk-dt-all{ margin-left:auto; } }
+
+/* Polish: an unfinished deal gets a neutral notice, not a red alarm. */
+html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
+html body #viewport details.bk-conv-na > summary{ list-style:revert; }
+
+/* Polish: chart cards on the pro-forma sheets carry the same lettered title bar as every other section. */
+html body #viewport .pf-card{ padding:0 0 12px; }
+html body #viewport .pf-card > *{ margin-left:12px; margin-right:12px; }
+html body #viewport .pf-card > .t{ display:flex; align-items:center; margin:0 0 10px; padding:6px 10px; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border-bottom:1px solid var(--ae-line); color:var(--ae-ink); font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif; letter-spacing:.01em; text-transform:none; }
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */
@@ -26452,7 +26469,7 @@ function setCollapsed(v){ html.classList.toggle('bk-rail-collapsed', !!v); store
 window.bkRailCollapse = function(v){ setCollapsed(v === undefined ? !html.classList.contains('bk-rail-collapsed') : v); };
 function icons(root){
   /* the letter is an attribute drawn by CSS (::before), so no text is added to the headers and nothing that reads them changes */
-  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head, .bk-sx-card > .bk-sx-title'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
+  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head, .bk-sx-card > .bk-sx-title, .pf-card > .t'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
   [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
 /* EVERY PERCENTAGE IS SHOWN WITH TWO DECIMALS ("12%" and "12.0%" both read 12.00%). One rule for every sheet, chart label, input unit and the PDF summary. */
@@ -28948,7 +28965,7 @@ window.bkDevReportPages = function(){ var D = build(), r = riskPage(D); return {
 (function(){
 'use strict';
 if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'function' || typeof window.bkNotReadyPanel !== 'function') return;
-['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo'].forEach(function(name){
+['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns'].forEach(function(name){
   var orig = RENDERERS[name]; if(typeof orig !== 'function' || orig.__bkResultGate) return;
   var gated = function(){
     try { var r = window.bkDealReadiness(); if(r && r.state !== 'NO DEAL' && !r.canCalculate) return window.bkNotReadyPanel(name); } catch(e){}

@@ -10,7 +10,7 @@ function setCollapsed(v){ html.classList.toggle('bk-rail-collapsed', !!v); store
 window.bkRailCollapse = function(v){ setCollapsed(v === undefined ? !html.classList.contains('bk-rail-collapsed') : v); };
 function icons(root){
   /* the letter is an attribute drawn by CSS (::before), so no text is added to the headers and nothing that reads them changes */
-  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head, .bk-sx-card > .bk-sx-title'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
+  [].forEach.call(root.querySelectorAll('table.fin > caption, .card-head, .bk-sx-card > .bk-sx-title, .pf-card > .t'), function(h){ if(h.hasAttribute('data-ic') || h.closest('.ae')) return; h.setAttribute('data-ic', letter(h.textContent)); });
   [].forEach.call(root.querySelectorAll('.tabnav-primary .grp-btn .sw'), function(sw){ if(!sw.hasAttribute('data-ic')) sw.setAttribute('data-ic', letter(sw.parentNode.textContent)); });
 }
 /* EVERY PERCENTAGE IS SHOWN WITH TWO DECIMALS ("12%" and "12.0%" both read 12.00%). One rule for every sheet, chart label, input unit and the PDF summary. */

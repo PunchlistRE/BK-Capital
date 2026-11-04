@@ -4,7 +4,7 @@
 (function(){
 'use strict';
 if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'function' || typeof window.bkNotReadyPanel !== 'function') return;
-['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo'].forEach(function(name){
+['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns'].forEach(function(name){
   var orig = RENDERERS[name]; if(typeof orig !== 'function' || orig.__bkResultGate) return;
   var gated = function(){
     try { var r = window.bkDealReadiness(); if(r && r.state !== 'NO DEAL' && !r.canCalculate) return window.bkNotReadyPanel(name); } catch(e){}

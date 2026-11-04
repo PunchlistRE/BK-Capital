@@ -61,8 +61,8 @@ function devPanel(){
   return '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div><b>Development deal: acquisition conventions do not apply.</b> '
     + 'Construction-loan sizing, construction-period cash flows, lease-up and annual growth follow the development methodology and are not affected by these settings. '
     + 'Configurable conventions for development deals would be a separate extension.</div></div>'
-    + '<div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions - Acquisition Deals Only</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
-    + '<th style="text-align:left">Applies to this deal</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    + '<details class="bk-conv-na"><summary style="cursor:pointer;font-size:12px;color:var(--bk-na-ink);margin:0 0 8px">Show the acquisition-only settings (not used on this deal)</summary><div class="tbl-wrap"><table class="fin"><caption>Underwriting Conventions - Acquisition Deals Only</caption><thead><tr><th class="rowlabel-h">Setting</th><th>Value</th>'
+    + '<th style="text-align:left">Applies to this deal</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div></details>';
 }
 function panel(){
   var s = bkLoad(), cv = bkConventions(s);

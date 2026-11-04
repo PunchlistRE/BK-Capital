@@ -47,6 +47,12 @@
         var n=fails(), vp=document.getElementById('viewport'), mc=vp && vp.querySelector('.main-col');
         if(n && mc && !mc.querySelector('.bk-fail-banner')){
           var d=document.createElement('div'); d.className='note-flag bk-fail-banner';
+          var rd=null; try{ rd=(typeof bkDealReadiness==='function')?bkDealReadiness():null; }catch(e){}
+          if(rd && rd.state==='DRAFT' && rd.missing && rd.missing.length && !(rd.blockers && rd.blockers.length)){
+            /* an unfinished deal is not a failed deal: say what is missing, in a neutral tone; the red banner stays for complete deals that fail */
+            d.className='note-flag bk-fail-banner bk-draft-banner';
+            d.innerHTML='<span>&#9432;</span><div><b>Draft - '+rd.missing.length+' required input'+(rd.missing.length===1?'':'s')+' still to enter.</b> Results on this page are withheld until they are. Go to Deal Underwrite to complete them.</div>';
+          } else
           d.innerHTML='<span>&#9888;</span><div><b class="bk-ctl-FAIL">FAIL - '+n+' model-control failure'+(n===1?'':'s')+'.</b> Figures on this page are diagnostic and are not decision-grade until resolved. See Home or Deal Underwrite for the list.</div>';
           mc.insertBefore(d, mc.firstChild);
         }
