@@ -21683,7 +21683,7 @@ if(typeof window.bkAddConflictRule === 'function'){
 'use strict';
 if(typeof RENDERERS === 'undefined' || typeof window.bkImportParseFile !== 'function') return;
 var FIELDS = [
-  ['unit', 'Unit / suite', /^(unit|suite|space|apt|apartment|unit\s*(#|no\.?|number|id|name))$|^unit\b(?!.*(type|sq|sf|area))/i],
+  ['unit', 'Unit / suite', /^(unit|suite|space|apt|apartment|apt\s*(#|no\.?|number)|unit\s*(#|no\.?|number|id|name))$|^unit\b(?!.*(type|sq|sf|area))/i],
   ['building', 'Building', /^(building|bldg|property|address|site)\b/i],
   ['beds', 'Bedrooms', /^(bed(room)?s?|br|bed\s*count|beds?\s*#)$/i],
   ['baths', 'Bathrooms', /^(bath(room)?s?|ba|bath\s*count)$/i],
@@ -24517,7 +24517,7 @@ function looseIE(txt, o){
       if(totAt < 0 && /^total\s+(operating\s+)?expenses?\b/i.test(s) && mv.length && mv[mv.length - 1] > 0){ totAt = q; tot = mv[mv.length - 1]; } });
     if(noiAt < 0 || totAt < 0 || totAt > noiAt) continue;
     var cand = [], q = totAt - 1;
-    for(; q >= 0 && totAt - q <= 40; q--){ var s = L[q].trim(); if(/^(effective gross|gross (potential|income|rental)|net operating)/i.test(s) && money(s).length) break; var mv = money(s), lb = lab(s); if(!mv.length || !/[A-Za-z]{3}/.test(lb) || /^total\b/i.test(lb)) continue; cand.unshift({ label:lb.replace(/\s+/g, ' '), v:Math.abs(mv[mv.length - 1]), q:q }); }
+    for(; q >= 0 && totAt - q <= 40; q--){ var s = L[q].trim(); if(/^(effective gross|gross (potential|income|rental)|net operating)/i.test(s) && money(s).length) break; if(/^(operating\s+)?expenses?\b(?!.*\btotal)/i.test(s) && !/\b(tax|insurance|repair)/i.test(s) && s.length < 40 && !money(s).length) break; var mv = money(s), lb = lab(s); if(/^(vacancy|loss to lease|bad debt)/i.test(lb)) break; if(!mv.length || !/[A-Za-z]{3}/.test(lb) || /^total\b/i.test(lb)) continue; cand.unshift({ label:lb.replace(/\s+/g, ' '), v:Math.abs(mv[mv.length - 1]), q:q }); }
     var sum = cand.reduce(function(a, c){ return a + c.v; }, 0), near = function(a, b){ return Math.abs(a - b) <= Math.max(2, Math.abs(b) * 0.0005); };
     if(!cand.length || !near(sum, tot)) continue;
     var I = { addl:[], exp:cand.map(function(c){ return { label:c.label, cur:c.v, pf:c.v }; }), aligned:[], twoFigure:[], periods:['cur'], legacyColumns:false, missing:[], udiv:null, expTot:{ cur:tot }, noi:{ cur:noi }, loose:true, notStated:[] };
@@ -24557,7 +24557,7 @@ function parseListIndex(pages){
 /* A spreadsheet that lists several properties (one per row: name or address, city, price, size, units, cap rate, type): the header row is found by its column names, each row is one property, and a column that is not there is
    not stated. The totals or subtotal rows (no name, or a name that says total) are not properties. */
 function tableListRows(parsed){
-  var H = [['name', /^(property(\s*name)?|name|address|asset|listing|building)\b/i], ['city', /^(city|town|municipality)\b/i], ['state', /^(state|st)$/i], ['price', /^(asking|list(ing)?\s*)?price|^ask\b|^offer/i], ['sf', /(^|\b)(sf|sq\.?\s*f\w*|square|size|bldg\.?\s*size|gba|rsf)\b/i], ['units', /^(units?|# of units|no\. of units|apts?)\b/i], ['cap', /cap\s*rate/i], ['type', /^(property\s*)?type\b|^class\b|^use\b/i]];
+  var H = [['name', /^(property(\s*name)?|name|address|asset|listing|building)\b/i], ['city', /^(city|town|municipality)\b/i], ['state', /^(state|st)$/i], ['price', /^((asking|list(ing)?|sale|offer(ing)?)\s*)?price|^ask\b|^offer/i], ['sf', /(^|\b)(sf|sq\.?\s*f\w*|square|size|bldg\.?\s*size|gba|rsf)\b/i], ['units', /^(units?|# of units|no\. of units|apts?)\b/i], ['cap', /cap\s*rate/i], ['type', /^(property\s*)?type\b|^class\b|^use\b/i]];
   var N = function(v){ if(typeof v === 'number') return v; var s = String(v == null ? '' : v).replace(/[$,%\s]/g, ''); return /^-?\d*\.?\d+$/.test(s) ? parseFloat(s) : null; };
   for(var si = 0; si < (parsed.sheets || []).length; si++){ var rows = parsed.sheets[si].rows || [], hi = -1, map = null;
     for(var i = 0; i < Math.min(rows.length, 40) && hi < 0; i++){ var r = rows[i] || [], m = {}, used = {}; H.forEach(function(h){ for(var c = 0; c < r.length; c++){ if(!used[c] && typeof r[c] === 'string' && h[1].test(r[c].trim())){ m[h[0]] = c; used[c] = 1; break; } } });

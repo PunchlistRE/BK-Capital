@@ -5,7 +5,10 @@
 'use strict';
 if(typeof RENDERERS === 'undefined' || typeof window.bkImportParseFile !== 'function') return;
 var FIELDS = [
-  ['unit', 'Unit / suite', /^(unit|suite|space|apt|apartment|unit\s*(#|no\.?|number|id|name))$|^unit\b(?!.*(type|sq|sf|area))/i],
+  ['unit', 'Unit / suite', /^(unit|suite|space|apt|apartment|apt\s*(#|no\.?|number)|unit\s*(#|no\.?|number|id|name))$|^unit\b(?!.*(type|sq|sf|area))/i],
+  ['building', 'Building', /^(building|bldg|property|address|site)\b/i],
+  ['beds', 'Bedrooms', /^(bed(room)?s?|br|bed\s*count|beds?\s*#)$/i],
+  ['baths', 'Bathrooms', /^(bath(room)?s?|ba|bath\s*count)$/i],
   ['type', 'Unit type / use', /^(unit\s*type|type|floor\s*plan|floorplan|use|category|space\s*type)/i],
   ['sf', 'Square feet', /(sq\.?\s*f|square|^sf$|\bsf\b|^area|rsf|nra)/i],
   ['tenant', 'Tenant / resident', /^(tenant|resident|name|lessee|occupant|tenant\s*name|resident\s*name|customer)/i],
@@ -46,28 +49,44 @@ function toDate(c){
 function detectHeader(rows){
   var best = -1, bs = 0;
   for(var i = 0; i < Math.min(rows.length, 60); i++){ var r = rows[i] || [], sc = 0, used = {};
-    FIELDS.forEach(function(f){ for(var c = 0; c < r.length; c++){ if(typeof r[c] === 'string' && !used[c] && f[2].test(r[c].trim())){ used[c] = 1; sc++; break; } } });
+    var got = {};
+    FIELDS.forEach(function(f){ for(var c = 0; c < r.length; c++){ if(typeof r[c] === 'string' && !used[c] && f[2].test(r[c].trim())){ used[c] = 1; sc++; got[f[0]] = 1; break; } } });
+    /* a unit column and a rent column are enough to be a rent roll (the other columns may be named anything) */
+    if(sc === 2 && got.unit && got.inplace) sc = 3;
     if(sc > bs){ bs = sc; best = i; } }
   return bs >= 3 ? best : -1;
 }
-function guessMap(hdr){
+function guessMap(hdr, rows, head){
   var map = {}, used = {};
   var order = ['unit', 'market', 'start', 'end', 'recType', 'baseYear', 'recStop', 'recShare', 'recovery', 'type', 'sf', 'tenant', 'status', 'inplace'];
+  order = order.concat(['building', 'beds', 'baths']);
   order.forEach(function(k){ var f = FIELDS.filter(function(x){ return x[0] === k; })[0];
     for(var c = 0; c < hdr.length; c++){ if(used[c]) continue; var h = txt(hdr[c]); if(h && f[2].test(h)){ map[k] = c; used[c] = 1; break; } } });
+  /* a column with no heading that holds text names (a tenant column printed without a title) is the tenant column; it is shown in the mapping so it can be changed */
+  if(map.tenant == null && rows && head >= 0){ var used2 = {}; Object.keys(map).forEach(function(k){ used2[map[k]] = 1; });
+    for(var c2 = 0; c2 < hdr.length + 1; c2++){ if(used2[c2] || txt(hdr[c2])) continue; var vals = []; for(var i2 = head + 1; i2 < Math.min(rows.length, head + 60); i2++){ var v = (rows[i2] || [])[c2]; if(v != null && v !== '') vals.push(v); }
+      if(vals.length >= 3 && vals.filter(function(v){ return typeof v === 'string' && /[A-Za-z]{2}/.test(v); }).length >= vals.length * 0.7){ map.tenant = c2; break; } } }
   return map;
 }
 function guessBasis(hdr, map){ var h = txt(hdr[map.inplace]) + ' ' + txt(hdr[map.market]); if(/(psf|\/\s*sf|per\s*sf|per\s*square)/i.test(h)) return 'annualPsf'; if(/(annual|yearly|\/\s*yr|per\s*year)/i.test(h)) return 'annual'; return 'monthly'; }
 function parseUnits(){
-  var rows = S.rows, hdr = rows[S.head] || [], map = S.map, out = [], warn = [], seen = {}, dup = 0, totalRow = null, skipped = 0;
+  var rows = S.rows, hdr = rows[S.head] || [], map = S.map, out = [], warn = [], seen = {}, dup = 0, totalRow = null, skipped = 0, blockRent = 0, blockN = 0, subOk = 0, subBad = [];
   var scale = function(v, sf){ if(v == null) return 0; return S.basis === 'annual' ? v / 12 : S.basis === 'annualPsf' ? v * (sf || 0) / 12 : v; };
   for(var i = S.head + 1; i < rows.length; i++){ var r = rows[i] || [];
     var get = function(k){ return map[k] != null && map[k] >= 0 ? r[map[k]] : null; };
-    var first = txt(r[0]); var uid = txt(get('unit'));
+    var first = txt(r[0]); var uid = txt(get('unit')), bldg = map.building != null ? txt(get('building')) : '';
     if(/^(grand\s*)?(sub)?total/i.test(first) || /^(grand\s*)?(sub)?total/i.test(uid)){ totalRow = r; continue; }
-    if(!uid){ if(r.some(function(c){ return c != null && c !== ''; })) skipped++; continue; }
+    /* the same unit number in two buildings is two units */
+    if(uid && bldg) uid = bldg + ' ' + uid;
+    if(!uid){
+      /* a row of numbers only, in the rent column, after a run of units is a subtotal printed without a label: it is checked against the rents above it, never used as a unit */
+      var cells = r.filter(function(c){ return c != null && c !== ''; }), rv = map.inplace != null ? num(r[map.inplace]) : null;
+      if(cells.length && cells.every(function(c){ return typeof c === 'number'; }) && rv != null && rv > 0 && blockN >= 2){ if(Math.abs(rv - blockRent) <= 1) subOk++; else subBad.push({ printed:rv, sum:blockRent, n:blockN }); blockRent = 0; blockN = 0; }
+      else if(cells.length) skipped++;
+      continue; }
     if(seen[uid]){ dup++; continue; } seen[uid] = 1;
-    var sf = num(get('sf')) || 0, tenant = txt(get('tenant')), stx = txt(get('status')), typ = txt(get('type'));
+    if(map.inplace != null){ var rr0 = num(get('inplace')); if(rr0 != null){ blockRent += rr0; blockN++; } }
+    var sf = num(get('sf')) || 0, tenant = txt(get('tenant')), stx = txt(get('status')), typ = txt(get('type')) || ((map.beds != null || map.baths != null) ? [map.beds != null && num(get('beds')) != null ? (num(get('beds')) === 0 ? 'Studio' : num(get('beds')) + ' BR') : '', map.baths != null && num(get('baths')) != null ? num(get('baths')) + ' BA' : ''].filter(Boolean).join(' / ') : '');
     var vacant = /vacan|available|unrented|down|model/i.test(stx) || (/vacan/i.test(tenant)) || (!tenant && !/occup|current|notice|mtm|month|lease|renew|future/i.test(stx) && map.tenant != null && !stx);
     var occupied = !vacant;
     if(map.status != null && stx && /occup|current|notice|mtm|month|renew|future/i.test(stx)) occupied = true;
@@ -83,6 +102,8 @@ function parseUnits(){
     if(ls && le && le < ls) w.push('lease ends before it starts');
     out.push({ unitId:uid, sf:sf, tenantType:comm ? 'Commercial' : 'Residential', status:occupied ? 'Occupied' : 'Vacant', inPlaceRent:Math.round(inp * 100) / 100, marketRent:Math.round(mk * 100) / 100, recovery:rec, leaseStart:ls, leaseEnd:le, recType:rtype || undefined, baseYear:map.baseYear != null && num(get('baseYear')) >= 1990 ? Math.round(num(get('baseYear'))) : undefined, recStop:map.recStop != null && num(get('recStop')) > 0 ? num(get('recStop')) : undefined, recShare:(function(){ if(map.recShare == null) return undefined; var raw = txt(get('recShare')), v = parseFloat(String(raw).replace(/[%,\s]/g, '')); if(!(v > 0)) return undefined; return /%/.test(raw) || v > 1 ? Math.min(1, v / 100) : v; })(), _w:w });
   }
+  subBad.forEach(function(x){ warn.push('The rent roll prints a subtotal of ' + $(x.printed) + ' under ' + x.n + ' units whose rents add to ' + $(x.sum) + ' (a difference of ' + $(Math.abs(x.printed - x.sum)) + '). One of the unit rents or the subtotal is wrong in the source; the units are loaded as listed and the difference is NOT adjusted.'); });
+  if(subOk) warn.push(subOk + ' printed subtotal' + (subOk === 1 ? '' : 's') + ' tie' + (subOk === 1 ? 's' : '') + ' to the unit rents above ' + (subOk === 1 ? 'it' : 'them') + '.');
   if(dup) warn.push(dup + ' repeated unit row' + (dup === 1 ? '' : 's') + ' ignored (the first row of each unit is used; Yardi prints extra rows for charge detail).');
   if(map.market == null) warn.push('No market-rent column mapped: occupied units use their in-place rent as market (no loss to lease); vacant units have no rent.');
   if(map.start == null && map.end == null) warn.push('No lease dates mapped: the Lease Cohort and rollover views will have nothing to work with.');
@@ -107,7 +128,7 @@ function alignPdf(sh){
     r.forEach(function(c, j){ var x = xs[i][j], col = 0; for(var k = 0; k < hx.length; k++){ if(hx[k] <= x + 4) col = k; } o[col] = o[col] == null ? c : (typeof o[col] === 'string' && typeof c === 'string' ? o[col] + ' ' + c : o[col]); }); return o; });
 }
 window.bkRRSheets = function(parsed){ return parsed.sheets.map(function(sh){ return { name:sh.name, rows:parsed.kind === 'pdf' ? alignPdf(sh) : sh.rows }; }); };
-window.bkRRParse = function(rows, opts){ var keep = S; S = Object.assign({}, S, { rows:rows, head:detectHeader(rows), basis:'monthly', typeMode:'auto', fromPdf:false }, opts || {}); S.map = guessMap(rows[S.head] || []); var r = S.head < 0 ? null : parseUnits(); var head = S.head, map = S.map; S = keep; return r && Object.assign(r, { head:head, map:map }); };
+window.bkRRParse = function(rows, opts){ var keep = S; S = Object.assign({}, S, { rows:rows, head:detectHeader(rows), basis:'monthly', typeMode:'auto', fromPdf:false }, opts || {}); S.map = guessMap(rows[S.head] || [], rows, S.head); var r = S.head < 0 ? null : parseUnits(); var head = S.head, map = S.map; S = keep; return r && Object.assign(r, { head:head, map:map }); };
 
 window.bkRRRun = async function(inp){
   var f = inp && inp.files && inp.files[0]; if(!f) return;
@@ -116,7 +137,7 @@ window.bkRRRun = async function(inp){
     if(parsed.unreadable){ S.msg = 'This PDF has no readable text (scanned, or its fonts use an encoding this reader cannot decode). Use the spreadsheet or CSV export of the rent roll.'; }
     else { var best = null; window.bkRRSheets(parsed).forEach(function(sh){ var h = detectHeader(sh.rows); if(h >= 0 && (!best || sh.rows.length > best.rows.length)) best = { rows:sh.rows, head:h, name:sh.name }; });
       if(!best) S.msg = 'No rent-roll header row found (looked for columns such as Unit, Sq Ft, Tenant, Lease Rent, Market Rent, Lease From / To). Rename the headers or use a different export.';
-      else { S.rows = best.rows; S.head = best.head; S.map = guessMap(best.rows[best.head]); S.basis = guessBasis(best.rows[best.head], S.map); S.msgOk = true; S.msg = 'Read ' + (best.rows.length - best.head - 1) + ' rows from ' + f.name + (parsed.sheets.length > 1 ? ' (sheet "' + best.name + '")' : '') + '. Check the column mapping, then apply.'; } }
+      else { S.rows = best.rows; S.head = best.head; S.map = guessMap(best.rows[best.head], best.rows, best.head); S.basis = guessBasis(best.rows[best.head], S.map); S.msgOk = true; S.msg = 'Read ' + (best.rows.length - best.head - 1) + ' rows from ' + f.name + (parsed.sheets.length > 1 ? ' (sheet "' + best.name + '")' : '') + '. Check the column mapping, then apply.'; } }
   } catch(e){ S.msg = 'Could not read ' + f.name + ': ' + (e && e.message || e); }
   showSheet('Import Rent Roll');
 };
