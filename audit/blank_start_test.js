@@ -28,10 +28,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); con
   const tp = await p.evaluate(() => { bkCreateNewDeal({ name: 'T', dealId: 'T1', dealType: 'Acquisition' }); const s = bkLoad(); return { ltv: s.acqLTV, cc: s.closingCostsPct, gp: s.gpShare, tpl: !!s._template }; });
   check('a deal created without the flag keeps the named template (financing, costs and GP share as before), so saved deals and audit decks are unchanged', tp.ltv > 0 && tp.cc > 0 && tp.gp > 0 && tp.tpl, JSON.stringify(tp));
   /* clear inputs */
-  await p.evaluate(() => { bkCreateNewDeal({ name: 'Old', dealId: 'OLD1', dealType: 'Acquisition', purchasePrice: 1000000, location: 'X, CT' }); const s = bkLoad(); s.acqLTV = 0.6; bkSave(s); });
+  await p.evaluate(() => { bkCreateNewDeal({ name: 'Old', dealId: 'OLD1', dealType: 'Development', analysisType: 'development', purchasePrice: 1000000, location: 'X, CT' }); const s = bkLoad(); s.acqLTV = 0.6; bkSave(s); });
   await p.evaluate(() => { showSheet('Home'); }); await p.waitForTimeout(300);
-  const cl = await p.evaluate(() => { bkClearInputsGo(); const s = bkLoad(); return { name: s.name, loc: s.location, price: s.purchasePrice, ltv: s.acqLTV, cc: s.closingCostsPct, id: s.dealId, saved: ((s._history || {}).versions || []).some(v => /Before clearing/.test(v.note) && JSON.parse(v.j).name === 'Old' && JSON.parse(v.j).purchasePrice === 1000000) }; });
-  check('Clear inputs removes everything (name, location, price, financing, closing costs), restarts all cash, and the old deal stays saved in Version History', !cl.name && !cl.loc && !cl.price && !cl.ltv && !cl.cc && cl.saved, JSON.stringify(cl));
+  const cl = await p.evaluate(() => { bkClearInputsGo(); const s = bkLoad(); return { name: s.name, loc: s.location, price: s.purchasePrice, ltv: s.acqLTV, cc: s.closingCostsPct, id: s.dealId, type: s.dealType, an: s.analysisType, saved: ((s._history || {}).versions || []).some(v => /Before clearing/.test(v.note) && JSON.parse(v.j).name === 'Old' && JSON.parse(v.j).purchasePrice === 1000000) }; });
+  check('Clear inputs removes everything (name, location, price, financing, closing costs), restarts all cash, KEEPS the kind of analysis (a Development stays a Development), and the old deal stays saved in Version History', !cl.name && !cl.loc && !cl.price && !cl.ltv && !cl.cc && cl.saved && cl.type === 'Development' && cl.an === 'development', JSON.stringify(cl));
   /* development schedule empty state */
   await p.evaluate(() => bkCreateNewDeal({ name: 'Dev Blank', dealId: 'DB', dealType: 'Development', blankStructure: true }));
   t = await text('Dev Schedule');

@@ -46,7 +46,7 @@ window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import
 
 window.bkClearInputsDialog = function(){
   var s = safe(function(){ return bkLoad(); }, {}), was = [s.name, s.location].filter(Boolean).join(' · ');
-  modal('<h3>Clear all inputs?</h3><p>Everything on this deal is removed' + (was ? ' (<b>' + esc(was) + '</b>)' : '') + ': its name, location and type, income, expenses, debt, rent roll, tax, partners and the saved cases. The deal goes back to a blank one. <b>Nothing is lost:</b> the deal as it is now is saved to Version History first, and you can restore it from there.</p>'
+  modal('<h3>Clear all inputs?</h3><p>Everything on this deal is removed' + (was ? ' (<b>' + esc(was) + '</b>)' : '') + ': its name, location and type, income, expenses, debt, rent roll, tax, partners and the saved cases. The deal goes back to a blank one of the same kind of analysis (' + esc(s.dealType || 'Acquisition') + '). <b>Nothing is lost:</b> the deal as it is now is saved to Version History first, and you can restore it from there.</p>'
     + saveFirstBox('Also save a copy of') + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn danger" onclick="bkClearInputsGo()">Clear inputs</button></div>');
 };
 window.bkClearInputsGo = function(){
@@ -55,7 +55,7 @@ window.bkClearInputsGo = function(){
   try { if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before clearing all inputs', true); } catch(e){}
   var h = safe(function(){ return bkLoad()._history; }, null);
   closeModal();
-  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, blankStructure:true });
+  if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ dealId:s.dealId, dealType:s.dealType, analysisType:s.analysisType, blankStructure:true });   /* the kind of analysis is kept (a Development stays a Development); everything about the property and its terms is removed */
   /* the cleared deal keeps the record of what it was: its version history comes with it */
   if(h) safe(function(){ var n = bkLoad(); n._history = h; bkSave(n); });
 };
