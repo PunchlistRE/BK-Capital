@@ -22441,7 +22441,7 @@ function drawPage(fund, D, n, N){
   var land = q('land'), hard = q('hard'), soft = q('soft'), lease = q('lease'), fees = q('fees'), need = q('need'), eq = q('eq'), ov = q('overflow'), draw = q('loanDraw'), ci = q('capInt'), ex = q('excess');
   var src = eq.map(function(v, j){ return v + ov[j] + draw[j]; }), cum = q('cumNeed', 'end'), beg = q('beg', 'beg'), end = q('end', 'end');
   var ltc = end.map(function(v, j){ var c = cum[j] + sum(ci.slice(0, j === Q ? Q : j + 1)); return c ? v / c : null; });
-  var phase = function(k){ var m0 = k * 3 + 1, ph = (fund.phases || []).filter(function(p){ return m0 >= p[1] && m0 <= p[2]; })[0]; return ph ? ph[0].replace(/^Pre-Development$/, 'Pre-dev').replace(/^Construction$/, 'Constr.').replace(/^Lease.*$/i, 'Lease-up').replace(/^Stabili[sz]ed.*$/i, 'Stab.') : ''; };
+  var phase = function(k){ var m0 = k * 3 + 1, ph = (fund.phases || []).filter(function(p){ return m0 >= p[1] && m0 <= p[2]; })[0]; return ph ? ph[0].replace(/^Pre-Development$/, 'Pre-dev').replace(/^Construction$/, 'Constr.').replace(/^Lease.*$/i, 'Lease').replace(/^Stabili[sz]ed.*$/i, 'Stab.') : ''; };
   var head = '<tr><th>$ thousands</th>' + Array.apply(null, { length:Q }).map(function(_, k){ return '<th>Q' + (k + 1) + '</th>'; }).join('') + '<th>Total</th></tr>'
     + '<tr class="ph"><td>Phase · months</td>' + Array.apply(null, { length:Q }).map(function(_, k){ return '<td>' + esc(phase(k)) + '<br>' + (k * 3 + 1) + '–' + Math.min(last, k * 3 + 3) + '</td>'; }).join('') + '<td class="c0"></td></tr>';
   var tbl = '<table class="cft drw"><thead>' + head + '</thead><tbody>'
