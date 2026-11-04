@@ -70,6 +70,7 @@ echo "== Harbor Point stage C (investor summary pages, summary of investment, po
 echo "== Harbor Point stage E (fixed facility, equity first, unused fee, initial reserves, contingency register, LP-only pref, catch-up rate, independent model)"; node audit/harbor_stageE_test.js index.html | tail -1
 echo "== Portfolio IRR on the combined dated cash flow (independent XIRR, reconciliation, no averaged IRR)"; node audit/portfolio_irr_test.js index.html | tail -1
 echo "== Analysis registry and the setup page (consistency, guide steps from the registry, saved-deal compatibility, summaries, dialog, themes)"; node audit/registry_test.js index.html | tail -1
+echo "== Analysis registry part 2 (step bar stages, readiness workflow, Overview tiles and integrity checks read the analysis)"; node audit/registry2_test.js index.html | tail -1
 echo "== Stage D (Deal Underwrite tab bar; input / calculated / linked / N/A / attention cell convention on every input sheet)"; node audit/stageD_test.js index.html | tail -1
 echo "== Import tab (one tab; content-driven reader on unseen layouts, development pro forma + OM, teaching, old readers inside the tab)"; node audit/import_hub_test.js index.html | tail -1
 echo "== Import tab routing (an OM with a rent roll page stays an OM; a plain rent roll stays a rent roll)"; node audit/import_route_test.js index.html | tail -1
