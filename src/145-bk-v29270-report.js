@@ -254,7 +254,7 @@ function buildDev(){
   /* the pages that explain the investment (src/179), placed where a reader needs them; footers are renumbered over the final page list */
   var XP = typeof window.bkDevReportPages === 'function' ? safe(function(){ return window.bkDevReportPages(); }, null) : null;
   if(XP){ var pgx = function(inner){ return page(inner, 0, 0, D); };
-    pages.push(pgx(XP.portfolio)); pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance)); pages.splice(2, 0, pgx(XP.returns));
+    pages.push(pgx(XP.portfolio)); pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance), pgx(XP.budget)); pages.splice(2, 0, pgx(XP.returns));
     pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); }
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Development Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }

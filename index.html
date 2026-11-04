@@ -23149,7 +23149,7 @@ function buildDev(){
   /* the pages that explain the investment (src/179), placed where a reader needs them; footers are renumbered over the final page list */
   var XP = typeof window.bkDevReportPages === 'function' ? safe(function(){ return window.bkDevReportPages(); }, null) : null;
   if(XP){ var pgx = function(inner){ return page(inner, 0, 0, D); };
-    pages.push(pgx(XP.portfolio)); pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance)); pages.splice(2, 0, pgx(XP.returns));
+    pages.push(pgx(XP.portfolio)); pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance), pgx(XP.budget)); pages.splice(2, 0, pgx(XP.returns));
     pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); }
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Development Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
@@ -28373,9 +28373,10 @@ function opsPage(D){
 function financePage(D){
   var b = D.base, s = D.s, f = D.fund, t = D.tk, r = D.refi, ms = f.months || [], peak = Math.max.apply(null, ms.map(function(z){ return num(z.end); }).concat([0])), excess = ms.reduce(function(a, z){ return a + num(z.excess); }, 0), draws = ms.reduce(function(a, z){ return a + num(z.loanDraw); }, 0);
   var held = !!t.conHeldToSale, val = b.stabVal, bal = b.bal, noi = b.stabNOI;
-  var fac = [['Facility commitment (LTC ' + pct(num(s.conLTC), 0) + ' formula)', usd(b.commit)], ['Interest rate / origination fee', pct(num(s.conRate), 2) + ' / ' + pct(num(s.conOrigFee), 2)], ['Loan draws', usd(draws)], ['Capitalised interest', usd(b.capInt)],
-    ['Interest paid by equity once the commitment is full', usd(excess)], ['Peak balance (before sale)', usd(peak)], ['Headroom left in the commitment', usd(b.commit - peak)], ['Unused-commitment fee', 'not modelled'],
-    ['Repayment', held ? 'Held after stabilisation (interest paid currently); ' + usd(bal) + ' repaid from the sale' : 'Taken out at stabilisation by a ' + usd(t.permLoan) + ' permanent loan']];
+  var fixed = !!f.fixedFacility, ceilV = num(f.balCap), unusedV = num(f.unusedFees);
+  var fac = [[fixed ? 'Facility commitment (fixed principal entered)' : 'Facility commitment (LTC ' + pct(num(s.conLTC), 0) + ' formula)', usd(b.commit)], ['Interest rate / origination fee', pct(num(s.conRate), 2) + ' / ' + pct(num(s.conOrigFee), 2)]].concat(ceilV > num(f.commit) + 0.5 ? [['Balance ceiling (principal + capitalised interest)', usd(ceilV)]] : []).concat(num(s.conEquityFirst) > 0 ? [['Equity funds the first', usd(num(s.conEquityFirst))]] : []).concat([['Loan draws', usd(draws)], ['Capitalised interest', usd(b.capInt)],
+    ['Interest paid by equity once the commitment is full', usd(excess)], ['Peak balance (before sale)', usd(peak)], ['Headroom left in the ' + (ceilV > num(f.commit) + 0.5 ? 'ceiling' : 'commitment'), usd((ceilV > num(f.commit) + 0.5 ? ceilV : b.commit) - peak)], ['Unused-commitment fee' + (num(s.conUnusedFeePct) > 0 ? ' (' + pct(num(s.conUnusedFeePct), 2) + ' a year on undrawn principal)' : ''), num(s.conUnusedFeePct) > 0 ? usd(unusedV) : 'none entered'],
+    ['Repayment', held ? 'Held after stabilisation (interest paid currently); ' + usd(bal) + ' repaid from the sale' : 'Taken out at stabilisation by a ' + usd(t.permLoan) + ' permanent loan']]);
   var cov = [['Loan to cost (all-in)', pct(b.levered ? b.bal / (b.levered + excess) : null)], ['Loan to value (stabilised value ' + mil(val) + ')', pct(val ? bal / val : null)], ['Debt yield (NOI / loan)', pct(bal ? noi / bal : null)], ['Debt service coverage (stabilised NOI / annual debt service)', b.dscr ? mult(b.dscr) : '—'],
     ['Interest coverage', b.dscr ? mult(b.dscr) + (held ? ' (interest only)' : '') : '—'], ['Annual debt service after stabilisation', usd(b.ds)]];
   var refi = r && r.permLoan > 0 ? [['Permanent loan (65% LTV, no coverage test)', usd(r.permLoan)], ['Rate / amortisation', pct(r.rate, 2) + ' / ' + r.amort + ' years'], ['Repays the construction loan', usd(r.conPayoff)], ['Refinance fees', usd(r.fee)], ['Net cash out to equity', usd(r.cashOut)], ['Takeout shortfall equity must fund', usd(r.shortfall)], ['Annual debt service', usd(r.ds)],
@@ -28396,12 +28397,54 @@ function riskPage(D){
   return { a:a + '<div class="note" style="margin-top:4px">Delays move the sale by the same number of months. Cost overrun applies to hard cost including contingency. DSCR is stabilised NOI over annual debt service after stabilisation.</div>' + comb, b:'<h2>Single-variable sensitivities</h2>' + tables.join('') };
 }
 
+/* Development budget, contingency and initial reserves. Every figure is read from the engine (bkDevV09 cost ladder and contingency register, bkDevFundingV10 funding ledger and reserve totals); the only arithmetic here is adding engine
+   figures that the page shows as a total, and a by-purpose "released" line that is funded less used (both engine figures), tied to the engine's own released total in the footer. */
+function budgetPage(D){
+  var f = D.fund || {}, x = D.dev || {}, s = D.s, ms = f.months || [], units = num(s.units), gsf = num(s.gsf), hl = x.hardLadder || { lines:[], contingency:0, total:num(x.hard) }, sl = x.softLadder || { lines:[], total:num(x.soft) }, reg = x.contReg;
+  var perU = function(v){ return units ? usd(v / units) : '—'; }, perG = function(v){ return gsf ? '$' + (v / gsf).toFixed(0) : '—'; };
+  var line = function(label, v, cls){ return tr([label, usd(v), perU(v), perG(v)], cls); };
+  var hardEx = num(x.hard) - num(hl.contingency), resFunded = num(f.resFunded), total = num(x.unlev) + resFunded;
+  var bud = '<table><thead><tr><th class="l">Development budget</th><th>Amount</th><th>Per unit</th><th>Per GSF</th></tr></thead><tbody>'
+    + line('Land', num(x.land)) + line('Closing costs and acquisition fee', num(x.close) + num(x.acq)) + line('Predevelopment', num(x.pre))
+    + line('Hard cost: trades', num(hl.tradeSubtotal)) + line('Hard cost: general conditions, contractor fee and bonds', num(hl.gc) + num(hl.contractorFee) + num(hl.riskBonds)) + line('Hard cost: contingency', num(hl.contingency))
+    + line('Hard costs, total', num(x.hard), 'sub') + line('Soft costs', num(x.soft)) + (num(x.leaseDef) ? line('Lease-up deficit', num(x.leaseDef)) : '') + (resFunded ? line('Initial reserves', resFunded) : '')
+    + line('Total development budget', total, 'tot') + '</tbody></table>'
+    + '<div class="note" style="margin-top:3px">Financing costs come on top and are on the Financing page: loan fee and unused-commitment fees ' + usd(num(f.upfrontFees)) + ', capitalised interest ' + usd(num(f.actualCapInt)) + '. Cost before financing and reserves is ' + usd(num(x.unlev)) + ' (' + perG(num(x.unlev)) + ' a GSF).</div>';
+  var softRows = (sl.lines || []).filter(function(l){ return num(l.total) > 0; });
+  var hardRows = (hl.lines || []).filter(function(l){ return num(l.total) > 0; });
+  var det = '<table class="rr" style="table-layout:auto"><thead><tr><th class="l">Hard cost trade</th><th>Amount</th><th>Per GSF</th></tr></thead><tbody>' + hardRows.map(function(l){ return tr([esc(l.name), usd(l.total), perG(num(l.total))]); }).join('') + '</tbody></table>'
+    + '<table class="rr" style="table-layout:auto;margin-top:6px"><thead><tr><th class="l">Soft cost line</th><th>Amount</th><th>Per GSF</th></tr></thead><tbody>' + softRows.map(function(l){ return tr([esc(l.name), usd(l.total), perG(num(l.total))]); }).join('') + '</tbody></table>';
+  var ct;
+  if(reg){
+    var cols = [['Original', reg.original], ['Allocated', reg.allocated], ['Unallocated', reg.unallocated], ['Used', reg.used], ['Remaining', reg.remaining], ['Further use', reg.more], ['Total use', reg.forecast], ['Left', reg.forecastRemaining]].concat(num(reg.overrun) ? [['Overrun', reg.overrun]] : []).concat(num(reg.saved) ? [['Released', reg.saved]] : []);
+    ct = '<table class="rr" style="table-layout:fixed"><thead><tr>' + cols.map(function(c, i){ return '<th' + (i ? '' : ' class="l"') + '>' + c[0] + '</th>'; }).join('') + '</tr></thead><tbody><tr>' + cols.map(function(c, i){ return '<td' + (i ? '' : ' class="l"') + '>' + usd(num(c[1])) + '</td>'; }).join('') + '</tr></tbody></table>'
+      + '<div class="note" style="margin-top:3px">' + (reg.release === 'saved' ? 'Contingency not forecast to be used is released from the budget.' : 'Contingency is treated as spent in full in the budget.') + ' Used = change orders approved to date; further use is forecast to completion; overruns are added to cost. Allocations: ' + (((D.s.contingency || {}).allocations || []).filter(function(a){ return num(a.amount) > 0; }).map(function(a){ return esc(a.name || 'Unnamed') + ' ' + usd(num(a.amount)); }).join('; ') || 'none entered') + '. Change orders: ' + (((D.s.contingency || {}).changeOrders || []).filter(function(a){ return num(a.amount) > 0; }).map(function(a){ return esc(a.name || 'Unnamed') + ' ' + usd(num(a.amount)); }).join('; ') || 'none') + '.</div>';
+  } else ct = '<div class="note">No contingency register is entered. Contingency is the ' + usd(num(hl.contingency)) + ' in the hard-cost ladder and is spent in full in the budget.</div>';
+  var list = f.resList || [], sumM = function(k){ return ms.reduce(function(a, z){ return a + num(z[k]); }, 0); }, mr = safe(function(){ return bkMonthlyReturns(); }, { rows:[] }), sumR = function(k){ return (mr.rows || []).reduce(function(a, z){ return a + num(z[k]); }, 0); }, usedOp = sumM('resLease') + sumR('resOp'), usedInt = sumM('resInt'), relSale = sumR('resRelease');
+  var byUse = function(u){ return list.filter(function(r){ return r.use === u; }).reduce(function(a, r){ return a + num(r.amount); }, 0); };
+  var purposes = [['operating', 'Operating / lease-up', usedOp], ['interest', 'Debt service / interest', usedInt], ['held', 'Held', 0]];
+  var rt;
+  if(list.length){
+    var fundTxt = function(mo){ var z = ms[mo - 1] || {}; return 'month ' + mo + ': equity ' + usd(num(z.eq) + num(z.overflow)) + ', loan ' + usd(num(z.loanDraw)); };
+    rt = '<table class="rr" style="table-layout:auto"><thead><tr><th class="l">Reserve</th><th class="l">Purpose</th><th>Funded in month</th><th>Amount</th><th class="l">That month\'s cost was paid by</th></tr></thead><tbody>'
+      + list.map(function(r){ return '<tr><td class="l">' + esc(r.name) + '</td><td class="l">' + esc((purposes.filter(function(p){ return p[0] === r.use; })[0] || [0, r.use])[1]) + '</td><td>' + r.mo + '</td><td>' + usd(num(r.amount)) + '</td><td class="l">' + fundTxt(r.mo) + '</td></tr>'; }).join('') + tr(['Total funded', '', '', usd(resFunded), ''], 'tot') + '</tbody></table>'
+      + '<table class="rr" style="table-layout:auto;margin-top:6px"><thead><tr><th class="l">By purpose</th><th>Funded</th><th>Used</th><th>Released with the sale</th></tr></thead><tbody>'
+      + purposes.filter(function(p){ return byUse(p[0]) > 0; }).map(function(p){ var left = byUse(p[0]) - p[2]; return tr([p[1], usd(byUse(p[0])), usd(p[2]), usd(Math.abs(left) < 0.5 ? 0 : left)]); }).join('')
+      + tr(['Total', usd(resFunded), usd(usedOp + usedInt), usd(relSale)], 'tot') + '</tbody></table>'
+      + '<div class="note" style="margin-top:3px">Reserves are a use of funds in the month they are funded (they are not an expense). The operating reserve pays the lease-up shortfall before the partners are asked; the interest reserve pays construction interest beyond the facility ceiling before equity does; whatever is left is released to the project with the sale. Funded equals used plus released (' + usd(resFunded) + ' = ' + usd(usedOp + usedInt) + ' + ' + usd(relSale) + ').</div>';
+  } else rt = '<div class="note">No initial reserves are entered.</div>';
+  return '<h2>Development budget</h2><div class="g2" style="grid-template-columns:1.1fr .9fr"><div>' + bud + '</div><div>' + det + '</div></div><h2 style="font-size:11px;margin-top:8px">Contingency</h2>' + ct + '<h2 style="font-size:11px;margin-top:8px">Initial reserves</h2>' + rt;
+}
+
 function integrityPage(D){
   var g = D.integrity, gate = D.gate || {}, s = D.s;
   var rows = g ? g.checks.map(function(c){ var k = c.status === 'pass' ? 'pass' : c.status === 'hard' ? 'fail' : c.status === 'warn' ? 'warn' : ''; return '<tr><td class="l" style="white-space:normal;line-height:1.1">' + esc(c.group) + '</td><td class="l" style="white-space:normal;line-height:1.15">' + esc(c.label) + '</td><td style="white-space:nowrap"><span class="pill ' + k + '">' + (c.status === 'hard' ? 'FAILED' : c.status === 'warn' ? 'WARNING' : c.status === 'na' ? 'N/A' : 'PASS') + '</span></td></tr>'; }).join('') : '';
   var detail = g ? g.hard.concat(g.warn).map(function(c){ return '<div><b>' + (c.status === 'hard' ? 'Failed: ' : 'Warning: ') + '</b>' + esc(c.label) + ' — ' + esc(c.detail) + '</div>'; }).join('') : '';
-  var lim = ['Costs are entered as 13 hard-cost trades and 16 soft-cost lines; lines in a brief are merged to fit, and each cannot be escalated or reforecast on its own.', 'Contingency and initial reserves are not tracked or released as separate balances.', 'The construction loan is sized by an LTC formula; a fixed commitment, a facility ceiling, an equity-first threshold and an unused-commitment fee cannot be entered.',
-    'The GP catch-up is a share-of-profit target (100% until the GP holds that share), not a catch-up rate; the preferred return is shared by LP and GP unless hurdles are tested on LP flows.', 'A refinance is illustrated at stabilisation; the property is still sold at the end of the hold.', 'Source citations, extraction confidence and broker-versus-model discrepancy reporting are not part of this summary.'];
+  var lim = ['Costs are entered as 13 hard-cost trades and 16 soft-cost lines; lines in a brief are merged to fit, and each cannot be escalated or reforecast on its own.',
+    'The contingency register tracks allocations, change orders and forecast; it does not post spending against individual cost lines. Initial reserves are tracked in total by purpose, not as separate balances per reserve.',
+    'Interest is capitalised only through stabilisation; the brief\'s capitalisation through the sale is not an option.',
+    'Who earns the preferred return and what the GP catch-up runs to are taken from the deal\'s inputs; where the offering documents are silent they are the deal team\'s to confirm.',
+    'A refinance is illustrated at stabilisation; the property is still sold at the end of the hold.', 'Source citations, extraction confidence and broker-versus-model discrepancy reporting are not part of this summary.'];
   return '<h2>Model integrity and limits</h2><div class="g2" style="grid-template-columns:1.25fr .85fr"><div><div class="note" style="margin:0 0 4px">Every line is recomputed independently of the engine (' + esc(g ? g.text : 'not available') + '). A failed check holds the credit gate; a warning caps it at conditional.</div><table style="table-layout:fixed;font-size:8px"><colgroup><col style="width:15%"><col style="width:67%"><col style="width:18%"></colgroup><thead><tr><th class="l">Area</th><th class="l">Check</th><th>Result</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
     + '<div><div class="bx" style="padding:10px 12px"><div class="t">Credit gate: ' + esc(gate.verdict || 'not assessed') + '</div><div class="s">' + esc(gate.status || '') + '</div><div class="ins" style="margin-top:4px">' + detail + '</div></div><h2 style="margin-top:10px">What this model cannot yet do</h2><div class="note">' + lim.map(function(x){ return '• ' + esc(x); }).join('<br>') + '</div></div></div>';
 }
@@ -28466,7 +28509,7 @@ window.bkPortfolioImpact = portfolioData;
 window.bkPortfolioImpactPage = portfolioPage;
 
 window.bkDevReportData = build;
-window.bkDevReportPages = function(){ var D = build(), r = riskPage(D); return { portfolio:portfolioPage(), returns:returnsPage(D), ops:opsPage(D), finance:financePage(D), risk:r.a, sens:r.b, integrity:integrityPage(D), data:D }; };
+window.bkDevReportPages = function(){ var D = build(), r = riskPage(D); return { portfolio:portfolioPage(), returns:returnsPage(D), ops:opsPage(D), finance:financePage(D), budget:budgetPage(D), risk:r.a, sens:r.b, integrity:integrityPage(D), data:D }; };
 })();
 </script>
 </body>

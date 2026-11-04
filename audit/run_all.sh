@@ -59,6 +59,7 @@ echo "== Undo / Redo for every function (all stores, exact, labelled, drastic-ch
 echo "== Harbor Point stage A (development Snapshot, Sources = Uses in sheet and PDF, takeout wording, unlevered returns)"; node audit/harbor_stageA_test.js index.html | tail -1
 echo "== Harbor Point stage B (hurdle replay, gross contributions, integrity checks fail visibly, credit gate, independent second model)"; node audit/harbor_stageB_test.js index.html | tail -1
 echo "== Harbor Point variants (interest-reserve accounting; tight ceiling, no reserves, LTC, fixed facility, waterfall variants, each against the independent model)"; node audit/harbor_variants_test.js index.html | tail -1
+echo "== Harbor Point investor PDF, Development budget page (budget, contingency, reserves reconciled to the engine; facility text)"; node audit/harbor_budget_test.js index.html | tail -1
 echo "== Harbor Point stage C (investor summary pages, summary of investment, portfolio impact, cover photo, Model Checks)"; node audit/harbor_stageC_test.js index.html | tail -1
 echo "== Harbor Point stage E (fixed facility, equity first, unused fee, initial reserves, contingency register, LP-only pref, catch-up rate, independent model)"; node audit/harbor_stageE_test.js index.html | tail -1
 echo "== Portfolio IRR on the combined dated cash flow (independent XIRR, reconciliation, no averaged IRR)"; node audit/portfolio_irr_test.js index.html | tail -1

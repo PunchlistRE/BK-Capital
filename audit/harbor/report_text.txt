@@ -79,7 +79,7 @@ $44M
 Year 4
 money back
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 2 of 14
+HARBOR-POINT · Base case · Page 2 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -107,7 +107,7 @@ Contributions and distributions are gross: equity called, and any month's cash s
 The deal clears its 12.00% hurdle by 21.1 points at 33.10% levered (22.30% unlevered): leverage adds about 10.8 points, at the cost of $3,185,837 of capitalised interest and equity paying $1,459,877 beyond the plan.
 The return is mostly a sale return: $42.73M comes back at exit after repaying $28.07M of debt. The stabilised yield on cost of 8.91% against a 5.00% exit cap is the whole development spread: each 25 bps of exit cap moves the sale value by about $3.44M.
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 3 of 14
+HARBOR-POINT · Base case · Page 3 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -159,7 +159,7 @@ Construction loan after stabilisation	Stays outstanding; interest paid currently
 Repaid from sale proceeds at month 48	$28.07M
 Debt at sale	$28.07M
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 4 of 14
+HARBOR-POINT · Base case · Page 4 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -228,7 +228,7 @@ month 22
 month 43
 Figures in thousands of dollars. Each quarter's costs are funded by equity first, then the construction loan; interest is capitalised into the loan up to the commitment. Every figure is the funding engine's monthly schedule rolled up by quarter, through stabilisation.
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 5 of 14
+HARBOR-POINT · Base case · Page 5 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -264,7 +264,7 @@ Months 38–40	82.00%	$913,839	$619,785
 Months 41–42	94.00%	$726,385	$525,663
 Rent growth 3.00% and expense growth 3.00% a year apply after stabilisation. Concessions: none.
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 6 of 14
+HARBOR-POINT · Base case · Page 6 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -278,7 +278,7 @@ Capitalised interest	$3,185,837
 Interest paid by equity once the commitment is full	$1,224,583
 Peak balance (before sale)	$28,067,000
 Headroom left in the commitment	$0
-Unused-commitment fee	not modelled
+Unused-commitment fee	none entered
 Repayment	Held after stabilisation (interest paid currently); $28,067,000 repaid from the sale
 COVERAGE AND LEVERAGE
 Loan to cost (all-in)	62.87%
@@ -300,7 +300,52 @@ Value of the retained property (5.00% cap)	$72,077,280
 Equity left in the deal	$25,227,280
 Sized at the model's permanent-loan LTV with the coverage test switched off, so the coverage shown is what that loan would run at. A lender testing 1.25x coverage would lend less. This is a stabilisation-date illustration: the model still values and sells the property at the end of the hold; it does not model holding it afterwards.
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 7 of 14
+HARBOR-POINT · Base case · Page 7 of 15
+PUNCHLIST CAPITAL
+Investment Summary
+Harbor Point Residences
+STAMFORD, CT · MULTIFAMILY
+DEVELOPMENT BUDGET
+DEVELOPMENT BUDGET	AMOUNT	PER UNIT	PER GSF
+Land	$7,000,000	$58,333	$53
+Closing costs and acquisition fee	$250,000	$2,083	$2
+Predevelopment	$750,000	$6,250	$6
+Hard cost: trades	$22,250,000	$185,417	$169
+Hard cost: general conditions, contractor fee and bonds	$2,700,000	$22,500	$20
+Hard cost: contingency	$2,000,000	$16,667	$15
+Hard costs, total	$26,950,000	$224,583	$204
+Soft costs	$5,000,000	$41,667	$38
+Total development budget	$39,950,000	$332,917	$303
+Financing costs come on top and are on the Financing page: loan fee and unused-commitment fees $280,670, capitalised interest $3,185,837. Cost before financing and reserves is $39,950,000 ($303 a GSF).
+HARD COST TRADE	AMOUNT	PER GSF
+Site Work, Utilities & Off-Sites	$1,750,000	$13
+Excavation, Shoring & Foundations	$2,000,000	$15
+Concrete Podium & Superstructure	$3,650,000	$28
+Exterior Envelope, Glazing & Balconies	$2,950,000	$22
+Roofing, Waterproofing & Membrane	$550,000	$4
+MEP & Fire Protection	$4,500,000	$34
+Elevators & Conveying	$500,000	$4
+Unit Interiors - Cabinets, Appliances, Fixtures	$4,550,000	$34
+Amenity & Common Area Fit-Out	$1,000,000	$8
+Landscape, Hardscape & Streetscape	$800,000	$6
+SOFT COST LINE	AMOUNT	PER GSF
+Architecture & Engineering	$1,480,000	$11
+Civil, Landscape & Specialty Consultants	$370,000	$3
+Environmental, Geotech & Survey	$200,000	$2
+Entitlement, Zoning & Community	$300,000	$2
+Permits, Impact, Utility & Housing Fees	$700,000	$5
+Legal, Accounting & Organizational	$350,000	$3
+Real Estate Taxes During Construction	$450,000	$3
+Owner-Controlled Insurance Program	$300,000	$2
+Marketing, Branding & Leasing Center	$250,000	$2
+Testing, Inspection & Commissioning	$250,000	$2
+Construction Management Fee to Sponsor	$350,000	$3
+CONTINGENCY
+No contingency register is entered. Contingency is the $2,000,000 in the hard-cost ladder and is spent in full in the budget.
+INITIAL RESERVES
+No initial reserves are entered.
+Punchlist Capital · Beta · figures from the underwriting model, check against your own
+HARBOR-POINT · Base case · Page 8 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -346,7 +391,7 @@ Exit cap rate	5.00%
 Rent growth	3.00% / yr
 Hold	4 years
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 8 of 14
+HARBOR-POINT · Base case · Page 9 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -371,7 +416,7 @@ Base case	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
 3. Rent −10, lease-up +6 mo, cap +100	$52.85M	$8.68M	9.60%	11.30%	9.40%	24.00%	1.40x	$2.03M	1.52x
 4. Cost +20, rate +300, rent −10, cap +100	$52.85M	$0.05M	6.10%	0.10%	0.10%	0.00%	1.00x	$2.25M	0.92x
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 9 of 14
+HARBOR-POINT · Base case · Page 10 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -420,7 +465,7 @@ Base schedule	$72.25M	$28.69M	22.30%	33.10%	26.80%	70.00%	2.27x	$1.46M	1.75x
 6 months	$72.25M	$28.30M	19.30%	28.30%	23.30%	57.00%	2.23x	$2.03M	1.73x
 12 months	$72.25M	$27.90M	17.00%	24.50%	20.60%	48.00%	2.19x	$2.60M	1.71x
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 10 of 14
+HARBOR-POINT · Base case · Page 11 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -484,7 +529,7 @@ GP cash flow	($870,000)	($641,421)	–	$22,604	$10,930,824
 GP promote (above its 10.00% pro rata share)	–	–	–	–	$6,572,919
 Hurdle accounts accrue monthly at each hurdle rate on the LP's own contributions and are reduced only by what the LP receives, so a tier opens once the LP has reached that return. Close is the equity contributed at closing. Every figure is the engine's monthly waterfall rolled up by year.
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 11 of 14
+HARBOR-POINT · Base case · Page 12 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -514,7 +559,7 @@ Each row reruns the full model with the change shown. Cost-overrun stress is not
 ABOUT THIS SUMMARY
 Prepared November 4, 2026 from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the Base case; the sensitivity grid and stress tests rerun the model. Development returns depend heavily on cost, schedule and exit assumptions. This summary is an analytical aid, not an offer or a fairness opinion. Check it against your own model before relying on it.
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 12 of 14
+HARBOR-POINT · Base case · Page 13 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -528,7 +573,7 @@ Levered profit	$28,690,870
 Levered IRR / multiple	33.09% / 2.71x
 Once other deals are saved to the portfolio, this page shows the current assets and what adding this one changes: equity and leverage, the equity-weighted and combined (dated cash flow) IRR, the multiple, concentration in the largest asset, and the mix by property type and by development versus acquisition.
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 13 of 14
+HARBOR-POINT · Base case · Page 14 of 15
 PUNCHLIST CAPITAL
 Investment Summary
 Harbor Point Residences
@@ -565,10 +610,10 @@ Warning: Interest accrues beyond the loan commitment — $1,224,583 of interest 
 Warning: Costs exceed what equity plus the commitment can fund — $235,294 of costs are funded by equity over the planned amount ($15,114,213).
 WHAT THIS MODEL CANNOT YET DO
 • Costs are entered as 13 hard-cost trades and 16 soft-cost lines; lines in a brief are merged to fit, and each cannot be escalated or reforecast on its own.
-• Contingency and initial reserves are not tracked or released as separate balances.
-• The construction loan is sized by an LTC formula; a fixed commitment, a facility ceiling, an equity-first threshold and an unused-commitment fee cannot be entered.
-• The GP catch-up is a share-of-profit target (100.00% until the GP holds that share), not a catch-up rate; the preferred return is shared by LP and GP unless hurdles are tested on LP flows.
+• The contingency register tracks allocations, change orders and forecast; it does not post spending against individual cost lines. Initial reserves are tracked in total by purpose, not as separate balances per reserve.
+• Interest is capitalised only through stabilisation; the brief's capitalisation through the sale is not an option.
+• Who earns the preferred return and what the GP catch-up runs to are taken from the deal's inputs; where the offering documents are silent they are the deal team's to confirm.
 • A refinance is illustrated at stabilisation; the property is still sold at the end of the hold.
 • Source citations, extraction confidence and broker-versus-model discrepancy reporting are not part of this summary.
 Punchlist Capital · Beta · figures from the underwriting model, check against your own
-HARBOR-POINT · Base case · Page 14 of 14
+HARBOR-POINT · Base case · Page 15 of 15
