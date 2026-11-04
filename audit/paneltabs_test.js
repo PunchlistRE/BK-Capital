@@ -8,7 +8,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   const open = async (w, pref) => { const p = await b.newPage({ viewport: { width: w, height: w < 600 ? 844 : 1000 } }); p.errs = []; p.on('pageerror', e => p.errs.push(e.message)); await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
     await p.evaluate((pref) => { document.documentElement.classList.add('bk-auth-ok'); if (pref !== null) localStorage.setItem('bk-pt-all', pref); }, pref); await p.evaluate((A) => { bkCreateNewDeal(A); const s = bkLoad(); Object.assign(s, A, { purchasePrice: 19800000 }); bkSave(s); }, A); return p; };
   const show = (p, sh) => p.evaluate(async (sh) => { showSheet(sh); await new Promise(r => setTimeout(r, 1300)); }, sh);
-  const state = (p) => p.evaluate(() => { const m = document.querySelector('#viewport .main-col'), bar = m && m.querySelector(':scope > .bk-pt-bar'); if(!bar) return null; const panes = [...m.querySelectorAll(':scope > .bk-pt-pane')]; return { tabs: [...bar.querySelectorAll('.ae-tab:not(.bk-pt-all)')].map(t => t.textContent.trim()), on: [...bar.querySelectorAll('.ae-tab:not(.bk-pt-all)')].findIndex(t => t.classList.contains('on')), visible: panes.map(x => getComputedStyle(x).display !== 'none'), n: panes.length, allBtn: bar.querySelector('.bk-pt-all').textContent }; });
+  const state = (p) => p.evaluate(() => { const m = document.querySelector('#viewport .main-col'), bar = m && m.querySelector(':scope > .bk-pt-bar'); if(!bar) return null; const panes = [...m.querySelectorAll(':scope > .bk-pt-pane')]; return { tabs: [...bar.querySelectorAll('.ae-tab:not(.bk-pt-all)')].map(t => t.textContent.trim()), on: [...bar.querySelectorAll('.ae-tab:not(.bk-pt-all)')].findIndex(t => t.classList.contains('on')), visible: panes.map(x => getComputedStyle(x).display !== 'none'), n: panes.length, allBtn: bar.querySelector('.bk-pt-all') ? bar.querySelector('.bk-pt-all').textContent : null }; });
   const p = await open(1280, '0');
 
   /* ---- tabs on a long section ---- */
@@ -31,7 +31,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   await show(p, 'Debt');
   const tabbed = await p.evaluate(() => [...document.querySelectorAll('#viewport .bk-pt-pane')].map(x => x.textContent.replace(/\s+/g, ' ').trim()).join(' || '));
   await p.evaluate(() => bkPanelTabsShowAll(true)); await p.waitForTimeout(200); const all = await state(p);
-  check('Show all puts every panel on the page again', all.visible.every(Boolean) && all.allBtn === 'Show as tabs' && all.on === -1, JSON.stringify(all.visible));
+  check('the all-panels view (automated checks only; there is no on-screen toggle) puts every panel on the page', all.visible.every(Boolean) && all.allBtn === null && all.on === -1, JSON.stringify(all.visible));
   await p.evaluate(() => bkPanelTabsShowAll(false)); await show(p, 'Debt');
   const untab = await p.evaluate(async () => { bkPanelTabsShowAll(true); showSheet('Debt'); await new Promise(r => setTimeout(r, 1200)); return [...document.querySelectorAll('#viewport .bk-pt-pane')].map(x => x.textContent.replace(/\s+/g, ' ').trim()).join(' || '); });
   check('the panels hold exactly the same content whether shown as tabs or all at once (nothing is dropped)', tabbed === untab && tabbed.length > 500, tabbed.length + ' / ' + untab.length);
