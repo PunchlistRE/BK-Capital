@@ -146,3 +146,22 @@ html body #bk-theme-btn{ border-radius:50% !important; }
 
 /* PHONE: the group tabs stay pinned at the top while you scroll, and the step bar sits directly under them, so navigation is never scrolled away. */
 @media (max-width:900px){ html body .tabnav{ position:sticky; top:0; z-index:30; } html body .bk-flow{ position:static; } }
+
+/* EXPERIMENT: dark grey sidebar. Remove this whole block to go back to the light sidebar. */
+html body .rail{ background:#2A2F35 !important; border-right:1px solid #1B1F23 !important; color:#D5DBE2; }
+html body .rail .rail-head{ border-bottom-color:#40474F !important; }
+html body .rail .rail-head .eyebrow{ color:#8FB4E3 !important; }
+html body .rail .rail-head h1{ color:#fff !important; }
+html body .rail .rail-head p, html body .rail .rail-foot, html body .rail .rail-foot *{ color:#9BA6B2 !important; }
+html body .rail hr, html body .rail .bk-adv-sep{ border-color:#40474F !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label{ color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label .grp-tag{ background:#3A424A !important; color:#C3CCD6 !important; border-color:#4B545D !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group-label::before{ background:#2A2F35 !important; border-color:#9BA6B2 !important; color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-group:not(.pl-collapsed)::after, html:not(.bk-rail-collapsed) body .rail .rail-item::before{ border-color:#6B7683 !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item{ color:#D5DBE2 !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item:hover{ background:#363C44 !important; color:#fff !important; }
+html:not(.bk-rail-collapsed) body .rail .rail-item.active{ background:#414A54 !important; color:#fff !important; box-shadow:inset 3px 0 0 #6FB4F2 !important; }
+html body .rail .bk-adv-head{ color:#9BA6B2 !important; border-color:#40474F !important; }
+html body .rail .rail-group.bk-adv .rail-group-label, html body .rail .rail-group.bk-adv .rail-item{ opacity:.85; }
+html body .rail .bk-rail-toggle{ background:#363C44 !important; color:#fff !important; border-color:#4B545D !important; }
+html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
