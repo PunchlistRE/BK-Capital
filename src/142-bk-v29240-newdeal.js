@@ -66,7 +66,8 @@ RENDERERS['Home'] = function(){
   var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
   var has = active(); if(!has) return o;
   /* New analysis and Import are on the bar above; the deal page adds the investor PDF summary and Clear inputs */
-  var bar = '<div class="pl-toolbar"><button type="button" class="pl-hbtn primary" onclick="bkReportOpen()">Create PDF summary</button><button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button></div>';
+  var own = (function(){ try { return window.BKReg && window.BKReg.of(bkLoad()).ownReadiness; } catch(e){ return false; } })();   /* the investor PDF summary is the acquisition / development one; an analysis with its own engine has its own report */
+  var bar = '<div class="pl-toolbar">' + (own ? '' : '<button type="button" class="pl-hbtn primary" onclick="bkReportOpen()">Create PDF summary</button>') + '<button type="button" class="pl-hbtn danger" onclick="bkClearInputsDialog()">Clear inputs</button></div>';
   return Object.assign({}, o, { main:o.main.replace('<div class="pl-home">', '<div class="pl-home">' + bar) });
 };
 if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}

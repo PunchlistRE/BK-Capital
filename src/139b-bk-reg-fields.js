@@ -74,15 +74,15 @@ window.BKReg.addFields([
   F('noi', 'Net operating income', 'derived'), F('value', 'Estimated value', 'derived'),
   /* planned: Property Valuation */
   F('valNormalizeAdj', 'Normalizing adjustments to NOI', 'money', { planned:true, zeroOk:true }), F('valStabilizedNoi', 'Stabilized NOI', 'money', { planned:true }),
-  F('valCapRate', 'Market cap rate', 'pct', { planned:true }), F('valComps', 'Comparable sales', 'table', { planned:true }), F('valDate', 'Valuation date', 'text', { planned:true }),
+  F('valCapRate', 'Market cap rate', 'pct', {  }), F('valComps', 'Comparable sales', 'table', { planned:true }), F('valDate', 'Valuation date', 'text', { planned:true }),
   /* planned: refinancing and hold */
-  F('exLoanBalance', 'Existing loan balance', 'money', { planned:true }), F('exLoanRate', 'Existing interest rate', 'pct', { planned:true }), F('exLoanMaturity', 'Existing maturity date', 'text', { planned:true }),
-  F('exLoanAmort', 'Existing amortization, years', 'int', { planned:true }), F('exPrepay', 'Prepayment penalty', 'money', { planned:true, zeroOk:true }),
-  F('newLoanAmount', 'Proposed loan amount', 'money', { planned:true }), F('newLoanRate', 'Proposed interest rate', 'pct', { planned:true }), F('newLoanTerm', 'Proposed term, years', 'int', { planned:true }),
-  F('newLoanAmort', 'Proposed amortization, years', 'int', { planned:true }), F('newLoanIO', 'Interest-only years', 'num', { planned:true, zeroOk:true }), F('newLoanCosts', 'Points and closing costs', 'money', { planned:true, zeroOk:true }),
-  F('lenderMaxLTV', 'Lender maximum LTV', 'pct', { planned:true }), F('lenderMinDSCR', 'Lender minimum DSCR', 'num', { planned:true }), F('lenderMinDY', 'Lender minimum debt yield', 'pct', { planned:true }),
-  F('refiScenarios', 'Alternative financing structures', 'table', { planned:true }),
-  F('currentValue', 'Current property value', 'money', { planned:true }), F('ownedBasis', 'Original basis and accumulated depreciation', 'table', { planned:true }),
+  F('exLoanBalance', 'Existing loan balance', 'money', {  }), F('exLoanRate', 'Existing interest rate', 'pct', {  }), F('exLoanMaturity', 'Existing maturity date', 'text', {  }),
+  F('exLoanAmort', 'Existing amortization, years', 'int', {  }), F('exPrepay', 'Prepayment penalty', 'money', { zeroOk:true }),
+  F('newLoanAmount', 'Proposed loan amount', 'money', {  }), F('newLoanRate', 'Proposed interest rate', 'pct', {  }), F('newLoanTerm', 'Proposed term, years', 'int', {  }),
+  F('newLoanAmort', 'Proposed amortization, years', 'int', {  }), F('newLoanIO', 'Interest-only years', 'num', { zeroOk:true }), F('newLoanCosts', 'Points and closing costs', 'money', { zeroOk:true }),
+  F('lenderMaxLTV', 'Lender maximum LTV', 'pct', {  }), F('lenderMinDSCR', 'Lender minimum DSCR', 'num', {  }), F('lenderMinDY', 'Lender minimum debt yield', 'pct', {  }),
+  F('refiScenarios', 'Alternative financing structures', 'table', {  }),
+  F('currentValue', 'Current property value', 'money', {  }), F('ownedBasis', 'Original basis and accumulated depreciation', 'table', { planned:true }),
   F('capitalProjects', 'Capital improvement program', 'table', { planned:true }), F('taxProfile', 'Tax profile and rule set', 'table', { planned:true }),
   /* planned: portfolio */
   F('holdings', 'Portfolio holdings', 'table', { planned:true }), F('portfolioScenarios', 'Portfolio scenarios', 'table', { planned:true }),

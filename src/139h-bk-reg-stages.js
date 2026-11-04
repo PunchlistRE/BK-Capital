@@ -17,8 +17,8 @@ var CORE = [
 ST.acquisition = CORE; ST.development = CORE;
 ST.valuation = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'mix']), G('income', 'Income', ['Rent Roll', 'Revenues'], 'steps', ['inplace', 'market', 'vacancy']),
   G('expenses', 'Expenses', ['Expenses'], 'steps', ['expenses']), G('value', 'Value', ['Valuation'], 'steps', ['noi', 'caprate', 'value']), G('review', 'Report', ['Valuation Report'], 'steps', ['review'])];
-ST.refinance = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'ops', 'value']), G('existing', 'Existing loan', ['Debt'], 'steps', ['existing']),
-  G('proposed', 'New loan', ['Debt', 'Financing Compare'], 'steps', ['proposed', 'lender', 'sizing', 'costs']), G('proceeds', 'Proceeds', ['Debt'], 'steps', ['proceeds', 'alts']), G('review', 'Report', ['Reports'], 'steps', ['review'])];
+ST.refinance = [G('setup', 'Property', ['Home', 'Property', 'Revenues', 'Expenses'], 'steps', ['property', 'ops']), G('value', 'Value', [], 'steps', ['value']), G('existing', 'Existing loan', [], 'steps', ['existing']),
+  G('proposed', 'New loan', ['Refinancing'], 'steps', ['proposed', 'lender', 'sizing', 'costs']), G('proceeds', 'Proceeds', [], 'steps', ['proceeds', 'alts']), G('review', 'Report', ['Refinance Report'], 'steps', ['review'])];
 ST.hold = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'ops', 'value']), G('forward', 'Hold case', ['Market', 'Expenses', 'Debt'], 'steps', ['forward', 'capex', 'debt', 'period']),
   G('exit', 'Sale case', ['Valuation', 'Depreciation'], 'steps', ['exit', 'tax']), G('compare', 'Hold vs sell', ['Returns', 'Sensitivity'], 'steps', ['compare', 'sens']), G('review', 'Report', ['Reports'], 'steps', ['review'])];
 ST.comprehensive = [G('setup', 'Setup', ['Home', 'Property'], 'steps', ['property', 'acq']), G('ops', 'Operations', ['Rent Roll', 'Market', 'Expenses'], 'steps', ['mix', 'revenue', 'vacancy', 'expenses', 'capital']),
@@ -46,7 +46,13 @@ R.stageFromSteps = function(stage, s){ var wf = R.workflow(R.of(s).id), miss = [
 /* the workflow's completion, step by step: the same figures the guide shows */
 R.workflowState = function(s){ var a = R.of(s); return R.workflow(a.id).map(function(st){ var x = R.stepState(st, s); return { id:st.id, title:st.title, complete:x.complete, missing:x.missing, skippable:!!st.skippable }; }); };
 /* readiness carries the analysis and its workflow completion. Whether results are shown is still decided by the readiness rules themselves (the engine's critical inputs); the workflow adds the analysis-specific steps on top, for the guide and the step bar. */
-if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg){ var rd0 = window.bkDealReadiness, rd = function(){ var r = rd0.apply(this, arguments); try { if(r && typeof r === 'object'){ var d = bkLoad(); r.analysis = R.of(d).id; r.workflow = R.workflowState(d); r.workflowMissing = r.workflow.reduce(function(t, x){ return t + (x.skippable ? 0 : x.missing.length); }, 0); } } catch(e){} return r; }; rd.__reg = true; window.bkDealReadiness = rd; }
+if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg){ var rd0 = window.bkDealReadiness, rd = function(){ var r = rd0.apply(this, arguments); try { if(r && typeof r === 'object'){ var d = bkLoad(); r.analysis = R.of(d).id; r.workflow = R.workflowState(d); r.workflowMissing = r.workflow.reduce(function(t, x){ return t + (x.skippable ? 0 : x.missing.length); }, 0);
+      /* an analysis with its own engine (not the acquisition or development engine) is ready when its own workflow is: its required fields decide, not the acquisition's */
+      var an = R.analysis(r.analysis); if(an && an.live && an.ownReadiness && r.state !== 'NO DEAL'){ var miss = [], met = [];
+        R.workflow(an.id).forEach(function(st){ if(st.skippable) return; (st.fields || []).forEach(function(e){ var f = R.field(e.k); if(!f || f.kind === 'derived') return; if(R.requirement(e, d) !== 'required') return; var row = { key:e.k, label:e.label || f.label, group:st.title, ok:R.present(e.k, d) }; (row.ok ? met : miss).push(row); }); });
+        var seen = {}; miss = miss.filter(function(m){ if(seen[m.key]) return false; seen[m.key] = 1; return true; });
+        var eng = an.ready ? an.ready(d) : true; r.missing = miss; r.met = met; r.investMissing = []; r.blockers = eng === true ? [] : [String(eng)];
+        r.canCalculate = !miss.length && eng === true; r.state = !miss.length ? (eng === true ? 'ANALYSIS READY' : 'BLOCKED') : 'DRAFT'; } } } catch(e){} return r; }; rd.__reg = true; window.bkDealReadiness = rd; }
 var lint0 = R.lint;
 R.lint = function(){ var bad = lint0.call(R), JUDGE = ['identity', 'inputs', 'operations', 'debt', 'returns', 'review', 'steps'];
   R.analyses().forEach(function(a){ var wf = R.workflow(a.id).map(function(x){ return x.id; });

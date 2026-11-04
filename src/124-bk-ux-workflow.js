@@ -577,6 +577,9 @@ function kpiBar(sheet){
   var r = readiness(), cell = function(k, v, sub){ return '<div class="kb-c"><div class="kb-k">' + k + '</div><div class="kb-v">' + v + '</div>' + (sub ? '<div class="kb-s">' + sub + '</div>' : '') + '</div>'; };
   var html;
   if(!r || !r.canCalculate){ html = cell('Status', esc(r ? r.state : 'DRAFT'), 'results withheld until ' + (r ? r.missing.length : 0) + ' required input' + (r && r.missing.length === 1 ? ' is' : 's are') + ' entered'); }
+  else if(window.BKReg && (function(){ try { return window.BKReg.of(bkLoad()).ownReadiness; } catch(e){ return false; } })()){ /* an analysis with its own engine shows its own figures: the registry's tiles from its summary */
+    var R = window.BKReg, sm = R.summarize(bkLoad()), all = [sm.primary].concat(sm.metrics), f = function(m){ var v = m.value; if(v === null || v === undefined || !isFinite(v)) return '—'; return m.fmt === 'pct' ? pct(v) : m.fmt === 'x' ? v.toFixed(2) + 'x' : money(v); };
+    html = R.tiles(sm.analysis.id).map(function(id){ var m = all.filter(function(x){ return x.id === id; })[0]; return m ? cell(esc(m.label), f(m)) : ''; }).join(''); }
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
       + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
