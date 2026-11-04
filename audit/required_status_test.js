@@ -20,7 +20,7 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
     const p = await open(deal);
     const ok0 = await view(p);
     check(label + ': a complete deal has no REQUIRED marker, no MISSING chip, and the bar says so', ok0.missing.length === 0 && !ok0.rows.some(r => r.flagged || r.chip === 'MISSING') && new RegExp('Required inputs: ' + ok0.total + ' of ' + ok0.total).test(ok0.bar), JSON.stringify([ok0.missing, ok0.bar]));
-    const rowOk = ok0.rows.filter(r => r.chip === 'OK' || r.chip === 'TEMPLATE' || r.chip === 'N/A'); check(label + ': the Status chips of a complete deal are OK, TEMPLATE or N/A only', rowOk.length === ok0.rows.length && ok0.rows.length > 20, ok0.rows.length);
+    const rowOk = ok0.rows.filter(r => r.chip === 'OK' || r.chip === 'TEMPLATE' || r.chip === 'N/A' || r.chip === 'OPTIONAL'); check(label + ': the Status chips of a complete deal are OK, TEMPLATE, OPTIONAL (blank, not required) or N/A only', rowOk.length === ok0.rows.length && ok0.rows.length > 20, ok0.rows.length);
     for (const k of keys) {
       await p.evaluate((patch) => { const s = bkLoad(); Object.assign(s, patch); bkSave(s); }, BLANK[k]);
       const v = await view(p), rowKey = ({ size: 'units', revenue: 'avgRent' })[k] || k, row = v.rows.find(r => r.key === rowKey);

@@ -12,7 +12,8 @@ var MIN = 4, ALL_KEY = 'bk-pt-all';
 var OFF = { 'Home':1, 'Guide':1, 'Deal Underwrite':1, 'Deal Documents':1, 'Source Ingestion':1, 'Import Deal':1, 'Import OM':1, 'Import Rent Roll':1, 'Portfolio Import':1, 'Cloud Sync':1 };
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
 function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
-function showAll(){ var v = safe(function(){ return localStorage.getItem(ALL_KEY); }, null); if(v === '1') return true; if(v === '0') return false; return !!(navigator && navigator.webdriver); }
+/* every panel at once is for automated checks only (print always carries every panel); on screen a stored "Show all" from the old toggle is ignored */
+function showAll(){ if(!(navigator && navigator.webdriver)) return false; var v = safe(function(){ return localStorage.getItem(ALL_KEY); }, null); return v !== '0'; }
 function setAll(on){ safe(function(){ localStorage.setItem(ALL_KEY, on ? '1' : '0'); }); }
 function getIdx(sh){ var v = safe(function(){ return Number(localStorage.getItem('bk-pt:' + sh)); }, 0); return isFinite(v) && v >= 0 ? v : 0; }
 function setIdx(sh, i){ safe(function(){ localStorage.setItem('bk-pt:' + sh, String(i)); }); }
@@ -52,7 +53,7 @@ function build(main, sh){
   var labels = groups.map(function(g, n){ return labelOf(g.panel, n + 1); });
   labels.forEach(function(t, n){ var c = labels.filter(function(x, k){ return k < n && x === t; }).length; if(c) labels[n] = t + ' ' + (c + 1); });
   var bar = document.createElement('div'); bar.className = 'ae-tabs bk-pt-bar'; bar.setAttribute('role', 'tablist'); bar.setAttribute('data-sh', sh); bar.setAttribute('data-n', String(groups.length));
-  bar.innerHTML = groups.map(function(g, n){ return '<button type="button" role="tab" class="ae-tab" data-i="' + n + '"><i>' + esc(letterOf(g.panel, labels[n])) + '</i>' + esc(labels[n]) + '</button>'; }).join('') + '<button type="button" class="ae-tab bk-pt-all" title="Put every panel on one page">Show all</button>';
+  bar.innerHTML = groups.map(function(g, n){ return '<button type="button" role="tab" class="ae-tab" data-i="' + n + '"><i>' + esc(letterOf(g.panel, labels[n])) + '</i>' + esc(labels[n]) + '</button>'; }).join('');
   main.insertBefore(bar, groups[0].els[0]);
   groups.forEach(function(g, n){ var pane = document.createElement('div'); pane.className = 'bk-pt-pane'; pane.setAttribute('data-i', String(n)); main.insertBefore(pane, g.els[0]); g.els.forEach(function(e){ pane.appendChild(e); }); });
   bar.addEventListener('click', function(ev){ var b = ev.target.closest('button'); if(!b) return;

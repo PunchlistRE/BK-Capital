@@ -94,9 +94,9 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('phone: the valuation report does not widen the page (its tables scroll inside themselves)', vw.sw <= vw.w + 1, JSON.stringify(vw));
   /* Deal Underwrite: the tab bar is ONE row of seven group tabs, pinned under the header, with one tab open (details in stageD_test.js) */
   const d = await open(1280); await show(d, 'Deal Underwrite');
-  const du = await d.evaluate(() => { const bar = document.querySelector('#viewport .bk-dui'); if (!bar) return null; const tabs = [...bar.querySelectorAll('.bk-dt')], r = bar.getBoundingClientRect();
+  const du = await d.evaluate(() => { const bar = document.querySelector('#viewport .bk-dui'); if (!bar) return null; const tabs = [...bar.querySelectorAll('.bk-dt')].filter(x => x.getClientRects().length), r = bar.getBoundingClientRect();
     return { names: tabs.map(x => x.querySelector('.nm').textContent.trim()), rows: new Set(tabs.map(x => Math.round(x.getBoundingClientRect().top))).size, on: bar.querySelectorAll('.bk-dt.on').length, h: Math.round(r.height), pos: getComputedStyle(bar).position, sel: tabs.filter(x => x.getAttribute('aria-selected') === 'true').length }; });
-  check('Deal Underwrite tabs: seven group tabs on one row, one open, pinned under the header and not a tall block', du && du.names.length === 7 && du.rows === 1 && du.on === 1 && du.sel === 1 && du.pos === 'sticky' && du.h < 60, JSON.stringify(du)); await d.close();
+  check('Deal Underwrite tabs: the group tabs that apply (six on an acquisition: no Development) on one row, one open, pinned under the header and not a tall block', du && du.names.length === 6 && !du.names.includes('Development') && du.rows === 1 && du.on === 1 && du.sel === 1 && du.pos === 'sticky' && du.h < 60, JSON.stringify(du)); await d.close();
   check('phone: no page errors', m.errs.length === 0, m.errs.slice(0, 2).join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
