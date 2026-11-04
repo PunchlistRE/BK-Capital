@@ -28,9 +28,9 @@ function pctDom(root){
 /* plain analysis tables (class bk-stk) label every figure with its column heading, so the phone layout can stack them */
 /* EMPTY-STATE CONVENTION (display only - no value is changed): a dash is "no value entered / nothing in this period"; "Unavailable" is "cannot be calculated yet"; "N/A" is "does not apply to this deal"; a real zero is always shown as a number ($0, 0.00%). Each kind gets its own tint so they are never read as the same thing. */
 function emptyKinds(root){
-  [].forEach.call(root.querySelectorAll('td, .kv-v, .bk-snap td'), function(c){
+  [].forEach.call(root.querySelectorAll('td, .kv-v, .bk-snap td, .meta-strip .v'), function(c){
     if(c.children.length) return; var t = (c.textContent || '').trim(), k = '';
-    if(/^[-\u2013\u2014]$/.test(t)) k = 'blank'; else if(/^n\/a$/i.test(t)) k = 'na'; else if(/^(unavailable|not available)$/i.test(t)) k = 'unavail';
+    if(!t && c.matches('.meta-strip .v')) k = 'unset'; else if(/^[-\u2013\u2014]$/.test(t)) k = 'blank'; else if(/^n\/a$/i.test(t)) k = 'na'; else if(/^(unavailable|not available)$/i.test(t)) k = 'unavail';
     if(k){ if(c.getAttribute('data-bk-v') !== k) c.setAttribute('data-bk-v', k); } else if(c.hasAttribute('data-bk-v')) c.removeAttribute('data-bk-v');
   });
 }

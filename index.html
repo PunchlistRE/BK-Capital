@@ -16631,6 +16631,8 @@ html.bk-auth-ok body { background: #F4EFE3; }
   /* report tables (class rp-tbl) scroll themselves, so they get the same cue */
   function runRp(){ var vp=document.getElementById('viewport'); if(!vp) return;
     vp.querySelectorAll('table.rp-tbl').forEach(function(t){ var sc = t.scrollWidth > t.clientWidth + 2;
+      if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); });
+    vp.querySelectorAll('.ae table.ae-grid').forEach(function(g){ var t = g.parentElement; if(!t || t.classList.contains('ae-panel')) return; var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); }); }
   var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
   if(typeof window.bkDisplayPass==='function') window.bkDisplayPass(schedule);
@@ -26412,13 +26414,13 @@ html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-the
 }
 
 /* Visual QA: wide tables. One cue on every screen size: a "scroll sideways" line that stays put while the table moves, plus a shaded edge on whichever side still has columns hidden, so the last column is always reachable. */
-html body #viewport .tbl-wrap.bk-scrollable, html body #viewport table.rp-tbl.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+html body #viewport .tbl-wrap.bk-scrollable, html body #viewport table.rp-tbl.bk-scrollable, html body #viewport .ae div.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
   background:linear-gradient(to right,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 0 0/40px 100% no-repeat local,
              linear-gradient(to left,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 100% 0/40px 100% no-repeat local,
              linear-gradient(to right,rgba(14,42,74,.22),rgba(14,42,74,0)) 0 0/10px 100% no-repeat scroll,
              linear-gradient(to left,rgba(14,42,74,.22),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll,
              var(--ae-cell-ro) !important; }
-html body #viewport .tbl-wrap.bk-scrollable::before, html body #viewport table.rp-tbl.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
+html body #viewport .tbl-wrap.bk-scrollable::before, html body #viewport table.rp-tbl.bk-scrollable::before, html body #viewport .ae div.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
 @media print{ html body #viewport .tbl-wrap.bk-scrollable::before{ display:none !important; } }
 
 /* Visual QA: empty-state kinds are visibly different (see emptyKinds in 162b). Zero stays a plain number. */
@@ -26429,6 +26431,14 @@ html body #viewport [data-bk-v="unavail"]{ color:var(--bk-attn-amber) !important
 /* Visual QA: the section-tab strip never hides a label behind the "Show as tabs" button; the button scrolls with the strip, tabs keep their full label, and an edge shade shows when more tabs are off-screen. */
 html body #viewport .bk-dui.bk-tabs .bk-dt{ padding:0 9px !important; gap:5px; }
 html body #viewport .bk-dui.bk-tabs{ scroll-padding:0 40px; background:linear-gradient(to left,rgba(14,42,74,.16),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll, var(--ae-bg) !important; }
+
+/* Polish: a header cell with no value says so instead of leaving a gap; editor grids and the step strip scroll with a visible edge instead of clipping. */
+html body #viewport .meta-strip .v[data-bk-v="unset"]::before{ content:'Not set'; color:var(--bk-na-ink); font-weight:500; font-style:italic; }
+html body .ae .ae-panel{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+html body .bk-steps{ background:linear-gradient(to left,rgba(14,42,74,.14),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll; }
+
+/* Polish: on a wide screen the section tabs wrap onto a second row rather than hiding a label; on a phone they scroll. */
+@media (min-width:761px){ html body #viewport .bk-dui.bk-tabs{ flex-wrap:wrap; overflow:visible; background:var(--ae-bg) !important; } html body #viewport .bk-dui.bk-tabs .bk-dt-all{ margin-left:auto; } }
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */
@@ -26460,9 +26470,9 @@ function pctDom(root){
 /* plain analysis tables (class bk-stk) label every figure with its column heading, so the phone layout can stack them */
 /* EMPTY-STATE CONVENTION (display only - no value is changed): a dash is "no value entered / nothing in this period"; "Unavailable" is "cannot be calculated yet"; "N/A" is "does not apply to this deal"; a real zero is always shown as a number ($0, 0.00%). Each kind gets its own tint so they are never read as the same thing. */
 function emptyKinds(root){
-  [].forEach.call(root.querySelectorAll('td, .kv-v, .bk-snap td'), function(c){
+  [].forEach.call(root.querySelectorAll('td, .kv-v, .bk-snap td, .meta-strip .v'), function(c){
     if(c.children.length) return; var t = (c.textContent || '').trim(), k = '';
-    if(/^[-\u2013\u2014]$/.test(t)) k = 'blank'; else if(/^n\/a$/i.test(t)) k = 'na'; else if(/^(unavailable|not available)$/i.test(t)) k = 'unavail';
+    if(!t && c.matches('.meta-strip .v')) k = 'unset'; else if(/^[-\u2013\u2014]$/.test(t)) k = 'blank'; else if(/^n\/a$/i.test(t)) k = 'na'; else if(/^(unavailable|not available)$/i.test(t)) k = 'unavail';
     if(k){ if(c.getAttribute('data-bk-v') !== k) c.setAttribute('data-bk-v', k); } else if(c.hasAttribute('data-bk-v')) c.removeAttribute('data-bk-v');
   });
 }
