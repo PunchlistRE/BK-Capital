@@ -31,9 +31,9 @@ Inputs: the brief, `Harbor_Point_Development_Pro_Forma.xlsx` and the OM. Method:
 | Additional equity beyond plan | $0 | $1.46M | BK loan commitment is too small for the draws |
 | Total equity | $15.13M | $16.57M | brief: $14.973M initial + later calls |
 | Gross sale (month 48) | $71.66M | $72.25M | BK uses forward NOI; reference uses stabilised NOI |
-| Levered IRR / multiple | 31.78% / 2.85x | 33.95% / 2.92x | not comparable until the funding differences above are closed |
-| LP IRR / multiple | not built | 26.98% / 2.40x | see waterfall caveats |
-| GP IRR / multiple | not built | 73.09% / 7.67x | GP IRR is driven by a $1.5M co-invest and a $7.28M promote |
+| Levered IRR / multiple | 31.78% / 2.85x | 32.74% / 2.84x | not comparable until the funding differences above are closed |
+| LP IRR / multiple | not built | 26.04% / 2.34x | see waterfall caveats |
+| GP IRR / multiple | not built | 70.87% / 7.32x | GP IRR is driven by a $1.5M co-invest and a $7.28M promote |
 | Unlevered IRR / multiple | not built | not calculated | engine returns NaN / 0 for development deals — gap |
 
 ## 3. Where BK Capital cannot take the brief as written
@@ -85,69 +85,69 @@ A 65% LTV loan on this NOI runs at about 1.04x DSCR; at a 1.25x DSCR test the lo
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 4.50% | $80.27M | $37.33M | 39.84% | 31.60% | 84.22% | 2.74x | $1.46M | $3.19M |
-| 4.75% | $76.05M | $33.21M | 36.83% | 29.23% | 78.61% | 2.56x | $1.46M | $3.19M |
-| 5.00% | $72.25M | $29.50M | 33.95% | 26.98% | 73.09% | 2.40x | $1.46M | $3.19M |
-| 5.25% | $68.80M | $26.14M | 31.19% | 24.85% | 67.64% | 2.25x | $1.46M | $3.19M |
-| 5.50% | $65.68M | $23.09M | 28.52% | 22.83% | 62.20% | 2.12x | $1.46M | $3.19M |
-| 5.75% | $62.82M | $20.31M | 25.95% | 20.89% | 56.75% | 2.00x | $1.46M | $3.19M |
-| 6.00% | $60.20M | $17.76M | 23.45% | 19.03% | 51.23% | 1.89x | $1.46M | $3.19M |
+| 4.50% | $80.27M | $36.10M | 38.74% | 30.71% | 82.33% | 2.68x | $1.46M | $3.19M |
+| 4.75% | $76.05M | $31.98M | 35.68% | 28.31% | 76.56% | 2.50x | $1.46M | $3.19M |
+| 5.00% | $72.25M | $28.27M | 32.74% | 26.04% | 70.87% | 2.34x | $1.46M | $3.19M |
+| 5.25% | $68.80M | $24.92M | 29.93% | 23.88% | 65.21% | 2.20x | $1.46M | $3.19M |
+| 5.50% | $65.68M | $21.87M | 27.21% | 21.82% | 59.55% | 2.06x | $1.46M | $3.19M |
+| 5.75% | $62.82M | $19.09M | 24.57% | 19.85% | 53.84% | 1.94x | $1.46M | $3.19M |
+| 6.00% | $60.20M | $16.53M | 22.01% | 17.97% | 48.03% | 1.83x | $1.46M | $3.19M |
 
 **Average rent**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| $2800 | $58.65M | $15.47M | 20.97% | 17.21% | 45.54% | 1.79x | $1.46M | $3.19M |
-| $3000 | $63.98M | $20.97M | 26.50% | 21.30% | 57.97% | 2.03x | $1.46M | $3.19M |
-| $3310 | $72.25M | $29.50M | 33.95% | 26.98% | 73.09% | 2.40x | $1.46M | $3.19M |
-| $3500 | $77.31M | $34.73M | 38.01% | 30.16% | 80.80% | 2.63x | $1.46M | $3.19M |
-| $3700 | $82.64M | $40.23M | 41.96% | 33.29% | 88.02% | 2.87x | $1.46M | $3.19M |
+| $2800 | $58.65M | $14.24M | 19.48% | 16.12% | 42.00% | 1.73x | $1.46M | $3.19M |
+| $3000 | $63.98M | $19.75M | 25.14% | 20.27% | 55.13% | 1.97x | $1.46M | $3.19M |
+| $3310 | $72.25M | $28.27M | 32.74% | 26.04% | 70.87% | 2.34x | $1.46M | $3.19M |
+| $3500 | $77.31M | $33.50M | 36.88% | 29.25% | 78.81% | 2.57x | $1.46M | $3.19M |
+| $3700 | $82.64M | $39.00M | 40.90% | 32.42% | 86.23% | 2.81x | $1.46M | $3.19M |
 
 **Construction cost**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| +0% | $72.25M | $29.50M | 33.95% | 26.98% | 73.09% | 2.40x | $1.46M | $3.19M |
-| +5% | $72.25M | $27.91M | 32.01% | 25.48% | 69.38% | 2.29x | $1.51M | $3.30M |
-| +10% | $72.25M | $26.32M | 30.09% | 24.01% | 65.61% | 2.18x | $1.55M | $3.41M |
-| +15% | $72.25M | $24.73M | 28.20% | 22.57% | 61.77% | 2.08x | $1.60M | $3.52M |
-| +20% | $72.25M | $23.14M | 26.33% | 21.16% | 57.86% | 1.99x | $1.65M | $3.63M |
+| +0% | $72.25M | $28.27M | 32.74% | 26.04% | 70.87% | 2.34x | $1.46M | $3.19M |
+| +5% | $72.25M | $26.64M | 30.76% | 24.51% | 67.00% | 2.23x | $1.51M | $3.30M |
+| +10% | $72.25M | $25.01M | 28.79% | 23.01% | 63.05% | 2.12x | $1.55M | $3.41M |
+| +15% | $72.25M | $23.38M | 26.85% | 21.54% | 59.03% | 2.03x | $1.60M | $3.52M |
+| +20% | $72.25M | $21.74M | 24.93% | 20.10% | 54.90% | 1.93x | $1.65M | $3.63M |
 
 **Interest rate**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| +0 bps | $72.25M | $29.50M | 33.95% | 26.98% | 73.09% | 2.40x | $1.46M | $3.19M |
-| +100 bps | $72.25M | $28.93M | 33.30% | 26.48% | 71.87% | 2.36x | $1.64M | $3.63M |
-| +200 bps | $72.25M | $28.34M | 32.65% | 25.97% | 70.61% | 2.32x | $1.82M | $4.08M |
-| +300 bps | $72.25M | $27.75M | 31.97% | 25.45% | 69.32% | 2.28x | $1.99M | $4.54M |
+| +0 bps | $72.25M | $28.27M | 32.74% | 26.04% | 70.87% | 2.34x | $1.46M | $3.19M |
+| +100 bps | $72.25M | $27.52M | 31.91% | 25.39% | 69.27% | 2.29x | $1.64M | $3.63M |
+| +200 bps | $72.25M | $26.76M | 31.07% | 24.75% | 67.64% | 2.24x | $1.82M | $4.08M |
+| +300 bps | $72.25M | $25.99M | 30.23% | 24.10% | 65.97% | 2.18x | $1.99M | $4.54M |
 
 **Construction delay**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 months | $72.25M | $29.50M | 33.95% | 26.98% | 73.09% | 2.40x | $1.46M | $3.19M |
-| 3 months | $72.25M | $29.27M | 31.48% | 25.20% | 66.82% | 2.39x | $1.46M | $3.41M |
-| 6 months | $72.25M | $29.05M | 29.30% | 23.61% | 61.34% | 2.38x | $1.46M | $3.63M |
-| 12 months | $72.25M | $28.58M | 25.64% | 20.95% | 52.23% | 2.37x | $1.46M | $4.08M |
+| 0 months | $72.25M | $28.27M | 32.74% | 26.04% | 70.87% | 2.34x | $1.46M | $3.19M |
+| 3 months | $72.25M | $28.05M | 30.38% | 24.33% | 64.77% | 2.33x | $1.46M | $3.41M |
+| 6 months | $72.25M | $27.82M | 28.28% | 22.82% | 59.44% | 2.33x | $1.46M | $3.63M |
+| 12 months | $72.25M | $27.36M | 24.75% | 20.27% | 50.56% | 2.32x | $1.46M | $4.08M |
 
 **Lease-up delay**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 months | $72.25M | $29.50M | 33.95% | 26.98% | 73.09% | 2.40x | $1.46M | $3.19M |
-| 3 months | $72.25M | $29.59M | 31.59% | 25.29% | 66.91% | 2.40x | $1.74M | $3.40M |
-| 6 months | $72.25M | $29.66M | 29.48% | 23.77% | 61.49% | 2.41x | $2.03M | $3.63M |
-| 12 months | $72.25M | $29.82M | 25.99% | 21.26% | 52.61% | 2.42x | $2.60M | $4.08M |
+| 0 months | $72.25M | $28.27M | 32.74% | 26.04% | 70.87% | 2.34x | $1.46M | $3.19M |
+| 3 months | $72.25M | $28.08M | 30.20% | 24.20% | 64.36% | 2.33x | $1.74M | $3.40M |
+| 6 months | $72.25M | $27.87M | 27.97% | 22.59% | 58.69% | 2.32x | $2.03M | $3.63M |
+| 12 months | $72.25M | $27.46M | 24.24% | 19.90% | 49.35% | 2.31x | $2.60M | $4.08M |
 
 **Combined**
 
 | Case | Gross sale | Profit | Levered IRR | LP IRR | GP IRR | LP multiple | Extra equity | Cap. interest |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1. Cost +10%, rent -5%, cap +50 bps | $61.67M | $15.75M | 20.40% | 16.79% | 44.22% | 1.75x | $1.55M | $3.41M |
-| 2. Cost +15%, rate +200 bps, 6-mo construction delay | $72.25M | $22.79M | 22.95% | 18.77% | 48.60% | 2.00x | $1.97M | $5.14M |
-| 3. Rent -10%, lease-up +6 mo, cap +100 bps | $52.85M | $10.14M | 13.03% | 10.99% | 27.49% | 1.53x | $2.03M | $3.63M |
-| 4. Cost +20%, rate +300 bps, rent -10%, cap +100 bps | $52.85M | $1.72M | 2.60% | 2.60% | 2.60% | 1.09x | $2.25M | $5.18M |
+| 1. Cost +10%, rent -5%, cap +50 bps | $61.67M | $14.45M | 18.87% | 15.68% | 40.52% | 1.70x | $1.55M | $3.41M |
+| 2. Cost +15%, rate +200 bps, 6-mo construction delay | $72.25M | $21.06M | 21.45% | 17.65% | 45.36% | 1.91x | $1.97M | $5.14M |
+| 3. Rent -10%, lease-up +6 mo, cap +100 bps | $52.85M | $8.36M | 10.90% | 9.09% | 24.02% | 1.43x | $2.03M | $3.63M |
+| 4. Cost +20%, rate +300 bps, rent -10%, cap +100 bps | $52.85M | $-269,653 | -0.42% | -0.42% | -0.42% | 0.99x | $2.25M | $5.18M |
 
 Delays extend the hold by the same number of months. Cost overrun is applied to hard cost including contingency. Per-case DSCR, break-even valuation and unlevered IRR are not tabulated: the engine returns no unlevered IRR for development deals, and trailing DSCR is distorted by capitalised interest.
 

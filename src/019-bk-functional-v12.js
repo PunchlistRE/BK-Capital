@@ -11,7 +11,7 @@ function bkDevMonthlyReturnsV12(){
  const reserves0=Number(s.stabilizedNOI||0)?0:Math.max(0,Number(s.reserves||0)), opexGrowthDev=Number(s.opexGrowth||0);
  const noiAtYear=yr=>(baseNOI+reserves0)*Math.pow(1+Number(s.noiGrowth||s.rentGrowth||0),yr-1)-reserves0*Math.pow(1+opexGrowthDev,yr-1);
  const noiGrowth=Number(s.noiGrowth||s.rentGrowth||0), exitCap=Math.max(.0001,Number(s.exitCap||.06)), saleCost=Number(s.saleCostPct||0);
- const rows=[],values=[],dates=[]; let permBal=x.permLoan||0;
+ const rows=[],values=[],dates=[],uVals=[],uCost=[]; let permBal=x.permLoan||0;
  const permByMo={}; (x.permSchedule||[]).forEach(z=>permByMo[z.mo]=z);
  // Real lease-up ramp: CO through Stab-1 run at partial (ramping) occupancy -- not a flat $0-then-full cliff.
  // Same source as the Development cost ladder's Lease-Up Operating Deficit (bkDevV09/bkDevLeaseupRamp), so the
@@ -26,7 +26,7 @@ function bkDevMonthlyReturnsV12(){
  for(let mo=1;mo<=months;mo++){
    const dt=bkMonthEnd(start,mo);   // V32.1: month-end
    const funding=x.months[mo-1]||{eq:0,overflow:0};
-   const equityDraw=Number(funding.eq||0)+Number(funding.overflow||0);
+   const equityDraw=Number(funding.eq||0)+Number(funding.overflow||0)+Number(funding.excess||0);   /* interest beyond the commitment is paid by equity in the month it accrues */
    const isOperating=mo>=x.stab;
    const ramp=rampByMo[mo];
    const opYear=Math.max(1,Math.ceil((mo-x.stab+1)/12));
@@ -42,12 +42,15 @@ function bkDevMonthlyReturnsV12(){
    if(mo===months){let fwdExitNOI=0;for(let k=months+1;k<=months+12;k++)fwdExitNOI+=curveNOI(k);grossSale=fwdExitNOI/exitCap;sale=grossSale*(1-saleCost);dispoFee=grossSale*Number(s.dispositionFeePct||0);payoff=LCR.saleBeforeTakeout?Number((x.months[months-1]||{end:0}).end||0):permBal+(x.conHeldToSale?Number(x.conHeldBalance||0):0);}
    const leaseCapMo=leaseCap(mo);
    const cf=-equityDraw-refiEq+noi-assetFee-ds+refi+sale-dispoFee-payoff-leaseCapMo;
+   /* unlevered flow: every project cost as it falls (no financing fee, no interest), the property's own income, and the sale net of selling costs; no loan, no refinance, no equity split */
+   uCost.push(Number(funding.land||0)+Number(funding.hard||0)+Number(funding.soft||0)+Number(funding.lease||0)); uVals.push(-uCost[uCost.length-1]+noi-assetFee-leaseCapMo+sale-dispoFee);
    rows.push({m:mo,y:Math.ceil(mo/12),dt,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale});
    values.push(cf);dates.push(dt);
  }
  const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=values.reduce((z,v)=>z+Math.max(0,v),0),contrib=values.reduce((z,v)=>z+Math.max(0,-v),0),moic=contrib?dist/contrib:0;
  const grossSale=(rows[rows.length-1]||{}).grossSale||0;
- return {s,u:{irr:NaN,moic:0,grossSale,netSale:(rows[rows.length-1]||{}).sale||0},d:{equity:contrib,debtAtSale:(rows[rows.length-1]||{}).payoff||0},x,rows,values,dates,irr,moic,dist,contrib,isDevelopment:true,closeDt:new Date(start)};
+ const uIRR=bkXirrClose(uVals,dates,start,-(uCost[0]||0)), uPos=uVals.reduce((z,v)=>z+Math.max(0,v),0), uNeg=uVals.reduce((z,v)=>z+Math.max(0,-v),0);
+ return {s,u:{irr:uIRR,moic:uNeg?uPos/uNeg:0,profit:uPos-uNeg,cost:uNeg,flows:uVals,grossSale,netSale:(rows[rows.length-1]||{}).sale||0},d:{equity:contrib,debtAtSale:(rows[rows.length-1]||{}).payoff||0},x,rows,values,dates,irr,moic,dist,contrib,isDevelopment:true,closeDt:new Date(start)};
 }
 // NOTE: this block's own bkMonthlyReturns() router was removed in V2.4 -- it was always overridden
 // anyway by V1.5's later reassignment (last assignment wins in this file), so it was dead weight

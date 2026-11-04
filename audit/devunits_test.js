@@ -9,9 +9,10 @@ const DEV = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(_
   const mk = async (file) => { const p = await b.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message)); await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(file)); await p.waitForTimeout(700); await p.evaluate(() => document.documentElement.classList.add('bk-auth-ok')); return p; };
   const p = await mk(process.argv[2]);
   const open = (d) => p.evaluate((d) => { bkCreateNewDeal(d); return true; }, d);
-  const SNAP = () => { const x = bkDevV09(), m = bkMonthlyReturns(), f = bkDevFundingV10(); return { lu: x.luMo, stab: x.stab, def: x.leaseDef, ramp: x.leaseupRamp.map(r => [r.mo, r.egi, r.after]), irr: m.irr, moic: m.moic, lev: f.levered, need: f.months.map(z => z.need), rows: m.rows.map(r => [r.noi, r.egi, r.cf]) }; };
+  const SNAP = () => { const x = bkDevV09(), m = bkMonthlyReturns(), f = bkDevFundingV10(); return { lu: x.luMo, stab: x.stab, def: x.leaseDef, ramp: x.leaseupRamp.map(r => [r.mo, r.egi, r.after]), irr: m.irr, moic: m.moic, lev: f.levered, need: f.months.map(z => z.need), rows: m.rows.map((r, i) => [r.noi, r.egi, r.cf, (f.months[i] || {}).excess || 0]) }; }; /* The returns now carry interest funded by equity beyond the facility commitment (Harbor Point fix). Against the older reference build a month's cash flow is compared before that charge (cf + excess), and IRR / multiple, which the charge moves by design, are compared only between runs of this build. */
   window_SNAP = SNAP.toString();
   const snapOf = (d) => p.evaluate(([d, src]) => { bkCreateNewDeal(d); return eval('(' + src + ')')(); }, [d, window_SNAP]);
+  const vsRef = (o, cur) => Object.assign({}, o, { irr: 0, moic: 0, rows: o.rows.map(r => [r[0], r[1], r[2] + (cur ? r[3] : 0)]) });
   const same = (a, b2, tol) => JSON.stringify(a, (k, v) => typeof v === 'number' ? Math.round(v / (tol || 1e-7)) : v) === JSON.stringify(b2, (k, v) => typeof v === 'number' ? Math.round(v / (tol || 1e-7)) : v);
 
   /* ---- 1. existing deals untouched ---- */
@@ -20,7 +21,7 @@ const DEV = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(_
   if (process.argv[3]) {
     const q = await mk(process.argv[3]); const ref = await q.evaluate(([d, src]) => { bkCreateNewDeal(d); return eval('(' + src + ')')(); }, [DEV, window_SNAP]);
     const cur = Object.assign({}, off); delete cur.on;
-    check('existing development deal: lease-up ramp, shortfall, funding, cash flow, IRR and multiple are identical to the reference build', same(cur, ref), 'IRR ' + off.irr + ' vs ' + ref.irr);
+    check('existing development deal: lease-up ramp, shortfall, funding, cash flow, IRR and multiple are identical to the reference build', same(vsRef(cur, true), vsRef(ref, false)), 'IRR ' + off.irr + ' vs ' + ref.irr);
     const accq = await q.evaluate((d) => { bkCreateNewDeal(d); return bkMonthlyReturns().irr; }, A), accp = await p.evaluate((d) => { bkCreateNewDeal(d); return bkMonthlyReturns().irr; }, A);
     check('an acquisition deal is untouched', accq === accp);
     await q.close();

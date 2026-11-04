@@ -48,11 +48,14 @@ function headline(){
   return inCase(function(s, c){
     var x = bkMonthlyReturns(), d = bkDebt(), w = null, calc = bkCalc();
     try { w = bkWaterfallV07(); } catch(e){}
-    var basis = Number(d.basis) || 0;
+    var basis = Number(d.basis) || 0, dv = null;
+    /* a development deal is financed by the construction facility, not the acquisition loan bkDebt() sizes: loan, equity, coverage and yield come from the development funding engine */
+    if(isDev(s)){ try { var t = bkDevTakeoutV11(), ds = t.conHeldToSale ? Number(t.conHeldBalance || 0) * Math.max(0, Number(s.conRate || 0)) : Number(t.permPmt || 0) * 12, bal = t.conHeldToSale ? Number(t.conHeldBalance || 0) : Number(t.permLoan || 0), stabNOI = Number(t.stabPointNOI || t.noi || 0);
+      dv = { loan:Number(t.commit || 0), binding:'construction facility', equity:Number(t.equityTotal || 0), dscr:ds > 0 ? stabNOI / ds : NaN, yoc:Number(t.unlev) ? stabNOI / Number(t.unlev) : NaN, debtAtSale:bal, cost:Number(t.unlev || 0) }; } catch(e){ dv = null; } }
     return { c:c, s:s, levIRR:x.irr, levMOIC:x.moic, unlevIRR:x.u ? x.u.irr : NaN, unlevMOIC:x.u ? x.u.moic : NaN,
       lpIRR:w ? w.lpIRR : NaN, gpIRR:w ? w.gpIRR : NaN, lpMOIC:w ? w.lp.moic : NaN, gpMOIC:w ? w.gp.moic : NaN,
-      loan:d.loan, binding:d.binding, equity:d.equity, dscr:d.dscr, yoc: basis ? calc.noi/basis : NaN,
-      profit:(x.dist||0) - (x.contrib||0), peak:Number(d.equity) + Number(s.rateCapCost || 0), noi:calc.noi };
+      loan:dv ? dv.loan : d.loan, binding:dv ? dv.binding : d.binding, equity:dv ? dv.equity : d.equity, dscr:dv ? dv.dscr : d.dscr, yoc:dv ? dv.yoc : (basis ? calc.noi/basis : NaN),
+      profit:(x.dist||0) - (x.contrib||0), peak:(dv ? dv.equity : Number(d.equity)) + Number(s.rateCapCost || 0), noi:calc.noi };
   });
 }
 
