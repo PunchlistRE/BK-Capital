@@ -95,6 +95,8 @@ html body #viewport table.fin tr.input td.v input:not([type=checkbox]){ text-ali
 html body #viewport table.fin tr.input td.v input::placeholder{ color:var(--bk-na-ink); opacity:1; font-weight:500; }
 
 /* NOTES: explanatory notes are quiet paper, not blue. White card, hairline border, a slate rule on the left. Alerts keep their own amber / red rule. */
-html body #viewport .pf-ins li, html body #viewport .note-flag:not(.bk-fail-banner):not(.bk-controls-flag){ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid #6B7785 !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .pf-ins li, html body #viewport .note-flag:not(.bk-fail-banner):not(.bk-controls-flag){ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
 html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
 html body #viewport .pf-ins li b, html body #viewport .note-flag b{ color:var(--bk-navy); }
+html body #viewport .ae-hint, html body #viewport .ae .ae-hint{ background:#fff !important; border:1px solid var(--ae-line) !important; border-left:3px solid var(--bk-navy) !important; border-radius:0 !important; color:var(--ae-ink); }
+html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--bk-navy-2); padding-right:10px; border-right:1px solid var(--ae-line); }
