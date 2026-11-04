@@ -802,6 +802,7 @@ function parseDevPF(parsed){
 var DEV_STD = { hc_demo:1, hc_sitework:9, hc_excavation:8, hc_parking:14, hc_podium:24, hc_envelope:17, hc_roofing:4, hc_mep:25, hc_elevators:4, hc_partitions:8, hc_unitint:12, hc_amenity:5, hc_landscape:3, hardGCPct:0.06, hardContractorFeePct:0.03, hardRiskBondsPct:0.015, hardContPct:0.05,
   sc_ae:0.07, sc_civil:1.2, sc_entitlement:1.5, sc_environmental:0.4, sc_ffe:3500, sc_legal:1, sc_marketing:1.8, sc_ocip:2.2, sc_permits:3.5, sc_retaxconst:1.5, sc_sustainability:0.5, sc_technology:0.8, sc_testing:0.9, sc_title:0.008, devFeePct:0.03, cmFeePct:0.015, softContPct:0.05, predevCarry:150000,
   conLTC:0.65, conRate:0.075, conUtil:0.6, conOrigFee:0.01 };
+window.bkDevLadderShape = function(){ var o = {}; Object.keys(DEV_STD).forEach(function(k){ if(/^(hc_|sc_|hardGCPct|hardContractorFeePct|hardRiskBondsPct)/.test(k)) o[k] = DEV_STD[k]; }); return o; };   /* the app's standard split of a hard + soft budget, for deals that give a total but no trade lines */
 function buildDevDeal(dev){
   var om = dev.om || {}, pf = dev.pf, notes = [], res = pf.rent.filter(function(r){ return !/commercial|retail/i.test(r.type); }), com = pf.rent.filter(function(r){ return /commercial|retail/i.test(r.type); })[0];
   var units = res.reduce(function(t, r){ return t + r.units; }, 0) || om.units || 0, resRent = res.reduce(function(t, r){ return t + r.annual; }, 0), vac = pf.vacPct != null ? pf.vacPct : 0.05;

@@ -960,6 +960,11 @@
 "close": "</script>"
 },
 {
+"file": "184-bk-funding-summary.js",
+"open": "\n<script id=\"bk-funding-summary\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"

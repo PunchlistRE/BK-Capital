@@ -88,23 +88,11 @@ try{
   /* ---------- development ---------- */
   CR.wrapDev('Sources & Uses', function(o){
     var q = CR.state(), x = q.x, s = q.s, r = q.r;
-    var draws = sum(x.months,'loanDraw'), capIntSched = sum(x.months,'capInt'), eqPlan = sum(x.months,'eq'), eqOver = sum(x.months,'overflow'), excess = sum(x.months,'excess');
-    var uses = [['Land / Purchase Price', x.land],['Closing / Diligence Costs', x.close],['Acquisition Fee', x.acq]];
-    if(Number(x.pre)>0.5) uses.push(['Predevelopment Carry', x.pre]);
-    uses.push(['Hard Costs', x.hard],['Soft Costs', x.soft]);
-    if(Number(x.leaseDef)>0.5) uses.push(['Lease-Up Operating Deficit', x.leaseDef]);
-    uses.push(['Construction Facility Fees (origination and unused commitment)', x.upfrontFees],['Capitalized Construction Interest', x.actualCapInt],['Interest Funded by Equity Beyond the Commitment', excess]);
-    if(Number(x.resFunded)>0.5) uses.push(['Initial Reserves Funded', x.resFunded]);
-    var totalUses = uses.reduce(function(t,u){ return t+(Number(u[1])||0); },0);
-    var srcs = [['Construction Facility - draws', draws],['Construction Facility - capitalized interest', capIntSched],['Equity - equity-first funding', eqPlan]];
-    if(Math.abs(eqOver)>0.5) srcs.push(['Equity - cost overflow beyond the commitment', eqOver]);
-    if(Math.abs(excess)>0.5) srcs.push(['Equity - interest beyond the commitment', excess]);
-    if(Number(x.resDrawn)>0.5) srcs.push(['Initial reserves - drawn for the lease-up shortfall and interest', x.resDrawn]);
-    var totalSrc = srcs.reduce(function(t,u){ return t+u[1]; },0);
-    var delta = totalSrc - totalUses, ok = Math.abs(delta) < 1;
-    var facility = draws + capIntSched, equity = totalSrc - facility;
+    var F = bkFundingSummary();   /* the one shared funding calculation (src/184); this page only lays it out */
+    var uses = F.uses, srcs = F.sources, totalUses = F.totalUses, totalSrc = F.totalSources, excess = F.excess;
+    var delta = totalSrc - totalUses, ok = Math.abs(delta) < 1, facility = F.loan, equity = F.equity;
     var units = Number(s.units)||0, gsf = Number(s.gsf)||0;
-    var retEq = sum(r.rows,'equityDraw'), eqVsRet = x.equityTotal - retEq;
+    var retEq = F.returnsEquityDraws, eqVsRet = equity - retEq;
     var explained = Math.abs(eqVsRet - excess) < 1;
     function two(list,total,cap){ return CR.table(cap,'<tr><th class="rowlabel-h" colspan="2">'+(cap.indexOf('Uses')===0||/Uses/.test(cap)?'Uses':'Sources')+'</th></tr>', list.map(function(u){ return '<tr>'+CR.lbl(u[0])+CR.val(M(u[1]))+'</tr>'; }).join('')); }
     var main = '<div class="tbl-wrap"><table class="fin"><caption>Sources &amp; Uses - Active Deal (Development)</caption><thead><tr><th class="rowlabel-h" colspan="2">Uses</th></tr></thead><tbody>'
@@ -156,10 +144,8 @@ try{
         var s = bkLoad(); if(CR.isDevSnap(s)) return o;
         var m = String(o && o.main || ''); var iu = m.indexOf('<caption>Uses - total, per unit, per SF'), is = m.indexOf('<caption>Sources - total, per unit, per SF');
         if(iu<0 || is<0) return o;
-        var d = bkDebt(), wf = null; try{ wf = bkWaterfallV07(); }catch(e){}
-        var cap = Number(s.rateCapCost)||0, closingEq = (Number(d.equity)||0) + cap;
-        var lp = null, gp = null;
-        if(wf && wf.lp && wf.gp){ lp = Math.abs(Number(wf.lp.contrib)||0) || null; gp = Math.abs(Number(wf.gp.contrib)||0) || null; }
+        var F = bkFundingSummary(), d = F.d, cap = Number(s.rateCapCost)||0, closingEq = F.equity;   /* shared funding calculation (src/184) */
+        var lp = F.lp || null, gp = F.gp || null;
         if(lp===null || gp===null){ var share = Number(s.gpShare); if(!isFinite(share)) share = 0.5; gp = closingEq*share; lp = closingEq-gp; }
         var post = (lp+gp) - closingEq;
         if(!(cap>0) && !(Math.abs(post)>=1)) return o;                     // nothing to add: page stays byte-identical
