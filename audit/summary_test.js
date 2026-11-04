@@ -93,7 +93,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('development summary: nothing runs into a page footer', dover.length === 0, dover.join(','));
   /* short and long holds: the right number of pages, and nothing clipped, overflowing or running into a footer */
   for (const [nm, d, pages] of [['2-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 2 }), 8], ['15-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 15 }), 12],
-    ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 16], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 14]]) {
+    ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 17], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 15]]) {
     const html = await p.evaluate(d => { bkCreateNewDeal(d); return bkReportHTML(); }, d); await doc.setContent(html); await doc.waitForTimeout(300);
     const r = await doc.evaluate(() => { const P = [...document.querySelectorAll('.page')];
       return { n: P.length, over: P.map((s, i) => { const ft = s.querySelector('.ft2'), bd = s.querySelector('.bd'); if (!ft || !bd) return null; return Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) > ft.getBoundingClientRect().top - 2 ? i + 1 : null; }).filter(Boolean),

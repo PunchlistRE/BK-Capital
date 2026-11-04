@@ -10565,6 +10565,9 @@ function requirements(s){
     {key:'purchasePrice',label:isDev?'Land Basis':'Purchase Price', group:'Basis', ok:num(s.purchasePrice)>0},
     {key:'size',         label:'Building Size (units, GSF or commercial area)', group:'Basis',
        ok:(num(s.units)>0 || num(s.gsf)>0 || num(s.commercialArea)>0)},
+    /* units are asked for by name on a residential or untyped deal: building area alone does not say how many homes are being underwritten */
+    {key:'units',        label:isDev?'Residential Units':'Units', group:'Basis',
+       ok:num(s.units)>0 || (has(s.propertyType) && !/multi|resid|apart|mixed|student|senior|condo|town|single/i.test(String(s.propertyType)))},
     {key:'revenue',      label:'Revenue Basis (rent roll, average rent or commercial rent)', group:'Operations',
        ok:((s.rentRoll||[]).length>0 || num(s.avgRent)>0 || num(s.commercialRent)>0)},
     {key:'holdYears',    label:'Hold Period',            group:'Exit',        ok:num(s.holdYears)>0},
@@ -10746,6 +10749,7 @@ function notReadyPanel(sheet){
   };
 }
 
+window.bkNotReadyPanel = notReadyPanel;
 /* ---------------------------------------------------------------- suppression */
 /* RESULT sheets only. Input sheets stay reachable so the deal can be completed. */
 var RESULT_SHEETS = ['Returns','Equity Waterfall','After-Tax','Sponsor CF','Waterfall (M)'];
@@ -13312,23 +13316,23 @@ extend('Sensitivity','w3cDrivers', function(o){
     ['Construction Duration',   'ConstructionMoDelta',  'mo',  'Added to the construction period'],
     ['Absorption',              'AbsorptionFactor',     'pct', 'Scales the lease-up period']
   ];
-  var body = DRIVERS.map(function(d){
+  var isDevDeal = /develop/i.test(String(s.dealType || '')), DEVONLY = { HardCostVariance:1, SoftCostVariance:1, ConstructionMoDelta:1, AbsorptionFactor:1 };
+  var body = DRIVERS.filter(function(d){ return isDevDeal || !DEVONLY[d[1]]; }).map(function(d){
     var upK = 'up'+d[1], dnK = 'down'+d[1];
     var up = Number(s[upK])||0, dn = Number(s[dnK])||0;
-    var fmt = function(v){ return d[2]==='pct' ? (v*100).toFixed(2) : String(v); };
+    var fmt = function(v){ return d[2]==='pct' ? (v*100).toFixed(2) : String(v); }, suf = d[2]==='pct' ? '%' : ' mo';
+    var cell = function(k, v){ return '<td class="v" data-bk-align="num"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end"><input type="number" step="'+(d[2]==='pct' ? '0.01' : '1')+'" style="width:88px;text-align:right" value="'+fmt(v)+'" onchange="bkSetScenarioDriver(\''+k+'\',this.value,\''+d[2]+'\')"><span style="width:2.2em;text-align:left;opacity:.7">'+suf+'</span></span></td>'; };
     return '<tr>'+lbl(d[0])
-      + '<td class="v"><input type="number" step="0.01" style="width:96px" value="'+fmt(dn)+'"'
-      +   ' onchange="bkSetScenarioDriver(\''+dnK+'\',this.value,\''+d[2]+'\')"></td>'
-      + '<td class="v">-</td>'
-      + '<td class="v"><input type="number" step="0.01" style="width:96px" value="'+fmt(up)+'"'
-      +   ' onchange="bkSetScenarioDriver(\''+upK+'\',this.value,\''+d[2]+'\')"></td>'
-      + txt(d[3] + (d[2]==='pct' ? ' (%)' : ' (months)'))
+      + cell(dnK, dn)
+      + '<td class="v" data-bk-align="num" style="text-align:center">&mdash;</td>'
+      + cell(upK, up)
+      + txt(d[3] + (d[2]==='pct' ? ' (percentage points)' : ' (months)'))
       + '<td class="v">'+((up||dn)?chip('pass','ACTIVE'):chip('','INERT'))+'</td></tr>';
   }).join('');
   o.main = (o.main||'') + wrapTable('Scenario Drivers - Downside and Upside deltas against Base',
       '<tr><th class="rowlabel-h">Driver</th><th>Downside</th><th>Base</th><th>Upside</th>'
       + '<th style="text-align:left">Effect</th><th>Status</th></tr>', body)
-    + note('&#9432;','All nine workbook drivers are here. The three original ones (exit cap, rent growth, loan rate) have standard values. The other six default to zero on an acquisition, '
+    + note('&#9432;','' + (isDevDeal ? 'All nine workbook drivers are here. ' : 'The five drivers that apply to an acquisition are here; hard cost, soft cost, construction duration and absorption appear on a development. ') + 'The three original ones (exit cap, rent growth, loan rate) have standard values. The other six default to zero on an acquisition, '
       + 'so Base and both cases move only on those three until you set one; a new development starts with construction risk in its Downside (hard-cost contingency, extra months, slower lease-up). A driver reading INERT is not a '
       + 'broken control - it is a delta of zero.');
 });
@@ -18150,7 +18154,7 @@ schedule();
 .bk-sx-chip i{ width:10px; height:10px; border-radius:50%; background:var(--c); opacity:.35; }
 .bk-sx-chip[aria-pressed="true"]{ color:var(--sx-ink); border-color:var(--c); }
 .bk-sx-chip[aria-pressed="true"] i{ opacity:1; }
-.bk-sx svg{ display:block; width:100%; height:auto; overflow:visible; font-family:inherit; }
+.bk-sx svg{ display:block; width:100%; max-width:900px; margin:0 auto; height:auto; overflow:visible; font-family:inherit; }   /* capped so the chart text never scales past about 1.2x on a wide screen */
 .bk-sx-svgwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
 @media (max-width:760px){ .bk-sx-svgwrap svg{ min-width:640px; } }
 .bk-sx svg text{ fill:var(--sx-ink2); font-size:11px; }
@@ -22002,7 +22006,10 @@ window.BKReg.addFields([
   F('opexGrowth', 'Annual expense growth', 'pct', { zeroOk:true, sug:sug(0.03, 'Expenses usually grow at about 3% a year.') }),
   F('saleCostPct', 'Cost of sale, % of price', 'pct', { zeroOk:true, sug:sug(0.02, 'Broker and closing costs on a sale are about 2%.') }),
   /* partnership */
-  F('gpShare', 'GP / sponsor equity share', 'pct', { zeroOk:true }), F('pref', 'Preferred return', 'pct', { zeroOk:true }),
+  F('gpShare', 'GP / sponsor equity share', 'pct', { zeroOk:true, help:'Blank or 0% means one investor owns all of it.' }), F('pref', 'Preferred return', 'pct', { zeroOk:true }),
+  F('hurdle2', 'Second hurdle (IRR)', 'pct', { zeroOk:true }), F('hurdle3', 'Third hurdle (IRR)', 'pct', { zeroOk:true }),
+  F('t2LP', 'LP share above the preferred return', 'pct', { zeroOk:true }), F('t3LP', 'LP share above the second hurdle', 'pct', { zeroOk:true }), F('t4LP', 'LP share above the third hurdle', 'pct', { zeroOk:true }),
+  F('sourcesUses', 'Sources and uses', 'derived'),
   /* development */
   F('sourceConstruction', 'Construction budget (hard + soft)', 'money', { help:'Hard and soft costs together; the cost ladder is scaled to it.' }),
   F('predevMonths', 'Pre-development, months', 'int', { zeroOk:true, sug:sug(6, 'Permits and bidding usually take 3 to 9 months.') }),
@@ -22107,6 +22114,9 @@ R.addWorkflow('acquisition', [
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
+  S('sources', 'Sources and uses', 'What the deal costs in total and where the money comes from: your equity and the loan. It is read from the model, not typed; check that sources equal uses.', 'Sources & Uses', [q('sourcesUses', 'derived')], { skippable:true }),
+  S('partners', 'Investors and LP / GP economics', 'A new deal has one investor who owns all of it. If there are other partners, enter the GP share, the preferred return and how profit splits above each hurdle. Skip it to keep one investor.', 'Deal Underwrite',
+    [q('gpShare'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT ]);
 
 R.addWorkflow('development', [
@@ -22115,6 +22125,9 @@ R.addWorkflow('development', [
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
   INCOME, EXPENSES,
   S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilised.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
+  S('sources', 'Sources and uses', 'What the deal costs in total and where the money comes from: your equity and the loan. It is read from the model, not typed; check that sources equal uses.', 'Sources & Uses', [q('sourcesUses', 'derived')], { skippable:true }),
+  S('partners', 'Investors and LP / GP economics', 'A new deal has one investor who owns all of it. If there are other partners, enter the GP share, the preferred return and how profit splits above each hurdle. Skip it to keep one investor.', 'Deal Underwrite',
+    [q('gpShare'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT ]);
 
 R.addWorkflow('valuation', [
@@ -27635,6 +27648,33 @@ function parsePreds(raw, T, selfId){
   txt.split(/[,;]/).forEach(function(part){ var m = /^\s*(\d+)\s*(?:([+-])\s*(\d+))?\s*$/.exec(part); if(!m) return; var row = Number(m[1]) - 1, tk = T[row]; if(!tk || tk.id === selfId) return; out.push({ id:tk.id, lag:m[2] ? (m[2] === '-' ? -1 : 1) * Number(m[3]) : 0 }); });
   return out;
 }
+/* A detailed starting schedule for the task view. Each task is placed by a fraction of its phase (start fraction, end fraction) and linked to the task it follows, with the lead or lag that reproduces that placement, so the span of the
+   pre-development tasks and of the construction tasks is exactly the phase months already in the deal: switching to tasks moves nothing in the engine. The sequencing is a conventional one for mid-rise multifamily and is an
+   ASSUMPTION to edit (it is not read from any document); the engine times costs on its own draw curves, not on these dates. */
+var DETAIL_PRE = [['Site assessment and due diligence', 0, .25, null], ['Entitlements and approvals', .10, .70, 0], ['Design development', .20, .65, 0], ['Construction documents', .50, .90, 2], ['Permits and GMP pricing', .70, 1, 3]];
+var DETAIL_CON = [['Mobilisation and site clearing', 0, .06, null], ['Excavation and shoring', .04, .20, 0], ['Foundations', .15, .32, 1], ['Structure: podium and frame', .28, .62, 2], ['Envelope, glazing and roofing', .45, .75, 3], ['MEP rough-in', .42, .78, 3],
+  ['Partitions and drywall', .55, .82, 4], ['Unit interiors: cabinets and fixtures', .68, .92, 6], ['Amenity fit-out', .80, .96, 6], ['Landscape and site finishes', .82, .98, 4], ['Testing, commissioning and inspections', .92, 1, 7]];
+function detailTasks(pre, con){
+  var T = [], idOf = function(){ return 't' + (T.length + 1); };
+  var place = function(list, n, group, gate){
+    var made = [];
+    list.forEach(function(d, i){ var s0 = Math.floor(d[1] * n) + 1, e0 = Math.max(s0, Math.min(n, Math.ceil(d[2] * n))); if(i === 0) s0 = 1; if(i === list.length - 1) e0 = n; if(e0 < s0) e0 = s0;
+      var id = idOf(), preds = [], st = s0;
+      if(d[3] != null && made[d[3]]){ var pr = made[d[3]]; preds = [{ id:pr.id, lag:s0 - pr.e - 1 }]; st = null; }
+      else if(gate){ preds = [{ id:gate.id, lag:s0 - gate.e - 1 + (gate.shift || 0) }]; st = null; }
+      T.push({ id:id, name:d[0], group:group, start:st, dur:e0 - s0 + 1, preds:preds }); made.push({ id:id, s:s0, e:e0 }); });
+    return made;
+  };
+  var preMade = pre >= 3 ? place(DETAIL_PRE, pre, 'predev', null) : null;
+  if(pre > 0 && !preMade) T.push({ id:'t1', name:'Entitlements, design and permits', group:'predev', start:1, dur:pre, preds:[] });
+  var lastPre = T.length ? { id:T[T.length - 1].id, e:pre } : null;
+  /* construction starts after pre-development ends: its first task follows the pre-development task that ends last */
+  var gate = null; if(pre > 0){ var endsLast = preMade ? preMade[preMade.length - 1] : { id:'t1', e:pre }; gate = { id:endsLast.id, e:endsLast.e }; }
+  var conMade = place(DETAIL_CON, con, 'construction', null);
+  if(gate){ var first = T.filter(function(x){ return x.name === DETAIL_CON[0][0]; })[0]; first.start = null; first.preds = [{ id:gate.id, lag:0 }]; }
+  else { var f0 = T.filter(function(x){ return x.name === DETAIL_CON[0][0]; })[0]; f0.start = 1; }
+  return T;
+}
 window.bkDevGanttMode = function(mode){
   var s = bkLoad(); s.devGantt = Object.assign({}, s.devGantt || {});
   if(mode === 'tasks'){
@@ -27643,7 +27683,8 @@ window.bkDevGanttMode = function(mode){
       if(pre > 0) T.push({ id:'t1', name:'Entitlements, design and permits', group:'predev', start:1, dur:pre, preds:[] });
       if(con > 0){
         var base = pre > 0 ? [{ id:'t1', lag:0 }] : [], st = pre > 0 ? null : 1, id = function(){ return 't' + (T.length + 1); };
-        if(con < 4){ T.push({ id:id(), name:'Construction', group:'construction', start:st, dur:con, preds:base }); }
+        if(con >= 6){ T = detailTasks(pre, con); }
+        else if(con < 4){ T.push({ id:id(), name:'Construction', group:'construction', start:st, dur:con, preds:base }); }
         else {
           var a = Math.max(1, Math.round(con * 0.2)), b = Math.max(2, Math.round(con * 0.5)), over = Math.min(Math.max(1, Math.round(b * 0.3)), b - 1), c = con - a - b + over;
           while(c < 1){ b--; over = Math.min(over, b - 1); c = con - a - b + over; }
@@ -27674,7 +27715,9 @@ window.bkDevGanttAdd = function(){ var s = bkLoad(), g = s.devGantt = Object.ass
 window.bkDevGanttRemove = function(i){ var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}), T = g.tasks || [], id = T[i] && T[i].id; g.tasks = T.filter(function(t, k){ return k !== i; }).map(function(t){ return Object.assign({}, t, { preds:(t.preds || []).filter(function(p){ return p.id !== id; }) }); }); if(!g.tasks.length) g.mode = 'phases'; save(s); };
 
 /* ------------------------------------------------------------------ the chart ------------------------------------------------------------------ */
-var COL = { predev:'#7a8da1', construction:'#2E6E6E', other:'#8a6d2f', leaseup:'#2f5f9a', ops:'#9aa7b4', crit:'#b3392c', ms:'#1b2733' };
+/* the Punchlist colour scale: slate violet, olive gold (dark to light), cream with a gold outline */
+var COL = { predev:'#8a8fb0', construction:'#8c7a28', other:'#a99136', leaseup:'#c9b25f', ops:'#efe6cb', opsLine:'#c4a94a', crit:'#b3392c', ms:'#1b2733' };
+function onCol(c){ var h = String(c).replace('#', ''), r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16), L = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; return L > 0.62 ? '#4a3f12' : '#fff'; }
 function dtx(d){ return d.toLocaleDateString('en-US', { month:'short', year:'numeric' }); }
 function monthsText(n){ return n + (n === 1 ? ' month' : ' months'); }
 
@@ -27695,9 +27738,9 @@ function ganttSvg(rows, sc, s, o){
   /* phase strip */
   var segs = [['Pre-development', 1, num(sc.preMo), COL.predev], ['Construction', num(sc.preMo) + 1, num(sc.co), COL.construction], ['Lease-up', num(sc.co) + 1, num(sc.stab) - 1 > num(sc.co) ? num(sc.stab) - 1 : num(sc.co), COL.leaseup], ['Stabilised operations', num(sc.stab), hold, COL.ops]];
   if(num(sc.luMo) <= 0) segs.splice(2, 1);
-  segs.forEach(function(sg){ if(sg[2] < sg[1]) return; var x0 = X(sg[1]), w = (sg[2] - sg[1] + 1) * pxm; g += '<rect x="' + x0 + '" y="6" width="' + w + '" height="18" fill="' + sg[3] + '" opacity=".92"><title>' + esc(sg[0]) + ': months ' + sg[1] + ' to ' + sg[2] + '</title></rect>';
+  segs.forEach(function(sg){ if(sg[2] < sg[1]) return; var x0 = X(sg[1]), w = (sg[2] - sg[1] + 1) * pxm; g += '<rect x="' + x0 + '" y="6" width="' + w + '" height="18" fill="' + sg[3] + '"' + (sg[3] === COL.ops ? ' stroke="' + COL.opsLine + '" stroke-width="1.2"' : '') + ' opacity=".95"><title>' + esc(sg[0]) + ': months ' + sg[1] + ' to ' + sg[2] + '</title></rect>';
     var cnt = sg[0] === 'Lease-up' ? num(sc.luMo) : (sg[2] - sg[1] + 1), full = sg[0] + ' · ' + cnt + ' mo', short = sg[0].replace('Pre-development', 'Pre-dev').replace('Stabilised operations', 'Stabilised') + ' · ' + cnt;
-    if(w > full.length * 6.4 + 10) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">' + esc(full) + '</text>'; else if(w > short.length * 6.4 + 8) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">' + esc(short) + '</text>'; });
+    if(w > full.length * 6.4 + 10) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="' + onCol(sg[3]) + '">' + esc(full) + '</text>'; else if(w > short.length * 6.4 + 8) g += '<text x="' + (x0 + w / 2) + '" y="19" text-anchor="middle" font-size="10" font-weight="700" fill="' + onCol(sg[3]) + '">' + esc(short) + '</text>'; });
   g += '<text x="' + (Lw - 10) + '" y="19" text-anchor="end" font-size="10.5" font-weight="700" fill="' + dim + '" letter-spacing=".06em">PHASES</text>';
   /* milestone flags (Closing is month 1) */
   var ms = [['Certificate of occupancy', num(sc.co), COL.crit], ['Stabilised', num(sc.stab), COL.leaseup], ['Sale / exit', num(sc.hold), COL.ms]].filter(function(m){ return m[1] > 0; }).sort(function(a, b){ return a[1] - b[1]; });
@@ -27725,7 +27768,7 @@ function ganttSvg(rows, sc, s, o){
       var left = cx + 70 > W; g += '<text x="' + (left ? cx - 13 : cx + 13) + '" y="' + (cy + 4) + '" text-anchor="' + (left ? 'end' : 'start') + '" font-size="10.5" fill="' + dim + '">' + esc(dtx(monthEnd(s, it.ES))) + '</text>'; return; }
     var bw = Math.max(pxm, (it.EF - it.ES + 1) * pxm), bx = X(it.ES), dur = it.EF - it.ES + 1;
     g += '<rect x="' + bx + '" y="' + (cy - 8) + '" width="' + bw + '" height="16" rx="2.5" fill="' + (it.color || COL.construction) + '"' + (it.critical ? ' stroke="' + COL.crit + '" stroke-width="2"' : '') + '><title>' + esc(it.name) + ': ' + esc(dates) + ' · months ' + it.ES + ' to ' + it.EF + ' · ' + dur + (dur === 1 ? ' month' : ' months') + (it.float > 0 && !it.linked ? ' · float ' + it.float : '') + (it.critical ? ' · critical path' : '') + '</title></rect>';
-    if(bw >= 34) g += '<text x="' + (bx + bw / 2) + '" y="' + (cy + 4) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">' + dur + ' mo</text>';
+    if(bw >= 34) g += '<text x="' + (bx + bw / 2) + '" y="' + (cy + 4) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + onCol(it.color || COL.construction) + '">' + dur + ' mo</text>';
     else g += '<text x="' + (bx + bw + 5) + '" y="' + (cy + 4) + '" font-size="10.5" fill="' + dim + '">' + dur + ' mo</text>';
     if(it.float > 0 && !it.linked){ var fx = bx + bw; g += '<line x1="' + fx + '" x2="' + (fx + it.float * pxm) + '" y1="' + cy + '" y2="' + cy + '" stroke="' + dim + '" stroke-dasharray="3 2"/><text x="' + (fx + it.float * pxm + 4) + '" y="' + (cy + 4) + '" font-size="10" fill="' + dim + '">+' + it.float + '</text>'; } });
   /* milestone lines through the grid */
@@ -27736,7 +27779,41 @@ function ganttSvg(rows, sc, s, o){
     g += '<path d="M' + x1 + ',' + y1 + ' H' + elbow + ' V' + y2 + ' H' + (x2 - 1) + '" fill="none" stroke="' + (crit ? COL.crit : dim) + '" stroke-width="' + (crit ? 1.3 : 1) + '" marker-end="url(#' + uid + (crit ? 'c' : 'a') + ')"/>'; }); });
   return g + '</svg>';
 }
-function legendHtml(P){ var c = function(col){ return '<span style="display:inline-block;width:10px;height:10px;background:' + col + ';margin-right:4px;vertical-align:-1px"></span>'; }; return '<div class="bk-gs-legend" style="font-size:' + (P ? 10.5 : 12) + 'px;margin-top:6px;opacity:.9"><span style="display:inline-block;width:10px;height:10px;border:2px solid ' + COL.crit + ';margin-right:4px;vertical-align:-3px"></span>Critical path (no float) &nbsp; ' + c(COL.predev) + 'Pre-development &nbsp; ' + c(COL.construction) + 'Construction &nbsp; ' + c(COL.other) + 'Other task &nbsp; ' + c(COL.leaseup) + 'Lease-up &nbsp; ' + c(COL.ops) + 'Stabilised operations &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float (months of slack)</span> &nbsp; &#8594; dependency</div>'; }
+/* The schedule as a sheet, in the style of a project-management Gantt: a grey band for each phase with its summary bar in dark green, each task beneath it with a light green bar, the task's start, end and months in columns on the left, a month
+   grid across the top with the calendar year above it, milestone call-outs, and a vertical line at the certificate of occupancy and at stabilisation. It draws the same rows the chart does; it adds no schedule of its own. */
+var GX = { band:'#c9ced8', head:'#cfd3db', sum:'#00b050', task:'#92d050', cell:'#f1f3f6', cellAlt:'#e6e9ee', line:'#b9bfca', ink:'#10213a', ms:'#2f7d32' };
+function ganttSheet(M, o){
+  o = o || {}; var s = M.s, sc = M.sc, rows = M.rows, N = Math.max(sc.hold || 0, sc.stab || 0, 12), cw = N > 72 ? 11 : N > 48 ? 14 : 18, y0 = startYear(s);
+  var yr = function(m){ return monthStart(s, m).getFullYear(); }, yearRuns = [], last = null;
+  for(var m = 1; m <= N; m++){ var y = yr(m); if(last && last.y === y) last.n++; else { last = { y:y, n:1 }; yearRuns.push(last); } }
+  var vline = function(m){ return m === sc.co ? 'border-right:2px solid ' + GX.ms : m === sc.stab ? 'border-right:2px dashed ' + GX.ms : ''; };
+  var yi = {}; var yk = 0; yearRuns.forEach(function(r){ r.alt = (yk++ % 2) === 1; });
+  var colAlt = function(m){ var k = 0, acc = 0; for(var i = 0; i < yearRuns.length; i++){ acc += yearRuns[i].n; if(m <= acc) return yearRuns[i].alt; } return false; };
+  var th = 'background:' + GX.head + ';color:' + GX.ink + ';font-weight:600;border:1px solid ' + GX.line + ';padding:3px 6px;font-size:11px;white-space:nowrap';
+  var h = '<div class="bk-gx" style="overflow-x:auto;border:1px solid ' + GX.line + ';border-radius:4px;background:#fff;margin-top:8px"><table style="border-collapse:collapse;table-layout:fixed;width:100%;min-width:' + (442 + N * 8) + 'px;font-size:12px;color:' + GX.ink + ';font-variant-numeric:tabular-nums"><colgroup><col style="width:36px"><col style="width:198px"><col style="width:78px"><col style="width:78px"><col style="width:52px">';
+  for(var c = 1; c <= N; c++) h += '<col>';
+  h += '</colgroup><thead><tr><th style="' + th + ';text-align:center" rowspan="2">#</th><th style="' + th + ';text-align:left" rowspan="2">Task</th><th style="' + th + ';text-align:right" rowspan="2">Start</th><th style="' + th + ';text-align:right" rowspan="2">End</th><th style="' + th + ';text-align:right" rowspan="2">Months</th>';
+  yearRuns.forEach(function(r){ h += '<th colspan="' + r.n + '" style="' + th + ';text-align:center">' + (r.n >= 3 ? r.y : '') + '</th>'; });
+  h += '</tr><tr>'; for(var c2 = 1; c2 <= N; c2++) h += '<th style="' + th + ';text-align:center;font-size:9px;padding:2px 0;font-weight:500;overflow:hidden">' + (N <= 18 || (N <= 36 && c2 % 3 === 1) || (N > 36 && c2 % 6 === 1) ? c2 : '') + '</th>'; h += '</tr></thead><tbody>';
+  var cellsFor = function(rowBars, ms, bold){
+    var out = ''; for(var m2 = 1; m2 <= N; m2++){ var inBar = rowBars && m2 >= rowBars.a && m2 <= rowBars.b, edge = (inBar ? '' : ''), bg = inBar ? rowBars.col : (bold ? GX.band : (colAlt(m2) ? GX.cellAlt : GX.cell));
+      var mark = ms && m2 === ms.m ? '<span title="' + esc(ms.label) + '" style="display:block;width:11px;height:11px;margin:0 auto;background:' + GX.ms + ';transform:rotate(45deg)"></span>' : '';
+      out += '<td style="padding:0;height:22px;background:' + bg + ';border:1px solid ' + (inBar ? rowBars.col : '#d9dde4') + ';' + vline(m2) + '">' + mark + '</td>'; }
+    return out; };
+  var tdl = function(txt, al, b){ return '<td style="padding:3px 6px;border:1px solid ' + GX.line + ';text-align:' + al + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:' + (al === 'right' ? 11.5 : 12) + 'px;' + (b ? 'font-weight:700;background:' + GX.band : 'background:#fff') + '">' + txt + '</td>'; };
+  var secs = []; rows.forEach(function(r){ if(!secs.length || secs[secs.length - 1].name !== r.sec) secs.push({ name:r.sec, rows:[] }); secs[secs.length - 1].rows.push(r); });
+  var n = 0;
+  secs.forEach(function(g){
+    var bars = g.rows.filter(function(r){ return !r.milestone && r.ES && r.EF; }), a = bars.length ? Math.min.apply(null, bars.map(function(r){ return r.ES; })) : null, b2 = bars.length ? Math.max.apply(null, bars.map(function(r){ return r.EF; })) : null;
+    h += '<tr>' + tdl('', 'center', true) + tdl(esc(g.name), 'left', true) + tdl(a ? esc(dtx(monthStart(s, a))) : '', 'right', true) + tdl(b2 ? esc(dtx(monthEnd(s, b2))) : '', 'right', true) + tdl(a ? String(b2 - a + 1) : '', 'right', true) + cellsFor(a ? { a:a, b:b2, col:GX.sum } : null, null, true) + '</tr>';
+    g.rows.forEach(function(r){ n++; var ms = r.milestone ? { m:r.ES, label:r.name + ': ' + dtx(monthEnd(s, r.ES)) } : null, dur = r.EF - r.ES + 1;
+      h += '<tr>' + tdl(r.idx ? String(r.idx) : '', 'center') + tdl((r.milestone ? '&#9670; ' : '') + esc(r.name), 'left') + tdl(r.ES ? esc(dtx(monthStart(s, r.ES))) : '', 'right') + tdl(r.EF ? esc(dtx(monthEnd(s, r.EF))) : '', 'right') + tdl(r.milestone ? '' : String(dur), 'right')
+        + cellsFor(r.milestone ? null : { a:r.ES, b:r.EF, col:GX.task }, ms, false) + '</tr>'; }); });
+  h += '</tbody></table></div><div style="font-size:11px;opacity:.8;margin-top:5px"><span style="display:inline-block;width:14px;height:9px;background:' + GX.sum + ';margin-right:4px"></span>Phase &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';margin-right:4px"></span>Task &nbsp; <span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilisation</div>';
+  return h;
+}
+function startYear(s){ return startDate(s).getFullYear(); }
+function legendHtml(P){ var c = function(col){ return '<span style="display:inline-block;width:10px;height:10px;background:' + col + ';' + (col === COL.ops ? 'outline:1px solid ' + COL.opsLine + ';outline-offset:-1px;' : '') + 'margin-right:4px;vertical-align:-1px"></span>'; }; return '<div class="bk-gs-legend" style="font-size:' + (P ? 10.5 : 12) + 'px;margin-top:6px;opacity:.9"><span style="display:inline-block;width:10px;height:10px;border:2px solid ' + COL.crit + ';margin-right:4px;vertical-align:-3px"></span>Critical path (no float) &nbsp; ' + c(COL.predev) + 'Pre-development &nbsp; ' + c(COL.construction) + 'Construction &nbsp; ' + c(COL.other) + 'Other task &nbsp; ' + c(COL.leaseup) + 'Lease-up &nbsp; ' + c(COL.ops) + 'Stabilised operations &nbsp; &#9670; Milestone &nbsp; <span style="opacity:.8">- - float (months of slack)</span> &nbsp; &#8594; dependency</div>'; }
 function rowsFor(s, sc, x){
   var rows = [], secName = { predev:'Pre-development', construction:'Construction', other:'Other tasks' }, order = ['predev', 'construction', 'other'];
   order.forEach(function(gp){ sc.tasks.forEach(function(t, i){ if((t.group || 'construction') !== gp) return; rows.push({ id:t.id, idx:i + 1, sec:secName[gp], name:t.name, ES:t.ES, EF:t.EF, float:t.float, critical:t.critical, milestone:t.milestone, preds:t.preds, color:COL[t.group] || COL.construction, group:t.group }); }); });
@@ -27748,10 +27825,14 @@ function rowsFor(s, sc, x){
 }
 /* everything the page and the printed summary draw from, in one place */
 window.bkDevGanttModel = function(s){
-  s = s || bkLoad(); if(!isDev(s)) return null; var x = bkDevV09(), on = window.bkDevGanttOn(s), sc, warnings = [];
+  s = s || bkLoad(); if(!isDev(s)) return null; var x = bkDevV09(), on = window.bkDevGanttOn(s), sc, warnings = [], indicative = false;
   if(on){ sc = window.bkDevGanttSchedule(s, x); warnings = sc.warnings || []; }
-  else { var ph = phaseTasks(s, x); sc = { tasks:ph, co:x.co, luMo:x.luMo, stab:x.stab, hold:x.hold, conStart:x.preMo + 1, preMo:x.preMo, conMo:x.conMo }; }
-  return { s:s, x:x, on:on, sc:sc, warnings:warnings, rows:rowsFor(s, sc, x), svg:ganttSvg, legend:legendHtml, monthStart:function(m){ return monthStart(s, m); }, monthEnd:function(m){ return monthEnd(s, m); }, fmt:dtx };
+  else { var ph = phaseTasks(s, x); sc = { tasks:ph, co:x.co, luMo:x.luMo, stab:x.stab, hold:x.hold, conStart:x.preMo + 1, preMo:x.preMo, conMo:x.conMo };
+    /* drawn from the phase durations only, the chart still shows an INDICATIVE breakdown inside each phase (assumed sequencing, same span, nothing saved and nothing in the engine moves) */
+    try { var pre0 = Math.round(num(s.predevMonths)), con0 = Math.round(num(s.constructionMonths));
+      if(con0 >= 6){ var tmp = Object.assign({}, s, { devGantt:{ mode:'tasks', tasks:detailTasks(pre0, con0) } }), d2 = window.bkDevGanttSchedule(tmp, x);
+        if(d2 && !d2.cycle && d2.preMo === x.preMo && d2.conMo === x.conMo && d2.co === x.co){ d2.tasks = d2.tasks.map(function(k){ return Object.assign({}, k, { critical:false, preds:[], float:0 }); }); sc = d2; indicative = true; } } } catch(e){} }
+  return { s:s, x:x, on:on, indicative:indicative, sc:sc, warnings:warnings, rows:rowsFor(s, sc, x), svg:ganttSvg, legend:legendHtml, monthStart:function(m){ return monthStart(s, m); }, monthEnd:function(m){ return monthEnd(s, m); }, fmt:dtx };
 };
 function tilesHtml(M){
   var sc = M.sc, s = M.s, crit = sc.tasks.filter(function(t){ return t.critical; }).length, T = function(k, v, sub){ return '<div class="bk-gs-tile"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (sub ? '<div class="d">' + esc(sub) + '</div>' : '') + '</div>'; };
@@ -27780,9 +27861,8 @@ RENDERERS['Dev Schedule'] = function(){
     var head = '<div class="ae-form" style="margin:0 0 8px"><label style="font-weight:600">Schedule</label> <select onchange="bkDevGanttMode(this.value)"><option value="phases"' + (on ? '' : ' selected') + '>Phase durations (pre-development, construction, lease-up)</option><option value="tasks"' + (on ? ' selected' : '') + '>Task schedule (overlaps, dependencies, critical path)</option></select></div>';
     var chartBox = '<div class="tbl-wrap" style="margin-top:16px"><div style="padding:10px 12px"><b>Gantt chart, by month</b>' + head
       + ((!on && !(num(x.preMo) + num(x.conMo) + num(x.luMo) > 0)) ? '' : tilesHtml(M)) + '<div class="bk-gs-bar"><button type="button" class="bk-btn primary" onclick="bkDevScheduleReport()">Schedule summary (PDF)</button><span style="font-size:12px;opacity:.8">A full printable summary: key dates, the Gantt chart, the task schedule, the funding timeline and what a delay costs.</span></div>'
-      + ((!on && !(num(x.preMo) + num(x.conMo) + num(x.luMo) > 0)) ? '<div class="note-flag" style="margin-top:10px"><span>&#9432;</span><div><b>No schedule to draw yet.</b> Pre-development, construction and lease-up months are all blank, so there are no phases to chart. Enter them under the development inputs (or choose Task schedule) and the Gantt chart appears here.</div></div>' : '<div>' + ganttSvg(rows, sc, s, { id:'pg' }) + '</div>')
-      + legendHtml(false)
-      + (on ? '' : '<div class="note-flag" style="margin-top:8px"><span>&#9432;</span><div><b>Drawn from the phase durations.</b> Choose <b>Task schedule</b> to break construction into overlapping tasks with dependencies. It starts as tasks that reproduce these phases exactly, so nothing moves until you edit them.</div></div>') + '</div></div>';
+      + ((!on && !(num(x.preMo) + num(x.conMo) + num(x.luMo) > 0)) ? '<div class="note-flag" style="margin-top:10px"><span>&#9432;</span><div><b>No schedule to draw yet.</b> Pre-development, construction and lease-up months are all blank, so there are no phases to chart. Enter them under the development inputs (or choose Task schedule) and the Gantt chart appears here.</div></div>' : ganttSheet(M))
+      + (on ? '' : '<div class="note-flag" style="margin-top:8px"><span>&#9432;</span><div><b>Drawn from the phase durations.</b> ' + (M.indicative ? 'The tasks inside each phase are an <b>indicative breakdown</b> with assumed sequencing (same start and finish as the phases, nothing moves). ' : '') + '<button type="button" class="bk-btn" style="margin:0 6px" onclick="bkDevGanttMode(\'tasks\')">Edit as a task schedule</button> to change task durations, overlaps and dependencies. It starts as tasks that reproduce these phases exactly, so nothing moves until you edit them.</div></div>') + '</div></div>';
     var table = '';
     if(on){
       var T = sc.tasks, hdr = '<tr><th class="rowlabel-h">#</th><th>Task</th><th>Group</th><th>Start no earlier than<br><small>month</small></th><th>or date<br><small>M/D/YYYY</small></th><th>Duration<br><small>months</small></th><th>Predecessors<br><small>e.g. 2, 3-2 (overlap 2)</small></th><th>Start</th><th>Finish</th><th>Float</th><th>Critical</th><th></th></tr>';
@@ -28810,6 +28890,23 @@ window.bkPortfolioImpactPage = portfolioPage;
 
 window.bkDevReportData = build;
 window.bkDevReportPages = function(){ var D = build(), r = riskPage(D); return { portfolio:portfolioPage(), returns:returnsPage(D), ops:opsPage(D), finance:financePage(D), budget:budgetPage(D), risk:r.a, sens:r.b, integrity:integrityPage(D), data:D }; };
+})();
+</script>
+<script id="bk-result-gate">/* RESULT GATE for sheets that show returns-derived figures. A deal with its core inputs missing has no meaningful IRR: a sensitivity grid, a cash flow, an IC memo or a valuation report built on a blank deal prints
+   figures such as 450.00% that a reader could mistake for an answer. These sheets take the same rule as Returns and the waterfall: they show the list of missing inputs (units, price, revenue, exit cap ...) instead.
+   Input sheets are never gated. This part loads last so it wraps each sheet's final renderer. It decides only whether a result may be displayed; no calculation changes. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'function' || typeof window.bkNotReadyPanel !== 'function') return;
+['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo'].forEach(function(name){
+  var orig = RENDERERS[name]; if(typeof orig !== 'function' || orig.__bkResultGate) return;
+  var gated = function(){
+    try { var r = window.bkDealReadiness(); if(r && r.state !== 'NO DEAL' && !r.canCalculate) return window.bkNotReadyPanel(name); } catch(e){}
+    return orig.apply(this, arguments);
+  };
+  gated.__bkResultGate = true; gated.__bkOriginal = orig.__bkOriginal || orig;
+  if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(name, gated); else RENDERERS[name] = gated;
+});
 })();
 </script>
 </body>

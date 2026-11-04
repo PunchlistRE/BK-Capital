@@ -49,6 +49,9 @@ function requirements(s){
     {key:'purchasePrice',label:isDev?'Land Basis':'Purchase Price', group:'Basis', ok:num(s.purchasePrice)>0},
     {key:'size',         label:'Building Size (units, GSF or commercial area)', group:'Basis',
        ok:(num(s.units)>0 || num(s.gsf)>0 || num(s.commercialArea)>0)},
+    /* units are asked for by name on a residential or untyped deal: building area alone does not say how many homes are being underwritten */
+    {key:'units',        label:isDev?'Residential Units':'Units', group:'Basis',
+       ok:num(s.units)>0 || (has(s.propertyType) && !/multi|resid|apart|mixed|student|senior|condo|town|single/i.test(String(s.propertyType)))},
     {key:'revenue',      label:'Revenue Basis (rent roll, average rent or commercial rent)', group:'Operations',
        ok:((s.rentRoll||[]).length>0 || num(s.avgRent)>0 || num(s.commercialRent)>0)},
     {key:'holdYears',    label:'Hold Period',            group:'Exit',        ok:num(s.holdYears)>0},
@@ -230,6 +233,7 @@ function notReadyPanel(sheet){
   };
 }
 
+window.bkNotReadyPanel = notReadyPanel;
 /* ---------------------------------------------------------------- suppression */
 /* RESULT sheets only. Input sheets stay reachable so the deal can be completed. */
 var RESULT_SHEETS = ['Returns','Equity Waterfall','After-Tax','Sponsor CF','Waterfall (M)'];

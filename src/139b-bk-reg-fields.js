@@ -52,7 +52,10 @@ window.BKReg.addFields([
   F('opexGrowth', 'Annual expense growth', 'pct', { zeroOk:true, sug:sug(0.03, 'Expenses usually grow at about 3% a year.') }),
   F('saleCostPct', 'Cost of sale, % of price', 'pct', { zeroOk:true, sug:sug(0.02, 'Broker and closing costs on a sale are about 2%.') }),
   /* partnership */
-  F('gpShare', 'GP / sponsor equity share', 'pct', { zeroOk:true }), F('pref', 'Preferred return', 'pct', { zeroOk:true }),
+  F('gpShare', 'GP / sponsor equity share', 'pct', { zeroOk:true, help:'Blank or 0% means one investor owns all of it.' }), F('pref', 'Preferred return', 'pct', { zeroOk:true }),
+  F('hurdle2', 'Second hurdle (IRR)', 'pct', { zeroOk:true }), F('hurdle3', 'Third hurdle (IRR)', 'pct', { zeroOk:true }),
+  F('t2LP', 'LP share above the preferred return', 'pct', { zeroOk:true }), F('t3LP', 'LP share above the second hurdle', 'pct', { zeroOk:true }), F('t4LP', 'LP share above the third hurdle', 'pct', { zeroOk:true }),
+  F('sourcesUses', 'Sources and uses', 'derived'),
   /* development */
   F('sourceConstruction', 'Construction budget (hard + soft)', 'money', { help:'Hard and soft costs together; the cost ladder is scaled to it.' }),
   F('predevMonths', 'Pre-development, months', 'int', { zeroOk:true, sug:sug(6, 'Permits and bidding usually take 3 to 9 months.') }),

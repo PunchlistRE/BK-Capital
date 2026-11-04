@@ -24,6 +24,16 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); con
   await p.evaluate(() => { const s = bkLoad(); s.acqLTV = 0.65; s.acqLTC = 0.6; s.acqRate = 0.065; s.acqDSCR = 1.25; bkSave(s); });
   t = await text('Deal Underwrite');
   check('once financing is added, the debt constraint table and the debt-rate case deltas appear', /Max LTV - /.test(t) && /Debt Rate Delta/.test(t) && !/no financing: it is all cash/i.test(t));
+  /* a blank deal shows no returns-derived figures: the missing inputs, units first, are listed instead */
+  await p.evaluate(() => bkCreateNewDeal({ name: 'Blank', dealId: 'BL2', dealType: 'Acquisition', blankStructure: true }));
+  for (const sh of ['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns']) { const tx = await text(sh);
+    check(sh + ': a blank deal shows "Results Withheld" with the missing inputs (Units, Purchase Price, Revenue Basis, Hold Period, Exit Capitalisation Rate), and no IRR figure', /Results Withheld/i.test(tx) && /Units/.test(tx) && /Purchase Price/.test(tx) && /Revenue Basis/.test(tx) && /Exit Capitalisation Rate/.test(tx) && !/\b\d{3,}\.\d\d%/.test(tx), tx.slice(0, 120)); }
+  await p.evaluate(() => { const s = bkLoad(); Object.assign(s, { propertyType: 'Multifamily', closing: '1/1/2027', gsf: 9000, purchasePrice: 2000000, avgRent: 2000, vacancy: 0.05, taxes: 40000, insurance: 12000, exitCap: 0.06, holdYears: 5 }); bkSave(s); });
+  let tx2 = await text('Sensitivity');
+  check('with building area but NO unit count the deal is still not ready, and Units is named as missing', /Results Withheld/i.test(tx2) && /Units/.test(tx2), tx2.slice(0, 80));
+  await p.evaluate(() => { const s = bkLoad(); s.units = 10; bkSave(s); });
+  tx2 = await text('Sensitivity');
+  check('once units and the other key inputs are in, the sensitivity sheet shows results (no "Results Withheld")', !/Results Withheld/i.test(tx2) && /Tornado|Spider|Break-even/i.test(tx2), tx2.slice(0, 80));
   /* programmatic callers keep the template */
   const tp = await p.evaluate(() => { bkCreateNewDeal({ name: 'T', dealId: 'T1', dealType: 'Acquisition' }); const s = bkLoad(); return { ltv: s.acqLTV, cc: s.closingCostsPct, gp: s.gpShare, tpl: !!s._template }; });
   check('a deal created without the flag keeps the named template (financing, costs and GP share as before), so saved deals and audit decks are unchanged', tp.ltv > 0 && tp.cc > 0 && tp.gp > 0 && tp.tpl, JSON.stringify(tp));
