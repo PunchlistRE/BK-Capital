@@ -2892,7 +2892,7 @@ function sheetRentRollLive(){
         <thead><tr><th class="rowlabel-h">Unit / Tenant</th><th>SF</th><th>Type</th><th>Status</th><th>In-Place $/mo</th><th>Market $/mo</th><th>Recovery $/mo</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <div class="bk-addrow"><button type="button" class="status-chip pass" onclick="bkRRAdd()">+ Add Unit</button></div>
+      <div class="bk-addrow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="status-chip pass" onclick="bkRRAdd(document.getElementById('bkRRAddN').value)">+ Add Unit(s)</button><label style="font-size:12px;display:flex;align-items:center;gap:6px">how many <input type="number" id="bkRRAddN" min="1" max="500" step="1" value="${(function(){ const u=Math.round(Number(bkLoad().units)||0), have=(Array.isArray(bkLoad().rentRoll)?bkLoad().rentRoll.length:0); return u>have?u-have:1; })()}" style="width:72px;text-align:right"></label><span style="font-size:12px;opacity:.75">${(function(){ const u=Math.round(Number(bkLoad().units)||0), have=(Array.isArray(bkLoad().rentRoll)?bkLoad().rentRoll.length:0); return u?u+' units on Deal Underwrite, '+have+' in the rent roll':'enter the unit count on Deal Underwrite to pre-fill this'; })()}</span></div>
     </div>
     <div class="note-flag"><span>&#10003;</span><div><b>Live rent roll -</b> this table now drives Commercial (and Residential) Base Rent and Expense Recoveries whenever Revenue Basis on Deal Underwrite is set to "Rent Roll". With Revenue Basis = "Average Rent" this data is display-only and the flat Deal Underwrite $/SF rate is used instead, exactly as before this patch.</div></div>
     <div class="note-flag"><span>&#10003;</span><div><b>Fix -</b> a unit's Expense Recovery only counts toward Commercial Expense Recoveries when that same unit has an active lease (Occupied status + in-place rent &gt; 0). A recovery figure left on a unit whose rent has been zeroed out (e.g. a terminated lease) is now excluded automatically and called out above, rather than silently continuing to flow into NOI. Set "Recovery Override" to Yes on the Lease Dates &amp; Per-Unit Override table below to explicitly keep a unit's recovery active independent of its rent state (e.g. a legitimate holdover CAM-only obligation) - this is opt-in per unit, never automatic.</div></div>`;
@@ -3241,6 +3241,7 @@ window.bkSetRollover = function(key, el){
   let v = el && el.textContent!==undefined ? el.textContent : '';
   const isPct = (key==='renewalProbability'||key==='lcNewPct'||key==='lcRenewalPct');
   v = String(v).replace(/[%,$]/g,'').trim();
+  if(v===''){ const ra0 = Object.assign({}, s.rolloverAssumptions); delete ra0[key]; s.rolloverAssumptions = ra0; bkSave(s); showSheet(currentSheet); return; }   /* blank stays blank: no value is assumed */
   v = parseFloat(v)||0;
   if(isPct) v = v/100;
   s.rolloverAssumptions = Object.assign({}, s.rolloverAssumptions, {[key]:v});
@@ -3251,7 +3252,7 @@ window.bkSetRollover = function(key, el){
 // override wins per-key. Used by both the schedule preview below and, later, the engine.
 window.bkRolloverFor = function(unit, s){
   s = s || bkEnsureV16();
-  const base = s.rolloverAssumptions || {};
+  const base = Object.assign({renewalProbability:0, downtimeMonths:0, tiNewPerSF:0, tiRenewalPerSF:0, lcNewPct:0, lcRenewalPct:0}, s.rolloverAssumptions || {});   /* blank = nothing assumed: no rollover cost or downtime */
   const ov = (unit && unit.rolloverOverride && typeof unit.rolloverOverride==='object') ? unit.rolloverOverride : {};
   return Object.assign({}, base, ov);
 };
@@ -3269,9 +3270,11 @@ window.bkLeaseRolloverMonth = function(leaseEndStr, closingStr){
 };
 
 // bkRRAdd re-override: same as V13's, plus the two new date fields default to blank.
-window.bkRRAdd = function(){
+window.bkRRAdd = function(n){
   const s=bkLoad(); const rr=Array.isArray(s.rentRoll)?s.rentRoll.slice():[];
-  rr.push({unitId:'New Unit',sf:0,tenantType:'Commercial',status:'Occupied',inPlaceRent:0,marketRent:0,recovery:0,leaseStart:'',leaseEnd:''});
+  let k=Math.floor(Number(n)); if(!(k>=1)) k=1; if(k>500) k=500;   /* as many blank, fillable rows as asked for, numbered after the ones already there */
+  const type=/multi|apart|resid/i.test(String(s.propertyType||''))?'Residential':'Commercial';
+  for(let i=0;i<k;i++) rr.push({unitId:(k===1&&!rr.length?'New Unit':'Unit '+(rr.length+1)),sf:0,tenantType:type,status:'Occupied',inPlaceRent:0,marketRent:0,recovery:0,leaseStart:'',leaseEnd:''});
   s.rentRoll=rr; bkSave(s); showSheet(currentSheet);
 };
 
@@ -3299,6 +3302,7 @@ RENDERERS['Rent Roll'] = function(){
   const s = bkEnsureV16(); const rr = Array.isArray(s.rentRoll)?s.rentRoll:[];
   const ra = s.rolloverAssumptions;
   const pct = n => (Number(n)*100).toFixed(2)+'%';
+  const raV = (k, f) => (ra && ra[k]!==undefined && ra[k]!=='' && ra[k]!==null) ? f(ra[k]) : '';   /* a blank assumption shows blank */
 
   // Extra columns (Lease Start / Lease End / Override) appended onto the existing V13
   // detail table via a second table, rather than reflowing the original -- keeps this
@@ -3352,13 +3356,13 @@ RENDERERS['Rent Roll'] = function(){
   const vacantAtAcq = rr.filter(u=>u.status!=='Occupied').map(u=>`<tr style="opacity:.55"><td class="rowlabel">${bkEsc(u.unitId||'')}</td><td>${bkEsc(u.sf)} SF</td><td colspan="6">Vacant at acquisition (not a rollover)</td></tr>`).join('');
 
   o.main += `
-    <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Rollover Assumptions - Global (Stage C, structure only - not yet wired into cash flow)</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th></tr></thead><tbody>
-      <tr class="input" data-bk-key="renewalProbability"><td class="rowlabel">Renewal Probability</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('renewalProbability',this)">${pct(ra.renewalProbability)}</td><td>%</td></tr>
-      <tr class="input" data-bk-key="downtimeMonths"><td class="rowlabel">Downtime on Non-Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('downtimeMonths',this)">${ra.downtimeMonths}</td><td>months</td></tr>
-      <tr class="input" data-bk-key="tiNewPerSF"><td class="rowlabel">TI - New Lease</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('tiNewPerSF',this)">${ra.tiNewPerSF}</td><td>$/SF</td></tr>
-      <tr class="input" data-bk-key="tiRenewalPerSF"><td class="rowlabel">TI - Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('tiRenewalPerSF',this)">${ra.tiRenewalPerSF}</td><td>$/SF</td></tr>
-      <tr class="input" data-bk-key="lcNewPct"><td class="rowlabel">LC - New Lease</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('lcNewPct',this)">${pct(ra.lcNewPct)}</td><td>% of lease value</td></tr>
-      <tr class="input" data-bk-key="lcRenewalPct"><td class="rowlabel">LC - Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('lcRenewalPct',this)">${pct(ra.lcRenewalPct)}</td><td>% of lease value</td></tr>
+    <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Rollover Assumptions - Global (blank = none assumed: expiring leases roll at market with no downtime, tenant improvements or commissions)</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th></tr></thead><tbody>
+      <tr class="input" data-bk-key="renewalProbability"><td class="rowlabel">Renewal Probability</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('renewalProbability',this)">${raV('renewalProbability',pct)}</td><td>%</td></tr>
+      <tr class="input" data-bk-key="downtimeMonths"><td class="rowlabel">Downtime on Non-Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('downtimeMonths',this)">${raV('downtimeMonths',x=>x)}</td><td>months</td></tr>
+      <tr class="input" data-bk-key="tiNewPerSF"><td class="rowlabel">TI - New Lease</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('tiNewPerSF',this)">${raV('tiNewPerSF',x=>x)}</td><td>$/SF</td></tr>
+      <tr class="input" data-bk-key="tiRenewalPerSF"><td class="rowlabel">TI - Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('tiRenewalPerSF',this)">${raV('tiRenewalPerSF',x=>x)}</td><td>$/SF</td></tr>
+      <tr class="input" data-bk-key="lcNewPct"><td class="rowlabel">LC - New Lease</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('lcNewPct',this)">${raV('lcNewPct',pct)}</td><td>% of lease value</td></tr>
+      <tr class="input" data-bk-key="lcRenewalPct"><td class="rowlabel">LC - Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('lcRenewalPct',this)">${raV('lcRenewalPct',pct)}</td><td>% of lease value</td></tr>
     </tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Lease Dates &amp; Per-Unit Override</caption><thead><tr><th class="rowlabel-h">Unit / Tenant</th><th>Lease Start</th><th>Lease End</th><th>Status</th><th>Rollover Override (JSON, blank = use global)</th><th>Recovery Gate</th><th>Recovery Override (force active)</th></tr></thead><tbody>${leaseRows}</tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Rollover Schedule Preview - effective assumptions per unit, read-only</caption><thead><tr><th class="rowlabel-h">Unit</th><th>SF</th><th>Rolls</th><th>Renewal Prob.</th><th>Downtime</th><th>TI New/Renew</th><th>LC New/Renew</th><th>Source</th></tr></thead><tbody>${schedule || '<tr><td colspan="8" class="rowlabel">No occupied unit has a Lease End date set yet.</td></tr>'}${vacantAtAcq}</tbody></table></div>
@@ -3395,7 +3399,7 @@ window.bkLeaseMarket = function(s){
   if(!Array.isArray(M.recoverable)) M.recoverable = DEF_POOL;
   if(!Array.isArray(M.cpiIndex)) M.cpiIndex = [];
   M.g = has(M.growth) ? Number(M.growth) : num(s && s.commercialRentGrowth);
-  var RA = Object.assign({ renewalProbability:0.65, downtimeMonths:6, tiNewPerSF:20, tiRenewalPerSF:5, lcNewPct:0.06, lcRenewalPct:0.03 }, (s && s.rolloverAssumptions) || {});
+  var RA = Object.assign((s && s.rolloverAssumptions && typeof s.rolloverAssumptions === 'object') ? { renewalProbability:0, downtimeMonths:0, tiNewPerSF:0, tiRenewalPerSF:0, lcNewPct:0, lcRenewalPct:0 } : { renewalProbability:0.65, downtimeMonths:6, tiNewPerSF:20, tiRenewalPerSF:5, lcNewPct:0.06, lcRenewalPct:0.03 }, (s && s.rolloverAssumptions) || {});   /* a deal's own assumptions: whatever is blank is none; only a deal with no assumptions object at all falls back to the old defaults */
   return { M:M, RA:RA };
 };
 /* growth of market rent: the same rule as the engine's other streams (continuous monthly, or a step each year from year 2), with optional year-by-year rates */
@@ -7648,7 +7652,7 @@ window.bkClearTemplateValues = function(){
    (blankStructure:true). The named template still applies to programmatic callers, so every saved deal and every audit deck keeps its own terms. With no GP, the LP takes every tier. */
 window.bkCreateNewDeal = function(opts){
   opts = opts || {};
-  if(opts.blankStructure){ var given = opts; opts = Object.assign({ gpShare:0, t2LP:1, t3LP:1, t4LP:1 }, opts, { template:'Blank' }); ['closingCostsPct', 'closingPct', 'saleCostPct', 'acqFeePct', 'acquisitionFeePct'].forEach(function(k){ if(given[k] === undefined || given[k] === null || given[k] === '') delete opts[k]; }); }   /* terms the caller supplies (an import) are kept; only what nobody supplied starts empty */
+  if(opts.blankStructure){ var given = opts; opts = Object.assign({ gpShare:0, t2LP:1, t3LP:1, t4LP:1, rolloverAssumptions:{} }, opts, { template:'Blank' }); ['closingCostsPct', 'closingPct', 'saleCostPct', 'acqFeePct', 'acquisitionFeePct'].forEach(function(k){ if(given[k] === undefined || given[k] === null || given[k] === '') delete opts[k]; }); }   /* terms the caller supplies (an import) are kept; only what nobody supplied starts empty */
   var blank = {
     dealId       : opts.dealId       || '',
     name         : opts.name         || '',

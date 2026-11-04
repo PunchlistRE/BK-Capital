@@ -26,7 +26,7 @@ window.bkLeaseMarket = function(s){
   if(!Array.isArray(M.recoverable)) M.recoverable = DEF_POOL;
   if(!Array.isArray(M.cpiIndex)) M.cpiIndex = [];
   M.g = has(M.growth) ? Number(M.growth) : num(s && s.commercialRentGrowth);
-  var RA = Object.assign({ renewalProbability:0.65, downtimeMonths:6, tiNewPerSF:20, tiRenewalPerSF:5, lcNewPct:0.06, lcRenewalPct:0.03 }, (s && s.rolloverAssumptions) || {});
+  var RA = Object.assign((s && s.rolloverAssumptions && typeof s.rolloverAssumptions === 'object') ? { renewalProbability:0, downtimeMonths:0, tiNewPerSF:0, tiRenewalPerSF:0, lcNewPct:0, lcRenewalPct:0 } : { renewalProbability:0.65, downtimeMonths:6, tiNewPerSF:20, tiRenewalPerSF:5, lcNewPct:0.06, lcRenewalPct:0.03 }, (s && s.rolloverAssumptions) || {});   /* a deal's own assumptions: whatever is blank is none; only a deal with no assumptions object at all falls back to the old defaults */
   return { M:M, RA:RA };
 };
 /* growth of market rent: the same rule as the engine's other streams (continuous monthly, or a step each year from year 2), with optional year-by-year rates */
