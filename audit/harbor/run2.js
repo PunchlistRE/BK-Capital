@@ -20,7 +20,7 @@ const { chromium } = require('playwright'); const path = require('path'); const 
     R.chk = (() => { try { const c = bkWaterfallChecks(); return { hurdles: c.hurdles.map(h => [h.name, h.status, h.detail]), other: c.other.map(h => [h.label, h.status, h.detail.slice(0, 200)]) }; } catch (e) { return e.message; } })();
     R.wf = (() => { try { return bkWaterfallSummary(); } catch (e) { return e.message; } })();
     R.readiness = (() => { try { const r = bkDealReadiness(); return { state: r.state, missing: r.missing.map(m => m.key) }; } catch (e) { return e.message; } })();
-    // alternative: refinance at stabilisation (month 43) — 65% LTV, 6.25%, 30 yr, 1% fee, retained
+    // alternative: refinance at stabilization (month 43) — 65% LTV, 6.25%, 30 yr, 1% fee, retained
     const run = (ov, extra) => bkRunWith(ov, () => Object.assign(metrics(), extra ? extra() : {}));
     const stabLeft = 0;
     R.refi = bkRunWith({ refiAtStab: 1, permLTV: 0.65, permRate: 0.0625, permAmort: 30, permOrigFee: 0.01, permDSCR: 0, holdYears: 4 }, () => { const t = bkDevTakeoutV11(); return Object.assign(metrics(), { permLoan: t.permLoan, permFee: t.permFee, conPayoff: t.conPayoff, refiProceeds: t.refiProceeds, refiShortfall: t.refiShortfall, permPmt: t.permPmt, bindingTest: t.bindingTest, sizingNOI: t.noi, stabVal: t.stabVal, ltvCap: t.ltvCap, annualDS: t.permPmt * 12, dscrAtRefi: t.permPmt ? t.noi / (t.permPmt * 12) : null, debtYield: t.permLoan ? t.noi / t.permLoan : null, ltv: t.stabVal ? t.permLoan / t.stabVal : null, residualValue: t.stabVal }); });
