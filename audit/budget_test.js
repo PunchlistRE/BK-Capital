@@ -122,6 +122,14 @@ const V = require(path.join(__dirname, 'devdeal.js')), A = require(path.join(__d
   check('the Budget panel has a Gantt task select on every line, the tied line\'s start and months are read-only, and it says how many lines follow a task', pn.sel === 2 && pn.opts > 3 && pn.dis === 2 && pn.txt, JSON.stringify(pn));
   await p.close();
 
+  /* Gantt first: type a dollar amount on a task */
+  p = await open(V);
+  const gf = await p.evaluate(() => { const s = bkLoad(); s.devBudgetMode = 'LINES'; s.budgetLines = [{ cls: 'hard', name: 'Seed', amount: 1000000, start: '', len: '', task: '' }]; bkSave(s); bkDevGanttMode('tasks'); const T = bkLoad().devGantt.tasks, i = T.findIndex(k => k.group === 'construction' && /Foundations/i.test(k.name)), k = T[i]; const before = { hard: bkDevV09().hard, soft: bkDevV09().soft };
+    bkDevTaskCost(i, '$750,000'); const L = bkLoad().budgetLines, nl = L[L.length - 1], sc = bkDevGanttSchedule(bkLoad(), bkDevV09()), st = sc.tasks.filter(q => q.id === k.id)[0], pl = bkDevBudgetPlan(bkDevV09(), bkLoad()), r = pl.rows.filter(q => q.task === k.id)[0];
+    return { name: k.name, line: { cls: nl.cls, name: nl.name, amount: nl.amount, task: nl.task === k.id }, win: r ? [r.start, r.end] : null, taskWin: [st.ES, st.EF], hard: bkDevV09().hard, hard0: before.hard }; });
+  check('Gantt first: typing $750,000 on the "' + gf.name + '" task adds a hard-cost budget line named after the task, tied to it, sitting in its window; the hard total goes up by that amount', gf.line.cls === 'hard' && gf.line.name === gf.name && gf.line.amount === 750000 && gf.line.task && gf.win && gf.win[0] === gf.taskWin[0] && gf.win[1] === gf.taskWin[1] && Math.abs(gf.hard - gf.hard0 - 750000) < 0.5, JSON.stringify(gf));
+  await p.close();
+
   /* an acquisition deck is untouched, and a deal on the old methods is byte-for-byte what it was */
   p = await open(A); const k = await p.evaluate(() => { showSheet('Dev Schedule'); return { dev: !!bkDevV09().isDev, rows: bkDevV09().budgetRows }; }); check('an acquisition deal has no development budget lines', k.dev === false && !k.rows, JSON.stringify(k)); await p.close();
   p = await open(V); const m = await p.evaluate(() => { const x = bkDevV09(); return { mode: x.budgetMode, rows: x.budgetRows, hard: Math.round(x.hard), soft: Math.round(x.soft) }; }); check('a deal on the one-total method is unchanged (no budget rows, same hard and soft)', m.mode === 'SOURCE' && !m.rows && m.hard === 20299756 && m.soft === 5200244, JSON.stringify(m)); check('no page errors', p.errs.length === 0, p.errs.join('|')); await p.close();
