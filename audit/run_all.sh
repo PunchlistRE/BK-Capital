@@ -75,6 +75,7 @@ echo "== Refinancing Analysis (sizing, payoff and proceeds vs an independent mod
 echo "== Stage D (Deal Underwrite tab bar; input / calculated / linked / N/A / attention cell convention on every input sheet)"; node audit/stageD_test.js index.html | tail -1
 echo "== Import tab (one tab; content-driven reader on unseen layouts, development pro forma + OM, teaching, old readers inside the tab)"; node audit/import_hub_test.js index.html | tail -1
 echo "== Development budget (line items and $ per SF feed one hard / soft total, the draws, the Gantt and Sources & Uses; import reads the budget table)"; node audit/budget_test.js index.html
+echo "== Work breakdown (summary tasks roll up dates, months, cost and % complete and move no number; group by cost class; fold, outline numbers, progress shading; task table, Budget panel, printable summary)"; node audit/wbs_test.js index.html
 echo "== Funding ties (Sources & Uses, guide, Debt, Funding, Returns share one calculation; ALL INPUTS TIE; Harbor + audit development deal + acquisition deal)"; node audit/tie_test.js index.html
 echo "== Import tab routing (an OM with a rent roll page stays an OM; a plain rent roll stays a rent roll)"; node audit/import_route_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1

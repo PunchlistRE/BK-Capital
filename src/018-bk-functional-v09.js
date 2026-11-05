@@ -163,7 +163,7 @@ function bkDevBudgetBuild(s,gsf,units){
 function bkDevBudgetPlan(x,s){
   const rows=x.budgetRows||[], LC=bkDevLifecycleV13(x), byMo={hard:{},soft:{},all:{}}, out=[], n=v=>{v=Number(v);return isFinite(v)?v:0};
   /* a line tied to a Gantt task sits where that task sits (its earliest start and its duration), so moving the task, or changing what it follows, moves the cash */
-  let byId=null; if(rows.some(r=>r.task)&&typeof window.bkDevGanttOn==='function'&&window.bkDevGanttOn(s)){ try{ const sc=window.bkDevGanttSchedule(s,x); byId={}; (sc.tasks||[]).forEach(tk=>{byId[tk.id]=tk;}); }catch(e){ byId=null; } }
+  let byId=null; if(rows.some(r=>r.task)&&typeof window.bkDevGanttOn==='function'&&window.bkDevGanttOn(s)){ try{ const sc=window.bkDevGanttSchedule(s,x); byId={}; (sc.tasks||[]).forEach(tk=>{ if(!tk.summary) byId[tk.id]=tk; }); }catch(e){ byId=null; } }
   rows.forEach(r=>{
     const side=(r.cls==='hard'||r.cls==='cont')?'hard':'soft'; let start=r.start, len=r.len, fromTask=false; const tk=(byId&&r.task)?byId[r.task]:null;
     if(tk&&n(tk.ES)>0){ start=Math.round(tk.ES); len=Math.max(1,Math.round(tk.EF-tk.ES+1)); fromTask=true; }
