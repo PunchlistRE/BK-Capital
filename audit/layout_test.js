@@ -97,6 +97,25 @@ const A = require(path.join(__dirname, 'deal.js'));
   const du = await d.evaluate(() => { const bar = document.querySelector('#viewport .bk-dui'); if (!bar) return null; const tabs = [...bar.querySelectorAll('.bk-dt')].filter(x => x.getClientRects().length), r = bar.getBoundingClientRect();
     return { names: tabs.map(x => x.querySelector('.nm').textContent.trim()), rows: new Set(tabs.map(x => Math.round(x.getBoundingClientRect().top))).size, on: bar.querySelectorAll('.bk-dt.on').length, h: Math.round(r.height), pos: getComputedStyle(bar).position, sel: tabs.filter(x => x.getAttribute('aria-selected') === 'true').length }; });
   check('Deal Underwrite tabs: the group tabs that apply (six on an acquisition: no Development) on one row, one open, pinned under the header and not a tall block', du && du.names.length === 6 && !du.names.includes('Development') && du.rows === 1 && du.on === 1 && du.sel === 1 && du.pos === 'sticky' && du.h < 60, JSON.stringify(du)); await d.close();
+  /* November 2026 review (audit/qa/SHEET_REVIEW.md): chart cards keep their charts inside the border; long sidebar values wrap */
+  const d2 = await open(1280);
+  for (const [pg, w] of [[d2, 1280], [m, 390]]) {
+    const over = [];
+    for (const sh of ['Operating Underwrite', 'Property CF', 'Returns', 'Source Data']) { await show(pg, sh, 900);
+      over.push(...(await pg.evaluate((sh) => { const o = []; document.querySelectorAll('#viewport .pf-card > svg').forEach((e) => { const c = e.parentElement.getBoundingClientRect(), r = e.getBoundingClientRect(); if (r.right > c.right + 1) o.push(sh + ' chart +' + Math.round(r.right - c.right) + 'px'); });
+        document.querySelectorAll('.metric-row .v').forEach((e) => { const card = e.closest('.card'); if (!card || !e.getClientRects().length) return; const c = card.getBoundingClientRect(), r = e.getBoundingClientRect(); if (r.right > c.right + 1) o.push(sh + ' sidebar value +' + Math.round(r.right - c.right) + 'px'); }); return o; }, sh))); }
+    check((w < 600 ? 'phone' : 'desktop') + ': charts stay inside their cards and long sidebar values wrap inside theirs', over.length === 0, over.slice(0, 4).join(', '));
+  }
+  /* phone: the case switcher, the save status (in full) and undo are all on screen; a stacked row keeps its action button whole; a chart wider than the screen says it scrolls */
+  await show(m, 'Model Checks', 900);
+  const ph = await m.evaluate(() => { const W = document.documentElement.clientWidth, sv = document.querySelector('.bk-flow .bk-save'), un = document.querySelector('.bk-flow [data-bk-undo]');
+    const btn = [...document.querySelectorAll('#viewport table.bk-m-stack button.status-chip')][0];
+    return { save: sv ? { right: sv.getBoundingClientRect().right, cut: sv.scrollWidth > sv.clientWidth + 1 } : null, undo: un ? un.getBoundingClientRect().right : null, W, btn: btn ? btn.scrollWidth - btn.clientWidth : null }; });
+  check('phone: the save status shows in full and undo is on screen, not scrolled off the right edge', ph.save && !ph.save.cut && ph.save.right <= ph.W && ph.undo !== null && ph.undo <= ph.W, JSON.stringify(ph));
+  check('phone: a stacked findings row keeps its action button whole (Model Checks)', ph.btn !== null && ph.btn <= 1, JSON.stringify(ph));
+  await show(m, 'Sensitivity', 1200);
+  const sx = await m.evaluate(() => [...document.querySelectorAll('#viewport .bk-sx-svgwrap')].map((w) => ({ over: w.scrollWidth > w.clientWidth + 2, cue: w.classList.contains('bk-scrollable') && getComputedStyle(w, '::before').content.indexOf('Scroll sideways') >= 0 })));
+  check('phone: each Sensitivity chart wider than the screen says it scrolls sideways', sx.length > 0 && sx.every((x) => !x.over || x.cue), JSON.stringify(sx));
   check('phone: no page errors', m.errs.length === 0, m.errs.slice(0, 2).join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
