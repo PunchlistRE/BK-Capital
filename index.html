@@ -16122,7 +16122,7 @@ window.bkIsEditing=function(node){
   }
   function normalize(root){
     root=root||document;
-    root.querySelectorAll('#viewport table').forEach(function(t){
+    root.querySelectorAll('#viewport table:not(.rp-tbl)').forEach(function(t){   /* report tables (src/156) follow the Argus convention: no currency symbol in the figure columns, the header says Amounts in USD */
       var heads=Array.from(t.querySelectorAll('thead th')).map(x=>(x.textContent||'').trim().toLowerCase());
       var uidx=heads.findIndex(h=>/^(units?|basis|units\s*\/\s*basis)$/.test(h));
       if(uidx<0 && heads[0]==='field' && heads[1]==='value' && heads.length>=3) uidx=2;
