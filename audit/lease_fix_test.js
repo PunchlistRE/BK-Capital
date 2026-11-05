@@ -104,8 +104,8 @@ const deal = (o) => Object.assign({}, A, { commLeaseModel: true, commercialRentG
   check('the bridge sums exactly: potential + vacancy = collected retail income, every year', br.lines.every(L => near(L.commGross + L.commVac, L.comm, 1e-9)));
   check('free rent and credit loss are separated out of vacancy', y3.commFree < 0 && y3.commCredit < 0 && near(y3.commCredit, -0.02 * (y3.comm / 0.98), 1e-9), `free ${y3.commFree.toFixed(0)}, credit ${y3.commCredit.toFixed(0)}`);
   const r3 = k => br.rows[k] ? br.rows[k][2] : NaN;
-  check('Cash Flow report: the retail potential row shows full-occupancy potential', Math.abs(r3('Gross Potential Rent and Recoveries - Retail') - y3.commGross) < 1, `${r3('Gross Potential Rent and Recoveries - Retail')}`);
-  check('Cash Flow report: retail credit loss is in the Credit Loss row and free rent in Concessions', Math.abs(r3('Credit Loss') - (y3.bad + y3.commCredit)) < 1 && Math.abs(r3('Concessions') - (y3.concess + y3.commFree)) < 1);
+  check('Cash Flow report: the retail potential row shows full-occupancy potential', Math.abs(r3('Potential Base Rent and Recoveries - Retail') - y3.commGross) < 1, `${r3('Potential Base Rent and Recoveries - Retail')}`);
+  check('Cash Flow report: retail credit loss is in the Credit Loss row and free rent in Free Rent', Math.abs(r3('Credit Loss') - (y3.bad + y3.commCredit)) < 1 && Math.abs(r3('Free Rent') - (y3.concess + y3.commFree)) < 1);
   check('Cash Flow report: effective gross revenue still equals the engine, every year', br.egi.every((v, i) => Math.abs(br.rows['Effective Gross Revenue'][i] - v) < 1));
 
   /* 7. Occupancy weighting: retail dark at closing that leases up later carries its weight in occupancy-variable expenses */
@@ -129,7 +129,7 @@ const deal = (o) => Object.assign({}, A, { commLeaseModel: true, commercialRentG
 
   /* 10. The Cash Flow report reuses the cash flow's leasing costs instead of recomputing them */
   const cf = await p.evaluate(d => { bkCreateNewDeal(d); const a = bkAnnualCF(); showSheet('Cash Flow Report');
-    const row = [...document.querySelectorAll('#rp-cashflow tbody tr')].find(r => /^Leasing Costs/.test(r.cells[0].textContent));
+    const row = [...document.querySelectorAll('#rp-cashflow tbody tr')].find(r => r.cells[0].textContent.trim() === 'Total Leasing Costs');
     const y1 = -a.lease.ti.slice(0, 12).concat(a.lease.lc.slice(0, 12)).reduce((t, v) => t + v, 0), shown = Number(row.cells[1].textContent.replace(/[$,()\s]/g, '')) * (/\(/.test(row.cells[1].textContent) ? -1 : 1);
     return { y1, shown }; }, deal({ leases: [T({ end: '2027-06-30' })] }));
   check('Cash Flow report: the leasing-cost row equals the cash flow\'s own TI and commissions', Math.abs(cf.shown - cf.y1) < 1, `${cf.shown} vs ${cf.y1.toFixed(0)}`);
