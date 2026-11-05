@@ -328,7 +328,7 @@ const MUTS = [
   const probe = (p, ov) => p.evaluate((ov) => window.bkRunWith(ov, window.__fsProbe), ov);
   const report = (tag, sc, R, facts, P) => {
     const bad = R.filter((r) => !r.ok); nScen++; checks += R.length; fails += bad.length;
-    const rec = { deal: tag, name: sc.name, reg: sc.reg || null, invalid: !!sc.invalid, checks: R.length, failed: bad.map((r) => r.id), tieOk: P.tie.ok, failedTies: P.F.ties.filter((q) => !q[1]).map((q) => q[0]), integrityHard: P.hard, allInputsFailed: P.tie.failed, sourcesLessUses: num(P.F.totalSources) - num(P.F.totalUses), equityShown: P.F.equity, equityEngine: P.F.engineEquity, contributed: P.m.contrib };
+    const rec = { deal: tag, name: sc.name, reg: sc.reg || null, invalid: !!sc.invalid, checks: R.length, failed: bad.map((r) => r.id), tieOk: P.tie.ok, failedTies: P.F.ties.filter((q) => !q[1]).map((q) => q[0]), integrityHard: P.hard, allInputsFailed: P.tie.failed, sourcesLessUses: num(P.F.totalSources) - num(P.F.totalUses), equityShown: P.F.equity, equityEngine: P.F.engineEquity, contributed: P.m.contrib, distributed: P.m.dist, irr: P.m.irr, moic: P.m.moic };
     records.push(rec);
     console.log((bad.length ? 'FAIL ' : 'PASS ') + tag + ' | ' + sc.name + (sc.reg ? ' [regression ' + sc.reg + ']' : '') + (sc.invalid ? ' [invalid configuration]' : '') + ' | ' + (R.length - bad.length) + '/' + R.length + ' checks' + (bad.length ? ' | ' + bad.map((r) => r.id + (r.detail ? ' (' + r.detail.slice(0, 220) + ')' : '')).join(' ;; ') : ''));
     return bad.length;
