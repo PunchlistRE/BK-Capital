@@ -62,3 +62,15 @@ html[data-theme="dark"] body #viewport .rp .rp-tbl tr.sec td{ color:#9fcdf5; }
   html body #viewport .rp .rp-tbl tbody td:first-child, html body #viewport .rp .rp-tbl thead th:first-child{ white-space:normal; min-width:120px; max-width:150px; }
   html body #viewport .rp .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:14px; }
 }
+/* Sources and Uses Report: the difference row under the totals is quiet when it is zero and red when it is not */
+html body #viewport .rp .rp-tbl tr.dim td{ font-size:11px; font-style:italic; color:var(--ae-dim); }
+html body #viewport .rp .rp-tbl tr.rp-bad td{ color:var(--bk-attn-red,#c0392b) !important; font-weight:700; }
+html body #viewport .rp .rp-tbl td.rp-base{ font-weight:700; background:var(--bk-key-fill) !important; box-shadow:inset 0 0 0 1px var(--bk-key-rule); }
+/* Present Value: the long column heads wrap (as Argus's do) instead of running into each other */
+html body #viewport .rp .rp-tbl.rp-pv thead th{ white-space:normal !important; line-height:1.25; vertical-align:bottom; }
+html body #viewport .rp .rp-tbl.rp-pv thead th.r{ min-width:96px; }
+/* Lease Audit: the two term tables have many short columns, so they size to their content (heads wrap, figures never touch) instead of the equal columns the year-by-year statements use */
+html body #viewport .rp .rp-tbl.rp-auto{ table-layout:auto; }
+html body #viewport .rp .rp-tbl.rp-auto thead th{ white-space:normal !important; line-height:1.25; vertical-align:bottom; }
+html body #viewport .rp .rp-tbl.rp-auto thead th.r{ min-width:78px; }
+html body #viewport .rp .rp-tbl.rp-auto tbody td{ white-space:nowrap; }
