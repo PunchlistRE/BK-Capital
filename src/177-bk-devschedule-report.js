@@ -14,7 +14,7 @@ function money(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs
 function mil(v){ return !isFinite(v) ? '—' : '$' + (v / 1e6).toFixed(2) + 'M'; }
 function pc(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 function mo(n){ return n + (n === 1 ? ' month' : ' months'); }
-var W = 979, H = 736, NAVY = '#14283d', GOLD = '#2f6fb6', GREY = '#6b7a89', LINE = '#d3dae2', BG = '#f3f6f9';
+var W = 979, H = 736, NAVY = '#14283d', GOLD = '#b8892b', GREY = '#6b7a89', LINE = '#d3dae2', BG = '#f3f6f9';
 
 var CSS = '#bk-sr{position:fixed;inset:0;z-index:2300;background:#58636f;overflow:auto;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:' + NAVY + '}'
  + '#bk-sr .sr-bar{position:sticky;top:0;z-index:2;display:flex;gap:10px;align-items:center;padding:10px 16px;background:#14283d;color:#fff}#bk-sr .sr-bar b{font-size:14px}#bk-sr .sr-bar .sp{flex:1}'
