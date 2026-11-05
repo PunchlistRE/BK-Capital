@@ -1,0 +1,25 @@
+/* FIELD WIDTHS (src/188): one width per kind of value box. s = a percent or a small count, m = a dollar amount, a number or a date, l = text, c = a choice (a drop-down). Display only. */
+:root{ --bk-w-s:84px; --bk-w-m:128px; --bk-w-l:240px; --bk-w-c:300px; --bk-fh:30px; }
+html body #viewport [data-bk-w]{ box-sizing:border-box; }
+html body #viewport [data-bk-w="s"]{ width:var(--bk-w-s) !important; min-width:var(--bk-w-s) !important; max-width:var(--bk-w-s) !important; }
+html body #viewport [data-bk-w="m"]{ width:var(--bk-w-m) !important; min-width:var(--bk-w-m) !important; max-width:var(--bk-w-m) !important; }
+html body #viewport [data-bk-w="l"]{ width:var(--bk-w-l) !important; min-width:var(--bk-w-l) !important; max-width:var(--bk-w-l) !important; }
+html body #viewport [data-bk-w="c"]{ width:var(--bk-w-c) !important; min-width:var(--bk-w-c) !important; max-width:var(--bk-w-c) !important; }
+/* label-and-value forms: every box the same height, calculated values included, numbers on the right and text on the left */
+html body #viewport .ae-form [data-bk-w]{ height:var(--bk-fh); }
+html body #viewport .ae-form input[data-bk-w], html body #viewport .ae-form select[data-bk-w]{ padding-top:0; padding-bottom:0; }
+html body #viewport .ae-form span.ae-ro[data-bk-w]{ display:inline-flex; align-items:center; justify-content:flex-end; padding:0 8px; white-space:nowrap; overflow:hidden; }
+html body #viewport .ae-form span.ae-ro[data-bk-w="l"]{ justify-content:flex-start; }
+/* text reads from the left in a box of its own kind */
+html body #viewport .ae-form input[data-bk-w="l"], html body #viewport table.ae-grid td input[data-bk-w="l"]{ text-align:left !important; }
+/* a percent box is narrower than a dollar box, but the unit written beside it starts in the same place */
+html body #viewport .ae-form > div > [data-bk-w="s"]{ margin-right:calc(var(--bk-w-m) - var(--bk-w-s)); }
+/* editor grids: a column is as wide as its box, so the table is as wide as its boxes instead of stretching across a wide screen */
+html body #viewport table.ae-grid[data-bk-fit]{ width:auto; }
+/* the year-by-year table names its first column as 1%, which makes an auto-width table fill its box; a fixed first column lets it be as wide as its boxes */
+html body #viewport table.ae-grid.ae-curves[data-bk-fit] th:first-child, html body #viewport table.ae-grid.ae-curves[data-bk-fit] td:first-child{ width:170px; }
+html body #viewport table.ae-grid td[data-bk-wc="s"]{ width:var(--bk-w-s); }
+html body #viewport table.ae-grid td[data-bk-wc="m"]{ width:var(--bk-w-m); }
+html body #viewport table.ae-grid td[data-bk-wc="l"]{ width:var(--bk-w-l); }
+html body #viewport table.ae-grid td[data-bk-wc="c"]{ width:var(--bk-w-c); }
+@media (max-width:760px){ html body #viewport [data-bk-w]{ max-width:100% !important; } }
