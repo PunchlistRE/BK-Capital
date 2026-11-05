@@ -263,7 +263,7 @@ rule('dev.no-construction', 'ERROR', 'Development', 'Development', function(s){
   if(isDev(s) && !(num(s.constructionMonths) > 0)) return { msg:'Development deal with a construction period of zero months.', why:'There is nothing to build: no costs are drawn on a schedule, no construction interest accrues, and lease-up starts at closing. Set the construction months, or change the deal type to Acquisition.' };
 });
 rule('dev.con-loan-zero-rate', 'ERROR', 'Development', 'Development', function(s){
-  if(isDev(s) && num(s.conLTC) > 0 && !(num(s.conRate) > 0)) return { msg:'A construction loan is sized (' + pc(num(s.conLTC), 0) + ' LTC) with a 0% interest rate.', why:'Capitalized construction interest, which is a major cost line, would be zero. Total cost, the loan commitment and the equity requirement are all understated.' };
+  if(isDev(s) && num(s.conLTC) > 0 && !(num(s.conRate) > 0)) return { msg:'A construction loan is sized (' + pc(num(s.conLTC), 0) + ' LTC) with a 0% interest rate.', why:'Capitalized construction interest, which is a major cost line, would be zero. Total cost, the loan commitment and the closing equity are all understated.' };
 });
 rule('dev.no-leaseup', 'WARN', 'Development', 'Development', function(s){
   if(isDev(s) && num(s.constructionMonths) > 0 && !(num(s.leaseupMonths) > 0)) return { msg:'No lease-up period after construction.', why:'The building is assumed fully income-producing the day it is completed. New buildings take months to fill; this overstates early NOI, skips the lease-up operating deficit and moves stabilization (and the refinance) too early.' };

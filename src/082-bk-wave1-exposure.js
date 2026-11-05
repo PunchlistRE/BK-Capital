@@ -364,12 +364,14 @@ extend('Liquidity','w1Liquidity', function(o){
   var totalCalled = v.reduce(function(t,y){return t + (y<0 ? -y : 0);},0);
   var totalDist   = v.reduce(function(t,y){return t + (y>0 ?  y : 0);},0);
 
+  var FSL = null; try { FSL = (typeof bkFundingSummary==='function') ? bkFundingSummary() : null; } catch(e){}
   var summary = wrapTable('Funding &amp; Liquidity Summary - from the monthly equity cash flow',
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
-      '<tr>'+lbl('Total Equity Called')+val(money(totalCalled))+txt('Sum of all negative monthly equity flows')+'</tr>'
+      '<tr>'+lbl('Net capital calls')+val(money(totalCalled))+txt('Sum of the months with a net equity outflow (a month\'s distributions are netted against its calls)')+'</tr>'
+    + (FSL && FSL.measures ? '<tr>'+lbl('Total contributed equity')+val(money(FSL.measures.totalContributedEquity.amount))+txt('Gross: closing equity plus every capital call after closing, not netted against distributions; the capital the returns and the waterfall use')+'</tr>' : '')
     + '<tr class="grandtotal">'+lbl('Peak Net Equity Outstanding')+val(money(peak))+txt('Maximum of calls less distributions, at any month')+'</tr>'
-    + '<tr>'+lbl('Month of Peak Equity Outstanding')+val('Month '+intf(peakMo))+txt('Year '+intf(Math.ceil(peakMo/12)))+'</tr>'
-    + '<tr>'+lbl('Months With a Capital Call')+val(intf(callMonths))+txt('Months with a net equity outflow')+'</tr>'
+    + '<tr>'+lbl('Month of Peak Net Equity Outstanding')+val('Month '+intf(peakMo))+txt('Year '+intf(Math.ceil(peakMo/12)))+'</tr>'
+    + '<tr>'+lbl('Months With a Net Capital Call')+val(intf(callMonths))+txt('Months with a net equity outflow')+'</tr>'
     + '<tr>'+lbl('Final Capital-Call Month')+val(lastCall?('Month '+intf(lastCall)):'-')+txt('Last month requiring equity')+'</tr>'
     + '<tr>'+lbl('First Distribution Month')+val(firstDist?('Month '+intf(firstDist)):'-')+txt('First month with a net equity inflow')+'</tr>'
     + '<tr>'+lbl('Months of Negative Carry')+val(intf(negCarry))+txt('Months before the first distribution')+'</tr>'
@@ -396,7 +398,7 @@ extend('Liquidity','w1Liquidity', function(o){
          + series.map(function(z){return val(money(z));}).join('')+'</tr>';
   }
   var annual = wrapTable('Annual Investor Cash Flow &amp; Equity Outstanding', head,
-      row('Capital Calls', calls)
+      row('Net Capital Calls', calls)
     + row('Distributions', dists)
     + row('Net Equity Cash Flow', net, 'grandtotal')
     + '<tr>'+lbl('Cumulative Net Equity Cash Flow')+val('-')+cumEnd.map(function(z){return val(money(z));}).join('')+'</tr>'
@@ -405,12 +407,13 @@ extend('Liquidity','w1Liquidity', function(o){
   /* funding timing / source, where the engine already provides it */
   var src = '';
   try {
-    var d = bkDebt();
-    src = wrapTable('Funding at Close - source split',
+    var F = bkFundingSummary(), isDevL = !!F.dev;   /* the closing sources, from the shared funding calculation, for either deal type (a development deal is financed by the construction facility, not the acquisition loan) */
+    src = wrapTable(isDevL ? 'Funding Plan at Closing - source split' : 'Funding at Close - source split',
       '<tr><th class="rowlabel-h">Source</th><th>Amount</th><th style="text-align:left">Basis</th></tr>',
-        '<tr>'+lbl('Acquisition Loan Funding')+val(money(d.loan))+txt('Sized by '+esc(d.binding||'constraint')+' at close')+'</tr>'
-      + '<tr>'+lbl('Equity Requirement')+val(money(d.equity))+txt('Total basis less loan proceeds')+'</tr>'
-      + '<tr class="grandtotal">'+lbl('Total Funding at Close')+val(money(d.loan+d.equity))+txt('Sources equal uses')+'</tr>');
+        '<tr>'+lbl(isDevL ? 'Construction Facility (draws + capitalized interest)' : 'Acquisition Loan Funding')+val(money(F.loan))+txt(isDevL ? 'Sized by loan to cost or loan to stabilized value; draws follow the equity-first schedule' : 'Sized by '+esc((F.d&&F.d.binding)||'constraint')+' at close')+'</tr>'
+      + (F.reserveDraws>0.5 ? '<tr>'+lbl('Initial Reserves Drawn')+val(money(F.reserveDraws))+txt('Reserves funded at closing and drawn for lease-up or interest')+'</tr>' : '')
+      + '<tr>'+lbl('Closing Equity')+val(money(F.equity))+txt(isDevL ? 'Equity in Sources &amp; Uses, called through the funding schedule' : 'Total basis less loan proceeds')+'</tr>'
+      + '<tr class="grandtotal">'+lbl(isDevL ? 'Total Sources in Sources &amp; Uses' : 'Total Funding at Close')+val(money(F.totalSources))+txt('Sources equal uses')+'</tr>');
   } catch(e){}
 
   o.main = (o.main||'') + summary + annual + src
@@ -473,21 +476,32 @@ extend('Sensitivity','w1Sensitivity', function(o){
 
 /* Returns: forward NOI at exit, debt at sale, LP/GP cross-reference */
 extend('Returns','w1Returns', function(o){
-  var u, d, w;
-  try { u = bkAnnualCF(); } catch(e){ return; }
-  try { d = bkDebt(); } catch(e){}
+  var u, d, w, r, F, s = bkLoad(), dev = /develop/i.test(String(s.dealType||''));
+  try { F = (typeof bkFundingSummary==='function') ? bkFundingSummary() : null; } catch(e){}
+  /* a development deal sells at the end of the development returns schedule (forward NOI over the exit cap, selling costs, the debt actually outstanding): the acquisition engine's figures are not that sale */
+  if(dev){ try { r = bkMonthlyReturns(); } catch(e){ return; } }
+  else { try { u = bkAnnualCF(); } catch(e){ return; } try { d = bkDebt(); } catch(e){} }
   try { w = bkWaterfallV07(); } catch(e){}
-  var s = bkLoad();
-  var body = ''
-    + '<tr>'+lbl('Forward NOI at Exit')+val(money(u.terminalNOI))+txt('Next 12 months of NOI after reserves, from the monthly engine')+'</tr>'
-    + '<tr>'+lbl('Gross Sale Price')+val(money(u.grossSale))+txt('Forward NOI &divide; exit cap '+pct(Number(s.exitCap)))+'</tr>'
-    + '<tr>'+lbl('Cost of Sale')+val(money(-u.saleCost))+txt(pct(Number(s.saleCostPct))+' of gross price')+'</tr>'
-    + '<tr>'+lbl('Net Sale Proceeds')+val(money(u.netSale))+txt('Gross price less cost of sale')+'</tr>';
-  if(d){
-    body += '<tr>'+lbl('Debt Outstanding at Sale')+val(money(d.debtAtSale))+txt('Balance carried to the exit month')+'</tr>'
-          + '<tr>'+lbl('Net Sale Proceeds After Debt Payoff')+val(money(u.netSale-d.debtAtSale))+txt('To equity at exit')+'</tr>'
-          + '<tr>'+lbl('Peak / Initial Equity')+val(money(d.equity))+txt('Total basis less loan proceeds')+'</tr>';
+  var body;
+  if(dev){
+    var last = (r.rows||[])[(r.rows||[]).length-1] || {}, gross = Number(last.grossSale)||0, net = Number(last.sale)||0, debt = Number(last.payoff)||0, exitCap = Number(s.exitCap)||0;
+    body = '<tr>'+lbl('Forward NOI at Exit')+val(money(gross*exitCap))+txt('Next 12 months of NOI after reserves, from the development returns schedule')+'</tr>'
+         + '<tr>'+lbl('Gross Sale Price')+val(money(gross))+txt('Forward NOI &divide; exit cap '+pct(exitCap))+'</tr>'
+         + '<tr>'+lbl('Cost of Sale')+val(money(-(gross-net)))+txt(pct(Number(s.saleCostPct))+' of gross price')+'</tr>'
+         + '<tr>'+lbl('Net Sale Proceeds')+val(money(net))+txt('Gross price less cost of sale')+'</tr>'
+         + '<tr>'+lbl('Debt Repaid at Sale')+val(money(debt))+txt('The balance actually outstanding in the exit month')+'</tr>'
+         + '<tr>'+lbl('Net Sale Proceeds After Debt Payoff')+val(money(net-debt))+txt('To equity at exit')+'</tr>';
+  } else {
+    body = '<tr>'+lbl('Forward NOI at Exit')+val(money(u.terminalNOI))+txt('Next 12 months of NOI after reserves, from the monthly engine')+'</tr>'
+         + '<tr>'+lbl('Gross Sale Price')+val(money(u.grossSale))+txt('Forward NOI &divide; exit cap '+pct(Number(s.exitCap)))+'</tr>'
+         + '<tr>'+lbl('Cost of Sale')+val(money(-u.saleCost))+txt(pct(Number(s.saleCostPct))+' of gross price')+'</tr>'
+         + '<tr>'+lbl('Net Sale Proceeds')+val(money(u.netSale))+txt('Gross price less cost of sale')+'</tr>';
+    if(d) body += '<tr>'+lbl('Debt Outstanding at Sale')+val(money(d.debtAtSale))+txt('Balance carried to the exit month')+'</tr>'
+          + '<tr>'+lbl('Net Sale Proceeds After Debt Payoff')+val(money(u.netSale-d.debtAtSale))+txt('To equity at exit')+'</tr>';
   }
+  /* the two equity measures, by their names: what was paid at closing and what was contributed over the hold */
+  if(F && F.measures) body += '<tr>'+lbl('Closing equity')+val(money(F.measures.closingEquity.amount))+txt(dev ? 'Equity in Sources &amp; Uses, called through the funding schedule' : 'Paid at closing: total basis and fees less loan proceeds')+'</tr>'
+        + '<tr>'+lbl('Total contributed equity')+val(money(F.measures.totalContributedEquity.amount))+txt('Closing equity plus every capital call after closing; the capital the returns and the waterfall use')+'</tr>';
   var keyEcon = wrapTable('Key Economics at Exit',
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>', body);
 
@@ -624,19 +638,23 @@ extend('QA','w1QA', function(o){
 extend('Sources & Uses','w1SourcesUses', function(o){
   var s = bkLoad(), d;
   try { d = bkDebt(); } catch(e){ return; }
+  /* the closing view comes from the shared funding calculation (src/184), so the rate cap premium paid at closing is in both sides and the closing equity is the same figure on every page */
+  var FS = (typeof bkFundingSummary==='function') ? (function(){ try { return bkFundingSummary(); } catch(e){ return null; } })() : null;
   var price = Number(s.purchasePrice)||0;
   var closing = price*Number(s.closingCostsPct||0);
   var acqFee = price*(typeof bkAcqFeePct==='function' ? bkAcqFeePct(s) : Number(s.acqFeePct||0));
-  var uses = price + closing + acqFee + (Number(d.fee)||0);
-  var sources = (Number(d.loan)||0) + (Number(d.equity)||0);
+  var capPrem = Number(s.rateCapCost)||0;
+  var uses = FS ? FS.totalUses : price + closing + acqFee + (Number(d.fee)||0) + capPrem;
+  var sources = FS ? FS.totalSources : (Number(d.loan)||0) + (Number(d.equity)||0) + capPrem;
+  var closingEq = FS ? FS.equity : (Number(d.equity)||0) + capPrem;
   var delta = sources - uses;
   var ok = Math.abs(delta) < 1;
   var units = Number(s.units)||0, gsf = Number(s.gsf)||0;
 
   var checks = wrapTable('Funding Order &amp; Control Checks',
     '<tr><th class="rowlabel-h">Check</th><th>Value</th><th style="text-align:left">Basis</th><th>Status</th></tr>',
-      '<tr>'+lbl('Total Uses')+val(money(uses))+txt('Price + closing + acquisition fee + origination fee')+'<td></td></tr>'
-    + '<tr>'+lbl('Total Sources')+val(money(sources))+txt('Loan proceeds + equity requirement')+'<td></td></tr>'
+      '<tr>'+lbl('Total uses at closing')+val(money(uses))+txt('Price + closing + acquisition fee + origination fee'+(capPrem>0?' + rate cap premium':''))+'<td></td></tr>'
+    + '<tr>'+lbl('Total sources at closing')+val(money(sources))+txt('Loan proceeds + closing equity')+'<td></td></tr>'
     + '<tr class="grandtotal">'+lbl('Sources less Uses')+val(money(delta))+txt('Must reconcile to zero')
       + '<td>'+chip(ok?'pass':'fail', ok?'TIES':'VARIANCE')+'</td></tr>'
     + '<tr>'+lbl('Figures belong to the active deal')+val(esc(s.dealId||'-')+' - '+esc(s.name||''))+txt('Guards against stale cached values')
@@ -646,8 +664,8 @@ extend('Sources & Uses','w1SourcesUses', function(o){
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
       '<tr>'+lbl('Loan to Value')+val(pct(d.ltv))+txt('Against '+window.bkLtvBasisLabel(d.s||bkLoad(), true))+'</tr>'
     + '<tr>'+lbl('Loan to Cost')+val(pct(d.ltc))+txt('Against acquisition basis')+'</tr>'
-    + '<tr>'+lbl('Equity as % of Total Uses')+val(uses?pct(d.equity/uses):'-')+txt('Equity requirement &divide; total uses')+'</tr>'
-    + '<tr>'+lbl('Peak Equity Requirement')+val(money(d.equity))+txt('Funded at close for an acquisition')+'</tr>'
+    + '<tr>'+lbl('Closing equity as % of total uses')+val(uses?pct(closingEq/uses):'-')+txt('Closing equity &divide; total uses at closing')+'</tr>'
+    + '<tr>'+lbl('Closing equity')+val(money(closingEq))+txt('Paid at closing for an acquisition; capital called after closing is shown separately')+'</tr>'
     + '<tr>'+lbl('Loan per Unit')+val(units?money(d.loan/units):'-')+txt(units?intf(units)+' units':'No unit count')+'</tr>'
     + '<tr>'+lbl('Loan per SF')+val(gsf?money(d.loan/gsf):'-')+txt(gsf?intf(gsf)+' GSF':'No GSF')+'</tr>');
 
