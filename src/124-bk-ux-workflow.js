@@ -572,9 +572,37 @@ function ribbon(frame, sheet){
   var gs = tab ? tab.groups.map(function(id){ return GROUPS.find(function(x){ return x.id === id; }); }).filter(function(x){ return x && !x.hidden && (x.id !== 'dev' || dev || x.sheets.indexOf(sheet) > -1); }) : [];
   var sub = gs.map(function(g){ return g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); }).filter(Boolean).join('<span class="rb-sep" aria-hidden="true"></span>');
   var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" title="' + esc(label) + '" aria-label="' + esc(label) + '" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
-  var h = '<div class="bk-ribbon" role="toolbar" aria-label="Pages and commands"><div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
+  var chev = function(d){ return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>'; };
+  var sec = tab ? tab.id : '';
+  var h = '<div class="bk-ribbon" role="toolbar" aria-label="Pages and commands"><div class="rb-scroll" data-sec="' + esc(sec) + '" data-sl="0" data-sr="0">'
+    + '<button type="button" class="rb-nav rb-prev" aria-hidden="true" tabindex="-1" title="Earlier pages">' + chev('M15 6l-6 6 6 6') + '</button>'
+    + '<div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
+    + '<button type="button" class="rb-nav rb-next" aria-hidden="true" tabindex="-1" title="More pages">' + chev('M9 6l6 6-6 6') + '</button></div>'
     + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
   nav.insertAdjacentHTML('afterend', h);
+  ribbonScroll(nav.nextElementSibling, sec);
+}
+/* The page strip is ONE row. When a section has more pages than fit (Portfolio & Data has 23) the row slides sideways inside itself: the arrows at its ends, a fade where pages are hidden,
+   swipe or trackpad on a touch screen. The strip is rebuilt with every page, so each section's position is kept here and the open page is brought into view. Nothing is calculated. */
+var RB_X = {};
+function ribbonScroll(rb, sec){
+  var wrap = rb && rb.querySelector('.rb-scroll'), sc = wrap && wrap.querySelector('.rb-tabs'); if(!sc) return;
+  var prev = wrap.querySelector('.rb-prev'), next = wrap.querySelector('.rb-next');
+  function state(){ var max = sc.scrollWidth - sc.clientWidth; wrap.classList.toggle('rb-can', max > 2); wrap.setAttribute('data-sl', sc.scrollLeft > 2 ? '1' : '0'); wrap.setAttribute('data-sr', sc.scrollLeft < max - 2 ? '1' : '0'); }
+  function reveal(){
+    if(RB_X[sec] != null) sc.scrollLeft = RB_X[sec];
+    var on = sc.querySelector('.rb-t.on');
+    if(on){ var pad = 44, l = on.offsetLeft, r = l + on.offsetWidth, v = sc.scrollLeft, w = sc.clientWidth, max = Math.max(0, sc.scrollWidth - w);
+      if(r < v || l > v + w) sc.scrollLeft = Math.max(0, Math.min(l - (w - on.offsetWidth) / 2, max));
+      else if(l < v + pad) sc.scrollLeft = Math.max(0, l - pad);
+      else if(r > v + w - pad) sc.scrollLeft = Math.min(max, r - w + pad); }
+    state();
+  }
+  sc.addEventListener('scroll', function(){ RB_X[sec] = sc.scrollLeft; state(); }, { passive:true });
+  var step = function(d){ return function(){ sc.scrollBy({ left:d * Math.round(sc.clientWidth * .7), behavior:'smooth' }); }; };
+  prev.addEventListener('click', step(-1)); next.addEventListener('click', step(1));
+  if(window.ResizeObserver) new ResizeObserver(state).observe(sc); else window.addEventListener('resize', state);
+  reveal(); if(window.requestAnimationFrame) requestAnimationFrame(reveal); if(document.fonts && document.fonts.ready) document.fonts.ready.then(reveal);
 }
 /* KEY-FIGURE BAR: the headline figures stay at the foot of every deal sheet, read from the same headline() as the Deal Snapshot, so they cannot differ from it. */
 function kpiBar(sheet){
