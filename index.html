@@ -20821,13 +20821,65 @@ if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('M
 })();
 </script>
 
+<script id="bk-loan-sizing">/* LOAN SIZING. The one rule that turns a lender's ratio tests into a loan amount, so that no analysis carries its own copy of it.
+   Used today by Refi / Recap (a refinance inside an acquisition's hold) and by the Refinancing Analysis (a property already owned); written to be called by any
+   analysis that has to say how much a lender will lend.
+
+   A loan is the lowest of what each test allows:
+     ltv        value x maximum LTV
+     dscr       the loan whose annual debt service uses up NOI / minimum DSCR: that amount divided by the annual debt service per $1 of loan. The caller
+                either supplies that figure (debtConstant: the Refinancing Analysis already has it, amortizing or interest-only) or gives the rate and the
+                amortization and it is derived as the present value of the level monthly payments (Refi / Recap)
+     dy         NOI / minimum debt yield
+     extra      any other cap the caller adds, already in dollars (the amount requested)
+
+   bkSizeLoan({ tests, noi, value, maxLTV, minDSCR, minDY, debtConstant | rate + amortYears + roundMonths, extra }) returns
+     { caps:[{ id, loan }], loan, binding }
+   caps are in the order asked (the tests, then extra); loan is the lowest cap, unrounded; binding is the id of the first cap that equals it (so a tie goes to
+   ltv, then dscr, then dy, then extra). With no caps, loan and binding are null.
+
+   What this does not do, on purpose: it applies exactly the tests it is asked for, with the numbers it is given. Whether a blank, zero or negative limit means
+   "not tested", an error or a limit of zero is the caller's decision (Refi / Recap always applies all three, as given; the Refinancing Analysis applies only
+   the limits the lender has stated and says what is missing). Rounding the result (to $1,000, say) and everything after the loan amount (payment, balance,
+   proceeds, returns) also stay with the caller. A figure that is not a number gives a loan that is not a number; nothing is guessed.
+
+   The two ways of stating the debt-service test are the same quantity, and they differ only in the last digits of a floating-point number. They are both kept
+   so that extracting this rule moves no number in either tool (the Refinancing Analysis rounds its loan down to $1,000, where a last-digit difference could in
+   principle tip a loan sized exactly on a boundary). Bringing them to one form is a separate step with its own review. For the same reason roundMonths exists:
+   true takes years x 12 to whole months (Refi / Recap), false uses the term as entered. */
+(function(){
+'use strict';
+
+/* present value of a level monthly payment stream whose payments total `annual` a year */
+function pvLevel(annual, rate, years, roundMonths){
+  var i = rate / 12, n = roundMonths ? Math.round(years * 12) : years * 12;
+  return i > 0 ? annual / 12 * (1 - Math.pow(1 + i, -n)) / i : annual * years;
+}
+
+window.bkSizeLoan = function(o){
+  o = o || {};
+  var ask = o.tests || ['ltv', 'dscr', 'dy'], caps = [];
+  ask.forEach(function(id){
+    if(id === 'ltv') caps.push({ id:'ltv', loan:o.value * o.maxLTV });
+    else if(id === 'dscr'){ var annual = o.noi / o.minDSCR; caps.push({ id:'dscr', loan:o.debtConstant !== undefined ? annual / o.debtConstant : pvLevel(annual, o.rate, o.amortYears, o.roundMonths) }); }
+    else if(id === 'dy') caps.push({ id:'dy', loan:o.noi / o.minDY });
+  });
+  (o.extra || []).forEach(function(c){ caps.push({ id:c.id, loan:c.loan }); });
+  if(!caps.length) return { caps:caps, loan:null, binding:null };
+  var loan = Math.min.apply(null, caps.map(function(c){ return c.loan; })), hit = caps[caps.length - 1];
+  for(var k = 0; k < caps.length; k++){ if(caps[k].loan === loan){ hit = caps[k]; break; } }
+  return { caps:caps, loan:loan, binding:hit.id };
+};
+})();
+</script>
+
 <script id="bk-v29150-refi">
 /* ===========================================================================
    V29.15.0 - REFINANCE / RECAPITALISATION (ported from the Capital Markets model, 24_REFI RECAP)
    ===========================================================================
    For a chosen refinance year, and for every possible year:
      position      trailing NOI, value at the appraisal cap, the existing balance
-     new loan      the lowest of LTV, DSCR and debt-yield capacity; the binding one
+     new loan      the lowest of LTV, DSCR and debt-yield capacity; the binding one (the sizing rule is bkSizeLoan, src/130a, shared with the Refinancing Analysis)
      cash-out      new loan - existing balance - refinance costs - prepayment
      afterwards    post-refinance DSCR, debt yield, LTV, balance and penalty at exit
      impact        the equity cash flow rebuilt MONTHLY with the cash-out, the new
@@ -20860,7 +20912,6 @@ window.bkRefiSet = function(k, v){
 };
 window.bkRefiReset = function(){ var s = bkLoad(); if(!s) return; delete s._refi; bkSave(s); setTimeout(function(){ if(typeof showSheet === 'function') showSheet('Refi / Recap'); }, 0); };
 
-function pvAnn(rate, years, annual){ var i = rate / 12, n = Math.round(years * 12); return i > 0 ? annual / 12 * (1 - Math.pow(1 + i, -n)) / i : annual * years; }
 function pmtM(rate, years, loan){ var i = rate / 12, n = Math.round(years * 12); return i > 0 ? loan * i / (1 - Math.pow(1 + i, -n)) : loan / n; }
 function balAfter(loan, rate, years, k){ var i = rate / 12, p = pmtM(rate, years, loan), g = Math.pow(1 + i, k); return i > 0 ? loan * g - p * (g - 1) / i : loan - p * k; }
 
@@ -20872,8 +20923,9 @@ function metricsOf(values, dates, closeDt, eq0){
 function refiAt(y, inp, ctx){
   var u = ctx.u, d = ctx.d, r = ctx.r, n = ctx.n, rows = r.rows, last = rows.length - 1;
   var noi = u.arr[y - 1].after, bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
-  var cLTV = value * inp.maxLTV, cDSCR = pvAnn(inp.rate, inp.amort, noi / inp.minDSCR), cDY = noi / inp.minDebtYield;
-  var loan = Math.min(cLTV, cDSCR, cDY), binding = loan === cLTV ? 'LTV' : loan === cDSCR ? 'DSCR' : 'Debt yield';
+  /* the three ratio tests and the lowest of them: the shared sizing rule, applied as given (all three; the amortization in whole months, as this tool always has) */
+  var z = window.bkSizeLoan({ noi:noi, value:value, rate:inp.rate, amortYears:inp.amort, roundMonths:true, maxLTV:inp.maxLTV, minDSCR:inp.minDSCR, minDY:inp.minDebtYield });
+  var cLTV = z.caps[0].loan, cDSCR = z.caps[1].loan, cDY = z.caps[2].loan, loan = z.loan, binding = { ltv:'LTV', dscr:'DSCR', dy:'Debt yield' }[z.binding];
   var costs = loan * inp.costsPct, prepay = bal * inp.prepayPct, gross = loan - bal, net = gross - costs - prepay;
   var pm = pmtM(inp.rate, inp.amort, loan), ds = pm * 12, kExit = (n - y) * 12, balExit = balAfter(loan, inp.rate, inp.amort, kExit), pen = balExit * inp.exitPenaltyPct;
   var mr = y * 12, vals = rows.map(function(q){ return q.cf; }), dsDelta = 0, oldPayoff = rows[last].payoff || 0;
@@ -30190,7 +30242,7 @@ window.bkImportHubRead = function(parsed, name){ var facts = [], ctx = { dev:fal
      value       the current value entered, or NOI / the cap rate entered (each stated)
      payoff      the existing balance plus the prepayment penalty (accrued interest is not modelled and is said so)
      new loan    the lowest of: value x maximum LTV, the loan whose debt service the NOI covers at the minimum DSCR, NOI / minimum debt yield,
-                 and the amount requested; rounded down to $1,000. DSCR sizing uses the amortizing payment (lenders size on it even with an
+                 and the amount requested (the arithmetic is bkSizeLoan, src/130a, shared with Refi / Recap); rounded down to $1,000. DSCR sizing uses the amortizing payment (lenders size on it even with an
                  interest-only period); year-1 debt service is interest-only when there is an interest-only period
      proceeds    new loan - payoff - refinance costs: cash out when positive, equity needed when negative
    Alternatives are the same calculation with their own terms. Lender tests (the bank's limits) are kept apart from the owner's own figures.
@@ -30214,14 +30266,16 @@ function size(t, noi, value, payoff){
   if(rate === null) out.missing.push('interest rate'); if(out.costs === null) out.missing.push('refinance costs');
   if(!out.maxLTV && !out.minDSCR && !out.minDY && !out.requested) out.missing.push('a lender test or a loan amount');
   var fullIO = !(amort > 0), amortF = fullIO ? (rate || 0) : 12 * pmt((rate || 0) / 12, amort * 12);   /* annual debt service per $1 used for sizing */
-  if(out.maxLTV && value) out.tests.push({ name:'Loan to value', limit:out.maxLTV, loan:value * out.maxLTV, why:P(out.maxLTV, 1) + ' of ' + $(value) });
-  else if(out.maxLTV && !value) out.missing.push('a current value or cap rate (for the LTV test)');
-  if(out.minDSCR && noi > 0 && amortF > 0) out.tests.push({ name:'Debt service coverage', limit:out.minDSCR, loan:noi / out.minDSCR / amortF, why:$(noi) + ' NOI / ' + X(out.minDSCR) + ' / ' + (amortF).toFixed(5) + ' debt service per $' });
-  if(out.minDY && noi > 0) out.tests.push({ name:'Debt yield', limit:out.minDY, loan:noi / out.minDY, why:$(noi) + ' NOI / ' + P(out.minDY, 2) });
-  if(out.requested) out.tests.push({ name:'Amount requested', limit:null, loan:out.requested, why:'the amount asked for' });
+  /* which tests apply is decided here (a limit the lender has not stated is not a test); the capacities and the lowest of them are the shared rule */
+  var run = [out.maxLTV && value ? 'ltv' : null, out.minDSCR && noi > 0 && amortF > 0 ? 'dscr' : null, out.minDY && noi > 0 ? 'dy' : null].filter(Boolean);
+  if(out.maxLTV && !value) out.missing.push('a current value or cap rate (for the LTV test)');
+  var z = window.bkSizeLoan({ tests:run, noi:noi, value:value, debtConstant:amortF, maxLTV:out.maxLTV, minDSCR:out.minDSCR, minDY:out.minDY, extra:out.requested ? [{ id:'requested', loan:out.requested }] : [] });
+  var NAME = { ltv:'Loan to value', dscr:'Debt service coverage', dy:'Debt yield', requested:'Amount requested' };
+  var SAY = { ltv:function(){ return [out.maxLTV, P(out.maxLTV, 1) + ' of ' + $(value)]; }, dscr:function(){ return [out.minDSCR, $(noi) + ' NOI / ' + X(out.minDSCR) + ' / ' + (amortF).toFixed(5) + ' debt service per $']; },
+    dy:function(){ return [out.minDY, $(noi) + ' NOI / ' + P(out.minDY, 2)]; }, requested:function(){ return [null, 'the amount asked for']; } };
+  z.caps.forEach(function(c){ var w = SAY[c.id](); out.tests.push({ name:NAME[c.id], limit:w[0], loan:c.loan, why:w[1] }); });
   if(out.missing.length || !out.tests.length || !(noi > 0)){ if(!(noi > 0)) out.missing.push('a positive NOI'); out.ok = false; return out; }
-  var lo = out.tests.reduce(function(a, x){ return x.loan < a.loan ? x : a; }, out.tests[0]);
-  out.binding = lo.name; out.raw = lo.loan; out.loan = Math.max(0, Math.floor(lo.loan / 1000) * 1000);
+  out.binding = NAME[z.binding]; out.raw = z.loan; out.loan = Math.max(0, Math.floor(z.loan / 1000) * 1000);
   out.ds1 = io > 0 || fullIO ? out.loan * rate : out.loan * amortF;   /* year-1 debt service */
   out.dsAmort = out.loan * amortF;
   out.dscr = out.ds1 > 0 ? noi / out.ds1 : null; out.dy = out.loan > 0 ? noi / out.loan : null; out.ltv = value ? out.loan / value : null;

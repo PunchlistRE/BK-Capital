@@ -72,6 +72,7 @@ echo "== Portfolio IRR on the combined dated cash flow (independent XIRR, reconc
 echo "== Analysis registry and the setup page (consistency, guide steps from the registry, saved-deal compatibility, summaries, dialog, themes)"; node audit/registry_test.js index.html | tail -1
 echo "== Analysis registry part 2 (step bar stages, readiness workflow, Overview tiles and integrity checks read the analysis)"; node audit/registry2_test.js index.html | tail -1
 echo "== Refinancing Analysis (sizing, payoff and proceeds vs an independent model; alternatives; readiness, stages, tiles and the report from the registry)"; node audit/refinance_test.js index.html | tail -1
+echo "== Loan sizing (one rule shared by Refi / Recap and the Refinancing Analysis: against an independent model, each test binding, ties, interest-only, requested amount, invalid inputs; both tools exactly as before the rule was extracted)"; node audit/loan_sizing_test.js index.html | grep -v '^PASS'
 echo "== Stage D (Deal Underwrite tab bar; input / calculated / linked / N/A / attention cell convention on every input sheet)"; node audit/stageD_test.js index.html | tail -1
 echo "== Import tab (one tab; content-driven reader on unseen layouts, development pro forma + OM, teaching, old readers inside the tab)"; node audit/import_hub_test.js index.html | tail -1
 echo "== Development budget (line items and $ per SF feed one hard / soft total, the draws, the Gantt and Sources & Uses; import reads the budget table)"; node audit/budget_test.js index.html

@@ -3,7 +3,7 @@
      value       the current value entered, or NOI / the cap rate entered (each stated)
      payoff      the existing balance plus the prepayment penalty (accrued interest is not modelled and is said so)
      new loan    the lowest of: value x maximum LTV, the loan whose debt service the NOI covers at the minimum DSCR, NOI / minimum debt yield,
-                 and the amount requested; rounded down to $1,000. DSCR sizing uses the amortizing payment (lenders size on it even with an
+                 and the amount requested (the arithmetic is bkSizeLoan, src/130a, shared with Refi / Recap); rounded down to $1,000. DSCR sizing uses the amortizing payment (lenders size on it even with an
                  interest-only period); year-1 debt service is interest-only when there is an interest-only period
      proceeds    new loan - payoff - refinance costs: cash out when positive, equity needed when negative
    Alternatives are the same calculation with their own terms. Lender tests (the bank's limits) are kept apart from the owner's own figures.
@@ -27,14 +27,16 @@ function size(t, noi, value, payoff){
   if(rate === null) out.missing.push('interest rate'); if(out.costs === null) out.missing.push('refinance costs');
   if(!out.maxLTV && !out.minDSCR && !out.minDY && !out.requested) out.missing.push('a lender test or a loan amount');
   var fullIO = !(amort > 0), amortF = fullIO ? (rate || 0) : 12 * pmt((rate || 0) / 12, amort * 12);   /* annual debt service per $1 used for sizing */
-  if(out.maxLTV && value) out.tests.push({ name:'Loan to value', limit:out.maxLTV, loan:value * out.maxLTV, why:P(out.maxLTV, 1) + ' of ' + $(value) });
-  else if(out.maxLTV && !value) out.missing.push('a current value or cap rate (for the LTV test)');
-  if(out.minDSCR && noi > 0 && amortF > 0) out.tests.push({ name:'Debt service coverage', limit:out.minDSCR, loan:noi / out.minDSCR / amortF, why:$(noi) + ' NOI / ' + X(out.minDSCR) + ' / ' + (amortF).toFixed(5) + ' debt service per $' });
-  if(out.minDY && noi > 0) out.tests.push({ name:'Debt yield', limit:out.minDY, loan:noi / out.minDY, why:$(noi) + ' NOI / ' + P(out.minDY, 2) });
-  if(out.requested) out.tests.push({ name:'Amount requested', limit:null, loan:out.requested, why:'the amount asked for' });
+  /* which tests apply is decided here (a limit the lender has not stated is not a test); the capacities and the lowest of them are the shared rule */
+  var run = [out.maxLTV && value ? 'ltv' : null, out.minDSCR && noi > 0 && amortF > 0 ? 'dscr' : null, out.minDY && noi > 0 ? 'dy' : null].filter(Boolean);
+  if(out.maxLTV && !value) out.missing.push('a current value or cap rate (for the LTV test)');
+  var z = window.bkSizeLoan({ tests:run, noi:noi, value:value, debtConstant:amortF, maxLTV:out.maxLTV, minDSCR:out.minDSCR, minDY:out.minDY, extra:out.requested ? [{ id:'requested', loan:out.requested }] : [] });
+  var NAME = { ltv:'Loan to value', dscr:'Debt service coverage', dy:'Debt yield', requested:'Amount requested' };
+  var SAY = { ltv:function(){ return [out.maxLTV, P(out.maxLTV, 1) + ' of ' + $(value)]; }, dscr:function(){ return [out.minDSCR, $(noi) + ' NOI / ' + X(out.minDSCR) + ' / ' + (amortF).toFixed(5) + ' debt service per $']; },
+    dy:function(){ return [out.minDY, $(noi) + ' NOI / ' + P(out.minDY, 2)]; }, requested:function(){ return [null, 'the amount asked for']; } };
+  z.caps.forEach(function(c){ var w = SAY[c.id](); out.tests.push({ name:NAME[c.id], limit:w[0], loan:c.loan, why:w[1] }); });
   if(out.missing.length || !out.tests.length || !(noi > 0)){ if(!(noi > 0)) out.missing.push('a positive NOI'); out.ok = false; return out; }
-  var lo = out.tests.reduce(function(a, x){ return x.loan < a.loan ? x : a; }, out.tests[0]);
-  out.binding = lo.name; out.raw = lo.loan; out.loan = Math.max(0, Math.floor(lo.loan / 1000) * 1000);
+  out.binding = NAME[z.binding]; out.raw = z.loan; out.loan = Math.max(0, Math.floor(z.loan / 1000) * 1000);
   out.ds1 = io > 0 || fullIO ? out.loan * rate : out.loan * amortF;   /* year-1 debt service */
   out.dsAmort = out.loan * amortF;
   out.dscr = out.ds1 > 0 ? noi / out.ds1 : null; out.dy = out.loan > 0 ? noi / out.loan : null; out.ltv = value ? out.loan / value : null;
