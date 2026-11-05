@@ -1005,6 +1005,11 @@
 "close": "</script>"
 },
 {
+"file": "188-bk-field-widths.js",
+"open": "\n<script id=\"bk-field-widths\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"
@@ -1017,6 +1022,11 @@
 {
 "file": "187-bk-report-argus.css",
 "open": "\n<style id=\"bk-report-argus-css\">",
+"close": "</style>"
+},
+{
+"file": "189-bk-field-widths.css",
+"open": "\n<style id=\"bk-field-widths-css\">",
 "close": "</style>"
 },
 {

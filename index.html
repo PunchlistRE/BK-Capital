@@ -24311,8 +24311,8 @@ window.bkEdCurve = function(stream, i, raw){ var s = bkLoad(); s.growthCurves = 
 window.bkEdClearCurves = function(){ var s = bkLoad(); delete s.growthCurves; s.rentGrowthY1 = 0; bkSave(s); showSheet(cur()); };
 function pInfl(s){ var n = Math.max(3, Math.min(15, Math.round(num(s.holdYears)) || 10)), cont = safe(function(){ return bkConventions(s).cvRentGrowthStart === 'month1'; }, false), gc = s.growthCurves || {}, head = '', rows = '';
   for(var y = 1; y <= n; y++) head += '<th class="grp">Year ' + y + '</th>';
-  STREAMS.forEach(function(st){ var a = gc[st[0]] || [], row = '<tr><td class="c">' + st[1] + '</td><td><input type="text" class="num" id="ae-def-' + st[0] + '" value="' + esc(fmtIn(s[st[2]], 'pct')) + '" autocomplete="off" onchange="bkEdSet(\'' + st[2] + '\',\'pct\',this.value)"></td>';
-    for(var y = 1; y <= n; y++){ var v = a[y - 1], off = y === 1 && !cont; row += off ? '<td class="dim" title="Annual steps: year 1 is at the entered figures, growth starts in year 2">-</td>' : '<td><input type="text" class="num" id="ae-cv-' + st[0] + '-' + y + '" placeholder="' + esc(fmtIn(s[st[2]], 'pct')) + '" value="' + (v === null || v === undefined ? '' : esc(fmtIn(v, 'pct'))) + '" autocomplete="off" onchange="bkEdCurve(\'' + st[0] + '\',' + (y - 1) + ',this.value)"></td>'; }
+  STREAMS.forEach(function(st){ var a = gc[st[0]] || [], row = '<tr><td class="c">' + st[1] + '</td><td><input type="text" class="num" data-bk-w="s" id="ae-def-' + st[0] + '" value="' + esc(fmtIn(s[st[2]], 'pct')) + '" autocomplete="off" onchange="bkEdSet(\'' + st[2] + '\',\'pct\',this.value)"></td>';
+    for(var y = 1; y <= n; y++){ var v = a[y - 1], off = y === 1 && !cont; row += off ? '<td class="dim" title="Annual steps: year 1 is at the entered figures, growth starts in year 2">-</td>' : '<td><input type="text" class="num" data-bk-w="s" id="ae-cv-' + st[0] + '-' + y + '" placeholder="' + esc(fmtIn(s[st[2]], 'pct')) + '" value="' + (v === null || v === undefined ? '' : esc(fmtIn(v, 'pct'))) + '" autocomplete="off" onchange="bkEdCurve(\'' + st[0] + '\',' + (y - 1) + ',this.value)"></td>'; }
     rows += row + '</tr>'; });
   var has = Object.keys(gc).length || num(s.rentGrowthY1) > 0;
   return '<div class="ae-panel"><div class="ae-ph"><i>%</i>Inflation Rates by Year (% a year)</div><div style="overflow-x:auto"><table class="ae-grid ae-curves"><thead><tr><th>Name</th><th class="grp">Default</th>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
@@ -24320,7 +24320,7 @@ function pInfl(s){ var n = Math.max(3, Math.min(15, Math.round(num(s.holdYears))
     + form('Inflation Timing', 'T', [R('Growth Applies', sel('cvRentGrowthStart', [['year2', 'In annual steps from year 2'], ['month1', 'Continuously, month by month']], { s:s, def:safe(function(){ return bkConventions(s).cvRentGrowthStart; }, 'year2') })),
       NOTE(has && num(s.rentGrowthY1) > 0 ? 'A year-1 rent trend of ' + pct(s.rentGrowthY1) + ' is also set (Model Parity Options on Operating Underwrite); a year-1 entry above takes its place.' : 'With continuous growth, year 1 grows too (an "operating year 1 trend"). With annual steps, year 1 sits at the entered figures.')]); }
 function pVac(s){ return form('General Vacancy', 'V', [R('Residential Vacancy (stabilized)', inp('vacancy', 'pct', { s:s }), '% of potential rent'), R('Commercial / Retail Vacancy', inp('commercialVacancy', 'pct', { s:s }), '% of retail rent'), NOTE('Residential occupancy is one minus the vacancy above. For a development, lease-up is set on Tenants > Space Absorption.')]); }
-function pCredit(s){ return form('Credit Loss', 'C', [R('Bad Debt / Credit Loss', inp('badDebtPct', 'pct', { s:s }), '% of rent'), R('Charged On', sel('cvBadDebtBasis', [['afterVacancy', 'Rent after vacancy'], ['gross', 'Gross potential rent'], ['legacy', 'Original split (statement gross, monthly after vacancy)']], { s:s, def:safe(function(){ return bkConventions(s).cvBadDebtBasis; }, 'afterVacancy') }))]); }
+function pCredit(s){ return form('Credit Loss', 'C', [R('Bad Debt / Credit Loss', inp('badDebtPct', 'pct', { s:s }), '% of rent'), R('Charged On', sel('cvBadDebtBasis', [['afterVacancy', 'Rent after vacancy'], ['gross', 'Gross potential rent'], ['legacy', 'Original split (statement gross, monthly)']], { s:s, def:safe(function(){ return bkConventions(s).cvBadDebtBasis; }, 'afterVacancy') }))]); }
 function pLease(s){ return form('Market Leasing', 'L', [R('Concessions - Stabilized', inp('concessionPct', 'pct', { s:s }), '% of potential rent'), R('Concessions - Lease-Up', inp('concessionLeaseUpPct', 'pct', { s:s }), '% of potential rent'), R('Lease-Up Period', inp('leaseupMonths', 'int', { s:s }), 'months at the lease-up concession rate'), R('Loss to Lease', inp('lossToLeasePct', 'pct', { s:s }), '% of potential rent'),
     NOTE('Concessions and loss to lease reduce rent before vacancy and bad debt. Leave a rate blank (0) for none.')]); }
 function pRent(s){ var st = safe(function(){ return bkRentRollStats(s.rentRoll || []); }, null), has = st && st.n > 0;
@@ -24451,7 +24451,7 @@ function pLease(s){
   }
   var pool = '<div class="ae-row" style="flex-wrap:wrap">' + window.BK_LEASE_POOL_KEYS.map(function(k){ return '<label style="margin-right:14px"><input type="checkbox"' + (M.recoverable.indexOf(k[0]) >= 0 ? ' checked' : '') + ' onchange="bkLeasePool(\'' + k[0] + '\',this.checked)"> ' + k[1] + '</label>'; }).join('') + '</div>';
   var mkt = form('Market Leasing Assumptions', 'M', [NOTE('Used when a lease expires and for vacant suites. Rolled leases start at market rent grown at the rate below.'),
-    R('Market Rent Growth', inp('leaseMkt.growth', 'pct', { s:s, blank:'null', ph:'Market > Inflation' }), '% a year (blank uses the commercial rent growth: ' + pct(num(s.commercialRentGrowth), 2) + ')'), md('leaseMkt.bump', 'pct', 'Annual Bump on New Leases', '% on each anniversary'), md('leaseMkt.renewPct', 'pct', 'Renewal Rent as % of Market', '%'),
+    R('Market Rent Growth', inp('leaseMkt.growth', 'pct', { s:s, blank:'null', ph:fmtIn(s.commercialRentGrowth, 'pct') }), '% a year (blank uses the commercial rent growth: ' + pct(num(s.commercialRentGrowth), 2) + ')'), md('leaseMkt.bump', 'pct', 'Annual Bump on New Leases', '% on each anniversary'), md('leaseMkt.renewPct', 'pct', 'Renewal Rent as % of Market', '%'),
     md('leaseMkt.termNew', 'int', 'New Lease Term', 'months'), md('leaseMkt.termRenew', 'int', 'Renewal Lease Term', 'months'), md('leaseMkt.freeNew', 'int', 'Free Rent, New Lease', 'months'), md('leaseMkt.freeRenew', 'int', 'Free Rent, Renewal', 'months'),
     md('rolloverAssumptions.renewalProbability', 'pct', 'Renewal Probability', '%'), md('rolloverAssumptions.downtimeMonths', 'int', 'Downtime if the Tenant Leaves', 'months'),
     md('rolloverAssumptions.tiNewPerSF', 'num', 'Tenant Improvements, New', '$ / SF'), md('rolloverAssumptions.tiRenewalPerSF', 'num', 'Tenant Improvements, Renewal', '$ / SF'), md('rolloverAssumptions.lcNewPct', 'pct', 'Commission, New', '% of rent over the term'), md('rolloverAssumptions.lcRenewalPct', 'pct', 'Commission, Renewal', '% of rent over the term'),
@@ -31217,6 +31217,59 @@ I.providers.fake = function(script, opts){
   window.bkPerfInstall();
 })();
 </script>
+<script id="bk-field-widths">/* FIELD WIDTHS. One width per kind of value box, on every page: every percent box is as wide as every other percent box, every dollar amount as wide as every other dollar amount (inputs, choices and calculated read-only values alike), text as text. A page that draws its own boxes gets the same treatment because the kind is read from the box itself: the handler that saves it, the unit written beside it, the heading above it, the value in it.
+   Display only. This sets one attribute (data-bk-w: s, m, l or c) that src/189 sizes. No value, handler or figure is touched. A box that is meant to be long (a question, a note, a task name) is left alone, and a page can opt a box out with data-bk-w="free". */
+(function(){
+'use strict';
+if(typeof window.bkDisplayPass !== 'function') return;
+var SEL = 'input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]):not([type=range]):not([type=color]):not([type=button]):not([type=submit]):not([type=image]):not([type=password]),select,span.ae-ro';
+var SKIP = '.bk-flow,.bk-ribbon,.tabnav,.brand-bar,#pl-palette,.pl-search,.bk-ask,#bk-kpibar,[data-bk-w="free"],.bk-nofield,table.fin';   /* table.fin: its input cells are the boxes and are sized by the cell authority (src/110) */
+var HANDLER = /bkEdSet\('[^']*','(pct|int|num|text|month)'/, KIND = { pct:'s', int:'s', num:'m', month:'m', text:'l' };
+var H_DATE = /\b(date|start|expir\w*|ending|begin|closing)\b/i, H_PCT = /%|growth|vacanc|bump|share|yield|ltv|dscr|probab|escalat|inflation|concession|occupan|haircut|spread|margin/i,
+    H_TXT = /\b(name|tenant|suite|description|label|notes?|memo|comment|address|source|title|item|line|property|city)\b/i, H_USD = /\$|rent|amount|cost|price|total|fee|income|expense|balance|payment|proceeds|equity|loan|value|noi|cash|budget|reserve|tax|insurance|capex|charge/i;
+var U_AREA = /^(g?sf\b|gsf|sq|acres?|ft\b)/i, U_COUNT = /^(units?|suites?|spaces?|years?|yrs?|months?|mos?\b|rows?|stories|floors|beds|tenants|leases)/i, DATEPAT = /^(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|[A-Za-z]{3,9}\.?,? \d{4})$/;
+function txt(n){ return n ? String(n.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+function unitText(el){ var n = el.nextElementSibling; return n && /\bae-unit\b/.test(n.className || '') ? txt(n) : ''; }
+function labelText(el){ var d = el.parentElement, l = d && d.previousElementSibling; return l && l.tagName === 'LABEL' ? txt(l) : ''; }
+function headText(el){ var td = el.closest('td'); if(!td) return ''; var tb = td.closest('table'), rows = tb ? tb.querySelectorAll('thead tr') : [], last = rows.length ? rows[rows.length - 1] : null; if(!last) return '';
+  var idx = Array.prototype.indexOf.call(td.parentNode.children, td), cells = last.children; return cells.length === td.parentNode.children.length ? txt(cells[idx]) : ''; }
+function hint(h, text){ if(!h) return null; if(H_DATE.test(h)) return 'm'; if(H_PCT.test(h)) return 's'; if(text && H_TXT.test(h)) return 'l'; if(H_USD.test(h)) return 'm'; return null; }
+function kindOf(el){
+  var tag = el.tagName;
+  if(tag === 'SELECT'){ if(el.closest('.ae-form')) return 'c'; var m = 0; for(var i = 0; i < el.options.length; i++) m = Math.max(m, (el.options[i].text || '').length); return m <= 14 ? 'm' : 'c'; }
+  var t = String(el.getAttribute('type') || 'text').toLowerCase(); if(t === 'date' || t === 'month') return 'm';
+  var v = tag === 'INPUT' ? el.value : txt(el), s = String(v || el.getAttribute('placeholder') || '').trim(), u = unitText(el);
+  if(DATEPAT.test(s) || /^m\/d\/y/i.test(s)) return 'm';
+  var h = HANDLER.exec(String(el.getAttribute('onchange') || '') + String(el.getAttribute('oninput') || '')); if(h) return KIND[h[1]];
+  if(/%\s*$/.test(s) || /^%/.test(u)) return 's';
+  if(/^\(?-?\s*\$/.test(s) || /^\$/.test(u)) return 'm';
+  if(U_AREA.test(u)) return 'm';
+  if(U_COUNT.test(u)) return 's';
+  var k = hint(headText(el), true) || hint(u, false) || ((s === '' || s === '-' || s === '–') ? hint(labelText(el), false) : null); if(k) return k;
+  if(DATEPAT.test(s)) return 'm';
+  if(/^[\s\d,.\-−()x]*$/.test(s)) return /^\d{1,3}$/.test(s) ? 's' : 'm';
+  return 'l';
+}
+function put(el, a, v){ if(el.getAttribute(a) !== v) el.setAttribute(a, v); }
+function mark(el, k){
+  put(el, 'data-bk-w', k);
+  var td = el.parentElement; if(td && td.tagName === 'TD' && td.children.length === 1){ put(td, 'data-bk-wc', k); var tb = td.closest('table'); if(tb && /\bae-grid\b/.test(tb.className || '')) put(tb, 'data-bk-fit', '1'); }
+}
+function run(){
+  var vp = document.getElementById('viewport'); if(!vp) return;
+  vp.querySelectorAll(SEL).forEach(function(el){
+    if(el.hasAttribute('data-bk-w') && el.getAttribute('data-bk-w') !== 'free'){ mark(el, el.getAttribute('data-bk-w')); return; }   /* a page that names the kind itself keeps it */
+    if(el.closest(SKIP)) return;
+    var r = el.getBoundingClientRect(); if(r.width < 2) return;          /* not shown yet: classified when it is */
+    if(r.width > 340 && el.tagName === 'INPUT' && !el.closest('.ae-form,.ae-grid')) return;   /* a long box on purpose (a question, a note, a task name) */
+    var k; try { k = kindOf(el); } catch(e){ k = null; } if(k) mark(el, k);
+  });
+}
+var q = false; function schedule(){ if(q) return; q = true; requestAnimationFrame(function(){ q = false; try { run(); } catch(e){} }); }
+window.bkDisplayPass(schedule); window.bkFieldWidths = run;
+document.addEventListener('focusin', function(e){ var el = e.target; if(el && el.matches && el.matches(SEL) && !el.hasAttribute('data-bk-w')) schedule(); });
+})();
+</script>
 <style id="bk-palette-css">/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.
    Navy is the brand and the structure (chrome, section bars, the key rule). Slate greys carry the neutral surfaces. One blue is the accent.
    Four semantic colours, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
@@ -31602,6 +31655,32 @@ html[data-theme="dark"] body #viewport .rp .rp-tbl tr.sec td{ color:#9fcdf5; }
   html body #viewport .rp .rp-tbl tbody td:first-child, html body #viewport .rp .rp-tbl thead th:first-child{ white-space:normal; min-width:120px; max-width:150px; }
   html body #viewport .rp .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:14px; }
 }
+</style>
+<style id="bk-field-widths-css">/* FIELD WIDTHS (src/188): one width per kind of value box. s = a percent or a small count, m = a dollar amount, a number or a date, l = text, c = a choice (a drop-down). Display only. */
+:root{ --bk-w-s:84px; --bk-w-m:128px; --bk-w-l:240px; --bk-w-c:300px; --bk-fh:30px; }
+html body #viewport [data-bk-w]{ box-sizing:border-box; }
+html body #viewport [data-bk-w="s"]{ width:var(--bk-w-s) !important; min-width:var(--bk-w-s) !important; max-width:var(--bk-w-s) !important; }
+html body #viewport [data-bk-w="m"]{ width:var(--bk-w-m) !important; min-width:var(--bk-w-m) !important; max-width:var(--bk-w-m) !important; }
+html body #viewport [data-bk-w="l"]{ width:var(--bk-w-l) !important; min-width:var(--bk-w-l) !important; max-width:var(--bk-w-l) !important; }
+html body #viewport [data-bk-w="c"]{ width:var(--bk-w-c) !important; min-width:var(--bk-w-c) !important; max-width:var(--bk-w-c) !important; }
+/* label-and-value forms: every box the same height, calculated values included, numbers on the right and text on the left */
+html body #viewport .ae-form [data-bk-w]{ height:var(--bk-fh); }
+html body #viewport .ae-form input[data-bk-w], html body #viewport .ae-form select[data-bk-w]{ padding-top:0; padding-bottom:0; }
+html body #viewport .ae-form span.ae-ro[data-bk-w]{ display:inline-flex; align-items:center; justify-content:flex-end; padding:0 8px; white-space:nowrap; overflow:hidden; }
+html body #viewport .ae-form span.ae-ro[data-bk-w="l"]{ justify-content:flex-start; }
+/* text reads from the left in a box of its own kind */
+html body #viewport .ae-form input[data-bk-w="l"], html body #viewport table.ae-grid td input[data-bk-w="l"]{ text-align:left !important; }
+/* a percent box is narrower than a dollar box, but the unit written beside it starts in the same place */
+html body #viewport .ae-form > div > [data-bk-w="s"]{ margin-right:calc(var(--bk-w-m) - var(--bk-w-s)); }
+/* editor grids: a column is as wide as its box, so the table is as wide as its boxes instead of stretching across a wide screen */
+html body #viewport table.ae-grid[data-bk-fit]{ width:auto; }
+/* the year-by-year table names its first column as 1%, which makes an auto-width table fill its box; a fixed first column lets it be as wide as its boxes */
+html body #viewport table.ae-grid.ae-curves[data-bk-fit] th:first-child, html body #viewport table.ae-grid.ae-curves[data-bk-fit] td:first-child{ width:170px; }
+html body #viewport table.ae-grid td[data-bk-wc="s"]{ width:var(--bk-w-s); }
+html body #viewport table.ae-grid td[data-bk-wc="m"]{ width:var(--bk-w-m); }
+html body #viewport table.ae-grid td[data-bk-wc="l"]{ width:var(--bk-w-l); }
+html body #viewport table.ae-grid td[data-bk-wc="c"]{ width:var(--bk-w-c); }
+@media (max-width:760px){ html body #viewport [data-bk-w]{ max-width:100% !important; } }
 </style>
 </body>
 </html>
