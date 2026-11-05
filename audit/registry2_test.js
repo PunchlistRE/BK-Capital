@@ -28,8 +28,8 @@ const OLD = [['setup', 'Setup', 'Home'], ['inputs', 'Inputs', 'Deal Underwrite,R
   const na = await p.evaluate(() => { const s = bkLoad(); const keep = BKReg.of; BKReg.of = () => BKReg.analysis('valuation'); const c = bkIntegrity().checks; BKReg.of = keep; return c.filter(x => ['budget', 'su', 'draws', 'capint', 'facility', 'irr'].includes(x.id)).map(x => x.id + ':' + x.status); });
   check('read as a Property Valuation, construction and IRR checks read N/A instead of failing', na.length > 0 && na.every(x => /:na$/.test(x)), na.join());
   /* an analysis judged by its workflow steps gets its own stages, done when its steps are */
-  const val = await p.evaluate(() => { const s = { analysisType: 'valuation', name: 'X', location: 'Y', propertyType: 'Multifamily', units: 10, gsf: 9000, rentRoll: [] }; const g = BKReg.stages('valuation'); return { labels: g.map(x => x.label).join(), first: BKReg.stageFromSteps(g[0], s), done: BKReg.stageFromSteps(g[0], Object.assign({}, s, { rentRoll: [{ unitId: 1 }] })) }; });
-  check('Property Valuation has its own stages; its first stage waits for the rent roll and is done once it is entered', val.labels === 'Property,Income,Expenses,Value,Report' && val.first.st === 'warn' && /Rent roll/.test(val.first.tip) && val.done.st === 'done', JSON.stringify(val));
+  const val = await p.evaluate(() => { const s = { analysisType: 'valuation', name: 'X', location: 'Y', propertyType: 'Multifamily', gsf: 9000, rentRoll: [] }; const g = BKReg.stages('valuation'); return { labels: g.map(x => x.label).join(), first: BKReg.stageFromSteps(g[0], s), done: BKReg.stageFromSteps(g[0], Object.assign({}, s, { units: 10 })) }; });
+  check('Property Valuation has its own stages; its first stage waits for the unit count (the rent roll is optional) and is done once it is entered', val.labels === 'Property,Income,Expenses,Value,Report' && val.first.st === 'warn' && /[Uu]nits/.test(val.first.tip) && val.done.st === 'done', JSON.stringify(val));
   check('no page errors', errs.length === 0, errs.join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();

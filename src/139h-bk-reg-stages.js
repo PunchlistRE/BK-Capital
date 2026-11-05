@@ -16,7 +16,7 @@ var CORE = [
   G('review', 'Review', ['Sensitivity', 'Reverse Solve', 'QA'], 'review')];
 ST.acquisition = CORE; ST.development = CORE;
 ST.valuation = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'mix']), G('income', 'Income', ['Rent Roll', 'Revenues'], 'steps', ['inplace', 'market', 'vacancy']),
-  G('expenses', 'Expenses', ['Expenses'], 'steps', ['expenses']), G('value', 'Value', ['Valuation'], 'steps', ['noi', 'caprate', 'value']), G('review', 'Report', ['Valuation Report'], 'steps', ['review'])];
+  G('expenses', 'Expenses', ['Expenses'], 'steps', ['expenses']), G('value', 'Value', ['Property Valuation'], 'steps', ['noi', 'caprate', 'value']), G('review', 'Report', ['Property Valuation Report'], 'steps', ['review'])];
 ST.refinance = [G('setup', 'Property', ['Home', 'Property', 'Revenues', 'Expenses'], 'steps', ['property', 'ops']), G('value', 'Value', [], 'steps', ['value']), G('existing', 'Existing loan', [], 'steps', ['existing']),
   G('proposed', 'New loan', ['Refinancing'], 'steps', ['proposed', 'lender', 'sizing', 'costs']), G('proceeds', 'Proceeds', [], 'steps', ['proceeds', 'alts']), G('review', 'Report', ['Refinance Report'], 'steps', ['review'])];
 ST.hold = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'ops', 'value']), G('forward', 'Hold case', ['Market', 'Expenses', 'Debt'], 'steps', ['forward', 'capex', 'debt', 'period']),

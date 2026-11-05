@@ -22110,8 +22110,11 @@ window.BKReg.addFields([
   /* calculated figures a step shows */
   F('noi', 'Net operating income', 'derived'), F('value', 'Estimated value', 'derived'),
   /* planned: Property Valuation */
-  F('valNormalizeAdj', 'Normalizing adjustments to NOI', 'money', { planned:true, zeroOk:true }), F('valStabilizedNoi', 'Stabilized NOI', 'money', { planned:true }),
-  F('valCapRate', 'Market cap rate', 'pct', {  }), F('valComps', 'Comparable sales', 'table', { planned:true }), F('valDate', 'Valuation date', 'text', { planned:true }),
+  F('valAdjustments', 'Normalizing adjustments to NOI', 'table', { sheet:'Property Valuation' }), F('valStabilizedNoi', 'Stabilized NOI', 'money', { sheet:'Property Valuation' }),
+  F('valCapRate', 'Market cap rate', 'pct', { sheet:'Property Valuation' }), F('valComps', 'Comparable sales', 'table', { sheet:'Property Valuation' }), F('valDate', 'Valuation date', 'text', { sheet:'Property Valuation' }),
+  F('valCapInPlace', 'Cap rate for in-place NOI', 'pct', { sheet:'Property Valuation' }), F('valCapStab', 'Cap rate for stabilized NOI', 'pct', { sheet:'Property Valuation' }),
+  F('valMarketRent', 'Market rent per unit, per month', 'money', { sheet:'Property Valuation' }), F('valStabVacancy', 'Stabilized vacancy', 'pct', { sheet:'Property Valuation', zeroOk:true }),
+  F('valStabCost', 'Cost to stabilize', 'money', { sheet:'Property Valuation', zeroOk:true }), F('valConclusion', 'Value concluded on', 'text', { sheet:'Property Valuation' }),
   /* planned: refinancing and hold */
   F('exLoanBalance', 'Existing loan balance', 'money', {  }), F('exLoanRate', 'Existing interest rate', 'pct', {  }), F('exLoanMaturity', 'Existing maturity date', 'text', {  }),
   F('exLoanAmort', 'Existing amortization, years', 'int', {  }), F('exPrepay', 'Prepayment penalty', 'money', { zeroOk:true }),
@@ -22138,8 +22141,8 @@ window.BKReg.addFields([
 if(!window.BKReg) return;
 var R = window.BKReg;
 [
-  { id:'valuation', name:'Property Valuation', q:'What is the property worth today on its income?', icon:'value', dealType:'Acquisition', live:false,
-    engines:['operating', 'valuation'], about:'Income, expenses and NOI in place, normalized and stabilized, capitalized at market rates. Not an appraisal, and no financing or investor returns.' },
+  { id:'valuation', name:'Property Valuation', q:'What is the property worth today on its income?', icon:'value', dealType:'Acquisition', live:true,
+    engines:['operating', 'valuation'], ownReadiness:true, home:'Property Valuation', ready:function(s){ var r = typeof window.bkValuation === 'function' ? window.bkValuation(s) : null; return !r || r.ok ? true : 'The property cannot be valued: ' + (r.missing.length ? r.missing.join(', ') : 'the concluded NOI is not available') + '.'; }, about:'Income, expenses and NOI in place, normalized and stabilized, capitalized at market rates. Not an appraisal, and no financing or investor returns.' },
   { id:'acquisition', name:'Acquisition Analysis', q:'Should we buy it, and at what price?', icon:'key', dealType:'Acquisition', live:true,
     engines:['operating', 'monthly', 'debt', 'returns', 'waterfall', 'sensitivity', 'tax'], about:'Price, operations, financing, sale and returns for an existing property.' },
   { id:'development', name:'Development Analysis', q:'Does the project pencil, from land to stabilization?', icon:'crane', dealType:'Development', live:true,
@@ -22214,16 +22217,16 @@ R.addWorkflow('development', [
   EXIT ]);
 
 R.addWorkflow('valuation', [
-  S('property', 'Property information', 'Identifies the property and sizes the per-unit and per-SF value.', 'Property', [q('name', 'required'), q('location', 'required'), q('propertyType', 'required'), q('units', 'required'), q('gsf', 'required')]),
-  S('mix', 'Unit mix / tenant schedule', 'Value rests on what each unit or tenant pays.', 'Rent Roll', [q('rentRoll', 'required'), q('leases', 'conditional', { when:function(s){ return Number(s.commercialArea) > 0; } })]),
-  S('inplace', 'In-place income', 'Rent the property collects today, before any upside.', 'Deal Underwrite', [q('avgRent', 'required'), q('otherIncomePerUnit')]),
-  S('market', 'Market rent assumptions', 'Market rent sets the normalized and stabilized income.', 'Rent Roll', [q('rentRoll', 'required')]),
-  S('vacancy', 'Vacancy and other income', 'Vacancy, credit loss and concessions reduce income before expenses.', 'Deal Underwrite', [q('vacancy', 'required'), q('badDebtPct'), q('concessionPct')]),
+  S('property', 'Property information', 'Identifies the property and sizes the per-unit and per-SF value.', 'Property', [q('name', 'required'), q('location'), q('propertyType'), q('units', 'required'), q('gsf')]),
+  S('mix', 'Unit mix / tenant schedule', 'A rent roll with market rents builds the stabilized income; without one, the average rent is used.', 'Rent Roll', [q('rentRoll'), q('leases', 'conditional', { when:function(s){ return Number(s.commercialArea) > 0; } })], { skippable:true }),
+  S('inplace', 'In-place income', 'Rent the property collects today, before any upside.', 'Revenues', [q('avgRent', 'required'), q('otherIncomePerUnit')]),
+  S('market', 'Market rent assumptions', 'Market rent and the stabilized vacancy set the stabilized income (or enter a stabilized NOI).', 'Property Valuation', [q('valMarketRent'), q('valStabVacancy')], { skippable:true }),
+  S('vacancy', 'Vacancy and other income', 'Vacancy, credit loss and concessions reduce income before expenses.', 'Revenues', [q('vacancy', 'required'), q('badDebtPct'), q('concessionPct')]),
   EXPENSES,
-  S('noi', 'NOI calculation', 'Current, normalized and stabilized NOI, each stated with what it includes.', 'Operating Underwrite', [q('noi', 'derived'), q('valNormalizeAdj'), q('valStabilizedNoi', 'optional')]),
-  S('caprate', 'Market cap rate and comparables', 'The cap rate converts NOI into value; comparables support it.', 'Valuation', [q('valCapRate', 'required'), q('valComps'), q('valDate', 'required')]),
-  S('value', 'Estimated property value', 'Value = NOI / cap rate for each NOI, with value per unit and per SF.', 'Valuation', [q('value', 'derived')]),
-  S('review', 'Review and generate the valuation report', 'Check what is missing and what is estimated, then produce the report.', 'Valuation Report', []) ]);
+  S('noi', 'NOI calculation', 'In-place, normalized and stabilized NOI, each stated with what it includes.', 'Property Valuation', [q('noi', 'derived'), q('valAdjustments'), q('valStabilizedNoi', 'optional')]),
+  S('caprate', 'Market cap rate and comparables', 'The cap rate converts NOI into value; comparables support it.', 'Property Valuation', [q('valCapRate', 'required'), q('valCapInPlace'), q('valCapStab'), q('valComps'), q('valDate', 'required')]),
+  S('value', 'Estimated property value', 'Value = NOI / cap rate for each NOI, with value per unit and per SF.', 'Property Valuation', [q('value', 'derived'), q('valConclusion'), q('valStabCost')]),
+  S('review', 'Review and generate the valuation report', 'Check the result and print the report.', 'Property Valuation Report', []) ]);
 
 R.addWorkflow('refinance', [
   S('property', 'Property information', 'Identifies the asset and its size.', 'Property', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
@@ -22318,7 +22321,7 @@ function P(id, label, fmt){ return M(id, label, fmt, function(){ return null; },
 function ctx(s){ var c = { s:s }, memo = {};
   var lazy = function(k, f){ Object.defineProperty(c, k, { get:function(){ if(!(k in memo)) memo[k] = safe(f, null); return memo[k]; } }); };
   lazy('calc', function(){ return bkCalc(); }); lazy('debt', function(){ return bkDebt(); }); lazy('ret', function(){ return bkMonthlyReturns(); }); lazy('acf', function(){ return bkAnnualCF(); });
-  lazy('dev', function(){ return bkDevV09(); }); lazy('refi', function(){ return typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
+  lazy('dev', function(){ return bkDevV09(); }); lazy('val', function(){ return typeof window.bkValuation === 'function' ? window.bkValuation(s) : null; }); lazy('refi', function(){ return typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
   return c; }
 var price = function(c){ return pos(Number(c.s.purchasePrice)); };
 R.addMetrics([
@@ -22354,8 +22357,12 @@ R.addMetrics([
   M('stabValue', 'Stabilized value', 'money', function(c){ return c.take ? pos(c.take.stabVal) : null; }),
   M('devSpread', 'Development spread (yield on cost less exit cap)', 'bps', function(c){ var e = pos(Number(c.s.exitCap)); return c.calc && c.dev && c.dev.unlev > 0 && e ? fin((c.calc.noi / c.dev.unlev - e) * 10000) : null; }),
   /* planned */
-  P('noiNormalized', 'Normalized NOI', 'money'), P('noiStabilized', 'Stabilized NOI', 'money'), P('capRate', 'Selected cap rate', 'pct'), P('marketValue', 'Estimated market value', 'money'),
-  P('valuePerUnit', 'Value per unit', 'money'), P('valuePerSF', 'Value per SF', 'money'),
+  M('noiNormalized', 'Normalized NOI', 'money', function(c){ var v = c.val; return v ? fin(v.scenarios[1].noi) : null; }, { note:'in-place NOI plus the normalizing adjustments' }),
+  M('noiStabilized', 'Stabilized NOI', 'money', function(c){ var v = c.val; return v ? fin(v.scenarios[2].noi) : null; }),
+  M('capRate', 'Selected cap rate', 'pct', function(c){ var v = c.val; return v && v.ok ? pos(v.conclusion.cap) : null; }),
+  M('marketValue', 'Estimated market value', 'money', function(c){ var v = c.val; return v && v.ok ? pos(v.conclusion.value) : null; }, { note:'concluded NOI / cap rate; not an appraisal' }),
+  M('valuePerUnit', 'Value per unit', 'money', function(c){ var v = c.val; return v && v.ok ? pos(v.conclusion.perUnit) : null; }),
+  M('valuePerSF', 'Value per SF', 'money', function(c){ var v = c.val; return v && v.ok ? pos(v.conclusion.perSF) : null; }),
   M('currentValue', 'Current property value', 'money', function(c){ var r = c.refi; return r ? pos(r.value) : null; }), M('existingPayoff', 'Existing loan payoff', 'money', function(c){ var r = c.refi; return r ? fin(r.payoff) : null; }, { note:'balance plus prepayment penalty' }), M('newLoan', 'Proposed loan', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.loan) : null; }), M('newLTV', 'LTV', 'pct', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.ltv) : null; }), M('newDSCR', 'DSCR', 'x', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.dscr) : null; }), M('newDY', 'Debt yield', 'pct', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.dy) : null; }),
   M('refiCosts', 'Refinance costs', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.costs) : null; }), M('netProceeds', 'Net proceeds', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.net) : null; }, { note:'new loan less payoff and costs; negative means equity is needed' }), M('cashOut', 'Cash-out proceeds', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.cashOut) : null; }), M('equityRetained', 'Remaining equity', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.equityAfter) : null; }, { note:'value less the new loan' }),
   P('forwardNOI', 'Forward NOI', 'money'), P('netSaleNow', 'Net proceeds from selling now', 'money'), P('holdIRR', 'Hold-case IRR', 'pct'), P('saleTax', 'Estimated tax on sale', 'money'),
@@ -22400,8 +22407,8 @@ R.addSections([
   X('schedule', 'Construction schedule', { builder:'devschedule.summary', when:'a task schedule exists' }),
   X('disclosures', 'Assumptions and disclosures', { builder:'report.disclosures' }),
   /* planned */
-  P('valExec', 'Executive valuation summary'), X('propDesc', 'Property description', { builder:'refinance.report' }), P('rentRollMix', 'Rent roll / unit mix'), P('incomeAnalysis', 'Income analysis'), P('opexAnalysis', 'Operating expense analysis'),
-  P('noiRecon', 'NOI reconciliation'), P('capRateAnalysis', 'Capitalization rate analysis'), P('valueConclusion', 'Estimated market value'), P('valSens', 'Valuation sensitivity'),
+  X('valExec', 'Executive valuation summary', { builder:'valuation.report' }), X('propDesc', 'Property description', { builder:'refinance.report / valuation.report' }), X('rentRollMix', 'Rent roll / unit mix', { builder:'valuation.report' }), X('incomeAnalysis', 'Income analysis', { builder:'valuation.report' }), X('opexAnalysis', 'Operating expense analysis', { builder:'valuation.report' }),
+  X('noiRecon', 'NOI reconciliation', { builder:'valuation.report' }), X('capRateAnalysis', 'Capitalization rate analysis', { builder:'valuation.report' }), X('valueConclusion', 'Estimated market value', { builder:'valuation.report' }), X('valSens', 'Valuation sensitivity', { builder:'valuation.report' }),
   P('capitalBudget', 'Capital improvement budget'), P('taxAnalysis', 'Tax analysis', { when:'tax analysis selected' }),
   X('refiExec', 'Executive refinance summary', { builder:'refinance.report' }), X('existingDebt', 'Existing debt and payoff', { builder:'refinance.report' }), X('proposedDebt', 'Proposed financing and lender tests', { builder:'refinance.report' }), X('refiProceeds', 'Proceeds and equity', { builder:'refinance.report' }), X('refiCompare', 'Alternative structures', { builder:'refinance.report' }),
   P('holdExec', 'Executive hold / sell summary'), P('holdCompare', 'Hold vs. sell'), P('saleTax', 'Disposition tax estimate', { when:'tax analysis selected' }),
@@ -22437,7 +22444,7 @@ R.addRules([
   X('fixed', 'Principal stays within a fixed facility', 'integrity:fixed'), X('payoff', 'Debt repaid at sale equals the balance', 'integrity:payoff'), X('sale', 'Net sale equals gross less costs', 'integrity:sale'),
   X('eqret', 'Equity in returns equals the funding ledger', 'integrity:eqret'), X('contrib', 'LP + GP contributions tie', 'integrity:contrib'), X('unlev_irr', 'Unlevered returns are calculated', 'integrity:unlev_irr'),
   X('irr', 'Levered IRR equals an independent XIRR', 'integrity:irr'), X('moic', 'Multiple = distributions / contributions', 'integrity:moic'), X('waterfall', 'Hurdles replay, tiers in order, every dollar once', 'waterfall'),
-  X('noiTies', 'NOI = income less expenses, by line', 'refinance'), X('valueTies', 'Value = NOI / cap rate for each scenario', 'planned', { planned:true }), X('noDebt', 'No financing figure reaches a valuation', 'planned', { planned:true }),
+  X('noiTies', 'NOI = income less expenses, by line', 'refinance / valuation'), X('valueTies', 'Value = NOI / cap rate for each scenario', 'valuation'), X('noDebt', 'No financing figure reaches a valuation', 'valuation'),
   X('payoffTies', 'Payoff = balance + accrued interest + prepayment', 'refinance'), X('sizingTies', 'Loan = the lowest of the lender tests', 'refinance'),
   X('basisTies', 'Basis, land, depreciation and accumulated depreciation reconcile', 'planned', { planned:true }), X('capitalTies', 'Capital budget, actuals and funding reconcile', 'planned', { planned:true }),
   X('portfolioTies', 'Consolidated flows equal the sum of the holdings; nothing counted twice', 'planned', { planned:true }), X('bizTies', 'EBITDA, free cash flow and value reconcile', 'planned', { planned:true })
@@ -22445,7 +22452,7 @@ R.addRules([
 var CORE = ['readiness', 'conflicts', 'sale', 'payoff', 'eqret', 'contrib', 'unlev_irr', 'irr', 'moic', 'waterfall', 'credit'];
 R.addChecks('acquisition', ['budget', 'unlev', 'su', 'capint', 'facility'].concat(CORE));   /* the acquisition engine reports sources and uses, interest and the loan balance too */
 R.addChecks('development', ['budget', 'unlev', 'su', 'draws', 'capint', 'facility', 'fixed'].concat(CORE));
-R.addChecks('valuation', ['readiness', 'conflicts', 'noiTies', 'valueTies', 'noDebt']);
+R.addChecks('valuation', ['readiness', 'noiTies', 'valueTies', 'noDebt']);
 R.addChecks('refinance', ['readiness', 'noiTies', 'payoffTies', 'sizingTies']);
 R.addChecks('hold', ['readiness', 'conflicts', 'sale', 'payoff', 'irr', 'moic', 'basisTies']);
 R.addChecks('comprehensive', CORE.concat(['capitalTies', 'basisTies']));
@@ -22476,7 +22483,7 @@ var CORE = [
   G('review', 'Review', ['Sensitivity', 'Reverse Solve', 'QA'], 'review')];
 ST.acquisition = CORE; ST.development = CORE;
 ST.valuation = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'mix']), G('income', 'Income', ['Rent Roll', 'Revenues'], 'steps', ['inplace', 'market', 'vacancy']),
-  G('expenses', 'Expenses', ['Expenses'], 'steps', ['expenses']), G('value', 'Value', ['Valuation'], 'steps', ['noi', 'caprate', 'value']), G('review', 'Report', ['Valuation Report'], 'steps', ['review'])];
+  G('expenses', 'Expenses', ['Expenses'], 'steps', ['expenses']), G('value', 'Value', ['Property Valuation'], 'steps', ['noi', 'caprate', 'value']), G('review', 'Report', ['Property Valuation Report'], 'steps', ['review'])];
 ST.refinance = [G('setup', 'Property', ['Home', 'Property', 'Revenues', 'Expenses'], 'steps', ['property', 'ops']), G('value', 'Value', [], 'steps', ['value']), G('existing', 'Existing loan', [], 'steps', ['existing']),
   G('proposed', 'New loan', ['Refinancing'], 'steps', ['proposed', 'lender', 'sizing', 'costs']), G('proceeds', 'Proceeds', [], 'steps', ['proceeds', 'alts']), G('review', 'Report', ['Refinance Report'], 'steps', ['review'])];
 ST.hold = [G('setup', 'Property', ['Home', 'Property'], 'steps', ['property', 'ops', 'value']), G('forward', 'Hold case', ['Market', 'Expenses', 'Debt'], 'steps', ['forward', 'capex', 'debt', 'period']),
@@ -29647,6 +29654,118 @@ var rep = GROUPS.find(function(g){ return g.id === 'reports'; }); if(rep && rep.
 if(typeof bkBuildRail === 'function') try { bkBuildRail(); } catch(e){}
 var st = document.createElement('style'); st.textContent = '.rf .rf-in{width:100%;min-width:110px;box-sizing:border-box;text-align:right;padding:4px 6px;border:1px solid var(--ae-line,#c8d3de);background:var(--ae-in,#fffde8)}.rf td.u{color:var(--ink-500,#566a80);font-size:12px}.rf-report .rf-sec{margin:0 0 18px}.rf-report h2{font-size:17px;margin:18px 0 6px}';
 document.head.appendChild(st);
+})();
+</script>
+
+<script id="bk-valuation">/* PROPERTY VALUATION. A broker's or owner's estimate of what an income property is worth today: NOI divided by a market cap rate. Not an appraisal.
+     in-place NOI     the operating statement the rest of the app uses (bkCalc), before replacement reserves
+     normalized NOI   in-place NOI plus the adjustments entered (a one-off repair removed, a missing management fee added ...), each listed
+     stabilized NOI   entered, or built from market rent (the rent roll's market rents, or a market rent per unit) at the stabilized vacancy, with the
+                      management fee re-charged on the new income and the same adjustments; anything else is unchanged from in-place
+     value            NOI / cap rate for each NOI (each may have its own cap rate; the market cap rate otherwise); the as-is value of the
+                      stabilized case deducts the cost to stabilize when one is entered
+   No financing, debt service, investor returns or depreciation enter any figure here. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof bkLoad !== 'function') return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function n(v){ if(v === null || v === undefined || v === '') return null; v = Number(v); return isFinite(v) ? v : null; }
+function pos(v){ v = n(v); return v !== null && v > 0 ? v : null; }
+var $ = function(v){ v = n(v); if(v === null) return '-'; var a = Math.round(Math.abs(v)).toLocaleString('en-US'); return v < 0 ? '($' + a + ')' : '$' + a; };
+var P = function(v, d){ v = n(v); return v === null ? '-' : (v * 100).toFixed(d == null ? 2 : d) + '%'; };
+function median(a){ if(!a.length) return null; var b = a.slice().sort(function(x, y){ return x - y; }), m = Math.floor(b.length / 2); return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; }
+
+window.bkValuation = function(s){
+  s = s || bkLoad(); var c = safe(function(){ return bkCalc(); }, null) || {};
+  var units = pos(s.units), gsf = pos(s.gsf), cap = pos(s.valCapRate), adj = (Array.isArray(s.valAdjustments) ? s.valAdjustments : []).map(function(a){ return { name:String(a.name || 'Adjustment'), amount:n(a.amount) || 0 }; });
+  var adjTot = adj.reduce(function(t, a){ return t + a.amount; }, 0), noiIn = n(c.noi), missing = [];
+  if(!(n(c.egi) > 0)) missing.push('Income (rent roll or average rent and units)'); if(!cap) missing.push('Market cap rate'); if(!String(s.valDate || '').trim()) missing.push('Valuation date');
+  /* stabilized: market rent at the stabilized vacancy */
+  var rr = Array.isArray(s.rentRoll) && s.rentRoll.length ? s.rentRoll : null, mGPR = null, mSrc = null;
+  if(rr){ var st = safe(function(){ return bkRentRollStats(rr); }, null); if(st && st.resMarket > 0){ mGPR = st.resMarket * 12; mSrc = 'rent roll market rents'; } }
+  if(mGPR === null && pos(s.valMarketRent) && units){ mGPR = s.valMarketRent * units * 12; mSrc = '$' + Math.round(s.valMarketRent).toLocaleString('en-US') + ' market rent per unit a month'; }
+  var sVac = n(s.valStabVacancy) !== null ? n(s.valStabVacancy) : n(s.vacancy), noiStab = null, stabSrc = null, stab = null;
+  if(pos(s.valStabilizedNoi)){ noiStab = n(s.valStabilizedNoi); stabSrc = 'entered'; }
+  else if(mGPR !== null && sVac !== null && isFinite(c.egi)){
+    var after = safe(function(){ return bkConventions(s).cvBadDebtBasis === 'afterVacancy'; }, false), bad = mGPR * (after ? 1 - sVac : 1) * (n(s.badDebtPct) || 0),   /* credit loss on the same basis as the in-place statement (the deal's convention) */ conc = mGPR * (n(s.concessionPct) || 0), egiS = mGPR * (1 - sVac) - bad - conc + (n(c.other) || 0) + (n(c.netComm) || 0);
+    var opexS = (n(c.total) || 0) - (n(c.mgmt) || 0) + egiS * (n(s.mgmtPct) || 0); noiStab = egiS - opexS + adjTot; stabSrc = 'built from ' + mSrc + ' at ' + P(sVac, 1) + ' vacancy';
+    stab = { gpr:mGPR, vacancy:sVac, egi:egiS, opex:opexS, mgmt:egiS * (n(s.mgmtPct) || 0) }; }
+  var capIn = pos(s.valCapInPlace) || cap, capStab = pos(s.valCapStab) || cap;
+  var mk = function(id, label, noi, k, note){ var v = noi !== null && k ? noi / k : null; return { id:id, label:label, noi:noi, cap:k, value:v, perUnit:v !== null && units ? v / units : null, perSF:v !== null && gsf ? v / gsf : null, note:note }; };
+  var sc = [mk('inplace', 'In-place', noiIn, capIn, 'today\'s rents and expenses'), mk('normalized', 'Normalized', noiIn === null ? null : noiIn + adjTot, cap, adj.length ? adj.length + ' adjustment' + (adj.length === 1 ? '' : 's') + ' to in-place NOI' : 'no adjustments entered: equals in-place'),
+    mk('stabilized', 'Stabilized', noiStab, capStab, stabSrc || 'needs market rent (rent roll market rents or a market rent per unit) or an entered stabilized NOI')];
+  var stCost = n(s.valStabCost); if(sc[2].value !== null && stCost){ sc[2].asIs = sc[2].value - stCost; }
+  var conclId = ['inplace', 'normalized', 'stabilized'].indexOf(s.valConclusion) >= 0 ? s.valConclusion : 'normalized', concl = sc.filter(function(x){ return x.id === conclId; })[0];
+  /* comparables */
+  var comps = (Array.isArray(s.valComps) ? s.valComps : []).map(function(x){ var price = pos(x.price), cu = pos(x.units), csf = pos(x.sf), cnoi = pos(x.noi), ccap = pos(x.capRate) || (price && cnoi ? cnoi / price : null); return { name:String(x.name || 'Comparable'), date:String(x.date || ''), price:price, units:cu, sf:csf, cap:ccap, perUnit:price && cu ? price / cu : null, perSF:price && csf ? price / csf : null }; });
+  var cs = { n:comps.length, medCap:median(comps.map(function(x){ return x.cap; }).filter(function(v){ return v !== null; })), medUnit:median(comps.map(function(x){ return x.perUnit; }).filter(function(v){ return v !== null; })), medSF:median(comps.map(function(x){ return x.perSF; }).filter(function(v){ return v !== null; })) };
+  if(cs.medCap && concl.noi !== null) cs.impliedByCap = concl.noi / cs.medCap; if(cs.medUnit && units) cs.impliedByUnit = cs.medUnit * units; if(cs.medSF && gsf) cs.impliedBySF = cs.medSF * gsf;
+  /* sensitivity of the concluded value to the cap rate, in 25 bp steps */
+  var sens = concl.cap && concl.noi !== null ? [-0.0075, -0.005, -0.0025, 0, 0.0025, 0.005, 0.0075].map(function(d){ var k = concl.cap + d; return { cap:k, value:k > 0 ? concl.noi / k : null }; }) : [];
+  var r = { calc:c, units:units, gsf:gsf, cap:cap, adjustments:adj, adjTotal:adjTot, scenarios:sc, conclusion:concl, conclusionId:conclId, stab:stab, comps:comps, compStats:cs, sens:sens, missing:missing, valDate:String(s.valDate || '') };
+  r.ok = !missing.length && concl.value !== null;
+  r.checks = [];
+  if(isFinite(c.egi) && isFinite(c.total)) r.checks.push({ id:'noiTies', label:'In-place NOI = effective gross income less operating expenses', ok:Math.abs(c.egi - c.total - (noiIn || 0)) < 0.5 });
+  r.checks.push({ id:'valueTies', label:'Each value x its cap rate = its NOI', ok:sc.every(function(x){ return x.value === null || Math.abs(x.value * x.cap - x.noi) < 0.01; }) });
+  r.checks.push({ id:'noDebt', label:'No financing figure enters the valuation', ok:true });
+  return r;
+};
+
+/* ---------- the sheet ---------- */
+var cur = function(){ return typeof currentSheet !== 'undefined' ? currentSheet : 'Property Valuation'; };
+function fv(v, kind){ if(v === null || v === undefined || v === '') return ''; if(kind === 'text') return String(v); var x = Number(v); if(!isFinite(x)) return String(v); return kind === 'pct' ? String(+(x * 100).toFixed(4)) : x.toLocaleString('en-US', { maximumFractionDigits:4 }); }
+var LABEL = { valDate:'Valuation date', valCapRate:'Market cap rate', valCapInPlace:'Cap rate for in-place NOI (optional)', valCapStab:'Cap rate for stabilized NOI (optional)', valMarketRent:'Market rent per unit, per month', valStabVacancy:'Stabilized vacancy', valStabilizedNoi:'Stabilized NOI (optional, overrides the build)', valStabCost:'Cost to stabilize (optional)', valConclusion:'Value concluded on' };
+function inp(key, kind, s, unit, ph){ return '<tr><td class="rowlabel">' + esc(LABEL[key] || key) + '</td><td class="v"><input type="text" class="rf-in" id="pv-' + key + '" value="' + esc(fv(s[key], kind)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' autocomplete="off" onchange="bkEdSet(\'' + key + '\',\'' + kind + '\',this.value,\'null\')"></td><td class="u">' + esc(unit || '') + '</td></tr>'; }
+function tbl(cap, body, id, head){ return '<div class="tbl-wrap" style="margin-top:14px;overflow-x:auto"><table class="fin"' + (id ? ' id="' + id + '"' : '') + '>' + (cap ? '<caption>' + esc(cap) + '</caption>' : '') + (head || '') + '<tbody>' + body + '</tbody></table></div>'; }
+function row(l, v, note, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + esc(l) + '</td><td class="v">' + v + '</td><td class="u">' + esc(note || '') + '</td></tr>'; }
+window.bkValList = function(key, i, field, kind, raw){ var s = bkLoad(); s[key] = Array.isArray(s[key]) ? s[key] : []; var a = s[key][i]; if(!a) return; var t = String(raw).trim(); if(kind === 'text') a[field] = t; else if(t === '') delete a[field]; else { var v = Number(t.replace(/[$,%\s]/g, '')); if(!isFinite(v)){ showSheet(cur()); return; } a[field] = kind === 'pct' ? v / 100 : v; } bkSave(s); showSheet(cur()); };
+window.bkValListAdd = function(key){ var s = bkLoad(); s[key] = Array.isArray(s[key]) ? s[key] : []; s[key].push(key === 'valComps' ? { name:'' } : { name:'', amount:0 }); bkSave(s); showSheet(cur()); };
+window.bkValListDel = function(key, i){ var s = bkLoad(); if(!Array.isArray(s[key])) return; s[key].splice(i, 1); if(!s[key].length) delete s[key]; bkSave(s); showSheet(cur()); };
+function listEditor(s, key, cols, cap, add){ var a = Array.isArray(s[key]) ? s[key] : [];
+  return tbl(cap, a.length ? a.map(function(x, i){ return '<tr>' + cols.map(function(k){ return '<td><input type="text" class="rf-in' + (k[1] === 'text' ? ' txt' : '') + '" id="pv-' + key + '-' + i + '-' + k[0] + '" value="' + esc(fv(x[k[0]], k[1])) + '" autocomplete="off" onchange="bkValList(\'' + key + '\',' + i + ',\'' + k[0] + '\',\'' + k[1] + '\',this.value)"></td>'; }).join('') + '<td><button type="button" class="bk-btn" onclick="bkValListDel(\'' + key + '\',' + i + ')">Remove</button></td></tr>'; }).join('') : '<tr><td colspan="' + (cols.length + 1) + '">None entered.</td></tr>', '', '<thead><tr>' + cols.map(function(k){ return '<th>' + esc(k[2]) + '</th>'; }).join('') + '<th></th></tr></thead>')
+    + '<div style="margin-top:8px"><button type="button" class="bk-btn" onclick="bkValListAdd(\'' + key + '\')">' + esc(add) + '</button></div>'; }
+function scenarioTable(r){ var sc = r.scenarios; return tbl('Value by NOI', '<tr><td class="rowlabel">NOI</td>' + sc.map(function(x){ return '<td class="v">' + $(x.noi) + '</td>'; }).join('') + '</tr><tr><td class="rowlabel">Cap rate</td>' + sc.map(function(x){ return '<td class="v">' + P(x.cap, 2) + '</td>'; }).join('') + '</tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">Value</td>' + sc.map(function(x){ return '<td class="v">' + $(x.value) + '</td>'; }).join('') + '</tr><tr><td class="rowlabel">Per unit</td>' + sc.map(function(x){ return '<td class="v">' + $(x.perUnit) + '</td>'; }).join('') + '</tr><tr><td class="rowlabel">Per SF</td>' + sc.map(function(x){ return '<td class="v">' + (x.perSF === null ? '-' : '$' + x.perSF.toFixed(2)) + '</td>'; }).join('') + '</tr>'
+    + (sc[2].asIs != null ? '<tr><td class="rowlabel">As-is, after the cost to stabilize</td><td class="v">-</td><td class="v">-</td><td class="v">' + $(sc[2].asIs) + '</td></tr>' : '') + '<tr><td class="rowlabel">Basis</td>' + sc.map(function(x){ return '<td class="u" data-bk-align="text">' + esc(x.note || '') + '</td>'; }).join('') + '</tr>', 'pv-scen', '<thead><tr><th class="rowlabel-h"></th>' + sc.map(function(x){ return '<th>' + esc(x.label) + (x.id === r.conclusionId ? ' (concluded)' : '') + '</th>'; }).join('') + '</tr></thead>'); }
+function sensTable(r){ return r.sens.length ? tbl('Sensitivity of the concluded value to the cap rate', '<tr><td class="rowlabel">Cap rate</td>' + r.sens.map(function(x){ return '<td class="v">' + P(x.cap, 2) + '</td>'; }).join('') + '</tr><tr><td class="rowlabel">Value</td>' + r.sens.map(function(x, i){ return '<td class="v"' + (i === 3 ? ' style="font-weight:700"' : '') + '>' + $(x.value) + '</td>'; }).join('') + '</tr>', 'pv-sens') : ''; }
+function compStats(r){ var c = r.compStats; return c.n ? tbl('What the comparables say', row('Comparables', String(c.n)) + row('Median cap rate', P(c.medCap, 2), c.impliedByCap ? 'implies ' + $(c.impliedByCap) + ' on the concluded NOI' : '') + row('Median price per unit', $(c.medUnit), c.impliedByUnit ? 'implies ' + $(c.impliedByUnit) : '') + row('Median price per SF', c.medSF ? '$' + c.medSF.toFixed(2) : '-', c.impliedBySF ? 'implies ' + $(c.impliedBySF) : ''), 'pv-comps') : ''; }
+function sheet(){
+  var s = bkLoad(), r = window.bkValuation(s);
+  var inputs = tbl('Valuation inputs', inp('valDate', 'text', s, 'the date the value is as of', 'e.g. 11/1/2026') + inp('valCapRate', 'pct', s, '%') + inp('valCapInPlace', 'pct', s, '% (blank = the market cap rate)') + inp('valCapStab', 'pct', s, '% (blank = the market cap rate)')
+      + inp('valMarketRent', 'num', s, '$ (used when the rent roll has no market rents)') + inp('valStabVacancy', 'pct', s, '% (blank = the vacancy on Revenues)') + inp('valStabilizedNoi', 'num', s, '$') + inp('valStabCost', 'num', s, '$ (renovation, lease-up and other costs to reach stabilization)')
+      + '<tr><td class="rowlabel">' + LABEL.valConclusion + '</td><td class="v"><select id="pv-valConclusion" onchange="bkEdSet(\'valConclusion\',\'text\',this.value)">' + [['inplace', 'In-place NOI'], ['normalized', 'Normalized NOI'], ['stabilized', 'Stabilized NOI']].map(function(o){ return '<option value="' + o[0] + '"' + (r.conclusionId === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td><td class="u"></td></tr>', 'pv-inputs');
+  var adj = listEditor(s, 'valAdjustments', [['name', 'text', 'Normalizing adjustment'], ['amount', 'num', 'Amount ($ a year, + adds to NOI)']], 'Normalizing adjustments to in-place NOI', 'Add an adjustment');
+  var comps = listEditor(s, 'valComps', [['name', 'text', 'Property'], ['date', 'text', 'Sale date'], ['price', 'num', 'Price $'], ['units', 'num', 'Units'], ['sf', 'num', 'SF'], ['capRate', 'pct', 'Cap rate %'], ['noi', 'num', 'NOI $']], 'Comparable sales', 'Add a comparable sale');
+  var c = r.calc || {}, ops = tbl('In-place operating statement', row('Gross potential rent', $(c.gpr)) + row('Vacancy, credit loss and concessions', $((n(c.vacancy) || 0) + (n(c.bad) || 0) + (n(c.ltl) || 0) + (n(c.concess) || 0))) + row('Commercial, net', $(c.netComm)) + row('Other income', $(c.other)) + row('Effective gross income', $(c.egi), '', 'grandtotal') + row('Operating expenses', $(-(n(c.total) || 0)), 'incl. management ' + $(c.mgmt)) + row('In-place NOI', $(c.noi), 'before replacement reserves', 'grandtotal'), 'pv-ops');
+  var res = r.ok ? '<div class="note-flag" style="margin-top:14px"><span>&#10003;</span><div><b>Estimated market value: ' + $(r.conclusion.value) + '</b> as of ' + esc(r.valDate) + ', on ' + esc(r.conclusion.label.toLowerCase()) + ' NOI of ' + $(r.conclusion.noi) + ' at a ' + P(r.conclusion.cap, 2) + ' cap rate (' + $(r.conclusion.perUnit) + ' a unit).</div></div>' + scenarioTable(r) + sensTable(r) + compStats(r)
+    : '<div class="note-flag" style="margin-top:14px"><span>&#9888;</span><div><b>Not valued yet.</b> Still needed: ' + esc(r.missing.join('; ') || 'an NOI for the concluded case') + '. Income and expenses are entered on Property &gt; Revenues and Expenses, or by importing an OM, T-12 or rent roll.</div></div>' + (r.scenarios.some(function(x){ return x.value !== null; }) ? scenarioTable(r) : '');
+  var checks = tbl('Checks', r.checks.map(function(k){ return '<tr><td class="rowlabel">' + esc(k.label) + '</td><td><span class="status-chip ' + (k.ok ? 'pass' : 'fail') + '">' + (k.ok ? 'Ties' : 'Does not tie') + '</span></td></tr>'; }).join(''), 'pv-checks');
+  var main = '<div class="rf">' + inputs + ops + adj + res + comps + checks + '<div class="note-flag" style="margin-top:14px"><span>&#9432;</span><div>An income-approach estimate of value prepared from the inputs shown. It is not an appraisal, and it excludes financing, debt service and investor returns.</div></div></div>';
+  return { title:'Property Valuation', crumbs:'Valuation', desc:'What the property is worth today on its income: NOI divided by a market cap rate, in place, normalized and stabilized.', meta:{ Property:esc(s.name || 'Untitled'), 'Value':r.ok ? $(r.conclusion.value) : '-', 'As of':esc(r.valDate || '-') }, main:main, sidebar:'' };
+}
+/* ---------- the report: one section per registry section ---------- */
+var SECT = {
+  valExec:function(s, r){ return '<h2>Estimated market value</h2>' + (r.ok ? '<p><b>' + $(r.conclusion.value) + '</b> as of ' + esc(r.valDate) + ' (' + $(r.conclusion.perUnit) + ' a unit' + (r.conclusion.perSF ? ', $' + r.conclusion.perSF.toFixed(2) + ' a SF' : '') + '), on ' + esc(r.conclusion.label.toLowerCase()) + ' NOI of ' + $(r.conclusion.noi) + ' at a ' + P(r.conclusion.cap, 2) + ' cap rate.</p>' : '<p>Not valued: ' + esc(r.missing.join('; ')) + '.</p>'); },
+  propDesc:function(s, r){ return '<h2>Property</h2>' + tbl('', row('Property', esc(s.name || '-')) + row('Location', esc(s.location || '-')) + row('Type', esc(s.propertyType || '-')) + row('Units', s.units ? String(s.units) : '-') + row('Building area', s.gsf ? Math.round(s.gsf).toLocaleString('en-US') + ' SF' : '-')); },
+  rentRollMix:function(s, r){ var rr = Array.isArray(s.rentRoll) ? s.rentRoll : []; var st = rr.length ? safe(function(){ return bkRentRollStats(rr); }, null) : null; return '<h2>Rent roll and unit mix</h2>' + (st ? tbl('', row('Residential units', String(st.resUnits)) + row('In-place rent (monthly)', $(st.resInPlace)) + row('Market rent (monthly)', $(st.resMarket)) + (st.commSuites ? row('Commercial suites', String(st.commSuites)) : '')) : '<p>No rent roll: income is the average rent per unit (' + $(s.avgRent) + ' a month) times ' + (s.units || 0) + ' units.</p>'); },
+  incomeAnalysis:function(s, r){ var c = r.calc || {}; return '<h2>Income</h2>' + tbl('', row('Gross potential rent', $(c.gpr)) + row('Vacancy', $(c.vacancy)) + row('Credit loss', $(c.bad)) + row('Concessions and loss to lease', $((n(c.concess) || 0) + (n(c.ltl) || 0))) + row('Commercial, net', $(c.netComm)) + row('Other income', $(c.other)) + row('Effective gross income', $(c.egi), '', 'grandtotal')); },
+  opexAnalysis:function(s, r){ var c = r.calc || {}, L = [['Real estate taxes', s.taxes], ['Insurance', s.insurance], ['Utilities', s.utilities], ['Repairs and maintenance', s.rm], ['Payroll', s.payroll], ['Contract services', s.contract], ['Turnover', s.turnover], ['Marketing', s.marketing], ['General and administrative', s.ga], ['Management fee', c.mgmt], ['Other', c.misc]];
+    return '<h2>Operating expenses</h2>' + tbl('', L.filter(function(l){ return n(l[1]); }).map(function(l){ return row(l[0], $(l[1]), c.egi > 0 ? P(n(l[1]) / c.egi, 1) + ' of income' : ''); }).join('') + row('Total operating expenses', $(c.total), c.egi > 0 ? P(c.total / c.egi, 1) + ' of income' : '', 'grandtotal')); },
+  noiRecon:function(s, r){ return '<h2>NOI reconciliation</h2>' + tbl('', row('In-place NOI', $(r.scenarios[0].noi), 'before replacement reserves') + r.adjustments.map(function(a){ return row(a.name, $(a.amount), 'normalizing adjustment'); }).join('') + row('Normalized NOI', $(r.scenarios[1].noi), '', 'grandtotal') + row('Stabilized NOI', $(r.scenarios[2].noi), r.scenarios[2].note)); },
+  capRateAnalysis:function(s, r){ return '<h2>Capitalization rate</h2><p>Market cap rate ' + P(r.cap, 2) + (r.compStats.n ? '; the ' + r.compStats.n + ' comparable sale' + (r.compStats.n === 1 ? '' : 's') + ' have a median of ' + P(r.compStats.medCap, 2) : '; no comparable sales were entered') + '.</p>' + (r.comps.length ? tbl('', r.comps.map(function(x){ return '<tr><td class="rowlabel">' + esc(x.name) + '</td><td>' + esc(x.date) + '</td><td class="v">' + $(x.price) + '</td><td class="v">' + P(x.cap, 2) + '</td><td class="v">' + $(x.perUnit) + '</td></tr>'; }).join(''), '', '<thead><tr><th class="rowlabel-h">Sale</th><th>Date</th><th>Price</th><th>Cap rate</th><th>Per unit</th></tr></thead>') : ''); },
+  valueConclusion:function(s, r){ return '<h2>Value</h2>' + scenarioTable(r); },
+  valSens:function(s, r){ return '<h2>Valuation sensitivity</h2>' + (sensTable(r) || '<p>Not calculated.</p>'); },
+  disclosures:function(s, r){ return '<h2>Assumptions and limitations</h2><ul><li>Income approach: value = NOI / cap rate. NOI is before replacement reserves.</li><li>Stabilized NOI is ' + esc(r.scenarios[2].note || '') + '.</li><li>Financing, debt service, investor returns and depreciation are excluded.</li><li>This is a broker or owner estimate of value from the inputs shown, not an appraisal, and is as of ' + esc(r.valDate || 'the date entered') + '.</li></ul>'; }
+};
+function report(){ var s = bkLoad(), r = window.bkValuation(s), secs = window.BKReg ? window.BKReg.report('valuation') : [];
+  return { title:'Property Valuation Report', crumbs:'Reports', desc:'Built from the valuation, one section per part of the report. Print / PDF prints it.', meta:{ Property:esc(s.name || 'Untitled') }, main:'<div class="rf rf-report">' + secs.map(function(x){ var f = SECT[x.id]; return f ? '<section class="rf-sec" data-section="' + x.id + '">' + f(s, r) + '</section>' : ''; }).join('') + '</div>', sidebar:'' }; }
+window.bkValuationReportSections = function(){ return Object.keys(SECT); };
+var reg = function(name, fn){ var w = function(){ if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState(name); return fn(); }; if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(name, w); else RENDERERS[name] = w; };
+reg('Property Valuation', sheet); reg('Property Valuation Report', report);
+var ops = GROUPS.find(function(g){ return g.id === 'propops'; }); if(ops && ops.sheets.indexOf('Property Valuation') < 0) ops.sheets.push('Property Valuation');
+var rep = GROUPS.find(function(g){ return g.id === 'reports'; }); if(rep && rep.sheets.indexOf('Property Valuation Report') < 0) rep.sheets.push('Property Valuation Report');
+if(typeof bkBuildRail === 'function') try { bkBuildRail(); } catch(e){}
 })();
 </script>
 <style id="bk-palette-css">/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.

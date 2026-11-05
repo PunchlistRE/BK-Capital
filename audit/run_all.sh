@@ -72,6 +72,7 @@ echo "== Portfolio IRR on the combined dated cash flow (independent XIRR, reconc
 echo "== Analysis registry and the setup page (consistency, guide steps from the registry, saved-deal compatibility, summaries, dialog, themes)"; node audit/registry_test.js index.html | tail -1
 echo "== Analysis registry part 2 (step bar stages, readiness workflow, Overview tiles and integrity checks read the analysis)"; node audit/registry2_test.js index.html | tail -1
 echo "== Refinancing Analysis (sizing, payoff and proceeds vs an independent model; alternatives; readiness, stages, tiles and the report from the registry)"; node audit/refinance_test.js index.html | tail -1
+echo "== Property Valuation (in-place, normalized and stabilized value vs an independent model; comparables, sensitivity; readiness, stages, tiles and the report from the registry)"; node audit/valuation_test.js index.html | tail -1
 echo "== Stage D (Deal Underwrite tab bar; input / calculated / linked / N/A / attention cell convention on every input sheet)"; node audit/stageD_test.js index.html | tail -1
 echo "== Import tab (one tab; content-driven reader on unseen layouts, development pro forma + OM, teaching, old readers inside the tab)"; node audit/import_hub_test.js index.html | tail -1
 echo "== Import tab routing (an OM with a rent roll page stays an OM; a plain rent roll stays a rent roll)"; node audit/import_route_test.js index.html | tail -1

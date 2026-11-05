@@ -15,7 +15,7 @@ function P(id, label, fmt){ return M(id, label, fmt, function(){ return null; },
 function ctx(s){ var c = { s:s }, memo = {};
   var lazy = function(k, f){ Object.defineProperty(c, k, { get:function(){ if(!(k in memo)) memo[k] = safe(f, null); return memo[k]; } }); };
   lazy('calc', function(){ return bkCalc(); }); lazy('debt', function(){ return bkDebt(); }); lazy('ret', function(){ return bkMonthlyReturns(); }); lazy('acf', function(){ return bkAnnualCF(); });
-  lazy('dev', function(){ return bkDevV09(); }); lazy('refi', function(){ return typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
+  lazy('dev', function(){ return bkDevV09(); }); lazy('val', function(){ return typeof window.bkValuation === 'function' ? window.bkValuation(s) : null; }); lazy('refi', function(){ return typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
   return c; }
 var price = function(c){ return pos(Number(c.s.purchasePrice)); };
 R.addMetrics([
@@ -51,8 +51,12 @@ R.addMetrics([
   M('stabValue', 'Stabilized value', 'money', function(c){ return c.take ? pos(c.take.stabVal) : null; }),
   M('devSpread', 'Development spread (yield on cost less exit cap)', 'bps', function(c){ var e = pos(Number(c.s.exitCap)); return c.calc && c.dev && c.dev.unlev > 0 && e ? fin((c.calc.noi / c.dev.unlev - e) * 10000) : null; }),
   /* planned */
-  P('noiNormalized', 'Normalized NOI', 'money'), P('noiStabilized', 'Stabilized NOI', 'money'), P('capRate', 'Selected cap rate', 'pct'), P('marketValue', 'Estimated market value', 'money'),
-  P('valuePerUnit', 'Value per unit', 'money'), P('valuePerSF', 'Value per SF', 'money'),
+  M('noiNormalized', 'Normalized NOI', 'money', function(c){ var v = c.val; return v ? fin(v.scenarios[1].noi) : null; }, { note:'in-place NOI plus the normalizing adjustments' }),
+  M('noiStabilized', 'Stabilized NOI', 'money', function(c){ var v = c.val; return v ? fin(v.scenarios[2].noi) : null; }),
+  M('capRate', 'Selected cap rate', 'pct', function(c){ var v = c.val; return v && v.ok ? pos(v.conclusion.cap) : null; }),
+  M('marketValue', 'Estimated market value', 'money', function(c){ var v = c.val; return v && v.ok ? pos(v.conclusion.value) : null; }, { note:'concluded NOI / cap rate; not an appraisal' }),
+  M('valuePerUnit', 'Value per unit', 'money', function(c){ var v = c.val; return v && v.ok ? pos(v.conclusion.perUnit) : null; }),
+  M('valuePerSF', 'Value per SF', 'money', function(c){ var v = c.val; return v && v.ok ? pos(v.conclusion.perSF) : null; }),
   M('currentValue', 'Current property value', 'money', function(c){ var r = c.refi; return r ? pos(r.value) : null; }), M('existingPayoff', 'Existing loan payoff', 'money', function(c){ var r = c.refi; return r ? fin(r.payoff) : null; }, { note:'balance plus prepayment penalty' }), M('newLoan', 'Proposed loan', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.loan) : null; }), M('newLTV', 'LTV', 'pct', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.ltv) : null; }), M('newDSCR', 'DSCR', 'x', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.dscr) : null; }), M('newDY', 'Debt yield', 'pct', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.dy) : null; }),
   M('refiCosts', 'Refinance costs', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.costs) : null; }), M('netProceeds', 'Net proceeds', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.net) : null; }, { note:'new loan less payoff and costs; negative means equity is needed' }), M('cashOut', 'Cash-out proceeds', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.cashOut) : null; }), M('equityRetained', 'Remaining equity', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.equityAfter) : null; }, { note:'value less the new loan' }),
   P('forwardNOI', 'Forward NOI', 'money'), P('netSaleNow', 'Net proceeds from selling now', 'money'), P('holdIRR', 'Hold-case IRR', 'pct'), P('saleTax', 'Estimated tax on sale', 'money'),

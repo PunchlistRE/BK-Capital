@@ -14,7 +14,7 @@ R.addRules([
   X('fixed', 'Principal stays within a fixed facility', 'integrity:fixed'), X('payoff', 'Debt repaid at sale equals the balance', 'integrity:payoff'), X('sale', 'Net sale equals gross less costs', 'integrity:sale'),
   X('eqret', 'Equity in returns equals the funding ledger', 'integrity:eqret'), X('contrib', 'LP + GP contributions tie', 'integrity:contrib'), X('unlev_irr', 'Unlevered returns are calculated', 'integrity:unlev_irr'),
   X('irr', 'Levered IRR equals an independent XIRR', 'integrity:irr'), X('moic', 'Multiple = distributions / contributions', 'integrity:moic'), X('waterfall', 'Hurdles replay, tiers in order, every dollar once', 'waterfall'),
-  X('noiTies', 'NOI = income less expenses, by line', 'refinance'), X('valueTies', 'Value = NOI / cap rate for each scenario', 'planned', { planned:true }), X('noDebt', 'No financing figure reaches a valuation', 'planned', { planned:true }),
+  X('noiTies', 'NOI = income less expenses, by line', 'refinance / valuation'), X('valueTies', 'Value = NOI / cap rate for each scenario', 'valuation'), X('noDebt', 'No financing figure reaches a valuation', 'valuation'),
   X('payoffTies', 'Payoff = balance + accrued interest + prepayment', 'refinance'), X('sizingTies', 'Loan = the lowest of the lender tests', 'refinance'),
   X('basisTies', 'Basis, land, depreciation and accumulated depreciation reconcile', 'planned', { planned:true }), X('capitalTies', 'Capital budget, actuals and funding reconcile', 'planned', { planned:true }),
   X('portfolioTies', 'Consolidated flows equal the sum of the holdings; nothing counted twice', 'planned', { planned:true }), X('bizTies', 'EBITDA, free cash flow and value reconcile', 'planned', { planned:true })
@@ -22,7 +22,7 @@ R.addRules([
 var CORE = ['readiness', 'conflicts', 'sale', 'payoff', 'eqret', 'contrib', 'unlev_irr', 'irr', 'moic', 'waterfall', 'credit'];
 R.addChecks('acquisition', ['budget', 'unlev', 'su', 'capint', 'facility'].concat(CORE));   /* the acquisition engine reports sources and uses, interest and the loan balance too */
 R.addChecks('development', ['budget', 'unlev', 'su', 'draws', 'capint', 'facility', 'fixed'].concat(CORE));
-R.addChecks('valuation', ['readiness', 'conflicts', 'noiTies', 'valueTies', 'noDebt']);
+R.addChecks('valuation', ['readiness', 'noiTies', 'valueTies', 'noDebt']);
 R.addChecks('refinance', ['readiness', 'noiTies', 'payoffTies', 'sizingTies']);
 R.addChecks('hold', ['readiness', 'conflicts', 'sale', 'payoff', 'irr', 'moic', 'basisTies']);
 R.addChecks('comprehensive', CORE.concat(['capitalTies', 'basisTies']));
