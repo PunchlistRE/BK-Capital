@@ -277,3 +277,6 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
   html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(3), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(3){ width:43% !important; }
   html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(4), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(4){ width:14% !important; }
 }
+
+/* DEVELOPMENT BUDGET line items: the words (class, item, curve, steepness) read from the left; the figures stay right-aligned */
+html body #viewport#viewport .ae-grid input.bud-l, html body #viewport#viewport .ae-grid select.bud-l{ text-align:left !important; text-align-last:left !important; }

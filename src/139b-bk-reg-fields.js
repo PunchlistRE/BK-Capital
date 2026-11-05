@@ -64,7 +64,7 @@ window.BKReg.addFields([
   F('capKeepCoE', 'Keep: cash-on-equity at or above', 'pct', { zeroOk:true, help:'At or above this cash-on-equity the test says keep holding. It must not be lower than the sell level. Type 5.5 for 5.5%. Typical: 5% to 8%.', sug:sug(0.055, 'The workbook default is 5.5%.') }),
   F('sourcesUses', 'Sources and uses', 'derived'),
   /* development */
-  F('sourceConstruction', 'Construction budget (hard + soft)', 'money', { help:'Hard and soft costs together; the cost ladder is scaled to it.' }),
+  F('sourceConstruction', 'Construction budget (hard + soft)', 'money', { help:'Hard and soft costs together; the cost ladder is scaled to it. To enter the budget by $ per SF or as line items in dollars, use Investment > Budget (that replaces this total).' }),
   F('predevMonths', 'Pre-development, months', 'int', { zeroOk:true, sug:sug(6, 'Permits and bidding usually take 3 to 9 months.') }),
   F('constructionMonths', 'Construction, months', 'int', { sug:sug(18, 'Mid-rise multifamily usually builds in 16 to 24 months.') }),
   F('leaseupMonths', 'Lease-up, months', 'int', { zeroOk:true, sug:sug(12, 'New buildings usually lease up in 10 to 16 months.') }),

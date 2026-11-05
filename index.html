@@ -2323,6 +2323,46 @@ function bkDevSoftCostLadder(s,gsf,hardTotal,price,kScale){
   const total=softSubtotal+devFee+contingency;
   return{lines,softSubtotal,devFee,contingency,total};
 }
+/* ---- Development budget by $ per SF, or by line items in dollars. ONE budget feeds the totals the funding, Sources & Uses, Debt and Returns already read (hard, soft, contingency inside hard, FF&E inside soft);
+   a line item carries its own start month, length and curve, and the monthly cash it spends is what the draw schedule and the Gantt show. ---- */
+const BK_RATE_PRESETS=[['Steep (9)',9],['Moderately Steep (7)',7],['Moderate (5)',5],['Moderately Flat (3)',3],['Flat (1)',1]];
+const BK_BUDGET_CLASSES=[['hard','Hard cost'],['cont','Contingency'],['soft','Soft cost'],['ffe','FF&E']];
+function bkDevBudgetRows(s,gsf,units){
+  const mode=String(s.devBudgetMode||'').toUpperCase(), n=v=>{v=Number(v);return isFinite(v)?v:0};
+  if(mode==='PSF'){
+    const hard=gsf*n(s.hardPsf), cont=hard*n(s.hardContPct), soft=gsf*n(s.softPsf), ffe=units*n(s.ffePerUnit);
+    return [{id:'psf-hard',cls:'hard',name:'Hard costs ($ per GSF)',amount:hard},{id:'psf-cont',cls:'cont',name:'Hard cost contingency',amount:cont},{id:'psf-soft',cls:'soft',name:'Soft costs ($ per GSF)',amount:soft},{id:'psf-ffe',cls:'ffe',name:'FF&E ($ per unit)',amount:ffe}].filter(r=>r.amount>0).map(r=>Object.assign({start:null,len:null,method:null,rate:null},r));
+  }
+  const ok=new Set(['hard','cont','soft','ffe']), blank=v=>v===''||v==null;
+  return (Array.isArray(s.budgetLines)?s.budgetLines:[]).map((l,i)=>({l,i})).filter(o=>o.l&&n(o.l.amount)>0).map(o=>{const l=o.l,i=o.i;return {id:String(l.id||('b'+(i+1))),idx:i,cls:ok.has(l.cls)?l.cls:'hard',name:String(l.name||('Line '+(i+1))),amount:n(l.amount),start:blank(l.start)?null:Math.max(1,Math.round(n(l.start))),len:blank(l.len)?null:Math.max(1,Math.round(n(l.len))),method:blank(l.method)?null:String(l.method),rate:blank(l.rate)?null:n(l.rate)};});
+}
+/* the hard / soft ladders the rest of the app reads, built from those rows (contingency stays inside hard, FF&E inside soft) */
+function bkDevBudgetBuild(s,gsf,units){
+  const rows=bkDevBudgetRows(s,gsf,units), sum=c=>rows.filter(r=>r.cls===c).reduce((t,r)=>t+r.amount,0);
+  const hardSub=sum('hard'), cont=sum('cont'), softSub=sum('soft')+sum('ffe');
+  return {rows,
+    hard:{lines:rows.filter(r=>r.cls==='hard').map(r=>({name:r.name,rate:gsf?r.amount/gsf:0,total:r.amount})),tradeSubtotal:hardSub,gc:0,contractorFee:0,riskBonds:0,contingency:cont,total:hardSub+cont},
+    soft:{lines:rows.filter(r=>r.cls==='soft'||r.cls==='ffe').map(r=>({name:r.name,basis:r.cls==='ffe'?'FF&E':'Line',rate:gsf?r.amount/gsf:0,total:r.amount})),softSubtotal:softSub,devFee:0,contingency:0,total:softSub}};
+}
+/* Where each line sits in time. A line with no start or length follows the schedule: hard and contingency the construction window (so they move with the Gantt), soft cost from the first month to
+   completion, FF&E the last three construction months. The curve is the line's own, else the deal's hard or soft cost curve. Returns each line's resolved window and its cash by month. */
+function bkDevBudgetPlan(x,s){
+  const rows=x.budgetRows||[], LC=bkDevLifecycleV13(x), byMo={hard:{},soft:{},all:{}}, out=[], n=v=>{v=Number(v);return isFinite(v)?v:0};
+  rows.forEach(r=>{
+    const side=(r.cls==='hard'||r.cls==='cont')?'hard':'soft'; let start=r.start, len=r.len;
+    if(start==null||len==null){
+      if(side==='hard'){ if(start==null)start=LC.conStart; if(len==null)len=LC.conLen; }
+      else if(r.cls==='ffe'){ const L=Math.min(3,LC.conLen); if(start==null)start=LC.conStart+LC.conLen-L; if(len==null)len=L; }
+      else { if(start==null)start=1; if(len==null)len=Math.max(1,x.co); }
+    }
+    const method=r.method||(side==='hard'?s.hardCurveMethod:(r.cls==='ffe'?'Straight-Line':s.softConMethod))||'Straight-Line';
+    const rate=r.rate!=null?r.rate:(side==='hard'?n(s.hardCurveSteepness)||7:n(s.softConSteepness)||5), monthly={};
+    for(let mo=start;mo<start+len;mo++){ const sh=bkCurveShare(mo,start,len,method,rate); if(sh>0){ const v=r.amount*sh; monthly[mo]=v; byMo[side][mo]=(byMo[side][mo]||0)+v; byMo.all[mo]=(byMo.all[mo]||0)+v; } }
+    out.push(Object.assign({},r,{side,start,len,end:start+len-1,method,rate,monthly}));
+  });
+  return {rows:out,hard:byMo.hard,soft:byMo.soft,all:byMo.all,LC};
+}
+window.bkDevBudgetPlan=bkDevBudgetPlan;window.BK_RATE_PRESETS=BK_RATE_PRESETS;window.BK_BUDGET_CLASSES=BK_BUDGET_CLASSES;
 /* Contingency register: the hard-cost contingency in the budget tracked as original / allocated / change orders (used) / remaining / forecast. Change orders and expected further use draw it down; use beyond the original is an overrun added to hard cost, and (when release is 'saved') what is not used is taken out of cost. With no register the contingency is spent in full, as before. */
 window.bkContingencyStats=function(s,original){const c=(s&&s.contingency&&typeof s.contingency==='object')?s.contingency:null;if(!c)return null;const sum=a=>(Array.isArray(a)?a:[]).reduce((t,r)=>t+(Number(r&&r.amount)||0),0);const alloc=sum(c.allocations),used=sum(c.changeOrders),more=Math.max(0,Number(c.forecastMore)||0),forecast=used+more,remaining=original-used,fRemaining=original-forecast,over=Math.max(0,-fRemaining),saved=c.release==='saved'?Math.max(0,fRemaining):0;return{original,allocated:alloc,unallocated:original-alloc,used,remaining,more,forecast,forecastRemaining:fRemaining,overrun:over,saved,release:c.release==='saved'?'saved':'spent',adj:over-saved};};
 function bkDevV09(){
@@ -2342,7 +2382,10 @@ function bkDevV09(){
    const sf=bkDevSoftCostLadder(s,gsf,h.total,land,kk);
    return {hard:h,soft:sf,total:h.total+sf.total};
  }
- if(isDev){
+ let budgetRows=null;const bmode=String(s.devBudgetMode||'').toUpperCase();
+ if(isDev&&(bmode==='LINES'||bmode==='PSF')){
+   const b=bkDevBudgetBuild(s,gsf,Number(s.units||0)); hard=b.hard.total; soft=b.soft.total; hardLadder=b.hard; softLadder=b.soft; budgetRows=b.rows; k=1;
+ } else if(isDev){
    if(String(s.devBudgetMode).toUpperCase()==='SOURCE' && Number(s.sourceConstruction)>0){
      const c0=costAtK(0), c1=costAtK(1), target=Number(s.sourceConstruction);
      k=(c1.total-c0.total)!==0 ? (target-c0.total)/(c1.total-c0.total) : 1;
@@ -2355,7 +2398,7 @@ function bkDevV09(){
  const ramp=isDev?bkDevLeaseupRamp(s,co,stab,luMo):{months:[],leaseDef:0};
  const leaseDef=ramp.leaseDef, unlev=land+close+acq+pre+hard+soft+leaseDef;
  const phases=[['Pre-Development',preMo?1:'-',preMo||'-',preMo],['Construction',conMo?preMo+1:'-',conMo?co:'-',conMo],['Certificate of Occupancy',isDev&&co?co:'-',isDev&&co?co:'-',isDev&&co?1:0],['Lease-Up / Absorption',luMo?co+1:(isDev?'-':1),luMo?stab:(isDev?'-':1),luMo],['Stabilized Operations',stab,hold,Math.max(0,hold-stab+1)],['Sale / Exit',hold,hold,1]];
- return{s,isDev,land,close,acq,pre,hard,soft,hardLadder,softLadder,contReg,calibK:k,leaseDef,leaseupRamp:ramp.months,unlev,preMo,conMo,luMo,co,stab,hold,phases};
+ return{s,isDev,land,close,acq,pre,hard,soft,hardLadder,softLadder,budgetRows,budgetMode:bmode,contReg,calibK:k,leaseDef,leaseupRamp:ramp.months,unlev,preMo,conMo,luMo,co,stab,hold,phases};
 }
 const _dealV09=sheetDealUnderwrite;sheetDealUnderwrite=function(){const o=_dealV09();o.main+=`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Development - Workbook Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkSelect('Development Budget Mode','devBudgetMode',[['SOURCE','SOURCE'],['PARAMETRIC','PARAMETRIC']])}${bkInput('Gross Building Area','gsf','GSF')}${bkInput('Source Construction Budget','sourceConstruction','$')}${bkInput('Pre-Development Period','predevMonths','months')}${bkInput('Construction Period','constructionMonths','months')}${bkInput('Lease-Up Period','leaseupMonths','months')}${bkInput('Pre-Leased Occupancy at CO','preleasedPct','%','pct')}${bkInput('Predevelopment Carry','predevCarry','$')}</tbody></table></div>
 <div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Development - Hard Cost Trade Lines ($ / GSF, Development!F25:F38)</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('Demolition, Abatement & Site Clearing','hc_demo','$/GSF')}${bkInput('Site Work, Utilities & Off-Sites','hc_sitework','$/GSF')}${bkInput('Excavation, Shoring & Foundations','hc_excavation','$/GSF')}${bkInput('Structured Parking - Below Grade','hc_parking','$/GSF')}${bkInput('Concrete Podium & Superstructure','hc_podium','$/GSF')}${bkInput('Exterior Envelope, Glazing & Balconies','hc_envelope','$/GSF')}${bkInput('Roofing, Waterproofing & Membrane','hc_roofing','$/GSF')}${bkInput('MEP & Fire Protection','hc_mep','$/GSF')}${bkInput('Elevators & Conveying','hc_elevators','$/GSF')}${bkInput('Interior Partitions & Common Finishes','hc_partitions','$/GSF')}${bkInput('Unit Interiors - Cabinets, Appliances, Fixtures','hc_unitint','$/GSF')}${bkInput('Amenity & Common Area Fit-Out','hc_amenity','$/GSF')}${bkInput('Commercial Shell / Fit-Out','hc_commshell','$/GSF')}${bkInput('Landscape, Hardscape & Streetscape','hc_landscape','$/GSF')}${bkInput('General Conditions & Requirements','hardGCPct','%','pct')}${bkInput('Contractor Fee','hardContractorFeePct','%','pct')}${bkInput('Risk, Payment & Bonds','hardRiskBondsPct','%','pct')}${bkInput('Hard Cost Contingency','hardContPct','%','pct')}</tbody></table></div>
@@ -2427,14 +2470,14 @@ function bkDevFundingV10(){
  const commitLTC=ltc>0&&ltc*(feeFac+intFac)<1?ltc*U0/(1-ltc*(feeFac+intFac)):0,commitLTV=ltv>0?ltv*stabVal:Number.POSITIVE_INFINITY,commitCalc=(()=>{const a=ltc>0?(commitLTC||0):Number.POSITIVE_INFINITY,raw=Math.min(a,commitLTV);return isFinite(raw)?Math.max(0,Math.floor(raw/1000)*1000):0;})(),commit=fixedAmt>0?fixedAmt:commitCalc,balCap=Math.max(commit,ceil),upfront=commit*feeFac+Number(s.lenderLegal||0),estInt=commit*intFac,eqTarget=eqFirst>0?eqFirst:(commit>0?Math.max(0,x.unlev+upfront+estInt-commit):9.9e14);
  /* unit-level lease-up: the operating shortfall is funded in the months it actually occurs (the unit schedule's negative NOI), not spread evenly */
  let leaseShares=null;if(typeof bkDevUnitOn==='function'&&bkDevUnitOn(s)&&x.leaseDef>0){const sf={};let tot=0;(x.leaseupRamp||[]).forEach(r=>{const v=Math.max(0,-Number(r.after||0));if(v>0){sf[r.mo]=v;tot+=v;}});if(tot>0){leaseShares={};Object.keys(sf).forEach(k=>{leaseShares[k]=sf[k]/tot;});}}
- const resList=bkInitReserves(s,x);let opBal=0,intBal=0,heldBal=0,resFundedT=0,resDrawnT=0;let bal=0,prin=0,unusedTotal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
+ const resList=bkInitReserves(s,x);let opBal=0,intBal=0,heldBal=0,resFundedT=0,resDrawnT=0;let bal=0,prin=0,unusedTotal=0,cumEq=0,cumNeed=0,actualCapInt=0,overflowTotal=0;const months=[];const LC=bkDevLifecycleV13(x);const bp=(x.budgetRows&&x.budgetRows.length)?bkDevBudgetPlan(x,s):null;let cumHard=0,cumSoft=0,cumLease=0,cumFees=0;
  for(let mo=1;mo<=x.hold;mo++){
    const land=mo===1?x.land+x.close+x.acq+x.pre:0;
-   let hard=x.hard*bkCurveShare(mo,LC.conStart,LC.conLen,s.hardCurveMethod,s.hardCurveSteepness);
+   let hard=bp?(bp.hard[mo]||0):x.hard*bkCurveShare(mo,LC.conStart,LC.conLen,s.hardCurveMethod,s.hardCurveSteepness);
    const preShare=x.preMo>0?bkCurveShare(mo,1,x.preMo,s.softPreMethod,1):0;
    const conShare=bkCurveShare(mo,LC.conStart,LC.conLen,s.softConMethod,s.softConSteepness);
    const luShare=x.luMo>0?bkCurveShare(mo,x.co+1,x.luMo,s.softLeaseMethod,1):0;
-   let soft=x.soft*(.28*preShare+(.62+(x.preMo===0?.28:0))*conShare+.10*luShare);if(x.luMo===0&&mo===LC.closeoutMo)soft+=x.soft*.10;
+   let soft=bp?(bp.soft[mo]||0):x.soft*(.28*preShare+(.62+(x.preMo===0?.28:0))*conShare+.10*luShare);if(!bp&&x.luMo===0&&mo===LC.closeoutMo)soft+=x.soft*.10;
    let lease=x.leaseDef*(leaseShares?(leaseShares[mo]||0):bkCurveShare(mo,x.co+1,x.luMo,'Straight-Line',1)),fees=mo===x.preMo+1?upfront:0;
    cumHard+=hard;cumSoft+=soft;cumLease+=lease;cumFees+=fees;
    if(mo===LC.sweepMo){const rh=x.hard-cumHard,rs=x.soft-cumSoft,rl=x.leaseDef-cumLease,rf=upfront-cumFees;if(rh>.01)hard+=rh;if(rs>.01)soft+=rs;if(rl>.01)lease+=rl;if(rf>.01)fees+=rf;}
@@ -22112,7 +22155,7 @@ window.BKReg.addFields([
   F('capKeepCoE', 'Keep: cash-on-equity at or above', 'pct', { zeroOk:true, help:'At or above this cash-on-equity the test says keep holding. It must not be lower than the sell level. Type 5.5 for 5.5%. Typical: 5% to 8%.', sug:sug(0.055, 'The workbook default is 5.5%.') }),
   F('sourcesUses', 'Sources and uses', 'derived'),
   /* development */
-  F('sourceConstruction', 'Construction budget (hard + soft)', 'money', { help:'Hard and soft costs together; the cost ladder is scaled to it.' }),
+  F('sourceConstruction', 'Construction budget (hard + soft)', 'money', { help:'Hard and soft costs together; the cost ladder is scaled to it. To enter the budget by $ per SF or as line items in dollars, use Investment > Budget (that replaces this total).' }),
   F('predevMonths', 'Pre-development, months', 'int', { zeroOk:true, sug:sug(6, 'Permits and bidding usually take 3 to 9 months.') }),
   F('constructionMonths', 'Construction, months', 'int', { sug:sug(18, 'Mid-rise multifamily usually builds in 16 to 24 months.') }),
   F('leaseupMonths', 'Lease-up, months', 'int', { zeroOk:true, sug:sug(12, 'New buildings usually lease up in 10 to 16 months.') }),
@@ -24031,7 +24074,7 @@ var TABS = [
   { id:'Revenues',   ic:'R', subs:[['res', 'Residential Rent'], ['com', 'Commercial'], ['oth', 'Other Income'], ['misc', 'Miscellaneous']] },
   { id:'Expenses',   ic:'E', subs:[['op', 'Operating'], ['nonop', 'Non-Operating'], ['cap', 'Capital'], ['grp', 'Expense Groups']] },
   { id:'Tenants',    ic:'T', subs:[['roll', 'Rent Roll'], ['lease', 'Commercial Leases'], ['abs', 'Space Absorption'], ['coh', 'Lease Cohort']] },
-  { id:'Investment', ic:'$', subs:[['acq', 'Acquisition'], ['fin', 'Financing'], ['dev', 'Development'], ['cont', 'Contingency'], ['res', 'Reserves'], ['jv', 'Partnership'], ['fees', 'Fees']] },
+  { id:'Investment', ic:'$', subs:[['acq', 'Acquisition'], ['fin', 'Financing'], ['dev', 'Development'], ['bud', 'Budget'], ['cont', 'Contingency'], ['res', 'Reserves'], ['jv', 'Partnership'], ['fees', 'Fees']] },
   { id:'Valuation',  ic:'V', subs:[['exit', 'Exit'], ['sum', 'Value and Returns']] }
 ];
 var SUBKEY = 'bkcapital.ed.sub.v1', subs = (function(){ try { return JSON.parse(localStorage.getItem(SUBKEY) || '{}') || {}; } catch(e){ return {}; } })();
@@ -24287,8 +24330,74 @@ function pFin(s){ var d = isDev(s), out = '';
     + summaryTable('Construction Loan Result', [['Commitment', money(f.commit), ''], ['Total Project Cost (levered)', money(f.levered), ''], ['Equity Required', money(f.equityTotal), '', 'tot']]); }
   return out; }
 function pDev(s){ if(!isDev(s)) return '<div class="ae-panel"><div class="ae-ph"><i>D</i>Development</div><div class="ae-form"><div class="note">This is an acquisition. Change the Deal Type on Property &gt; Description to Development to model a budget, schedule and construction financing.</div></div></div>';
-  return form('Budget and Schedule', 'D', [R('Budget Mode', sel('devBudgetMode', [['SOURCE', 'Calibrate to the source construction total'], ['PARAMETRIC', 'Build up from the cost ladder']], { s:s, def:'SOURCE' })), R('Source Construction Budget', inp('sourceConstruction', 'num', { s:s }), '$ hard and soft'), R('Pre-Development Period', safe(function(){ return window.bkDevGanttOn(s); }, false) ? ro(String(num(s.predevMonths))) : inp('predevMonths', 'int', { s:s }), safe(function(){ return window.bkDevGanttOn(s); }, false) ? 'months (from the task schedule on Dev Schedule)' : 'months'), R('Construction Period', safe(function(){ return window.bkDevGanttOn(s); }, false) ? ro(String(num(s.constructionMonths))) : inp('constructionMonths', 'int', { s:s }), safe(function(){ return window.bkDevGanttOn(s); }, false) ? 'months (from the task schedule on Dev Schedule)' : 'months'), R('Lease-Up Period', safe(function(){ return window.bkDevUnitOn(s); }, false) ? ro(String(num(s.leaseupMonths))) : inp('leaseupMonths', 'int', { s:s }), safe(function(){ return window.bkDevUnitOn(s); }, false) ? 'months (from the unit schedule on Dev Lease-Up)' : 'months'), R('Pre-Leased at Completion', inp('preleasedPct', 'pct', { s:s }), '%'), R('Hard Cost Contingency', inp('hardContPct', 'pct', { s:s }), '%'), R('Soft Cost Contingency', inp('softContPct', 'pct', { s:s }), '%')])
+  return form('Budget and Schedule', 'D', [R('Budget Mode', sel('devBudgetMode', [['SOURCE', 'Calibrate to the source construction total'], ['PARAMETRIC', 'Build up from the cost ladder'], ['PSF', '$ per SF by category (Investment > Budget)'], ['LINES', 'Line items in dollars (Investment > Budget)']], { s:s, def:'SOURCE' })), R('Source Construction Budget', inp('sourceConstruction', 'num', { s:s }), '$ hard and soft'), R('Pre-Development Period', safe(function(){ return window.bkDevGanttOn(s); }, false) ? ro(String(num(s.predevMonths))) : inp('predevMonths', 'int', { s:s }), safe(function(){ return window.bkDevGanttOn(s); }, false) ? 'months (from the task schedule on Dev Schedule)' : 'months'), R('Construction Period', safe(function(){ return window.bkDevGanttOn(s); }, false) ? ro(String(num(s.constructionMonths))) : inp('constructionMonths', 'int', { s:s }), safe(function(){ return window.bkDevGanttOn(s); }, false) ? 'months (from the task schedule on Dev Schedule)' : 'months'), R('Lease-Up Period', safe(function(){ return window.bkDevUnitOn(s); }, false) ? ro(String(num(s.leaseupMonths))) : inp('leaseupMonths', 'int', { s:s }), safe(function(){ return window.bkDevUnitOn(s); }, false) ? 'months (from the unit schedule on Dev Lease-Up)' : 'months'), R('Pre-Leased at Completion', inp('preleasedPct', 'pct', { s:s }), '%'), R('Hard Cost Contingency', inp('hardContPct', 'pct', { s:s }), '%'), R('Soft Cost Contingency', inp('softContPct', 'pct', { s:s }), '%')])
     + '<div class="ae-row">' + btn('Cost ladder and budget', 'showSheet(\'Development\')', true) + btn('Schedule', 'showSheet(\'Dev Schedule\')') + btn('Draws', 'showSheet(\'Dev Draws\')') + '</div>'; }
+/* ---------- DEVELOPMENT BUDGET: $ per SF by category, or line items in dollars ---------- */
+var BMODES = [['SOURCE', 'One construction total (hard and soft together)'], ['PARAMETRIC', 'Trade cost ladder ($ per GSF by trade)'], ['PSF', '$ per SF by category'], ['LINES', 'Line items in dollars']];
+function bcls(){ return window.BK_BUDGET_CLASSES || [['hard', 'Hard cost'], ['cont', 'Contingency'], ['soft', 'Soft cost'], ['ffe', 'FF&E']]; }
+function brates(){ return window.BK_RATE_PRESETS || [['Moderately Steep (7)', 7]]; }
+window.bkEdBud = function(i, field, raw){ var s = bkLoad(), a = Array.isArray(s.budgetLines) ? s.budgetLines.slice() : [], l = a[i]; if(!l) return; l = a[i] = Object.assign({}, l);
+  if(field === 'amount' || field === 'start' || field === 'len' || field === 'rate'){ var tx = String(raw == null ? '' : raw).trim().replace(/[$,\s]/g, '');
+    if(tx === '') l[field] = field === 'amount' ? 0 : '';
+    else { var v = Number(tx); if(!isFinite(v) || v < 0 || ((field === 'start' || field === 'len') && v < 1) || (field === 'rate' && (v < 1 || v > 20))){ showSheet(cur()); return; } l[field] = (field === 'start' || field === 'len') ? Math.round(v) : v; } }
+  else l[field] = raw;
+  s.budgetLines = a; bkSave(s); showSheet(cur()); };
+window.bkEdBudAdd = function(n, cls){ var s = bkLoad(), a = Array.isArray(s.budgetLines) ? s.budgetLines.slice() : [], k = Math.floor(Number(n)); if(!(k >= 1)) k = 1; if(k > 200) k = 200;
+  for(var i = 0; i < k; i++) a.push({ id:'b' + Date.now().toString(36) + (a.length + 1), cls:cls || 'hard', name:'', amount:0, start:'', len:'', method:'', rate:'' });
+  s.budgetLines = a; bkSave(s); showSheet(cur()); };
+window.bkEdBudDel = function(i){ var s = bkLoad(); if(!Array.isArray(s.budgetLines)) return; s.budgetLines = s.budgetLines.slice(); s.budgetLines.splice(i, 1); bkSave(s); showSheet(cur()); };
+/* one-time conversion: the dollars the budget has today (the cost ladder or the one total), line by line, so nothing is retyped and the totals do not move */
+window.bkEdBudCopy = function(){ var s = bkLoad(), had = Array.isArray(s.budgetLines) && s.budgetLines.some(function(l){ return num(l && l.amount) > 0; });
+  if(had && !window.confirm('Replace the line items already entered with the current budget, line by line?')) return;
+  var x = bkDevV09(), out = [], add = function(c, nm, amt){ if(num(amt) > 0.5) out.push({ id:'c' + (out.length + 1), cls:c, name:nm, amount:num(amt), start:'', len:'', method:'', rate:'' }); }, hl = x.hardLadder, sl = x.softLadder;
+  if(!hl || !sl || String(s.devBudgetMode || '').toUpperCase() === 'LINES') return;
+  hl.lines.forEach(function(l){ add('hard', l.name, l.total); }); add('hard', 'General conditions', hl.gc); add('hard', 'Contractor fee', hl.contractorFee); add('hard', 'Payment and performance bonds', hl.riskBonds); add('cont', 'Hard cost contingency', hl.contingency);
+  sl.lines.forEach(function(l){ add(/FF&E/i.test(l.name) ? 'ffe' : 'soft', l.name, l.total); }); add('soft', 'Development fee', sl.devFee); add('soft', 'Soft cost contingency', sl.contingency);
+  s.budgetLines = out; s.devBudgetMode = 'LINES'; bkSave(s); showSheet(cur()); };
+/* cash by month as stacked bars (one colour per cost class); also drawn on the Dev Schedule page */
+var BCOL = { hard:'#1f4e8c', cont:'#b0592a', soft:'#3E9AE6', ffe:'#5B4B8A' };
+window.bkBudgetSpendSvg = function(plan, o){ o = o || {}; if(!plan || !plan.rows || !plan.rows.length) return '';
+  var byCls = { hard:{}, cont:{}, soft:{}, ffe:{} }, last = 0; plan.rows.forEach(function(r){ Object.keys(r.monthly).forEach(function(m){ byCls[r.cls][m] = (byCls[r.cls][m] || 0) + r.monthly[m]; last = Math.max(last, Number(m)); }); });
+  var N = Math.max(last, o.months || 0, 6), mx = 0, tot = {}; for(var m = 1; m <= N; m++){ var v = 0; ['hard', 'cont', 'soft', 'ffe'].forEach(function(c){ v += byCls[c][m] || 0; }); tot[m] = v; mx = Math.max(mx, v); }
+  if(!(mx > 0)) return ''; var W = o.W || 760, H = 150, L = 8, R = 8, T = 16, B = 22, pw = (W - L - R) / N, bw = Math.max(2, pw * .72), cum = 0, all = 0; for(var q = 1; q <= N; q++) all += tot[q];
+  var g = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Development cash spent by month" style="display:block;max-width:100%;height:auto;font-family:inherit">';
+  g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (H - B) + '" y2="' + (H - B) + '" stroke="#b9bfca"/>';
+  for(var k = 1; k <= N; k++){ var x0 = L + (k - 1) * pw + (pw - bw) / 2, y = H - B, tip = 'Month ' + k + ': ' + money(tot[k]);
+    ['hard', 'cont', 'soft', 'ffe'].forEach(function(c){ var v2 = byCls[c][k] || 0; if(!(v2 > 0)) return; var h = v2 / mx * (H - B - T); y -= h; g += '<rect x="' + x0.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + BCOL[c] + '"><title>' + esc(tip + ' (' + c + ' ' + money(v2) + ')') + '</title></rect>'; });
+    if(N <= 36 || k % 6 === 1 || k === N) g += '<text x="' + (x0 + bw / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" fill="#6b7a89">' + k + '</text>'; }
+  g += '<text x="' + L + '" y="11" font-size="10" fill="#6b7a89">Peak month ' + esc(money(mx)) + ' · total ' + esc(money(all)) + '</text></svg>';
+  return g; };
+function pBudget(s){
+  if(!isDev(s)) return '<div class="ae-panel"><div class="ae-ph"><i>B</i>Budget</div><div class="ae-form"><div class="note">This is an acquisition. Change the Deal Type on Property &gt; Description to Development to model a budget.</div></div></div>';
+  var mode = String(s.devBudgetMode || 'SOURCE').toUpperCase(), x = safe(function(){ return bkDevV09(); }, null), gsf = num(s.gsf), units = num(s.units), out = '';
+  var modeNote = { SOURCE:'One hard-plus-soft number, spread over the standard cost split. Enter it on Investment > Development.', PARAMETRIC:'The trade-by-trade $ per GSF ladder. Enter the rates on the Development sheet.', PSF:'A rate per square foot for hard and soft cost, a percentage for contingency and a rate per unit for FF&E. Nothing is assumed: leave a box empty and it is zero.', LINES:'Every cost line in dollars, each with its own start month, length and curve. A line with no start or length follows the schedule: hard cost and contingency the construction window (so they move with the Gantt), soft cost from month 1 to completion, FF&E the last three construction months.' };
+  out += form('Budget Method', 'B', [R('How the budget is entered', sel('devBudgetMode', BMODES, { s:s, def:'SOURCE' })), NOTE(modeNote[mode] || '')]);
+  if(mode === 'PSF') out += form('Cost per SF by Category', '$', [R('Hard cost', inp('hardPsf', 'num', { s:s }), '$ per GSF' + (gsf ? ' (' + money(gsf * num(s.hardPsf)) + ' on ' + Math.round(gsf).toLocaleString('en-US') + ' GSF)' : '')), R('Hard cost contingency', inp('hardContPct', 'pct', { s:s }), '% of hard cost'), R('Soft cost', inp('softPsf', 'num', { s:s }), '$ per GSF' + (gsf ? ' (' + money(gsf * num(s.softPsf)) + ')' : '')), R('FF&E', inp('ffePerUnit', 'num', { s:s }), '$ per unit' + (units ? ' (' + money(units * num(s.ffePerUnit)) + ' on ' + units + ' units)' : '')), (!gsf ? NOTE('Enter the gross building area on Property > Area Measures: the $ per GSF rates multiply it.') : null)]);
+  var plan = x && x.budgetRows && x.budgetRows.length ? safe(function(){ return window.bkDevBudgetPlan(x, s); }, null) : null;
+  if(mode === 'LINES'){
+    var a = Array.isArray(s.budgetLines) ? s.budgetLines : [], byIdx = {}; if(plan) plan.rows.forEach(function(r){ byIdx[r.idx] = r; });
+    var clsOpts = function(v){ return bcls().map(function(c){ return '<option value="' + c[0] + '"' + (v === c[0] ? ' selected' : '') + '>' + esc(c[1]) + '</option>'; }).join(''); };
+    var rows = a.map(function(l, i){ var r = byIdx[i], amt = num(l.amount), cell = function(f, v, ph, w){ return '<input type="text" class="ae-in num" style="width:' + (w || 70) + 'px" value="' + esc(v === '' || v == null ? '' : (f === 'amount' ? (num(v) ? (Math.round(num(v) * 100) / 100).toLocaleString('en-US', { maximumFractionDigits:2 }) : '') : v)) + '" placeholder="' + esc(ph || '') + '" autocomplete="off" onchange="bkEdBud(' + i + ',\'' + f + '\',this.value)">'; };
+      return '<tr><td class="c ro">' + (i + 1) + '</td><td><select class="ae-sel bud-l" onchange="bkEdBud(' + i + ',\'cls\',this.value)">' + clsOpts(l.cls || 'hard') + '</select></td><td><input type="text" class="ae-in bud-l" style="width:100%;min-width:150px" value="' + esc(l.name || '') + '" placeholder="e.g. Site work and foundations" autocomplete="off" onchange="bkEdBud(' + i + ',\'name\',this.value)"></td><td>' + cell('amount', l.amount, '0', 100) + '</td><td class="c r ro">' + (gsf && amt ? money(amt / gsf, 2) : '') + '</td>'
+        + '<td>' + cell('start', l.start, r ? String(r.start) : 'auto', 56) + '</td><td>' + cell('len', l.len, r ? String(r.len) : 'auto', 56) + '</td>'
+        + '<td><select title="Grey = follows the deal\'s hard or soft cost curve" class="ae-sel bud-l" style="' + (l.method ? '' : 'color:#8a97a6;') + '" onchange="bkEdBud(' + i + ',\'method\',this.value)"><option value="">' + (r ? esc(r.method) : 'Default') + '</option><option' + (l.method === 'S-Curve' ? ' selected' : '') + '>S-Curve</option><option' + (l.method === 'Straight-Line' ? ' selected' : '') + '>Straight-Line</option></select></td>'
+        + '<td><select title="Grey = the deal\'s steepness (Development sheet)" class="ae-sel bud-l" style="' + (l.rate !== '' && l.rate != null ? '' : 'color:#8a97a6;') + '" onchange="bkEdBud(' + i + ',\'rate\',this.value)"><option value="">' + (r ? 'Deal (' + r.rate + ')' : 'Deal') + '</option>' + brates().map(function(p){ return '<option value="' + p[1] + '"' + (num(l.rate) === p[1] ? ' selected' : '') + '>' + esc(p[0]) + '</option>'; }).join('') + '</select></td>'
+        + '<td class="c r ro">' + (r ? r.end : '') + '</td><td class="c r">' + btn('Remove', 'bkEdBudDel(' + i + ')') + '</td></tr>'; }).join('');
+    out += '<div class="ae-panel"><div class="ae-ph"><i>L</i>Line Items</div><table class="ae-grid"><thead><tr><th class="grp" colspan="5">Cost</th><th class="grp" colspan="4">Timing (months from the start of the project)</th><th></th><th></th></tr><tr><th>#</th><th>Class</th><th>Item</th><th>Amount ($)</th><th>$ / GSF</th><th>Start</th><th>Months</th><th>Curve</th><th>Steepness</th><th>Ends</th><th></th></tr></thead><tbody>'
+      + (rows || '<tr><td class="c ro" colspan="11">No line items yet. Add them below, or copy the current budget into lines.</td></tr>') + '</tbody></table>'
+      + '<div class="ae-row" style="flex-wrap:wrap;gap:8px;align-items:center"><label style="font-size:12px">Add <input type="number" id="ae-bud-n" min="1" max="200" step="1" value="1" style="width:64px;text-align:right"> <select class="ae-sel" id="ae-bud-c" style="width:auto">' + clsOpts('hard') + '</select> line(s)</label>' + btn('Add', 'bkEdBudAdd(document.getElementById(\'ae-bud-n\').value,document.getElementById(\'ae-bud-c\').value)', true) + '</div></div>';
+  }
+  if(mode === 'SOURCE' || mode === 'PARAMETRIC') out += '<div class="ae-row">' + btn('Copy the current budget into line items', 'bkEdBudCopy()', true) + '<span class="ae-unit">Every dollar is kept, line by line; the cash timing then follows each line\'s window, so interest can differ slightly.</span></div>';
+  /* totals, and the tie to the figures the rest of the app reads */
+  if(x && x.budgetRows && x.budgetRows.length){
+    var sum = function(c){ return x.budgetRows.filter(function(r){ return r.cls === c; }).reduce(function(t, r){ return t + r.amount; }, 0); }, tot = sum('hard') + sum('cont') + sum('soft') + sum('ffe'), engine = num(x.hard) + num(x.soft), ok = Math.abs(tot - engine) < 1;
+    out += summaryTable('Budget Totals', [['Hard cost', money(sum('hard')), gsf ? money(sum('hard') / gsf, 2) + ' / GSF' : ''], ['Contingency', money(sum('cont')), sum('hard') ? (sum('cont') / sum('hard') * 100).toFixed(1) + '% of hard cost' : ''], ['Soft cost', money(sum('soft')), gsf ? money(sum('soft') / gsf, 2) + ' / GSF' : ''], ['FF&E', money(sum('ffe')), units ? money(sum('ffe') / units) + ' / unit' : ''],
+      ['Total hard and soft cost', money(tot), (gsf ? money(tot / gsf, 2) + ' / GSF' : '') + (ok ? ' · ties to the funding engine' : ' · DOES NOT TIE to the engine (' + money(engine) + ')'), 'tot']]);
+    if(plan){ var svg = window.bkBudgetSpendSvg(plan, { months:num(x.co) }); var warn = []; plan.rows.forEach(function(r){ if(r.end > num(x.hold)) warn.push(r.name + ' runs to month ' + r.end + ', after the sale (month ' + x.hold + '): the rest is charged in the sale month.'); else if(r.end > num(x.co) && (r.cls === 'hard' || r.cls === 'cont')) warn.push(r.name + ' ends in month ' + r.end + ', after the certificate of occupancy (month ' + x.co + ').'); });
+      out += '<div class="ae-panel"><div class="ae-ph"><i>$</i>Cash Spent by Month</div><div style="padding:10px 14px">' + svg + '<div style="font-size:11.5px;margin-top:6px;opacity:.85"><span style="color:' + BCOL.hard + '">&#9632;</span> Hard cost &nbsp; <span style="color:' + BCOL.cont + '">&#9632;</span> Contingency &nbsp; <span style="color:' + BCOL.soft + '">&#9632;</span> Soft cost &nbsp; <span style="color:' + BCOL.ffe + '">&#9632;</span> FF&amp;E &nbsp;&middot;&nbsp; the same monthly cash the draw schedule funds</div>' + (warn.length ? '<div class="note" style="margin-top:8px">' + warn.slice(0, 5).map(esc).join('<br>') + '</div>' : '') + '</div></div>'; }
+  }
+  out += '<div class="ae-row">' + btn('Schedule (Gantt)', 'showSheet(\'Dev Schedule\')', true) + btn('Draws', 'showSheet(\'Dev Draws\')') + btn('Sources & Uses', 'showSheet(\'Sources & Uses\')') + '</div>';
+  return out; }
 /* ---------- CONTINGENCY AND INITIAL RESERVES (development) ---------- */
 function listSet(key, i, field, raw, numeric){ var s = bkLoad(), a = s.contingency && s.contingency[key]; if(key === 'initReserves') a = s.initReserves; if(!a || !a[i]) return; if(numeric){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } a[i][field] = v; } else a[i][field] = raw; bkSave(s); showSheet(cur()); }
 window.bkEdCont = function(key, i, field, raw){ listSet(key, i, field, raw, field === 'amount'); };
@@ -24333,9 +24442,9 @@ function pSum(s){ var dev = isDev(s), c = calc(), m = safe(function(){ return bk
 /* ---------- assembly ---------- */
 var PANELS = {
   Property: { desc:pDesc, loc:pLoc, area:pArea, analysis:pAnalysis, tpl:pTpl }, Market: { infl:pInfl, vac:pVac, credit:pCredit, lease:pLease, rent:pRent },
-  Revenues: { res:pRes, com:pCom, oth:pOth, misc:pMisc }, Expenses: { op:pOp, nonop:pNonop, cap:pCap, grp:pGrp }, Tenants: { roll:pRoll, lease:pLease, abs:pAbs, coh:pCoh }, Investment: { acq:pAcq, fin:pFin, dev:pDev, cont:pContingency, res:pReserves, jv:pJv, fees:pFees }, Valuation: { exit:pExit, sum:pSum } };
+  Revenues: { res:pRes, com:pCom, oth:pOth, misc:pMisc }, Expenses: { op:pOp, nonop:pNonop, cap:pCap, grp:pGrp }, Tenants: { roll:pRoll, lease:pLease, abs:pAbs, coh:pCoh }, Investment: { acq:pAcq, fin:pFin, dev:pDev, bud:pBudget, cont:pContingency, res:pReserves, jv:pJv, fees:pFees }, Valuation: { exit:pExit, sum:pSum } };
 var EXTRA = { Revenues:revSummary, Expenses:expSummary };
-var HINTS = { desc:'Who the deal is. The Deal ID is fixed once the deal exists.', loc:'Where it is and how large the site is.', area:'Areas drive every amount you enter per unit or per GSF.', analysis:'When the analysis starts, how long it runs, and which case you are looking at.', tpl:'Save a deal\'s rates and structure and start the next one from it.',
+var HINTS = { bud:'The development budget: a rate per SF by category, or every cost line in dollars with its own timing. One budget feeds the hard and soft cost totals, the Gantt, the monthly draws, Sources & Uses and the returns.', desc:'Who the deal is. The Deal ID is fixed once the deal exists.', loc:'Where it is and how large the site is.', area:'Areas drive every amount you enter per unit or per GSF.', analysis:'When the analysis starts, how long it runs, and which case you are looking at.', tpl:'Save a deal\'s rates and structure and start the next one from it.',
   infl:'Rates by year. A blank year uses the Default; upside and downside cases shift the Default.', vac:'Vacancy and credit loss reduce income before expenses.', credit:'Credit loss is charged on rent; choose what it is charged on.', lease:'Concessions and loss to lease reduce rent before vacancy.', rent:'Market rent against what the rent roll says is in place.',
   res:'Residential rent is units times the average rent, unless a rent roll is loaded.', com:'Retail base rent and NNN recoveries per square foot.', oth:'Income per unit per year.', misc:'Flat income lines such as a roof antenna, parking or storage.',
   op:'Each line has its own basis and frequency; amounts are stored as annual totals. Inflation comes from the Market tab.', nonop:'Below NOI: replacement reserves and the asset management fee.', cap:'Dated one-off capital items below NOI. They reduce cash flow and returns, not NOI.', grp:'Operating expenses grouped as lenders and investors read them.',
@@ -28106,16 +28215,16 @@ function ganttSvg(rows, sc, s, o){
    grid across the top with the calendar year above it, milestone call-outs, and a vertical line at the certificate of occupancy and at stabilization. It draws the same rows the chart does; it adds no schedule of its own. */
 var GX = { crit:'#b3392c', band:'#c9ced8', head:'#cfd3db', sum:'#00b050', task:'#92d050', cell:'#f1f3f6', cellAlt:'#e6e9ee', line:'#b9bfca', ink:'#10213a', ms:'#2f7d32' };
 function ganttSheet(M, o){
-  o = o || {}; var s = M.s, sc = M.sc, rows = M.rows, N = Math.max(sc.hold || 0, sc.stab || 0, 12), cw = N > 72 ? 11 : N > 48 ? 14 : 18, y0 = startYear(s);
+  o = o || {}; var s = M.s, sc = M.sc, rows = M.rows, plan = M.plan || null, hasCost = !!(plan && plan.rows && plan.rows.length), N = Math.max(sc.hold || 0, sc.stab || 0, 12), cw = N > 72 ? 11 : N > 48 ? 14 : 18, y0 = startYear(s);
   var yr = function(m){ return monthStart(s, m).getFullYear(); }, yearRuns = [], last = null;
   for(var m = 1; m <= N; m++){ var y = yr(m); if(last && last.y === y) last.n++; else { last = { y:y, n:1 }; yearRuns.push(last); } }
   var vline = function(m){ return m === sc.co ? 'border-right:2px solid ' + GX.ms : m === sc.stab ? 'border-right:2px dashed ' + GX.ms : ''; };
   var yi = {}; var yk = 0; yearRuns.forEach(function(r){ r.alt = (yk++ % 2) === 1; });
   var colAlt = function(m){ var k = 0, acc = 0; for(var i = 0; i < yearRuns.length; i++){ acc += yearRuns[i].n; if(m <= acc) return yearRuns[i].alt; } return false; };
   var th = 'background:' + GX.head + ';color:' + GX.ink + ';font-weight:600;border:1px solid ' + GX.line + ';padding:3px 6px;font-size:11px;white-space:nowrap';
-  var h = '<div class="bk-gx" style="overflow-x:auto;border:1px solid ' + GX.line + ';border-radius:4px;background:#fff;margin-top:8px"><table style="border-collapse:collapse;table-layout:fixed;width:100%;min-width:' + (496 + N * 8) + 'px;font-size:12px;color:' + GX.ink + ';font-variant-numeric:tabular-nums"><colgroup><col style="width:36px"><col style="width:190px"><col style="width:78px"><col style="width:78px"><col style="width:48px"><col style="width:54px">';
+  var h = '<div class="bk-gx" style="overflow-x:auto;border:1px solid ' + GX.line + ';border-radius:4px;background:#fff;margin-top:8px"><table style="border-collapse:collapse;table-layout:fixed;width:100%;min-width:' + (496 + (hasCost ? 96 : 0) + N * 8) + 'px;font-size:12px;color:' + GX.ink + ';font-variant-numeric:tabular-nums"><colgroup><col style="width:36px"><col style="width:190px"><col style="width:78px"><col style="width:78px"><col style="width:48px">' + (hasCost ? '<col style="width:96px">' : '') + '<col style="width:54px">';
   for(var c = 1; c <= N; c++) h += '<col>';
-  h += '</colgroup><thead><tr><th style="' + th + ';text-align:center" rowspan="2">#</th><th style="' + th + ';text-align:left" rowspan="2">Task</th><th style="' + th + ';text-align:right" rowspan="2">Start</th><th style="' + th + ';text-align:right" rowspan="2">End</th><th style="' + th + ';text-align:right" rowspan="2">Months</th><th style="' + th + ';text-align:left" rowspan="2" title="Predecessor rows; +n / -n is a lag / overlap in months">Pred.</th>';
+  h += '</colgroup><thead><tr><th style="' + th + ';text-align:center" rowspan="2">#</th><th style="' + th + ';text-align:left" rowspan="2">Task</th><th style="' + th + ';text-align:right" rowspan="2">Start</th><th style="' + th + ';text-align:right" rowspan="2">End</th><th style="' + th + ';text-align:right" rowspan="2">Months</th>' + (hasCost ? '<th style="' + th + ';text-align:right" rowspan="2" title="The dollars of each budget line (Investment > Budget)">Cost</th>' : '') + '<th style="' + th + ';text-align:left" rowspan="2" title="Predecessor rows; +n / -n is a lag / overlap in months">Pred.</th>';
   yearRuns.forEach(function(r){ h += '<th colspan="' + r.n + '" style="' + th + ';text-align:center">' + (r.n >= 3 ? r.y : '') + '</th>'; });
   h += '</tr><tr>'; for(var c2 = 1; c2 <= N; c2++) h += '<th style="' + th + ';text-align:left;font-size:9px;padding:2px 0 2px 1px;font-weight:500;overflow:visible">' + (N <= 18 || (N <= 36 && c2 % 3 === 1) || (N > 36 && c2 % 6 === 1) ? c2 : '') + '</th>'; h += '</tr></thead><tbody>';
   var cellsFor = function(rowBars, ms, bold, crit){
@@ -28130,11 +28239,26 @@ function ganttSheet(M, o){
   var n = 0;
   secs.forEach(function(g){
     var bars = g.rows.filter(function(r){ return !r.milestone && r.ES && r.EF; }), a = bars.length ? Math.min.apply(null, bars.map(function(r){ return r.ES; })) : null, b2 = bars.length ? Math.max.apply(null, bars.map(function(r){ return r.EF; })) : null;
-    h += '<tr>' + tdl('', 'center', true) + tdl(esc(g.name), 'left', true) + tdl(a ? esc(dtx(monthStart(s, a))) : '', 'right', true) + tdl(b2 ? esc(dtx(monthEnd(s, b2))) : '', 'right', true) + tdl(a ? String(b2 - a + 1) : '', 'right', true) + tdl('', 'left', true) + cellsFor(a ? { a:a, b:b2, col:GX.sum } : null, null, true, false) + '</tr>';
+    h += '<tr>' + tdl('', 'center', true) + tdl(esc(g.name), 'left', true) + tdl(a ? esc(dtx(monthStart(s, a))) : '', 'right', true) + tdl(b2 ? esc(dtx(monthEnd(s, b2))) : '', 'right', true) + tdl(a ? String(b2 - a + 1) : '', 'right', true) + (hasCost ? tdl('', 'right', true) : '') + tdl('', 'left', true) + cellsFor(a ? { a:a, b:b2, col:GX.sum } : null, null, true, false) + '</tr>';
     g.rows.forEach(function(r){ n++; var ms = r.milestone ? { m:r.ES, label:r.name + ': ' + dtx(monthEnd(s, r.ES)) } : null, dur = r.EF - r.ES + 1;
-      h += '<tr>' + tdl(r.idx ? String(r.idx) : '', 'center') + tdl((r.milestone ? '&#9670; ' : '') + esc(r.name), 'left') + tdl(r.ES ? esc(dtx(monthStart(s, r.ES))) : '', 'right') + tdl(r.EF ? esc(dtx(monthEnd(s, r.EF))) : '', 'right') + tdl(r.milestone ? '' : String(dur), 'right') + tdl(predText(r), 'left')
+      h += '<tr>' + tdl(r.idx ? String(r.idx) : '', 'center') + tdl((r.milestone ? '&#9670; ' : '') + esc(r.name), 'left') + tdl(r.ES ? esc(dtx(monthStart(s, r.ES))) : '', 'right') + tdl(r.EF ? esc(dtx(monthEnd(s, r.EF))) : '', 'right') + tdl(r.milestone ? '' : String(dur), 'right') + (hasCost ? tdl('', 'right') : '') + tdl(predText(r), 'left')
         + cellsFor(r.milestone ? null : { a:r.ES, b:r.EF, col:GX.task }, ms, false, !!r.critical && !r.milestone) + '</tr>'; }); });
-  h += '</tbody></table></div><div style="font-size:11px;opacity:.8;margin-top:5px"><span style="display:inline-block;width:14px;height:9px;background:' + GX.sum + ';margin-right:4px"></span>Phase &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';margin-right:4px"></span>Task &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';border:2px solid ' + GX.crit + ';box-sizing:border-box;margin-right:4px"></span>Critical path &nbsp; <span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilization</div>';
+  if(hasCost){
+    var BC = { hard:'#1f4e8c', cont:'#b0592a', soft:'#3E9AE6', ffe:'#5B4B8A' }, CL = { hard:'Hard cost', cont:'Contingency', soft:'Soft cost', ffe:'FF&E' }, money0 = function(v){ return '$' + Math.round(v).toLocaleString('en-US'); };
+    var pa = Math.min.apply(null, plan.rows.map(function(r){ return r.start; })), pb = Math.max.apply(null, plan.rows.map(function(r){ return r.end; })), total = plan.rows.reduce(function(a, r){ return a + r.amount; }, 0);
+    h += '<tr>' + tdl('', 'center', true) + tdl('Budget lines', 'left', true) + tdl(esc(dtx(monthStart(s, pa))), 'right', true) + tdl(esc(dtx(monthEnd(s, pb))), 'right', true) + tdl(String(pb - pa + 1), 'right', true) + tdl('<b>' + money0(total) + '</b>', 'right', true) + tdl('', 'left', true) + cellsFor({ a:pa, b:pb, col:GX.sum }, null, true, false) + '</tr>';
+    var gi = 0; ['hard', 'cont', 'soft', 'ffe'].forEach(function(c){ var L = plan.rows.filter(function(r){ return r.cls === c; }); if(!L.length) return;
+      var ga = Math.min.apply(null, L.map(function(r){ return r.start; })), gb = Math.max.apply(null, L.map(function(r){ return r.end; })), gsum = L.reduce(function(a2, r){ return a2 + r.amount; }, 0);
+      h += '<tr>' + tdl('', 'center', true) + tdl('<span style="display:inline-block;width:8px;height:8px;background:' + BC[c] + ';margin-right:6px"></span>' + CL[c] + ' &middot; ' + L.length + (L.length === 1 ? ' line' : ' lines'), 'left', true) + tdl(esc(dtx(monthStart(s, ga))), 'right', true) + tdl(esc(dtx(monthEnd(s, gb))), 'right', true) + tdl(String(gb - ga + 1), 'right', true) + tdl('<b>' + money0(gsum) + '</b>', 'right', true) + tdl('', 'left', true) + cellsFor({ a:ga, b:gb, col:GX.sum }, null, true, false) + '</tr>';
+      L.forEach(function(r){ gi++; var dates = dtx(monthStart(s, r.start)) + (r.end > r.start ? ' to ' + dtx(monthEnd(s, r.end)) : '');
+        h += '<tr title="' + esc(r.name + ' - ' + CL[r.cls] + ' - ' + money0(r.amount) + ' - ' + dates + ' - ' + r.method + ', steepness ' + r.rate) + '">' + tdl(String(gi), 'center') + tdl(esc(r.name), 'left') + tdl(esc(dtx(monthStart(s, r.start))), 'right') + tdl(esc(dtx(monthEnd(s, r.end))), 'right') + tdl(String(r.len), 'right') + tdl(money0(r.amount), 'right') + tdl('', 'left') + cellsFor({ a:r.start, b:r.end, col:BC[r.cls] }, null, false, false) + '</tr>'; }); });
+    /* cash spent by month: one bar per month, the same cash the draw schedule funds */
+    var mxv = 0; for(var q1 = 1; q1 <= N; q1++) mxv = Math.max(mxv, plan.all[q1] || 0);
+    h += '<tr>' + tdl('', 'center', true) + tdl('Cash spent by month', 'left', true) + tdl('', 'right', true) + tdl('', 'right', true) + tdl('', 'right', true) + tdl('<b>' + money0(total) + '</b>', 'right', true) + tdl('', 'left', true);
+    for(var q2 = 1; q2 <= N; q2++){ var v2 = plan.all[q2] || 0, hh = v2 > 0 && mxv > 0 ? Math.max(1, Math.round(v2 / mxv * 52)) : 0; h += '<td style="padding:0;height:58px;vertical-align:bottom;background:' + (colAlt(q2) ? GX.cellAlt : GX.cell) + ';border:1px solid #d9dde4;' + vline(q2) + '">' + (hh > 0 ? '<div title="Month ' + q2 + ' - ' + dtx(monthStart(s, q2)) + ': ' + money0(v2) + '" style="height:' + hh + 'px;margin:0 1px;background:' + BC.hard + '"></div>' : '') + '</td>'; }
+    h += '</tr>';
+  }
+  h += '</tbody></table></div><div style="font-size:11px;opacity:.8;margin-top:5px"><span style="display:inline-block;width:14px;height:9px;background:' + GX.sum + ';margin-right:4px"></span>Phase &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';margin-right:4px"></span>Task &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';border:2px solid ' + GX.crit + ';box-sizing:border-box;margin-right:4px"></span>Critical path &nbsp; <span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilization' + (hasCost ? ' &nbsp; <span style="color:#1f4e8c">&#9632;</span> Hard &nbsp; <span style="color:#b0592a">&#9632;</span> Contingency &nbsp; <span style="color:#3E9AE6">&#9632;</span> Soft &nbsp; <span style="color:#5B4B8A">&#9632;</span> FF&amp;E' : '') + '</div>';
   return h;
 }
 function startYear(s){ return startDate(s).getFullYear(); }
@@ -28157,7 +28281,7 @@ window.bkDevGanttModel = function(s){
     try { var pre0 = Math.round(num(s.predevMonths)), con0 = Math.round(num(s.constructionMonths));
       if(con0 >= 6){ var tmp = Object.assign({}, s, { devGantt:{ mode:'tasks', tasks:detailTasks(pre0, con0) } }), d2 = window.bkDevGanttSchedule(tmp, x);
         if(d2 && !d2.cycle && d2.preMo === x.preMo && d2.conMo === x.conMo && d2.co === x.co){ d2.tasks = d2.tasks.map(function(k){ return Object.assign({}, k, { critical:false, preds:[], float:0 }); }); sc = d2; indicative = true; } } } catch(e){} }
-  return { s:s, x:x, on:on, indicative:indicative, sc:sc, warnings:warnings, rows:rowsFor(s, sc, x), svg:ganttSvg, legend:legendHtml, monthStart:function(m){ return monthStart(s, m); }, monthEnd:function(m){ return monthEnd(s, m); }, fmt:dtx };
+  return { s:s, x:x, on:on, indicative:indicative, sc:sc, warnings:warnings, plan:(x.budgetRows && x.budgetRows.length && typeof window.bkDevBudgetPlan === 'function') ? window.bkDevBudgetPlan(x, s) : null, rows:rowsFor(s, sc, x), svg:ganttSvg, legend:legendHtml, monthStart:function(m){ return monthStart(s, m); }, monthEnd:function(m){ return monthEnd(s, m); }, fmt:dtx };
 };
 function tilesHtml(M){
   var sc = M.sc, s = M.s, crit = sc.tasks.filter(function(t){ return t.critical; }).length, T = function(k, v, sub){ return '<div class="bk-gs-tile"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (sub ? '<div class="d">' + esc(sub) + '</div>' : '') + '</div>'; };
@@ -29491,6 +29615,25 @@ var PCTK = { hurdle2:1, hurdle3:1, gpCatchup:1, t2LP:1, t3LP:1, t4LP:1, hardCont
 function fmt(k, v){ if(typeof v !== 'number') return String(v); if(PCT[k]) return (v * 100).toFixed(2) + '%'; if(k === 'units') return Math.round(v).toLocaleString('en-US') + ' units'; if(k === 'gsf' || k === 'gla') return Math.round(v).toLocaleString('en-US') + ' SF'; if(/Months$/.test(k)) return v + ' mo'; if(k === 'holdYears' || k === 'acqAmort') return (Math.round(v * 100) / 100) + ' yrs'; if(k === 'siteArea') return v + ' acres'; return $(v); }
 function label(k){ return LAB[k] || (F[k] && F[k].lab) || k; }
 
+/* A budget table: one row per cost line with its dollars, its cost group (hard, soft, contingency, FF&E) and, when the file gives them, the months the money is drawn. Read from the headings, wherever the
+   columns sit; land, financing and reserve lines are not budget lines (the engine has their own inputs). The file's month 0 is the closing month, so when a draw starts in month 0 every month is shifted by one. */
+function budgetLinesFrom(sh){
+  var rows = sh.rows || [], hi = -1, col = null;
+  for(var i = 0; i < Math.min(rows.length, 40) && hi < 0; i++){ var h = (rows[i] || []).map(function(c){ return nl(c == null ? '' : c); });
+    var ix = function(rx){ for(var j = 0; j < h.length; j++) if(h[j] && rx.test(h[j])) return j; return -1; };
+    var c2 = { amt:ix(/^(budget|amount|budget amount|total budget|total cost|cost)( \(?\$\)?)?$/), nm:ix(/^(category|budget item|line item|cost item|item|description|cost line|trade)$/), grp:ix(/^(cost group|cost type|group|class|cost class)$/), s:ix(/draw start|start month|^start$/), e:ix(/draw end|end month|^end$/), code:ix(/^(cost code|code)$/), scope:ix(/^(detailed scope|scope|notes?)$/) };
+    if(c2.amt >= 0 && c2.nm >= 0 && c2.grp >= 0){ hi = i; col = c2; } }
+  if(hi < 0) return null;
+  var map = function(g){ g = nl(g); return /contingen/.test(g) ? 'cont' : /ff.?e|furnish|equipment/.test(g) ? 'ffe' : /soft|design|professional|consult|fee/.test(g) ? 'soft' : /hard|construction|site|building/.test(g) ? 'hard' : null; };
+  var out = [], n = function(c){ if(typeof c === 'number') return c; var v = parseVal(c); return v && v.n != null ? v.n : NaN; };
+  for(var r = hi + 1; r < rows.length; r++){ var row = rows[r] || [], amt = n(row[col.amt]), nm = row[col.nm] == null ? '' : String(row[col.nm]).trim(), cls = map(row[col.grp] == null ? '' : row[col.grp]);
+    if(!(amt > 0) || !nm || !cls) { if(!nm && !(amt > 0) && out.length && !(row || []).some(function(c){ return c != null && String(c).trim() !== ''; })) break; continue; }
+    var st = col.s >= 0 ? n(row[col.s]) : NaN, en = col.e >= 0 ? n(row[col.e]) : NaN; out.push({ cls:cls, name:nm.slice(0, 80), amount:amt, st:isFinite(st) ? st : null, en:isFinite(en) ? en : null, code:col.code >= 0 && row[col.code] != null ? String(row[col.code]) : '' }); }
+  if(out.length < 3) return null;
+  var shift = out.some(function(l){ return l.st === 0; }) ? 1 : 0, total = out.reduce(function(a, l){ return a + l.amount; }, 0), by = { hard:0, cont:0, soft:0, ffe:0 };
+  var lines = out.map(function(l, i){ by[l.cls] += l.amount; var has = l.st != null && l.en != null && l.en >= l.st; return { id:'i' + (i + 1), cls:l.cls, name:l.name, amount:l.amount, start:has ? Math.max(1, l.st + shift) : '', len:has ? Math.max(1, l.en - l.st + 1) : '', method:'', rate:'' }; });
+  return { lines:lines, total:total, by:by, sheet:sh.name, shifted:shift === 1 };
+}
 /* ---------- classify a file by its content, then read it ---------- */
 function allLabels(parsed){ var o = []; parsed.sheets.forEach(function(sh){ (sh.rows || []).forEach(function(r){ (r || []).forEach(function(c){ if(typeof c === 'string') o.push(nl(c)); }); }); }); return o; }
 function stmt0(L){ var has = function(rx){ return L.filter(function(x){ return rx.test(x); }).length; }; return has(/^(total )?(operating )?expenses?$|total operating expenses/) >= 1 && has(/^net operating income|^noi$/) >= 1 && has(/^(effective gross|total (income|revenue)|gross potential)/) >= 1; }
@@ -29574,6 +29717,7 @@ function ingest(files){
       if(!c.dev && !c.record && /\.pdf$/i.test(f0.name) && typeof window.bkOMRun === 'function'){ S.busy = false; S.routed = 'offering memorandum / listing'; window.bkOMRun({ files:[f0] }); return; } }
     var facts = [], ctx = { dev:false };
     rs.forEach(function(x){ S.files.push(x); if(!x.info.parsed) return; if(x.info.cls.dev) ctx.dev = true; x.info.parsed.sheets.forEach(function(sh){ if(x.info.cls.record){ if(sh.text) recordFacts(sh.text, x.f.name, sh.name, facts); } else sheetFacts(sh, x.f.name, facts, ctx); }); });
+    rs.forEach(function(x){ if(!x.info.parsed || x.info.cls.record) return; x.info.parsed.sheets.forEach(function(sh){ var bl = null; try { bl = budgetLinesFrom(sh); } catch(e){} if(bl && (!S.lines || bl.lines.length > S.lines.lines.length)){ S.lines = bl; S.lines.file = x.f.name; S.linesOff = false; } }); });
     var all = S.facts.concat(facts); S.facts = all;
     var res = resolve(all, ctx); S.res = res; S.pick = choose(res, ctx); S.dev = ctx.dev || S.dev;
     /* name fallback: the title at the top of the first sheet or page */
@@ -29587,6 +29731,7 @@ window.bkImportHubReset = function(){ S = { files:[], facts:[], cand:null, msg:'
 window.bkImportHubTeach = function(i, k){ var list = S.teach || []; var lab = list[i]; if(!lab || !k) return; window.bkImportLearn.set(lab, k); var ctx = { dev:!!S.dev }; S.res = resolve(S.facts, ctx); S.pick = choose(S.res, ctx); S.msg = 'Learned: "' + lab + '" is ' + (k === 'ignore' ? 'ignored' : label(k)) + '. It will be applied to every file from now on.'; showSheet('Import'); };
 function teachSelect(lab){ S.teach = S.teach || []; var i = S.teach.indexOf(lab); if(i < 0){ S.teach.push(lab); i = S.teach.length - 1; }
   return '<select onchange="bkImportHubTeach(' + i + ', this.value)" style="max-width:150px;font-size:11px"><option value="">Use as...</option>' + Object.keys(F).filter(function(k){ return k !== 'occupancy'; }).map(function(k){ return '<option value="' + k + '">' + esc(F[k].lab) + '</option>'; }).join('') + '<option value="avgRent">Average monthly rent / unit</option><option value="ignore">Ignore this label</option></select>'; }
+window.bkImportHubLines = function(){ if(S.lines){ S.linesOff = !S.linesOff; showSheet('Import'); } };
 window.bkImportHubSkip = function(k){ if(S.pick && S.pick.fields[k]){ S.pick.fields[k].skip = !S.pick.fields[k].skip; showSheet('Import'); } };
 function dealFields(){ var o = {}; Object.keys(S.pick.fields).forEach(function(k){ var f = S.pick.fields[k]; if(!f.skip) o[k] = f.val; }); return o; }
 window.bkImportHubCreate = function(){
@@ -29594,7 +29739,9 @@ window.bkImportHubCreate = function(){
   var dev = S.dev || fl.sourceConstruction != null || fl.constructionMonths != null, d = Object.assign({}, fl); delete d.name;
   var loc = fl.location || ''; var m = /,\s*([A-Za-z .]+?),?\s*([A-Z]{2})\b\s*\d{0,5}/.exec(loc); if(m) d.location = m[1].trim() + ', ' + m[2];
   if(dev){ d.devBudgetMode = 'SOURCE'; } if(fl.propertyType){ d.propertyType = /apart|multi|residential|mf/i.test(fl.propertyType) ? 'Multifamily' : /office/i.test(fl.propertyType) ? 'Office' : /industrial|flex|warehouse/i.test(fl.propertyType) ? 'Industrial' : /retail|shop/i.test(fl.propertyType) ? 'Retail' : fl.propertyType; } else if(/multifamily|apartment/i.test(JSON.stringify(fl))) { /* not inferred */ }
-  var shape = (dev && fl.sourceConstruction != null && typeof window.bkDevLadderShape === 'function') ? window.bkDevLadderShape() : {};   /* a total budget with no trade lines: the cost ladder takes the app's standard split, scaled to that total */
+  var useLines = !!(S.lines && !S.linesOff && S.lines.lines.length);
+  if(useLines){ dev = true; d.devBudgetMode = 'LINES'; d.budgetLines = S.lines.lines; delete d.sourceConstruction; delete d.hardContPct; }   /* the file's own cost lines are the budget: no standard split, no single total */
+  var shape = (!useLines && dev && fl.sourceConstruction != null && typeof window.bkDevLadderShape === 'function') ? window.bkDevLadderShape() : {};   /* a total budget with no trade lines: the cost ladder takes the app's standard split, scaled to that total */
   var deal = Object.assign({ name:nm, dealId:'IMP-' + slug, dealType:dev ? 'Development' : 'Acquisition', analysisType:dev ? 'development' : 'acquisition', blankStructure:true }, shape, d);
   if(fl.propertyType && /multi|apart/i.test(fl.propertyType + ' ' + (fl.name || ''))) deal.propertyType = 'Multifamily';
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(deal);
@@ -29626,6 +29773,10 @@ function render(){
       + '<table class="fin" style="margin-top:6px"><thead><tr><th>Use</th><th>Input</th><th class="r">Value</th><th>Where it came from</th><th>Confidence</th><th>Not right?</th></tr></thead><tbody>' + ks.map(function(k){ var f = S.pick.fields[k], src = f.src && f.src[0] ? esc(f.src[0].file) + ' · ' + esc(f.src[0].sheet) + ' · row ' + f.src[0].row + (f.src.length > 1 ? ' (+' + (f.src.length - 1) + ' more)' : '') : 'document title';
         return '<tr' + (f.skip ? ' style="opacity:.45"' : '') + '><td><input type="checkbox"' + (f.skip ? '' : ' checked') + ' onchange="bkImportHubSkip(\'' + k + '\')"></td><td>' + esc(label(k)) + '</td><td class="r">' + esc(fmt(k, f.val)) + '</td><td style="font-size:12px">' + src + '<br><span style="opacity:.7">' + esc(f.why) + '</span></td><td>' + (window.bkConf ? window.bkConf.chip({ l:f.conf, why:f.why }) : f.conf) + '</td><td>' + (f.src && f.src[0] && f.src[0].label && !f.src[0].derived ? teachSelect(f.src[0].label) : '') + '</td></tr>'; }).join('') + '</tbody></table>'
       + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label style="font-size:12px">Deal name <input id="bkImpName" type="text" value="' + esc(S.pick.fields.name ? S.pick.fields.name.val : '') + '" style="width:260px"></label><button type="button" class="pl-hbtn primary" onclick="bkImportHubCreate()">Create a new deal from these</button><button type="button" class="pl-hbtn" onclick="bkImportHubFill()">Add to the open deal (empty inputs only)</button><button type="button" class="pl-hbtn" onclick="bkImportHubReset()">Start over</button></div>');
+    if(S.lines){ var L2 = S.lines, m0 = function(v){ return '$' + Math.round(v).toLocaleString('en-US'); };
+      main += box('<label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" style="margin-top:3px"' + (S.linesOff ? '' : ' checked') + ' onchange="bkImportHubLines()"><span><b>Budget line items found: ' + L2.lines.length + ' lines, ' + m0(L2.total) + '</b> <span style="opacity:.75;font-size:12px">(' + esc(L2.file || '') + ' · ' + esc(L2.sheet || '') + ')</span><br><span style="font-size:12.5px">Hard cost ' + m0(L2.by.hard) + ' · contingency ' + m0(L2.by.cont) + ' · soft cost ' + m0(L2.by.soft) + (L2.by.ffe ? ' · FF&amp;E ' + m0(L2.by.ffe) : '') + '. Used as the development budget by line item'
+        + (L2.lines.some(function(l){ return l.start !== ''; }) ? ', each with the months its money is drawn' + (L2.shifted ? ' (the file counts the closing month as 0, so every month is shifted by one)' : '') : '') + '. Replaces the single construction total and the standard cost split.</span>'
+        + (function(){ var sc = S.pick && S.pick.fields.sourceConstruction, df = sc ? sc.val - (L2.by.hard + L2.by.soft) : 0; return sc && Math.abs(df) >= 1 ? '<br><b style="color:#a85a00">The lines do not add to the file\'s own total.</b> <span style="font-size:12.5px">The summary says hard plus soft is ' + m0(sc.val) + '; the lines add to ' + m0(L2.by.hard + L2.by.soft) + ' (a difference of ' + m0(Math.abs(df)) + '). The lines are used as they are; the difference is not added.</span>' : ''; })() + '</span></label>'); }
     if(S.res && S.res.unknown && S.res.unknown.length){ main += box('<details><summary style="cursor:pointer"><b>Not recognized yet (' + S.res.unknown.length + ')</b> <span style="opacity:.7;font-size:12px">labels with a number the reader could not place; teach it and it will know them in every later file</span></summary><table class="fin" style="margin-top:6px"><thead><tr><th>Label</th><th class="r">Value</th><th>Where</th><th>Teach</th></tr></thead><tbody>' + S.res.unknown.map(function(e){ return '<tr><td>' + esc(e.label) + '</td><td class="r">' + esc(e.v.unit === 'pct' ? e.v.n.toFixed(2) + '%' : (Math.abs(e.v.n) > 999 ? $(e.v.n) : e.v.text)) + '</td><td style="font-size:12px">' + esc(e.file) + ' · ' + esc(e.sheet) + ' · row ' + e.row + '</td><td>' + teachSelect(e.label) + '</td></tr>'; }).join('') + '</tbody></table></details>'); }
     if(S.res && S.res.extra.length){ main += box('<details><summary style="cursor:pointer"><b>Also found, with no input to put it in yet (' + S.res.extra.length + ')</b></summary><table class="fin" style="margin-top:6px"><thead><tr><th>Item</th><th class="r">Value</th><th>Where</th><th>Teach</th></tr></thead><tbody>' + S.res.extra.map(function(e){ return '<tr><td>' + esc(e.label) + '</td><td class="r">' + esc(e.text) + '</td><td style="font-size:12px">' + esc(e.f.file) + ' · ' + esc(e.f.sheet) + ' · row ' + e.f.row + (e.note ? '<br><span style="opacity:.7">' + esc(String(e.note).slice(0, 110)) + '</span>' : '') + '</td><td>' + (e.f && e.f.label && !e.f.derived ? teachSelect(e.f.label) : '') + '</td></tr>'; }).join('') + '</tbody></table><div style="font-size:12px;opacity:.7;margin-top:6px">These are kept with the document. They are not entered into the model because it has no input for them or they are results the model works out itself.</div></details>'); }
   }
@@ -30151,6 +30302,9 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
   html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(3), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(3){ width:43% !important; }
   html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(4), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(4){ width:14% !important; }
 }
+
+/* DEVELOPMENT BUDGET line items: the words (class, item, curve, steepness) read from the left; the figures stay right-aligned */
+html body #viewport#viewport .ae-grid input.bud-l, html body #viewport#viewport .ae-grid select.bud-l{ text-align:left !important; text-align-last:left !important; }
 </style>
 </body>
 </html>
