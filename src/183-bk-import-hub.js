@@ -383,7 +383,7 @@ window.bkImportHubCreate = function(){
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(deal);
   var C = { fields:{} }; Object.keys(S.pick.fields).forEach(function(k){ var f = S.pick.fields[k]; if(!f.skip) C.fields[k] = { l:f.conf, why:f.why }; });
   var s = bkLoad(); if(window.bkConf){ window.bkConf.stamp(s, C, S.files.map(function(x){ return x.f.name; }).join(', ')); } bkSave(s);
-  if(useLines && typeof window.bkDevBudgetToTasks === 'function'){ try { window.bkDevBudgetToTasks(); } catch(e){} }   /* each cost line becomes a Gantt task, in the place the file gives it: the schedule is the file's own task list */
+  if(useLines && typeof window.bkDevBudgetToTasks === 'function'){ try { window.bkDevBudgetToTasks({ wbs:true }); } catch(e){} }   /* each cost line becomes a Gantt task, in the place the file gives it: the schedule is the file's own task list */
   var jobs = S.files.map(function(x){ return typeof window.bkDocsAdd === 'function' ? window.bkDocsAdd(/\.pdf$/i.test(x.f.name) ? 'om' : 'other', x.f, 'IMP-' + slug) : null; }).filter(Boolean);
   Promise.all(jobs).catch(function(){}).then(function(){ if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Deal Underwrite'); });
 };

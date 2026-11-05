@@ -280,3 +280,8 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
 
 /* DEVELOPMENT BUDGET line items: the words (class, item, curve, steepness) read from the left; the figures stay right-aligned */
 html body #viewport#viewport .ae-grid input.bud-l, html body #viewport#viewport .ae-grid select.bud-l{ text-align:left !important; text-align-last:left !important; }
+/* the Dev Schedule task table: names, summary and phase selects and predecessors read left to right (an outline is indented from the left) */
+html body #viewport#viewport table.fin input.gx-l, html body #viewport#viewport table.fin select.gx-l{ text-align:left !important; text-align-last:left !important; }
+html body #viewport#viewport table.fin thead th.gx-lh{ text-align:left !important; }
+/* the month and percent boxes take the room they need, not the width a number box would like (it is what made every column of the task table 230px wide) */
+html body #viewport#viewport table.fin input.gx-n{ max-width:84px !important; }
