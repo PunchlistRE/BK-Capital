@@ -546,12 +546,21 @@ extend('After-Tax','w1AfterTax', function(o){
 
 /* Covenant Monitor: period summary reduced over the series already rendered */
 extend('Covenant Monitor','w1Covenant', function(o){
-  var u, d, s = bkLoad();
-  try { u = bkAnnualCF(); d = bkDebt(); } catch(e){ return; }
-  if(!d || d.debtEnabled===false || !(d.months||[]).length) return;
+  var u, d, s = bkLoad(), dv = (typeof bkDevDebtView==='function') ? bkDevDebtView() : null;
+  if(dv){ if(!dv.takeout) return; }   /* a development deal: the permanent loan from the takeout; the page itself says when there is none */
+  else {
+    try { u = bkAnnualCF(); d = bkDebt(); } catch(e){ return; }
+    if(!d || d.debtEnabled===false || !(d.months||[]).length) return;
+  }
   var minDSCR = Number(s.minDebtYield!==undefined ? s.acqDSCR : s.acqDSCR) || 0;
-  var covDSCR = Number(s.acqDSCR)||0, covDY = Number(s.minDebtYield)||0;
-  var years = u.arr.length, obsDSCR=[], obsDY=[], obsLev=[], watch=0, tested=0;
+  var covDSCR = dv ? dv.covDSCR : (Number(s.acqDSCR)||0), covDY = Number(s.minDebtYield)||0;
+  var years = dv ? 0 : u.arr.length, obsDSCR=[], obsDY=[], obsLev=[], watch=0, tested=0;
+  if(dv) dv.years.forEach(function(a){
+    if(!a.tested) return; tested++;
+    var dscr=a.noi/a.ds, dyv=(a.noi*12/a.months)/(a.ending||Infinity); obsDSCR.push(dscr);
+    if(a.ending>0){ obsDY.push(dyv); obsLev.push(a.ending/(dv.basis||1)); }
+    if((covDSCR&&dscr<covDSCR)||(covDY&&a.ending>0&&dyv<covDY)) watch++;
+  });
   for(var y=0;y<years;y++){
     var ds=0; for(var k=y*12;k<Math.min((y+1)*12,d.months.length);k++) ds+=d.months[k].payment;
     var endK=Math.min((y+1)*12,d.months.length)-1;
@@ -571,7 +580,7 @@ extend('Covenant Monitor','w1Covenant', function(o){
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
       '<tr>'+lbl('Minimum DSCR Observed')+val(isFinite(minD)?mult(minD):'-')+txt('Covenant '+(covDSCR?mult(covDSCR):'not set'))+'</tr>'
     + '<tr>'+lbl('Minimum Debt Yield Observed')+val(isFinite(minY)?pct(minY):'-')+txt('Covenant '+(covDY?pct(covDY):'not set'))+'</tr>'
-    + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(maxL)?pct(maxL):'-')+txt('Ending balance &divide; purchase price')+'</tr>'
+    + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(maxL)?pct(maxL):'-')+txt(dv?'Ending balance &divide; total development cost':'Ending balance &divide; purchase price')+'</tr>'
     + '<tr>'+lbl('Periods Tested')+val(intf(tested))+txt('Annual periods with debt service')+'</tr>'
     + '<tr>'+lbl('Periods on Watch')+val(intf(watch))+txt('Below a set covenant')+'</tr>'
     + '<tr class="grandtotal">'+lbl('OVERALL COVENANT STATUS')+'<td class="v">'+chip(status[0],status[1])+'</td>'+txt('Across the tested periods')+'</tr>')

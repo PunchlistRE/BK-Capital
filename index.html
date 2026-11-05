@@ -3691,6 +3691,8 @@ function bkEnsureV17(){
 }
 RENDERERS['Covenant Monitor'] = function(){
   const s = bkEnsureV17(), u = bkAnnualCF(), d = bkDebt();
+  /* a development deal is tested against the permanent loan from its takeout (N/A before it), not the acquisition loan sized off the land price */
+  const dv = (typeof bkDevDebtView==='function') ? bkDevDebtView() : null; if(dv) return bkDevCovenantSheet(s, dv);
   const money = n => n<0?'($'+bkFmt(-n)+')':'$'+bkFmt(n);
   const minDSCR = Number(s.acqDSCR)||0, minDY = Number(s.minDebtYield)||0;
   const rows = u.arr.map((a,i)=>{
@@ -4222,9 +4224,11 @@ RENDERERS['Portfolio M'] = function(){
 RENDERERS['Deal Vectors (M)'] = function(){
   const s = bkLoad(), d = bkDebt(), r = bkMonthlyReturns(), money = n=>n<0?'('+bkFmt(-n)+')':bkFmt(n);
   const shown = r.rows; // WAVE 2C: display cap lifted from 24 to the full monthly vector
-  const rows = shown.map((row,i)=>{ const dr = d.months[i]||{interest:0,principal:0,balance:0}; return `<tr><td class="rowlabel">${row.m}</td><td>${row.dt.toISOString().slice(0,7)}</td><td>${money(row.egi)}</td><td>${money(row.noi)}</td><td>${money(dr.interest)}</td><td>${money(dr.principal)}</td><td>${money(dr.balance)}</td><td>${money(row.ds)}</td><td>${money(row.assetFee)}</td><td>${money(row.cf)}</td></tr>`; }).join('');
+  /* a development deal: Interest, Principal and Loan Balance come from the development debt view (the construction facility until the takeout, then the permanent loan), the same series as the Debt Service column; the acquisition loan is not part of its cash flows */
+  const dv = (typeof bkDevDebtView==='function') ? bkDevDebtView() : null;
+  const rows = shown.map((row,i)=>{ const dm = dv && dv.monthly[i], dr = dm ? {interest:dm.interest,principal:dm.principal,balance:dm.bal} : (d.months[i]||{interest:0,principal:0,balance:0}); return `<tr><td class="rowlabel">${row.m}</td><td>${row.dt.toISOString().slice(0,7)}</td><td>${money(row.egi)}</td><td>${money(row.noi)}</td><td>${money(dr.interest)}</td><td>${money(dr.principal)}</td><td>${money(dr.balance)}</td><td>${money(row.ds)}</td><td>${money(row.assetFee)}</td><td>${money(row.cf)}</td></tr>`; }).join('');
   const main = `<div class="tbl-wrap" style="max-height:640px;overflow:auto"><table class="fin"><caption>Deal Vectors (M) - Raw Monthly Engine Output, All ${r.rows.length} Months</caption><thead><tr><th class="rowlabel-h">Mo</th><th>Date</th><th>EGI</th><th>NOI</th><th>Interest</th><th>Principal</th><th>Loan Balance</th><th>Debt Service</th><th>Asset Fee</th><th>Net Equity CF</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> the unaggregated monthly operating, debt and equity cash-flow vectors for the active deal - the figures every annual summary in the app is built from. Useful for exporting or spot-checking a specific month.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> the unaggregated monthly operating, debt and equity cash-flow vectors for the active deal - the figures every annual summary in the app is built from. Useful for exporting or spot-checking a specific month.${dv?' <b>Development deal:</b> Loan Balance is the construction facility until the takeout and the permanent loan after it. Interest and Principal are the cash interest and principal in Debt Service, so they add to it every month; the construction loan&rsquo;s interest is capitalized, not paid, and is on the Debt Schedule.':''}</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Vector Lengths</div><div class="metric-list">
     <div class="metric-row"><span class="k">Months</span><span class="v">${r.rows.length}</span></div>
     <div class="metric-row"><span class="k">Hold</span><span class="v">${s.holdYears} yrs</span></div>
@@ -4238,12 +4242,15 @@ RENDERERS['Ledger (M)'] = function(){
   const shown = r.rows; // WAVE 2C: display cap lifted from 24 to the full monthly vector
   const entries = [];
   shown.forEach((row,i)=>{
-    const mo = u.monthly[i] || {egi:row.egi, noiBeforeReserves:row.noi, noi:row.noi};
+    /* a development deal's operating lines are its own monthly rows (nothing earned before delivery, then lease-up and operations), not the stabilized acquisition-style months that bkAnnualCF returns from month 1 */
+    const mo = (row.equityDraw !== undefined ? null : u.monthly[i]) || {egi:row.egi, noiBeforeReserves:row.noi, noi:row.noi};
     const opex = -(mo.egi - mo.noiBeforeReserves), reserve = -(mo.noiBeforeReserves - mo.noi), label = row.dt.toISOString().slice(0,7);
-    entries.push({m:row.m, dt:label, item:'Revenue (EGI)', amt: mo.egi});
-    entries.push({m:row.m, dt:label, item:'Operating Expenses', amt: opex});
+    /* a development deal lists only the lines that have an amount in the month (nothing is earned or paid in the years before delivery) */
+    const dev0 = row.equityDraw !== undefined, keep = a => !dev0 || Math.abs(a) > 0.005;
+    if(keep(mo.egi)) entries.push({m:row.m, dt:label, item:'Revenue (EGI)', amt: mo.egi});
+    if(keep(opex)) entries.push({m:row.m, dt:label, item:'Operating Expenses', amt: opex});
     if(Math.abs(reserve)>0.005) entries.push({m:row.m, dt:label, item:'Reserves', amt: reserve});
-    entries.push({m:row.m, dt:label, item:'Debt Service', amt: -row.ds});
+    if(keep(-row.ds)) entries.push({m:row.m, dt:label, item:'Debt Service', amt: -row.ds});
     if(row.assetFee) entries.push({m:row.m, dt:label, item:'Asset Management Fee', amt: -row.assetFee});
     /* equity by what it is and when it is called: the closing equity (an acquisition pays it in month 1, a development deal calls it through its funding schedule), then each capital call after closing */
     const devRow = row.equityDraw !== undefined, closeCall = devRow ? (Number(row.equityDraw)||0) : (row.m===1 ? (Number(row.eqDraw)||0) : 0);
@@ -4255,6 +4262,12 @@ RENDERERS['Ledger (M)'] = function(){
     if(row.sale) entries.push({m:row.m, dt:label, item:'Sale Proceeds (Net)', amt: row.sale});
     if(row.dispoFee) entries.push({m:row.m, dt:label, item:'Disposition Fee', amt: -row.dispoFee});
     if(row.payoff) entries.push({m:row.m, dt:label, item:'Debt Payoff at Sale', amt: -row.payoff});
+    /* the rest of a development month's cash flow: leasing capital, the takeout loan's proceeds after it repays the construction loan, and the operating reserve applied or released */
+    if(dev0){
+      if(Math.abs(Number(row.leaseCap)||0) > 0.005) entries.push({m:row.m, dt:label, item:'Leasing Capital', amt: -Number(row.leaseCap)});
+      if(Math.abs(Number(row.refi)||0) > 0.005) entries.push({m:row.m, dt:label, item:'Takeout Loan Proceeds', amt: Number(row.refi)});
+      const rsv = (Number(row.resOp)||0) + (Number(row.resRelease)||0); if(Math.abs(rsv) > 0.005) entries.push({m:row.m, dt:label, item:'Operating Reserve Applied and Released', amt: rsv});
+    }
   });
   const rows = entries.map(e=>`<tr><td class="rowlabel">${e.m}</td><td>${e.dt}</td><td>${bkEsc(e.item)}</td><td>${money(e.amt)}</td></tr>`).join('');
   const main = `<div class="tbl-wrap" style="max-height:640px;overflow:auto"><table class="fin"><caption>Ledger (M) - Monthly Transaction Detail, All ${shown.length} Months</caption><thead><tr><th class="rowlabel-h">Mo</th><th>Date</th><th>Line Item</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -11443,12 +11456,21 @@ extend('After-Tax','w1AfterTax', function(o){
 
 /* Covenant Monitor: period summary reduced over the series already rendered */
 extend('Covenant Monitor','w1Covenant', function(o){
-  var u, d, s = bkLoad();
-  try { u = bkAnnualCF(); d = bkDebt(); } catch(e){ return; }
-  if(!d || d.debtEnabled===false || !(d.months||[]).length) return;
+  var u, d, s = bkLoad(), dv = (typeof bkDevDebtView==='function') ? bkDevDebtView() : null;
+  if(dv){ if(!dv.takeout) return; }   /* a development deal: the permanent loan from the takeout; the page itself says when there is none */
+  else {
+    try { u = bkAnnualCF(); d = bkDebt(); } catch(e){ return; }
+    if(!d || d.debtEnabled===false || !(d.months||[]).length) return;
+  }
   var minDSCR = Number(s.minDebtYield!==undefined ? s.acqDSCR : s.acqDSCR) || 0;
-  var covDSCR = Number(s.acqDSCR)||0, covDY = Number(s.minDebtYield)||0;
-  var years = u.arr.length, obsDSCR=[], obsDY=[], obsLev=[], watch=0, tested=0;
+  var covDSCR = dv ? dv.covDSCR : (Number(s.acqDSCR)||0), covDY = Number(s.minDebtYield)||0;
+  var years = dv ? 0 : u.arr.length, obsDSCR=[], obsDY=[], obsLev=[], watch=0, tested=0;
+  if(dv) dv.years.forEach(function(a){
+    if(!a.tested) return; tested++;
+    var dscr=a.noi/a.ds, dyv=(a.noi*12/a.months)/(a.ending||Infinity); obsDSCR.push(dscr);
+    if(a.ending>0){ obsDY.push(dyv); obsLev.push(a.ending/(dv.basis||1)); }
+    if((covDSCR&&dscr<covDSCR)||(covDY&&a.ending>0&&dyv<covDY)) watch++;
+  });
   for(var y=0;y<years;y++){
     var ds=0; for(var k=y*12;k<Math.min((y+1)*12,d.months.length);k++) ds+=d.months[k].payment;
     var endK=Math.min((y+1)*12,d.months.length)-1;
@@ -11468,7 +11490,7 @@ extend('Covenant Monitor','w1Covenant', function(o){
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
       '<tr>'+lbl('Minimum DSCR Observed')+val(isFinite(minD)?mult(minD):'-')+txt('Covenant '+(covDSCR?mult(covDSCR):'not set'))+'</tr>'
     + '<tr>'+lbl('Minimum Debt Yield Observed')+val(isFinite(minY)?pct(minY):'-')+txt('Covenant '+(covDY?pct(covDY):'not set'))+'</tr>'
-    + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(maxL)?pct(maxL):'-')+txt('Ending balance &divide; purchase price')+'</tr>'
+    + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(maxL)?pct(maxL):'-')+txt(dv?'Ending balance &divide; total development cost':'Ending balance &divide; purchase price')+'</tr>'
     + '<tr>'+lbl('Periods Tested')+val(intf(tested))+txt('Annual periods with debt service')+'</tr>'
     + '<tr>'+lbl('Periods on Watch')+val(intf(watch))+txt('Below a set covenant')+'</tr>'
     + '<tr class="grandtotal">'+lbl('OVERALL COVENANT STATUS')+'<td class="v">'+chip(status[0],status[1])+'</td>'+txt('Across the tested periods')+'</tr>')
@@ -13232,6 +13254,29 @@ if(typeof BK_BASE !== 'undefined'){
    ===================================================================== */
 window.bkCovenantMonthlyT12 = function(){
   var s = bkLoad(), u, d;
+  /* a development deal: the permanent loan from its takeout, on the development timeline (bkDevDebtView); before the takeout there is no debt service to test */
+  var dv = (typeof bkDevDebtView==='function') ? bkDevDebtView() : null;
+  if(dv){
+    if(!dv.takeout) return { isDev:true, na:true, reason:dv.reason };
+    var mm = dv.monthly, nn = mm.length, covD = dv.covDSCR, covY = dv.covDY, rowsD = [], watchD = 0, testedD = 0;
+    for(var q=0;q<nn;q++){
+      var win = mm.slice(Math.max(0,q-11), q+1), pays = win.filter(function(z){ return z.hasDs; }).length, hist = Math.min(12, q+1);
+      var tn = 0, td = 0; win.forEach(function(z){ tn += z.noi; td += z.ds; });
+      var bl = mm[q].perm, full = pays >= 12 && mm[q].hasDs, mo2 = q+1;
+      var dsc = full && td > 0 ? tn/td : NaN, dyy = full && bl > 0 ? tn/bl : NaN, lv = dv.basis > 0 && bl > 0 ? bl/dv.basis : NaN;
+      var inP = full && mo2 <= nn && bl > 0, st;
+      if(!inP){ st = mo2 < dv.takeoutMo ? 'PRE-TAKEOUT' : (!mm[q].hasDs && bl <= 0 && mo2 > dv.takeoutMo ? 'REPAID' : 'RAMP'); }
+      else { testedD++; var badD = (covD && isFinite(dsc) && dsc < covD) || (covY && isFinite(dyy) && dyy < covY); if(badD) watchD++; st = badD ? 'WATCH' : 'PASS'; }
+      rowsD.push({ m:mo2, t12noi:tn, t12ds:td, bal:bl, dscr:dsc, dy:dyy, lev:lv, inPeriod:inP, state:st, history:hist });
+    }
+    var inD = rowsD.filter(function(r){ return r.inPeriod; });
+    return { isDev:true, rows:rowsD, tested:testedD, watch:watchD, takeoutMo:dv.takeoutMo,
+             minDSCR: inD.length ? Math.min.apply(null, inD.map(function(r){ return isFinite(r.dscr)?r.dscr:Infinity; })) : NaN,
+             minDY: inD.length ? Math.min.apply(null, inD.map(function(r){ return isFinite(r.dy)?r.dy:Infinity; })) : NaN,
+             maxLev: rowsD.length ? Math.max.apply(null, rowsD.map(function(r){ return isFinite(r.lev)?r.lev:0; })) : NaN,
+             covDSCR:covD, covDY:covY, covLev:0, stabMo:dv.takeoutMo, saleMo:nn,
+             status: !testedD ? 'NOT TESTED' : (watchD ? 'WATCH - '+watchD+' month(s) below' : 'PASS') };
+  }
   try { u = bkAnnualCF(); d = bkDebt(); } catch(e){ return null; }
   if(!d || d.debtEnabled === false || !(d.months||[]).length) return null;
   var mo = u.monthly || [], dm = d.months || [];
@@ -13281,6 +13326,7 @@ window.bkCovenantMonthlyT12 = function(){
 extend('Covenant Monitor','w3cT12', function(o){
   var t = bkCovenantMonthlyT12();
   if(!t){ return; }
+  if(t.na){ return; }   /* a development with no permanent takeout: the annual page above says so */
   var head = '<tr><th class="rowlabel-h">Mo</th><th>T-12 NOI</th><th>T-12 Debt Service</th><th>DSCR</th>'
            + '<th>Debt Balance</th><th>Debt Yield</th><th>Leverage</th><th>Status</th></tr>';
   var body = t.rows.map(function(r){
@@ -13301,13 +13347,13 @@ extend('Covenant Monitor','w3cT12', function(o){
     + '<tr>'+lbl('Minimum Debt Yield Observed')+val(isFinite(t.minDY)?pct(t.minDY):'-')
         + txt('Covenant '+(t.covDY?pct(t.covDY):'not set'))+'</tr>'
     + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(t.maxLev)?pct(t.maxLev):'-')
-        + txt('Debt balance &divide; acquisition basis')+'</tr>'
+        + txt(t.isDev ? 'Debt balance &divide; total development cost' : 'Debt balance &divide; acquisition basis')+'</tr>'
     + '<tr>'+lbl('Months Inside the Covenant Period')+val(intf(t.tested))
-        + txt('Stabilized, twelve months of history, before sale, debt outstanding')+'</tr>'
+        + txt(t.isDev ? 'Permanent loan outstanding with twelve months of payments, before sale' : 'Stabilized, twelve months of history, before sale, debt outstanding')+'</tr>'
     + '<tr>'+lbl('Months on Watch')+val(intf(t.watch))+txt('Below a set covenant')+'</tr>'
     + '<tr class="grandtotal">'+lbl('OVERALL MONTHLY COVENANT STATUS')
         + '<td class="v">'+chip(t.watch?'warn':(t.tested?'pass':''), t.status)+'</td>'
-        + txt('Stabilization at month '+intf(t.stabMo)+'; sale at month '+intf(t.saleMo))+'</tr>');
+        + txt((t.isDev ? 'Permanent takeout at month ' : 'Stabilization at month ')+intf(t.stabMo)+'; sale at month '+intf(t.saleMo))+'</tr>');
 
   o.main = (o.main||'') + summary
     + wrapTable('Monthly Covenant Test - trailing twelve months, all '+t.rows.length+' periods', head, body)
@@ -31420,6 +31466,90 @@ I.providers.fake = function(script, opts){
   window.bkPerfInstall = function(){ NAMES.forEach(wrap); };
   window.bkPerfClear = function(){ ver++; Object.keys(stores).forEach(function(n){ stores[n].clear(); }); };
   window.bkPerfInstall();
+})();
+</script>
+<script id="bk-dev-debt">/* DEVELOPMENT DEBT VIEW. The debt a development deal actually has, month by month, from the engines' own series: the construction facility (bkDevFundingV10().months) until the takeout,
+   the permanent loan (bkDevTakeoutV11().permSchedule) after it, and the cash debt service the cash flows carry (bkMonthlyReturns().rows[].ds). The acquisition loan (bkDebt) is sized off the
+   land price and is not part of a development's cash flows, so the pages that test or list a loan read this view on a development deal and keep bkDebt for every other deal.
+   Nothing here is calculated beyond sums and ratios of those series: the view is for reading, not for sizing. Returns null for a deal that is not a development. */
+(function(){
+'use strict';
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+window.bkDevDebtView = function(){
+  var s = bkLoad(); if(!/develop/i.test(String(s.dealType || ''))) return null;
+  var f, t, mr; try { f = bkDevFundingV10(); t = bkDevTakeoutV11(); mr = bkMonthlyReturns(); } catch(e){ return null; }
+  if(!f || !f.isDev || !t || !mr || !Array.isArray(mr.rows)) return null;
+  var rows = mr.rows, n = rows.length, stab = num(f.stab), perm = {}, hasPerm = false;
+  (t.permSchedule || []).forEach(function(z){ if(z && z.mo > 0){ perm[z.mo] = z; hasPerm = true; } });
+  var takeout = hasPerm && !t.conHeldToSale && num(t.permLoan) > 0 && stab >= 1 && stab <= n;   /* the permanent loan funds inside the hold */
+  var monthly = [], i, m, r, pz, conEnd, permEnd, pay, prin;
+  for(i = 0; i < n; i++){
+    m = i + 1; r = rows[i]; pz = perm[m];
+    /* the permanent loan repays the construction facility in the stabilization month; after that month only the permanent loan is outstanding */
+    conEnd = (f.months && f.months[i] && !(takeout && m >= stab)) ? num(f.months[i].end) : 0;
+    permEnd = pz ? num(pz.end) : 0; pay = pz ? num(pz.payment) : 0; prin = pz && pay > 0 ? num(pz.principal) : 0;
+    monthly.push({ m:m, y:r.y, noi:num(r.noi), ds:num(r.ds), principal:prin, interest:num(r.ds) - prin, perm:permEnd, con:conEnd, bal:conEnd + permEnd, pay:pay, hasDs:pay > 0 });
+  }
+  var years = [], ny = n ? monthly[n - 1].y : 0, y, k, a;
+  for(y = 1; y <= ny; y++){
+    a = { y:y, months:0, noi:0, ds:0, ending:0, ends:0 };
+    for(k = 0; k < n; k++){ if(monthly[k].y !== y) continue; if(monthly[k].hasDs){ a.months++; a.noi += monthly[k].noi; a.ds += monthly[k].ds; } a.ending = monthly[k].perm; a.ends = monthly[k].bal; }
+    a.tested = takeout && a.months > 0;
+    years.push(a);
+  }
+  var out = { isDev:true, takeout:takeout, takeoutMo:stab, hold:n, monthly:monthly, years:years, commit:num(f.commit), conRate:num(f.rate), permLoan:num(t.permLoan), permRate:num(s.permRate), permAmort:num(s.permAmort), permPmt:num(t.permPmt),
+    atSale:takeout ? num(t.permDebtAtSale) : num(f.months && f.months[n - 1] ? f.months[n - 1].end : 0), conPayoff:num(t.conPayoff), basis:num(f.levered),
+    covDSCR:num(s.permDSCR) || num(s.acqDSCR), covDY:num(s.minDebtYield) };
+  out.reason = takeout ? '' : (Number(s.refiAtStab || 0) ? 'The sale (month ' + n + ') comes before the permanent takeout (month ' + stab + '), so the construction loan is repaid at the sale and there is no permanent loan to test.'
+    : 'This development has no permanent takeout (refinance at stabilization is off), so the construction loan is held to the sale and there is no permanent loan to test.');
+  return out;
+};
+/* the Debt Schedule's sidebar summarizes the debt the deal has, not the acquisition loan sized off the land price */
+(function(){
+  var CR = window.__BK_CR; if(!CR || typeof CR.wrapDev !== 'function') return;
+  var D = function(v){ return '$' + bkFmt(num(v)); }, kv = function(k, v){ return '<div class="metric-row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; };
+  CR.wrapDev('Debt Schedule', function(o){
+    var v = window.bkDevDebtView(); if(!v || typeof o.sidebar !== 'string') return;
+    var card = '<div class="card"><div class="card-head">Schedule Metrics</div><div class="metric-list">' + kv('Construction Commitment', D(v.commit)) + kv('Construction Rate', bkPct(v.conRate)) + kv('Permanent Loan', v.takeout ? D(v.permLoan) : 'None')
+      + (v.takeout ? kv('Permanent Rate', bkPct(v.permRate)) + kv('Amortization', v.permAmort + ' years') : '') + kv(v.takeout ? 'Permanent Debt at Sale' : 'Construction Debt at Sale', D(v.atSale)) + '</div></div>';
+    var re = /<div class="card"><div class="card-head">Schedule Metrics<\/div><div class="metric-list">(?:<div class="metric-row">[\s\S]*?<\/div>)*<\/div><\/div>/;
+    if(re.test(o.sidebar)) o.sidebar = o.sidebar.replace(re, card);
+  });
+})();
+/* Covenant Monitor on a development deal: annual DSCR and Debt Yield tests against the permanent loan from the takeout. Before it the construction facility's interest is capitalized and there is no debt
+   service to test, so those years read N/A with no pass or fail. The takeout year is tested on the months the permanent loan has payments, with NOI over the same months; the debt yield annualizes that NOI. */
+window.bkDevCovenantSheet = function(s, dv){
+  var money = function(n){ return n < 0 ? '($' + bkFmt(-n) + ')' : '$' + bkFmt(n); }, minDSCR = dv.covDSCR, minDY = dv.covDY, na = '<span class="status-chip na">N/A</span>';
+  var meta = { Property:s.name, Loan:dv.takeout ? money(dv.permLoan) : 'None', Rate:dv.takeout ? bkPct(dv.permRate) : '-', Amort:dv.takeout ? dv.permAmort + ' yrs' : '-', Currency:'USD' };
+  var sidebarOf = function(card){ return sidebarShell(card + modelInfoCard('<div class="metric-row"><span class="k">Tab Group</span><span class="v">Debt</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>') + colorKeyCard()); };
+  var inputs = '<div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Covenant Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>' + bkInput('Minimum Debt Yield Covenant', 'minDebtYield', '%', 'pct') + '</tbody></table></div>';
+  var desc = 'Annual DSCR and Debt Yield covenant tests against the permanent loan after takeout.';
+  if(!dv.takeout) return { title:'Covenant Monitor', crumbs:'Debt', desc:desc, meta:meta,
+    main:'<div class="note-flag"><span>&#9432;</span><div><b>Not applicable -</b> ' + dv.reason + '</div></div>' + inputs,
+    sidebar:sidebarOf('<div class="card"><div class="card-head">Covenant Status</div><div class="metric-list"><div class="metric-row"><span class="k">Overall</span><span class="v">' + na + '</span></div></div></div>') };
+  var rows = dv.years.map(function(a){
+    var dscr = a.tested ? a.noi / a.ds : NaN, dy = a.tested && a.ending > 0 ? (a.noi * 12 / a.months) / a.ending : NaN;
+    return { y:a.y, n:a.months, noi:a.noi, ds:a.ds, ending:a.ending, tested:a.tested, dscr:dscr, dy:dy, dscrPass:!a.tested || dscr >= minDSCR - 0.0001, dyPass:!a.tested || !isFinite(dy) || dy >= minDY - 0.0001 };
+  });
+  var cell = function(r, ok){ return '<td class="' + (r.tested && !ok ? 'fail-cell' : '') + '">' + (!r.tested ? na : ok ? '<span class="status-chip pass">PASS</span>' : '<span class="status-chip fail">FAIL</span>') + '</td>'; };
+  var v = function(r, x){ return '<td>' + (r.tested ? x : '-') + '</td>'; };
+  var main = '<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - DSCR &amp; Debt Yield, tested annually against the permanent loan after takeout</caption>'
+    + '<thead><tr><th class="rowlabel-h">Line Item</th>' + rows.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + '<tr><td class="rowlabel">Months with Permanent Debt Service</td>' + rows.map(function(r){ return v(r, r.n); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">NOI After Reserves (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">Debt Service (those months)</td>' + rows.map(function(r){ return v(r, money(-r.ds)); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">Ending Loan Balance</td>' + rows.map(function(r){ return v(r, money(r.ending)); }).join('') + '</tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">DSCR (min ' + minDSCR.toFixed(2) + 'x)</td>' + rows.map(function(r){ return v(r, isFinite(r.dscr) ? r.dscr.toFixed(2) + 'x' : '-'); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">DSCR Test</td>' + rows.map(function(r){ return cell(r, r.dscrPass); }).join('') + '</tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">Debt Yield (min ' + bkPct(minDY) + ')</td>' + rows.map(function(r){ return v(r, isFinite(r.dy) ? bkPct(r.dy) : '-'); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">Debt Yield Test</td>' + rows.map(function(r){ return cell(r, r.dyPass); }).join('') + '</tr></tbody></table></div>' + inputs
+    + '<div class="note-flag"><span>&#9432;</span><div><b>Tested against the permanent loan.</b> The permanent loan funds at the takeout (month ' + dv.takeoutMo + '). Before it the construction facility&rsquo;s interest is capitalized and there is no debt service to test, so those years read N/A, with no pass or fail. '
+    + 'The takeout year is tested on the months the permanent loan has payments, with NOI over the same months; the debt yield annualizes that NOI over the ending balance. Minimum DSCR is the permanent loan&rsquo;s underwriting DSCR. Debt service and NOI are the monthly cash-flow figures (<code>bkMonthlyReturns</code>) and the takeout schedule (<code>bkDevTakeoutV11</code>), the same ones the Debt Schedule and Returns pages use.</div></div>';
+  var tested = rows.filter(function(r){ return r.tested; }), allPass = tested.every(function(r){ return r.dscrPass && r.dyPass; });
+  var sidebar = sidebarOf('<div class="card"><div class="card-head">Covenant Status</div><div class="metric-list"><div class="metric-row"><span class="k">Overall</span><span class="v">' + (!tested.length ? na : '<span class="status-chip ' + (allPass ? 'pass' : 'fail') + '">' + (allPass ? 'All Tested Years Pass' : 'Breach Detected') + '</span>') + '</span></div>'
+    + '<div class="metric-row"><span class="k">Min DSCR</span><span class="v">' + minDSCR.toFixed(2) + 'x</span></div><div class="metric-row"><span class="k">Min Debt Yield</span><span class="v">' + bkPct(minDY) + '</span></div></div></div>');
+  return { title:'Covenant Monitor', crumbs:'Debt', desc:desc, meta:meta, main:main, sidebar:sidebar };
+};
 })();
 </script>
 <script id="bk-field-widths">/* FIELD WIDTHS. One width per kind of value box, on every page: every percent box is as wide as every other percent box, every dollar amount as wide as every other dollar amount (inputs, choices and calculated read-only values alike), text as text. A page that draws its own boxes gets the same treatment because the kind is read from the box itself: the handler that saves it, the unit written beside it, the heading above it, the value in it.

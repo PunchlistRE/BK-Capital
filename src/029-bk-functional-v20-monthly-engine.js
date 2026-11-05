@@ -125,9 +125,11 @@ RENDERERS['Portfolio M'] = function(){
 RENDERERS['Deal Vectors (M)'] = function(){
   const s = bkLoad(), d = bkDebt(), r = bkMonthlyReturns(), money = n=>n<0?'('+bkFmt(-n)+')':bkFmt(n);
   const shown = r.rows; // WAVE 2C: display cap lifted from 24 to the full monthly vector
-  const rows = shown.map((row,i)=>{ const dr = d.months[i]||{interest:0,principal:0,balance:0}; return `<tr><td class="rowlabel">${row.m}</td><td>${row.dt.toISOString().slice(0,7)}</td><td>${money(row.egi)}</td><td>${money(row.noi)}</td><td>${money(dr.interest)}</td><td>${money(dr.principal)}</td><td>${money(dr.balance)}</td><td>${money(row.ds)}</td><td>${money(row.assetFee)}</td><td>${money(row.cf)}</td></tr>`; }).join('');
+  /* a development deal: Interest, Principal and Loan Balance come from the development debt view (the construction facility until the takeout, then the permanent loan), the same series as the Debt Service column; the acquisition loan is not part of its cash flows */
+  const dv = (typeof bkDevDebtView==='function') ? bkDevDebtView() : null;
+  const rows = shown.map((row,i)=>{ const dm = dv && dv.monthly[i], dr = dm ? {interest:dm.interest,principal:dm.principal,balance:dm.bal} : (d.months[i]||{interest:0,principal:0,balance:0}); return `<tr><td class="rowlabel">${row.m}</td><td>${row.dt.toISOString().slice(0,7)}</td><td>${money(row.egi)}</td><td>${money(row.noi)}</td><td>${money(dr.interest)}</td><td>${money(dr.principal)}</td><td>${money(dr.balance)}</td><td>${money(row.ds)}</td><td>${money(row.assetFee)}</td><td>${money(row.cf)}</td></tr>`; }).join('');
   const main = `<div class="tbl-wrap" style="max-height:640px;overflow:auto"><table class="fin"><caption>Deal Vectors (M) - Raw Monthly Engine Output, All ${r.rows.length} Months</caption><thead><tr><th class="rowlabel-h">Mo</th><th>Date</th><th>EGI</th><th>NOI</th><th>Interest</th><th>Principal</th><th>Loan Balance</th><th>Debt Service</th><th>Asset Fee</th><th>Net Equity CF</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> the unaggregated monthly operating, debt and equity cash-flow vectors for the active deal - the figures every annual summary in the app is built from. Useful for exporting or spot-checking a specific month.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> the unaggregated monthly operating, debt and equity cash-flow vectors for the active deal - the figures every annual summary in the app is built from. Useful for exporting or spot-checking a specific month.${dv?' <b>Development deal:</b> Loan Balance is the construction facility until the takeout and the permanent loan after it. Interest and Principal are the cash interest and principal in Debt Service, so they add to it every month; the construction loan&rsquo;s interest is capitalized, not paid, and is on the Debt Schedule.':''}</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Vector Lengths</div><div class="metric-list">
     <div class="metric-row"><span class="k">Months</span><span class="v">${r.rows.length}</span></div>
     <div class="metric-row"><span class="k">Hold</span><span class="v">${s.holdYears} yrs</span></div>
@@ -141,12 +143,15 @@ RENDERERS['Ledger (M)'] = function(){
   const shown = r.rows; // WAVE 2C: display cap lifted from 24 to the full monthly vector
   const entries = [];
   shown.forEach((row,i)=>{
-    const mo = u.monthly[i] || {egi:row.egi, noiBeforeReserves:row.noi, noi:row.noi};
+    /* a development deal's operating lines are its own monthly rows (nothing earned before delivery, then lease-up and operations), not the stabilized acquisition-style months that bkAnnualCF returns from month 1 */
+    const mo = (row.equityDraw !== undefined ? null : u.monthly[i]) || {egi:row.egi, noiBeforeReserves:row.noi, noi:row.noi};
     const opex = -(mo.egi - mo.noiBeforeReserves), reserve = -(mo.noiBeforeReserves - mo.noi), label = row.dt.toISOString().slice(0,7);
-    entries.push({m:row.m, dt:label, item:'Revenue (EGI)', amt: mo.egi});
-    entries.push({m:row.m, dt:label, item:'Operating Expenses', amt: opex});
+    /* a development deal lists only the lines that have an amount in the month (nothing is earned or paid in the years before delivery) */
+    const dev0 = row.equityDraw !== undefined, keep = a => !dev0 || Math.abs(a) > 0.005;
+    if(keep(mo.egi)) entries.push({m:row.m, dt:label, item:'Revenue (EGI)', amt: mo.egi});
+    if(keep(opex)) entries.push({m:row.m, dt:label, item:'Operating Expenses', amt: opex});
     if(Math.abs(reserve)>0.005) entries.push({m:row.m, dt:label, item:'Reserves', amt: reserve});
-    entries.push({m:row.m, dt:label, item:'Debt Service', amt: -row.ds});
+    if(keep(-row.ds)) entries.push({m:row.m, dt:label, item:'Debt Service', amt: -row.ds});
     if(row.assetFee) entries.push({m:row.m, dt:label, item:'Asset Management Fee', amt: -row.assetFee});
     /* equity by what it is and when it is called: the closing equity (an acquisition pays it in month 1, a development deal calls it through its funding schedule), then each capital call after closing */
     const devRow = row.equityDraw !== undefined, closeCall = devRow ? (Number(row.equityDraw)||0) : (row.m===1 ? (Number(row.eqDraw)||0) : 0);
@@ -158,6 +163,12 @@ RENDERERS['Ledger (M)'] = function(){
     if(row.sale) entries.push({m:row.m, dt:label, item:'Sale Proceeds (Net)', amt: row.sale});
     if(row.dispoFee) entries.push({m:row.m, dt:label, item:'Disposition Fee', amt: -row.dispoFee});
     if(row.payoff) entries.push({m:row.m, dt:label, item:'Debt Payoff at Sale', amt: -row.payoff});
+    /* the rest of a development month's cash flow: leasing capital, the takeout loan's proceeds after it repays the construction loan, and the operating reserve applied or released */
+    if(dev0){
+      if(Math.abs(Number(row.leaseCap)||0) > 0.005) entries.push({m:row.m, dt:label, item:'Leasing Capital', amt: -Number(row.leaseCap)});
+      if(Math.abs(Number(row.refi)||0) > 0.005) entries.push({m:row.m, dt:label, item:'Takeout Loan Proceeds', amt: Number(row.refi)});
+      const rsv = (Number(row.resOp)||0) + (Number(row.resRelease)||0); if(Math.abs(rsv) > 0.005) entries.push({m:row.m, dt:label, item:'Operating Reserve Applied and Released', amt: rsv});
+    }
   });
   const rows = entries.map(e=>`<tr><td class="rowlabel">${e.m}</td><td>${e.dt}</td><td>${bkEsc(e.item)}</td><td>${money(e.amt)}</td></tr>`).join('');
   const main = `<div class="tbl-wrap" style="max-height:640px;overflow:auto"><table class="fin"><caption>Ledger (M) - Monthly Transaction Detail, All ${shown.length} Months</caption><thead><tr><th class="rowlabel-h">Mo</th><th>Date</th><th>Line Item</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table></div>

@@ -147,6 +147,29 @@ if(typeof BK_BASE !== 'undefined'){
    ===================================================================== */
 window.bkCovenantMonthlyT12 = function(){
   var s = bkLoad(), u, d;
+  /* a development deal: the permanent loan from its takeout, on the development timeline (bkDevDebtView); before the takeout there is no debt service to test */
+  var dv = (typeof bkDevDebtView==='function') ? bkDevDebtView() : null;
+  if(dv){
+    if(!dv.takeout) return { isDev:true, na:true, reason:dv.reason };
+    var mm = dv.monthly, nn = mm.length, covD = dv.covDSCR, covY = dv.covDY, rowsD = [], watchD = 0, testedD = 0;
+    for(var q=0;q<nn;q++){
+      var win = mm.slice(Math.max(0,q-11), q+1), pays = win.filter(function(z){ return z.hasDs; }).length, hist = Math.min(12, q+1);
+      var tn = 0, td = 0; win.forEach(function(z){ tn += z.noi; td += z.ds; });
+      var bl = mm[q].perm, full = pays >= 12 && mm[q].hasDs, mo2 = q+1;
+      var dsc = full && td > 0 ? tn/td : NaN, dyy = full && bl > 0 ? tn/bl : NaN, lv = dv.basis > 0 && bl > 0 ? bl/dv.basis : NaN;
+      var inP = full && mo2 <= nn && bl > 0, st;
+      if(!inP){ st = mo2 < dv.takeoutMo ? 'PRE-TAKEOUT' : (!mm[q].hasDs && bl <= 0 && mo2 > dv.takeoutMo ? 'REPAID' : 'RAMP'); }
+      else { testedD++; var badD = (covD && isFinite(dsc) && dsc < covD) || (covY && isFinite(dyy) && dyy < covY); if(badD) watchD++; st = badD ? 'WATCH' : 'PASS'; }
+      rowsD.push({ m:mo2, t12noi:tn, t12ds:td, bal:bl, dscr:dsc, dy:dyy, lev:lv, inPeriod:inP, state:st, history:hist });
+    }
+    var inD = rowsD.filter(function(r){ return r.inPeriod; });
+    return { isDev:true, rows:rowsD, tested:testedD, watch:watchD, takeoutMo:dv.takeoutMo,
+             minDSCR: inD.length ? Math.min.apply(null, inD.map(function(r){ return isFinite(r.dscr)?r.dscr:Infinity; })) : NaN,
+             minDY: inD.length ? Math.min.apply(null, inD.map(function(r){ return isFinite(r.dy)?r.dy:Infinity; })) : NaN,
+             maxLev: rowsD.length ? Math.max.apply(null, rowsD.map(function(r){ return isFinite(r.lev)?r.lev:0; })) : NaN,
+             covDSCR:covD, covDY:covY, covLev:0, stabMo:dv.takeoutMo, saleMo:nn,
+             status: !testedD ? 'NOT TESTED' : (watchD ? 'WATCH - '+watchD+' month(s) below' : 'PASS') };
+  }
   try { u = bkAnnualCF(); d = bkDebt(); } catch(e){ return null; }
   if(!d || d.debtEnabled === false || !(d.months||[]).length) return null;
   var mo = u.monthly || [], dm = d.months || [];
@@ -196,6 +219,7 @@ window.bkCovenantMonthlyT12 = function(){
 extend('Covenant Monitor','w3cT12', function(o){
   var t = bkCovenantMonthlyT12();
   if(!t){ return; }
+  if(t.na){ return; }   /* a development with no permanent takeout: the annual page above says so */
   var head = '<tr><th class="rowlabel-h">Mo</th><th>T-12 NOI</th><th>T-12 Debt Service</th><th>DSCR</th>'
            + '<th>Debt Balance</th><th>Debt Yield</th><th>Leverage</th><th>Status</th></tr>';
   var body = t.rows.map(function(r){
@@ -216,13 +240,13 @@ extend('Covenant Monitor','w3cT12', function(o){
     + '<tr>'+lbl('Minimum Debt Yield Observed')+val(isFinite(t.minDY)?pct(t.minDY):'-')
         + txt('Covenant '+(t.covDY?pct(t.covDY):'not set'))+'</tr>'
     + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(t.maxLev)?pct(t.maxLev):'-')
-        + txt('Debt balance &divide; acquisition basis')+'</tr>'
+        + txt(t.isDev ? 'Debt balance &divide; total development cost' : 'Debt balance &divide; acquisition basis')+'</tr>'
     + '<tr>'+lbl('Months Inside the Covenant Period')+val(intf(t.tested))
-        + txt('Stabilized, twelve months of history, before sale, debt outstanding')+'</tr>'
+        + txt(t.isDev ? 'Permanent loan outstanding with twelve months of payments, before sale' : 'Stabilized, twelve months of history, before sale, debt outstanding')+'</tr>'
     + '<tr>'+lbl('Months on Watch')+val(intf(t.watch))+txt('Below a set covenant')+'</tr>'
     + '<tr class="grandtotal">'+lbl('OVERALL MONTHLY COVENANT STATUS')
         + '<td class="v">'+chip(t.watch?'warn':(t.tested?'pass':''), t.status)+'</td>'
-        + txt('Stabilization at month '+intf(t.stabMo)+'; sale at month '+intf(t.saleMo))+'</tr>');
+        + txt((t.isDev ? 'Permanent takeout at month ' : 'Stabilization at month ')+intf(t.stabMo)+'; sale at month '+intf(t.saleMo))+'</tr>');
 
   o.main = (o.main||'') + summary
     + wrapTable('Monthly Covenant Test - trailing twelve months, all '+t.rows.length+' periods', head, body)
