@@ -1,46 +1,58 @@
 /* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
-   Statements: no cell grid, a grey band over the year headings with each year's period ending underlined beneath, bold section labels, indented line items,
-   a single rule above a subtotal's figures and a double rule below a total's. Key-value sections: a boxed panel with a header band, as Argus draws its
-   Valuation Assumptions and Sales Proceeds panels. */
+   Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):
+   - the header block: property "(Amounts in USD)", the period covered, the case;
+   - a grey band over the year columns, each year with its period ending underlined beneath ("For the Years Ending");
+   - the label column ruled off from the figures by a vertical line;
+   - section headings bold in slate, line items indented in a quieter grey, subtotals and totals in black;
+   - a single rule above a subtotal's figures; a total has a rule above and below its figures, across the figure columns only;
+   - key-value sections (Pricing, Exit, Returns and Financing, Lease Expirations) as boxed panels with a header band, like Valuation Assumptions. */
 
-/* header: title, the property with "(Amounts in USD)", the period covered, the case */
+/* header block */
 html body #viewport .rp .rp-head{ border-bottom:0; padding:2px 0 8px; margin-bottom:8px; }
 html body #viewport .rp .rp-t{ font-size:16px; font-weight:700; letter-spacing:.01em; color:var(--ae-ink); }
 html body #viewport .rp .rp-s{ font-size:11.5px; color:var(--ae-ink); line-height:1.45; }
 html body #viewport .rp .rp-s .rp-amt, html body #viewport .rp .rp-per{ font-weight:600; }
 
-/* statements: the table itself */
+/* statement table */
 html body #viewport .rp .rp-tbl{ background:transparent; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; }
 html body #viewport .rp .rp-tbl th, html body #viewport .rp .rp-tbl td{ border:0 !important; background:transparent !important; padding:2px 10px; }
-html body #viewport .rp .rp-tbl thead th{ font-weight:600; color:var(--ae-ink); vertical-align:bottom; white-space:nowrap; }
-html body #viewport .rp .rp-tbl thead tr:first-child th{ background:var(--ae-head) !important; padding-top:5px; padding-bottom:5px; }
-html body #viewport .rp .rp-tbl thead tr.rp-pe th{ background:transparent !important; font-weight:500; padding-top:3px; padding-bottom:6px; }
+html body #viewport .rp .rp-tbl thead th{ font-weight:500; color:var(--ae-ink); vertical-align:bottom; white-space:nowrap; }
+html body #viewport .rp .rp-tbl thead tr:first-child th.r{ background:var(--ae-head) !important; padding-top:5px; padding-bottom:5px; }
+html body #viewport .rp .rp-tbl thead tr:first-child th:first-child{ font-weight:600; }
+html body #viewport .rp .rp-tbl thead tr.rp-pe th{ padding-top:3px; padding-bottom:8px; }
 html body #viewport .rp .rp-tbl thead tr.rp-pe th.r{ text-decoration:underline; text-underline-offset:2px; }
-html body #viewport .rp .rp-tbl thead tr.rp-pe th:first-child{ font-weight:500; color:var(--ae-dim); }
+html body #viewport .rp .rp-tbl thead tr.rp-pe th:first-child{ color:var(--ae-ink); }
 
-/* section labels bold, line items indented under them */
-html body #viewport .rp .rp-tbl tr.sec td{ font-weight:700; padding-top:12px; color:var(--ae-ink); }
-html body #viewport .rp .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:22px; }
+/* the label column is ruled off from the figures */
+html body #viewport .rp #rp-cashflow tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px; }
 
-/* a single rule above a subtotal's figures; a double rule below a total's (the label cell stays unruled, as in Argus) */
-html body #viewport .rp .rp-tbl tr.sub td{ font-weight:700; }
+/* section headings, line items, totals */
+html body #viewport .rp .rp-tbl tr.sec td{ font-weight:700; padding-top:12px; color:var(--bk-navy-2, #2c4a6b); }
+html body #viewport .rp .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:22px; color:var(--ae-dim); }
+html body #viewport .rp .rp-tbl tr.sub td, html body #viewport .rp .rp-tbl tr.tot td{ color:var(--ae-ink); }
+html body #viewport .rp .rp-tbl tr.sub td{ font-weight:600; }
 html body #viewport .rp .rp-tbl tr.sub td.r{ border-top:1px solid var(--ae-ink) !important; }
 html body #viewport .rp .rp-tbl tr.tot td{ font-weight:700; }
-html body #viewport .rp .rp-tbl tr.tot td.r{ border-top:1px solid var(--ae-ink) !important; border-bottom:3px double var(--ae-ink) !important; }
+html body #viewport .rp .rp-tbl tr.tot td.r{ border-top:1px solid var(--ae-ink) !important; border-bottom:1px solid var(--ae-ink) !important; }
 
-/* percentage figures read as a quieter, separate column */
+/* percentage column: quieter */
 html body #viewport .rp .rp-tbl td.dim{ color:var(--ae-dim); font-size:11px; }
 html body #viewport .rp .rp-tbl tr td.r.dim, html body #viewport .rp .rp-tbl tr th.r:last-child{ padding-left:18px; }
 
-/* key-value sections (Pricing, Exit, Returns and Financing, Lease Expirations): a boxed panel with a header band */
+/* key-value sections: a boxed panel with a header band */
 html body #viewport .rp .rp-sec{ background:var(--ae-head); border:1px solid var(--ae-line); border-bottom:0; margin:16px 0 0; padding:4px 8px; font-size:12px; font-weight:700; color:var(--ae-ink); }
 html body #viewport .rp .rp-sec + .rp-tbl, html body #viewport .rp .rp-sec + div > .rp-tbl{ border:1px solid var(--ae-line); }
 html body #viewport .rp .rp-sec + .rp-tbl tbody tr + tr td{ border-top:1px solid color-mix(in srgb, var(--ae-line) 55%, transparent) !important; }
-html body #viewport .rp .rp-sec + .rp-tbl thead tr:first-child th{ background:transparent !important; border-bottom:1px solid var(--ae-ink) !important; }
-html body #viewport .rp .rp-sec + .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:10px; }
+html body #viewport .rp .rp-sec + .rp-tbl thead tr:first-child th{ background:transparent !important; border-bottom:1px solid var(--ae-ink) !important; font-weight:600; }
+html body #viewport .rp .rp-sec + .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:10px; color:var(--ae-ink); }
 
-/* print: the same layout in black on white */
+/* dark theme: the slate section heading needs the lighter accent */
+html[data-theme="dark"] body #viewport .rp .rp-tbl tr.sec td{ color:#9fcdf5; }
+@media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body #viewport .rp .rp-tbl tr.sec td{ color:#9fcdf5; } }
+
+/* print: black on white, the bands kept */
 @media print{
-  html body #viewport .rp .rp-tbl thead tr:first-child th, html body #viewport .rp .rp-sec{ background:#e9edf2 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  html body #viewport .rp .rp-tbl tr.sub td.r, html body #viewport .rp .rp-tbl tr.tot td.r{ border-color:#000 !important; }
+  html body #viewport .rp .rp-tbl thead tr:first-child th.r, html body #viewport .rp .rp-sec{ background:#e9edf2 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  html body #viewport .rp .rp-tbl tr.sub td.r, html body #viewport .rp .rp-tbl tr.tot td.r, html body #viewport .rp #rp-cashflow tr > :first-child{ border-color:#000 !important; }
+  html body #viewport .rp .rp-tbl tbody tr td:first-child{ color:#000 !important; }
 }
