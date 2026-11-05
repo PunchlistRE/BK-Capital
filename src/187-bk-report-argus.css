@@ -69,3 +69,8 @@ html body #viewport .rp .rp-tbl td.rp-base{ font-weight:700; background:var(--bk
 /* Present Value: the long column heads wrap (as Argus's do) instead of running into each other */
 html body #viewport .rp .rp-tbl.rp-pv thead th{ white-space:normal !important; line-height:1.25; vertical-align:bottom; }
 html body #viewport .rp .rp-tbl.rp-pv thead th.r{ min-width:96px; }
+/* Lease Audit: the two term tables have many short columns, so they size to their content (heads wrap, figures never touch) instead of the equal columns the year-by-year statements use */
+html body #viewport .rp .rp-tbl.rp-auto{ table-layout:auto; }
+html body #viewport .rp .rp-tbl.rp-auto thead th{ white-space:normal !important; line-height:1.25; vertical-align:bottom; }
+html body #viewport .rp .rp-tbl.rp-auto thead th.r{ min-width:78px; }
+html body #viewport .rp .rp-tbl.rp-auto tbody td{ white-space:nowrap; }

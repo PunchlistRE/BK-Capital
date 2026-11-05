@@ -68,7 +68,7 @@ function build(s){
     Object.keys(shares).forEach(function(k){ if(has(shares[k]) && Number(shares[k]) > 0) wk[k] = Math.min(1, Number(shares[k])); });
     if(!Object.keys(wk).length) M.recoverable.forEach(function(k){ wk[k] = sf / bsf; });
     var steps = (Array.isArray(L.steps) ? L.steps : []).map(function(x){ var m = /^(\d{4})-(\d{1,2})/.exec(String(x && x.month || '')); return m && has(x.rent) ? { m:(Number(m[1]) - cy) * 12 + (Number(m[2]) - cm) + 1, r:Number(x.rent) } : null; }).filter(Boolean).sort(function(a, b){ return a.m - b.m; });
-    var tn = { i:ti, name:String(L.tenant || L.suite || ('Tenant ' + (ti + 1))), sf:sf, p:p };
+    var tn = { i:ti, name:String(L.tenant || L.suite || ('Tenant ' + (ti + 1))), sf:sf, p:p, roll:{ p:p, down:down, termN:termN, termR:termR, freeN:freeN, freeR:freeR, tiN:tiN, tiR:tiR, lcN:lcN, lcR:lcR } };   /* roll: the rollover terms this tenant is actually run with (its own overrides, else the deal's), for the Lease Audit Report */
     tenants.push(tn);
     var rtypeRoll = REC_TYPES.indexOf(L.recRoll) >= 0 ? L.recRoll : rtype;
     /* the cap is a term of today's lease; it carries into rolled leases only when recoveries stay "same as today" */
@@ -135,7 +135,7 @@ function curRent(g, m){
 window.bkLeaseEval = function(s, months, fac, detail){
   s = s || bkLoad(); var S = struct(s), segs = S.segs; fac = fac || {}; var fT = fac.tax || function(){ return 1; }, fO = fac.opex || function(){ return 1; };
   var z = function(){ return new Array(months).fill(0); }, out = { rent:z(), free:z(), rec:z(), occ:z(), ti:z(), lc:z(), tenants:S.tenants, issues:S.issues, struct:S };
-  if(detail) out.byT = S.tenants.map(function(){ return { rent:z(), free:z(), rec:z(), cost:z(), occ:z() }; });
+  if(detail) out.byT = S.tenants.map(function(){ return { rent:z(), free:z(), rec:z(), cost:z(), occ:z(), ti:z(), lc:z() }; });   /* ti and lc: the two parts of cost, kept apart for the Lease Audit Report */
   var tix = S.tenants.map(function(x){ return x.i; }), Tof = function(g){ return detail ? out.byT[tix.indexOf(g.t)] : null; };
   var fracOf = function(g, m){ return (m === g.a && g.kind === 'cur' ? g.fa : 1) * (m === g.b && g.kind === 'cur' ? g.fb : 1); };
   /* pass 1: rent, free rent, occupancy and leasing costs */
@@ -149,7 +149,7 @@ window.bkLeaseEval = function(s, months, fac, detail){
       out.rent[m - 1] += r; out.free[m - 1] += fr; out.occ[m - 1] += oc;
       if(T){ T.rent[m - 1] += r; T.free[m - 1] += fr; T.occ[m - 1] += oc; }
     }
-    if(g.tiAt >= 1 && g.tiAt <= months){ out.ti[g.tiAt - 1] += g.ti; out.lc[g.tiAt - 1] += g.lc; var T2 = Tof(g); if(T2) T2.cost[g.tiAt - 1] += g.ti + g.lc; }
+    if(g.tiAt >= 1 && g.tiAt <= months){ out.ti[g.tiAt - 1] += g.ti; out.lc[g.tiAt - 1] += g.lc; var T2 = Tof(g); if(T2){ T2.cost[g.tiAt - 1] += g.ti + g.lc; T2.ti[g.tiAt - 1] += g.ti; T2.lc[g.tiAt - 1] += g.lc; } }
   });
   var tot = S.tenants.reduce(function(t, x){ return t + x.sf; }, 0) || 1;
   out.occ = out.occ.map(function(v){ return v / tot; });
