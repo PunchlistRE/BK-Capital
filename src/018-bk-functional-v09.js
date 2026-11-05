@@ -148,7 +148,7 @@ function bkDevBudgetRows(s,gsf,units){
     return [{id:'psf-hard',cls:'hard',name:'Hard costs ($ per GSF)',amount:hard},{id:'psf-cont',cls:'cont',name:'Hard cost contingency',amount:cont},{id:'psf-soft',cls:'soft',name:'Soft costs ($ per GSF)',amount:soft},{id:'psf-ffe',cls:'ffe',name:'FF&E ($ per unit)',amount:ffe}].filter(r=>r.amount>0).map(r=>Object.assign({start:null,len:null,method:null,rate:null},r));
   }
   const ok=new Set(['hard','cont','soft','ffe']), blank=v=>v===''||v==null;
-  return (Array.isArray(s.budgetLines)?s.budgetLines:[]).map((l,i)=>({l,i})).filter(o=>o.l&&n(o.l.amount)>0).map(o=>{const l=o.l,i=o.i;return {id:String(l.id||('b'+(i+1))),idx:i,cls:ok.has(l.cls)?l.cls:'hard',name:String(l.name||('Line '+(i+1))),amount:n(l.amount),start:blank(l.start)?null:Math.max(1,Math.round(n(l.start))),len:blank(l.len)?null:Math.max(1,Math.round(n(l.len))),method:blank(l.method)?null:String(l.method),rate:blank(l.rate)?null:n(l.rate)};});
+  return (Array.isArray(s.budgetLines)?s.budgetLines:[]).map((l,i)=>({l,i})).filter(o=>o.l&&n(o.l.amount)>0).map(o=>{const l=o.l,i=o.i;return {id:String(l.id||('b'+(i+1))),idx:i,cls:ok.has(l.cls)?l.cls:'hard',name:String(l.name||('Line '+(i+1))),amount:n(l.amount),start:blank(l.start)?null:Math.max(1,Math.round(n(l.start))),len:blank(l.len)?null:Math.max(1,Math.round(n(l.len))),method:blank(l.method)?null:String(l.method),rate:blank(l.rate)?null:n(l.rate),task:blank(l.task)?'':String(l.task)};});
 }
 /* the hard / soft ladders the rest of the app reads, built from those rows (contingency stays inside hard, FF&E inside soft) */
 function bkDevBudgetBuild(s,gsf,units){
@@ -162,9 +162,12 @@ function bkDevBudgetBuild(s,gsf,units){
    completion, FF&E the last three construction months. The curve is the line's own, else the deal's hard or soft cost curve. Returns each line's resolved window and its cash by month. */
 function bkDevBudgetPlan(x,s){
   const rows=x.budgetRows||[], LC=bkDevLifecycleV13(x), byMo={hard:{},soft:{},all:{}}, out=[], n=v=>{v=Number(v);return isFinite(v)?v:0};
+  /* a line tied to a Gantt task sits where that task sits (its earliest start and its duration), so moving the task, or changing what it follows, moves the cash */
+  let byId=null; if(rows.some(r=>r.task)&&typeof window.bkDevGanttOn==='function'&&window.bkDevGanttOn(s)){ try{ const sc=window.bkDevGanttSchedule(s,x); byId={}; (sc.tasks||[]).forEach(tk=>{byId[tk.id]=tk;}); }catch(e){ byId=null; } }
   rows.forEach(r=>{
-    const side=(r.cls==='hard'||r.cls==='cont')?'hard':'soft'; let start=r.start, len=r.len;
-    if(start==null||len==null){
+    const side=(r.cls==='hard'||r.cls==='cont')?'hard':'soft'; let start=r.start, len=r.len, fromTask=false; const tk=(byId&&r.task)?byId[r.task]:null;
+    if(tk&&n(tk.ES)>0){ start=Math.round(tk.ES); len=Math.max(1,Math.round(tk.EF-tk.ES+1)); fromTask=true; }
+    else if(start==null||len==null){
       if(side==='hard'){ if(start==null)start=LC.conStart; if(len==null)len=LC.conLen; }
       else if(r.cls==='ffe'){ const L=Math.min(3,LC.conLen); if(start==null)start=LC.conStart+LC.conLen-L; if(len==null)len=L; }
       else { if(start==null)start=1; if(len==null)len=Math.max(1,x.co); }
@@ -172,7 +175,7 @@ function bkDevBudgetPlan(x,s){
     const method=r.method||(side==='hard'?s.hardCurveMethod:(r.cls==='ffe'?'Straight-Line':s.softConMethod))||'Straight-Line';
     const rate=r.rate!=null?r.rate:(side==='hard'?n(s.hardCurveSteepness)||7:n(s.softConSteepness)||5), monthly={};
     for(let mo=start;mo<start+len;mo++){ const sh=bkCurveShare(mo,start,len,method,rate); if(sh>0){ const v=r.amount*sh; monthly[mo]=v; byMo[side][mo]=(byMo[side][mo]||0)+v; byMo.all[mo]=(byMo.all[mo]||0)+v; } }
-    out.push(Object.assign({},r,{side,start,len,end:start+len-1,method,rate,monthly}));
+    out.push(Object.assign({},r,{side,start,len,end:start+len-1,method,rate,monthly,fromTask,taskName:tk?tk.name:''}));
   });
   return {rows:out,hard:byMo.hard,soft:byMo.soft,all:byMo.all,LC};
 }
