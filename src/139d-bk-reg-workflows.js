@@ -42,16 +42,16 @@ R.addWorkflow('development', [
   EXIT ]);
 
 R.addWorkflow('valuation', [
-  S('property', 'Property information', 'Identifies the property and sizes the per-unit and per-SF value.', 'Property', [q('name', 'required'), q('location', 'required'), q('propertyType', 'required'), q('units', 'required'), q('gsf', 'required')]),
-  S('mix', 'Unit mix / tenant schedule', 'Value rests on what each unit or tenant pays.', 'Rent Roll', [q('rentRoll', 'required'), q('leases', 'conditional', { when:function(s){ return Number(s.commercialArea) > 0; } })]),
-  S('inplace', 'In-place income', 'Rent the property collects today, before any upside.', 'Deal Underwrite', [q('avgRent', 'required'), q('otherIncomePerUnit')]),
-  S('market', 'Market rent assumptions', 'Market rent sets the normalized and stabilized income.', 'Rent Roll', [q('rentRoll', 'required')]),
-  S('vacancy', 'Vacancy and other income', 'Vacancy, credit loss and concessions reduce income before expenses.', 'Deal Underwrite', [q('vacancy', 'required'), q('badDebtPct'), q('concessionPct')]),
+  S('property', 'Property information', 'Identifies the property and sizes the per-unit and per-SF value.', 'Property', [q('name', 'required'), q('location'), q('propertyType'), q('units', 'required'), q('gsf')]),
+  S('mix', 'Unit mix / tenant schedule', 'A rent roll with market rents builds the stabilized income; without one, the average rent is used.', 'Rent Roll', [q('rentRoll'), q('leases', 'conditional', { when:function(s){ return Number(s.commercialArea) > 0; } })], { skippable:true }),
+  S('inplace', 'In-place income', 'Rent the property collects today, before any upside.', 'Revenues', [q('avgRent', 'required'), q('otherIncomePerUnit')]),
+  S('market', 'Market rent assumptions', 'Market rent and the stabilized vacancy set the stabilized income (or enter a stabilized NOI).', 'Property Valuation', [q('valMarketRent'), q('valStabVacancy')], { skippable:true }),
+  S('vacancy', 'Vacancy and other income', 'Vacancy, credit loss and concessions reduce income before expenses.', 'Revenues', [q('vacancy', 'required'), q('badDebtPct'), q('concessionPct')]),
   EXPENSES,
-  S('noi', 'NOI calculation', 'Current, normalized and stabilized NOI, each stated with what it includes.', 'Operating Underwrite', [q('noi', 'derived'), q('valNormalizeAdj'), q('valStabilizedNoi', 'optional')]),
-  S('caprate', 'Market cap rate and comparables', 'The cap rate converts NOI into value; comparables support it.', 'Valuation', [q('valCapRate', 'required'), q('valComps'), q('valDate', 'required')]),
-  S('value', 'Estimated property value', 'Value = NOI / cap rate for each NOI, with value per unit and per SF.', 'Valuation', [q('value', 'derived')]),
-  S('review', 'Review and generate the valuation report', 'Check what is missing and what is estimated, then produce the report.', 'Valuation Report', []) ]);
+  S('noi', 'NOI calculation', 'In-place, normalized and stabilized NOI, each stated with what it includes.', 'Property Valuation', [q('noi', 'derived'), q('valAdjustments'), q('valStabilizedNoi', 'optional')]),
+  S('caprate', 'Market cap rate and comparables', 'The cap rate converts NOI into value; comparables support it.', 'Property Valuation', [q('valCapRate', 'required'), q('valCapInPlace'), q('valCapStab'), q('valComps'), q('valDate', 'required')]),
+  S('value', 'Estimated property value', 'Value = NOI / cap rate for each NOI, with value per unit and per SF.', 'Property Valuation', [q('value', 'derived'), q('valConclusion'), q('valStabCost')]),
+  S('review', 'Review and generate the valuation report', 'Check the result and print the report.', 'Property Valuation Report', []) ]);
 
 R.addWorkflow('refinance', [
   S('property', 'Property information', 'Identifies the asset and its size.', 'Property', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),

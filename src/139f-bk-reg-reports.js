@@ -18,8 +18,8 @@ R.addSections([
   X('schedule', 'Construction schedule', { builder:'devschedule.summary', when:'a task schedule exists' }),
   X('disclosures', 'Assumptions and disclosures', { builder:'report.disclosures' }),
   /* planned */
-  P('valExec', 'Executive valuation summary'), X('propDesc', 'Property description', { builder:'refinance.report' }), P('rentRollMix', 'Rent roll / unit mix'), P('incomeAnalysis', 'Income analysis'), P('opexAnalysis', 'Operating expense analysis'),
-  P('noiRecon', 'NOI reconciliation'), P('capRateAnalysis', 'Capitalization rate analysis'), P('valueConclusion', 'Estimated market value'), P('valSens', 'Valuation sensitivity'),
+  X('valExec', 'Executive valuation summary', { builder:'valuation.report' }), X('propDesc', 'Property description', { builder:'refinance.report / valuation.report' }), X('rentRollMix', 'Rent roll / unit mix', { builder:'valuation.report' }), X('incomeAnalysis', 'Income analysis', { builder:'valuation.report' }), X('opexAnalysis', 'Operating expense analysis', { builder:'valuation.report' }),
+  X('noiRecon', 'NOI reconciliation', { builder:'valuation.report' }), X('capRateAnalysis', 'Capitalization rate analysis', { builder:'valuation.report' }), X('valueConclusion', 'Estimated market value', { builder:'valuation.report' }), X('valSens', 'Valuation sensitivity', { builder:'valuation.report' }),
   P('capitalBudget', 'Capital improvement budget'), P('taxAnalysis', 'Tax analysis', { when:'tax analysis selected' }),
   X('refiExec', 'Executive refinance summary', { builder:'refinance.report' }), X('existingDebt', 'Existing debt and payoff', { builder:'refinance.report' }), X('proposedDebt', 'Proposed financing and lender tests', { builder:'refinance.report' }), X('refiProceeds', 'Proceeds and equity', { builder:'refinance.report' }), X('refiCompare', 'Alternative structures', { builder:'refinance.report' }),
   P('holdExec', 'Executive hold / sell summary'), P('holdCompare', 'Hold vs. sell'), P('saleTax', 'Disposition tax estimate', { when:'tax analysis selected' }),

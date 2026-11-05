@@ -81,8 +81,11 @@ window.BKReg.addFields([
   /* calculated figures a step shows */
   F('noi', 'Net operating income', 'derived'), F('value', 'Estimated value', 'derived'),
   /* planned: Property Valuation */
-  F('valNormalizeAdj', 'Normalizing adjustments to NOI', 'money', { planned:true, zeroOk:true }), F('valStabilizedNoi', 'Stabilized NOI', 'money', { planned:true }),
-  F('valCapRate', 'Market cap rate', 'pct', {  }), F('valComps', 'Comparable sales', 'table', { planned:true }), F('valDate', 'Valuation date', 'text', { planned:true }),
+  F('valAdjustments', 'Normalizing adjustments to NOI', 'table', { sheet:'Property Valuation' }), F('valStabilizedNoi', 'Stabilized NOI', 'money', { sheet:'Property Valuation' }),
+  F('valCapRate', 'Market cap rate', 'pct', { sheet:'Property Valuation' }), F('valComps', 'Comparable sales', 'table', { sheet:'Property Valuation' }), F('valDate', 'Valuation date', 'text', { sheet:'Property Valuation' }),
+  F('valCapInPlace', 'Cap rate for in-place NOI', 'pct', { sheet:'Property Valuation' }), F('valCapStab', 'Cap rate for stabilized NOI', 'pct', { sheet:'Property Valuation' }),
+  F('valMarketRent', 'Market rent per unit, per month', 'money', { sheet:'Property Valuation' }), F('valStabVacancy', 'Stabilized vacancy', 'pct', { sheet:'Property Valuation', zeroOk:true }),
+  F('valStabCost', 'Cost to stabilize', 'money', { sheet:'Property Valuation', zeroOk:true }), F('valConclusion', 'Value concluded on', 'text', { sheet:'Property Valuation' }),
   /* planned: refinancing and hold */
   F('exLoanBalance', 'Existing loan balance', 'money', {  }), F('exLoanRate', 'Existing interest rate', 'pct', {  }), F('exLoanMaturity', 'Existing maturity date', 'text', {  }),
   F('exLoanAmort', 'Existing amortization, years', 'int', {  }), F('exPrepay', 'Prepayment penalty', 'money', { zeroOk:true }),

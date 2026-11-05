@@ -6,8 +6,8 @@
 if(!window.BKReg) return;
 var R = window.BKReg;
 [
-  { id:'valuation', name:'Property Valuation', q:'What is the property worth today on its income?', icon:'value', dealType:'Acquisition', live:false,
-    engines:['operating', 'valuation'], about:'Income, expenses and NOI in place, normalized and stabilized, capitalized at market rates. Not an appraisal, and no financing or investor returns.' },
+  { id:'valuation', name:'Property Valuation', q:'What is the property worth today on its income?', icon:'value', dealType:'Acquisition', live:true,
+    engines:['operating', 'valuation'], ownReadiness:true, home:'Property Valuation', ready:function(s){ var r = typeof window.bkValuation === 'function' ? window.bkValuation(s) : null; return !r || r.ok ? true : 'The property cannot be valued: ' + (r.missing.length ? r.missing.join(', ') : 'the concluded NOI is not available') + '.'; }, about:'Income, expenses and NOI in place, normalized and stabilized, capitalized at market rates. Not an appraisal, and no financing or investor returns.' },
   { id:'acquisition', name:'Acquisition Analysis', q:'Should we buy it, and at what price?', icon:'key', dealType:'Acquisition', live:true,
     engines:['operating', 'monthly', 'debt', 'returns', 'waterfall', 'sensitivity', 'tax'], about:'Price, operations, financing, sale and returns for an existing property.' },
   { id:'development', name:'Development Analysis', q:'Does the project pencil, from land to stabilization?', icon:'crane', dealType:'Development', live:true,

@@ -29,7 +29,7 @@ window.bkValuation = function(s){
   var sVac = n(s.valStabVacancy) !== null ? n(s.valStabVacancy) : n(s.vacancy), noiStab = null, stabSrc = null, stab = null;
   if(pos(s.valStabilizedNoi)){ noiStab = n(s.valStabilizedNoi); stabSrc = 'entered'; }
   else if(mGPR !== null && sVac !== null && isFinite(c.egi)){
-    var bad = mGPR * (n(s.badDebtPct) || 0), conc = mGPR * (n(s.concessionPct) || 0), egiS = mGPR * (1 - sVac) - bad - conc + (n(c.other) || 0) + (n(c.netComm) || 0);
+    var after = safe(function(){ return bkConventions(s).cvBadDebtBasis === 'afterVacancy'; }, false), bad = mGPR * (after ? 1 - sVac : 1) * (n(s.badDebtPct) || 0),   /* credit loss on the same basis as the in-place statement (the deal's convention) */ conc = mGPR * (n(s.concessionPct) || 0), egiS = mGPR * (1 - sVac) - bad - conc + (n(c.other) || 0) + (n(c.netComm) || 0);
     var opexS = (n(c.total) || 0) - (n(c.mgmt) || 0) + egiS * (n(s.mgmtPct) || 0); noiStab = egiS - opexS + adjTot; stabSrc = 'built from ' + mSrc + ' at ' + P(sVac, 1) + ' vacancy';
     stab = { gpr:mGPR, vacancy:sVac, egi:egiS, opex:opexS, mgmt:egiS * (n(s.mgmtPct) || 0) }; }
   var capIn = pos(s.valCapInPlace) || cap, capStab = pos(s.valCapStab) || cap;
