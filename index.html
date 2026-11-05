@@ -2334,7 +2334,7 @@ function bkDevBudgetRows(s,gsf,units){
     return [{id:'psf-hard',cls:'hard',name:'Hard costs ($ per GSF)',amount:hard},{id:'psf-cont',cls:'cont',name:'Hard cost contingency',amount:cont},{id:'psf-soft',cls:'soft',name:'Soft costs ($ per GSF)',amount:soft},{id:'psf-ffe',cls:'ffe',name:'FF&E ($ per unit)',amount:ffe}].filter(r=>r.amount>0).map(r=>Object.assign({start:null,len:null,method:null,rate:null},r));
   }
   const ok=new Set(['hard','cont','soft','ffe']), blank=v=>v===''||v==null;
-  return (Array.isArray(s.budgetLines)?s.budgetLines:[]).map((l,i)=>({l,i})).filter(o=>o.l&&n(o.l.amount)>0).map(o=>{const l=o.l,i=o.i;return {id:String(l.id||('b'+(i+1))),idx:i,cls:ok.has(l.cls)?l.cls:'hard',name:String(l.name||('Line '+(i+1))),amount:n(l.amount),start:blank(l.start)?null:Math.max(1,Math.round(n(l.start))),len:blank(l.len)?null:Math.max(1,Math.round(n(l.len))),method:blank(l.method)?null:String(l.method),rate:blank(l.rate)?null:n(l.rate)};});
+  return (Array.isArray(s.budgetLines)?s.budgetLines:[]).map((l,i)=>({l,i})).filter(o=>o.l&&n(o.l.amount)>0).map(o=>{const l=o.l,i=o.i;return {id:String(l.id||('b'+(i+1))),idx:i,cls:ok.has(l.cls)?l.cls:'hard',name:String(l.name||('Line '+(i+1))),amount:n(l.amount),start:blank(l.start)?null:Math.max(1,Math.round(n(l.start))),len:blank(l.len)?null:Math.max(1,Math.round(n(l.len))),method:blank(l.method)?null:String(l.method),rate:blank(l.rate)?null:n(l.rate),task:blank(l.task)?'':String(l.task)};});
 }
 /* the hard / soft ladders the rest of the app reads, built from those rows (contingency stays inside hard, FF&E inside soft) */
 function bkDevBudgetBuild(s,gsf,units){
@@ -2348,9 +2348,12 @@ function bkDevBudgetBuild(s,gsf,units){
    completion, FF&E the last three construction months. The curve is the line's own, else the deal's hard or soft cost curve. Returns each line's resolved window and its cash by month. */
 function bkDevBudgetPlan(x,s){
   const rows=x.budgetRows||[], LC=bkDevLifecycleV13(x), byMo={hard:{},soft:{},all:{}}, out=[], n=v=>{v=Number(v);return isFinite(v)?v:0};
+  /* a line tied to a Gantt task sits where that task sits (its earliest start and its duration), so moving the task, or changing what it follows, moves the cash */
+  let byId=null; if(rows.some(r=>r.task)&&typeof window.bkDevGanttOn==='function'&&window.bkDevGanttOn(s)){ try{ const sc=window.bkDevGanttSchedule(s,x); byId={}; (sc.tasks||[]).forEach(tk=>{byId[tk.id]=tk;}); }catch(e){ byId=null; } }
   rows.forEach(r=>{
-    const side=(r.cls==='hard'||r.cls==='cont')?'hard':'soft'; let start=r.start, len=r.len;
-    if(start==null||len==null){
+    const side=(r.cls==='hard'||r.cls==='cont')?'hard':'soft'; let start=r.start, len=r.len, fromTask=false; const tk=(byId&&r.task)?byId[r.task]:null;
+    if(tk&&n(tk.ES)>0){ start=Math.round(tk.ES); len=Math.max(1,Math.round(tk.EF-tk.ES+1)); fromTask=true; }
+    else if(start==null||len==null){
       if(side==='hard'){ if(start==null)start=LC.conStart; if(len==null)len=LC.conLen; }
       else if(r.cls==='ffe'){ const L=Math.min(3,LC.conLen); if(start==null)start=LC.conStart+LC.conLen-L; if(len==null)len=L; }
       else { if(start==null)start=1; if(len==null)len=Math.max(1,x.co); }
@@ -2358,11 +2361,13 @@ function bkDevBudgetPlan(x,s){
     const method=r.method||(side==='hard'?s.hardCurveMethod:(r.cls==='ffe'?'Straight-Line':s.softConMethod))||'Straight-Line';
     const rate=r.rate!=null?r.rate:(side==='hard'?n(s.hardCurveSteepness)||7:n(s.softConSteepness)||5), monthly={};
     for(let mo=start;mo<start+len;mo++){ const sh=bkCurveShare(mo,start,len,method,rate); if(sh>0){ const v=r.amount*sh; monthly[mo]=v; byMo[side][mo]=(byMo[side][mo]||0)+v; byMo.all[mo]=(byMo.all[mo]||0)+v; } }
-    out.push(Object.assign({},r,{side,start,len,end:start+len-1,method,rate,monthly}));
+    out.push(Object.assign({},r,{side,start,len,end:start+len-1,method,rate,monthly,fromTask,taskName:tk?tk.name:''}));
   });
   return {rows:out,hard:byMo.hard,soft:byMo.soft,all:byMo.all,LC};
 }
 window.bkDevBudgetPlan=bkDevBudgetPlan;window.BK_RATE_PRESETS=BK_RATE_PRESETS;window.BK_BUDGET_CLASSES=BK_BUDGET_CLASSES;
+/* one colour per cost class, used by the Budget panel, the cash charts and the Dev Schedule Gantt (blue = hard cost, amber = contingency, teal = soft cost, violet = FF&E) */
+window.BK_CLASS_COLORS={hard:'#2f6db5',cont:'#e08a2c',soft:'#2a9d8f',ffe:'#7b5ea7'};
 /* Contingency register: the hard-cost contingency in the budget tracked as original / allocated / change orders (used) / remaining / forecast. Change orders and expected further use draw it down; use beyond the original is an overrun added to hard cost, and (when release is 'saved') what is not used is taken out of cost. With no register the contingency is spent in full, as before. */
 window.bkContingencyStats=function(s,original){const c=(s&&s.contingency&&typeof s.contingency==='object')?s.contingency:null;if(!c)return null;const sum=a=>(Array.isArray(a)?a:[]).reduce((t,r)=>t+(Number(r&&r.amount)||0),0);const alloc=sum(c.allocations),used=sum(c.changeOrders),more=Math.max(0,Number(c.forecastMore)||0),forecast=used+more,remaining=original-used,fRemaining=original-forecast,over=Math.max(0,-fRemaining),saved=c.release==='saved'?Math.max(0,fRemaining):0;return{original,allocated:alloc,unallocated:original-alloc,used,remaining,more,forecast,forecastRemaining:fRemaining,overrun:over,saved,release:c.release==='saved'?'saved':'spent',adj:over-saved};};
 function bkDevV09(){
@@ -24355,7 +24360,7 @@ window.bkEdBudCopy = function(){ var s = bkLoad(), had = Array.isArray(s.budgetL
   sl.lines.forEach(function(l){ add(/FF&E/i.test(l.name) ? 'ffe' : 'soft', l.name, l.total); }); add('soft', 'Development fee', sl.devFee); add('soft', 'Soft cost contingency', sl.contingency);
   s.budgetLines = out; s.devBudgetMode = 'LINES'; bkSave(s); showSheet(cur()); };
 /* cash by month as stacked bars (one colour per cost class); also drawn on the Dev Schedule page */
-var BCOL = { hard:'#1f4e8c', cont:'#b0592a', soft:'#3E9AE6', ffe:'#5B4B8A' };
+var BCOL = window.BK_CLASS_COLORS || { hard:'#2f6db5', cont:'#e08a2c', soft:'#2a9d8f', ffe:'#7b5ea7' };
 window.bkBudgetSpendSvg = function(plan, o){ o = o || {}; if(!plan || !plan.rows || !plan.rows.length) return '';
   var byCls = { hard:{}, cont:{}, soft:{}, ffe:{} }, last = 0; plan.rows.forEach(function(r){ Object.keys(r.monthly).forEach(function(m){ byCls[r.cls][m] = (byCls[r.cls][m] || 0) + r.monthly[m]; last = Math.max(last, Number(m)); }); });
   var N = Math.max(last, o.months || 0, 6), mx = 0, tot = {}; for(var m = 1; m <= N; m++){ var v = 0; ['hard', 'cont', 'soft', 'ffe'].forEach(function(c){ v += byCls[c][m] || 0; }); tot[m] = v; mx = Math.max(mx, v); }
@@ -24376,15 +24381,18 @@ function pBudget(s){
   var plan = x && x.budgetRows && x.budgetRows.length ? safe(function(){ return window.bkDevBudgetPlan(x, s); }, null) : null;
   if(mode === 'LINES'){
     var a = Array.isArray(s.budgetLines) ? s.budgetLines : [], byIdx = {}; if(plan) plan.rows.forEach(function(r){ byIdx[r.idx] = r; });
+    var gOn = safe(function(){ return window.bkDevGanttOn(s); }, false), gTasks = gOn && x ? safe(function(){ return window.bkDevGanttSchedule(s, x).tasks; }, []) : [], tiedN = plan ? plan.rows.filter(function(r){ return r.fromTask; }).length : 0, freeN = plan ? plan.rows.length - tiedN : 0;
     var clsOpts = function(v){ return bcls().map(function(c){ return '<option value="' + c[0] + '"' + (v === c[0] ? ' selected' : '') + '>' + esc(c[1]) + '</option>'; }).join(''); };
-    var rows = a.map(function(l, i){ var r = byIdx[i], amt = num(l.amount), cell = function(f, v, ph, w){ return '<input type="text" class="ae-in num" style="width:' + (w || 70) + 'px" value="' + esc(v === '' || v == null ? '' : (f === 'amount' ? (num(v) ? (Math.round(num(v) * 100) / 100).toLocaleString('en-US', { maximumFractionDigits:2 }) : '') : v)) + '" placeholder="' + esc(ph || '') + '" autocomplete="off" onchange="bkEdBud(' + i + ',\'' + f + '\',this.value)">'; };
+    var rows = a.map(function(l, i){ var r = byIdx[i], amt = num(l.amount), tied = !!(r && r.fromTask), cell = function(f, v, ph, w, dis){ return '<input type="text" class="ae-in num"' + (dis ? ' disabled title="From the Gantt task: change the task on Dev Schedule"' : '') + ' style="width:' + (w || 70) + 'px' + (dis ? ';opacity:.6' : '') + '" value="' + esc(v === '' || v == null ? '' : (f === 'amount' ? (num(v) ? (Math.round(num(v) * 100) / 100).toLocaleString('en-US', { maximumFractionDigits:2 }) : '') : v)) + '" placeholder="' + esc(ph || '') + '" autocomplete="off" onchange="bkEdBud(' + i + ',\'' + f + '\',this.value)">'; };
       return '<tr><td class="c ro">' + (i + 1) + '</td><td><select class="ae-sel bud-l" onchange="bkEdBud(' + i + ',\'cls\',this.value)">' + clsOpts(l.cls || 'hard') + '</select></td><td><input type="text" class="ae-in bud-l" style="width:100%;min-width:150px" value="' + esc(l.name || '') + '" placeholder="e.g. Site work and foundations" autocomplete="off" onchange="bkEdBud(' + i + ',\'name\',this.value)"></td><td>' + cell('amount', l.amount, '0', 100) + '</td><td class="c r ro">' + (gsf && amt ? money(amt / gsf, 2) : '') + '</td>'
-        + '<td>' + cell('start', l.start, r ? String(r.start) : 'auto', 56) + '</td><td>' + cell('len', l.len, r ? String(r.len) : 'auto', 56) + '</td>'
+        + '<td><select class="ae-sel bud-l" style="min-width:150px" title="A line tied to a Gantt task sits where the task sits, so moving the task moves the cash" onchange="bkEdBud(' + i + ',\'task\',this.value)"><option value="">' + (gOn ? 'Follows the phase' : 'Follows the phase (task schedule off)') + '</option>' + gTasks.map(function(k, j){ return '<option value="' + esc(k.id) + '"' + (l.task === k.id ? ' selected' : '') + '>' + (j + 1) + '. ' + esc(k.name) + '</option>'; }).join('') + (l.task && !gTasks.some(function(k){ return k.id === l.task; }) ? '<option value="' + esc(l.task) + '" selected>(task not on the schedule)</option>' : '') + '</select></td>'
+        + '<td>' + cell('start', l.start, r ? String(r.start) : 'auto', 56, tied) + '</td><td>' + cell('len', l.len, r ? String(r.len) : 'auto', 56, tied) + '</td>'
         + '<td><select title="Grey = follows the deal\'s hard or soft cost curve" class="ae-sel bud-l" style="' + (l.method ? '' : 'color:#8a97a6;') + '" onchange="bkEdBud(' + i + ',\'method\',this.value)"><option value="">' + (r ? esc(r.method) : 'Default') + '</option><option' + (l.method === 'S-Curve' ? ' selected' : '') + '>S-Curve</option><option' + (l.method === 'Straight-Line' ? ' selected' : '') + '>Straight-Line</option></select></td>'
         + '<td><select title="Grey = the deal\'s steepness (Development sheet)" class="ae-sel bud-l" style="' + (l.rate !== '' && l.rate != null ? '' : 'color:#8a97a6;') + '" onchange="bkEdBud(' + i + ',\'rate\',this.value)"><option value="">' + (r ? 'Deal (' + r.rate + ')' : 'Deal') + '</option>' + brates().map(function(p){ return '<option value="' + p[1] + '"' + (num(l.rate) === p[1] ? ' selected' : '') + '>' + esc(p[0]) + '</option>'; }).join('') + '</select></td>'
         + '<td class="c r ro">' + (r ? r.end : '') + '</td><td class="c r">' + btn('Remove', 'bkEdBudDel(' + i + ')') + '</td></tr>'; }).join('');
-    out += '<div class="ae-panel"><div class="ae-ph"><i>L</i>Line Items</div><table class="ae-grid"><thead><tr><th class="grp" colspan="5">Cost</th><th class="grp" colspan="4">Timing (months from the start of the project)</th><th></th><th></th></tr><tr><th>#</th><th>Class</th><th>Item</th><th>Amount ($)</th><th>$ / GSF</th><th>Start</th><th>Months</th><th>Curve</th><th>Steepness</th><th>Ends</th><th></th></tr></thead><tbody>'
-      + (rows || '<tr><td class="c ro" colspan="11">No line items yet. Add them below, or copy the current budget into lines.</td></tr>') + '</tbody></table>'
+    out += '<div class="ae-panel"><div class="ae-ph"><i>L</i>Line Items</div><table class="ae-grid"><thead><tr><th class="grp" colspan="5">Cost</th><th class="grp" colspan="6">Timing (months from the start of the project)</th><th></th></tr><tr><th>#</th><th>Class</th><th>Item</th><th>Amount ($)</th><th>$ / GSF</th><th>Gantt task</th><th>Start</th><th>Months</th><th>Curve</th><th>Steepness</th><th>Ends</th><th></th></tr></thead><tbody>'
+      + (rows || '<tr><td class="c ro" colspan="12">No line items yet. Add them below, or copy the current budget into lines.</td></tr>') + '</tbody></table>'
+      + (plan ? '<div class="ae-row" style="flex-wrap:wrap;gap:8px;align-items:center"><span style="font-size:12.5px"><b>' + tiedN + ' of ' + plan.rows.length + ' lines follow a Gantt task.</b>' + (freeN ? ' A tied line sits where its task sits, so changing the task (start, duration, what it follows) on Dev Schedule moves the cash.' : ' Change a task on Dev Schedule and its cash moves with it.') + '</span>' + (freeN ? btn('Make every line a Gantt task', 'bkDevBudgetToTasks();showSheet(cur())', true) : '') + (tiedN ? btn('Untie all', 'bkDevBudgetUntie()') : '') + btn('Open the Gantt', 'showSheet(\'Dev Schedule\')') + '</div>' : '')
       + '<div class="ae-row" style="flex-wrap:wrap;gap:8px;align-items:center"><label style="font-size:12px">Add <input type="number" id="ae-bud-n" min="1" max="200" step="1" value="1" style="width:64px;text-align:right"> <select class="ae-sel" id="ae-bud-c" style="width:auto">' + clsOpts('hard') + '</select> line(s)</label>' + btn('Add', 'bkEdBudAdd(document.getElementById(\'ae-bud-n\').value,document.getElementById(\'ae-bud-c\').value)', true) + '</div></div>';
   }
   if(mode === 'SOURCE' || mode === 'PARAMETRIC') out += '<div class="ae-row">' + btn('Copy the current budget into line items', 'bkEdBudCopy()', true) + '<span class="ae-unit">Every dollar is kept, line by line; the cash timing then follows each line\'s window, so interest can differ slightly.</span></div>';
@@ -28146,6 +28154,33 @@ window.bkDevGanttField = function(i, key, raw){
 window.bkDevGanttAdd = function(){ var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}); g.tasks = (g.tasks || []).slice(); g.tasks.push({ id:nextId(g.tasks), name:'New task', group:'construction', start:1, dur:3, preds:[] }); save(s); };
 window.bkDevGanttRemove = function(i){ var s = bkLoad(), g = s.devGantt = Object.assign({}, s.devGantt || {}), T = g.tasks || [], id = T[i] && T[i].id; g.tasks = T.filter(function(t, k){ return k !== i; }).map(function(t){ return Object.assign({}, t, { preds:(t.preds || []).filter(function(p){ return p.id !== id; }) }); }); if(!g.tasks.length) g.mode = 'phases'; save(s); };
 
+/* Every budget line becomes a Gantt task (a line already tied keeps its task). The task is named after the line and sits where the line sits today (its earliest start and its duration), so nothing moves when it is made; from then on
+   the line follows the task: change the task's start, duration or predecessors on Dev Schedule and the line's cash follows. Hard cost and contingency lines are construction tasks (they set the construction months);
+   soft cost and FF&E lines are "other" tasks (they run across the project and do not set a phase). The window a line had is kept on the line as the fallback if its task is ever removed. */
+window.bkDevBudgetToTasks = function(){
+  var s = bkLoad(); if(!isDev(s) || !Array.isArray(s.budgetLines) || !s.budgetLines.length || typeof window.bkDevBudgetPlan !== 'function') return null;
+  var x = bkDevV09(), plan = window.bkDevBudgetPlan(x, s); if(!plan || !plan.rows.length) return null;
+  var byIdx = {}; plan.rows.forEach(function(r){ byIdx[r.idx] = r; });
+  var g = s.devGantt = Object.assign({}, s.devGantt || {}), T = (Array.isArray(g.tasks) ? g.tasks : []).map(function(k){ return Object.assign({}, k, { preds:(k.preds || []).map(function(p){ return Object.assign({}, p); }) }); }), exists = {}, made = 0, before = { pre:num(x.preMo), con:num(x.conMo) };
+  T.forEach(function(k){ exists[k.id] = k; });
+  var L = s.budgetLines.map(function(l){ return Object.assign({}, l); });
+  L.forEach(function(l, i){ var r = byIdx[i]; if(!r) return; if(l.task && exists[l.task]) return;
+    var k = T.length + 1, id; do { id = 't' + k; k++; } while(exists[id]);
+    var tk = { id:id, name:String(l.name || ('Line ' + (i + 1))), group:(l.cls === 'hard' || l.cls === 'cont') ? 'construction' : 'other', start:r.start, dur:r.len, preds:[] }; T.push(tk); exists[id] = tk; l.task = id; l.start = r.start; l.len = r.len; made++; });
+  g.tasks = T; g.mode = 'tasks'; s.budgetLines = L; s.devGantt = g;
+  window.bkDevGanttSync(s); bkSave(s); var x2 = bkDevV09();
+  return { made:made, tied:L.filter(function(l){ return l.task; }).length, before:before, after:{ pre:num(x2.preMo), con:num(x2.conMo) } };
+};
+/* Gantt first: type a dollar amount on a task and a budget line is added, tied to that task (hard cost for a construction task, soft cost otherwise; change the class in Investment > Budget). Only in the line-item method. */
+window.bkDevTaskCost = function(i, raw){
+  var s = bkLoad(); if(!isDev(s) || String(s.devBudgetMode || '').toUpperCase() !== 'LINES') return; var g = s.devGantt || {}, T = g.tasks || [], k = T[i]; if(!k) return;
+  var v = Number(String(raw == null ? '' : raw).replace(/[$,\s]/g, '')); if(!isFinite(v) || v <= 0){ showSheet(cur()); return; }
+  var sc = window.bkDevGanttSchedule(s, bkDevV09()), st = sc.tasks.filter(function(q){ return q.id === k.id; })[0] || { ES:1, EF:1 }, L = (s.budgetLines || []).slice();
+  L.push({ id:'b' + Date.now().toString(36) + (L.length + 1), cls:k.group === 'construction' ? 'hard' : 'soft', name:k.name, amount:v, start:st.ES, len:Math.max(1, st.EF - st.ES + 1), method:'', rate:'', task:k.id });
+  s.budgetLines = L; bkSave(s); showSheet(cur());
+};
+window.bkDevBudgetUntie = function(){ var s = bkLoad(); if(!Array.isArray(s.budgetLines)) return; s.budgetLines = s.budgetLines.map(function(l){ return Object.assign({}, l, { task:'' }); }); bkSave(s); if(typeof showSheet === 'function') showSheet(cur()); };
+
 /* ------------------------------------------------------------------ the chart ------------------------------------------------------------------ */
 /* the Punchlist color scale: slate violet, olive gold (dark to light), cream with a gold outline */
 var COL = { predev:'#8a8fb0', construction:'#8c7a28', other:'#a99136', leaseup:'#c9b25f', ops:'#efe6cb', opsLine:'#c4a94a', crit:'#b3392c', ms:'#1b2733' };
@@ -28214,6 +28249,10 @@ function ganttSvg(rows, sc, s, o){
 /* The schedule as a sheet, in the style of a project-management Gantt: a grey band for each phase with its summary bar in dark green, each task beneath it with a light green bar, the task's start, end and months in columns on the left, a month
    grid across the top with the calendar year above it, milestone call-outs, and a vertical line at the certificate of occupancy and at stabilization. It draws the same rows the chart does; it adds no schedule of its own. */
 var GX = { crit:'#b3392c', band:'#c9ced8', head:'#cfd3db', sum:'#00b050', task:'#92d050', cell:'#f1f3f6', cellAlt:'#e6e9ee', line:'#b9bfca', ink:'#10213a', ms:'#2f7d32' };
+/* More than one green: bars are coloured by what they are. With a budget the colour is the cost class of the lines tied to the task (blue hard cost, amber contingency, teal soft cost, violet FF&E); without one it is the task's phase
+   (teal pre-development, green construction, slate other); lease-up is gold and stabilized operations steel. The summary bar of each phase is the deep version of its colour. */
+var PAL = { cls:(window.BK_CLASS_COLORS || { hard:'#2f6db5', cont:'#e08a2c', soft:'#2a9d8f', ffe:'#7b5ea7' }), grp:{ predev:'#5fb7ad', construction:'#92d050', other:'#aab6c6' }, lu:'#f2c14e', ops:'#9fb4cc', ph:{ 'Pre-development':'#2a8f85', 'Construction':'#00a050', 'Other tasks':'#51647a', 'Lease-up and operations':'#b9852a' } };
+function deep(hex){ var h = String(hex).replace('#', ''), r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16), f = .72; return '#' + [r, g, b].map(function(v){ return ('0' + Math.round(v * f).toString(16)).slice(-2); }).join(''); }
 function ganttSheet(M, o){
   o = o || {}; var s = M.s, sc = M.sc, rows = M.rows, plan = M.plan || null, hasCost = !!(plan && plan.rows && plan.rows.length), N = Math.max(sc.hold || 0, sc.stab || 0, 12), cw = N > 72 ? 11 : N > 48 ? 14 : 18, y0 = startYear(s);
   var yr = function(m){ return monthStart(s, m).getFullYear(); }, yearRuns = [], last = null;
@@ -28233,32 +28272,43 @@ function ganttSheet(M, o){
       out += '<td' + (inBar ? ' data-bar="' + (bold ? 'sum' : 'task') + '"' + (crit ? ' data-crit="1"' : '') : '') + (ms && m2 === ms.m ? ' data-ms="1"' : '') + ' style="padding:0;height:22px;background:' + bg + ';border:1px solid ' + (inBar ? (crit ? GX.crit : rowBars.col) : '#d9dde4') + ';' + vline(m2) + '">' + mark + '</td>'; }
     return out; };
   var tdl = function(txt, al, b){ return '<td style="padding:3px 6px;border:1px solid ' + GX.line + ';text-align:' + al + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:' + (al === 'right' ? 11.5 : 12) + 'px;' + (b ? 'font-weight:700;background:' + GX.band : 'background:#fff') + '">' + txt + '</td>'; };
+  var tiedCost = {}; if(hasCost) plan.rows.forEach(function(r){ if(r.fromTask && r.task){ var e = tiedCost[r.task] || (tiedCost[r.task] = { amt:0, n:0 }); e.amt += r.amount; e.n++; } });
+  var tiedCls = {}; if(hasCost) plan.rows.forEach(function(r){ if(r.fromTask && r.task){ var e = tiedCls[r.task] || (tiedCls[r.task] = {}); e[r.cls] = (e[r.cls] || 0) + r.amount; } });
+  var taskCol = function(r){ if(r.linked) return /^Lease-up/.test(r.name || '') ? PAL.lu : PAL.ops; var e = r.id ? tiedCls[r.id] : null; if(e){ var best = null; Object.keys(e).forEach(function(k){ if(best === null || e[k] > e[best]) best = k; }); return PAL.cls[best]; } return PAL.grp[r.group] || GX.task; };
+  var money1 = function(v){ return '$' + Math.round(v).toLocaleString('en-US'); };
   var secs = []; rows.forEach(function(r){ if(!secs.length || secs[secs.length - 1].name !== r.sec) secs.push({ name:r.sec, rows:[] }); secs[secs.length - 1].rows.push(r); });
   var idxById = {}; rows.forEach(function(r){ if(r.id) idxById[r.id] = r.idx; });
   var predText = function(r){ return (r.preds || []).map(function(pd){ return (idxById[pd.id] || '?') + (pd.lag ? (pd.lag > 0 ? '+' : '') + pd.lag : ''); }).join(', '); };
   var n = 0;
   secs.forEach(function(g){
     var bars = g.rows.filter(function(r){ return !r.milestone && r.ES && r.EF; }), a = bars.length ? Math.min.apply(null, bars.map(function(r){ return r.ES; })) : null, b2 = bars.length ? Math.max.apply(null, bars.map(function(r){ return r.EF; })) : null;
-    h += '<tr>' + tdl('', 'center', true) + tdl(esc(g.name), 'left', true) + tdl(a ? esc(dtx(monthStart(s, a))) : '', 'right', true) + tdl(b2 ? esc(dtx(monthEnd(s, b2))) : '', 'right', true) + tdl(a ? String(b2 - a + 1) : '', 'right', true) + (hasCost ? tdl('', 'right', true) : '') + tdl('', 'left', true) + cellsFor(a ? { a:a, b:b2, col:GX.sum } : null, null, true, false) + '</tr>';
+    h += '<tr>' + tdl('', 'center', true) + tdl(esc(g.name), 'left', true) + tdl(a ? esc(dtx(monthStart(s, a))) : '', 'right', true) + tdl(b2 ? esc(dtx(monthEnd(s, b2))) : '', 'right', true) + tdl(a ? String(b2 - a + 1) : '', 'right', true) + (hasCost ? (function(){ var sm = g.rows.reduce(function(q, r){ return q + (r.id && tiedCost[r.id] ? tiedCost[r.id].amt : 0); }, 0); return tdl(sm > 0 ? '<b>' + money1(sm) + '</b>' : '', 'right', true); })() : '') + tdl('', 'left', true) + cellsFor(a ? { a:a, b:b2, col:PAL.ph[g.name] || GX.sum } : null, null, true, false) + '</tr>';
     g.rows.forEach(function(r){ n++; var ms = r.milestone ? { m:r.ES, label:r.name + ': ' + dtx(monthEnd(s, r.ES)) } : null, dur = r.EF - r.ES + 1;
-      h += '<tr>' + tdl(r.idx ? String(r.idx) : '', 'center') + tdl((r.milestone ? '&#9670; ' : '') + esc(r.name), 'left') + tdl(r.ES ? esc(dtx(monthStart(s, r.ES))) : '', 'right') + tdl(r.EF ? esc(dtx(monthEnd(s, r.EF))) : '', 'right') + tdl(r.milestone ? '' : String(dur), 'right') + (hasCost ? tdl('', 'right') : '') + tdl(predText(r), 'left')
-        + cellsFor(r.milestone ? null : { a:r.ES, b:r.EF, col:GX.task }, ms, false, !!r.critical && !r.milestone) + '</tr>'; }); });
+      h += '<tr>' + tdl(r.idx ? String(r.idx) : '', 'center') + tdl((r.milestone ? '&#9670; ' : '') + esc(r.name), 'left') + tdl(r.ES ? esc(dtx(monthStart(s, r.ES))) : '', 'right') + tdl(r.EF ? esc(dtx(monthEnd(s, r.EF))) : '', 'right') + tdl(r.milestone ? '' : String(dur), 'right') + (hasCost ? tdl(r.id && tiedCost[r.id] ? money1(tiedCost[r.id].amt) + (tiedCost[r.id].n > 1 ? ' <span style="opacity:.6">(' + tiedCost[r.id].n + ')</span>' : '') : '', 'right') : '') + tdl(predText(r), 'left')
+        + cellsFor(r.milestone ? null : { a:r.ES, b:r.EF, col:taskCol(r) }, ms, false, !!r.critical && !r.milestone) + '</tr>'; }); });
   if(hasCost){
-    var BC = { hard:'#1f4e8c', cont:'#b0592a', soft:'#3E9AE6', ffe:'#5B4B8A' }, CL = { hard:'Hard cost', cont:'Contingency', soft:'Soft cost', ffe:'FF&E' }, money0 = function(v){ return '$' + Math.round(v).toLocaleString('en-US'); };
-    var pa = Math.min.apply(null, plan.rows.map(function(r){ return r.start; })), pb = Math.max.apply(null, plan.rows.map(function(r){ return r.end; })), total = plan.rows.reduce(function(a, r){ return a + r.amount; }, 0);
-    h += '<tr>' + tdl('', 'center', true) + tdl('Budget lines', 'left', true) + tdl(esc(dtx(monthStart(s, pa))), 'right', true) + tdl(esc(dtx(monthEnd(s, pb))), 'right', true) + tdl(String(pb - pa + 1), 'right', true) + tdl('<b>' + money0(total) + '</b>', 'right', true) + tdl('', 'left', true) + cellsFor({ a:pa, b:pb, col:GX.sum }, null, true, false) + '</tr>';
-    var gi = 0; ['hard', 'cont', 'soft', 'ffe'].forEach(function(c){ var L = plan.rows.filter(function(r){ return r.cls === c; }); if(!L.length) return;
-      var ga = Math.min.apply(null, L.map(function(r){ return r.start; })), gb = Math.max.apply(null, L.map(function(r){ return r.end; })), gsum = L.reduce(function(a2, r){ return a2 + r.amount; }, 0);
-      h += '<tr>' + tdl('', 'center', true) + tdl('<span style="display:inline-block;width:8px;height:8px;background:' + BC[c] + ';margin-right:6px"></span>' + CL[c] + ' &middot; ' + L.length + (L.length === 1 ? ' line' : ' lines'), 'left', true) + tdl(esc(dtx(monthStart(s, ga))), 'right', true) + tdl(esc(dtx(monthEnd(s, gb))), 'right', true) + tdl(String(gb - ga + 1), 'right', true) + tdl('<b>' + money0(gsum) + '</b>', 'right', true) + tdl('', 'left', true) + cellsFor({ a:ga, b:gb, col:GX.sum }, null, true, false) + '</tr>';
-      L.forEach(function(r){ gi++; var dates = dtx(monthStart(s, r.start)) + (r.end > r.start ? ' to ' + dtx(monthEnd(s, r.end)) : '');
-        h += '<tr title="' + esc(r.name + ' - ' + CL[r.cls] + ' - ' + money0(r.amount) + ' - ' + dates + ' - ' + r.method + ', steepness ' + r.rate) + '">' + tdl(String(gi), 'center') + tdl(esc(r.name), 'left') + tdl(esc(dtx(monthStart(s, r.start))), 'right') + tdl(esc(dtx(monthEnd(s, r.end))), 'right') + tdl(String(r.len), 'right') + tdl(money0(r.amount), 'right') + tdl('', 'left') + cellsFor({ a:r.start, b:r.end, col:BC[r.cls] }, null, false, false) + '</tr>'; }); });
+    var BC = PAL.cls, CL = { hard:'Hard cost', cont:'Contingency', soft:'Soft cost', ffe:'FF&E' }, money0 = function(v){ return '$' + Math.round(v).toLocaleString('en-US'); };
+    var total = plan.rows.reduce(function(a, r){ return a + r.amount; }, 0), free = plan.rows.filter(function(r){ return !r.fromTask; }), tiedN = plan.rows.length - free.length;
+    /* lines that are tied to a task are the Cost column of that task above; only the lines with no task are listed here, by cost class */
+    if(free.length){
+      var fa = Math.min.apply(null, free.map(function(r){ return r.start; })), fb = Math.max.apply(null, free.map(function(r){ return r.end; })), fsum = free.reduce(function(a, r){ return a + r.amount; }, 0);
+      h += '<tr>' + tdl('', 'center', true) + tdl(tiedN ? 'Budget lines not tied to a task' : 'Budget lines', 'left', true) + tdl(esc(dtx(monthStart(s, fa))), 'right', true) + tdl(esc(dtx(monthEnd(s, fb))), 'right', true) + tdl(String(fb - fa + 1), 'right', true) + tdl('<b>' + money0(fsum) + '</b>', 'right', true) + tdl('', 'left', true) + cellsFor({ a:fa, b:fb, col:PAL.ph['Other tasks'] }, null, true, false) + '</tr>';
+      var gi = 0; ['hard', 'cont', 'soft', 'ffe'].forEach(function(c){ var L = free.filter(function(r){ return r.cls === c; }); if(!L.length) return;
+        var ga = Math.min.apply(null, L.map(function(r){ return r.start; })), gb = Math.max.apply(null, L.map(function(r){ return r.end; })), gsum = L.reduce(function(a2, r){ return a2 + r.amount; }, 0);
+        h += '<tr>' + tdl('', 'center', true) + tdl('<span style="display:inline-block;width:8px;height:8px;background:' + BC[c] + ';margin-right:6px"></span>' + CL[c] + ' &middot; ' + L.length + (L.length === 1 ? ' line' : ' lines'), 'left', true) + tdl(esc(dtx(monthStart(s, ga))), 'right', true) + tdl(esc(dtx(monthEnd(s, gb))), 'right', true) + tdl(String(gb - ga + 1), 'right', true) + tdl('<b>' + money0(gsum) + '</b>', 'right', true) + tdl('', 'left', true) + cellsFor({ a:ga, b:gb, col:deep(BC[c]) }, null, true, false) + '</tr>';
+        L.forEach(function(r){ gi++; var dates = dtx(monthStart(s, r.start)) + (r.end > r.start ? ' to ' + dtx(monthEnd(s, r.end)) : '');
+          h += '<tr title="' + esc(r.name + ' - ' + CL[r.cls] + ' - ' + money0(r.amount) + ' - ' + dates + ' - ' + r.method + ', steepness ' + r.rate) + '">' + tdl(String(gi), 'center') + tdl(esc(r.name), 'left') + tdl(esc(dtx(monthStart(s, r.start))), 'right') + tdl(esc(dtx(monthEnd(s, r.end))), 'right') + tdl(String(r.len), 'right') + tdl(money0(r.amount), 'right') + tdl('', 'left') + cellsFor({ a:r.start, b:r.end, col:BC[r.cls] }, null, false, false) + '</tr>'; }); });
+    }
     /* cash spent by month: one bar per month, the same cash the draw schedule funds */
     var mxv = 0; for(var q1 = 1; q1 <= N; q1++) mxv = Math.max(mxv, plan.all[q1] || 0);
-    h += '<tr>' + tdl('', 'center', true) + tdl('Cash spent by month', 'left', true) + tdl('', 'right', true) + tdl('', 'right', true) + tdl('', 'right', true) + tdl('<b>' + money0(total) + '</b>', 'right', true) + tdl('', 'left', true);
-    for(var q2 = 1; q2 <= N; q2++){ var v2 = plan.all[q2] || 0, hh = v2 > 0 && mxv > 0 ? Math.max(1, Math.round(v2 / mxv * 52)) : 0; h += '<td style="padding:0;height:58px;vertical-align:bottom;background:' + (colAlt(q2) ? GX.cellAlt : GX.cell) + ';border:1px solid #d9dde4;' + vline(q2) + '">' + (hh > 0 ? '<div title="Month ' + q2 + ' - ' + dtx(monthStart(s, q2)) + ': ' + money0(v2) + '" style="height:' + hh + 'px;margin:0 1px;background:' + BC.hard + '"></div>' : '') + '</td>'; }
+    var byC = { hard:{}, cont:{}, soft:{}, ffe:{} }; plan.rows.forEach(function(r){ Object.keys(r.monthly).forEach(function(mm){ byC[r.cls][mm] = (byC[r.cls][mm] || 0) + r.monthly[mm]; }); });
+    h += '<tr>' + tdl('', 'center', true) + tdl('Cash spent by month' + (tiedN ? ' <span style="font-weight:400;opacity:.7">(' + tiedN + ' of ' + plan.rows.length + ' lines follow a task)</span>' : ''), 'left', true) + tdl('', 'right', true) + tdl('', 'right', true) + tdl('', 'right', true) + tdl('<b>' + money0(total) + '</b>', 'right', true) + tdl('', 'left', true);
+    for(var q2 = 1; q2 <= N; q2++){ var v2 = plan.all[q2] || 0, hh = v2 > 0 && mxv > 0 ? Math.max(1, Math.round(v2 / mxv * 76)) : 0; h += '<td style="padding:0;height:84px;vertical-align:bottom;background:' + (colAlt(q2) ? GX.cellAlt : GX.cell) + ';border:1px solid #d9dde4;' + vline(q2) + '">' + (hh > 0 ? '<div title="Month ' + q2 + ' - ' + dtx(monthStart(s, q2)) + ': ' + money0(v2) + '" style="display:flex;flex-direction:column-reverse;height:' + hh + 'px;margin:0 1px">' + ['hard', 'cont', 'soft', 'ffe'].map(function(c){ var vv = byC[c][q2] || 0; return vv > 0 ? '<div style="flex:' + vv.toFixed(2) + ' 1 0;min-height:1px;background:' + BC[c] + '"></div>' : ''; }).join('') + '</div>' : '') + '</td>'; }
     h += '</tr>';
   }
-  h += '</tbody></table></div><div style="font-size:11px;opacity:.8;margin-top:5px"><span style="display:inline-block;width:14px;height:9px;background:' + GX.sum + ';margin-right:4px"></span>Phase &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';margin-right:4px"></span>Task &nbsp; <span style="display:inline-block;width:14px;height:9px;background:' + GX.task + ';border:2px solid ' + GX.crit + ';box-sizing:border-box;margin-right:4px"></span>Critical path &nbsp; <span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilization' + (hasCost ? ' &nbsp; <span style="color:#1f4e8c">&#9632;</span> Hard &nbsp; <span style="color:#b0592a">&#9632;</span> Contingency &nbsp; <span style="color:#3E9AE6">&#9632;</span> Soft &nbsp; <span style="color:#5B4B8A">&#9632;</span> FF&amp;E' : '') + '</div>';
+  var sw = function(col, lab, extra){ return '<span style="display:inline-block;width:14px;height:9px;background:' + col + ';margin-right:4px;' + (extra || '') + '"></span>' + lab + ' &nbsp; '; };
+  var cats = hasCost ? sw(PAL.cls.hard, 'Hard cost') + sw(PAL.cls.cont, 'Contingency') + sw(PAL.cls.soft, 'Soft cost') + sw(PAL.cls.ffe, 'FF&amp;E') : sw(PAL.grp.predev, 'Pre-development task') + sw(PAL.grp.construction, 'Construction task') + sw(PAL.grp.other, 'Other task');
+  h += '</tbody></table></div><div style="font-size:11px;opacity:.9;margin-top:5px;line-height:1.9">' + sw(PAL.ph.Construction, 'Phase (deep colour of its tasks)') + cats + sw(PAL.lu, 'Lease-up') + sw(PAL.ops, 'Stabilized operations') + sw(GX.task, 'Critical path (red outline)', 'border:2px solid ' + GX.crit + ';box-sizing:border-box;background:transparent') + '<span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilization</div>';
   return h;
 }
 function startYear(s){ return startDate(s).getFullYear(); }
@@ -28314,7 +28364,9 @@ RENDERERS['Dev Schedule'] = function(){
       + (on ? '' : '<div class="note-flag" style="margin-top:8px"><span>&#9432;</span><div><b>Drawn from the phase durations.</b> ' + (M.indicative ? 'The tasks inside each phase are an <b>indicative breakdown</b> with assumed sequencing (same start and finish as the phases, nothing moves). ' : '') + '<button type="button" class="bk-btn" style="margin:0 6px" onclick="bkDevGanttMode(\'tasks\')">Edit as a task schedule</button> to change task durations, overlaps and dependencies. It starts as tasks that reproduce these phases exactly, so nothing moves until you edit them.</div></div>') + '</div></div>';
     var table = '';
     if(on){
-      var T = sc.tasks, hdr = '<tr><th class="rowlabel-h">#</th><th>Task</th><th>Group</th><th>Start no earlier than<br><small>month</small></th><th>or date<br><small>M/D/YYYY</small></th><th>Duration<br><small>months</small></th><th>Predecessors<br><small>e.g. 2, 3-2 (overlap 2)</small></th><th>Start</th><th>Finish</th><th>Float</th><th>Critical</th><th></th></tr>';
+      var budCol = !!M.plan || String(s.devBudgetMode || '').toUpperCase() === 'LINES';
+      var tcost = {}; if(M.plan) M.plan.rows.forEach(function(r){ if(r.fromTask && r.task){ var e = tcost[r.task] || (tcost[r.task] = { amt:0, n:0 }); e.amt += r.amount; e.n++; } });
+      var T = sc.tasks, hdr = '<tr><th class="rowlabel-h">#</th><th>Task</th><th>Group</th><th>Start no earlier than<br><small>month</small></th><th>or date<br><small>M/D/YYYY</small></th><th>Duration<br><small>months</small></th><th>Predecessors<br><small>e.g. 2, 3-2 (overlap 2)</small></th><th>Start</th><th>Finish</th><th>Float</th><th>Critical</th>' + (budCol ? '<th title="The dollars of the budget lines tied to the task (Investment > Budget); type an amount to add a line">Budget<br><small>lines tied</small></th>' : '') + '<th></th></tr>';
       var body = T.map(function(t, i){ var raw = (s.devGantt.tasks[i] || {}), pr = t.preds.map(function(p){ var k = T.findIndex(function(q){ return q.id === p.id; }) + 1; return k + (p.lag ? (p.lag > 0 ? '+' : '') + p.lag : ''); }).join(', ');
         return '<tr class="input"><td class="rowlabel">' + (i + 1) + '</td><td class="v"><input type="text" style="width:190px;text-align:left !important" value="' + esc(t.name) + '" onchange="bkDevGanttField(' + i + ',\'name\',this.value)"></td>'
           + '<td class="v"><select onchange="bkDevGanttField(' + i + ',\'group\',this.value)">' + GROUPS.map(function(gp){ return '<option value="' + gp[0] + '"' + (t.group === gp[0] ? ' selected' : '') + '>' + gp[1] + '</option>'; }).join('') + '</select></td>'
@@ -28323,8 +28375,9 @@ RENDERERS['Dev Schedule'] = function(){
           + '<td class="v"><input type="number" step="1" min="1" style="width:70px" value="' + t.dur + '" onchange="bkDevGanttField(' + i + ',\'dur\',this.value)"></td>'
           + '<td class="v"><input type="text" style="width:110px;text-align:left !important" value="' + esc(pr) + '" placeholder="none" onchange="bkDevGanttField(' + i + ',\'preds\',this.value)"></td>'
           + '<td>' + t.ES + ' &middot; ' + fmtD(t.startDate) + '</td><td>' + t.EF + ' &middot; ' + fmtD(t.endDate) + '</td><td>' + t.float + '</td><td>' + (t.critical ? '<span class="status-chip fail">CRITICAL</span>' : '') + '</td>'
+          + (budCol ? '<td style="text-align:right;white-space:nowrap">' + (tcost[t.id] ? '$' + Math.round(tcost[t.id].amt).toLocaleString('en-US') + (tcost[t.id].n > 1 ? ' (' + tcost[t.id].n + ' lines)' : '') + ' ' : '') + '<input type="text" style="width:84px;text-align:right" placeholder="+ add $" title="Type an amount to add a budget line tied to this task" onchange="bkDevTaskCost(' + i + ',this.value)"></td>' : '')
           + '<td><button type="button" class="bk-btn" onclick="bkDevGanttRemove(' + i + ')">Remove</button></td></tr>'; }).join('');
-      var link = '<tr class="grandtotal"><td class="rowlabel" colspan="2">What the schedule drives</td><td colspan="10" data-bk-align="text">Pre-development ' + sc.preMo + ' months &middot; construction ' + sc.conMo + ' months (months ' + sc.conStart + ' to ' + sc.conEnd + ') &middot; certificate of occupancy month ' + sc.co + ' &middot; lease-up ' + sc.luMo + ' months &middot; stabilized month ' + sc.stab + '. The construction draws, facility and lease-up all move with these.</td></tr>';
+      var link = '<tr class="grandtotal"><td class="rowlabel" colspan="2">What the schedule drives</td><td colspan="' + (budCol ? 11 : 10) + '" data-bk-align="text">Pre-development ' + sc.preMo + ' months &middot; construction ' + sc.conMo + ' months (months ' + sc.conStart + ' to ' + sc.conEnd + ') &middot; certificate of occupancy month ' + sc.co + ' &middot; lease-up ' + sc.luMo + ' months &middot; stabilized month ' + sc.stab + '. The construction draws, facility and lease-up all move with these.</td></tr>';
       table = '<div class="tbl-wrap" style="margin-top:12px"><div style="overflow-x:auto"><table class="fin bk-m-scroll" style="table-layout:auto !important;width:max-content !important;min-width:1180px !important;max-width:none !important"><caption>Tasks, dependencies and critical path</caption><thead>' + hdr + '</thead><tbody>' + body + link + '</tbody></table></div></div>'
         + '<div style="margin:8px 0"><button type="button" class="bk-btn" onclick="bkDevGanttAdd()">+ Add task</button></div>'
         + (warnings.length ? '<div class="note-flag"><span>&#9888;</span><div>' + warnings.map(esc).join('<br>') + '</div></div>' : '')
@@ -28332,7 +28385,11 @@ RENDERERS['Dev Schedule'] = function(){
     }
     /* the quarterly bar picture this replaces */
     o.main = o.main.replace(/<div class="tbl-wrap"[^>]*>\s*<table class="fin"[^>]*>\s*<caption>Phase Timeline - by quarter<\/caption>[\s\S]*?<\/table>\s*<\/div>\s*(?:<div class="note-flag"[^>]*><span>[^<]*<\/span><div>Drawn from the same phase months[^<]*<\/div><\/div>)?/, '');
-    o.main += chartBox + table;
+    var tie = '';
+    if(M.plan){ var freeN = M.plan.rows.filter(function(r){ return !r.fromTask; }).length;
+      tie = freeN ? '<div class="note-flag" style="margin-top:10px"><span>&#9432;</span><div><b>' + freeN + ' of ' + M.plan.rows.length + ' budget lines are not tied to a Gantt task.</b> Tie them and each line becomes a task (same name, same place, so no number moves); from then on a line follows its task, so changing the task\'s start, duration or predecessors moves the cash. <button type="button" class="bk-btn primary" style="margin:0 6px" onclick="bkDevBudgetToTasks();showSheet(\'Dev Schedule\')">Make every line a task</button><button type="button" class="bk-btn" onclick="bkEdGo(\'Investment\',\'Investment\',\'bud\')">Budget lines</button></div></div>'
+        : '<div class="note-flag" style="margin-top:10px"><span>&#10003;</span><div><b>All ' + M.plan.rows.length + ' budget lines follow a Gantt task.</b> Change a task below and its cash moves with it. <button type="button" class="bk-btn" style="margin-left:6px" onclick="bkEdGo(\'Investment\',\'Investment\',\'bud\')">Budget lines</button></div></div>'; }
+    o.main += chartBox + tie + table;
   } catch(e){ o.main += '<div class="note-flag"><span>&#9888;</span><div>Gantt chart error: ' + esc(e.message) + '</div></div>'; }
   return o;
 };
@@ -29747,6 +29804,7 @@ window.bkImportHubCreate = function(){
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(deal);
   var C = { fields:{} }; Object.keys(S.pick.fields).forEach(function(k){ var f = S.pick.fields[k]; if(!f.skip) C.fields[k] = { l:f.conf, why:f.why }; });
   var s = bkLoad(); if(window.bkConf){ window.bkConf.stamp(s, C, S.files.map(function(x){ return x.f.name; }).join(', ')); } bkSave(s);
+  if(useLines && typeof window.bkDevBudgetToTasks === 'function'){ try { window.bkDevBudgetToTasks(); } catch(e){} }   /* each cost line becomes a Gantt task, in the place the file gives it: the schedule is the file's own task list */
   var jobs = S.files.map(function(x){ return typeof window.bkDocsAdd === 'function' ? window.bkDocsAdd(/\.pdf$/i.test(x.f.name) ? 'om' : 'other', x.f, 'IMP-' + slug) : null; }).filter(Boolean);
   Promise.all(jobs).catch(function(){}).then(function(){ if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Deal Underwrite'); });
 };
