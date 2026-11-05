@@ -26737,7 +26737,7 @@ html:not([data-theme="light"]) .bk-save.warn{ background:#2d2818; color:#e8c46a;
    (--ae-*), in light and dark. Loaded last so it settles the older layers; the editor itself (.ae) is untouched. */
 /* FILL RULE (engine-wide). Three fills, three jobs, never swapped:
      HEADER  blue-grey (--bk-fill-head, --bk-fill-head2): names things. Panel title bars, column-heading rows, section-divider rows. A row that carries a value is never this colour.
-     KEY     light blue (--bk-fill-key, with --bk-key-rule on the left edge): the answer. Grand totals and headline metrics (IRR, multiple, DSCR, NOI, loan, price...). Only on a row that carries values, never on a heading.
+     KEY     gold (--bk-fill-key, with --bk-key-rule on the left edge): the answer. Grand totals and headline metrics (IRR, multiple, DSCR, NOI, loan, price...). Only on a row that carries values, never on a heading.
      SUB     light neutral tint (--bk-fill-sub): a subtotal inside a table. Quieter than KEY, different from HEADER.
    Everything else is no fill (cells), the editor's read-only tint (calculated), or a boxed field (inputs). audit/fillrule_test.js walks every sheet and fails on a value row filled as a header, or a heading filled as a key metric. */
 html body #viewport{ --bk-fill-head:var(--ae-head); --bk-fill-head2:var(--ae-head2); --bk-fill-key:var(--bk-key-fill); --bk-fill-sub:rgba(90,110,130,.07); }
@@ -26945,10 +26945,10 @@ html body #viewport table.fin tbody td.bk-a-num[data-bk-col="left"]{ text-align:
 /* panels written with an inline rounded border take the same square panel as the rest */
 html body #viewport [style*="border-radius:8px"][style*="border:1px solid"]{ border-radius:0 !important; box-shadow:none !important; }
 
-/* KEY METRICS (weighted IRR, equity multiple, totals that matter): a light blue band with a blue rule. It is a clearer, lighter blue than the blue-grey header bands, so a total still never reads as a heading (audit/fillrule_test.js). The palette (src/182) sets the same values. */
-:root{ --bk-key-fill:#E6F0FB; --bk-key-ink:#0E2A4A; --bk-key-rule:#2F6FB6; --bk-key-line:rgba(31,78,140,.22); }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(111,180,242,.14); --bk-key-ink:#e8eef5; --bk-key-rule:#6fb4f2; --bk-key-line:rgba(111,180,242,.3); } }
-:root[data-theme="dark"]{ --bk-key-fill:rgba(111,180,242,.14); --bk-key-ink:#e8eef5; --bk-key-rule:#6fb4f2; --bk-key-line:rgba(111,180,242,.3); }
+/* KEY METRICS (weighted IRR, equity multiple, totals that matter): a warm gold band with a gold rule, so they do not blend into the blue-grey header bands */
+:root{ --bk-key-fill:#F5EDD3; --bk-key-ink:#1f2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(184,137,43,.18); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32); } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(184,137,43,.18); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32); }
 html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > :first-child{ box-shadow:inset 4px 0 0 var(--bk-key-rule); }
 
 
@@ -26961,11 +26961,11 @@ html body #viewport input[type=file]{ font:inherit; font-size:13px; color:var(--
 html body #viewport input[type=file]::file-selector-button{ font:inherit; font-weight:600; font-size:13px; padding:7px 14px; margin-right:10px; border:1px solid var(--ae-line); border-radius:6px; background:var(--ae-head,#eef2f7); color:var(--ae-ink); cursor:pointer; }
 html body #viewport input[type=file]::file-selector-button:hover{ border-color:var(--ae-accent); }
 
-/* report tables: the key totals (EGR, NOI, cash flow) take the light-blue key-metric band; the blue-grey fill is reserved for headings, so a total never reads as a header row */
+/* report tables: the key totals (EGR, NOI, cash flow) take the gold key-metric band; the blue-grey fill is reserved for headings, so a total never reads as a header row */
 html body #viewport .rp .rp-tbl tr.tot td, html body #viewport .rp .rp-tbl tr.tot td:first-child{ background:var(--bk-key-fill) !important; color:var(--bk-key-ink); border-top:1px solid var(--bk-key-rule); border-bottom:2px solid var(--bk-key-rule); }
 html body #viewport .rp .rp-tbl tr.tot td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
 
-/* totals: a grand total is a key metric (light-blue band, through --bk-total-fill above); a subtotal is only a lightly tinted, ruled row. The heading blue-grey stays on headings alone. */
+/* totals: a grand total is a key metric (gold band, through --bk-total-fill above); a subtotal is only a lightly tinted, ruled row. The heading blue-grey stays on headings alone. */
 html body #viewport table.fin tbody tr.grandtotal > td, html body #viewport table.fin tbody tr.total > td{ border-top:1px solid var(--bk-key-rule) !important; border-bottom:1px solid var(--bk-key-rule) !important; }
 html body #viewport table.fin tbody tr.grandtotal > td:first-child, html body #viewport table.fin tbody tr.total > td:first-child{ box-shadow:inset 4px 0 0 var(--bk-key-rule); }
 html body #viewport table.fin tbody tr.grandtotal .status-chip, html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-key-line) !important; }
@@ -29377,7 +29377,7 @@ function money(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs
 function mil(v){ return !isFinite(v) ? '—' : '$' + (v / 1e6).toFixed(2) + 'M'; }
 function pc(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 function mo(n){ return n + (n === 1 ? ' month' : ' months'); }
-var W = 979, H = 736, NAVY = '#14283d', GOLD = '#2f6fb6', GREY = '#6b7a89', LINE = '#d3dae2', BG = '#f3f6f9';
+var W = 979, H = 736, NAVY = '#14283d', GOLD = '#b8892b', GREY = '#6b7a89', LINE = '#d3dae2', BG = '#f3f6f9';
 
 var CSS = '#bk-sr{position:fixed;inset:0;z-index:2300;background:#58636f;overflow:auto;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:' + NAVY + '}'
  + '#bk-sr .sr-bar{position:sticky;top:0;z-index:2;display:flex;gap:10px;align-items:center;padding:10px 16px;background:#14283d;color:#fff}#bk-sr .sr-bar b{font-size:14px}#bk-sr .sr-bar .sp{flex:1}'
@@ -31498,7 +31498,7 @@ document.addEventListener('focusin', function(e){ var el = e.target; if(el && el
   --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
   --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
   --ae-ink:#14212F; --ae-dim:#566577; --ae-accent:#1F4E8C; --ae-hint:#F3F6FA;
-  --bk-key-fill:#E6F0FB; --bk-key-ink:#0E2A4A; --bk-key-rule:#2F6FB6; --bk-key-line:rgba(31,78,140,.22);   /* key metrics: light blue (was gold) */
+  --bk-key-fill:#F6EEDA; --bk-key-ink:#1F2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28);
   --bk-link-ink:#1B7A4B; --bk-attn-red:#C0392B; --bk-attn-amber:#B7791F; --bk-na-ink:#6B7785;
   --bk-in-line:#D6C57A; --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
 }
