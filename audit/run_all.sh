@@ -26,6 +26,10 @@ echo "== Field widths (one width per kind of value box on every Property Editor 
 echo "== Inflation by year (entered and inherited years look different, an Average column, taxes from year 2; a development deal offers only what its engine reads, proved by moving the rates)"; node audit/inflation_test.js index.html | grep -v '^PASS'
 echo "== Header second row (the section's pages as tabs: the shape of the section tabs, lighter; the open page marked; readable in both themes; nothing cut off on a phone)"; node audit/subtabs_test.js index.html | grep -v '^PASS'
 echo "== reports (cash flow, valuation, tenant, audit; reconcile to the engine)"; node audit/reports_test.js index.html | tail -2
+echo "== sources and uses report (Argus sources and uses by year: totals tie every year on every deck, lines are the engine's, cash on cash, IRR)"; node audit/sources_uses_test.js index.html | grep -v '^PASS'
+echo "== present value report (Argus present value, unleveraged and leveraged, and a value matrix: XNPV by year, equals the valuation report, IRR, matrix vs engine re-runs)"; node audit/present_value_test.js index.html | grep -v '^PASS'
+echo "== lease audit report (Argus lease audit and supplemental: tenant by tenant from the lease engine's series, rollover terms, ties to the cash flow report and to the engine's retail revenue)"; node audit/lease_audit_test.js index.html | grep -v '^PASS'
+echo "== development cash flow (Cash Flow Report on a development deal: funding = costs every year, lines are the engine's, equity cash flow, takeout and sale, 8 decks)"; node audit/dev_cashflow_test.js index.html | grep -v '^PASS'
 echo "== Mixed-use properties (residential and commercial units with the total, the commercial area, commercial market rent beside residential; no engine figure moves)"; node audit/units_test.js index.html | grep -v '^PASS'
 echo "== commercial lease model (rollover branches, recoveries, TI/LC, editor, reports)"; node audit/lease_test.js index.html | tail -2
 echo "== lease model fixes (merged rollover, market defaults, general vacancy stress, bump anchor)"; node audit/lease_fix_test.js index.html "$REF" | tail -1
