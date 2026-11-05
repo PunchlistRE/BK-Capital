@@ -46,3 +46,9 @@
 .body-grid:has(> .main-col > .ae){ grid-template-columns:minmax(0,1fr) !important; } .ae{ max-width:none; }
 .ae-grid input.w{ min-width:110px; text-align:left; } .ae-grid input[type=date]{ min-width:128px; }
 .ae-x{ border:0; background:transparent; color:var(--ae-mut,#8a8f98); font-size:18px; line-height:1; cursor:pointer; padding:0 6px; } .ae-x:hover{ color:#c0392b; }
+
+/* inflation grid: a year that inherits the Default reads as inherited (neutral, gray italic) and turns into an input when focused; a year you entered stays yellow and bold */
+html body #viewport .ae-grid td.inh input{ background:var(--ae-cell-ro) !important; border-color:var(--ae-line) !important; box-shadow:none; }
+html body #viewport .ae-grid td.inh input::placeholder{ color:var(--ae-dim); font-style:italic; font-weight:400; opacity:1; }
+html body #viewport .ae-grid td.inh input:focus{ background:var(--bk-in-fill,#fdfae6) !important; border-color:var(--bk-in-line,var(--ae-accent)) !important; }
+html body #viewport .ae-grid tr.na td{ color:var(--ae-dim); }
