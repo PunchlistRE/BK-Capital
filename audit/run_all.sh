@@ -22,7 +22,11 @@ echo "== import rent roll (CSV / XLSX / PDF, synthetic fixtures)"; node audit/im
 echo "== tie-out to the owner's V7.2 master workbook (10 stored deals)"; node audit/gold_tieout.js index.html --check | tail -1
 echo "== editor engine support (growth curves, miscellaneous income, capital items)"; node audit/editor_engine_test.js index.html | tail -2
 echo "== property editor (7 tabs, 31 sub-tabs, writes and conversions)"; node audit/editor_test.js index.html | tail -2
+echo "== Field widths (one width per kind of value box on every Property Editor page: percents as percents, dollars as dollars, text, choices; grids as wide as their boxes; typing keeps a box's width)"; node audit/field_widths_test.js index.html | grep -v '^PASS'
+echo "== Inflation by year (entered and inherited years look different, an Average column, taxes from year 2; a development deal offers only what its engine reads, proved by moving the rates)"; node audit/inflation_test.js index.html | grep -v '^PASS'
+echo "== Header second row (the section's pages as tabs: the shape of the section tabs, lighter; the open page marked; readable in both themes; nothing cut off on a phone)"; node audit/subtabs_test.js index.html | grep -v '^PASS'
 echo "== reports (cash flow, valuation, tenant, audit; reconcile to the engine)"; node audit/reports_test.js index.html | tail -2
+echo "== Mixed-use properties (residential and commercial units with the total, the commercial area, commercial market rent beside residential; no engine figure moves)"; node audit/units_test.js index.html | grep -v '^PASS'
 echo "== commercial lease model (rollover branches, recoveries, TI/LC, editor, reports)"; node audit/lease_test.js index.html | tail -2
 echo "== lease model fixes (merged rollover, market defaults, general vacancy stress, bump anchor)"; node audit/lease_fix_test.js index.html "$REF" | tail -1
 echo "== lease terms (CPI increases, expense stops, recovery caps, gross-up, stated recovery shares)"; node audit/lease_terms_test.js index.html | tail -1
@@ -73,8 +77,15 @@ echo "== Analysis registry and the setup page (consistency, guide steps from the
 echo "== Analysis registry part 2 (step bar stages, readiness workflow, Overview tiles and integrity checks read the analysis)"; node audit/registry2_test.js index.html | tail -1
 echo "== Refinancing Analysis (sizing, payoff and proceeds vs an independent model; alternatives; readiness, stages, tiles and the report from the registry)"; node audit/refinance_test.js index.html | tail -1
 echo "== Property Valuation (in-place, normalized and stabilized value vs an independent model; comparables, sensitivity; readiness, stages, tiles and the report from the registry)"; node audit/valuation_test.js index.html | tail -1
+echo "== Loan sizing (one rule shared by Refi / Recap and the Refinancing Analysis: against an independent model, each test binding, ties, interest-only, requested amount, invalid inputs; both tools exactly as before the rule was extracted)"; node audit/loan_sizing_test.js index.html | grep -v '^PASS'
 echo "== Stage D (Deal Underwrite tab bar; input / calculated / linked / N/A / attention cell convention on every input sheet)"; node audit/stageD_test.js index.html | tail -1
 echo "== Import tab (one tab; content-driven reader on unseen layouts, development pro forma + OM, teaching, old readers inside the tab)"; node audit/import_hub_test.js index.html | tail -1
+echo "== Development budget (line items and $ per SF feed one hard / soft total, the draws, the Gantt and Sources & Uses; import reads the budget table)"; node audit/budget_test.js index.html
+echo "== Work breakdown (summary tasks roll up dates, months, cost and % complete and move no number; group by cost class; fold, outline numbers, progress shading; task table, Budget panel, printable summary)"; node audit/wbs_test.js index.html
+echo "== Funding ties (Sources & Uses, guide, Debt, Funding, Returns share one calculation; ALL INPUTS TIE; Harbor + audit development deal + acquisition deal)"; node audit/tie_test.js index.html
+echo "== Funding scenarios (180 development and acquisition configurations: Sources & Uses, funding ledger, contributed equity, the four capital measures, waterfall and returns each checked from the raw monthly output; facility ceilings, interest reserves, takeout, holds; mutation checks)"; node audit/funding_scenarios_test.js index.html
+echo "== Capital measures (closing equity, total contributed equity, operating cash requirement, total project capitalization: one name for one number on every sheet, the investor PDF and the schedule report; ambiguous equity labels refused)"; node audit/capital_measures_test.js index.html
 echo "== Import tab routing (an OM with a rent roll page stays an OM; a plain rent roll stays a rent roll)"; node audit/import_route_test.js index.html | tail -1
+echo "== Document ingestion foundation (fact record and validation, quote verification, number parser, hashing, both stores, intake, pipeline failure / retry / resume, provider guard, classification measured on labeled fixtures)"; node audit/ingest_core_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"

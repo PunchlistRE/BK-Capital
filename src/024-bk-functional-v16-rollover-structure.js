@@ -22,6 +22,7 @@ window.bkSetRollover = function(key, el){
   let v = el && el.textContent!==undefined ? el.textContent : '';
   const isPct = (key==='renewalProbability'||key==='lcNewPct'||key==='lcRenewalPct');
   v = String(v).replace(/[%,$]/g,'').trim();
+  if(v===''){ const ra0 = Object.assign({}, s.rolloverAssumptions); delete ra0[key]; s.rolloverAssumptions = ra0; bkSave(s); showSheet(currentSheet); return; }   /* blank stays blank: no value is assumed */
   v = parseFloat(v)||0;
   if(isPct) v = v/100;
   s.rolloverAssumptions = Object.assign({}, s.rolloverAssumptions, {[key]:v});
@@ -32,7 +33,7 @@ window.bkSetRollover = function(key, el){
 // override wins per-key. Used by both the schedule preview below and, later, the engine.
 window.bkRolloverFor = function(unit, s){
   s = s || bkEnsureV16();
-  const base = s.rolloverAssumptions || {};
+  const base = Object.assign({renewalProbability:0, downtimeMonths:0, tiNewPerSF:0, tiRenewalPerSF:0, lcNewPct:0, lcRenewalPct:0}, s.rolloverAssumptions || {});   /* blank = nothing assumed: no rollover cost or downtime */
   const ov = (unit && unit.rolloverOverride && typeof unit.rolloverOverride==='object') ? unit.rolloverOverride : {};
   return Object.assign({}, base, ov);
 };
@@ -50,9 +51,11 @@ window.bkLeaseRolloverMonth = function(leaseEndStr, closingStr){
 };
 
 // bkRRAdd re-override: same as V13's, plus the two new date fields default to blank.
-window.bkRRAdd = function(){
+window.bkRRAdd = function(n){
   const s=bkLoad(); const rr=Array.isArray(s.rentRoll)?s.rentRoll.slice():[];
-  rr.push({unitId:'New Unit',sf:0,tenantType:'Commercial',status:'Occupied',inPlaceRent:0,marketRent:0,recovery:0,leaseStart:'',leaseEnd:''});
+  let k=Math.floor(Number(n)); if(!(k>=1)) k=1; if(k>500) k=500;   /* as many blank, fillable rows as asked for, numbered after the ones already there */
+  const type=/multi|apart|resid/i.test(String(s.propertyType||''))?'Residential':'Commercial';
+  for(let i=0;i<k;i++) rr.push({unitId:(k===1&&!rr.length?'New Unit':'Unit '+(rr.length+1)),sf:0,tenantType:type,status:'Occupied',inPlaceRent:0,marketRent:0,recovery:0,leaseStart:'',leaseEnd:''});
   s.rentRoll=rr; bkSave(s); showSheet(currentSheet);
 };
 
@@ -80,6 +83,7 @@ RENDERERS['Rent Roll'] = function(){
   const s = bkEnsureV16(); const rr = Array.isArray(s.rentRoll)?s.rentRoll:[];
   const ra = s.rolloverAssumptions;
   const pct = n => (Number(n)*100).toFixed(2)+'%';
+  const raV = (k, f) => (ra && ra[k]!==undefined && ra[k]!=='' && ra[k]!==null) ? f(ra[k]) : '';   /* a blank assumption shows blank */
 
   // Extra columns (Lease Start / Lease End / Override) appended onto the existing V13
   // detail table via a second table, rather than reflowing the original -- keeps this
@@ -133,13 +137,13 @@ RENDERERS['Rent Roll'] = function(){
   const vacantAtAcq = rr.filter(u=>u.status!=='Occupied').map(u=>`<tr style="opacity:.55"><td class="rowlabel">${bkEsc(u.unitId||'')}</td><td>${bkEsc(u.sf)} SF</td><td colspan="6">Vacant at acquisition (not a rollover)</td></tr>`).join('');
 
   o.main += `
-    <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Rollover Assumptions - Global (Stage C, structure only - not yet wired into cash flow)</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th></tr></thead><tbody>
-      <tr class="input" data-bk-key="renewalProbability"><td class="rowlabel">Renewal Probability</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('renewalProbability',this)">${pct(ra.renewalProbability)}</td><td>%</td></tr>
-      <tr class="input" data-bk-key="downtimeMonths"><td class="rowlabel">Downtime on Non-Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('downtimeMonths',this)">${ra.downtimeMonths}</td><td>months</td></tr>
-      <tr class="input" data-bk-key="tiNewPerSF"><td class="rowlabel">TI - New Lease</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('tiNewPerSF',this)">${ra.tiNewPerSF}</td><td>$/SF</td></tr>
-      <tr class="input" data-bk-key="tiRenewalPerSF"><td class="rowlabel">TI - Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('tiRenewalPerSF',this)">${ra.tiRenewalPerSF}</td><td>$/SF</td></tr>
-      <tr class="input" data-bk-key="lcNewPct"><td class="rowlabel">LC - New Lease</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('lcNewPct',this)">${pct(ra.lcNewPct)}</td><td>% of lease value</td></tr>
-      <tr class="input" data-bk-key="lcRenewalPct"><td class="rowlabel">LC - Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('lcRenewalPct',this)">${pct(ra.lcRenewalPct)}</td><td>% of lease value</td></tr>
+    <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Rollover Assumptions - Global (blank = none assumed: expiring leases roll at market with no downtime, tenant improvements or commissions)</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th></tr></thead><tbody>
+      <tr class="input" data-bk-key="renewalProbability"><td class="rowlabel">Renewal Probability</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('renewalProbability',this)">${raV('renewalProbability',pct)}</td><td>%</td></tr>
+      <tr class="input" data-bk-key="downtimeMonths"><td class="rowlabel">Downtime on Non-Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('downtimeMonths',this)">${raV('downtimeMonths',x=>x)}</td><td>months</td></tr>
+      <tr class="input" data-bk-key="tiNewPerSF"><td class="rowlabel">TI - New Lease</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('tiNewPerSF',this)">${raV('tiNewPerSF',x=>x)}</td><td>$/SF</td></tr>
+      <tr class="input" data-bk-key="tiRenewalPerSF"><td class="rowlabel">TI - Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('tiRenewalPerSF',this)">${raV('tiRenewalPerSF',x=>x)}</td><td>$/SF</td></tr>
+      <tr class="input" data-bk-key="lcNewPct"><td class="rowlabel">LC - New Lease</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('lcNewPct',this)">${raV('lcNewPct',pct)}</td><td>% of lease value</td></tr>
+      <tr class="input" data-bk-key="lcRenewalPct"><td class="rowlabel">LC - Renewal</td><td class="input v" contenteditable="true" spellcheck="false" onblur="bkSetRollover('lcRenewalPct',this)">${raV('lcRenewalPct',pct)}</td><td>% of lease value</td></tr>
     </tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Lease Dates &amp; Per-Unit Override</caption><thead><tr><th class="rowlabel-h">Unit / Tenant</th><th>Lease Start</th><th>Lease End</th><th>Status</th><th>Rollover Override (JSON, blank = use global)</th><th>Recovery Gate</th><th>Recovery Override (force active)</th></tr></thead><tbody>${leaseRows}</tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Rollover Schedule Preview - effective assumptions per unit, read-only</caption><thead><tr><th class="rowlabel-h">Unit</th><th>SF</th><th>Rolls</th><th>Renewal Prob.</th><th>Downtime</th><th>TI New/Renew</th><th>LC New/Renew</th><th>Source</th></tr></thead><tbody>${schedule || '<tr><td colspan="8" class="rowlabel">No occupied unit has a Lease End date set yet.</td></tr>'}${vacantAtAcq}</tbody></table></div>

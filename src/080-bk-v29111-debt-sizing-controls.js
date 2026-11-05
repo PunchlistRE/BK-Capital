@@ -126,7 +126,7 @@ function panel(){
     + '<caption>Resulting Capital Structure</caption><tbody>'
     + '<tr><td class="rowlabel" data-bk-align="text">Loan Amount</td><td class="v">'+money(d.loan)+'</td></tr>'
     + '<tr><td class="rowlabel" data-bk-align="text">Origination Fee</td><td class="v">'+money(d.fee)+'</td></tr>'
-    + '<tr><td class="rowlabel" data-bk-align="text">Equity Requirement</td><td class="v">'+money(d.equity)+'</td></tr>'
+    + '<tr><td class="rowlabel" data-bk-align="text">Closing equity</td><td class="v">'+money((Number(d.equity)||0)+(Number((d.s||{}).rateCapCost)||0))+'</td></tr>'
     + '<tr><td class="rowlabel" data-bk-align="text">Loan to Value</td><td class="v">'+pct(d.ltv)+'</td></tr>'
     + '<tr><td class="rowlabel" data-bk-align="text">Loan to Cost</td><td class="v">'+pct(d.ltc)+'</td></tr>'
     + '<tr><td class="rowlabel" data-bk-align="text">Debt Service Coverage</td><td class="v">'+(Number(d.dscr)||0).toFixed(2)+'x</td></tr>'

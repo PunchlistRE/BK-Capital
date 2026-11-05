@@ -37,16 +37,16 @@ const A = require(path.join(__dirname, 'deal.js'));
     const totCol = {}; Object.keys(pg.rows).forEach(key => { if (pg.rows[key].length > r.H + 1) totCol[key] = pg.rows[key][r.H + 1]; pg.rows[key] = pg.rows[key].slice(0, r.H + 1); });
     Object.keys(pg.mrows).forEach(key => { pg.mrows[key] = pg.mrows[key].slice(0, r.H); });
     const k = 1, tol = 1.01, near = (a, b) => Math.abs(a * k - b) <= tol * k;
-    check(tag + ': ' + (8 + 2 * (Math.ceil(r.H / 5) - 1)) + ' pages (5 years a page, so the figures stay whole dollars)', pg.pages === 8 + 2 * (Math.ceil(r.H / 5) - 1), pg.pages);
+    check(tag + ': ' + (7 + 2 * (Math.ceil(r.H / 5) - 1)) + ' pages (5 years a page, so the figures stay whole dollars)', pg.pages === 7 + 2 * (Math.ceil(r.H / 5) - 1), pg.pages);
     check(tag + ': figures are whole dollars with a $ sign, never thousands; at most 5 year columns a page', !pg.thousands && pg.dollars && pg.perPage.every(n => n <= 7), JSON.stringify(pg.perPage));
     check(tag + ': every year\'s net cash flow to equity equals the engine\'s', pg.rows['Net cash flow to equity'].slice(1).every((v, i) => near(v, r.cf[i])), pg.rows['Net cash flow to equity'].slice(1).join(' '));
-    check(tag + ': Close shows the equity invested at closing', near(pg.rows['Net cash flow to equity'][0], -r.close0) && near(pg.rows['Equity invested'][0], -r.close0));
+    check(tag + ': Close shows the equity contributed at closing', near(pg.rows['Net cash flow to equity'][0], -r.close0) && near(pg.rows['Equity contributions'][0], -r.close0));
     check(tag + ': cash flow after debt service equals the engine\'s', pg.rows['Cash flow after debt service'].slice(1).every((v, i) => near(v, r.cfads[i])));
     check(tag + ': interest and principal come from the loan schedule and add to debt service', pg.rows['Interest'].slice(1).every((v, i) => near(-v, r.intr[i])) && pg.rows['Principal'].slice(1).every((v, i) => near(-v, r.prin[i])) && r.intr.every((v, i) => Math.abs(v + r.prin[i] - r.ds[i]) < 0.01));
     const sumRows = (keys, i) => keys.reduce((t, kk) => t + (pg.rows[kk] ? pg.rows[kk][i] : 0), 0);
     const opLines = ['Real estate taxes', 'Insurance', 'Repairs and maintenance', 'Payroll', 'Turnover', 'Utilities', 'Contract services', 'Marketing', 'General and administrative', 'Other operating', 'Management fee', 'Other expenses'];
     check(tag + ': expense lines add to total operating expenses (to rounding)', pg.rows['Total operating expenses'].slice(1).every((v, i) => Math.abs(sumRows(opLines, i + 1) - v) <= opLines.length * 0.51 + 0.01));
-    check(tag + ': each column adds down to the net cash flow (to rounding)', pg.rows['Net cash flow to equity'].slice(1).every((v, i) => Math.abs(sumRows(['NOI after reserves', 'Interest', 'Principal', 'Asset management fee', 'Gross sale price', 'Cost of sale', 'Disposition fee', 'Loan payoff', 'Capital items and leasing costs', 'Refinance proceeds', 'Equity invested'], i + 1) - v) <= 6));
+    check(tag + ': each column adds down to the net cash flow (to rounding)', pg.rows['Net cash flow to equity'].slice(1).every((v, i) => Math.abs(sumRows(['NOI after reserves', 'Interest', 'Principal', 'Asset management fee', 'Gross sale price', 'Cost of sale', 'Disposition fee', 'Loan payoff', 'Capital items and leasing costs', 'Refinance proceeds', 'Equity contributions'], i + 1) - v) <= 6));
     const coc = pg.mrows['Cash-on-cash return'].map(x => Number(x.replace('%', '')) / 100);
     check(tag + ': cash-on-cash is cash flow after debt service over equity, not 0%', coc.every((v, i) => Math.abs(v - r.cfads[i] / r.eq) < 0.0006) && coc.some(v => v > 0), coc.join(' '));
     check(tag + ': nothing runs into a page footer', pg.over.length === 0, pg.over.join(','));
@@ -82,8 +82,8 @@ const A = require(path.join(__dirname, 'deal.js'));
   const F = await doc.evaluate(() => { const num = s => { s = String(s || '').trim(); if (!s || s === '–' || s === '—') return 0; return Number(s.replace(/[$,()%\s]/g, '')); }; const t = document.querySelector('table.drw'); if (!t) return null; const R = {};
     [...t.querySelectorAll('tbody tr')].forEach(tr => { const c = [...tr.cells].map(x => x.innerText); if (c.length > 2) R[c[0].trim()] = c.slice(1).map(num); }); return { R, pages: document.querySelectorAll('.page').length }; });
   const lastOf = a => a[a.length - 1], nearK = (a, b) => Math.abs(a * 1000 - b) <= 1000;
-  check('development: a construction funding page, and 5-year waterfall pages (6-year hold)', F && F.pages === 15 + (Math.ceil(6 / 5) - 1));
-  check('construction funding: total costs, equity, loan draws and capitalized interest equal the funding engine\'s', nearK(lastOf(F.R['Total costs']), fd.need) && nearK(lastOf(F.R['Construction loan draws']), fd.draw) && nearK(lastOf(F.R['Interest capitalized']), fd.ci) && nearK(lastOf(F.R['Equity']) + (F.R['Equity over plan'] ? lastOf(F.R['Equity over plan']) : 0), fd.eq));
+  check('development: a construction funding page, and 5-year waterfall pages (6-year hold)', F && F.pages === 14 + (Math.ceil(6 / 5) - 1));
+  check('construction funding: total costs, equity, loan draws and capitalized interest equal the funding engine\'s', nearK(lastOf(F.R['Total costs']), fd.need) && nearK(lastOf(F.R['Construction loan draws']), fd.draw) && nearK(lastOf(F.R['Interest capitalized']), fd.ci) && nearK(lastOf(F.R['Equity (planned)']) + (F.R['Equity over plan'] ? lastOf(F.R['Equity over plan']) : 0), fd.eq));
   check('construction funding: every quarter\'s sources equal its costs', F.R['Total sources'].every((v, j) => Math.abs(v - F.R['Total costs'][j]) <= 1));
   check('construction funding: the loan rolls forward each quarter (beginning + draws + interest = ending)', F.R['Ending balance'].slice(0, -1).every((e, j) => Math.abs(F.R['Beginning balance'][j] + F.R['Draws'][j] + F.R['Interest capitalized'][j] - e) <= 2) && nearK(lastOf(F.R['Ending balance']), fd.end));
   /* the development summary shares the page styles */
@@ -92,8 +92,8 @@ const A = require(path.join(__dirname, 'deal.js'));
   const dover = await doc.evaluate(() => [...document.querySelectorAll('.page')].map((s, i) => { const ft = s.querySelector('.ft2'), bd = s.querySelector('.bd'); if (!ft || !bd) return null; const top = ft.getBoundingClientRect().top; return Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) > top - 2 ? i + 1 : null; }).filter(Boolean));
   check('development summary: nothing runs into a page footer', dover.length === 0, dover.join(','));
   /* short and long holds: the right number of pages, and nothing clipped, overflowing or running into a footer */
-  for (const [nm, d, pages] of [['2-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 2 }), 8], ['15-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 15 }), 12],
-    ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 17], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 15]]) {
+  for (const [nm, d, pages] of [['2-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 2 }), 7], ['15-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 15 }), 11],
+    ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 16], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 14]]) {
     const html = await p.evaluate(d => { bkCreateNewDeal(d); return bkReportHTML(); }, d); await doc.setContent(html); await doc.waitForTimeout(300);
     const r = await doc.evaluate(() => { const P = [...document.querySelectorAll('.page')];
       return { n: P.length, over: P.map((s, i) => { const ft = s.querySelector('.ft2'), bd = s.querySelector('.bd'); if (!ft || !bd) return null; return Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) > ft.getBoundingClientRect().top - 2 ? i + 1 : null; }).filter(Boolean),

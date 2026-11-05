@@ -1,0 +1,248 @@
+// Work breakdown (WBS) roll-ups and % complete on the Dev Schedule Gantt. Summary tasks group tasks; they add up dates, months, cost and % complete and they move NO number in the model.
+//  1 a summary task rolls up the earliest start, the latest finish and the months between; it follows its tasks; it is never "critical" itself; it adds no logic (the construction months, the draws, the funding and the returns are exactly what they were)
+//  2 cost: a summary is the sum of the budget lines tied to the tasks inside it (nested summaries too); the section totals and the cash chart still add up to the budget
+//  3 the outline: a task cannot be put inside itself or a summary inside it, or under a task that is not a summary; broken links in saved data are shown at the top level with a note and never throw; moving a task keeps the list in outline order
+//  4 a predecessor that is a summary means "after the last task inside it"; a task cannot follow its own summary; removing a summary keeps its tasks and moves no date
+//  5 % complete: entry is parsed and clamped; a summary rolls up by cost (by months when no cost is tied) and shows nothing until a task inside it has a percent; it never moves a date, a draw or a return
+//  6 "Make every line a task" groups the tasks under Hard cost / Contingency / Soft cost / FF&E; it is idempotent, leaves anything already organised alone and "Remove cost-class groups" takes the groups out again, all without moving a number
+//  7 the sheet: fold boxes, WBS numbers, indented tasks, the % done column and in-cell bars, progress shading on the bars, the Work complete tile; folding hides rows and moves no total; the fold state is kept per deal
+//  8 the task table (Summary task and % done columns), the Budget panel (leaf tasks only), the printable schedule summary (summary brackets, bold summary rows, % column) and no page errors
+//  9 the controls with real clicks, typing and keys: Group by cost class, + Summary task, the fold box (mouse, Enter, Space), a % typed into the table, the Summary task select, Remove cost-class groups, Remove
+//   node audit/wbs_test.js index.html
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');
+const V = require(path.join(__dirname, 'devdeal.js'));
+(async () => {
+  const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined }); let checks = 0, fails = 0;
+  const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 300) + ']' : '')); };
+  const open = async (deal, lines, w) => { const p = await b.newPage({ viewport: { width: w || 1700, height: 1100 } }); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+    await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
+    await p.evaluate(([d, L]) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d); if (L) { s.devBudgetMode = 'LINES'; s.budgetLines = L; } bkSave(s); }, [deal, lines || null]); return p; };
+  const LINES = [
+    { cls: 'hard', name: 'Site work and foundations', amount: 6000000, start: '', len: '' },
+    { cls: 'hard', name: 'Structure and envelope', amount: 9000000, start: '', len: '', method: 'S-Curve', rate: 7 },
+    { cls: 'hard', name: 'Mechanical, electrical, plumbing', amount: 4500000, start: 12, len: 10, method: 'Straight-Line' },
+    { cls: 'cont', name: 'Hard cost contingency', amount: 1200000 },
+    { cls: 'soft', name: 'Design and engineering', amount: 900000 },
+    { cls: 'soft', name: 'Permits and fees', amount: 700000, start: 2, len: 4 },
+    { cls: 'ffe', name: 'FF&E', amount: 300000 }];
+  const TOTAL = 6000000 + 9000000 + 4500000 + 1200000 + 900000 + 700000 + 300000;
+  /* every number the model makes, so "nothing moved" is one comparison */
+  const NUMS = `(() => { const s = bkLoad(), x = bkDevV09(), f = bkDevFundingV10(), pl = bkDevBudgetPlan(x, s); return JSON.stringify({ hard: x.hard, soft: x.soft, pre: x.preMo, con: x.conMo, co: x.co, stab: x.stab, levered: f.levered, eq: f.equityTotal, irr: bkMonthlyReturns().irr, tie: bkAllInputsTie().ok, win: pl.rows.map(r => r.name + ':' + r.start + '-' + r.end + ':' + Math.round(r.amount)), cash: Object.keys(pl.all).map(k => k + '=' + Math.round(pl.all[k])).join(','), mHard: f.months.reduce((q, m) => q + m.hard, 0), mSoft: f.months.reduce((q, m) => q + m.soft, 0) }); })()`;
+  const nums = (p) => p.evaluate(NUMS);
+  const model = (p) => p.evaluate(() => { const M = bkDevGanttModel(), sc = M.sc; const o = {}; sc.tasks.forEach(t => { o[t.name] = { id: t.id, ES: t.ES, EF: t.EF, dur: t.dur, sum: !!t.summary, crit: !!t.critical, cd: !!t.critDesc, depth: t.depth, parent: t.parentEff, float: t.float }; }); const R = M.roll; return { o, warnings: sc.warnings, roll: Object.fromEntries(Object.entries(R.by).map(([k, v]) => [k, { amt: Math.round(v.amt), pct: v.pct, basis: v.basis, n: v.n }])), total: R.total, rows: M.rows.map(r => ({ id: r.id, name: r.name, wbs: r.wbs, depth: r.depth, sec: r.sec, sum: !!r.summary })) }; });
+
+  /* ---- 1 a summary task rolls up its tasks and moves nothing ---- */
+  let p = await open(V, LINES);
+  await p.evaluate(() => { bkDevBudgetToTasks(); });
+  const N0 = await nums(p);
+  const g1 = await p.evaluate(() => { bkDevGanttAddSummary(); const T = bkLoad().devGantt.tasks, sm = T[T.length - 1]; const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); const o = { id: sm.id, summary: sm.summary, name: sm.name, group: sm.group, n: T.length };
+    bkDevGanttField(T.length - 1, 'name', 'Soft items'); bkDevGanttField(T.length - 1, 'group', 'other'); bkDevGanttField(idx('Permits and fees'), 'parent', sm.id); bkDevGanttField(idx('FF&E'), 'parent', sm.id);
+    o.order = bkLoad().devGantt.tasks.map(t => t.name + (t.parent ? '>' + t.parent : '')); return o; });
+  const m1 = await model(p);
+  check('"+ Summary task" adds a summary task (no duration or start of its own); a task given a summary moves under it in the list', g1.summary === true && g1.n === 8 && /Soft items/.test(JSON.stringify(m1.o)) && g1.order.slice(-3).join('|') === 'Soft items|Permits and fees>' + g1.id + '|FF&E>' + g1.id, g1.order.join(' | '));
+  const S1 = m1.o['Soft items'], P1 = m1.o['Permits and fees'], F1 = m1.o['FF&E'];
+  check('it rolls up the earliest start, the latest finish and the months between (Permits M2-M5 and FF&E M22-M24 give M2-M24, 23 months)', S1 && S1.ES === Math.min(P1.ES, F1.ES) && S1.EF === Math.max(P1.EF, F1.EF) && S1.dur === S1.EF - S1.ES + 1 && S1.ES === 2 && S1.EF === 24 && S1.dur === 23, JSON.stringify([S1, P1, F1]));
+  check('adding a summary and moving tasks into it moves no number: windows, hard and soft cost, construction months, funding, equity and IRR are exactly what they were', (await nums(p)) === N0, '');
+  await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttField(idx('Permits and fees'), 'start', '1'); bkDevGanttField(idx('FF&E'), 'dur', '5'); });
+  const m1b = await model(p), N1 = await nums(p);
+  check('the summary follows its tasks: start Permits a month earlier and lengthen FF&E and the summary start, finish and months move with them', m1b.o['Soft items'].ES === m1b.o['Permits and fees'].ES && m1b.o['Soft items'].EF === m1b.o['FF&E'].EF && m1b.o['Soft items'].dur === m1b.o['Soft items'].EF - m1b.o['Soft items'].ES + 1 && m1b.o['Soft items'].ES === 1, JSON.stringify(m1b.o['Soft items']));
+  const g1c = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttAddSummary(); const T = bkLoad().devGantt.tasks, sm = T[T.length - 1]; bkDevGanttField(T.length - 1, 'name', 'Frame package'); bkDevGanttField(idx('Site work and foundations'), 'parent', sm.id); bkDevGanttField(idx('Mechanical, electrical, plumbing'), 'parent', sm.id); return sm.id; });
+  const m1c = await model(p), Fr = m1c.o['Frame package'], Si = m1c.o['Site work and foundations'], Me = m1c.o['Mechanical, electrical, plumbing'];
+  check('a summary is never on the critical path itself (it adds no logic) but says when a task inside it is; the tasks keep their own float and critical flags', Fr && Fr.crit === false && Fr.cd === true && Fr.float === 0 && Si.crit === true && Me.crit === false && m1c.o['Soft items'].crit === false && m1c.o['Soft items'].cd === false, JSON.stringify([Fr, Si.crit, Me.crit]));
+  const dupe = await p.evaluate(() => { const sc = bkDevGanttSchedule(bkLoad(), bkDevV09()); return { ntasks: sc.tasks.length, nleaf: sc.tasks.filter(t => !t.summary).length, con: sc.conMo, pre: sc.preMo, co: sc.co }; });
+  check('the construction months, pre-development months and certificate of occupancy come from the tasks, not the summaries (a summary in the Construction group changes nothing)', dupe.ntasks === 9 && dupe.nleaf === 7 && dupe.con === 18 && dupe.pre === 6 && dupe.co === 24, JSON.stringify(dupe));
+  await p.evaluate(() => { const T = bkLoad().devGantt.tasks, i = T.findIndex(t => t.name === 'Frame package'); bkDevGanttField(i, 'group', 'predev'); });
+  const m1d = await model(p);
+  check('a summary filed under Pre-development that holds construction tasks moves nothing (each task keeps its own phase) and the schedule says so', m1d.o['Frame package'].ES === 7 && m1d.o['Frame package'].EF === 24 && /Frame package is listed under Pre-development but holds Construction tasks/.test(m1d.warnings.join(' ')) && m1d.o['Site work and foundations'].crit === true, m1d.warnings.join(' | '));
+  await p.evaluate(() => { const T = bkLoad().devGantt.tasks, i = T.findIndex(t => t.name === 'Frame package'); bkDevGanttField(i, 'group', 'construction'); });
+
+  /* ---- 2 cost roll-up ---- */
+  const m2 = await model(p);
+  check('a summary\'s cost is the sum of the budget lines tied to the tasks inside it (Frame package = site work + MEP = $10,500,000; Soft items = permits + FF&E = $1,000,000)', m2.roll[Fr.id].amt === 6000000 + 4500000 && m2.roll[S1.id].amt === 700000 + 300000, JSON.stringify([m2.roll[Fr.id], m2.roll[S1.id]]));
+  const sec = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 900)); const M = bkDevGanttModel(), RU = M.roll; const roots = M.rows.filter(r => r.id && !r.linked && !r.depth), sumRoots = roots.reduce((t, r) => t + (RU.by[r.id] ? RU.by[r.id].amt : 0), 0); const cash = Object.keys(M.plan.all).reduce((t, k) => t + M.plan.all[k], 0); return { sumRoots, cash, plan: M.plan.rows.reduce((t, r) => t + r.amount, 0), tot: RU.total.amt }; });
+  check('the top-level rows add up to the whole budget (no line counted twice, none missed), and so does the cash chart', Math.abs(sec.sumRoots - TOTAL) < 1 && Math.abs(sec.cash - TOTAL) < 1 && Math.abs(sec.tot - TOTAL) < 1, JSON.stringify(sec));
+  const nest = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttAddSummary(); let T = bkLoad().devGantt.tasks, top = T[T.length - 1]; bkDevGanttField(T.length - 1, 'name', 'All construction'); bkDevGanttField(idx('Frame package'), 'parent', top.id); bkDevGanttField(idx('Structure and envelope'), 'parent', top.id);
+    const M = bkDevGanttModel(), by = n => M.sc.tasks.filter(t => t.name === n)[0], R = M.roll.by; return { top: [by('All construction').ES, by('All construction').EF, by('All construction').depth, Math.round(R[by('All construction').id].amt)], frame: [by('Frame package').depth, by('Site work and foundations').depth], codes: M.rows.filter(r => r.wbs).map(r => r.wbs + ' ' + r.name).join(' | ') }; });
+  check('summaries nest: a summary inside a summary rolls up through both levels (cost $19,500,000 = site + MEP + structure), tasks are one level deeper, and the rows carry outline numbers (every top-level row is numbered in order: here All construction is 2, its summary 2.1, the tasks in that 2.1.1 and 2.1.2)', nest.top[3] === 6000000 + 4500000 + 9000000 && nest.frame[0] === 1 && nest.frame[1] === 2 && /\| 2 All construction/.test(nest.codes) && /2\.1 Frame package/.test(nest.codes) && /2\.1\.1 Site work/.test(nest.codes) && /2\.2 Structure and envelope/.test(nest.codes), JSON.stringify(nest).slice(0, 300));
+
+  check('all of that grouping (three summaries, nested, with their phase changed back and forth) moved no number since the last edit of a task\'s own dates', (await nums(p)) === N1, '');
+
+  /* ---- 3 the outline holds together ---- */
+  const bad = await p.evaluate(() => { const T0 = bkLoad().devGantt.tasks, idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n), id = n => T0.filter(t => t.name === n)[0].id, out = {};
+    const par = n => bkLoad().devGantt.tasks.filter(t => t.name === n)[0].parent;
+    bkDevGanttField(idx('All construction'), 'parent', id('Site work and foundations')); out.underLeaf = par('All construction');
+    bkDevGanttField(idx('All construction'), 'parent', id('All construction')); out.self = par('All construction');
+    bkDevGanttField(idx('All construction'), 'parent', id('Frame package')); out.cycle = par('All construction');
+    bkDevGanttField(idx('Permits and fees'), 'parent', 'nope'); out.missing = par('Permits and fees') === id('Soft items');
+    out.order = bkLoad().devGantt.tasks.map(t => t.name).join('|'); return out; });
+  check('a task cannot be put under a task that is not a summary, inside itself, or inside a summary that is inside it; a link to nothing changes nothing', bad.underLeaf === '' && bad.self === '' && bad.cycle === '' && bad.missing === true, JSON.stringify(bad).slice(0, 260));
+  const order = await p.evaluate(() => { const T = bkLoad().devGantt.tasks, kids = {}; T.forEach(t => { if (t.parent) (kids[t.parent] = kids[t.parent] || []).push(t.id); }); const pos = {}; T.forEach((t, i) => { pos[t.id] = i; });
+    const contiguous = T.filter(t => t.summary).every(sm => { const d = []; (function w(k) { (kids[k] || []).forEach(c => { d.push(pos[c]); w(c); }); })(sm.id); if (!d.length) return true; const lo = Math.min.apply(null, d), hi = Math.max.apply(null, d); return lo === pos[sm.id] + 1 && hi - lo + 1 === d.length; });
+    return { contiguous, names: T.map(t => t.name).join('|') }; });
+  check('the task list stays in outline order: every summary is followed directly by everything inside it', order.contiguous === true, order.names);
+  const corrupt = await p.evaluate(() => { const s = bkLoad(), T = s.devGantt.tasks.map(t => Object.assign({}, t)), by = n => T.filter(t => t.name === n)[0];
+    by('Design and engineering').parent = 'ghost'; by('Site work and foundations').parent = by('Site work and foundations').id; const a = by('Frame package'), c = by('All construction'); a.parent = c.id; c.parent = a.id;
+    s.devGantt = Object.assign({}, s.devGantt, { tasks: T }); bkSave(s); let ok = true, sc = null, M = null; try { sc = bkDevGanttSchedule(bkLoad(), bkDevV09()); M = bkDevGanttModel(bkLoad()); showSheet('Dev Schedule'); } catch (e) { ok = e.message; }
+    return { ok, warn: sc ? sc.warnings.join(' | ') : '', rows: M ? M.rows.filter(r => r.id && !r.linked).length : 0, n: sc ? sc.tasks.length : 0, grid: document.querySelectorAll('.bk-gx tr[data-id]').length }; });
+  check('saved data with a missing parent, a task that is its own parent, or a loop of summaries is shown at the top level with a note and never throws (no task is lost from the sheet)', corrupt.ok === true && /not on the schedule/.test(corrupt.warn) && /loop/.test(corrupt.warn) && corrupt.n === 10 && corrupt.rows === 10 && corrupt.grid === 10, JSON.stringify(corrupt).slice(0, 300));
+  await p.close();
+
+  /* ---- 4 predecessors on a summary; removing a summary ---- */
+  p = await open(V, LINES);
+  await p.evaluate(() => { bkDevBudgetToTasks(); });
+  const pr = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n), id = n => bkLoad().devGantt.tasks.filter(t => t.name === n)[0].id;
+    bkDevGanttAddSummary(); let T = bkLoad().devGantt.tasks, sm = T[T.length - 1]; bkDevGanttField(T.length - 1, 'name', 'Early work'); bkDevGanttField(idx('Permits and fees'), 'parent', sm.id); bkDevGanttField(idx('Design and engineering'), 'parent', sm.id);
+    /* FF&E follows the summary: it starts after the last task inside it finishes */
+    bkDevGanttField(idx('FF&E'), 'preds', String(idx('Early work') + 1) + '+1'); const sc = bkDevGanttSchedule(bkLoad(), bkDevV09()), t = n => sc.tasks.filter(q => q.name === n)[0];
+    const out = { ffe: [t('FF&E').ES, t('FF&E').EF], last: Math.max(t('Permits and fees').EF, t('Design and engineering').EF), preds: bkLoad().devGantt.tasks.filter(q => q.name === 'FF&E')[0].preds, early: [t('Early work').ES, t('Early work').EF], warn: sc.warnings.join('|') };
+    bkDevGanttField(idx('Permits and fees'), 'preds', String(idx('Early work') + 1)); out.self = bkDevGanttSchedule(bkLoad(), bkDevV09()).warnings.join('|'); out.selfES = bkDevGanttSchedule(bkLoad(), bkDevV09()).tasks.filter(q => q.name === 'Permits and fees')[0].ES; return out; });
+  check('a predecessor that is a summary task means after the last task inside it finishes (FF&E, with a one-month lag, starts the month after the Early work summary ends)', pr.ffe[0] === pr.last + 1 + 1 && pr.preds.length === 1 && pr.early[1] === pr.last, JSON.stringify(pr).slice(0, 260));
+  check('a task cannot follow the summary it sits in (the link is ignored and the schedule says why)', /cannot follow Early work/.test(pr.self) && pr.selfES === 2, pr.self);
+  const rmv = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttField(idx('Permits and fees'), 'preds', '');
+    const sc0 = bkDevGanttSchedule(bkLoad(), bkDevV09()), win0 = sc0.tasks.filter(t => !t.summary).map(t => t.name + ':' + t.ES + '-' + t.EF).join('|'), n0 = bkLoad().devGantt.tasks.length;
+    bkDevGanttRemove(idx('Early work')); const T = bkLoad().devGantt.tasks, sc = bkDevGanttSchedule(bkLoad(), bkDevV09()), win1 = sc.tasks.filter(t => !t.summary).map(t => t.name + ':' + t.ES + '-' + t.EF).join('|');
+    const ffe = T.filter(t => t.name === 'FF&E')[0]; return { win0, win1, n0, n1: T.length, kept: ['Permits and fees', 'Design and engineering'].every(n => T.some(t => t.name === n && !t.parent)), ffePreds: ffe.preds.map(q => T.filter(t => t.id === q.id)[0].name + '+' + q.lag).sort().join(',') }; });
+  check('removing a summary task keeps the tasks inside it (they move up a level) and a task that followed it now follows each of them with the same lag, so no date moves', rmv.win0 === rmv.win1 && rmv.n1 === rmv.n0 - 1 && rmv.kept && rmv.ffePreds === 'Design and engineering+1,Permits and fees+1', JSON.stringify(rmv).slice(0, 300));
+  await p.close();
+
+  /* ---- 5 % complete ---- */
+  const L2 = [{ cls: 'hard', name: 'Frame', amount: 1000000, start: '', len: '' }, { cls: 'hard', name: 'Finishes', amount: 3000000, start: '', len: '' }];
+  p = await open(V, L2);
+  await p.evaluate(() => { bkDevBudgetToTasks({ wbs: true }); });
+  const N5 = await nums(p);
+  const pe = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n), get = n => bkLoad().devGantt.tasks[idx(n)].pct, out = {};
+    bkDevGanttField(idx('Frame'), 'pct', '60%'); out.pct60 = get('Frame'); bkDevGanttField(idx('Frame'), 'pct', '150'); out.over = get('Frame'); bkDevGanttField(idx('Frame'), 'pct', '-5'); out.neg = get('Frame'); bkDevGanttField(idx('Frame'), 'pct', 'abc'); out.junk = get('Frame');
+    bkDevGanttField(idx('Frame'), 'pct', '12.34'); out.dec = get('Frame'); bkDevGanttField(idx('Frame'), 'pct', ''); out.cleared = 'pct' in bkLoad().devGantt.tasks[idx('Frame')]; bkDevGanttField(idx('Hard cost'), 'pct', '50'); out.sum = 'pct' in bkLoad().devGantt.tasks[idx('Hard cost')]; return out; });
+  check('% complete entry: "60%" is 60, 150 is held at 100, -5 at 0, text is ignored, one decimal is kept, blank clears it, and a summary cannot be given one', pe.pct60 === 60 && pe.over === 100 && pe.neg === 0 && pe.junk === 0 && pe.dec === 12.3 && pe.cleared === false && pe.sum === false, JSON.stringify(pe));
+  const w1 = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttField(idx('Frame'), 'pct', '100'); bkDevGanttField(idx('Finishes'), 'pct', '0'); const M = bkDevGanttModel(), by = n => M.sc.tasks.filter(t => t.name === n)[0], R = M.roll;
+    return { hard: R.by[by('Hard cost').id], tot: R.total }; });
+  check('a summary\'s % complete is weighted by cost: $1,000,000 at 100% and $3,000,000 at 0% is 25%, and the whole schedule says the same', Math.abs(w1.hard.pct - 25) < 1e-9 && w1.hard.basis === 'cost' && Math.abs(w1.tot.pct - 25) < 1e-9 && Math.abs(w1.tot.done - 1000000) < 1 && Math.abs(w1.tot.amt - 4000000) < 1, JSON.stringify([w1.hard, w1.tot]));
+  const w2 = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttField(idx('Finishes'), 'pct', '50'); const M = bkDevGanttModel(), by = n => M.sc.tasks.filter(t => t.name === n)[0]; return M.roll.by[by('Hard cost').id].pct; });
+  check('and it follows the entry: Finishes at 50% makes the summary (1,000,000 x 100% + 3,000,000 x 50%) / 4,000,000 = 62.5%', Math.abs(w2 - 62.5) < 1e-9, w2);
+  check('entering % complete moves no number: windows, hard and soft cost, construction months, funding, equity and IRR are exactly what they were', (await nums(p)) === N5, '');
+  const nopct = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttField(idx('Frame'), 'pct', ''); bkDevGanttField(idx('Finishes'), 'pct', ''); const M = bkDevGanttModel(), by = n => M.sc.tasks.filter(t => t.name === n)[0]; return { sum: M.roll.by[by('Hard cost').id].pct, any: M.roll.any, tot: M.roll.total.pct }; });
+  check('a summary shows nothing (not 0%) until a task inside it has a percent', nopct.sum === null && nopct.any === false && nopct.tot === null, JSON.stringify(nopct));
+  await p.close();
+  /* no cost tied: weighted by months */
+  p = await open(V, null);
+  await p.evaluate(() => { bkDevGanttMode('tasks'); });
+  const mo = await p.evaluate(() => { const T0 = bkLoad().devGantt.tasks, a = T0.filter(t => t.group === 'construction')[1], c = T0.filter(t => t.group === 'construction')[2]; bkDevGanttAddSummary(); let T = bkLoad().devGantt.tasks, sm = T[T.length - 1]; bkDevGanttField(T.length - 1, 'name', 'Shell');
+    const idx = id => bkLoad().devGantt.tasks.findIndex(t => t.id === id); bkDevGanttField(idx(a.id), 'parent', sm.id); bkDevGanttField(idx(c.id), 'parent', sm.id); bkDevGanttField(idx(a.id), 'pct', '100'); bkDevGanttField(idx(c.id), 'pct', '0');
+    const M = bkDevGanttModel(), by = id => M.sc.tasks.filter(t => t.id === id)[0], da = by(a.id).EF - by(a.id).ES + 1, dc = by(c.id).EF - by(c.id).ES + 1, e = M.roll.by[sm.id]; return { got: e.pct, want: da / (da + dc) * 100, basis: e.basis, amt: e.amt, tile: M.roll.total.basis }; });
+  check('with no cost tied to its tasks a summary is weighted by months ((months of the finished task) / (all months), here ' + mo.want.toFixed(2) + '%)', Math.abs(mo.got - mo.want) < 1e-9 && mo.basis === 'months' && mo.amt === 0 && mo.tile === 'months', JSON.stringify(mo));
+  await p.close();
+
+  /* ---- 6 group by cost class ---- */
+  p = await open(V, LINES);
+  const N6 = await nums(p);
+  const grp = await p.evaluate(() => { const r = bkDevBudgetToTasks({ wbs: true }), T = bkLoad().devGantt.tasks, byId = {}; T.forEach(t => { byId[t.id] = t; }); const parentOf = n => (byId[T.filter(t => t.name === n && !t.summary)[0].parent] || {}).name;
+    return { r, names: T.filter(t => t.summary).map(t => t.name + '/' + t.auto + '/' + t.group), p: ['Site work and foundations', 'Structure and envelope', 'Mechanical, electrical, plumbing', 'Hard cost contingency', 'Design and engineering', 'Permits and fees', 'FF&E'].map(parentOf), order: T.map(t => t.name).join('|') }; });
+  check('"Make every line a task" groups the tasks: Hard cost (3 tasks), Contingency, Soft cost (2 tasks) and FF&E summaries, each task under the right one', grp.r && grp.r.grouped && grp.r.grouped.made === 4 && grp.r.grouped.moved === 7 && grp.p.join(',') === 'Hard cost,Hard cost,Hard cost,Contingency,Soft cost,Soft cost,FF&E' && grp.names.length === 4, JSON.stringify(grp).slice(0, 330));
+  check('hard cost and contingency summaries are Construction; soft cost and FF&E summaries are Other; the list is in outline order', grp.names.join(' ') === 'Hard cost/hard/construction Contingency/cont/construction Soft cost/soft/other FF&E/ffe/other' && /^Hard cost\|Site work and foundations\|Structure and envelope\|Mechanical, electrical, plumbing\|Contingency\|Hard cost contingency\|Soft cost\|Design and engineering\|Permits and fees\|FF&E\|FF&E$/.test(grp.order), grp.order);
+  check('grouping moves no number: every window, the hard and soft totals, construction months, funding, equity and IRR are exactly what they were before the tasks were made', (await nums(p)) === N6, '');
+  const idem = await p.evaluate(() => { const before = JSON.stringify(bkLoad().devGantt.tasks), r = bkDevWbsByClass(); return { r, same: before === JSON.stringify(bkLoad().devGantt.tasks) }; });
+  check('running it again changes nothing (idempotent)', idem.r && idem.r.made === 0 && idem.r.moved === 0 && idem.same, JSON.stringify(idem));
+  const keepOrg = await p.evaluate(() => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttAddSummary(); let T = bkLoad().devGantt.tasks, mine = T[T.length - 1]; bkDevGanttField(T.length - 1, 'name', 'Mine'); bkDevGanttField(idx('Permits and fees'), 'parent', mine.id);
+    bkDevGanttMode('tasks'); const s = bkLoad(); s.budgetLines = s.budgetLines.concat([{ cls: 'hard', name: 'Hoist', amount: 250000, start: 8, len: 6, task: '' }]); bkSave(s); const r1 = bkDevBudgetToTasks({ wbs: true }); T = bkLoad().devGantt.tasks; const par = n => { const t = T.filter(q => q.name === n)[0]; return (T.filter(q => q.id === t.parent)[0] || {}).name; };
+    return { permits: par('Permits and fees'), hoist: par('Hoist'), nSum: T.filter(t => t.summary).length, r1: r1 && r1.grouped }; });
+  check('a task you already put under a summary of your own is left where you put it; a new costed task is picked up into its cost-class summary (Hoist goes under Hard cost, no duplicate summary)', keepOrg.permits === 'Mine' && keepOrg.hoist === 'Hard cost' && keepOrg.nSum === 5 && keepOrg.r1 && keepOrg.r1.made === 0 && keepOrg.r1.moved === 1, JSON.stringify(keepOrg));
+  const ung = await p.evaluate(() => { const r = bkDevWbsUngroup(), T = bkLoad().devGantt.tasks; return { r, sums: T.filter(t => t.summary).map(t => t.name), top: T.filter(t => !t.parent && !t.summary).length, n: T.length }; });
+  check('"Remove cost-class groups" takes out the four generated summaries, keeps the one you made and every task, and moves no number', ung.r && ung.r.removed === 4 && ung.sums.join() === 'Mine' && ung.n === 9, JSON.stringify(ung));
+  await p.close();
+
+  /* ---- 7 the sheet ---- */
+  p = await open(V, LINES);
+  await p.evaluate(() => { try { localStorage.removeItem('bkcapital.gx.fold'); } catch (e) {} bkDevBudgetToTasks({ wbs: true }); const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n);
+    bkDevGanttField(idx('Site work and foundations'), 'pct', '100'); bkDevGanttField(idx('Structure and envelope'), 'pct', '50'); bkDevGanttField(idx('Mechanical, electrical, plumbing'), 'pct', '0'); bkDevGanttField(idx('Design and engineering'), 'pct', '100'); });
+  const sh = await p.evaluate(async () => { try { bkGuideOff(); } catch (e) {} showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 1000)); const g = document.querySelector('.bk-gx'), rows = [...g.querySelectorAll('tbody tr[data-id]')];
+    const txt = n => { const r = rows.filter(x => x.children[1].innerText.replace(/\s+/g, ' ').indexOf(n) >= 0)[0]; return r ? r.innerText.replace(/\s+/g, ' ') : ''; };
+    return { folds: g.querySelectorAll('.gx-fold').length, sumRows: g.querySelectorAll('tr[data-wbs]').length, hdr: [...g.querySelectorAll('thead th')].map(t => t.innerText.trim()).join('|'), hard: txt('Hard cost ·'), site: txt('Site work'), pcts: [...g.querySelectorAll('td[data-pct]')].length, tile: (document.querySelector('.bk-gs-tiles') || {}).innerText || '', indent: rows.filter(r => /^\s*1\.1/.test(r.children[1].innerText)).length, aria: g.querySelector('.gx-fold').getAttribute('aria-expanded') }; });
+  check('the sheet shows a fold box on each summary, outline numbers on the tasks, and a "% done" column', sh.folds === 4 && sh.sumRows === 4 && /% done/.test(sh.hdr) && /1\.1 Site work/.test(sh.site) && /1 Hard cost · 3 tasks/.test(sh.hard) && sh.aria === 'true', JSON.stringify(sh).slice(0, 300));
+  check('the summary row carries its rolled-up cost and %: Hard cost $19,500,000 and (6.0M x 100 + 9.0M x 50 + 4.5M x 0) / 19.5M = 53.85% (shown with two decimals, as every percentage in the app is)', /\$19,500,000/.test(sh.hard) && /53\.85%/.test(sh.hard) && /100\.00%/.test(sh.site) && sh.pcts === 8, sh.hard);
+  check('the Work complete tile reads the same number the rows do: $ done of $ in the budget tied to tasks', /Work complete/i.test(sh.tile) && /\$/.test(sh.tile) && /\$11\.40M of \$22\.60M/.test(sh.tile) && /\d+\.\d\d%/.test(sh.tile), sh.tile.replace(/\s+/g, ' '));
+  const prog = await p.evaluate(() => { const g = document.querySelector('.bk-gx'), idOf = n => bkLoad().devGantt.tasks.filter(t => t.name === n)[0].id, row = n => g.querySelector('tr[data-id="' + idOf(n) + '"]'), cnt = (n, k) => row(n).querySelectorAll('td[data-done="' + k + '"]').length, bar = n => row(n).querySelectorAll('td[data-bar]').length;
+    return { site: [bar('Site work and foundations'), cnt('Site work and foundations', 'full'), cnt('Site work and foundations', 'part')], struct: [bar('Structure and envelope'), cnt('Structure and envelope', 'full'), cnt('Structure and envelope', 'part')], mep: [bar('Mechanical, electrical, plumbing'), cnt('Mechanical, electrical, plumbing', 'full'), cnt('Mechanical, electrical, plumbing', 'part')] }; });
+  check('progress shading: a finished task\'s bar is all dark (18 of 18 months), a task at 50% is dark for the first half (9 of 18 months), a task at 0% has none', prog.site[0] === 18 && prog.site[1] === 18 && prog.site[2] === 0 && prog.struct[0] === 18 && prog.struct[1] === 9 && prog.struct[2] === 0 && prog.mep[1] === 0 && prog.mep[2] === 0, JSON.stringify(prog));
+  const part = await p.evaluate(async () => { const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttField(idx('Mechanical, electrical, plumbing'), 'pct', '25'); showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 700)); const g = document.querySelector('.bk-gx'), id = bkLoad().devGantt.tasks.filter(t => t.name === 'Mechanical, electrical, plumbing')[0].id, row = g.querySelector('tr[data-id="' + id + '"]'); return { bar: row.querySelectorAll('td[data-bar]').length, full: row.querySelectorAll('td[data-done="full"]').length, part: row.querySelectorAll('td[data-done="part"]').length }; });
+  check('a month the progress ends inside is shaded by the part of it that is done (a 10-month task at 25% is 2 whole months and half of the third)', part.bar === 10 && part.full === 2 && part.part === 1, JSON.stringify(part));
+  const f0 = await p.evaluate(() => { const g = document.querySelector('.bk-gx'), text = () => g.innerText.replace(/\s+/g, ' '), tid = n => bkLoad().devGantt.tasks.filter(t => t.name === n)[0].id; const hidden = () => [...g.querySelectorAll('tr[data-id]')].filter(r => r.style.display === 'none').map(r => r.getAttribute('data-id'));
+    const secCost = () => (text().match(/Construction[^$]*\$([\d,]+)/) || [])[1]; const before = { cost: secCost(), hidden: hidden().length, cash: (text().match(/Cash spent by month[^$]*\$([\d,]+)/) || [])[1] };
+    const hid = tid('Hard cost'); bkGxFold(hid); const after = { cost: secCost(), hidden: hidden(), cash: (text().match(/Cash spent by month[^$]*\$([\d,]+)/) || [])[1], glyph: g.querySelector('tr[data-id="' + hid + '"] .gx-fold').innerText, aria: g.querySelector('tr[data-id="' + hid + '"] .gx-fold').getAttribute('aria-expanded'), label: g.querySelector('tr[data-id="' + hid + '"] .gx-fold').getAttribute('aria-label') };
+    const kids = ['Site work and foundations', 'Structure and envelope', 'Mechanical, electrical, plumbing'].map(tid); const stored = JSON.parse(localStorage.getItem('bkcapital.gx.fold') || '{}');
+    return { before, after, kidsHidden: kids.every(k => after.hidden.indexOf(k) >= 0), others: after.hidden.length, stored: Object.keys(stored).length, name: bkLoad().name }; });
+  check('folding Hard cost hides exactly the three tasks inside it (the summary row, the other summaries and their tasks stay); the glyph and aria-expanded flip; every total is unchanged', f0.kidsHidden && f0.others === 3 && f0.after.glyph === '+' && f0.after.aria === 'false' && /Expand/.test(f0.after.label) && f0.before.cost === f0.after.cost && f0.before.cash === f0.after.cash, JSON.stringify(f0).slice(0, 320));
+  const f1 = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 700)); const g = document.querySelector('.bk-gx'); const hid = [...g.querySelectorAll('tr[data-id]')].filter(r => r.style.display === 'none').length; const key = JSON.parse(localStorage.getItem('bkcapital.gx.fold') || '{}'); return { hid, keys: Object.keys(key), glyph: g.querySelector('.gx-fold').innerText }; });
+  check('the fold is kept when the sheet is redrawn, and is stored in this browser for this deal (not in the deal itself)', f1.hid === 3 && f1.keys.length === 1 && f1.glyph === '+' && !JSON.stringify(await p.evaluate(() => bkLoad().devGantt)).includes('collapsed'), JSON.stringify(f1));
+  const f2 = await p.evaluate(async () => { const g = document.querySelector('.bk-gx'); const btns = [...document.querySelectorAll('#viewport button')]; const find = t => btns.filter(b => b.innerText.trim() === t)[0];
+    find('Collapse all').click(); await new Promise(r => setTimeout(r, 100)); const h1 = [...document.querySelectorAll('.bk-gx tr[data-id]')].filter(r => r.style.display === 'none').length; find('Expand all').click(); await new Promise(r => setTimeout(r, 100)); const h2 = [...document.querySelectorAll('.bk-gx tr[data-id]')].filter(r => r.style.display === 'none').length; return { h1, h2 }; });
+  check('"Collapse all" folds every summary (all 7 tasks hidden) and "Expand all" shows them again', f2.h1 === 7 && f2.h2 === 0, JSON.stringify(f2));
+  await p.evaluate(() => { bkGxFold(bkLoad().devGantt.tasks.filter(t => t.name === 'Soft cost')[0].id); });
+  await p.evaluate(([d, L]) => { const d2 = Object.assign({}, d, { name: 'Another deal', dealId: 'TEST-DEV-2' }); bkCreateNewDeal(d2); const s = bkLoad(); Object.assign(s, d2); s.devBudgetMode = 'LINES'; s.budgetLines = L; bkSave(s); bkDevBudgetToTasks({ wbs: true }); }, [V, LINES]);
+  const f3 = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 800)); const g = document.querySelector('.bk-gx'); return { hidden: g ? [...g.querySelectorAll('tr[data-id]')].filter(r => r.style.display === 'none').length : -1, name: bkLoad().name }; });
+  check('another deal with the very same task ids does not inherit the first deal\'s folds', f3.hidden === 0 && f3.name === 'Another deal', JSON.stringify(f3));
+  const flat = await p.evaluate(async () => { const s = bkLoad(); s.devGantt = { mode: 'tasks', tasks: s.devGantt.tasks.filter(t => !t.summary).map(t => Object.assign({}, t, { parent: '', pct: undefined })) }; bkSave(s); showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 800)); const g = document.querySelector('.bk-gx'); return { folds: g.querySelectorAll('.gx-fold').length, pct: g.querySelectorAll('td[data-pct]').length, hdr: [...g.querySelectorAll('thead th')].map(t => t.innerText.trim()).join('|'), tiles: document.querySelectorAll('.bk-gs-tiles .bk-gs-tile').length, wbs: g.querySelectorAll('tr[data-wbs]').length }; });
+  check('a schedule with no summary task and no percent looks exactly as before: no fold boxes, no % column, seven summary tiles', flat.folds === 0 && flat.pct === 0 && !/% done/.test(flat.hdr) && flat.tiles === 7 && flat.wbs === 0, JSON.stringify(flat));
+  await p.close();
+
+  /* ---- 8 the task table, the Budget panel, the printable summary ---- */
+  p = await open(V, LINES);
+  await p.evaluate(() => { bkDevBudgetToTasks({ wbs: true }); const idx = n => bkLoad().devGantt.tasks.findIndex(t => t.name === n); bkDevGanttField(idx('Site work and foundations'), 'pct', '100'); bkDevGanttField(idx('Design and engineering'), 'pct', '40'); });
+  const tb = await p.evaluate(async () => { try { bkGuideOff(); } catch (e) {} showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 1000)); const t = [...document.querySelectorAll('#viewport table')].filter(x => /Tasks, dependencies and critical path/.test(x.innerText))[0], rows = [...t.querySelectorAll('tbody tr.input')], hdr = [...t.querySelectorAll('thead th')].map(h => h.innerText.replace(/\s+/g, ' ').trim());
+    const sumRows = rows.filter(r => !r.querySelector('input[onchange*="\'dur\'"]')), leafRows = rows.filter(r => r.querySelector('input[onchange*="\'dur\'"]')), parentSel = leafRows[0].querySelector('select[onchange*="\'parent\'"]');
+    return { hdr: hdr.join('|'), sum: sumRows.length, leaf: leafRows.length, pctIn: leafRows.filter(r => r.querySelector('input[onchange*="\'pct\'"]')).length, parOpts: [...parentSel.options].map(o => o.text).join('|'), sumText: sumRows[0].innerText.replace(/\s+/g, ' '), pctVal: leafRows[0].querySelector('input[onchange*="\'pct\'"]').value, errs: 0 }; });
+  check('the task table has a Summary task column and a % done column; each summary row shows its roll-up and has no duration or predecessor boxes; every task has a % box', /Summary task/.test(tb.hdr) && /% done/.test(tb.hdr) && tb.sum === 4 && tb.leaf === 7 && tb.pctIn === 7 && /Summary of 3 tasks/.test(tb.sumText), JSON.stringify(tb).slice(0, 320));
+  check('the Summary task select lists the summaries only (None, Hard cost, Contingency, Soft cost, FF&E)', /^None \(top level\)\|1\. Hard cost\|\d+\. Contingency\|\d+\. Soft cost\|\d+\. FF&E$/.test(tb.parOpts), tb.parOpts);
+  const mv = await p.evaluate(() => { const T = () => bkLoad().devGantt.tasks, idx = n => T().findIndex(t => t.name === n), id = n => T().filter(t => t.name === n)[0].id; bkDevGanttField(idx('Permits and fees'), 'parent', id('Hard cost')); const t = T().filter(q => q.name === 'Permits and fees')[0], names = T().map(q => q.name); const hc = names.indexOf('Hard cost');     const M = bkDevGanttModel(), by = n => M.sc.tasks.filter(q => q.name === n)[0]; return { parent: t.parent === id('Hard cost'), after: names.slice(hc, hc + 6).join('|'), hardAmt: Math.round(M.roll.by[by('Hard cost').id].amt), softAmt: Math.round(M.roll.by[by('Soft cost').id].amt) }; });
+  check('choosing a Summary task for a task moves it there: it follows the summary in the list, the old summary loses its cost and the new one gains it', mv.parent && /^Hard cost\|Site work and foundations\|Structure and envelope\|Mechanical, electrical, plumbing\|Permits and fees\|Contingency/.test(mv.after) && mv.hardAmt === 6000000 + 9000000 + 4500000 + 700000 && mv.softAmt === 900000, JSON.stringify(mv));
+  const bp = await p.evaluate(async () => { bkEdGo('Investment', 'Investment', 'bud'); await new Promise(r => setTimeout(r, 1100)); const sels = [...document.querySelectorAll('#viewport .ae-grid tbody tr select[onchange*="\'task\'"]')]; const opts = sels.length ? [...sels[0].options].map(o => o.text) : []; return { n: sels.length, opts }; });
+  check('the Budget panel\'s "Gantt task" list offers the tasks only (the follow-the-phase choice and seven tasks), never a summary', bp.n === 7 && bp.opts.length === 8 && bp.opts.filter(o => /^\d+\. (Hard cost|Contingency|Soft cost)$/.test(o)).length === 0 && bp.opts.filter(o => /FF&E/.test(o)).length === 1, JSON.stringify(bp).slice(0, 300));
+  const rp = await p.evaluate(async () => { showSheet('Dev Schedule'); await new Promise(r => setTimeout(r, 800)); bkDevScheduleReport(); await new Promise(r => setTimeout(r, 1800)); const pages = [...document.querySelectorAll('#bk-sr .sr-page')]; const over = pages.map(pg => { const bd = pg.querySelector('.sr-body'); return bd ? bd.scrollHeight > bd.clientHeight + 2 : false; }).filter(Boolean).length; const all = pages.map(pg => pg.innerText).join('\n');
+    return { n: pages.length, over, brackets: [...document.querySelectorAll('#bk-sr svg title')].filter(t => /\(summary\)/.test(t.textContent)).length, group: /Summary/.test(all), bold: document.querySelectorAll('#bk-sr tr[style*="font-weight:700"]').length, pctHdr: /% done/.test(all), line: /Work complete/.test(all), basis: /Summary tasks group the tasks inside them/.test(all) }; });
+  check('the printable schedule summary draws a dark bracket for each summary task, lists them in bold with their roll-up, adds a % done column and a Work complete line, and no page overflows', rp.n >= 5 && rp.over === 0 && rp.brackets === 4 && rp.bold >= 4 && rp.pctHdr && rp.line && rp.basis, JSON.stringify(rp));
+  check('no page errors in any step', p.errs.length === 0, p.errs.slice(0, 2).join(' | '));
+  await p.close();
+
+  /* ---- 9 the controls, used the way a person uses them (real clicks, typing and keys) ---- */
+  p = await open(V, LINES);
+  await p.evaluate(() => { try { localStorage.removeItem('bkcapital.gx.fold'); bkGuideOff(); } catch (e) {} bkDevBudgetToTasks(); showSheet('Dev Schedule'); });
+  await p.waitForTimeout(1000);
+  const N9 = await nums(p);
+  const vis = () => p.evaluate(() => [...document.querySelectorAll('.bk-gx tr[data-id]')].filter(r => r.style.display !== 'none').length);
+  const hasBtn = (t) => p.evaluate((t) => [...document.querySelectorAll('#viewport button')].some(b => b.innerText.trim() === t), t);
+  const clickBtn = async (t) => { await p.locator('#viewport button', { hasText: t }).first().click(); await p.waitForTimeout(700); };
+  check('with tasks tied to budget lines and no summary yet the toolbar offers "Group 7 costed tasks by cost class" and "+ Summary task" (and no fold buttons yet)', await hasBtn('Group 7 costed tasks by cost class') && await hasBtn('+ Summary task') && !(await hasBtn('Collapse all')), '');
+  await clickBtn('Group 7 costed tasks by cost class');
+  const c1 = await p.evaluate(() => ({ sums: bkLoad().devGantt.tasks.filter(t => t.summary).length, folds: document.querySelectorAll('.bk-gx .gx-fold').length }));
+  check('clicking it groups the tasks (four summaries, four fold boxes) and the numbers are exactly what they were', c1.sums === 4 && c1.folds === 4 && (await nums(p)) === N9, JSON.stringify(c1));
+  const rowsAll = await vis();
+  await p.locator('.bk-gx tr[data-wbs] .gx-fold').first().click(); await p.waitForTimeout(200);
+  const rowsFolded = await vis();
+  check('clicking the fold box of Hard cost hides its three tasks', rowsAll - rowsFolded === 3 && (await p.locator('.bk-gx tr[data-wbs] .gx-fold').first().getAttribute('aria-expanded')) === 'false', rowsAll + ' -> ' + rowsFolded);
+  await p.locator('.bk-gx tr[data-wbs] .gx-fold').first().focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  const afterEnter = await vis();
+  await p.keyboard.press(' '); await p.waitForTimeout(150);
+  const afterSpace = await vis();
+  check('with the keyboard: Enter on the fold box opens it, Space closes it again (the page does not scroll or submit)', afterEnter === rowsAll && afterSpace === rowsFolded, [afterEnter, afterSpace].join());
+  await p.locator('.bk-gx tr[data-wbs] .gx-fold').first().click(); await p.waitForTimeout(150);
+  /* type a percent into the task table, as a person does */
+  const tblRow = (name) => p.locator('#viewport table tr.input', { has: p.locator('input[value="' + name + '"]') });
+  await tblRow('Structure and envelope').locator('input[onchange*="\'pct\'"]').fill('40'); await tblRow('Structure and envelope').locator('input[onchange*="\'pct\'"]').press('Tab'); await p.waitForTimeout(900);
+  const t9 = await p.evaluate(() => { const t = bkLoad().devGantt.tasks.filter(q => q.name === 'Structure and envelope')[0], g = document.querySelector('.bk-gx'); return { pct: t.pct, hdr: /% done/.test(g.querySelector('thead').innerText), pcts: g.querySelectorAll('td[data-pct]').length, tile: /Work complete/i.test(document.querySelector('.bk-gs-tiles').innerText) }; });
+  check('typing 40 into the % done box of a task (and tabbing out) saves it, and the sheet gains its % done column, the in-cell bars and the Work complete tile', t9.pct === 40 && t9.hdr && t9.pcts >= 3 && t9.tile, JSON.stringify(t9));
+  /* the Summary task select */
+  await tblRow('Permits and fees').locator('select[onchange*="\'parent\'"]').selectOption({ label: '1. Hard cost' }); await p.waitForTimeout(900);
+  const s9 = await p.evaluate(() => { const T = bkLoad().devGantt.tasks, t = T.filter(q => q.name === 'Permits and fees')[0], h = T.filter(q => q.name === 'Hard cost')[0]; return { under: t.parent === h.id, names: T.map(q => q.name).slice(T.indexOf(h), T.indexOf(h) + 6).join('|') }; });
+  check('choosing "1. Hard cost" in the Summary task box of Permits and fees moves it under Hard cost', s9.under && /Mechanical, electrical, plumbing\|Permits and fees/.test(s9.names), s9.names);
+  await clickBtn('+ Summary task');
+  const a9 = await p.evaluate(() => { const T = bkLoad().devGantt.tasks; return { n: T.filter(t => t.summary).length, last: T[T.length - 1].name, note: /No tasks inside it yet/.test(document.getElementById('viewport').innerText) }; });
+  check('"+ Summary task" adds an empty summary at the end of the list and the table says it has no tasks yet', a9.n === 5 && a9.last === 'New summary' && a9.note, JSON.stringify(a9));
+  await clickBtn('Remove cost-class groups');
+  const u9 = await p.evaluate(() => { const T = bkLoad().devGantt.tasks; return { sums: T.filter(t => t.summary).map(t => t.name), n: T.length, parentless: T.filter(t => !t.summary && !t.parent).length }; });
+  check('"Remove cost-class groups" takes out the four cost-class summaries and keeps your own empty one and every task', u9.sums.join() === 'New summary' && u9.n === 8 && u9.parentless === 7, JSON.stringify(u9));
+  await p.locator('#viewport table tr.input', { has: p.locator('input[value="New summary"]') }).locator('button', { hasText: 'Remove' }).click(); await p.waitForTimeout(800);
+  const r9 = await p.evaluate(() => { const T = bkLoad().devGantt.tasks; return { n: T.length, sums: T.filter(t => t.summary).length, folds: document.querySelectorAll('.bk-gx .gx-fold').length, hdr: [...document.querySelectorAll('#viewport table')].filter(x => /Tasks, dependencies and critical path/.test(x.innerText))[0].querySelector('thead').innerText.replace(/\s+/g, ' ') }; });
+  check('removing the last summary leaves seven tasks, no fold boxes and no Summary task column (the schedule is back to a flat list)', r9.n === 7 && r9.sums === 0 && r9.folds === 0 && !/Summary task/.test(r9.hdr), JSON.stringify(r9).slice(0, 240));
+  check('no page errors from any of those clicks', p.errs.length === 0, p.errs.slice(0, 2).join(' | '));
+  await p.close();
+  await b.close(); console.log(checks + ' checks, ' + fails + ' failures'); process.exit(fails ? 1 : 0);
+})();

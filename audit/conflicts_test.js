@@ -51,7 +51,8 @@ const T = [
   ['dev.no-construction', 'ERROR', set({ constructionMonths: 0 }), 'DEV', set({ constructionMonths: 18 })],
   ['dev.con-loan-zero-rate', 'ERROR', set({ conRate: 0 }), 'DEV', set({ conRate: 0.075 })],
   ['dev.no-leaseup', 'WARN', set({ leaseupMonths: 0 }), 'DEV', set({ leaseupMonths: 14 })],
-  ['dev.takeout-shortfall', 'WARN', set({ permLTV: 0.2 }), 'DEV', set({ permLTV: 0.9, permDSCR: 1.0 })],   // the base development deal also fires: its DSCR-bound takeout is $225,620 short of the construction payoff
+  ['dev.takeout-shortfall', 'WARN', set({ permLTV: 0.2 }), 'DEV', set({ permLTV: 0.9, permDSCR: 1.0 })],
+  ['dev.hold-before-completion', 'ERROR', set({ holdYears: 2 }), 'DEV', set({ holdYears: 6 })],   // a 2-year hold ends in the month the audit deal's building is completed (month 24): invalid; a sale between completion and stabilization (3 years) is valid and raises no conflict   // the base development deal also fires: its DSCR-bound takeout is $225,620 short of the construction payoff
   ['dev.conventions-ignored', 'INFO', set({ cvRentGrowthStart: 'month1' }), 'DEV', null],
   ['biz.mix-not-100', 'ERROR', BIZ + "bkBizSet('tiers.0.mix',0.9);", 'BIZ', "bkBizSeedPunchlist()"],
   ['biz.terminal-growth-ge-rate', 'ERROR', BIZ + "bkBizSet('dcf.cases.base.g',0.5);", 'BIZ', "bkBizSeedPunchlist()"],

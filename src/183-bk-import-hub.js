@@ -49,6 +49,7 @@ var F = {
   propertyType:{ lab:'Property type', kind:'text', rx:[/^(asset|property|building|project|product) (type|class)$/, /^(proposed )?use$/] },
   purchasePrice:{ lab:'Purchase / land price', kind:'money', min:10000, rx:[new RegExp('^' + W('offer|offering|asking|purchase|purchasing|list|listing|guidance|contract|acquisition|sale|seller|land|bid|buy', 'price|cost|basis|amount|value')), /^price$/, /^(asking|offer|bid|list)$/, /^acquisition$/], no:/per |\/|psf|implied|unit|\bsf\b|cap |closing|capital|cost of sale|fee|cost basis per|reserve|tax|assess/ },
   units:{ lab:'Units', kind:'int', min:1, max:20000, rx:[/^(total |proposed |planned |approved |residential |apartment |dwelling |rental |number of |no\.? of |# of |#)?(apartments?|units?|doors?|dwellings?|unit count|apartment count)( count| total)?$/, /^(number|count|total|no\.?|#)( of)? (apartments?|units?|doors?|dwellings?)/, /^units? \(?total\)?$/], no:/per |mix|type|vacant|occupied|rent|sf|size/ },
+  gla:{ lab:'Leasable area (GLA / NRA, SF)', kind:'area', min:500, rx:[/^(gla|nra|nrsf|nra sf)$/, /(gross )?leasable (area|sf|square f)/, /^(net )?rentable (building )?(area|sf|square f)/, /^net rentable/, /^total (leasable|rentable)/, /^rentable sq ?(ft|feet)/] },
   gsf:{ lab:'Gross building area (SF)', kind:'area', min:500, rx:[/gross (building |floor |buildable )?(area|sf|square f)/, /^gba$/, /^gross sf$/, /^building (size|area|sf)\b/, /^total (building )?(sf|square f)/, /^building sq ?(ft|feet)/], no:/rentable|net|existing/ },
   siteArea:{ lab:'Site area (acres)', kind:'acres', rx:[/(site|land|lot|parcel) (area|size)\b/, /^acreage$/, /^acres$/, /^gross land area$/, /^lot$/] },
   conLTC:{ lab:'Construction loan-to-cost', kind:'pct', rx:[/loan.to.cost/, /\bltc\b/], no:/max|ceiling/ },
@@ -72,12 +73,12 @@ var F = {
   rm:{ lab:'Repairs and maintenance (annual $)', kind:'money', rx:[/^repairs?( (&|and) maintenance)?$/, /^maintenance( (&|and) repairs?)?$/, /^r ?& ?m$/, /^(repairs|maintenance)( and| &)? ?(repairs|maintenance)?$/], no:/reserve|capital|cap ?ex/ },
   payroll:{ lab:'Payroll / administration (annual $)', kind:'money', rx:[/^payroll/, /^(general )?(&|and)? ?admin(istration|istrative)?$/, /^(on.?site )?(staff|personnel|salaries)/] },
   mgmtPct:{ lab:'Management fee (% of income)', kind:'pct', max:0.2, rx:[/^(property |asset )?(management|mgmt|manager)( fee)?$/] },
-  sourceConstruction:{ lab:'Hard construction cost', kind:'money', min:10000, rx:[/^(total )?hard (costs?|construction( costs?)?)$/, /^construction (hard )?costs?$/, /^hard construction$/, /^base building (cost|construction)$/, /^(total )?construction (budget|cost)$/], no:/contingen|per |psf/ },
+  sourceConstruction:{ lab:'Construction budget (hard + soft)', kind:'money', min:10000, rx:[/^(total )?hard (costs?|construction( costs?)?)$/, /^construction (hard )?costs?$/, /^hard construction$/, /^base building (cost|construction)$/, /^(total )?construction (budget|cost)$/], no:/contingen|per |psf/ },
   predevMonths:{ lab:'Pre-development period (months)', kind:'months', rx:[/pre.?development (period|duration|months|term)/, /entitlement (period|duration|months)/] },
   constructionMonths:{ lab:'Construction period (months)', kind:'months', rx:[/construction (period|duration|months|term|schedule)\b/, /^months of construction/, /^build.?out (period|months)/] },
   leaseupMonths:{ lab:'Lease-up period (months)', kind:'months', rx:[/lease.?up (period|duration|months|term)/, /absorption (period|months)/] },
   pref:{ lab:'Preferred return', kind:'pct', max:0.5, rx:[/^(lp |investor )?(cumulative )?(preferred return|pref(erred)? (return|rate)|pref)/] },
-  gpShare:{ lab:'GP / sponsor equity share', kind:'pct', max:0.9, rx:[/^(gp|sponsor)( co.?invest(ment)?)?( equity)?( share| %| percent| contribution)?$/, /^gp co.?invest/] }
+  gpShare:{ lab:'GP equity contribution (% of equity)', kind:'pct', max:0.9, rx:[/^(gp|sponsor)( co.?invest(ment)?)?( equity)?( share| %| percent| contribution)?$/, /^gp co.?invest/] }
 };
 /* facts with no model input yet: kept and listed */
 var NOINPUT = [ ['Total development budget', /^total (project |development )?(budget|cost)\b|^total development budget|^all.in (project )?cost/], ['Soft costs', /^(total )?soft (development )?costs?$/], ['Contingency', /^(hard[- ]costs? |hard |soft |total |project )?contingency$/],
@@ -162,7 +163,7 @@ function tables(sh, file, out, ctx){
       var m;
       if(/preferred return|pref\b/.test(L) && (m = /(\d+(?:\.\d+)?)\s*%/.exec(desc))) out.push({ label:'pref', v:{ n:parseFloat(m[1]) / 100, unit:'pct', text:m[1] + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:full.slice(0, 90), derived:true, direct:'pref' });
       if(/catch.?up/.test(L) && gpv != null) out.push({ label:'gpCatchup', v:{ n:gpv, unit:'pct', text:(gpv * 100) + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:'GP share during catch-up: ' + full.slice(0, 80), derived:true, direct:'gpCatchup' });
-      if(/return of (contributed )?capital|return of capital|pro.?rata/.test(L) && gpv != null && gpv > 0) out.push({ label:'gpShare', v:{ n:gpv, unit:'pct', text:(gpv * 100) + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:'GP share of capital: ' + full.slice(0, 80), derived:true, direct:'gpShare' });
+      if(strs.some(function(x){ return /return of (contributed )?capital|pro.?rata/.test(nl(x)); }) && gpv != null && gpv > 0) out.push({ label:'gpShare', v:{ n:gpv, unit:'pct', text:(gpv * 100) + '%' }, file:file, sheet:sh.name, row:b.row + 1, note:'GP share of capital: ' + full.slice(0, 80), derived:true, direct:'gpShare' });
       var tiers = /irr/.test(L) ? desc.match(/(\d+(?:\.\d+)?)\s*%/g) : null; if(tiers && lpv != null){ var hi = parseFloat(tiers[tiers.length - 1]) / 100, key = /above|over|exceed|>/.test(L) ? 'tier4' : /\bfrom\b|between/.test(L) && tiers.length > 1 ? 'tier3' : 'tier2'; out.push({ label:'tier:' + key, v:{ n:hi, unit:'pct', text:(hi * 100) + '%' }, lp:lpv, file:file, sheet:sh.name, row:b.row + 1, note:desc.slice(0, 100), derived:true }); } }); }
     r = k - 1;
   }
@@ -175,6 +176,8 @@ function resolve(facts, ctx){
   facts.forEach(function(f){
     var L = f.direct ? nl(f.direct) : nl(f.label), v = f.v, k = f.direct && F[f.direct] ? f.direct : labelKey(L); if(k === '__ignore') return; if(k && !F[k] && !/^(avgRent|hurdle2|hurdle3|gpCatchup|t[234]LP|hardContPct)$/.test(k)) k = null; var learned = !!(lload()[lnorm(f.label)]);
     if(f.label === 'units' && f.derived){ put('units', v.n, f, f.note, 'check'); return; } if(f.label === 'avgRent'){ put('avgRent', v.n, f, f.note, 'check'); return; }
+    if(/^record:/.test(f.label)){ var rk = f.label.slice(7); put(rk, rk === 'location' || rk === 'propertyType' ? f.v.text : f.v.n, f, f.note, 'low'); return; }
+    if(/^record-extra:/.test(f.label)){ extra.push({ label:f.label.slice(13), text:f.v.text, f:f, note:f.note }); return; }
     if(/^budget:/.test(f.label)){ var bk = f.label.slice(7); if(bk === 'hard') put('sourceConstruction', v.n, f, f.note); else extra.push({ label:{ soft:'Soft costs', contingency:'Contingency', reserve:'Reserves', financing:'Financing costs', land:'Land / acquisition', predev:'Pre-development' }[bk] || bk, text:$(v.n), f:f, note:f.note, key:bk }); return; }
     if(f.label === 'draw window'){ put('constructionMonths', v.n, f, f.note, 'low'); return; } if(f.label === 'predev window'){ put('predevMonths', v.n, f, f.note, 'low'); return; }
     if(/^tier:/.test(f.label)){ (ctx.tiers = ctx.tiers || {})[f.label.slice(5)] = { hi:v.n, lp:f.lp, f:f }; return; }
@@ -214,7 +217,7 @@ function choose(res, ctx){
     list.forEach(function(c){ var g = groups.filter(function(x){ return typeof c.val === 'number' ? Math.abs(x.val - c.val) <= Math.max(1e-9, Math.abs(x.val) * 0.001) : (function(a, b){ a = String(a).toLowerCase().replace(/[^a-z0-9]+/g, ''); b = String(b).toLowerCase().replace(/[^a-z0-9]+/g, ''); return a === b || (a.length > 8 && b.length > 8 && (a.indexOf(b) === 0 || b.indexOf(a) === 0)); })(x.val, c.val); })[0]; if(g) g.items.push(c); else groups.push({ val:c.val, items:[c] }); });
     groups.sort(function(a, b){ var wa = a.items.reduce(function(t, i){ return t + (i.conf === 'low' ? 0.5 : 1); }, 0), wb = b.items.reduce(function(t, i){ return t + (i.conf === 'low' ? 0.5 : 1); }, 0); return wb - wa; });
     var best = groups[0], places = {}; best.items.forEach(function(i){ places[i.f.file + '|' + i.f.sheet + '|' + i.f.row] = 1; });
-    var n = Object.keys(places).length, conf = n >= 2 ? 'verified' : (best.items[0].conf === 'low' ? 'low' : 'check'), why = best.items[0].why || (n >= 2 ? 'Stated in ' + n + ' places that agree' : 'Read from a labelled value');
+    var n = Object.keys(places).length, conf = best.items.some(function(it){ return it.conf === 'low' && it.f && /^record:/.test(it.f.label); }) ? 'low' : n >= 2 ? 'verified' : (best.items[0].conf === 'low' ? 'low' : 'check')   /* an assessor card never verifies an input on its own */, why = best.items[0].why || (n >= 2 ? 'Stated in ' + n + ' places that agree' : 'Read from a labelled value');
     if(groups.length > 1){ conf = 'low'; why = 'Sources disagree: ' + groups.map(function(g){ return fmt(k, g.val) + ' (' + g.items[0].f.sheet + ', row ' + g.items[0].f.row + ')'; }).join(' vs '); conflicts.push(k); }
     out[k] = { val:best.val, conf:conf, why:why, src:best.items.map(function(i){ return i.f; }) };
   });
@@ -223,7 +226,7 @@ function choose(res, ctx){
   /* a loan rate on a development deal is the construction rate; LTV / LTC stay as stated */
   if(ctx.dev && out.acqRate && !out.conRate){ out.conRate = out.acqRate; } if(ctx.dev) delete out.acqRate; if(ctx.dev) delete out.acqAmort;
   /* only the building size the document states: net rentable area stands in for building size when no gross area was found, and says so */
-  if(!out.gsf && res.rentable){ out.gsf = { val:res.rentable.val, conf:'low', why:'Net rentable area used as building size: no gross building area was stated', src:[res.rentable.f] }; }
+  /* leasable (net rentable) area is its own field now; it is never used as the gross building area */
   /* all-in rate from index plus spread when no all-in rate was stated */
   if(!out.conRate && out.debtIndexRate && out.debtSpread){ out.conRate = { val:Math.round((out.debtIndexRate.val + out.debtSpread.val) * 1e6) / 1e6, conf:'check', why:'Index ' + (out.debtIndexRate.val * 100).toFixed(2) + '% + spread ' + (out.debtSpread.val * 100).toFixed(2) + '%', src:out.debtIndexRate.src }; }
   delete out.debtIndexRate; delete out.debtSpread;
@@ -236,14 +239,37 @@ function choose(res, ctx){
   if(out.units && cand.units && cand.units.length > 1) { /* resolved above */ }
   var cont = res.extra.filter(function(e){ return e.key === 'contingency' || e.label === 'Contingency'; })[0];
   if(cont && out.sourceConstruction){ var cv = parseFloat(String(cont.text).replace(/[^0-9.]/g, '')); if(cv > 0 && out.sourceConstruction.val > 0){ out.hardContPct = { val:Math.round(cv / out.sourceConstruction.val * 10000) / 10000, conf:'low', why:'Contingency ' + cont.text + ' over hard cost ' + $(out.sourceConstruction.val) + '; the document does not say which costs contingency applies to', src:[cont.f] }; } }
+  /* the engine's construction budget is hard AND soft together (the ladder is scaled to it): add the soft costs when the documents give them, and say so */
+  if(out.sourceConstruction){ var sf = res.extra.filter(function(e){ return e.key === 'soft' || /^soft costs?$/i.test(e.label); })[0], sv = sf ? parseFloat(String(sf.text).replace(/[^0-9.]/g, '')) : 0, hv = out.sourceConstruction.val;
+    if(sv > 0 && hv > 0){ out.sourceConstruction = { val:hv + sv, conf:out.sourceConstruction.conf === 'verified' ? 'check' : out.sourceConstruction.conf, why:'Hard costs ' + $(hv) + ' + soft costs ' + $(sv) + ' (the budget input is hard and soft together; contingency and reserves are separate)', src:(out.sourceConstruction.src || []).concat([sf.f]) }; }
+    else out.sourceConstruction.why = (out.sourceConstruction.why || '') + ' - hard costs only: no soft-cost total was found, so add the soft costs to this budget'; }
   return { fields:out, conflicts:conflicts };
 }
 var PCT = { acqRate:1, conLTC:1, conRate:1, conOrigFee:1, acqLTV:1, exitCap:1, saleCostPct:1, rentGrowth:1, opexGrowth:1, vacancy:1, mgmtPct:1, pref:1, gpShare:1, hurdle2:1, hurdle3:1, t2LP:1, t3LP:1, t4LP:1, hardContPct:1, gpCatchup:1 };
 var LAB = { avgRent:'Average monthly rent / unit', hurdle2:'Second hurdle (IRR)', hurdle3:'Third hurdle (IRR)', t2LP:'Tier 2 split to LP', t3LP:'Tier 3 split to LP', t4LP:'Tier 4 split to LP', hardContPct:'Hard-cost contingency (%)', gpCatchup:'GP catch-up share' };
 var PCTK = { hurdle2:1, hurdle3:1, gpCatchup:1, t2LP:1, t3LP:1, t4LP:1, hardContPct:1 };
-function fmt(k, v){ if(typeof v !== 'number') return String(v); if(PCT[k]) return (v * 100).toFixed(2) + '%'; if(k === 'units') return Math.round(v).toLocaleString('en-US') + ' units'; if(k === 'gsf') return Math.round(v).toLocaleString('en-US') + ' SF'; if(/Months$/.test(k)) return v + ' mo'; if(k === 'holdYears' || k === 'acqAmort') return (Math.round(v * 100) / 100) + ' yrs'; if(k === 'siteArea') return v + ' acres'; return $(v); }
+function fmt(k, v){ if(typeof v !== 'number') return String(v); if(PCT[k]) return (v * 100).toFixed(2) + '%'; if(k === 'units') return Math.round(v).toLocaleString('en-US') + ' units'; if(k === 'gsf' || k === 'gla') return Math.round(v).toLocaleString('en-US') + ' SF'; if(/Months$/.test(k)) return v + ' mo'; if(k === 'holdYears' || k === 'acqAmort') return (Math.round(v * 100) / 100) + ' yrs'; if(k === 'siteArea') return v + ' acres'; return $(v); }
 function label(k){ return LAB[k] || (F[k] && F[k].lab) || k; }
 
+/* A budget table: one row per cost line with its dollars, its cost group (hard, soft, contingency, FF&E) and, when the file gives them, the months the money is drawn. Read from the headings, wherever the
+   columns sit; land, financing and reserve lines are not budget lines (the engine has their own inputs). The file's month 0 is the closing month, so when a draw starts in month 0 every month is shifted by one. */
+function budgetLinesFrom(sh){
+  var rows = sh.rows || [], hi = -1, col = null;
+  for(var i = 0; i < Math.min(rows.length, 40) && hi < 0; i++){ var h = (rows[i] || []).map(function(c){ return nl(c == null ? '' : c); });
+    var ix = function(rx){ for(var j = 0; j < h.length; j++) if(h[j] && rx.test(h[j])) return j; return -1; };
+    var c2 = { amt:ix(/^(budget|amount|budget amount|total budget|total cost|cost)( \(?\$\)?)?$/), nm:ix(/^(category|budget item|line item|cost item|item|description|cost line|trade)$/), grp:ix(/^(cost group|cost type|group|class|cost class)$/), s:ix(/draw start|start month|^start$/), e:ix(/draw end|end month|^end$/), code:ix(/^(cost code|code)$/), scope:ix(/^(detailed scope|scope|notes?)$/) };
+    if(c2.amt >= 0 && c2.nm >= 0 && c2.grp >= 0){ hi = i; col = c2; } }
+  if(hi < 0) return null;
+  var map = function(g){ g = nl(g); return /contingen/.test(g) ? 'cont' : /ff.?e|furnish|equipment/.test(g) ? 'ffe' : /soft|design|professional|consult|fee/.test(g) ? 'soft' : /hard|construction|site|building/.test(g) ? 'hard' : null; };
+  var out = [], n = function(c){ if(typeof c === 'number') return c; var v = parseVal(c); return v && v.n != null ? v.n : NaN; };
+  for(var r = hi + 1; r < rows.length; r++){ var row = rows[r] || [], amt = n(row[col.amt]), nm = row[col.nm] == null ? '' : String(row[col.nm]).trim(), cls = map(row[col.grp] == null ? '' : row[col.grp]);
+    if(!(amt > 0) || !nm || !cls) { if(!nm && !(amt > 0) && out.length && !(row || []).some(function(c){ return c != null && String(c).trim() !== ''; })) break; continue; }
+    var st = col.s >= 0 ? n(row[col.s]) : NaN, en = col.e >= 0 ? n(row[col.e]) : NaN; out.push({ cls:cls, name:nm.slice(0, 80), amount:amt, st:isFinite(st) ? st : null, en:isFinite(en) ? en : null, code:col.code >= 0 && row[col.code] != null ? String(row[col.code]) : '' }); }
+  if(out.length < 3) return null;
+  var shift = out.some(function(l){ return l.st === 0; }) ? 1 : 0, total = out.reduce(function(a, l){ return a + l.amount; }, 0), by = { hard:0, cont:0, soft:0, ffe:0 };
+  var lines = out.map(function(l, i){ by[l.cls] += l.amount; var has = l.st != null && l.en != null && l.en >= l.st; return { id:'i' + (i + 1), cls:l.cls, name:l.name, amount:l.amount, start:has ? Math.max(1, l.st + shift) : '', len:has ? Math.max(1, l.en - l.st + 1) : '', method:'', rate:'' }; });
+  return { lines:lines, total:total, by:by, sheet:sh.name, shifted:shift === 1 };
+}
 /* ---------- classify a file by its content, then read it ---------- */
 function allLabels(parsed){ var o = []; parsed.sheets.forEach(function(sh){ (sh.rows || []).forEach(function(r){ (r || []).forEach(function(c){ if(typeof c === 'string') o.push(nl(c)); }); }); }); return o; }
 function stmt0(L){ var has = function(rx){ return L.filter(function(x){ return rx.test(x); }).length; }; return has(/^(total )?(operating )?expenses?$|total operating expenses/) >= 1 && has(/^net operating income|^noi$/) >= 1 && has(/^(effective gross|total (income|revenue)|gross potential)/) >= 1; }
@@ -255,8 +281,10 @@ function classify(parsed){
   var listing = parsed.kind === 'pdf' && (has(/listing price|asking price|offering price|purchase price|executive summary|property overview|investment (summary|highlights)|offering memorandum|\bcap rate\b|for sale|exclusively (listed|offered)/) >= 1 || stmt0(L));
   var stmt = has(/^(total )?(operating )?expenses?$|total operating expenses/) >= 1 && has(/^net operating income|^noi$/) >= 1 && has(/^(effective gross|total (income|revenue)|gross potential)/) >= 1;
   var portfolio = parsed.sheets.length >= 4 && parsed.sheets.some(function(sh){ var rows = sh.rows || []; for(var i = 0; i < Math.min(rows.length, 12); i++){ var h = (rows[i] || []).map(nl); if(h.some(function(x){ return /^(property|asset|building)( name)?$/.test(x); }) && h.some(function(x){ return /^units?$|^sf$|^square f/.test(x); }) && rows.length - i >= 4) return true; } return false; });
+  var record = parsed.kind === 'pdf' && has(/building sub.?areas|owner of record|^assessment$|^appraisal$|ownership history|valuation history/) >= 3 && has(/year built|living area|land use|^building (information|attributes)/) >= 1;   /* an assessor's property record card */
+  if(record){ listing = false; rr = false; }
   if(listing) rr = false;
-  return { portfolio:portfolio, dev:dev, listing:!!listing, rentRoll:rr && !dev && !portfolio, statement:stmt && !dev && !portfolio, kind:portfolio ? 'portfolio of several properties (master workbook)' : listing && !dev ? 'offering memorandum / listing' : rr && !dev ? 'rent roll' : stmt && !dev ? 'income statement / operating statement' : dev ? 'development pro forma / offering' : 'document with labelled facts' };
+  return { record:record, portfolio:portfolio, dev:dev, listing:!!listing, rentRoll:rr && !dev && !portfolio, statement:stmt && !dev && !portfolio, kind:portfolio ? 'portfolio of several properties (master workbook)' : record ? 'property record card (assessor)' : listing && !dev ? 'offering memorandum / listing' : rr && !dev ? 'rent roll' : stmt && !dev ? 'income statement / operating statement' : dev ? 'development pro forma / offering' : 'document with labelled facts' };
 }
 window.bkImportClassify = function(parsed){ return classify(parsed); };
 /* PDFs are read with PDF.js (text where there is a text layer, text recognition where there is not), one sheet of rows per page, cells split where the page leaves a gap */
@@ -266,6 +294,29 @@ function valTokens(line){ var m = line.match(/\$\s?[\d,]+(?:\.\d+)?[KMB]?|\(?-?\
 function bestSplit(words, n, score){ var best = null, bs = -1; (function rec(i, parts){ if(parts.length === n - 1){ var last = words.slice(i).join(' '); if(!last) return; var all = parts.concat([last]), sc = all.reduce(function(t, g){ return t + (score(g) ? Math.min(3, g.split(/\s+/).length) : 0); }, 0); if(sc > bs){ bs = sc; best = all; } return; } for(var j = i + 1; j <= words.length - (n - 1 - parts.length); j++) rec(j, parts.concat([words.slice(i, j).join(' ')])); })(0, []); return best; }
 function headerLike(line){ var w = line.split(/\s+/); if(w.length < 2 || w.length > 14 || /\d/.test(line)) return false; var cap = w.filter(function(x){ return /^[A-Z]/.test(x) || /^[A-Z.&\/-]+$/.test(x); }).length; return cap / w.length >= 0.7; }
 function isHeadScore(g){ var n = nl(g); return Object.keys(HEAD).some(function(k){ return HEAD[k].test(n); }) || knownLabel(g); }
+/* An assessor's property record card (Vision Government Solutions and similar): fixed labels with values to the right, and a building sub-area table whose totals are the GROSS area and the LIVING area.
+   Gross area is the building's gross area; living area is the finished, heated area and only approximates leasable area, so it is read as Low confidence into the leasable-area field. Nothing here is a price: the last sale is listed, not entered. */
+function recordFacts(text, file, sheet, out){
+  var T = String(text || ''), n = function(s){ return parseFloat(String(s).replace(/[^0-9.]/g, '')); };
+  function push(label, v, note){ out.push({ label:label, v:v, file:file, sheet:sheet, row:0, note:note || '', derived:true }); }
+  function sf(key, val, note){ if(val > 0) push('record:' + key, { n:val, unit:'sf', text:Math.round(val).toLocaleString('en-US') + ' SF' }, note); }
+  function ex(label, text, note){ if(text) push('record-extra:' + label, { n:null, unit:'', text:String(text).trim() }, note); }
+  var m;
+  if((m = /^Location\s+(.+?)\s+Mblu/m.exec(T))) push('record:location', { n:null, unit:'', text:m[1].trim().replace(/\b([A-Z])([A-Z]+)\b/g, function(x, a, b){ return a + b.toLowerCase(); }) }, 'Record card location (the card gives a street address, not the city)');
+  if((m = /Bldg Use\s+(.+)/.exec(T)) || (m = /Style:\s+(.+)/.exec(T))){ var use = m[1].trim(); if(/apart|multi|lux apt|residential/i.test(use)) push('record:propertyType', { n:null, unit:'', text:'Multifamily' }, 'Record card use: "' + use + '"'); }
+  if((m = /^\s*([\d,]{5,})\s+([\d,]{5,})\s*$/m.exec(T)) && /Building Sub-Areas/.test(T)){ sf('gsf', n(m[1]), 'Total of the building sub-areas, gross area column'); sf('gla', n(m[2]), 'Total of the building sub-areas, living area column. Living area is finished, heated space and only approximates rentable area: confirm against a rent roll'); }
+  else if((m = /Living Area:\s*([\d,]+)/.exec(T))) sf('gla', n(m[1]), 'Record card living area. Confirm against a rent roll');
+  if((m = /Occupancy\s+(\d+(?:\.\d+)?)/.exec(T))){ var u = Math.round(parseFloat(m[1])); if(u >= 1) push('record:units', { n:u, unit:'', text:u + ' units' }, 'Record card "Occupancy ' + m[1] + '" (the unit count on this card format; confirm against a rent roll)'); }
+  if((m = /Size \(Acres\)\s+([\d.]+)/.exec(T))) push('record:siteArea', { n:parseFloat(m[1]), unit:'acres', text:m[1] + ' acres' }, 'Record card land size');
+  if((m = /Year Built:\s*(\d{4})/.exec(T))) ex('Year built', m[1], 'Record card');
+  if((m = /Stories:\s*(\d+)/.exec(T))) ex('Stories', m[1], 'Record card');
+  if((m = /^Owner\s+(.+?)\s+Sale Price/m.exec(T))) ex('Owner of record', m[1], 'Record card');
+  if((m = /Sale Price\s+(\$[\d,]+)/.exec(T))) ex('Last recorded sale price', m[1], 'Record card; a past sale, not the current price');
+  if((m = /Sale Date\s+(\d{1,2}\/\d{1,2}\/\d{4})/.exec(T))) ex('Last recorded sale date', m[1], 'Record card');
+  if((m = /Appraisal\s+(\$[\d,]+)/.exec(T))) ex('Appraised value (assessor)', m[1], 'Record card; an assessor value, not a market price');
+  if((m = /Total Market Value\s+(\$[\d,]+)/.exec(T))) ex('Assessed market value', m[1], 'Record card');
+  if((m = /Total Market Land\s+(\$[\d,]+)/.exec(T))) ex('Assessed land value', m[1], 'Record card');
+}
 function pdfRows(text){
   var lines = String(text || '').split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean), rows = [], i = 0;
   while(i < lines.length){ var line = lines[i], next = lines[i + 1] || '', toks = valTokens(next);
@@ -282,7 +333,7 @@ function pdfRows(text){
 window.bkImportPdfRows = function(text){ return pdfRows(text); };
 function w2(l){ return l.split(/\s+/).length; }
 function pdfParsed(f){ if(typeof window.bkOMPageText !== 'function') return Promise.resolve(null);
-  return window.bkOMPageText(f).then(function(pages){ var sheets = pages.map(function(t, i){ return { name:'page ' + (i + 1), rows:pdfRows(t) }; }); return sheets.length ? { kind:'pdf', sheets:sheets } : null; }).catch(function(){ return null; }); }
+  return window.bkOMPageText(f).then(function(pages){ var sheets = pages.map(function(t, i){ return { name:'page ' + (i + 1), rows:pdfRows(t), text:t }; }); return sheets.length ? { kind:'pdf', sheets:sheets } : null; }).catch(function(){ return null; }); }
 function readOne(f){
   var first = /\.pdf$/i.test(f.name) ? pdfParsed(f) : Promise.resolve(null);
   return first.then(function(pp){ return pp || window.bkImportParseFile(f); }).then(function(parsed){
@@ -299,9 +350,10 @@ function ingest(files){
       if(c.portfolio){ S.busy = false; S.routed = 'portfolio'; S.files.push(rs[0]); showSheet('Portfolio Import'); setTimeout(function(){ var inp = document.getElementById('bkMasterFile'); if(inp && window.DataTransfer){ var dt = new DataTransfer(); dt.items.add(f0); inp.files = dt.files; if(typeof window.bkImportMasterFile === 'function') window.bkImportMasterFile(); } }, 250); return; }
       if(c.rentRoll && typeof window.bkRRRun === 'function'){ S.busy = false; S.routed = 'rent roll'; window.bkRRRun({ files:[f0] }); return; }
       if(c.statement && !/\.pdf$/i.test(f0.name) && typeof window.bkImportRun === 'function'){ S.busy = false; S.routed = 'operating statement'; window.bkImportRun({ files:[f0] }); return; }
-      if(!c.dev && /\.pdf$/i.test(f0.name) && typeof window.bkOMRun === 'function'){ S.busy = false; S.routed = 'offering memorandum / listing'; window.bkOMRun({ files:[f0] }); return; } }
+      if(!c.dev && !c.record && /\.pdf$/i.test(f0.name) && typeof window.bkOMRun === 'function'){ S.busy = false; S.routed = 'offering memorandum / listing'; window.bkOMRun({ files:[f0] }); return; } }
     var facts = [], ctx = { dev:false };
-    rs.forEach(function(x){ S.files.push(x); if(!x.info.parsed) return; if(x.info.cls.dev) ctx.dev = true; x.info.parsed.sheets.forEach(function(sh){ sheetFacts(sh, x.f.name, facts, ctx); }); });
+    rs.forEach(function(x){ S.files.push(x); if(!x.info.parsed) return; if(x.info.cls.dev) ctx.dev = true; x.info.parsed.sheets.forEach(function(sh){ if(x.info.cls.record){ if(sh.text) recordFacts(sh.text, x.f.name, sh.name, facts); } else sheetFacts(sh, x.f.name, facts, ctx); }); });
+    rs.forEach(function(x){ if(!x.info.parsed || x.info.cls.record) return; x.info.parsed.sheets.forEach(function(sh){ var bl = null; try { bl = budgetLinesFrom(sh); } catch(e){} if(bl && (!S.lines || bl.lines.length > S.lines.lines.length)){ S.lines = bl; S.lines.file = x.f.name; S.linesOff = false; } }); });
     var all = S.facts.concat(facts); S.facts = all;
     var res = resolve(all, ctx); S.res = res; S.pick = choose(res, ctx); S.dev = ctx.dev || S.dev;
     /* name fallback: the title at the top of the first sheet or page */
@@ -315,6 +367,7 @@ window.bkImportHubReset = function(){ S = { files:[], facts:[], cand:null, msg:'
 window.bkImportHubTeach = function(i, k){ var list = S.teach || []; var lab = list[i]; if(!lab || !k) return; window.bkImportLearn.set(lab, k); var ctx = { dev:!!S.dev }; S.res = resolve(S.facts, ctx); S.pick = choose(S.res, ctx); S.msg = 'Learned: "' + lab + '" is ' + (k === 'ignore' ? 'ignored' : label(k)) + '. It will be applied to every file from now on.'; showSheet('Import'); };
 function teachSelect(lab){ S.teach = S.teach || []; var i = S.teach.indexOf(lab); if(i < 0){ S.teach.push(lab); i = S.teach.length - 1; }
   return '<select onchange="bkImportHubTeach(' + i + ', this.value)" style="max-width:150px;font-size:11px"><option value="">Use as...</option>' + Object.keys(F).filter(function(k){ return k !== 'occupancy'; }).map(function(k){ return '<option value="' + k + '">' + esc(F[k].lab) + '</option>'; }).join('') + '<option value="avgRent">Average monthly rent / unit</option><option value="ignore">Ignore this label</option></select>'; }
+window.bkImportHubLines = function(){ if(S.lines){ S.linesOff = !S.linesOff; showSheet('Import'); } };
 window.bkImportHubSkip = function(k){ if(S.pick && S.pick.fields[k]){ S.pick.fields[k].skip = !S.pick.fields[k].skip; showSheet('Import'); } };
 function dealFields(){ var o = {}; Object.keys(S.pick.fields).forEach(function(k){ var f = S.pick.fields[k]; if(!f.skip) o[k] = f.val; }); return o; }
 window.bkImportHubCreate = function(){
@@ -322,11 +375,15 @@ window.bkImportHubCreate = function(){
   var dev = S.dev || fl.sourceConstruction != null || fl.constructionMonths != null, d = Object.assign({}, fl); delete d.name;
   var loc = fl.location || ''; var m = /,\s*([A-Za-z .]+?),?\s*([A-Z]{2})\b\s*\d{0,5}/.exec(loc); if(m) d.location = m[1].trim() + ', ' + m[2];
   if(dev){ d.devBudgetMode = 'SOURCE'; } if(fl.propertyType){ d.propertyType = /apart|multi|residential|mf/i.test(fl.propertyType) ? 'Multifamily' : /office/i.test(fl.propertyType) ? 'Office' : /industrial|flex|warehouse/i.test(fl.propertyType) ? 'Industrial' : /retail|shop/i.test(fl.propertyType) ? 'Retail' : fl.propertyType; } else if(/multifamily|apartment/i.test(JSON.stringify(fl))) { /* not inferred */ }
-  var deal = Object.assign({ name:nm, dealId:'IMP-' + slug, dealType:dev ? 'Development' : 'Acquisition', analysisType:dev ? 'development' : 'acquisition', blankStructure:true }, d);
+  var useLines = !!(S.lines && !S.linesOff && S.lines.lines.length);
+  if(useLines){ dev = true; d.devBudgetMode = 'LINES'; d.budgetLines = S.lines.lines; delete d.sourceConstruction; delete d.hardContPct; }   /* the file's own cost lines are the budget: no standard split, no single total */
+  var shape = (!useLines && dev && fl.sourceConstruction != null && typeof window.bkDevLadderShape === 'function') ? window.bkDevLadderShape() : {};   /* a total budget with no trade lines: the cost ladder takes the app's standard split, scaled to that total */
+  var deal = Object.assign({ name:nm, dealId:'IMP-' + slug, dealType:dev ? 'Development' : 'Acquisition', analysisType:dev ? 'development' : 'acquisition', blankStructure:true }, shape, d);
   if(fl.propertyType && /multi|apart/i.test(fl.propertyType + ' ' + (fl.name || ''))) deal.propertyType = 'Multifamily';
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(deal);
   var C = { fields:{} }; Object.keys(S.pick.fields).forEach(function(k){ var f = S.pick.fields[k]; if(!f.skip) C.fields[k] = { l:f.conf, why:f.why }; });
   var s = bkLoad(); if(window.bkConf){ window.bkConf.stamp(s, C, S.files.map(function(x){ return x.f.name; }).join(', ')); } bkSave(s);
+  if(useLines && typeof window.bkDevBudgetToTasks === 'function'){ try { window.bkDevBudgetToTasks({ wbs:true }); } catch(e){} }   /* each cost line becomes a Gantt task, in the place the file gives it: the schedule is the file's own task list */
   var jobs = S.files.map(function(x){ return typeof window.bkDocsAdd === 'function' ? window.bkDocsAdd(/\.pdf$/i.test(x.f.name) ? 'om' : 'other', x.f, 'IMP-' + slug) : null; }).filter(Boolean);
   Promise.all(jobs).catch(function(){}).then(function(){ if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Deal Underwrite'); });
 };
@@ -353,6 +410,10 @@ function render(){
       + '<table class="fin" style="margin-top:6px"><thead><tr><th>Use</th><th>Input</th><th class="r">Value</th><th>Where it came from</th><th>Confidence</th><th>Not right?</th></tr></thead><tbody>' + ks.map(function(k){ var f = S.pick.fields[k], src = f.src && f.src[0] ? esc(f.src[0].file) + ' · ' + esc(f.src[0].sheet) + ' · row ' + f.src[0].row + (f.src.length > 1 ? ' (+' + (f.src.length - 1) + ' more)' : '') : 'document title';
         return '<tr' + (f.skip ? ' style="opacity:.45"' : '') + '><td><input type="checkbox"' + (f.skip ? '' : ' checked') + ' onchange="bkImportHubSkip(\'' + k + '\')"></td><td>' + esc(label(k)) + '</td><td class="r">' + esc(fmt(k, f.val)) + '</td><td style="font-size:12px">' + src + '<br><span style="opacity:.7">' + esc(f.why) + '</span></td><td>' + (window.bkConf ? window.bkConf.chip({ l:f.conf, why:f.why }) : f.conf) + '</td><td>' + (f.src && f.src[0] && f.src[0].label && !f.src[0].derived ? teachSelect(f.src[0].label) : '') + '</td></tr>'; }).join('') + '</tbody></table>'
       + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label style="font-size:12px">Deal name <input id="bkImpName" type="text" value="' + esc(S.pick.fields.name ? S.pick.fields.name.val : '') + '" style="width:260px"></label><button type="button" class="pl-hbtn primary" onclick="bkImportHubCreate()">Create a new deal from these</button><button type="button" class="pl-hbtn" onclick="bkImportHubFill()">Add to the open deal (empty inputs only)</button><button type="button" class="pl-hbtn" onclick="bkImportHubReset()">Start over</button></div>');
+    if(S.lines){ var L2 = S.lines, m0 = function(v){ return '$' + Math.round(v).toLocaleString('en-US'); };
+      main += box('<label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" style="margin-top:3px"' + (S.linesOff ? '' : ' checked') + ' onchange="bkImportHubLines()"><span><b>Budget line items found: ' + L2.lines.length + ' lines, ' + m0(L2.total) + '</b> <span style="opacity:.75;font-size:12px">(' + esc(L2.file || '') + ' · ' + esc(L2.sheet || '') + ')</span><br><span style="font-size:12.5px">Hard cost ' + m0(L2.by.hard) + ' · contingency ' + m0(L2.by.cont) + ' · soft cost ' + m0(L2.by.soft) + (L2.by.ffe ? ' · FF&amp;E ' + m0(L2.by.ffe) : '') + '. Used as the development budget by line item'
+        + (L2.lines.some(function(l){ return l.start !== ''; }) ? ', each with the months its money is drawn' + (L2.shifted ? ' (the file counts the closing month as 0, so every month is shifted by one)' : '') : '') + '. Replaces the single construction total and the standard cost split.</span>'
+        + (function(){ var sc = S.pick && S.pick.fields.sourceConstruction, df = sc ? sc.val - (L2.by.hard + L2.by.soft) : 0; return sc && Math.abs(df) >= 1 ? '<br><b style="color:#a85a00">The lines do not add to the file\'s own total.</b> <span style="font-size:12.5px">The summary says hard plus soft is ' + m0(sc.val) + '; the lines add to ' + m0(L2.by.hard + L2.by.soft) + ' (a difference of ' + m0(Math.abs(df)) + '). The lines are used as they are; the difference is not added.</span>' : ''; })() + '</span></label>'); }
     if(S.res && S.res.unknown && S.res.unknown.length){ main += box('<details><summary style="cursor:pointer"><b>Not recognized yet (' + S.res.unknown.length + ')</b> <span style="opacity:.7;font-size:12px">labels with a number the reader could not place; teach it and it will know them in every later file</span></summary><table class="fin" style="margin-top:6px"><thead><tr><th>Label</th><th class="r">Value</th><th>Where</th><th>Teach</th></tr></thead><tbody>' + S.res.unknown.map(function(e){ return '<tr><td>' + esc(e.label) + '</td><td class="r">' + esc(e.v.unit === 'pct' ? e.v.n.toFixed(2) + '%' : (Math.abs(e.v.n) > 999 ? $(e.v.n) : e.v.text)) + '</td><td style="font-size:12px">' + esc(e.file) + ' · ' + esc(e.sheet) + ' · row ' + e.row + '</td><td>' + teachSelect(e.label) + '</td></tr>'; }).join('') + '</tbody></table></details>'); }
     if(S.res && S.res.extra.length){ main += box('<details><summary style="cursor:pointer"><b>Also found, with no input to put it in yet (' + S.res.extra.length + ')</b></summary><table class="fin" style="margin-top:6px"><thead><tr><th>Item</th><th class="r">Value</th><th>Where</th><th>Teach</th></tr></thead><tbody>' + S.res.extra.map(function(e){ return '<tr><td>' + esc(e.label) + '</td><td class="r">' + esc(e.text) + '</td><td style="font-size:12px">' + esc(e.f.file) + ' · ' + esc(e.f.sheet) + ' · row ' + e.f.row + (e.note ? '<br><span style="opacity:.7">' + esc(String(e.note).slice(0, 110)) + '</span>' : '') + '</td><td>' + (e.f && e.f.label && !e.f.derived ? teachSelect(e.f.label) : '') + '</td></tr>'; }).join('') + '</tbody></table><div style="font-size:12px;opacity:.7;margin-top:6px">These are kept with the document. They are not entered into the model because it has no input for them or they are results the model works out itself.</div></details>'); }
   }

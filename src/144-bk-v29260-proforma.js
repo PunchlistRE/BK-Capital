@@ -25,7 +25,7 @@ function build(){
       Y.push({ y:k + 1, gpr:(L.gprGross || 0) + (L.commGross || 0), vac:(L.resVac || 0) + (L.commVac || 0) - (L.commFree || 0) - (L.commCredit || 0), bad:(L.bad || 0) + (L.commCredit || 0), ltl:(L.ltl || 0) + (L.concess || 0) + (L.commFree || 0), other:L.other || 0, egi:a.egi,
         taxes:L.taxes || 0, ins:L.insurance || 0, ctrl:L.ctrlOpex || 0, mgmt:L.mgmt || 0, opex:-a.expenses, noi:noi, res:-res, noiAfter:a.after, ds:-ds, fee:-fee, cfads:op, dscr:ds ? a.after / ds : null, eqin:eqin, cf:cf, events:events, coc:null });
     }
-    var eq = Number(d.equity) || sum(Y.map(function(r){ return r.eqin; }));
+    var eq = (Number(d.equity) || sum(Y.map(function(r){ return r.eqin; }))) + (Number(s.rateCapCost) || 0);   /* closing equity: the rate cap premium is paid at closing as equity */
     Y.forEach(function(r){ r.coc = eq ? r.cfads / eq : null; });
     var cum = 0; Y.forEach(function(r){ cum += r.cf; r.cum = cum; });
     var tot = { eqin:sum(Y.map(function(r){ return r.eqin; })), op:sum(Y.map(function(r){ return r.cfads; })), events:sum(Y.map(function(r){ return r.events; })), profit:sum(Y.map(function(r){ return r.cf; })) };
@@ -72,7 +72,7 @@ function chartCash(D){
 }
 /* where the profit comes from: equity in, operating cash flow, the sale (net of the loan), profit */
 function chartBridge(D){
-  var steps = [['Equity invested', -D.tot.eqin, 'dn'], ['Operating cash flow', D.tot.op, 'up'], ['Sale and refinance, after debt', D.tot.events, 'up']], W = 760, Hh = 250, L = 20, R = 20, T = 26, B = 52, n = steps.length + 1, run = 0, bars = [];
+  var steps = [['Total contributed equity', -D.tot.eqin, 'dn'], ['Operating cash flow', D.tot.op, 'up'], ['Sale and refinance, after debt', D.tot.events, 'up']], W = 760, Hh = 250, L = 20, R = 20, T = 26, B = 52, n = steps.length + 1, run = 0, bars = [];
   steps.forEach(function(s_){ var from = run; run += s_[1]; bars.push({ l:s_[0], a:from, b:run, v:s_[1], k:s_[1] < 0 ? 'dn' : 'up' }); });
   bars.push({ l:'Equity profit', a:0, b:run, v:run, k:run >= 0 ? 'ok' : 'dn', total:true });
   var hi = Math.max.apply(null, bars.map(function(b){ return Math.max(b.a, b.b, 0); })), lo = Math.min.apply(null, bars.map(function(b){ return Math.min(b.a, b.b, 0); })), mx = niceMax(hi * 1.1), mn = lo < 0 ? -niceMax(-lo * 1.1) : 0;

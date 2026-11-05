@@ -84,6 +84,7 @@ extend('Debt','w3aConstructionSizing', function(o){
   var x = dev(); if(!isDevDeal(x)) return;
   var s = bkLoad();
   var ltcBound = isFinite(x.commitLTC) && x.commitLTC <= (isFinite(x.commitLTV)?x.commitLTV:Infinity);
+  var fsum = function(k){ return (x.months||[]).reduce(function(t,z){ return t + (Number(z[k])||0); }, 0); }, totExc = fsum('excess'), totOvf = fsum('overflow'), totResInt = fsum('resInt');
 
   var sizing = wrapTable('Construction Facility Sizing - which constraint binds',
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th><th>Test</th></tr>',
@@ -103,13 +104,16 @@ extend('Debt','w3aConstructionSizing', function(o){
     + '<tr>'+lbl('Capitalized Interest - sizing estimate')+val(money(x.estInt))+txt('Used inside the sizing solve')+'<td></td></tr>'
     + '<tr>'+lbl('Capitalized Interest - actual from the schedule')+val(money(x.actualCapInt))
       + txt('What the month-by-month facility actually accrues')+'<td></td></tr>'
-    + '<tr>'+lbl('Interest in Excess of Commitment')+val(money0(x.overflowTotal))
-      + txt('Accrual beyond the commitment, funded by equity')
-      + '<td class="v">'+(Number(x.overflowTotal)>0?chip('warn','EQUITY FUNDED'):chip('pass','NONE'))+'</td></tr>'
+    + '<tr>'+lbl('Interest Beyond the Facility Limit (paid currently)')+val(money0(totExc))
+      + txt('Accrual after the balance reaches the facility limit; paid by the interest reserve first, then equity')
+      + '<td class="v">'+(totExc>0?chip('warn',totResInt>0?'RESERVE / EQUITY FUNDED':'EQUITY FUNDED'):chip('pass','NONE'))+'</td></tr>'
+    + '<tr>'+lbl('Cost Overflow Beyond the Commitment')+val(money0(totOvf))
+      + txt('Costs the equity-first target and the facility cannot fund; paid by equity')
+      + '<td class="v">'+(totOvf>0?chip('warn','EQUITY FUNDED'):chip('pass','NONE'))+'</td></tr>'
     + '<tr>'+lbl('Equity-First Funding Target')+val(money(x.eqTarget))+txt('Equity funds first; the facility funds the remainder')+'<td></td></tr>'
     + '<tr class="grandtotal">'+lbl('LEVERED ALL-IN COST')+val(money(x.levered))
       + txt('Unlevered cost + upfront fees + actual capitalized interest')+'<td></td></tr>'
-    + '<tr>'+lbl('Total Equity Requirement')+val(money(x.equityTotal))+txt('Equity draws plus any overflow')+'<td></td></tr>');
+    + '<tr>'+lbl('Closing Equity')+val(money(x.equityTotal))+txt('Equity-first funding + cost overflow + interest beyond the facility limit after any interest reserve (the equity in Sources &amp; Uses)')+'<td></td></tr>');
 
   var perm = '';
   if(isFinite(x.permLoan)){
@@ -142,21 +146,24 @@ extend('Debt','w3aConstructionSizing', function(o){
         + '<td class="v">'+(Number(x.refiShortfall)>0?chip('warn','SHORTFALL'):chip('pass','FUNDS PAYOFF'))+'</td></tr>'
       + (Number(x.refiShortfall)>0
           ? '<tr>'+lbl('Refinance Shortfall - equity required at takeout')+val(money(x.refiShortfall))
-            + txt('The permanent loan does not fully retire the facility')+'<td></td></tr>' : '')
+            + txt(x.takeoutInHold === false && Number(s.refiAtStab||0) ? 'Not called: the hold ends in month '+x.hold+', before stabilization in month '+x.stab+'; the sale repays the facility' : 'The permanent loan does not fully retire the facility')+'<td></td></tr>' : '')
       + '<tr>'+lbl('Permanent Debt at Sale')+val(money(x.permDebtAtSale))+txt('Balance carried to the exit month')+'<td></td></tr>');
   }
 
+  /* the funding reconciliations read the shared funding calculation (src/184), whose ties are real (to the dollar): this table shows them and adds none of its own. The Sources = Uses row and the facility row used to compare a
+     figure with itself, or carried a tolerance of a billion dollars, so they could not fail. */
+  var FS = (typeof bkFundingSummary==='function') ? (function(){ try { return bkFundingSummary(); } catch(e){ return null; } })() : null;
+  var peakBal = Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; }));
+  function limitRow(label, a, b, okChip, badChip){
+    var d = (Number(a)||0)-(Number(b)||0), ok = d <= 1;
+    return '<tr>'+lbl(label)+val(money(a))+val(money(b))+val(money(d))+'<td class="v">'+chip(ok?'pass':'fail', ok?okChip:badChip)+'</td></tr>';
+  }
   var recon = wrapTable('Construction Debt Reconciliations',
     '<tr><th class="rowlabel-h">Check</th><th>A</th><th>B</th><th>Variance</th><th>Status</th></tr>',
       tie('Levered cost = unlevered + fees + capitalized interest', x.levered, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0)+(Number(x.actualCapInt)||0))
-    + tie('Sources = Uses at the project level', (Number(x.equityTotal)||0)+(Number(x.commit)||0)>=(Number(x.levered)||0) ? Number(x.levered)||0 : (Number(x.equityTotal)||0)+(Number(x.commit)||0), Number(x.levered)||0, 1e9)
-    + tie('Facility drawn never exceeds the commitment',
-        Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; })), Number(x.balCap||x.commit)||0, 1e9)
-    + '<tr>'+lbl('Peak facility balance')
-      + val(money(Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; }))))
-      + val(money(x.balCap||x.commit)) + val('-')
-      + '<td class="v">'+ (Math.max.apply(null,(x.months||[{end:0}]).map(function(m){return Number(m.end)||0;})) <= (Number(x.balCap||x.commit)||0)+1
-          ? chip('pass','WITHIN COMMITMENT') : chip('fail','OVER COMMITMENT')) + '</td></tr>');
+    + (FS && FS.dev ? tie('Sources = Uses at the project level (total sources, total uses)', FS.totalSources, FS.totalUses, 1)
+        + limitRow('Principal drawn is within the committed loan amount (principal, commitment)', FS.principal, FS.commit, 'WITHIN COMMITMENT', 'OVER COMMITMENT')
+        + limitRow('Peak facility balance (principal plus capitalized interest) is within the permitted ceiling', peakBal, FS.ceiling, 'WITHIN CEILING', 'OVER CEILING') : ''));
 
   o.main = (o.main||'') + sizing + perm + recon;
 });
@@ -240,8 +247,8 @@ extend('Dev Draws','w3aDrawDetail', function(o){
     a.land+=Number(m.land)||0; a.hard+=Number(m.hard)||0; a.soft+=Number(m.soft)||0;
     a.lease+=Number(m.lease)||0; a.fees+=Number(m.fees)||0; a.need+=Number(m.need)||0;
     a.eq+=Number(m.eq)||0; a.draw+=Number(m.loanDraw)||0; a.cap+=Number(m.capInt)||0;
-    a.exc+=Number(m.excess)||0; a.ovf+=Number(m.overflow)||0; a.unused+=Number(m.unused)||0; a.resFund+=Number(m.resFund)||0; a.resLease+=Number(m.resLease)||0; return a;
-  }, {land:0,hard:0,soft:0,lease:0,fees:0,need:0,eq:0,draw:0,cap:0,exc:0,ovf:0,unused:0,resFund:0,resLease:0});
+    a.exc+=Number(m.excess)||0; a.ovf+=Number(m.overflow)||0; a.unused+=Number(m.unused)||0; a.resFund+=Number(m.resFund)||0; a.resLease+=Number(m.resLease)||0; a.resInt+=Number(m.resInt)||0; return a;
+  }, {land:0,hard:0,soft:0,lease:0,fees:0,need:0,eq:0,draw:0,cap:0,exc:0,ovf:0,unused:0,resFund:0,resLease:0,resInt:0});
   body += '<tr class="grandtotal">'+lbl('TOTAL')+val(money(tot.land))+val(money(tot.hard))+val(money(tot.soft))
         + val(money(tot.lease))+val(money(tot.fees))+val(money(tot.need))+val('-')+'</tr>';
 
@@ -266,7 +273,7 @@ extend('Dev Draws','w3aDrawDetail', function(o){
     + tie('Total funding need ties to unlevered cost plus upfront fees',
           tot.need, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0)+(Number(x.resFunded)||0))
     + tie('Capitalized interest ties to the sizing engine', tot.cap, Number(x.actualCapInt)||0, 0.01)
-    + tie('Equity draws plus overflow tie to total equity', tot.eq+tot.ovf, Number(x.equityTotal)||0, 0.01));
+    + tie('Equity draws, cost overflow and interest beyond the facility limit (after any interest reserve) tie to closing equity', tot.eq+tot.ovf+tot.exc-tot.resInt, Number(x.equityTotal)||0, 0.01));
 
   o.main = (o.main||'') + wrapTable('Monthly Draw Schedule by Cost Category - all '+months.length+' periods', head, body)
     + wrapTable('Capital Sources Funding Waterfall - month by month', srcHead, srcBody)

@@ -6,7 +6,7 @@
   --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
   --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
   --ae-ink:#14212F; --ae-dim:#566577; --ae-accent:#1F4E8C; --ae-hint:#F3F6FA;
-  --bk-key-fill:#F6EEDA; --bk-key-ink:#1F2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28);
+  --bk-key-fill:#E6F0FB; --bk-key-ink:#0E2A4A; --bk-key-rule:#2F6FB6; --bk-key-line:rgba(31,78,140,.22);   /* key metrics: light blue (was gold) */
   --bk-link-ink:#1B7A4B; --bk-attn-red:#C0392B; --bk-attn-amber:#B7791F; --bk-na-ink:#6B7785;
   --bk-in-line:#D6C57A; --bk-ok-bg:#E4F3EA; --bk-warn-bg:#FBF1DC; --bk-fail-bg:#FBE6E3;
 }
@@ -221,3 +221,80 @@ html[data-theme="dark"] body .bk-ribbon .rb-c svg{ stroke:#9fcdf5; }
 @media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on, html:not([data-theme="light"]) body .bk-flow .bk-step.cur{ color:#9fcdf5 !important; border-bottom-color:#9fcdf5; } html:not([data-theme="light"]) body .bk-flow .bk-step.cur{ box-shadow:inset 0 -2px 0 #9fcdf5 !important; } html:not([data-theme="light"]) body .bk-flow .bk-step.cur .n{ background:#9fcdf5 !important; color:#0b1622 !important; } html:not([data-theme="light"]) body .bk-ribbon .rb-c svg{ stroke:#9fcdf5; } }
 html body .bk-nogp{ color:var(--ae-ink); opacity:.6; font-style:italic; }
 html body #viewport .ae-hint:before{ color:var(--ae-dim); }
+/* sub-tabs: a thin rule between neighbouring pages, a taller one between groups */
+html body .bk-ribbon .rb-t{ position:relative; }
+html body .bk-ribbon .rb-t + .rb-t::before{ content:""; position:absolute; left:0; top:50%; width:1px; height:14px; margin-top:-7px; background:var(--ae-line); opacity:.9; }
+html body .bk-ribbon .rb-sep{ height:22px; width:2px; flex-basis:2px; background:var(--ae-dim); opacity:.45; margin:0 4px; }
+/* Deal Underwrite: a group or panel that does not apply to this kind of deal is not shown (screen and print) */
+html body #viewport .bk-dui.bk-tabs .bk-dt.na, html body #viewport .bk-dui.bk-tabs .bk-dt.empty{ display:none !important; }
+html body #viewport .tbl-wrap.bk-na-off{ display:none !important; }
+@media print{ html body #viewport .tbl-wrap.bk-na-off{ display:none !important; } }
+/* sub-tabs wrap onto a second line rather than running off the edge (no page name cut in half) */
+html body .bk-ribbon .rb-tabs{ flex-wrap:wrap; overflow:visible; row-gap:0; }
+html body .bk-ribbon .rb-t{ line-height:34px; }
+html body .bk-ribbon .rb-t{ padding:0 9px; font-size:12.5px; }
+html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
+
+/* the centre title of the header gives way before it can run into the buttons */
+@media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
+@media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }
+
+/* PHONE: the navigation above the content is compact. The stepper scrolls sideways in one line next to the Sheets button, the case switcher, save status and undo share one row, the editor's own tab strip is one scrolling row, and the print button under the title is hidden (the ribbon above has it). */
+@media (max-width:760px){
+  html body .bk-flow{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:6px 10px; }
+  html body .bk-flow .bk-menu-btn{ flex:0 0 auto; }
+  html body .bk-flow .bk-steps{ flex:1 1 0; min-width:0; overflow-x:auto; flex-wrap:nowrap; scrollbar-width:none; gap:2px; }
+  html body .bk-flow .bk-steps::-webkit-scrollbar{ display:none; }
+  html body .bk-flow .bk-step{ flex:0 0 auto; padding:0 8px; font-size:12px; }
+  html body .bk-flow .bk-step-sep{ flex:0 0 8px; width:8px; }
+  html body .bk-flow .bk-flow-right{ flex:1 1 100%; display:flex; flex-wrap:nowrap; align-items:center; gap:6px; overflow-x:auto; scrollbar-width:none; }
+  html body .bk-flow .bk-flow-right::-webkit-scrollbar{ display:none; }
+  html body .bk-flow .bk-flow-right > *{ flex:0 0 auto; }
+  html body .bk-flow .bk-save{ max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  html body #viewport .bk-print-btn{ display:none; }
+  html body #viewport .ae-tabs{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  html body #viewport .ae-tabs::-webkit-scrollbar{ display:none; }
+  html body #viewport .ae-tabs .ae-tab{ flex:0 0 auto; }
+}
+
+/* FEWER STRIPS ON A DESKTOP SCREEN: the ribbon commands are icons (the names show on hover) so the page tabs fit one row, and the stepper, case switcher and save status share one row. */
+@media (min-width:1200px){
+  html body .bk-ribbon .rb-cmds .rb-c span{ display:none; }
+  html body .bk-ribbon .rb-cmds .rb-c{ padding:0 9px; }
+  html body .bk-ribbon .rb-t{ padding:0 9px; }
+}
+@media (min-width:1200px){
+  html body .bk-flow{ flex-wrap:nowrap; align-items:center; }
+  html body .bk-flow .bk-steps{ flex:1 1 auto; min-width:0; gap:2px; }
+  html body .bk-flow .bk-flow-right{ flex:0 0 auto; flex-wrap:nowrap; }
+  html body .bk-flow .bk-save{ max-width:none; white-space:nowrap; }
+}
+
+/* LESS TALL ROWS: the explanation column of the four-column readout tables is the widest one, so a sentence wraps in two lines, not five. Label 26%, value 17%, explanation 43%, status 14%. */
+@media (min-width:761px){
+  html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(1), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(1){ width:26% !important; }
+  html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(2), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(2){ width:17% !important; }
+  html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(3), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(3){ width:43% !important; }
+  html body #viewport table.fin.bk-grid4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(4), html body #viewport table.fin.bk-vt4:not(.bk-mc):not(.bk-sp4):not(.bk-conv) tr > :nth-child(4){ width:14% !important; }
+}
+
+/* DEVELOPMENT BUDGET line items: the words (class, item, curve, steepness) read from the left; the figures stay right-aligned */
+html body #viewport#viewport .ae-grid input.bud-l, html body #viewport#viewport .ae-grid select.bud-l{ text-align:left !important; text-align-last:left !important; }
+/* the Dev Schedule task table: names, summary and phase selects and predecessors read left to right (an outline is indented from the left) */
+html body #viewport#viewport table.fin input.gx-l, html body #viewport#viewport table.fin select.gx-l{ text-align:left !important; text-align-last:left !important; }
+html body #viewport#viewport table.fin thead th.gx-lh{ text-align:left !important; }
+/* the month and percent boxes take the room they need, not the width a number box would like (it is what made every column of the task table 230px wide) */
+html body #viewport#viewport table.fin input.gx-n{ max-width:84px !important; }
+
+/* HEADER, SECOND ROW: the section's pages as tabs, the same shape as the section tabs above them (rounded top corners, a border, no bottom edge) but light. Inactive pages are pale slate; the open page is white with the accent edge across its top and no line under it, so it joins the page below. Colour only and shape: the same buttons, the same order, the same names. */
+html body .bk-ribbon{ background:var(--ae-cell); padding:6px 12px 0; gap:12px; }
+html body .bk-ribbon .rb-tabs{ align-items:flex-end; gap:2px; row-gap:2px; }
+html body .bk-ribbon .rb-t{ border:1px solid var(--ae-line); border-bottom:0; border-radius:3px 3px 0 0 !important; background:var(--ae-tab); color:var(--ae-ink); opacity:1; margin-bottom:-1px; padding:0 12px; line-height:30px; font-size:12.5px; font-weight:500; }
+html body .bk-ribbon .rb-t + .rb-t::before{ content:none; }
+html body .bk-ribbon .rb-t:hover{ background:var(--ae-sel); border-color:var(--ae-line); }
+html body .bk-ribbon .rb-t.on{ position:relative; z-index:1; background:var(--ae-tab-on); border:1px solid var(--ae-line); border-top:2px solid var(--ae-accent); border-bottom:1px solid var(--ae-tab-on); line-height:29px; font-weight:650; color:var(--bk-navy); }
+html body .bk-ribbon .rb-sep{ height:18px; width:1px; flex-basis:1px; background:var(--ae-line); opacity:1; margin:0 8px; align-self:center; }
+html body .bk-ribbon .rb-cmds{ align-self:center; min-height:0; padding-bottom:4px; }
+html[data-theme="dark"] body .bk-ribbon .rb-t.on{ border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); color:#9fcdf5 !important; }
+@media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on{ border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); color:#9fcdf5 !important; } }
+@media (min-width:1200px){ html body .bk-ribbon .rb-t{ padding:0 12px; } }

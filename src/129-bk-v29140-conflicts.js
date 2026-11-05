@@ -263,14 +263,19 @@ rule('dev.no-construction', 'ERROR', 'Development', 'Development', function(s){
   if(isDev(s) && !(num(s.constructionMonths) > 0)) return { msg:'Development deal with a construction period of zero months.', why:'There is nothing to build: no costs are drawn on a schedule, no construction interest accrues, and lease-up starts at closing. Set the construction months, or change the deal type to Acquisition.' };
 });
 rule('dev.con-loan-zero-rate', 'ERROR', 'Development', 'Development', function(s){
-  if(isDev(s) && num(s.conLTC) > 0 && !(num(s.conRate) > 0)) return { msg:'A construction loan is sized (' + pc(num(s.conLTC), 0) + ' LTC) with a 0% interest rate.', why:'Capitalized construction interest, which is a major cost line, would be zero. Total cost, the loan commitment and the equity requirement are all understated.' };
+  if(isDev(s) && num(s.conLTC) > 0 && !(num(s.conRate) > 0)) return { msg:'A construction loan is sized (' + pc(num(s.conLTC), 0) + ' LTC) with a 0% interest rate.', why:'Capitalized construction interest, which is a major cost line, would be zero. Total cost, the loan commitment and the closing equity are all understated.' };
 });
 rule('dev.no-leaseup', 'WARN', 'Development', 'Development', function(s){
   if(isDev(s) && num(s.constructionMonths) > 0 && !(num(s.leaseupMonths) > 0)) return { msg:'No lease-up period after construction.', why:'The building is assumed fully income-producing the day it is completed. New buildings take months to fill; this overstates early NOI, skips the lease-up operating deficit and moves stabilization (and the refinance) too early.' };
 });
+rule('dev.hold-before-completion', 'ERROR', 'Development', 'Deal Underwrite', function(s){
+  if(!isDev(s) || typeof bkDevV09 !== 'function') return; var x = safe(function(){ return bkDevV09(); }, null); if(!x || !(num(x.hold) > 0)) return;
+  if(num(x.hold) <= num(x.co)) return { msg:'The hold ends at month ' + num(x.hold) + (num(x.hold) < num(x.co) ? ', before the building is complete in month ' + num(x.co) : ', the month the building is completed') + '.',
+    why:'The sale would be priced on the income of a building that does not exist yet, so the construction loan cannot be repaid from it and no return can be relied on. Lengthen the hold to at least ' + (Math.floor(num(x.co) / 12) + 1) + ' years, or shorten the construction schedule. (A sale after completion but before stabilization is allowed and is disclosed as a warning on the model checks.)' };
+});
 rule('dev.takeout-shortfall', 'WARN', 'Development', 'Debt', function(s){
   if(!isDev(s) || !num(s.refiAtStab) || typeof bkDevTakeoutV11 !== 'function') return; var t = safe(function(){ return bkDevTakeoutV11(); }, null);
-  if(t && t.refiShortfall > 1) return { msg:'The permanent loan is ' + $(t.refiShortfall) + ' short of repaying the construction loan at takeout.', why:'Equity must be added at conversion to retire the construction loan. The returns include that late equity call, but the sources and uses at closing will not show it - an investor may be surprised by a second capital call.' };
+  if(t && t.refiShortfall > 1 && t.takeoutInHold !== false) return { msg:'The permanent loan is ' + $(t.refiShortfall) + ' short of repaying the construction loan at takeout.', why:'Equity must be added at conversion to retire the construction loan. The returns include that late equity call, but the sources and uses at closing will not show it - an investor may be surprised by a second capital call.' };
 });
 rule('dev.conventions-ignored', 'INFO', 'Development', 'Deal Underwrite', function(s){
   if(isDev(s) && typeof bkConventions === 'function' && Object.keys(window.BK_CV_STANDARD || {}).some(function(k){ return s[k] !== undefined && s[k] !== null && s[k] !== '' && String(s[k]) !== String(window.BK_CV_STANDARD[k]); }))

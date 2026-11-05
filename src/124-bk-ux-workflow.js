@@ -55,7 +55,7 @@ function headline(){
     return { c:c, s:s, levIRR:x.irr, levMOIC:x.moic, unlevIRR:x.u ? x.u.irr : NaN, unlevMOIC:x.u ? x.u.moic : NaN,
       lpIRR:w ? w.lpIRR : NaN, gpIRR:w ? w.gpIRR : NaN, lpMOIC:w ? w.lp.moic : NaN, gpMOIC:w ? w.gp.moic : NaN,
       loan:dv ? dv.loan : d.loan, binding:dv ? dv.binding : d.binding, equity:dv ? dv.equity : d.equity, dscr:dv ? dv.dscr : d.dscr, yoc:dv ? dv.yoc : (basis ? calc.noi/basis : NaN),
-      profit:(x.dist||0) - (x.contrib||0), peak:(dv ? dv.equity : Number(d.equity)) + Number(s.rateCapCost || 0), noi:calc.noi };
+      profit:(x.dist||0) - (x.contrib||0), peak:dv ? dv.equity : Number(d.equity) + Number(s.rateCapCost || 0), contrib:x.contrib || 0, noi:calc.noi };
   });
 }
 
@@ -197,6 +197,12 @@ function decorateTopNav(frame){
 }
 
 /* ---------------------------------------------------------------- 2. snapshot + key */
+/* ALL INPUTS TIE: one verdict from the shared funding ties (src/184) and the model integrity checks */
+function tieChip(){
+  var t; try { t = window.bkAllInputsTie && window.bkAllInputsTie(); } catch(e){ t = null; } if(!t || t.withheld) return '';
+  var tip = t.ok ? t.checks + ' checks agree: Sources & Uses, Debt, Funding, Returns and the model integrity checks' : t.failed.map(function(f){ return f.label + (f.detail ? ' (' + f.detail + ')' : ''); }).join('; ');
+  return '<a data-goto-sheet2="Model Checks" title="' + esc(tip) + '" style="cursor:pointer"><span class="status-chip ' + (t.ok ? 'pass' : 'fail') + '">' + (t.ok ? 'ALL INPUTS TIE' : t.failed.length + ' DO NOT TIE') + '</span></a>';
+}
 function snapshotCard(){
   if(!hasDeal()) return '';
   var r = readiness(), s = bkLoad();
@@ -211,10 +217,11 @@ function snapshotCard(){
   var row = function(k, v, cls){ return '<div class="metric-row"><span class="k">' + k + '</span><span class="v ' + (cls || '') + '">' + v + '</span></div>'; };
   return head + '<div class="metric-list">'
     + row('Levered IRR', pct(h.levIRR), 'big') + row('Equity Multiple', mult(h.levMOIC))
-    + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + pct(h.gpIRR))
+    + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + (Number(bkLoad().gpShare) > 0 ? pct(h.gpIRR) : 'N/A'))
     + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(h.binding) + '</span>' : ''))
     + row('Equity', money(h.equity)) + row('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
+    + (tieChip() ? row('Inputs', tieChip()) : '')
     + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '')
     + (function(){ var m = null; try { m = window.bkMarketCompare && window.bkMarketCompare(); } catch(e){}
         if(!m || !m.rows) return ''; var out = m.rows.filter(function(x){ return x.status === 'ABOVE RANGE' || x.status === 'BELOW RANGE'; }).length;
@@ -261,13 +268,16 @@ function decorateNotes(frame){
 /* ---------------------------------------------------------------- 3. Deal Underwrite */
 /* the Deal Underwrite tab bar: which group is open, kept for the session; "Show all" shares the panel-tab switch (and starts on under automated test) */
 var DU_KEY = 'bk-du-tab';
-function duShowAll(){ var v = null; try { v = localStorage.getItem('bk-pt-all'); } catch(e){} if(v === '1') return true; if(v === '0') return false; return !!(navigator && navigator.webdriver); }
+/* every panel at once is for automated checks and print only; on screen each tab shows its own panels (a stored preference from the old "Show all" button is ignored) */
+function duAuto(){ return !!(navigator && navigator.webdriver); }
+function duShowAll(){ if(!duAuto()) return false; var v = null; try { v = localStorage.getItem('bk-pt-all'); } catch(e){} return v !== '0'; }
+window.bkDuShowAll = function(on){ try { localStorage.setItem('bk-pt-all', on ? '1' : '0'); } catch(e){} var main = document.querySelector('#viewport .main-col'), g = main && main.__bkDuGroups, b = main && main.querySelector('.bk-dt.on'); if(g) duOpen(main, g, b ? Number(b.getAttribute('data-bk-grp')) : 0, {}); };
 function duStick(){ var f = document.querySelector('.bk-flow'), px = 0; try { if(window.innerWidth <= 900) px = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bk-tabh'), 10) || 0; else if(f && getComputedStyle(f).position === 'sticky') px = Math.round(f.getBoundingClientRect().height); } catch(e){} document.documentElement.style.setProperty('--bk-stick', px + 'px'); }
 function duOpen(main, groups, k, opts){
   opts = opts || {}; var all = duShowAll(), bar = main.querySelector('.bk-dui'); if(!bar) return;
-  groups.forEach(function(g, i){ g.panels.forEach(function(w){ w.classList.toggle('bk-grp-hide', !all && i !== k); }); });
+  /* a panel that does not apply to this kind of deal (the development tables on an acquisition, and the reverse) is not shown on screen */
+  groups.forEach(function(g, i){ g.panels.forEach(function(w){ w.classList.toggle('bk-grp-hide', !all && i !== k); w.classList.toggle('bk-na-off', !all && w.hasAttribute('data-bk-na')); }); });
   bar.querySelectorAll('.bk-dt').forEach(function(b, i){ var on = i === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.setAttribute('tabindex', on ? '0' : '-1'); });
-  var tg = bar.querySelector('.bk-dt-all'); if(tg){ tg.textContent = all ? 'Show as tabs' : 'Show all'; tg.setAttribute('aria-pressed', all ? 'true' : 'false'); }
   bar.classList.toggle('bk-showall', all);
   if(opts.user){ try { localStorage.setItem(DU_KEY, String(k)); } catch(e){} }   /* remembered only when the person chose it */
   var on = bar.querySelector('.bk-dt.on'); if(on){ var bl = bar.getBoundingClientRect(), ol = on.getBoundingClientRect(); if(ol.left < bl.left + 4) bar.scrollLeft += ol.left - bl.left - 12; else if(ol.right > bl.right - 4) bar.scrollLeft += ol.right - bl.right + 12; }
@@ -280,17 +290,17 @@ function duTabs(main, groups){
   main.__bkDuGroups = groups; duStick();
   if(!main.__bkDuBound){ main.__bkDuBound = true; window.addEventListener('resize', duStick); }
   var saved = NaN; try { var sv = localStorage.getItem(DU_KEY); saved = sv === null || sv === '' ? NaN : Number(sv); } catch(e){}
-  var k = isFinite(saved) && saved >= 0 && saved < groups.length && groups[saved].panels.length ? saved : -1;
-  if(k < 0){ groups.some(function(g, i){ if(g.miss){ k = i; return true; } return false; }); }
-  if(k < 0) k = 0;
+  var live = function(i){ var g = groups[i]; return g.panels.length && g.na < g.panels.length; };
+  var k = isFinite(saved) && saved >= 0 && saved < groups.length && live(saved) ? saved : -1;
+  if(k < 0){ groups.some(function(g, i){ if(g.miss && live(i)){ k = i; return true; } return false; }); }
+  if(k < 0){ groups.some(function(g, i){ if(live(i)){ k = i; return true; } return false; }); } if(k < 0) k = 0;
   duOpen(main, groups, k, {});
   var bar = main.querySelector('.bk-dui');
   bar.addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return;
-    if(b.hasAttribute('data-bk-all')){ try { localStorage.setItem('bk-pt-all', duShowAll() ? '0' : '1'); } catch(x){} var cur = Number(bar.querySelector('.bk-dt.on') ? bar.querySelector('.bk-dt.on').getAttribute('data-bk-grp') : 0); duOpen(main, groups, cur, { user:true }); return; }
     var i = Number(b.getAttribute('data-bk-grp')); if(!isFinite(i)) return; duOpen(main, groups, i, { scroll:true, user:true }); });
-  bar.addEventListener('keydown', function(e){ var tabs = [].slice.call(bar.querySelectorAll('.bk-dt')), i = tabs.indexOf(document.activeElement); if(i < 0) return; var j = i;
+  bar.addEventListener('keydown', function(e){ var tabs = [].slice.call(bar.querySelectorAll('.bk-dt:not(.na):not(.empty)')), i = tabs.indexOf(document.activeElement); if(i < 0) return; var j = i;
     if(e.key === 'ArrowRight') j = (i + 1) % tabs.length; else if(e.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length; else if(e.key === 'Home') j = 0; else if(e.key === 'End') j = tabs.length - 1; else return;
-    e.preventDefault(); tabs[j].focus(); duOpen(main, groups, j, { user:true }); });
+    e.preventDefault(); tabs[j].focus(); duOpen(main, groups, Number(tabs[j].getAttribute('data-bk-grp')), { user:true }); });
 }
 
 var REQ_KEYS = { size:'units', revenue:'avgRent' };
@@ -328,12 +338,12 @@ function decorateUnderwrite(frame){
     var full = cap.textContent.replace(/\s+/g, ' ').trim(), head = full.replace(/\s+-\s+.*$/, '').trim();
     var gi = -1; groups.forEach(function(g, k){ if(gi < 0 && g.rx.test(head)) gi = k; }); if(gi < 0) gi = groups.length - 1;
     var g = groups[gi]; g.panels.push(w); w.setAttribute('data-bk-grp', String(gi)); w.setAttribute('role', 'tabpanel'); w.setAttribute('aria-labelledby', 'bk-dtab-' + gi);
-    g.miss += w.querySelectorAll('tr.bk-req-missing').length; if(w.hasAttribute('data-bk-na')) g.na++;
+    if(w.hasAttribute('data-bk-na')) g.na++; else g.miss += w.querySelectorAll('tr.bk-req-missing').length;
   });
   var tabsHtml = groups.map(function(g, k){ var allNA = g.panels.length > 0 && g.na === g.panels.length, empty = !g.panels.length;
     return '<button type="button" role="tab" id="bk-dtab-' + k + '" class="bk-dt' + (allNA ? ' na' : '') + (empty ? ' empty' : '') + '" data-bk-grp="' + k + '" aria-selected="false" tabindex="-1" style="--g:' + g.color + '" title="' + esc(g.name + ' - ' + g.panels.length + ' panel' + (g.panels.length === 1 ? '' : 's') + (allNA ? ' (does not apply to this deal)' : '') + (g.miss ? ' - ' + g.miss + ' required input' + (g.miss === 1 ? '' : 's') + ' missing' : '')) + '"><span class="nm">' + esc(g.name) + '</span>'
       + (g.miss ? '<span class="bk-dt-n" aria-label="' + g.miss + ' required missing">' + g.miss + '</span>' : '') + (allNA ? '<span class="bk-dt-na">N/A</span>' : '') + '</button>'; }).join('');
-  main.insertAdjacentHTML('afterbegin', '<div class="bk-dui bk-tabs" role="tablist" aria-label="Deal Underwrite sections">' + tabsHtml + '<button type="button" class="bk-dt-all" data-bk-all="1" title="Put every panel on one page">Show all</button></div>' + req);
+  main.insertAdjacentHTML('afterbegin', '<div class="bk-dui bk-tabs" role="tablist" aria-label="Deal Underwrite sections">' + tabsHtml + '</div>' + req);
   duTabs(main, groups);
   // fields changed this session
   var base = U.baseline && U.baseline.id === dealKey() ? U.baseline.s : null;
@@ -450,7 +460,7 @@ function drastic(target){
       if(a.calc !== b.calc){ flag = true; lines.push(b.calc ? 'Results that are withheld now (' + a.state + ') will show again.' : 'The deal becomes ' + b.state + ' and its results are withheld.'); }
       if(a.calc && b.calc){
         if(isFinite(a.irr) && isFinite(b.irr) && Math.abs(a.irr - b.irr) >= THRESH.irr){ flag = true; lines.push('Levered IRR goes from ' + (a.irr * 100).toFixed(2) + '% to ' + (b.irr * 100).toFixed(2) + '% (' + (b.irr >= a.irr ? '+' : '−') + (Math.abs(b.irr - a.irr) * 100).toFixed(2) + ' points).'); }
-        [['price', 'Purchase price'], ['noi', 'Year-1 NOI'], ['loan', 'The loan'], ['equity', 'Equity required']].forEach(function(p){ var x = a[p[0]], y = b[p[0]], base = Math.max(Math.abs(x), 1); if(Math.abs(y - x) / base >= THRESH.rel && Math.abs(y - x) > 1000){ flag = true; lines.push(p[1] + ' goes from ' + mo(x) + ' to ' + mo(y) + ' (' + (y >= x ? '+' : '−') + Math.round(Math.abs(y - x) / base * 100) + '%).'); } });
+        [['price', 'Purchase price'], ['noi', 'Year-1 NOI'], ['loan', 'The loan'], ['equity', 'Closing equity']].forEach(function(p){ var x = a[p[0]], y = b[p[0]], base = Math.max(Math.abs(x), 1); if(Math.abs(y - x) / base >= THRESH.rel && Math.abs(y - x) > 1000){ flag = true; lines.push(p[1] + ' goes from ' + mo(x) + ' to ' + mo(y) + ' (' + (y >= x ? '+' : '−') + Math.round(Math.abs(y - x) / base * 100) + '%).'); } });
       } } }
   var cp = parse(cur['bkcapital.cre.portfolio.v01']) || [], tp = parse(target['bkcapital.cre.portfolio.v01']) || [], ci = parse(cur['bkcapital.cre.investors.v01']) || [], ti = parse(target['bkcapital.cre.investors.v01']) || [];
   if(Array.isArray(cp) && Array.isArray(tp) && tp.length < cp.length){ flag = true; lines.push('It removes ' + (cp.length - tp.length) + ' saved deal' + (cp.length - tp.length === 1 ? '' : 's') + ' from the portfolio.'); }
@@ -502,7 +512,7 @@ document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && docum
         + tile('Unlevered IRR', pct(h.unlevIRR), mult(h.unlevMOIC) + ' multiple')
         + tile('LP IRR', pct(h.lpIRR), mult(h.lpMOIC) + ' LP multiple')
         + tile('GP IRR', pct(h.gpIRR), mult(h.gpMOIC) + ' GP multiple')
-        + tile('Peak Equity', money(h.peak), 'funded at close')
+        + tile('Closing equity', money(h.peak), 'total contributed ' + money(h.contrib))
         + '</div>' + (o.main || '');
     } catch(e){}
     return o;
@@ -534,8 +544,15 @@ function decorate(sheet){
 /* with no GP partner the tier splits are not inputs: the LP takes every tier (kept at 100% for the engine). They read "Not set (no GP)" and cannot be edited until a GP share is entered. */
 function noGpSplits(frame){ if(!hasDeal()) return; var s; try { s = bkLoad(); } catch(e){ return; } if(Number(s.gpShare) > 0) return;
   ['t2LP', 't3LP', 't4LP'].forEach(function(k){
-    [].forEach.call(frame.querySelectorAll('tr[data-bk-key="' + k + '"] td.v'), function(td){ td.removeAttribute('contenteditable'); td.innerHTML = '<span class="bk-nogp">Not set (no GP)</span>'; td.title = 'Enter a GP share to set the splits.'; var tr = td.parentNode; tr.classList.remove('input'); tr.classList.add('bk-nogp-row'); });
-    var el = frame.querySelector('#ae-' + k); if(el){ el.value = ''; el.placeholder = 'Not set (no GP)'; el.disabled = true; el.title = 'Enter a GP share to set the splits.'; } }); }
+    [].forEach.call(frame.querySelectorAll('tr[data-bk-key="' + k + '"] td.v'), function(td){ td.removeAttribute('contenteditable'); td.innerHTML = '<span class="bk-nogp">Not set (no GP)</span>'; td.title = 'Enter a GP share to set the splits.'; var tr = td.parentNode; tr.classList.remove('input', 'bk-req-missing', 'bk-attn'); tr.classList.add('bk-nogp-row', 'bk-na');
+      var cells = [].slice.call(tr.children), i = cells.indexOf(td), chip = tr.querySelector('.status-chip');
+      if(cells[i + 1] && cells[i + 1] !== (chip && chip.closest('td'))) cells[i + 1].textContent = '';
+      if(chip) chip.closest('td').innerHTML = '<span class="status-chip na" title="With no GP share the LP takes every tier">N/A</span>'; });
+    var el = frame.querySelector('#ae-' + k); if(el){ el.value = ''; el.placeholder = 'Not set (no GP)'; el.disabled = true; el.title = 'Enter a GP share to set the splits.'; } });
+  /* the catch-up only moves money to a GP: with none it does not apply (the setting is kept, just not in force) */
+  [].forEach.call(frame.querySelectorAll('#viewport tr, tr'), function(tr){ var c0 = tr.children[0]; if(!c0 || tr.classList.contains('bk-nogp-row')) return; var lab = c0.textContent.replace(/\s+/g, ' ').trim();
+    if(!/^GP Catch-Up( Target)?$/.test(lab)) return; var chip = tr.querySelector('.status-chip'); if(!chip) return;
+    chip.closest('td').innerHTML = '<span class="status-chip na" title="With no GP share there is no catch-up">N/A</span>'; tr.classList.add('bk-na', 'bk-nogp-row'); tr.classList.remove('bk-req-missing', 'bk-attn'); }); }
 /* RIBBON: the command bar under the group tabs. It only carries existing commands (open a sheet, new analysis, import, clear, print, key, guide, sidebar); nothing new is calculated. */
 var RB = { doc:'M6 3h9l4 4v14H6z M15 3v4h4 M9 12h7 M9 16h7', grid:'M4 5h16v14H4z M4 10h16 M4 15h16 M10 5v14', chart:'M4 20V4 M4 20h16 M8 16v-5 M12 16V8 M16 16v-8', bank:'M3 9l9-5 9 5 M5 9v9 M10 9v9 M14 9v9 M19 9v9 M3 20h18', key:'M8 14a4 4 0 1 1 3-6.5L21 17v3h-3v-2h-2v-2h-2l-1.5-1.5', plus:'M12 5v14 M5 12h14', up:'M12 16V5 M7 10l5-5 5 5 M5 19h14', trash:'M5 7h14 M9 7V4h6v3 M7 7l1 13h8l1-13', print:'M7 9V3h10v6 M7 17H4v-7h16v7h-3 M7 14h10v7H7z', book:'M5 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H5z M19 4h-6 M19 4v14h-6', side:'M4 5h16v14H4z M9 5v14', swatch:'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z', people:'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M3 20v-2a5 5 0 0 1 10 0v2 M16 6a3 3 0 0 1 0 6 M21 20v-2a5 5 0 0 0-3-4.5', cal:'M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4', calc:'M6 3h12v18H6z M9 7h6 M9 12h2 M13 12h2 M9 16h2 M13 16h2' };
 var RB_OF = { overview:'grid', inputs:'doc', editor:'grid', reports:'doc', propops:'chart', dev:'cal', debt:'bank', returns:'chart', biz:'calc', credit:'bank', tools:'calc', portfolio:'people', qa:'doc' };
@@ -554,7 +571,7 @@ function ribbon(frame, sheet){
   var tab = (typeof NAV_TABS !== 'undefined' ? NAV_TABS : []).find(function(t){ return t.groups.some(function(id){ var x = GROUPS.find(function(y){ return y.id === id; }); return x && x.sheets.indexOf(sheet) > -1; }); });
   var gs = tab ? tab.groups.map(function(id){ return GROUPS.find(function(x){ return x.id === id; }); }).filter(function(x){ return x && !x.hidden && (x.id !== 'dev' || dev || x.sheets.indexOf(sheet) > -1); }) : [];
   var sub = gs.map(function(g){ return g.sheets.filter(function(n){ return typeof RENDERERS[n] === 'function'; }).map(function(n){ return '<button type="button" class="rb-t' + (n === sheet ? ' on' : '') + '" data-goto-sheet2="' + esc(n) + '"' + (n === sheet ? ' aria-current="page"' : '') + '>' + esc(n) + '</button>'; }).join(''); }).filter(Boolean).join('<span class="rb-sep" aria-hidden="true"></span>');
-  var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
+  var cmd = function(icon, label, attrs){ return '<button type="button" class="rb-c" title="' + esc(label) + '" aria-label="' + esc(label) + '" ' + attrs + '>' + rbIcon(icon) + '<span>' + esc(label) + '</span></button>'; };
   var h = '<div class="bk-ribbon" role="toolbar" aria-label="Pages and commands"><div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
     + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
   nav.insertAdjacentHTML('afterend', h);
@@ -573,7 +590,7 @@ function kpiBar(sheet){
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
       + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
-      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) + (tieChip() ? cell('Inputs', tieChip()) : '') : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }
 function refreshFlow(){

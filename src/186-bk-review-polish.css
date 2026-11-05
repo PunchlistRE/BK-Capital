@@ -1,0 +1,32 @@
+/* Visual review, November 2026 (audit/qa/SHEET_REVIEW.md). Display only: no number, formula or behaviour changes. Loads after the palette, so it settles these rules. */
+
+/* Chart cards: the lettered title bar gives every child of a chart card 12px side margins; a chart at width 100% then ran 12px past the card's right edge (Operating Underwrite, Property CF, Returns). */
+html body #viewport .pf-card > svg{ width:calc(100% - 24px) !important; }   /* the charts set width:100% inline */
+
+/* Sidebar cards: a long unbroken value (a source file name) wraps inside the card instead of running out of it (Source Data). */
+html body .metric-row .v{ min-width:0; overflow-wrap:anywhere; }
+
+/* A chart or a table that is wider than its box scrolls sideways; it now says so, like the wide tables do (Sensitivity tornado and spider, Financing Lab and Compare, Pre-Offer Bid, Deal Remedies, the Gantt). The class is set by the table classifier (src/109) only when the box really overflows. */
+html body #viewport .bk-xs.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+  background:linear-gradient(to right,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 0 0/40px 100% no-repeat local,
+             linear-gradient(to left,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 100% 0/40px 100% no-repeat local,
+             linear-gradient(to right,rgba(14,42,74,.22),rgba(14,42,74,0)) 0 0/10px 100% no-repeat scroll,
+             linear-gradient(to left,rgba(14,42,74,.22),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll,
+             var(--ae-cell-ro); }
+html body #viewport .bk-xs.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
+html body #viewport .bk-sx-svgwrap.bk-xs.bk-scrollable::before{ content:'Scroll sideways for the whole chart \2192'; }
+@media print{ html body #viewport .bk-xs.bk-scrollable::before{ display:none !important; } }
+
+/* PHONE */
+@media (max-width:760px){
+  /* the case switcher, the save status and undo / redo wrap onto a second line instead of running off the right edge; the save status is shown in full */
+  html body .bk-flow .bk-flow-right{ flex-wrap:wrap; overflow-x:visible; row-gap:6px; }
+  html body .bk-flow .bk-save{ max-width:100%; overflow:visible; text-overflow:clip; white-space:normal; height:auto; min-height:26px; }
+  /* the section's page links take fewer rows: a shorter line and less padding (still a 28px tap height) */
+  html body .bk-ribbon .rb-t{ line-height:28px; padding:0 7px; font-size:12px; }
+  html body .bk-ribbon .rb-cmds{ min-height:28px; }
+  /* a stacked row keeps its status button whole (Model Checks "Acknowledge"): the chip cell is as wide as its label and moves to the next line when it must */
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip.bk-col-chip{ flex:0 0 auto !important; width:auto !important; min-width:max-content !important; }
+  /* Deal Documents: the photo and its explanation stack instead of squeezing the text into a narrow column */
+  html body #viewport .card.bk-docphoto{ grid-template-columns:1fr !important; }
+}

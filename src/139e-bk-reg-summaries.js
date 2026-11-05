@@ -27,7 +27,7 @@ R.addMetrics([
   /* acquisition */
   M('price', 'Purchase price', 'money', function(c){ return price(c); }),
   M('totalCost', 'Total acquisition cost', 'money', function(c){ return c.acf ? pos(-c.acf.initial) : null; }, { note:'price, closing costs and acquisition fee' }),
-  M('equity', 'Equity required', 'money', function(c){ return c.head ? pos(c.head.equity) : c.debt ? pos(c.debt.equity) : null; }),
+  M('equity', 'Closing equity', 'money', function(c){ return c.head ? pos(c.head.peak) : c.debt ? pos(c.debt.equity + (Number(c.s.rateCapCost) || 0)) : null; }),
   M('loan', 'Loan', 'money', function(c){ if(c.s.debtEnabled === false && !/develop/i.test(String(c.s.dealType || ''))) return null; return c.head ? fin(c.head.loan) : c.debt ? fin(c.debt.loan) : null; }),
   M('ltv', 'Loan to value', 'pct', function(c){ return c.debt && c.s.debtEnabled !== false ? fin(c.debt.ltv) : null; }),
   M('dscr', 'Year-1 DSCR', 'x', function(c){ if(c.s.debtEnabled === false && !/develop/i.test(String(c.s.dealType || ''))) return null; return c.head ? fin(c.head.dscr) : c.debt ? fin(c.debt.dscr) : null; }),
@@ -43,7 +43,7 @@ R.addMetrics([
   M('devCost', 'Total development cost (before financing)', 'money', function(c){ return c.dev ? pos(c.dev.unlev) : null; }),
   M('capitalization', 'Total capitalization (incl. financing)', 'money', function(c){ return c.fund ? pos(c.fund.levered) : null; }),
   M('conLoan', 'Construction facility', 'money', function(c){ return c.fund ? pos(c.fund.commit) : null; }),
-  M('devEquity', 'Equity requirement', 'money', function(c){ return c.fund ? pos(c.fund.equityTotal) : null; }),
+  M('devEquity', 'Closing equity', 'money', function(c){ return c.fund ? pos(c.fund.equityTotal) : null; }),
   M('capInt', 'Capitalized interest', 'money', function(c){ return c.fund ? fin(c.fund.actualCapInt) : null; }),
   M('timeline', 'Months to stabilization', 'int', function(c){ return c.dev ? pos(c.dev.stab) : null; }),
   M('stabNOI', 'Stabilized NOI', 'money', function(c){ return c.calc ? fin(c.calc.noi) : null; }),

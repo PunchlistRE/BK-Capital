@@ -57,7 +57,8 @@ const A = require(path.join(__dirname, 'deal.js'));
   await show(p, 'Portfolio Dashboard', 900);
   const kc = await p.evaluate(() => { const row = [...document.querySelectorAll('#viewport tr')].find(r => /Portfolio Levered IRR/.test(r.textContent)); const cap = document.querySelector('#viewport table.fin caption, #viewport table.fin th'); if (!row) return null; return { row: getComputedStyle(row.cells[0]).backgroundColor, head: getComputedStyle(cap).backgroundImage + getComputedStyle(cap).backgroundColor }; });
   const tone = c => { const n = c.match(/\d+/g).map(Number); return { r: n[0], g: n[1], b: n[2] }; };
-  check('a key-metric row (weighted IRR) is a warm band: more red than blue, unlike the blue-grey header bands', kc && (t => t.r > t.b + 10)(tone(kc.row)), kc && kc.row);
+  const lum = x => 0.2126 * x.r + 0.7152 * x.g + 0.0722 * x.b, hd = kc && (kc.head.match(/rgba?\([^)]*\)/g) || []).pop();
+  check('a key-metric row (weighted IRR) is a light blue band: bluer than red, lighter than the header band, and not the header colour', kc && hd && (t => t.b > t.r + 10 && lum(t) > lum(tone(hd)) && kc.row !== hd)(tone(kc.row)), kc && kc.row + ' vs header ' + hd);
   await show(p, 'QA', 1200);
   const qa = await p.evaluate(() => { const t = [...document.querySelectorAll('#viewport table.fin')].find(x => /Engine Self-Tests/.test(x.caption ? x.caption.textContent : '')); const hi = [...t.tHead.rows[0].cells].findIndex(c => /Result/.test(c.textContent)); const cells = [...t.tBodies[0].rows].map(r => getComputedStyle(r.cells[hi]).textAlign); const g = [...document.querySelectorAll('#viewport table.fin')].find(x => /Certification Gates/.test(x.caption ? x.caption.textContent : '')); const gv = [...g.tBodies[0].rows].map(r => getComputedStyle(r.cells[1]).textAlign); return { head: getComputedStyle(t.tHead.rows[0].cells[hi]).textAlign, cells, gv }; });
   check('QA: the Result column of chips is centred, header included', qa.head === 'center' && qa.cells.every(a => a === 'center'), JSON.stringify(qa));
@@ -94,9 +95,28 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('phone: the valuation report does not widen the page (its tables scroll inside themselves)', vw.sw <= vw.w + 1, JSON.stringify(vw));
   /* Deal Underwrite: the tab bar is ONE row of seven group tabs, pinned under the header, with one tab open (details in stageD_test.js) */
   const d = await open(1280); await show(d, 'Deal Underwrite');
-  const du = await d.evaluate(() => { const bar = document.querySelector('#viewport .bk-dui'); if (!bar) return null; const tabs = [...bar.querySelectorAll('.bk-dt')], r = bar.getBoundingClientRect();
+  const du = await d.evaluate(() => { const bar = document.querySelector('#viewport .bk-dui'); if (!bar) return null; const tabs = [...bar.querySelectorAll('.bk-dt')].filter(x => x.getClientRects().length), r = bar.getBoundingClientRect();
     return { names: tabs.map(x => x.querySelector('.nm').textContent.trim()), rows: new Set(tabs.map(x => Math.round(x.getBoundingClientRect().top))).size, on: bar.querySelectorAll('.bk-dt.on').length, h: Math.round(r.height), pos: getComputedStyle(bar).position, sel: tabs.filter(x => x.getAttribute('aria-selected') === 'true').length }; });
-  check('Deal Underwrite tabs: seven group tabs on one row, one open, pinned under the header and not a tall block', du && du.names.length === 7 && du.rows === 1 && du.on === 1 && du.sel === 1 && du.pos === 'sticky' && du.h < 60, JSON.stringify(du)); await d.close();
+  check('Deal Underwrite tabs: the group tabs that apply (six on an acquisition: no Development) on one row, one open, pinned under the header and not a tall block', du && du.names.length === 6 && !du.names.includes('Development') && du.rows === 1 && du.on === 1 && du.sel === 1 && du.pos === 'sticky' && du.h < 60, JSON.stringify(du)); await d.close();
+  /* November 2026 review (audit/qa/SHEET_REVIEW.md): chart cards keep their charts inside the border; long sidebar values wrap */
+  const d2 = await open(1280);
+  for (const [pg, w] of [[d2, 1280], [m, 390]]) {
+    const over = [];
+    for (const sh of ['Operating Underwrite', 'Property CF', 'Returns', 'Source Data']) { await show(pg, sh, 900);
+      over.push(...(await pg.evaluate((sh) => { const o = []; document.querySelectorAll('#viewport .pf-card > svg').forEach((e) => { const c = e.parentElement.getBoundingClientRect(), r = e.getBoundingClientRect(); if (r.right > c.right + 1) o.push(sh + ' chart +' + Math.round(r.right - c.right) + 'px'); });
+        document.querySelectorAll('.metric-row .v').forEach((e) => { const card = e.closest('.card'); if (!card || !e.getClientRects().length) return; const c = card.getBoundingClientRect(), r = e.getBoundingClientRect(); if (r.right > c.right + 1) o.push(sh + ' sidebar value +' + Math.round(r.right - c.right) + 'px'); }); return o; }, sh))); }
+    check((w < 600 ? 'phone' : 'desktop') + ': charts stay inside their cards and long sidebar values wrap inside theirs', over.length === 0, over.slice(0, 4).join(', '));
+  }
+  /* phone: the case switcher, the save status (in full) and undo are all on screen; a stacked row keeps its action button whole; a chart wider than the screen says it scrolls */
+  await show(m, 'Model Checks', 900);
+  const ph = await m.evaluate(() => { const W = document.documentElement.clientWidth, sv = document.querySelector('.bk-flow .bk-save'), un = document.querySelector('.bk-flow [data-bk-undo]');
+    const btn = [...document.querySelectorAll('#viewport table.bk-m-stack button.status-chip')][0];
+    return { save: sv ? { right: sv.getBoundingClientRect().right, cut: sv.scrollWidth > sv.clientWidth + 1 } : null, undo: un ? un.getBoundingClientRect().right : null, W, btn: btn ? btn.scrollWidth - btn.clientWidth : null }; });
+  check('phone: the save status shows in full and undo is on screen, not scrolled off the right edge', ph.save && !ph.save.cut && ph.save.right <= ph.W && ph.undo !== null && ph.undo <= ph.W, JSON.stringify(ph));
+  check('phone: a stacked findings row keeps its action button whole (Model Checks)', ph.btn !== null && ph.btn <= 1, JSON.stringify(ph));
+  await show(m, 'Sensitivity', 1200);
+  const sx = await m.evaluate(() => [...document.querySelectorAll('#viewport .bk-sx-svgwrap')].map((w) => ({ over: w.scrollWidth > w.clientWidth + 2, cue: w.classList.contains('bk-scrollable') && getComputedStyle(w, '::before').content.indexOf('Scroll sideways') >= 0 })));
+  check('phone: each Sensitivity chart wider than the screen says it scrolls sideways', sx.length > 0 && sx.every((x) => !x.over || x.cue), JSON.stringify(sx));
   check('phone: no page errors', m.errs.length === 0, m.errs.slice(0, 2).join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
