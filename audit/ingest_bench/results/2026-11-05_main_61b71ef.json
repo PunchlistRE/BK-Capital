@@ -1,0 +1,438 @@
+{
+ "build": "main at 61b71ef (the Import OM reader as it is today)",
+ "ocr": "Tesseract.js 5.1.1 + PDF.js 3.11.174 run locally (the app loads them from a CDN); timings taken while the machine was running a 73-section test suite, so they are upper bounds",
+ "documents": [
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "seconds": 3,
+   "extracted": {
+    "price": 775000,
+    "units": 12,
+    "sf": 4047,
+    "yearBuilt": 1900,
+    "noi": 111284,
+    "egi": 162461,
+    "expTot": 51177,
+    "taxes": 11131,
+    "insurance": 8123,
+    "zip": "06095",
+    "state": "CT",
+    "sources": {
+     "price": 3,
+     "units": 5,
+     "sf": 3,
+     "yearBuilt": 5,
+     "lot": 3,
+     "unitMix": 24,
+     "income": 25
+    }
+   },
+   "pageSources": {
+    "price": 3,
+    "units": 5,
+    "sf": 3,
+    "yearBuilt": 5,
+    "lot": 3,
+    "unitMix": 24,
+    "income": 25
+   }
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "seconds": 99.3,
+   "extracted": {
+    "price": null,
+    "units": 9,
+    "sf": 8762,
+    "yearBuilt": null,
+    "noi": 217144,
+    "egi": 278319,
+    "expTot": 61175,
+    "taxes": 27743,
+    "insurance": 4320,
+    "zip": "06877",
+    "state": "CT",
+    "sources": {
+     "name": 34,
+     "units": 23,
+     "sf": 23,
+     "lot": 6,
+     "unitMix": 2,
+     "income": 24
+    }
+   },
+   "pageSources": {
+    "name": 34,
+    "units": 23,
+    "sf": 23,
+    "lot": 6,
+    "unitMix": 2,
+    "income": 24
+   }
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "seconds": 26.3,
+   "extracted": {
+    "price": 4195000,
+    "units": 26,
+    "sf": 14985,
+    "yearBuilt": 1968,
+    "noi": 316802,
+    "egi": 480141,
+    "expTot": 163340,
+    "taxes": 62568,
+    "insurance": 20764,
+    "zip": "06606",
+    "state": "CT",
+    "sources": {
+     "name": 18,
+     "price": 4,
+     "noi": 4,
+     "units": 5,
+     "sf": 5,
+     "yearBuilt": 5,
+     "lot": 5,
+     "parking": 5,
+     "unitMix": 16,
+     "income": 17
+    }
+   },
+   "pageSources": {
+    "name": 18,
+    "price": 4,
+    "noi": 4,
+    "units": 5,
+    "sf": 5,
+    "yearBuilt": 5,
+    "lot": 5,
+    "parking": 5,
+    "unitMix": 16,
+    "income": 17
+   }
+  },
+  {
+   "doc": "439_East_Main_Street_OM.pdf",
+   "seconds": 45.7,
+   "extracted": {
+    "om": {
+     "price": 1480000,
+     "units": 74,
+     "acres": 0.3,
+     "zoning": "IHI",
+     "stories": 5,
+     "street": "439 East Main Street",
+     "city": "Bridgeport",
+     "state": "CT",
+     "mix": {
+      "1BR": 70,
+      "2BR": 4
+     },
+     "commercialSuites": 1,
+     "statedYield": 0.0877,
+     "sellerFinancing": null,
+     "tax": true
+    },
+    "taxBasis": "pf",
+    "price": 1480000,
+    "units": 74,
+    "sf": null,
+    "yearBuilt": null,
+    "taxes": null,
+    "insurance": null,
+    "zip": "06095",
+    "state": "CT",
+    "sources": {
+     "price": 4,
+     "units": 4,
+     "unitMix": 3
+    }
+   },
+   "pageSources": {
+    "price": 4,
+    "units": 4,
+    "unitMix": 3
+   }
+  },
+  {
+   "doc": "Great_Pond_Village_OM.pdf",
+   "seconds": 2.6,
+   "extracted": {
+    "om": {
+     "price": null,
+     "units": 230,
+     "acres": 7.5,
+     "zoning": null,
+     "stories": null,
+     "mix": {},
+     "commercialSuites": 0,
+     "statedYield": null,
+     "sellerFinancing": null,
+     "tax": false
+    },
+    "taxBasis": "pf",
+    "price": null,
+    "units": 230,
+    "sf": null,
+    "yearBuilt": null,
+    "taxes": null,
+    "insurance": null,
+    "zip": "06905",
+    "state": "CT",
+    "sources": {
+     "units": 2
+    }
+   },
+   "pageSources": {
+    "units": 2
+   }
+  }
+ ],
+ "fields": [
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "price",
+   "want": 775000,
+   "have": 775000,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "units",
+   "want": 12,
+   "have": 12,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "sf",
+   "want": 4047,
+   "have": 4047,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "yearBuilt",
+   "want": 1900,
+   "have": 1900,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "noi",
+   "want": 111284,
+   "have": 111284,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "egi",
+   "want": 162461,
+   "have": 162461,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "expTot",
+   "want": 51177,
+   "have": 51177,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "taxes",
+   "want": 11131,
+   "have": 11131,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "insurance",
+   "want": 8123,
+   "have": 8123,
+   "status": "ok"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "zip",
+   "want": null,
+   "have": "06095",
+   "status": "FALSE POSITIVE"
+  },
+  {
+   "doc": "32_Ferry_Street_OM.pdf",
+   "field": "state",
+   "want": "CT",
+   "have": "CT",
+   "status": "ok"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "price",
+   "want": 3600000,
+   "have": null,
+   "status": "MISSING"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "units",
+   "want": 9,
+   "have": 9,
+   "status": "ok"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "sf",
+   "want": 8203,
+   "have": 8762,
+   "status": "WRONG"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "yearBuilt",
+   "want": 1900,
+   "have": null,
+   "status": "MISSING"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "noi",
+   "want": 217144,
+   "have": 217144,
+   "status": "ok"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "egi",
+   "want": 278319,
+   "have": 278319,
+   "status": "ok"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "expTot",
+   "want": 61175,
+   "have": 61175,
+   "status": "ok"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "taxes",
+   "want": 27743,
+   "have": 27743,
+   "status": "ok"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "insurance",
+   "want": 4320,
+   "have": 4320,
+   "status": "ok"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "zip",
+   "want": "06877",
+   "have": "06877",
+   "status": "ok"
+  },
+  {
+   "doc": "613_Main_Street_OM.pdf",
+   "field": "state",
+   "want": "CT",
+   "have": "CT",
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "price",
+   "want": 4195000,
+   "have": 4195000,
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "units",
+   "want": 26,
+   "have": 26,
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "sf",
+   "want": 14985,
+   "have": 14985,
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "yearBuilt",
+   "want": 1968,
+   "have": 1968,
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "noi",
+   "want": 316802,
+   "have": 316802,
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "egi",
+   "want": 480141,
+   "have": 480141,
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "expTot",
+   "want": 163340,
+   "have": 163340,
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "taxes",
+   "want": 62568,
+   "have": 62568,
+   "status": "ok"
+  },
+  {
+   "doc": "Norell_Apartments_OM.pdf",
+   "field": "insurance",
+   "want": 20764,
+   "have": 20764,
+   "status": "ok"
+  },
+  {
+   "doc": "439_East_Main_Street_OM.pdf",
+   "field": "price",
+   "want": 1480000,
+   "have": 1480000,
+   "status": "ok"
+  },
+  {
+   "doc": "439_East_Main_Street_OM.pdf",
+   "field": "units",
+   "want": 74,
+   "have": 74,
+   "status": "ok"
+  },
+  {
+   "doc": "Great_Pond_Village_OM.pdf",
+   "field": "price",
+   "want": null,
+   "have": null,
+   "status": "ok (blank, as it should be)"
+  },
+  {
+   "doc": "Great_Pond_Village_OM.pdf",
+   "field": "units",
+   "want": null,
+   "have": 230,
+   "status": "FALSE POSITIVE"
+  }
+ ]
+}

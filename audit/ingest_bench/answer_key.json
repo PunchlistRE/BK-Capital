@@ -1,0 +1,229 @@
+{
+ "_about": "Hand-read answer key for the ingestion benchmark. Every value was read from the document itself (a text layer, or the rendered page image for scanned pages) by a person, not produced by the importer. page = the PDF page index, 1-based. value null = the document does not state it, so the correct answer is blank. class: financial fields must be exact to the dollar; descriptive fields are matched as written. The documents are the owner's and are not in this repository: put them in a folder and pass it to om_baseline.js.",
+ "32_Ferry_Street_OM.pdf": {
+  "type": "OM, stabilized mixed-use",
+  "pdfPages": 27,
+  "textLayer": "native text, 375 images",
+  "fields": {
+   "price": {
+    "value": 775000,
+    "page": 3,
+    "class": "financial",
+    "note": "Listing Price tile"
+   },
+   "units": {
+    "value": 12,
+    "page": 3,
+    "class": "descriptive",
+    "note": "12 units + 1 suite = 13 total; the residential count is 12"
+   },
+   "sf": {
+    "value": 4047,
+    "page": 3,
+    "class": "descriptive",
+    "note": "Total Rentable SF (3,347 residential + 700 commercial)"
+   },
+   "yearBuilt": {
+    "value": 1900,
+    "page": 3,
+    "class": "descriptive"
+   },
+   "noi": {
+    "value": 111284,
+    "page": 25,
+    "class": "financial",
+    "note": "Current column; pro forma is 125,184"
+   },
+   "egi": {
+    "value": 162461,
+    "page": 25,
+    "class": "financial"
+   },
+   "expTot": {
+    "value": 51177,
+    "page": 25,
+    "class": "financial"
+   },
+   "taxes": {
+    "value": 11131,
+    "page": 25,
+    "class": "financial"
+   },
+   "insurance": {
+    "value": 8123,
+    "page": 25,
+    "class": "financial",
+    "note": "printed equal to Property Management (8,123): a duplicate-value flag candidate"
+   },
+   "zip": {
+    "value": null,
+    "page": 26,
+    "class": "descriptive",
+    "note": "the property's zip is never printed; 06095 on p26 is the broker's office in Windsor, CT"
+   },
+   "state": {
+    "value": "CT",
+    "page": 3,
+    "class": "descriptive"
+   }
+  }
+ },
+ "613_Main_Street_OM.pdf": {
+  "type": "OM, stabilized multifamily, affordable set-aside",
+  "pdfPages": 34,
+  "textLayer": "none (every page is an image)",
+  "fields": {
+   "price": {
+    "value": 3600000,
+    "page": 4,
+    "class": "financial",
+    "note": "Asking Price tile on the Executive Summary"
+   },
+   "units": {
+    "value": 9,
+    "page": 4,
+    "class": "descriptive"
+   },
+   "sf": {
+    "value": 8203,
+    "page": 6,
+    "class": "descriptive",
+    "note": "Property Overview: Building SF 8,203. The rent roll on p23 totals 8,762 SF of unit area: the OM disagrees with itself and the conflict should be shown"
+   },
+   "yearBuilt": {
+    "value": 1900,
+    "page": 6,
+    "class": "descriptive",
+    "note": "printed 'c. 1900 / 2012' (renovated 2012)"
+   },
+   "noi": {
+    "value": 217144,
+    "page": 24,
+    "class": "financial",
+    "note": "Year 1; pro forma 239,970 (the OM's own pro forma foots to 239,971)"
+   },
+   "egi": {
+    "value": 278319,
+    "page": 24,
+    "class": "financial"
+   },
+   "expTot": {
+    "value": 61175,
+    "page": 24,
+    "class": "financial"
+   },
+   "taxes": {
+    "value": 27743,
+    "page": 24,
+    "class": "financial"
+   },
+   "insurance": {
+    "value": 4320,
+    "page": 24,
+    "class": "financial"
+   },
+   "zip": {
+    "value": "06877",
+    "page": 6,
+    "class": "descriptive"
+   },
+   "state": {
+    "value": "CT",
+    "page": 6,
+    "class": "descriptive"
+   }
+  }
+ },
+ "Norell_Apartments_OM.pdf": {
+  "type": "OM, stabilized multifamily",
+  "pdfPages": 18,
+  "textLayer": "one page only (the team page); every other page is an image",
+  "fields": {
+   "price": {
+    "value": 4195000,
+    "page": 4,
+    "class": "financial",
+    "note": "Offering Price in Key Metrics"
+   },
+   "units": {
+    "value": 26,
+    "page": 5,
+    "class": "descriptive",
+    "note": "printed '26 (25 CO's)': 25 have certificates of occupancy"
+   },
+   "sf": {
+    "value": 14985,
+    "page": 5,
+    "class": "descriptive"
+   },
+   "yearBuilt": {
+    "value": 1968,
+    "page": 5,
+    "class": "descriptive"
+   },
+   "noi": {
+    "value": 316802,
+    "page": 17,
+    "class": "financial",
+    "note": "Current; pro forma 390,537; printed lines foot to within $1"
+   },
+   "egi": {
+    "value": 480141,
+    "page": 17,
+    "class": "financial"
+   },
+   "expTot": {
+    "value": 163340,
+    "page": 17,
+    "class": "financial"
+   },
+   "taxes": {
+    "value": 62568,
+    "page": 17,
+    "class": "financial"
+   },
+   "insurance": {
+    "value": 20764,
+    "page": 17,
+    "class": "financial"
+   }
+  }
+ },
+ "439_East_Main_Street_OM.pdf": {
+  "type": "OM, entitled development site",
+  "pdfPages": 18,
+  "textLayer": "native text, 110 images",
+  "fields": {
+   "price": {
+    "value": 1480000,
+    "page": 4,
+    "class": "financial",
+    "note": "land price; seller financing up to 70% at 5% interest-only is offered on p3"
+   },
+   "units": {
+    "value": 74,
+    "page": 4,
+    "class": "descriptive",
+    "note": "approved units (70 one-bedroom + 4 two-bedroom); the pro forma workbook counts 75 because it adds the commercial suite"
+   }
+  }
+ },
+ "Great_Pond_Village_OM.pdf": {
+  "type": "OM, land listing (no price, several parcels)",
+  "pdfPages": 4,
+  "textLayer": "native text, 143 images",
+  "fields": {
+   "price": {
+    "value": null,
+    "class": "financial",
+    "note": "no price anywhere: blank is correct"
+   },
+   "units": {
+    "value": null,
+    "page": 2,
+    "class": "descriptive",
+    "note": "'230-unit' on p2 describes a neighbouring completed project, not the offering"
+   }
+  }
+ }
+}
