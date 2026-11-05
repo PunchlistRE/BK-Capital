@@ -24,6 +24,8 @@ function bkEnsureV17(){
 }
 RENDERERS['Covenant Monitor'] = function(){
   const s = bkEnsureV17(), u = bkAnnualCF(), d = bkDebt();
+  /* a development deal is tested against the permanent loan from its takeout (N/A before it), not the acquisition loan sized off the land price */
+  const dv = (typeof bkDevDebtView==='function') ? bkDevDebtView() : null; if(dv) return bkDevCovenantSheet(s, dv);
   const money = n => n<0?'($'+bkFmt(-n)+')':'$'+bkFmt(n);
   const minDSCR = Number(s.acqDSCR)||0, minDY = Number(s.minDebtYield)||0;
   const rows = u.arr.map((a,i)=>{

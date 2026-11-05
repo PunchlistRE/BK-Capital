@@ -1010,6 +1010,11 @@
 "close": "</script>"
 },
 {
+"file": "190-bk-dev-debt.js",
+"open": "\n<script id=\"bk-dev-debt\">",
+"close": "</script>"
+},
+{
 "file": "188-bk-field-widths.js",
 "open": "\n<script id=\"bk-field-widths\">",
 "close": "</script>"
