@@ -12450,17 +12450,20 @@ extend('Debt','w3aConstructionSizing', function(o){
       + '<tr>'+lbl('Permanent Debt at Sale')+val(money(x.permDebtAtSale))+txt('Balance carried to the exit month')+'<td></td></tr>');
   }
 
+  /* the funding reconciliations read the shared funding calculation (src/184), whose ties are real (to the dollar): this table shows them and adds none of its own. The Sources = Uses row and the facility row used to compare a
+     figure with itself, or carried a tolerance of a billion dollars, so they could not fail. */
+  var FS = (typeof bkFundingSummary==='function') ? (function(){ try { return bkFundingSummary(); } catch(e){ return null; } })() : null;
+  var peakBal = Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; }));
+  function limitRow(label, a, b, okChip, badChip){
+    var d = (Number(a)||0)-(Number(b)||0), ok = d <= 1;
+    return '<tr>'+lbl(label)+val(money(a))+val(money(b))+val(money(d))+'<td class="v">'+chip(ok?'pass':'fail', ok?okChip:badChip)+'</td></tr>';
+  }
   var recon = wrapTable('Construction Debt Reconciliations',
     '<tr><th class="rowlabel-h">Check</th><th>A</th><th>B</th><th>Variance</th><th>Status</th></tr>',
       tie('Levered cost = unlevered + fees + capitalized interest', x.levered, (Number(x.unlev)||0)+(Number(x.upfrontFees)||0)+(Number(x.actualCapInt)||0))
-    + tie('Sources = Uses at the project level', (Number(x.equityTotal)||0)+(Number(x.commit)||0)>=(Number(x.levered)||0) ? Number(x.levered)||0 : (Number(x.equityTotal)||0)+(Number(x.commit)||0), Number(x.levered)||0, 1e9)
-    + tie('Facility drawn never exceeds the commitment',
-        Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; })), Number(x.balCap||x.commit)||0, 1e9)
-    + '<tr>'+lbl('Peak facility balance')
-      + val(money(Math.max.apply(null, (x.months||[{end:0}]).map(function(m){ return Number(m.end)||0; }))))
-      + val(money(x.balCap||x.commit)) + val('-')
-      + '<td class="v">'+ (Math.max.apply(null,(x.months||[{end:0}]).map(function(m){return Number(m.end)||0;})) <= (Number(x.balCap||x.commit)||0)+1
-          ? chip('pass','WITHIN COMMITMENT') : chip('fail','OVER COMMITMENT')) + '</td></tr>');
+    + (FS && FS.dev ? tie('Sources = Uses at the project level (total sources, total uses)', FS.totalSources, FS.totalUses, 1)
+        + limitRow('Principal drawn is within the committed loan amount (principal, commitment)', FS.principal, FS.commit, 'WITHIN COMMITMENT', 'OVER COMMITMENT')
+        + limitRow('Peak facility balance (principal plus capitalized interest) is within the permitted ceiling', peakBal, FS.ceiling, 'WITHIN CEILING', 'OVER CEILING') : ''));
 
   o.main = (o.main||'') + sizing + perm + recon;
 });
