@@ -15,25 +15,37 @@
     var lpC = wf && wf.lp ? Math.abs(n(wf.lp.contrib)) : 0, gpC = wf && wf.gp ? Math.abs(n(wf.gp.contrib)) : 0;
     if(dev){
       var x = bkDevTakeoutV11(), draws = sum(x.months, 'loanDraw'), capInt = sum(x.months, 'capInt'), eqPlan = sum(x.months, 'eq'), eqOver = sum(x.months, 'overflow'), excess = sum(x.months, 'excess');
+      /* Initial reserves are paid in as a use (Initial Reserves Funded) and drawn back as a source, each in its own line. Interest beyond the facility limit is ONE use; the interest reserve pays the first part of it and equity pays the rest,
+         so the equity line is the interest NET of the reserve draw - the reserve draw is shown once, as a reserve source, never again inside equity. */
+      var resInt = sum(x.months, 'resInt'), resOp = sum(x.months, 'resLease'), eqInt = excess - resInt;
       var uses = [['Land / Purchase Price', x.land], ['Closing / Diligence Costs', x.close], ['Acquisition Fee', x.acq]];
       if(n(x.pre) > 0.5) uses.push(['Predevelopment Carry', x.pre]);
       uses.push(['Hard Costs', x.hard], ['Soft Costs', x.soft]);
       if(n(x.leaseDef) > 0.5) uses.push(['Lease-Up Operating Deficit', x.leaseDef]);
-      uses.push(['Construction Facility Fees (origination and unused commitment)', x.upfrontFees], ['Capitalized Construction Interest', x.actualCapInt], ['Interest Funded by Equity Beyond the Commitment', excess]);
+      uses.push(['Construction Facility Fees (origination and unused commitment)', x.upfrontFees], ['Capitalized Construction Interest', x.actualCapInt], ['Interest Beyond the Facility Limit (paid currently)', excess]);
       if(n(x.resFunded) > 0.5) uses.push(['Initial Reserves Funded', x.resFunded]);
       var srcs = [['Construction Facility - draws', draws], ['Construction Facility - capitalized interest', capInt], ['Equity - equity-first funding', eqPlan]];
       if(Math.abs(eqOver) > 0.5) srcs.push(['Equity - cost overflow beyond the commitment', eqOver]);
-      if(Math.abs(excess) > 0.5) srcs.push(['Equity - interest beyond the commitment', excess]);
-      if(n(x.resDrawn) > 0.5) srcs.push(['Initial reserves - drawn for the lease-up shortfall and interest', x.resDrawn]);
+      if(Math.abs(eqInt) > 0.5) srcs.push([resInt > 0.5 ? 'Equity - interest beyond the facility limit, after the interest reserve' : 'Equity - interest beyond the facility limit', eqInt]);
+      if(resOp > 0.5) srcs.push(['Initial reserves - drawn for the lease-up operating shortfall', resOp]);
+      if(resInt > 0.5) srcs.push(['Initial reserves - drawn for interest beyond the facility limit', resInt]);
       var totalUses = uses.reduce(function(t, u){ return t + n(u[1]); }, 0), totalSrc = srcs.reduce(function(t, u){ return t + n(u[1]); }, 0);
-      var facility = draws + capInt, equity = totalSrc - facility, retEq = r ? sum(r.rows, 'equityDraw') : 0, takeEq = r ? sum(r.rows, 'refiEq') : 0, contrib = r ? n(r.contrib) : 0;
-      Object.assign(out, { x:x, uses:uses, sources:srcs, totalUses:totalUses, totalSources:totalSrc, loan:facility, commit:n(x.commit), equity:equity, engineEquity:n(x.equityTotal), returnsEquityDraws:retEq, excess:excess,
-        takeoutEquity:takeEq, otherPostFunding:contrib - retEq - takeEq, contributed:contrib, postClosing:contrib - equity });
+      /* equity at funding is the sum of ITS lines (equity-first, overflow, interest after the reserve), not what is left of the total once the facility is taken out: a plug could never fail to tie */
+      var facility = draws + capInt, equity = eqPlan + eqOver + eqInt, reserveDraws = resOp + resInt, ceiling = n(x.balCap) || n(x.commit);
+      var retEq = r ? sum(r.rows, 'equityDraw') : 0, takeEq = r ? sum(r.rows, 'refiEq') : 0, opShort = r ? sum(r.rows, 'opShort') : 0, contrib = r ? n(r.contrib) : 0;
+      var opRows = r ? r.rows.filter(function(q){ return n(q.opShort) > 0.5; }) : [];
+      Object.assign(out, { x:x, uses:uses, sources:srcs, totalUses:totalUses, totalSources:totalSrc, loan:facility, principal:draws, capInt:capInt, commit:n(x.commit), ceiling:ceiling, equity:equity, engineEquity:n(x.equityTotal), returnsEquityDraws:retEq, excess:excess,
+        reserveDraws:reserveDraws, reserveDrawOperating:resOp, reserveDrawInterest:resInt, takeoutEquity:takeEq, takeoutInHold:!!x.takeoutInHold, takeoutShortfall:n(x.refiShortfall), operatingShortfall:opShort, operatingShortfallFrom:opRows.length ? opRows[0].m : 0, operatingShortfallTo:opRows.length ? opRows[opRows.length - 1].m : 0, otherPostFunding:opShort, contributed:contrib, postClosing:contrib - equity });
       ties.push(tie('su', 'Total sources equal total uses', totalSrc, totalUses, 1));
-      ties.push({ id:'commit', label:'Facility drawn plus capitalized interest is within the commitment', a:facility, b:n(x.commit), ok:facility <= n(x.commit) + 1, note:'' });
+      /* two different limits: the COMMITMENT caps the principal that can be drawn; the CEILING caps the balance, which is principal plus the interest capitalized into it. With no ceiling set the two are the same figure. */
+      ties.push({ id:'commit', label:'Principal drawn on the facility is within the committed loan amount', a:draws, b:n(x.commit), ok:draws <= n(x.commit) + 1, note:'' });
+      ties.push({ id:'ceiling', label:'Facility balance (principal plus capitalized interest) is within the permitted ceiling', a:facility, b:ceiling, ok:facility <= ceiling + 1, note:ceiling > n(x.commit) + 1 ? 'Ceiling ' + Math.round(ceiling).toLocaleString('en-US') + ' above the committed amount ' + Math.round(n(x.commit)).toLocaleString('en-US') + ' lets interest capitalize' : '' });
       ties.push(tie('eqEngine', 'Equity per Sources equals the funding engine\'s total equity requirement', equity, x.equityTotal, 1));
-      var d1 = equity - retEq, expl = Math.abs(d1 - excess) < 1 || Math.abs(d1) < 1;
-      ties.push({ id:'eqReturns', label:'Equity in the funding schedule agrees with the equity drawn in the returns cash flow', a:equity, b:retEq, ok:expl, note:Math.abs(d1) < 1 ? '' : 'Differs by interest beyond the commitment (' + Math.round(d1).toLocaleString('en-US') + ')' });
+      ties.push(tie('eqReturns', 'Equity in the funding schedule equals the equity drawn in the returns cash flow', equity, retEq, 1));
+      /* the returns charge the partners for three things and the funding schedule only for the first: equity at funding, the equity called at takeout (the permanent loan is short of the facility payoff and fee) and the lease-up months'
+         operating shortfall. Each is read from its own engine, so the contributions are reconciled to their parts rather than left as a remainder. */
+      ties.push(tie('takeout', 'Takeout equity in the returns equals the permanent-loan shortfall (called only if the hold reaches stabilization)', takeEq, x.takeoutInHold ? n(x.refiShortfall) : 0, 1));
+      ties.push(tie('contrib', 'Equity contributed in the returns equals equity at funding + takeout equity + lease-up operating shortfall', contrib, retEq + takeEq + opShort, 1));
     } else {
       var d = bkDebt(), price = n(s.purchasePrice), closing = price * n(s.closingCostsPct), acqFee = price * (typeof bkAcqFeePct === 'function' ? bkAcqFeePct(s) : n(s.acqFeePct)), cap = n(s.rateCapCost);
       var uses2 = [['Purchase Price', price], ['Closing Costs', closing], ['Acquisition Fee', acqFee], ['Loan Origination Fee', n(d.fee)]];
