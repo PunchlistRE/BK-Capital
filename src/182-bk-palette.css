@@ -229,15 +229,14 @@ html body .bk-ribbon .rb-sep{ height:22px; width:2px; flex-basis:2px; background
 html body #viewport .bk-dui.bk-tabs .bk-dt.na, html body #viewport .bk-dui.bk-tabs .bk-dt.empty{ display:none !important; }
 html body #viewport .tbl-wrap.bk-na-off{ display:none !important; }
 @media print{ html body #viewport .tbl-wrap.bk-na-off{ display:none !important; } }
-/* sub-tabs wrap onto a second line rather than running off the edge (no page name cut in half) */
-html body .bk-ribbon .rb-tabs{ flex-wrap:wrap; overflow:visible; row-gap:0; }
+/* sub-tabs are ONE row: when a section has more pages than fit, the row slides sideways inside itself (see "ONE ROW" below), it never wraps */
+html body .bk-ribbon .rb-tabs{ flex-wrap:nowrap; row-gap:0; }
 html body .bk-ribbon .rb-t{ line-height:34px; }
 html body .bk-ribbon .rb-t{ padding:0 9px; font-size:12.5px; }
 html body .bk-ribbon .rb-cmds{ align-self:flex-start; min-height:34px; }
 
 /* the centre title of the header gives way before it can run into the buttons */
 @media (max-width:1180px){ html body .brand-bar .brand-mid{ display:none; } }
-@media (max-width:1180px){ html body .bk-ribbon{ flex-wrap:wrap; gap:0 12px; } html body .bk-ribbon .rb-cmds{ order:-1; flex:1 1 100%; justify-content:flex-end; margin-left:0; padding:2px 0; border-bottom:1px solid var(--ae-line); } html body .bk-ribbon .rb-tabs{ flex:1 1 100%; } html body .bk-ribbon .rb-gl{ flex-basis:104px; } }
 
 /* PHONE: the navigation above the content is compact. The stepper scrolls sideways in one line next to the Sheets button, the case switcher, save status and undo share one row, the editor's own tab strip is one scrolling row, and the print button under the title is hidden (the ribbon above has it). */
 @media (max-width:760px){
@@ -298,3 +297,23 @@ html body .bk-ribbon .rb-cmds{ align-self:center; min-height:0; padding-bottom:4
 html[data-theme="dark"] body .bk-ribbon .rb-t.on{ border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); color:#9fcdf5 !important; }
 @media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on{ border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); color:#9fcdf5 !important; } }
 @media (min-width:1200px){ html body .bk-ribbon .rb-t{ padding:0 12px; } }
+
+/* HEADER, SECOND ROW: ONE ROW THAT SLIDES SIDEWAYS. The pages of a section sit on a single 36px line at every width (it used to wrap onto up to three lines and push the page down by a different amount in every section). A section with more pages than fit
+   slides inside the row: arrows at its ends (mouse), a fade where pages are hidden, swipe or trackpad (touch), and the open page is always brought into view (src/124). The three commands stay put at the right, as icons. */
+html body .bk-ribbon .rb-scroll{ position:relative; z-index:1; display:flex; align-items:flex-end; flex:1 1 auto; min-width:0; margin-bottom:-1px; }
+html body .bk-ribbon .rb-tabs{ position:relative; flex:1 1 auto; min-width:0; overflow-x:auto; overflow-y:hidden; padding-bottom:1px; scrollbar-width:none; scroll-padding-inline:44px; overscroll-behavior-x:contain; }
+html body .bk-ribbon .rb-tabs::-webkit-scrollbar{ display:none; }
+html body .bk-ribbon .rb-nav{ display:none; flex:0 0 26px; width:26px; height:31px; margin:0 0 1px; padding:0; align-items:center; justify-content:center; border:1px solid var(--ae-line); border-bottom:0; border-radius:3px 3px 0 0; background:var(--ae-tab); color:var(--ae-ink); cursor:pointer; }
+html body .bk-ribbon .rb-scroll.rb-can .rb-nav{ display:flex; }
+html body .bk-ribbon .rb-prev{ margin-right:4px; }
+html body .bk-ribbon .rb-next{ margin-left:4px; }
+html body .bk-ribbon .rb-nav:hover{ background:var(--ae-sel); }
+html body .bk-ribbon .rb-scroll[data-sl="0"] .rb-prev, html body .bk-ribbon .rb-scroll[data-sr="0"] .rb-next{ opacity:.35; cursor:default; background:var(--ae-tab); }
+html body .bk-ribbon .rb-nav svg{ width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+html body .bk-ribbon .rb-scroll[data-sr="1"] .rb-tabs{ -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent); mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent); }
+html body .bk-ribbon .rb-scroll[data-sl="1"] .rb-tabs{ -webkit-mask-image:linear-gradient(to left,#000 calc(100% - 32px),transparent); mask-image:linear-gradient(to left,#000 calc(100% - 32px),transparent); }
+html body .bk-ribbon .rb-scroll[data-sl="1"][data-sr="1"] .rb-tabs{ -webkit-mask-image:linear-gradient(to right,transparent,#000 32px,#000 calc(100% - 32px),transparent); mask-image:linear-gradient(to right,transparent,#000 32px,#000 calc(100% - 32px),transparent); }
+html body .bk-ribbon .rb-cmds{ align-self:flex-end; margin-bottom:0; padding-bottom:0; }
+html body .bk-ribbon .rb-cmds .rb-c span{ display:none; }
+html body .bk-ribbon .rb-cmds .rb-c{ padding:0 9px; height:30px; }
+@media (hover:none), (pointer:coarse){ html body .bk-ribbon .rb-nav, html body .bk-ribbon .rb-scroll.rb-can .rb-nav{ display:none; } }
