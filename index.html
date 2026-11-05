@@ -16742,6 +16742,9 @@ html.bk-auth-ok body { background: #F4EFE3; }
   function runRp(){ var vp=document.getElementById('viewport'); if(!vp) return;
     vp.querySelectorAll('table.rp-tbl').forEach(function(t){ var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); });
+    /* charts and tables in their own sideways-scrolling box (Sensitivity charts, inline overflow boxes) get the same cue when they overflow */
+    vp.querySelectorAll('.bk-sx-svgwrap, div[style*="overflow-x:auto"]').forEach(function(t){ if(t.classList.contains('tbl-wrap')) return; var sc = t.scrollWidth > t.clientWidth + 2;
+      if(sc && !t.classList.contains('bk-xs')) t.classList.add('bk-xs'); if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); });
     vp.querySelectorAll('.ae table.ae-grid').forEach(function(g){ var t = g.parentElement; if(!t || t.classList.contains('ae-panel')) return; var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); }); }
   var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
@@ -24034,7 +24037,7 @@ function render(){
   if(listing === null || listing.id !== id){ listing = { id:id, files:null }; window.bkDocsList(id).then(function(a){ listing = { id:id, files:a }; window.bkDocsWarm().then(function(){ if(typeof showSheet === 'function' && document.querySelector('#bk-docs-root')) showSheet('Deal Documents'); }); }); }
   var files = listing.files || [], photo = files.filter(function(f){ return f.slot === 'photo'; })[0], pu = window.bkDealPhotoURL();
   var main = '<div id="bk-docs-root" style="max-width:1000px">' + (window.bkDocsSyncNote ? window.bkDocsSyncNote() : '') + (busy ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div>' + esc(busy) + '</div></div>' : '')
-    + '<div class="card" style="padding:16px;display:grid;grid-template-columns:minmax(220px,340px) 1fr;gap:18px;align-items:center"><div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#eef2f6;display:flex;align-items:center;justify-content:center;color:#7a8da1;font-size:12px;text-align:center">' + (pu ? '<img alt="Property photo" src="' + pu + '" style="width:100%;height:100%;object-fit:cover">' : 'No photo yet') + '</div><div><div style="font-weight:700;font-size:15px;margin-bottom:4px">Property photo</div><div style="font-size:13px;opacity:.75;margin-bottom:10px">Shown on the Overview and on the cover of the PDF summary. A landscape exterior shot works best.' + (photo ? '<br>' + esc(photo.name) + ' · ' + fmtSize(photo.size) : '') + '</div><label class="pl-hbtn primary" style="display:inline-block;cursor:pointer">' + (photo ? 'Replace photo' : 'Upload photo') + '<input type="file" accept="image/*" style="display:none" onchange="bkDocsUpload(\'photo\',this)"></label>' + (photo ? ' <button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + photo.id + '\')">Remove</button>' : '') + '</div></div>'
+    + '<div class="card bk-docphoto" style="padding:16px;display:grid;grid-template-columns:minmax(220px,340px) 1fr;gap:18px;align-items:center"><div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#eef2f6;display:flex;align-items:center;justify-content:center;color:#7a8da1;font-size:12px;text-align:center">' + (pu ? '<img alt="Property photo" src="' + pu + '" style="width:100%;height:100%;object-fit:cover">' : 'No photo yet') + '</div><div><div style="font-weight:700;font-size:15px;margin-bottom:4px">Property photo</div><div style="font-size:13px;opacity:.75;margin-bottom:10px">Shown on the Overview and on the cover of the PDF summary. A landscape exterior shot works best.' + (photo ? '<br>' + esc(photo.name) + ' · ' + fmtSize(photo.size) : '') + '</div><label class="pl-hbtn primary" style="display:inline-block;cursor:pointer">' + (photo ? 'Replace photo' : 'Upload photo') + '<input type="file" accept="image/*" style="display:none" onchange="bkDocsUpload(\'photo\',this)"></label>' + (photo ? ' <button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + photo.id + '\')">Remove</button>' : '') + '</div></div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px">' + SLOTS.map(function(sl){
       var fs = files.filter(function(f){ return f.slot === sl[0]; });
       var rows = fs.map(function(f){ var ex = (sl[0] === 'om' || sl[0] === 'listing') && /\.pdf$/i.test(f.name) ? '<button type="button" class="pl-hbtn" onclick="bkDocsExtract(\'' + f.id + '\')">Extract into this deal</button>' : sl[0] === 't12' ? '<button type="button" class="pl-hbtn" onclick="bkDocsExtract(\'' + f.id + '\')">Extract into this deal</button>' : '';
@@ -31495,6 +31498,39 @@ html body #viewport#viewport table.fin input.gx-l, html body #viewport#viewport 
 html body #viewport#viewport table.fin thead th.gx-lh{ text-align:left !important; }
 /* the month and percent boxes take the room they need, not the width a number box would like (it is what made every column of the task table 230px wide) */
 html body #viewport#viewport table.fin input.gx-n{ max-width:84px !important; }
+</style>
+<style id="bk-review-polish-css">/* Visual review, November 2026 (audit/qa/SHEET_REVIEW.md). Display only: no number, formula or behaviour changes. Loads after the palette, so it settles these rules. */
+
+/* Chart cards: the lettered title bar gives every child of a chart card 12px side margins; a chart at width 100% then ran 12px past the card's right edge (Operating Underwrite, Property CF, Returns). */
+html body #viewport .pf-card > svg{ width:calc(100% - 24px) !important; }   /* the charts set width:100% inline */
+
+/* Sidebar cards: a long unbroken value (a source file name) wraps inside the card instead of running out of it (Source Data). */
+html body .metric-row .v{ min-width:0; overflow-wrap:anywhere; }
+
+/* A chart or a table that is wider than its box scrolls sideways; it now says so, like the wide tables do (Sensitivity tornado and spider, Financing Lab and Compare, Pre-Offer Bid, Deal Remedies, the Gantt). The class is set by the table classifier (src/109) only when the box really overflows. */
+html body #viewport .bk-xs.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+  background:linear-gradient(to right,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 0 0/40px 100% no-repeat local,
+             linear-gradient(to left,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 100% 0/40px 100% no-repeat local,
+             linear-gradient(to right,rgba(14,42,74,.22),rgba(14,42,74,0)) 0 0/10px 100% no-repeat scroll,
+             linear-gradient(to left,rgba(14,42,74,.22),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll,
+             var(--ae-cell-ro); }
+html body #viewport .bk-xs.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
+html body #viewport .bk-sx-svgwrap.bk-xs.bk-scrollable::before{ content:'Scroll sideways for the whole chart \2192'; }
+@media print{ html body #viewport .bk-xs.bk-scrollable::before{ display:none !important; } }
+
+/* PHONE */
+@media (max-width:760px){
+  /* the case switcher, the save status and undo / redo wrap onto a second line instead of running off the right edge; the save status is shown in full */
+  html body .bk-flow .bk-flow-right{ flex-wrap:wrap; overflow-x:visible; row-gap:6px; }
+  html body .bk-flow .bk-save{ max-width:100%; overflow:visible; text-overflow:clip; white-space:normal; height:auto; min-height:26px; }
+  /* the section's page links take fewer rows: a shorter line and less padding (still a 28px tap height) */
+  html body .bk-ribbon .rb-t{ line-height:28px; padding:0 7px; font-size:12px; }
+  html body .bk-ribbon .rb-cmds{ min-height:28px; }
+  /* a stacked row keeps its status button whole (Model Checks "Acknowledge"): the chip cell is as wide as its label and moves to the next line when it must */
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td.bk-col-chip.bk-col-chip{ flex:0 0 auto !important; width:auto !important; min-width:max-content !important; }
+  /* Deal Documents: the photo and its explanation stack instead of squeezing the text into a narrow column */
+  html body #viewport .card.bk-docphoto{ grid-template-columns:1fr !important; }
+}
 </style>
 </body>
 </html>

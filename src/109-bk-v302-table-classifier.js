@@ -38,6 +38,9 @@
   function runRp(){ var vp=document.getElementById('viewport'); if(!vp) return;
     vp.querySelectorAll('table.rp-tbl').forEach(function(t){ var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); });
+    /* charts and tables in their own sideways-scrolling box (Sensitivity charts, inline overflow boxes) get the same cue when they overflow */
+    vp.querySelectorAll('.bk-sx-svgwrap, div[style*="overflow-x:auto"]').forEach(function(t){ if(t.classList.contains('tbl-wrap')) return; var sc = t.scrollWidth > t.clientWidth + 2;
+      if(sc && !t.classList.contains('bk-xs')) t.classList.add('bk-xs'); if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); });
     vp.querySelectorAll('.ae table.ae-grid').forEach(function(g){ var t = g.parentElement; if(!t || t.classList.contains('ae-panel')) return; var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); }); }
   var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
