@@ -7,6 +7,7 @@
 //  6 "Make every line a task" groups the tasks under Hard cost / Contingency / Soft cost / FF&E; it is idempotent, leaves anything already organised alone and "Remove cost-class groups" takes the groups out again, all without moving a number
 //  7 the sheet: fold boxes, WBS numbers, indented tasks, the % done column and in-cell bars, progress shading on the bars, the Work complete tile; folding hides rows and moves no total; the fold state is kept per deal
 //  8 the task table (Summary task and % done columns), the Budget panel (leaf tasks only), the printable schedule summary (summary brackets, bold summary rows, % column) and no page errors
+//  9 the controls with real clicks, typing and keys: Group by cost class, + Summary task, the fold box (mouse, Enter, Space), a % typed into the table, the Summary task select, Remove cost-class groups, Remove
 //   node audit/wbs_test.js index.html
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');
 const V = require(path.join(__dirname, 'devdeal.js'));
@@ -199,6 +200,49 @@ const V = require(path.join(__dirname, 'devdeal.js'));
     return { n: pages.length, over, brackets: [...document.querySelectorAll('#bk-sr svg title')].filter(t => /\(summary\)/.test(t.textContent)).length, group: /Summary/.test(all), bold: document.querySelectorAll('#bk-sr tr[style*="font-weight:700"]').length, pctHdr: /% done/.test(all), line: /Work complete/.test(all), basis: /Summary tasks group the tasks inside them/.test(all) }; });
   check('the printable schedule summary draws a dark bracket for each summary task, lists them in bold with their roll-up, adds a % done column and a Work complete line, and no page overflows', rp.n >= 5 && rp.over === 0 && rp.brackets === 4 && rp.bold >= 4 && rp.pctHdr && rp.line && rp.basis, JSON.stringify(rp));
   check('no page errors in any step', p.errs.length === 0, p.errs.slice(0, 2).join(' | '));
+  await p.close();
+
+  /* ---- 9 the controls, used the way a person uses them (real clicks, typing and keys) ---- */
+  p = await open(V, LINES);
+  await p.evaluate(() => { try { localStorage.removeItem('bkcapital.gx.fold'); bkGuideOff(); } catch (e) {} bkDevBudgetToTasks(); showSheet('Dev Schedule'); });
+  await p.waitForTimeout(1000);
+  const N9 = await nums(p);
+  const vis = () => p.evaluate(() => [...document.querySelectorAll('.bk-gx tr[data-id]')].filter(r => r.style.display !== 'none').length);
+  const hasBtn = (t) => p.evaluate((t) => [...document.querySelectorAll('#viewport button')].some(b => b.innerText.trim() === t), t);
+  const clickBtn = async (t) => { await p.locator('#viewport button', { hasText: t }).first().click(); await p.waitForTimeout(700); };
+  check('with tasks tied to budget lines and no summary yet the toolbar offers "Group 7 costed tasks by cost class" and "+ Summary task" (and no fold buttons yet)', await hasBtn('Group 7 costed tasks by cost class') && await hasBtn('+ Summary task') && !(await hasBtn('Collapse all')), '');
+  await clickBtn('Group 7 costed tasks by cost class');
+  const c1 = await p.evaluate(() => ({ sums: bkLoad().devGantt.tasks.filter(t => t.summary).length, folds: document.querySelectorAll('.bk-gx .gx-fold').length }));
+  check('clicking it groups the tasks (four summaries, four fold boxes) and the numbers are exactly what they were', c1.sums === 4 && c1.folds === 4 && (await nums(p)) === N9, JSON.stringify(c1));
+  const rowsAll = await vis();
+  await p.locator('.bk-gx tr[data-wbs] .gx-fold').first().click(); await p.waitForTimeout(200);
+  const rowsFolded = await vis();
+  check('clicking the fold box of Hard cost hides its three tasks', rowsAll - rowsFolded === 3 && (await p.locator('.bk-gx tr[data-wbs] .gx-fold').first().getAttribute('aria-expanded')) === 'false', rowsAll + ' -> ' + rowsFolded);
+  await p.locator('.bk-gx tr[data-wbs] .gx-fold').first().focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  const afterEnter = await vis();
+  await p.keyboard.press(' '); await p.waitForTimeout(150);
+  const afterSpace = await vis();
+  check('with the keyboard: Enter on the fold box opens it, Space closes it again (the page does not scroll or submit)', afterEnter === rowsAll && afterSpace === rowsFolded, [afterEnter, afterSpace].join());
+  await p.locator('.bk-gx tr[data-wbs] .gx-fold').first().click(); await p.waitForTimeout(150);
+  /* type a percent into the task table, as a person does */
+  const tblRow = (name) => p.locator('#viewport table tr.input', { has: p.locator('input[value="' + name + '"]') });
+  await tblRow('Structure and envelope').locator('input[onchange*="\'pct\'"]').fill('40'); await tblRow('Structure and envelope').locator('input[onchange*="\'pct\'"]').press('Tab'); await p.waitForTimeout(900);
+  const t9 = await p.evaluate(() => { const t = bkLoad().devGantt.tasks.filter(q => q.name === 'Structure and envelope')[0], g = document.querySelector('.bk-gx'); return { pct: t.pct, hdr: /% done/.test(g.querySelector('thead').innerText), pcts: g.querySelectorAll('td[data-pct]').length, tile: /Work complete/i.test(document.querySelector('.bk-gs-tiles').innerText) }; });
+  check('typing 40 into the % done box of a task (and tabbing out) saves it, and the sheet gains its % done column, the in-cell bars and the Work complete tile', t9.pct === 40 && t9.hdr && t9.pcts >= 3 && t9.tile, JSON.stringify(t9));
+  /* the Summary task select */
+  await tblRow('Permits and fees').locator('select[onchange*="\'parent\'"]').selectOption({ label: '1. Hard cost' }); await p.waitForTimeout(900);
+  const s9 = await p.evaluate(() => { const T = bkLoad().devGantt.tasks, t = T.filter(q => q.name === 'Permits and fees')[0], h = T.filter(q => q.name === 'Hard cost')[0]; return { under: t.parent === h.id, names: T.map(q => q.name).slice(T.indexOf(h), T.indexOf(h) + 6).join('|') }; });
+  check('choosing "1. Hard cost" in the Summary task box of Permits and fees moves it under Hard cost', s9.under && /Mechanical, electrical, plumbing\|Permits and fees/.test(s9.names), s9.names);
+  await clickBtn('+ Summary task');
+  const a9 = await p.evaluate(() => { const T = bkLoad().devGantt.tasks; return { n: T.filter(t => t.summary).length, last: T[T.length - 1].name, note: /No tasks inside it yet/.test(document.getElementById('viewport').innerText) }; });
+  check('"+ Summary task" adds an empty summary at the end of the list and the table says it has no tasks yet', a9.n === 5 && a9.last === 'New summary' && a9.note, JSON.stringify(a9));
+  await clickBtn('Remove cost-class groups');
+  const u9 = await p.evaluate(() => { const T = bkLoad().devGantt.tasks; return { sums: T.filter(t => t.summary).map(t => t.name), n: T.length, parentless: T.filter(t => !t.summary && !t.parent).length }; });
+  check('"Remove cost-class groups" takes out the four cost-class summaries and keeps your own empty one and every task', u9.sums.join() === 'New summary' && u9.n === 8 && u9.parentless === 7, JSON.stringify(u9));
+  await p.locator('#viewport table tr.input', { has: p.locator('input[value="New summary"]') }).locator('button', { hasText: 'Remove' }).click(); await p.waitForTimeout(800);
+  const r9 = await p.evaluate(() => { const T = bkLoad().devGantt.tasks; return { n: T.length, sums: T.filter(t => t.summary).length, folds: document.querySelectorAll('.bk-gx .gx-fold').length, hdr: [...document.querySelectorAll('#viewport table')].filter(x => /Tasks, dependencies and critical path/.test(x.innerText))[0].querySelector('thead').innerText.replace(/\s+/g, ' ') }; });
+  check('removing the last summary leaves seven tasks, no fold boxes and no Summary task column (the schedule is back to a flat list)', r9.n === 7 && r9.sums === 0 && r9.folds === 0 && !/Summary task/.test(r9.hdr), JSON.stringify(r9).slice(0, 240));
+  check('no page errors from any of those clicks', p.errs.length === 0, p.errs.slice(0, 2).join(' | '));
   await p.close();
   await b.close(); console.log(checks + ' checks, ' + fails + ' failures'); process.exit(fails ? 1 : 0);
 })();
