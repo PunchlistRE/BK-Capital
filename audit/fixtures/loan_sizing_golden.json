@@ -1,8 +1,9 @@
 {
  "recordedFrom": "main at 61b71ef (before the sizing rule was extracted)",
+ "numbers": "engine numbers to 9 significant digits, under 1e-7 as 0; the sheet and the report exactly",
  "old": {
   "default": {
-   "engine": "063fee61cca30cc4cc396ec0",
+   "engine": "f337939a9a7ce33df56c6ef0",
    "sheet": "f4c65e6f5448047dab8aedea",
    "key": {
     "valid": true,
@@ -21,7 +22,7 @@
    }
   },
   "ltv-binds": {
-   "engine": "f86ddc04d92d90d6f16ffbc0",
+   "engine": "da477608bc54bc4680055fb6",
    "sheet": "8fdef26e1807d802ce6421fa",
    "key": {
     "valid": true,
@@ -40,7 +41,7 @@
    }
   },
   "dscr-binds": {
-   "engine": "72d02051bdaa3c7edd84ac50",
+   "engine": "6045c7fcdd8ecf132b8874ae",
    "sheet": "06c4d1fe466c83d1df991f8d",
    "key": {
     "valid": true,
@@ -59,7 +60,7 @@
    }
   },
   "dy-binds": {
-   "engine": "6d5cc454691788d11c9f5ecd",
+   "engine": "d955c2b54eae8800bf6136cd",
    "sheet": "cccca6e89e1f47148ed4721b",
    "key": {
     "valid": true,
@@ -78,7 +79,7 @@
    }
   },
   "three-different-limits-ltv-lowest": {
-   "engine": "5d94695dd18c89c4488a3466",
+   "engine": "c35f882cfa68f1a72653b479",
    "sheet": "77a42c28bb936d2c45b619d7",
    "key": {
     "valid": true,
@@ -97,7 +98,7 @@
    }
   },
   "three-different-limits-dy-lowest": {
-   "engine": "fcdef7249e70088c4d8a6043",
+   "engine": "51400058f9e2be222e618468",
    "sheet": "8eb2259886d2af0d151fb2b8",
    "key": {
     "valid": true,
@@ -116,7 +117,7 @@
    }
   },
   "year-1": {
-   "engine": "276c8a579203880341bf82ec",
+   "engine": "a96b7c315c5f6d236b4297e6",
    "sheet": "68227db66d0bd875f1893b1e",
    "key": {
     "valid": true,
@@ -135,7 +136,7 @@
    }
   },
   "year-2": {
-   "engine": "9c9473a377acf63c126d25a8",
+   "engine": "54186949490bcb45956e4f55",
    "sheet": "ab56a3390c163dd0352ac699",
    "key": {
     "valid": true,
@@ -154,7 +155,7 @@
    }
   },
   "year-3": {
-   "engine": "43db81b285757ad7c06d5f04",
+   "engine": "96dea4b7b1cde74213745e6f",
    "sheet": "3ea47f603acf5231a3d82729",
    "key": {
     "valid": true,
@@ -173,7 +174,7 @@
    }
   },
   "year-0-invalid": {
-   "engine": "d1c1dba5b35e7bfb35797a4a",
+   "engine": "74836ffd5efb1ae14682222f",
    "sheet": "749a1ebf48704327eaebd78b",
    "key": {
     "valid": false,
@@ -188,7 +189,7 @@
    }
   },
   "year-5-invalid": {
-   "engine": "00af86362aec413617f847a2",
+   "engine": "76d84745cf3345986b9fef3e",
    "sheet": "0bfe339259b1984b07e845f9",
    "key": {
     "valid": false,
@@ -203,7 +204,7 @@
    }
   },
   "year-9-invalid": {
-   "engine": "b87f59eb0eb0337bf1992374",
+   "engine": "faebc7583d51f7870fd0900d",
    "sheet": "2432afde75b2522710ce8c82",
    "key": {
     "valid": false,
@@ -218,7 +219,7 @@
    }
   },
   "rate-0": {
-   "engine": "3ea0fa9bb6fb3cb2fb857cca",
+   "engine": "89fd1f2c2d95db4f92c7c51a",
    "sheet": "6e78e634e48f8679cb3f0107",
    "key": {
     "valid": true,
@@ -237,7 +238,7 @@
    }
   },
   "rate-12-percent": {
-   "engine": "372ddd1242cdacbfe9e81d87",
+   "engine": "6a9e6e2b6ba9309303d42de4",
    "sheet": "4cfa4222fcc41aedd101295a",
    "key": {
     "valid": true,
@@ -256,7 +257,7 @@
    }
   },
   "amortization-0": {
-   "engine": "d7acd4bf470b3db4f3e6627a",
+   "engine": "524b78606f128c4cf3cb58bc",
    "sheet": "5e8954c898da6a2d544ea1cc",
    "key": {
     "valid": true,
@@ -275,7 +276,7 @@
    }
   },
   "amortization-25": {
-   "engine": "d26f6ae5e002e075c3527bea",
+   "engine": "801845ff4482f098a629950c",
    "sheet": "902ad48b798183f38553eb58",
    "key": {
     "valid": true,
@@ -294,7 +295,7 @@
    }
   },
   "amortization-40": {
-   "engine": "39aba92b5fb379a625c39827",
+   "engine": "95cbb22bedc48a2158046b02",
    "sheet": "703da06b4e89700f4cf73f0c",
    "key": {
     "valid": true,
@@ -313,7 +314,7 @@
    }
   },
   "amortization-27.3-whole-months": {
-   "engine": "82f2270ea6bd9f60cc0014f2",
+   "engine": "9bb1221fa1b0ba0ef15dfb5e",
    "sheet": "d2cb7947f408f9425349adca",
    "key": {
     "valid": true,
@@ -332,7 +333,7 @@
    }
   },
   "amortization-27.5": {
-   "engine": "c772b74dfc47be7a52712921",
+   "engine": "d42c0e734e051cef9c3d2449",
    "sheet": "273ca2aad4d1d68ec31a0cf1",
    "key": {
     "valid": true,
@@ -351,7 +352,7 @@
    }
   },
   "appraisal-cap-0": {
-   "engine": "759322c1b8376cccaa737462",
+   "engine": "47e1fe18e8859f4caca4afbd",
    "sheet": "3fe30ae7f61a6d41905be0fc",
    "key": {
     "valid": true,
@@ -370,7 +371,7 @@
    }
   },
   "appraisal-cap-20-percent": {
-   "engine": "c54a79d5be103eebb3498afb",
+   "engine": "9c68d26de641fa2585887c78",
    "sheet": "2acc6b08f5cee15b6d77ccc9",
    "key": {
     "valid": true,
@@ -389,7 +390,7 @@
    }
   },
   "exit-cap-blank": {
-   "engine": "cc523882e3bc980ecef88366",
+   "engine": "6cba4bdcfed3b6233985b56c",
    "sheet": "c5471940b5d06653f353d41f",
    "key": {
     "valid": true,
@@ -408,7 +409,7 @@
    }
   },
   "ltv-limit-0": {
-   "engine": "4f4df0184fb17c57fa1d652f",
+   "engine": "a10636f5d66adfa7d641fb52",
    "sheet": "382bcfaf0728641f367fb4c5",
    "key": {
     "valid": true,
@@ -427,7 +428,7 @@
    }
   },
   "dscr-limit-0": {
-   "engine": "dae9c37f612661265c87f818",
+   "engine": "c099b7665ab1efa99169eb36",
    "sheet": "7222a02479a85ca472d833d2",
    "key": {
     "valid": true,
@@ -446,7 +447,7 @@
    }
   },
   "dy-limit-0": {
-   "engine": "a4607ea4d42a11c19c80b6a9",
+   "engine": "c1248952ccb823f645b99a46",
    "sheet": "23056913923efca21ae5e6a9",
    "key": {
     "valid": true,
@@ -465,7 +466,7 @@
    }
   },
   "ltv-limit-negative": {
-   "engine": "e0617c5f993b43e47ee970d2",
+   "engine": "c5a556fe74123acdaa66b0a6",
    "sheet": "ad8b54fe72e6936cec8d17b8",
    "key": {
     "valid": true,
@@ -484,7 +485,7 @@
    }
   },
   "invalid-entries-fall-back-to-defaults": {
-   "engine": "063fee61cca30cc4cc396ec0",
+   "engine": "f337939a9a7ce33df56c6ef0",
    "sheet": "f4c65e6f5448047dab8aedea",
    "key": {
     "valid": true,
@@ -503,7 +504,7 @@
    }
   },
   "costs-and-penalties": {
-   "engine": "d2d9189eb0ea1acc31ad76f6",
+   "engine": "47f09d517162d9a7ef1765f5",
    "sheet": "53214ac6788807738d49f2d6",
    "key": {
     "valid": true,
@@ -522,7 +523,7 @@
    }
   },
   "hold-8-years": {
-   "engine": "181f68f08b977531c19eee9c",
+   "engine": "434fced2f762063a0fe6dbeb",
    "sheet": "677e3d2943104b4aecbe8b9c",
    "key": {
     "valid": true,
@@ -541,7 +542,7 @@
    }
   },
   "hold-3-years": {
-   "engine": "7b8a8b4406f06c519a78a27b",
+   "engine": "d27ca11334a6d952e4cdc68d",
    "sheet": "79b7e92b058775e971775cb8",
    "key": {
     "valid": true,
@@ -572,7 +573,7 @@
  },
  "new": {
   "default": {
-   "engine": "68c91a290f7484c0502c44b2",
+   "engine": "52da354b5b0f56514afca141",
    "sheet": "6546a2538ed4d8507b1b3a1e",
    "key": {
     "ok": true,
@@ -612,7 +613,7 @@
    "report": "580bd491fc2375acfd926f06"
   },
   "ltv-binds": {
-   "engine": "0f02d5a912804e33e99df94f",
+   "engine": "afa3e9d3c9f8bd51f5f10c6c",
    "sheet": "d2cbee41ca56146e53b457ba",
    "key": {
     "ok": true,
@@ -652,7 +653,7 @@
    "report": "8bc37e9086de921ca5b4294b"
   },
   "dscr-binds-hard": {
-   "engine": "1ea00f1afda95dc155d96785",
+   "engine": "72182f2d2f0110eb9bb649b2",
    "sheet": "7b49a54df707808622cdbf8a",
    "key": {
     "ok": true,
@@ -692,7 +693,7 @@
    "report": "779e88ce40671c66a6e41259"
   },
   "dy-binds": {
-   "engine": "3c81baacd62adb609c64362b",
+   "engine": "a24e3c1f72142ec30da4c1e3",
    "sheet": "e8194640b4b2b1db1be490bf",
    "key": {
     "ok": true,
@@ -732,7 +733,7 @@
    "report": "39d2bb0cfdb7227a08a3fb4a"
   },
   "requested-binds": {
-   "engine": "d3612d911f0db27179a52d3a",
+   "engine": "2d9462b64ed9fa8984546fac",
    "sheet": "176a7185d999dd5a07aab509",
    "key": {
     "ok": true,
@@ -776,7 +777,7 @@
    "report": "c64878130ae39801e3d40fbc"
   },
   "requested-above-every-test": {
-   "engine": "aed1cbbe00c3502604bb5dbb",
+   "engine": "09f90f589ed2503af3352f2d",
    "sheet": "1ca352985e0e3fae44e23475",
    "key": {
     "ok": true,
@@ -820,7 +821,7 @@
    "report": "9f83c3e8e4142643332bc093"
   },
   "requested-only": {
-   "engine": "0c8095c1342f2fe842901088",
+   "engine": "dcd8190a1e594a00f0fefeb1",
    "sheet": "040cd22230361bfd77fd1b4b",
    "key": {
     "ok": true,
@@ -852,7 +853,7 @@
    "report": "2bf9009e9305d3b61ad6ad34"
   },
   "three-different-limits-ltv-lowest": {
-   "engine": "0457764bdd6495d61c4a42d5",
+   "engine": "c6330bf7c1065a44d9f06cd9",
    "sheet": "a93d731506a7d780e67aae27",
    "key": {
     "ok": true,
@@ -892,7 +893,7 @@
    "report": "2fbf317a7b15083ec83bc1bd"
   },
   "three-different-limits-dy-lowest": {
-   "engine": "4ce7fdf7a956bd581ef3d995",
+   "engine": "03e2e3717cce21251f596f3f",
    "sheet": "ddafec9c58e23cc9ebeb5002",
    "key": {
     "ok": true,
@@ -932,7 +933,7 @@
    "report": "f389f857d62c60dcc9c5964c"
   },
   "tie-ltv-and-dy": {
-   "engine": "eedadf9073773b8592b98d2f",
+   "engine": "5a313cf9caeccde657dcda8c",
    "sheet": "5b10bf78f8e3edd643e61c5b",
    "key": {
     "ok": true,
@@ -972,7 +973,7 @@
    "report": "b9ab2f2a45b44959ef8c5fea"
   },
   "tie-dy-and-requested": {
-   "engine": "1e201bdd48e2cddb94426d0c",
+   "engine": "aaa16f18055b38827ce64218",
    "sheet": "7407bf7546bbb6e213551f93",
    "key": {
     "ok": true,
@@ -1008,7 +1009,7 @@
    "report": "08bacf939f818f0b51a3a279"
   },
   "interest-only-2-years": {
-   "engine": "937477d07b4e0b0ff9696c83",
+   "engine": "136ad52e6fcf2149f7abeed2",
    "sheet": "98e316a28e592e01a153764f",
    "key": {
     "ok": true,
@@ -1048,7 +1049,7 @@
    "report": "f13e04392038cba1c1c1ed23"
   },
   "interest-only-whole-term": {
-   "engine": "e7cb9e0b7ae4d4511a526999",
+   "engine": "8a539125d68f6e1c13d08bee",
    "sheet": "6056485bec708948a712cfd8",
    "key": {
     "ok": true,
@@ -1088,7 +1089,7 @@
    "report": "e6c340518b6d2da0d0d436a0"
   },
   "amortization-blank": {
-   "engine": "3a910cf838eecc0a044e830e",
+   "engine": "adeaa40c6c90d25d27c08b22",
    "sheet": "93673dec1799492427e494e9",
    "key": {
     "ok": true,
@@ -1128,7 +1129,7 @@
    "report": "e6c340518b6d2da0d0d436a0"
   },
   "amortization-27.3-not-rounded": {
-   "engine": "beaef310f5e9a87d1f9556ea",
+   "engine": "95db908e0d076b784dbd5c02",
    "sheet": "7f861b979bec6b24cab09cac",
    "key": {
     "ok": true,
@@ -1168,7 +1169,7 @@
    "report": "75785dce02fb86d77db96e6e"
   },
   "amortization-27.5": {
-   "engine": "88f427527d683e033f924553",
+   "engine": "8fede06c3a0a121fb88d4aba",
    "sheet": "25d1c7472ee2a2c46c272386",
    "key": {
     "ok": true,
@@ -1208,7 +1209,7 @@
    "report": "1e2b0dbfe580f913042a394e"
   },
   "amortization-40": {
-   "engine": "e41f481bbdce5856948af5c6",
+   "engine": "3d7807eb638609e92936c402",
    "sheet": "e67f6473be7b4e55cc825546",
    "key": {
     "ok": true,
@@ -1248,7 +1249,7 @@
    "report": "c3a0eada2715940becfda9ab"
   },
   "lender-noi-after-reserves": {
-   "engine": "271302496b106abacc562799",
+   "engine": "00862f07253b3fb460174676",
    "sheet": "06d8c412be33ca4421b3603b",
    "key": {
     "ok": true,
@@ -1288,7 +1289,7 @@
    "report": "8685f441d9e55755d81ae84a"
   },
   "value-entered": {
-   "engine": "daa870ca93c2aceb9592cabe",
+   "engine": "adf2e04febb4c4dd369492c9",
    "sheet": "71546a38c4422ab2cbf0a1a5",
    "key": {
     "ok": true,
@@ -1328,7 +1329,7 @@
    "report": "dd2df3b20c44e5a5e6a86e8c"
   },
   "payoff-exceeds-loan": {
-   "engine": "ade6266a8177bc71c2aae3ac",
+   "engine": "2e251e40871af7185c61a7a2",
    "sheet": "d167bd4ff70c0b2cddc6475f",
    "key": {
     "ok": true,
@@ -1368,7 +1369,7 @@
    "report": "39a49e84dc855962b700577e"
   },
   "alternatives-each-test-binding": {
-   "engine": "228f762e7fceb0fe5ce6f3c4",
+   "engine": "d28afd16b479c2e8d1e286b9",
    "sheet": "dfeba8e0d75ca0a75a0740e3",
    "key": {
     "ok": true,
@@ -1433,7 +1434,7 @@
    "report": "82ffdeab93a0b63fb6854279"
   },
   "huge-numbers": {
-   "engine": "7ec5112ab82b282bb9d9be21",
+   "engine": "1c01b0623298f58e52762686",
    "sheet": "721ae730c621d468f7544c52",
    "key": {
     "ok": true,
@@ -1477,7 +1478,7 @@
    "report": "799afea3a6a9f5ebd1504b3b"
   },
   "rate-blank": {
-   "engine": "14f139708a223fcc9c54eba9",
+   "engine": "e3793bccbbe7f614e195a61e",
    "sheet": "84b0a9833c67c212a322ba59",
    "key": {
     "ok": false,
@@ -1514,7 +1515,7 @@
    "report": "b7edf82bbb2241088daef917"
   },
   "rate-text": {
-   "engine": "14f139708a223fcc9c54eba9",
+   "engine": "e3793bccbbe7f614e195a61e",
    "sheet": "9c22f3c7a84768507dd94a8c",
    "key": {
     "ok": false,
@@ -1551,7 +1552,7 @@
    "report": "b7edf82bbb2241088daef917"
   },
   "rate-zero": {
-   "engine": "14f139708a223fcc9c54eba9",
+   "engine": "e3793bccbbe7f614e195a61e",
    "sheet": "6ba0a771af0017c04e72275f",
    "key": {
     "ok": false,
@@ -1588,7 +1589,7 @@
    "report": "b7edf82bbb2241088daef917"
   },
   "costs-blank": {
-   "engine": "c6c6bd926a3ede7a6dcf8f59",
+   "engine": "dcd5e232431394f4a07d2982",
    "sheet": "bc30f0d2f2c55b10735eae10",
    "key": {
     "ok": false,
@@ -1625,7 +1626,7 @@
    "report": "b7edf82bbb2241088daef917"
   },
   "no-lender-test-or-amount": {
-   "engine": "a516a60ed57f0cfa3206e45d",
+   "engine": "9ad869f017f1ec432e1e1a8b",
    "sheet": "2ae687263211c8292bf15ab7",
    "key": {
     "ok": false,
@@ -1649,7 +1650,7 @@
    "report": "b7edf82bbb2241088daef917"
   },
   "ltv-limit-without-a-value": {
-   "engine": "724bd634544bc681430957bc",
+   "engine": "51107d81ddd9f33c02213734",
    "sheet": "77b12e8fc779a75d5db6e935",
    "key": {
     "ok": false,
@@ -1682,7 +1683,7 @@
    "report": "28f9cf77ad2422bd33a98e64"
   },
   "no-value-and-no-ltv-limit": {
-   "engine": "f249a17bbecd7a4c0932fc3e",
+   "engine": "6d631d1728be0a6b6443ff1e",
    "sheet": "8e44f8609f1332756c4d1a20",
    "key": {
     "ok": true,
@@ -1718,7 +1719,7 @@
    "report": "740356c9d8267530c60cc398"
   },
   "noi-not-positive": {
-   "engine": "d3490469bb42fbbd9a589ff0",
+   "engine": "194b3df56ce7aaa79853647f",
    "sheet": "9ef57e438c2171169fc05852",
    "key": {
     "ok": false,
@@ -1744,7 +1745,7 @@
    "report": "61ab131186761d63273eda01"
   },
   "limits-negative": {
-   "engine": "a516a60ed57f0cfa3206e45d",
+   "engine": "9ad869f017f1ec432e1e1a8b",
    "sheet": "f22d9e4e9a589d4a20300220",
    "key": {
     "ok": false,
@@ -1768,7 +1769,7 @@
    "report": "b7edf82bbb2241088daef917"
   },
   "limits-zero": {
-   "engine": "a516a60ed57f0cfa3206e45d",
+   "engine": "9ad869f017f1ec432e1e1a8b",
    "sheet": "a5526c6ae1d7cc5d3f77e57f",
    "key": {
     "ok": false,
@@ -1792,7 +1793,7 @@
    "report": "b7edf82bbb2241088daef917"
   },
   "limits-text": {
-   "engine": "a516a60ed57f0cfa3206e45d",
+   "engine": "9ad869f017f1ec432e1e1a8b",
    "sheet": "4d5b4dab75051434abd75b15",
    "key": {
     "ok": false,
@@ -1816,7 +1817,7 @@
    "report": "b7edf82bbb2241088daef917"
   },
   "dscr-limit-infinity": {
-   "engine": "3547f40c445ab4f8e32e0682",
+   "engine": "f1d03dc83b8cbc0f034ce9a1",
    "sheet": "f2403e2cb5c2b2feebc69eff",
    "key": {
     "ok": true,
@@ -1852,7 +1853,7 @@
    "report": "cf29ea1b22788b5a9d9aac4e"
   },
   "existing-balance-blank": {
-   "engine": "6fd354c0c8e3a852df0f7614",
+   "engine": "c735481525927edb5b1ff0d5",
    "sheet": "199a57c2b81413b960e5696c",
    "key": {
     "ok": false,

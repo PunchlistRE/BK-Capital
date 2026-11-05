@@ -1,15 +1,19 @@
 // Loan sizing: one rule (bkSizeLoan, src/130a) shared by Refi / Recap and the Refinancing Analysis. The extraction must not move a number in either tool.
 //   node audit/loan_sizing_test.js index.html                      check a build
 //   node audit/loan_sizing_test.js --record build.html             record what both tools do, from a build made before the rule was extracted
-//   node audit/loan_sizing_test.js --diff base.html new.html [n]   run the scenarios and n seeded random ones (default 300 + 1500) through two builds and list every difference
+//   node audit/loan_sizing_test.js --diff base.html new.html [n]   run the scenarios and n seeded random ones (default 300 + 1500) through two builds in one browser and list every difference, bit for bit
 // A check has three parts. (1) The rule against an independent model (audit/sizing_ref.py): seeded random cases, each test binding on its own, three different limits, ties, an
 // interest-only and a derived debt service, a requested amount, and invalid inputs (zero, negative, missing, not a number). (2) Both tools on designed scenarios that make every
-// test bind, tie, run interest-only, take a requested amount, or lack an input: the engine's full output and the rendered sheet and report are compared with what the tools produced
-// BEFORE the rule was extracted (audit/fixtures/loan_sizing_golden.json, recorded from main at 61b71ef), exactly; (3) both tools really go through the shared rule.
+// test bind, tie, run interest-only, take a requested amount, or lack an input: the engine's full output (its numbers to 9 significant digits: the last bits of a float differ between Chromium versions) and the rendered
+// sheet and report (text, exactly) are compared with what the tools produced BEFORE the rule was extracted (audit/fixtures/loan_sizing_golden.json, recorded from main at 61b71ef); (3) both tools really go through the shared rule.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path'); const fs = require('fs'); const os = require('os'); const cp = require('child_process'); const crypto = require('crypto');
 const A = require(path.join(__dirname, 'deal.js')), H = require(path.join(__dirname, 'devdeal.js')), D = require(path.join(__dirname, 'refideal.js'));
 const GOLD = path.join(__dirname, 'fixtures', 'loan_sizing_golden.json'); const RECORDED_FROM = 'main at 61b71ef (before the sizing rule was extracted)';
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex').slice(0, 24);
+/* The engine's numbers are recorded and compared to 9 significant digits (anything under 1e-7 counts as 0): the last bits of a float differ between Chromium versions (CI runs 131, the results were recorded on 141), so a digest of the exact bits
+   fails on a build that has not changed at all. A real change to a sizing figure moves it by far more than that. Two builds in ONE browser are compared bit for bit by --diff. */
+const NUMBERS_NOTE = 'engine numbers to 9 significant digits, under 1e-7 as 0; the sheet and the report exactly';
+const canon = (s) => { try { return JSON.stringify(JSON.parse(s), (k, v) => typeof v === 'number' && Number.isFinite(v) ? (Math.abs(v) < 1e-7 ? 0 : Number(v.toPrecision(9))) : v); } catch (e) { return String(s); } };
 const unser = (s) => JSON.parse(s, (k, v) => (typeof v === 'string' && /^#(NaN|-?Infinity)$/.test(v) ? Number(v.slice(1)) : v));
 
 /* ------------------------------------------------------------------ the designed scenarios */
@@ -101,8 +105,8 @@ function deepDiff(a, b, pth, out){ if (out.length > 12) return; if (typeof a ===
 (async () => {
   const args = process.argv.slice(2);
   if (args[0] === '--record') {
-    const p = await launch(args[1]); const old = await runSet(p, 'old', OLD), nw2 = await runSet(p, 'new', NEW); const dig = (set, f) => Object.fromEntries(Object.entries(set).map(([k, v]) => [k, Object.assign({ engine: sha(v.engine), sheet: sha(v.sheet), key: unser(v.key) }, v.report ? { report: sha(v.report) } : {})]));
-    fs.writeFileSync(GOLD, JSON.stringify({ recordedFrom: RECORDED_FROM, old: dig(old), new: dig(nw2) }, null, 1) + '\n'); console.log('recorded ' + Object.keys(old).length + ' Refi / Recap and ' + Object.keys(nw2).length + ' Refinancing scenarios; page errors: ' + p.errs.length); await p.b.close(); return; }
+    const p = await launch(args[1]); const old = await runSet(p, 'old', OLD), nw2 = await runSet(p, 'new', NEW); const dig = (set, f) => Object.fromEntries(Object.entries(set).map(([k, v]) => [k, Object.assign({ engine: sha(canon(v.engine)), sheet: sha(v.sheet), key: unser(v.key) }, v.report ? { report: sha(v.report) } : {})]));
+    fs.writeFileSync(GOLD, JSON.stringify({ recordedFrom: RECORDED_FROM, numbers: NUMBERS_NOTE, old: dig(old), new: dig(nw2) }, null, 1) + '\n'); console.log('recorded ' + Object.keys(old).length + ' Refi / Recap and ' + Object.keys(nw2).length + ' Refinancing scenarios; page errors: ' + p.errs.length); await p.b.close(); return; }
   if (args[0] === '--diff') {
     const count = Number(args[3]) || 300, oldL = OLD.concat(randomOld(count, 20260105)), newL = NEW.concat(randomNew(Math.round(count * 5), 20261105)); const res = [];
     for (const build of [args[1], args[2]]) { const p = await launch(build); const t0 = Date.now(); res.push({ old: await runSet(p, 'old', oldL), new: await runSet(p, 'new', newL), errs: p.errs.slice() }); console.log(build + ': ' + oldL.length + ' + ' + newL.length + ' scenarios in ' + Math.round((Date.now() - t0) / 1000) + ' s; page errors ' + p.errs.length); await p.b.close(); }
@@ -149,8 +153,8 @@ function deepDiff(a, b, pth, out){ if (out.length > 12) return; if (typeof a ===
   const gold = fs.existsSync(GOLD) ? JSON.parse(fs.readFileSync(GOLD)) : null; check('the recorded pre-extraction results are present', !!gold);
   const oldR = await runSet(p, 'old', OLD), newR = await runSet(p, 'new', NEW);
   for (const [kind, set, g, list] of [['Refi / Recap', oldR, gold && gold.old, OLD], ['Refinancing Analysis', newR, gold && gold.new, NEW]]) { const bad2 = []; for (const sc of list) { const x = set[sc.n], w = g && g[sc.n]; if (!w) { bad2.push(sc.n + ' (not recorded)'); continue; }
-      const parts = ['engine', 'sheet'].concat(kind === 'Refinancing Analysis' ? ['report'] : []); const diff = parts.filter(f => sha(x[f]) !== w[f]); if (diff.length) bad2.push(sc.n + ': ' + diff.join('+') + ' differ; now ' + x.key + ' was ' + JSON.stringify(w.key)); }
-    check(kind + ': all ' + list.length + ' designed scenarios give exactly what they gave before the rule was extracted (the engine\'s full output' + (kind === 'Refi / Recap' ? ', including the return impact: IRR, multiple, profit, cash returned,' : ', including every test, the loan, debt service and proceeds,') + ' the rendered sheet' + (kind === 'Refinancing Analysis' ? ' and the report' : '') + ')', bad2.length === 0, bad2.slice(0, 3).join(' | ')); }
+      const parts = ['engine', 'sheet'].concat(kind === 'Refinancing Analysis' ? ['report'] : []); const diff = parts.filter(f => (f === 'engine' ? sha(canon(x[f])) : sha(x[f])) !== w[f]); if (diff.length) bad2.push(sc.n + ': ' + diff.join('+') + ' differ; now ' + x.key + ' was ' + JSON.stringify(w.key)); }
+    check(kind + ': all ' + list.length + ' designed scenarios give what they gave before the rule was extracted (the engine\'s full output to 9 significant digits' + (kind === 'Refi / Recap' ? ', including the return impact: IRR, multiple, profit, cash returned,' : ', including every test, the loan, debt service and proceeds,') + ' and the rendered sheet' + (kind === 'Refinancing Analysis' ? ' and the report' : '') + ' exactly)', bad2.length === 0, bad2.slice(0, 3).join(' | ')); }
   /* what each scenario is meant to show, read from the results rather than the record */
   const K = (set, n) => unser(set[n].key); const exp = []; { const errs = [...oldR ? Object.entries(oldR) : [], ...Object.entries(newR)].filter(([, v]) => /^ERR/.test(v.engine)).map(([k]) => k); check('no designed scenario throws in either tool', errs.length === 0, errs.join()); }
   OLD.forEach(sc => { const k = K(oldR, sc.n), e = sc.e; if (e.bind) { const cap = (k && k.caps) || [], low = Math.min(...cap), first = ['LTV', 'DSCR', 'Debt yield'][cap.findIndex(c => c === low)]; exp.push([sc.n, cap.length === 3 && k.binding === e.bind && k.binding === first && k.loan === low && (!e.distinct || new Set(cap).size === 3)]); }
