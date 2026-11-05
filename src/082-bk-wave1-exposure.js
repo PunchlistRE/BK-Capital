@@ -585,6 +585,8 @@ extend('QA','w1QA', function(o){
   var blocks = '';
   function runner(name, fn){
     var res; try { res = fn(); } catch(e){ return '<tr>'+lbl(name)+'<td class="v">'+chip('fail','ERROR')+'</td>'+txt(esc(e.message))+'</tr>'; }
+    /* a suite that does not apply to this deal says so (grey N/A with its reason), instead of reading as a failure or as a pass */
+    if(res && res.na) return '<tr>'+lbl(name)+'<td class="v">'+chip('na','N/A')+'</td>'+txt(esc(res.reason||'Does not apply to this deal'))+'</tr>';
     var tests = (res && (res.tests || res.results || res.checks)) || null;
     /* V30.2: some suites return checks as [name, pass] pairs; read both shapes (previously every
        pair was shown as a failure with a blank name, e.g. "0 / 5 Failing: ; ; ;"). */

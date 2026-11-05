@@ -68,6 +68,7 @@ echo "== Import OM, LoopNet listings (52 Hoyt St with financials, 743-751 Arctic
 echo "== Harbor Point PDF fixture labels (base vs deal brief on the cover, footer and title; display only)"; node audit/harbor_fixture_label_test.js index.html | tail -1
 echo "== Intake readers (property list, spreadsheet statement found by its arithmetic, facts-only flyer; REAL and SYNTHETIC inputs labelled)"; node audit/intake_test.js index.html | tail -1
 echo "== Blank start (a new deal is all cash with one investor; debt sections appear with financing; clear inputs; empty development schedule)"; node audit/blank_start_test.js index.html | tail -1
+echo "== QA self-tests on a deal with no debt (Floating Debt QA reads N/A with its reason, never ERROR; the deal is untouched; a deal with debt keeps its 8 checks)"; node audit/qa_na_test.js index.html | grep -v '^PASS'
 echo "== Saved deals and audit fixtures keep their financing and waterfall terms (vs the reference build)"; node audit/saved_terms_test.js index.html "$REF" | tail -1
 echo "== Spreadsheet ingestion (formulas vs displayed values, merged cells, subtotals, rent-roll layouts, CSV, multi-sheet, property lists; SYNTHETIC files + the REAL workbook when supplied)"; node audit/sheet_ingest_test.js index.html | tail -1
 echo "== Harbor Point stage C (investor summary pages, summary of investment, portfolio impact, cover photo, Model Checks)"; node audit/harbor_stageC_test.js index.html | tail -1
