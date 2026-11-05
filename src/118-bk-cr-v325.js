@@ -89,11 +89,12 @@ try{
   CR.wrapDev('Sources & Uses', function(o){
     var q = CR.state(), x = q.x, s = q.s, r = q.r;
     var F = bkFundingSummary();   /* the one shared funding calculation (src/184); this page only lays it out */
-    var uses = F.uses, srcs = F.sources, totalUses = F.totalUses, totalSrc = F.totalSources, excess = F.excess;
+    var uses = F.uses, srcs = F.sources, totalUses = F.totalUses, totalSrc = F.totalSources;
     var delta = totalSrc - totalUses, ok = Math.abs(delta) < 1, facility = F.loan, equity = F.equity;
     var units = Number(s.units)||0, gsf = Number(s.gsf)||0;
     var retEq = F.returnsEquityDraws, eqVsRet = equity - retEq;
-    var explained = Math.abs(eqVsRet - excess) < 1;
+    /* every status chip below reads the shared tie of the same name (src/184), so this page and the ALL INPUTS TIE indicator can never disagree */
+    var tieOk = function(id){ var t = (F.ties||[]).filter(function(q){ return q.id===id; })[0]; return t ? !!t.ok : true; };
     function two(list,total,cap){ return CR.table(cap,'<tr><th class="rowlabel-h" colspan="2">'+(cap.indexOf('Uses')===0||/Uses/.test(cap)?'Uses':'Sources')+'</th></tr>', list.map(function(u){ return '<tr>'+CR.lbl(u[0])+CR.val(M(u[1]))+'</tr>'; }).join('')); }
     var main = '<div class="tbl-wrap"><table class="fin"><caption>Sources &amp; Uses - Active Deal (Development)</caption><thead><tr><th class="rowlabel-h" colspan="2">Uses</th></tr></thead><tbody>'
       + uses.map(function(u){ return '<tr>'+CR.lbl(u[0])+CR.val(M(u[1]))+'</tr>'; }).join('')
@@ -101,18 +102,34 @@ try{
       + CR.table('Sources','<tr><th class="rowlabel-h" colspan="2">Sources</th></tr>',
           srcs.map(function(u){ return '<tr>'+CR.lbl(u[0])+CR.val(M(u[1]))+'</tr>'; }).join('')
           + '<tr class="grandtotal">'+CR.lbl('TOTAL SOURCES')+CR.val(M(totalSrc))+'</tr>')
-      + CR.note('&#10003;','<b>Development Sources &amp; Uses -</b> read from the development funding engine (<code>bkDevV09()</code> cost lines, <code>bkDevFundingV10()</code> monthly facility and equity schedule). Uses are the unlevered cost, facility upfront fees, capitalized interest and interest the facility could not capitalize beyond its commitment; sources are the facility draws plus capitalized interest and the equity the engine funds. The two sides are built from different fields, so the tie below is a check, not a construction.');
+      + CR.note('&#10003;','<b>Development Sources &amp; Uses -</b> read from the development funding engine (<code>bkDevV09()</code> cost lines, <code>bkDevFundingV10()</code> monthly facility and equity schedule). Uses are the unlevered cost, facility upfront fees, capitalized interest, interest paid currently beyond the facility limit and any initial reserves funded; sources are the facility draws, the capitalized interest, the equity (equity-first, cost overflow, and interest after any interest reserve) and any initial reserves drawn. The two sides are built from different fields, so the tie below is a check, not a construction.');
+    var chip2 = function(good, a, b){ return '<td>'+CR.chip(good?'pass':'fail', good?a:b)+'</td>'; };
     var checks = CR.table('Funding Order &amp; Control Checks','<tr><th class="rowlabel-h">Check</th><th>Value</th><th style="text-align:left">Basis</th><th>Status</th></tr>',
-        '<tr>'+CR.lbl('Total Uses')+CR.val(M(totalUses))+CR.txt('Unlevered cost + upfront fees + capitalized interest + interest funded by equity beyond the commitment')+'<td></td></tr>'
-      + '<tr>'+CR.lbl('Total Sources')+CR.val(M(totalSrc))+CR.txt('Facility draws + capitalized interest + equity funded by the engine')+'<td></td></tr>'
+        '<tr>'+CR.lbl('Total Uses')+CR.val(M(totalUses))+CR.txt('Unlevered cost + upfront fees + capitalized interest + interest paid currently beyond the facility limit + initial reserves funded')+'<td></td></tr>'
+      + '<tr>'+CR.lbl('Total Sources')+CR.val(M(totalSrc))+CR.txt('Facility draws + capitalized interest + equity + initial reserves drawn')+'<td></td></tr>'
       + '<tr class="grandtotal">'+CR.lbl('Sources less Uses')+CR.val(M(delta))+CR.txt('Must reconcile to zero')+'<td>'+CR.chip(ok?'pass':'fail', ok?'TIES':'VARIANCE')+'</td></tr>'
-      + '<tr>'+CR.lbl('Facility drawn plus capitalized interest does not exceed the commitment')+CR.val(M(facility))+CR.txt('Commitment '+M(x.commit))+'<td>'+CR.chip(facility <= (Number(x.commit)||0)+1 ? 'pass':'fail', facility <= (Number(x.commit)||0)+1 ? 'WITHIN COMMITMENT':'OVER COMMITMENT')+'</td></tr>'
-      + '<tr>'+CR.lbl('Equity per Sources equals the engine Total Equity Requirement')+CR.val(M(equity))+CR.txt('Engine total equity requirement '+M(x.equityTotal))+'<td>'+CR.chip(Math.abs(equity-x.equityTotal)<1?'pass':'fail', Math.abs(equity-x.equityTotal)<1?'TIES':'VARIANCE')+'</td></tr>'
+      + '<tr>'+CR.lbl('Principal drawn does not exceed the committed loan amount')+CR.val(M(F.principal))+CR.txt('Committed amount '+M(F.commit))+chip2(tieOk('commit'),'WITHIN COMMITMENT','OVER COMMITMENT')+'</tr>'
+      + '<tr>'+CR.lbl('Facility balance (principal plus capitalized interest) does not exceed the permitted ceiling')+CR.val(M(facility))
+        + CR.txt(F.ceiling > (Number(F.commit)||0)+1 ? 'Ceiling '+M(F.ceiling)+', above the committed amount '+M(F.commit)+': interest may capitalize up to the ceiling' : 'No separate ceiling: the balance is limited to the committed amount '+M(F.commit))
+        + chip2(tieOk('ceiling'),'WITHIN CEILING','OVER CEILING')+'</tr>'
+      + '<tr>'+CR.lbl('Equity per Sources equals the engine Total Equity Requirement')+CR.val(M(equity))+CR.txt('Engine total equity requirement '+M(x.equityTotal))+chip2(tieOk('eqEngine'),'TIES','VARIANCE')+'</tr>'
       + '<tr>'+CR.lbl('Equity charged in the monthly returns cash flow')+CR.val(M(retEq))+CR.txt('Sum of monthly equity draws used by the Returns page')+'<td></td></tr>'
       + '<tr>'+CR.lbl('Equity per Sources less equity charged in returns')+CR.val(M(eqVsRet))
-        + CR.txt(Math.abs(eqVsRet)<1 ? 'Equity in the funding schedule and in the returns cash flow agree' : (explained ? 'Interest accrued beyond the facility commitment is funded by equity in the funding engine but is not charged to the equity cash flow in the monthly returns. Reported here, not adjusted.' : 'Difference is not explained by interest beyond the commitment - review.'))
-        + '<td>'+CR.chip(Math.abs(eqVsRet)<1?'pass':'warn', Math.abs(eqVsRet)<1?'AGREES':'REVIEW')+'</td></tr>'
+        + CR.txt(tieOk('eqReturns') ? 'Equity in the funding schedule and in the returns cash flow agree' : 'The funding schedule and the returns cash flow charge different equity - review.')
+        + chip2(tieOk('eqReturns'),'AGREES','REVIEW')+'</tr>'
       + '<tr>'+CR.lbl('Figures belong to the active deal')+CR.val(CR.esc(s.dealId||'-')+' - '+CR.esc(s.name||''))+CR.txt('Guards against stale cached values')+'<td>'+CR.chip(s.dealId?'pass':'warn', s.dealId?'PASS':'NO DEAL ID')+'</td></tr>');
+    /* the returns charge the partners more than the funding schedule does; each added item is read from its own engine and the total is tied, not left as a remainder */
+    var tk = F.x || {}, hold = Number(tk.hold)||0, stabMo = Number(tk.stab)||0;
+    var takeTxt = !Number(s.refiAtStab||0) ? 'No permanent takeout is assumed.'
+      : !F.takeoutInHold ? 'Not called: the hold ends in month '+hold+', before stabilization in month '+stabMo+', so the sale repays the facility. At stabilization the permanent loan would be '+M(F.takeoutShortfall)+' short of the facility payoff and fee.'
+      : F.takeoutShortfall > 1 ? 'The permanent loan '+M(tk.permLoan)+' is short of the facility payoff '+M(tk.conPayoff)+' plus the permanent fee '+M(tk.permFee)+'; the partners fund the difference in month '+stabMo+'.'
+      : 'The permanent loan repays the facility and the fee; no equity is called at takeout.';
+    var opTxt = F.operatingShortfall > 0.5 ? 'Net operating loss in lease-up months '+F.operatingShortfallFrom+' to '+F.operatingShortfallTo+' (negative NOI, asset fee or leasing capital before the building earns), funded by the partners as it falls. The funding schedule carries only the net cumulative lease-up deficit ('+M(tk.leaseDef)+'), so this is outside Sources &amp; Uses.' : 'None: no month has an operating shortfall after the operating reserve.';
+    var after = CR.table('Capital Called After Funding - in the returns, outside Sources &amp; Uses','<tr><th class="rowlabel-h">Item</th><th>Amount</th><th style="text-align:left">Basis</th><th>Status</th></tr>',
+        '<tr>'+CR.lbl('Equity at funding (Sources &amp; Uses)')+CR.val(M(equity))+CR.txt('Equity-first funding, cost overflow and interest after any reserve')+'<td></td></tr>'
+      + '<tr>'+CR.lbl('Takeout equity')+CR.val(M(F.takeoutEquity))+CR.txt(takeTxt)+chip2(tieOk('takeout'),'TIES TO LOAN SIZING','VARIANCE')+'</tr>'
+      + '<tr>'+CR.lbl('Lease-up operating shortfall')+CR.val(M(F.operatingShortfall))+CR.txt(opTxt)+'<td></td></tr>'
+      + '<tr class="grandtotal">'+CR.lbl('Equity contributed in the returns')+CR.val(M(F.contributed))+CR.txt('Equity at funding + takeout equity + lease-up operating shortfall = '+M(equity+F.takeoutEquity+F.operatingShortfall))+chip2(tieOk('contrib'),'TIES','VARIANCE')+'</tr>');
     var caps = CR.table('Capitalization Metrics','<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
         '<tr>'+CR.lbl('Construction Facility Commitment')+CR.val(M(x.commit))+CR.txt('Sized commitment')+'</tr>'
       + '<tr>'+CR.lbl('Facility Funded to Total Uses')+CR.val(totalUses?pct(facility/totalUses):'-')+CR.txt('Facility draws + capitalized interest &divide; total uses')+'</tr>'
@@ -124,7 +141,7 @@ try{
         uses.map(function(u){ return r5(u[0],u[1],totalUses,units,gsf); }).join('') + r5('TOTAL USES',totalUses,totalUses,units,gsf,'grandtotal'));
     var perSrc = CR.table('Sources - total, per unit, per SF, and as a share', HEAD5('Source'),
         srcs.map(function(u){ return r5(u[0],u[1],totalUses,units,gsf); }).join('') + r5('TOTAL SOURCES',totalSrc,totalUses,units,gsf,'grandtotal'));
-    o.main = main + checks + caps + perUse + perSrc;
+    o.main = main + checks + after + caps + perUse + perSrc;
     o.meta = {Property:s.name,'Total Uses':intf(totalUses),Currency:'USD'};
     if(typeof sidebarShell==='function'){
       o.sidebar = sidebarShell('<div class="card"><div class="card-head">S&amp;U Check</div><div class="metric-list"><div class="metric-row"><span class="k">Total Uses</span><span class="v">'+M(totalUses)+'</span></div><div class="metric-row"><span class="k">Total Sources</span><span class="v">'+M(totalSrc)+'</span></div><div class="metric-row"><span class="k">Facility / Equity</span><span class="v">'+M(facility)+' / '+M(equity)+'</span></div></div></div>'

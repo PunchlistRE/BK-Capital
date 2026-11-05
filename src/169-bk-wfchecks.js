@@ -68,7 +68,7 @@ function run(opts){
   var okC = Math.abs(dist - tiers) <= TOL_USD * Math.max(1, n / 12) && Math.abs(dist - partner) <= TOL_USD * Math.max(1, n / 12) && Math.abs(con - pcon) <= TOL_USD && Math.abs(dist - eng) <= TOL_USD * Math.max(1, n / 12);
   out.other.push({ id:'cons', label:'Every dollar is distributed once', status:okC ? 'pass' : 'fail', detail:'Distributable ' + M(dist) + '; paid through the tiers ' + M(tiers) + '; to LP and GP ' + M(partner) + '; the engine\'s own distributions ' + M(eng) + '. Contributions ' + M(con) + ' vs ' + M(pcon) + ' to the partners.' });
   /* promote */
-  var gpDist = sum(function(r){ return r.gpDist; }), prorata = gs * sum(function(r){ return (Number(s.prefLPOnly) === 1 ? 0 : r.t1) + r.catchup + r.t2 + r.t3 + r.t4; }), promote = num(w.promote);
+  var gpDist = sum(function(r){ return r.gpDist; }), prorata = gs * sum(function(r){ return (Number(s.prefLPOnly) === 1 && lpMode ? 0 : r.t1) + r.catchup + r.t2 + r.t3 + r.t4; }), promote = num(w.promote);
   var okP = promote >= -TOL_USD && Math.abs(promote - Math.max(0, gpDist - prorata)) <= TOL_USD * Math.max(1, n / 12) + 1 && (out.hurdles[0].cleared || promote <= TOL_USD);
   out.other.push({ id:'promote', label:'Promote is the GP\'s excess over its pro-rata share', status:okP ? 'pass' : 'fail', detail:'GP distributions ' + M(gpDist) + ' less its pro-rata share ' + M(prorata) + ' = ' + M(gpDist - prorata) + '; promote reported ' + M(promote) + '.' + (out.hurdles[0].cleared ? '' : ' Tier 1 was not cleared, so no promote is due.') });
   var sm = safe(function(){ return summary({ w:w }); }, null);

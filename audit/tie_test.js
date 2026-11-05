@@ -14,13 +14,16 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
     const p = await open(deal);
     const F = await p.evaluate(() => { const f = bkFundingSummary(); const d = bkDebt(), r = bkMonthlyReturns(), w = bkWaterfallV07(), sum = (a, k) => a.reduce((t, m) => t + (+m[k] || 0), 0);
       return { dev: f.dev, ties: f.ties.map(t => [t.id, t.ok]), uses: f.totalUses, srcs: f.totalSources, usesSum: f.uses.reduce((t, u) => t + u[1], 0), srcSum: f.sources.reduce((t, u) => t + u[1], 0), loan: f.loan, equity: f.equity, gp: f.gp, lp: f.lp, gpE: f.gpEquity, lpE: f.lpEquity,
-        debtLoan: d.loan, debtEq: d.equity, cap: Number(f.s.rateCapCost) || 0, contrib: r.contrib, wf: Math.abs(w.lp.contrib) + Math.abs(w.gp.contrib), eqEngine: f.dev ? f.x.equityTotal : d.equity, commit: f.commit, gpShare: Number(f.s.gpShare) || 0, all: bkAllInputsTie() }; });
+        debtLoan: d.loan, debtEq: d.equity, cap: Number(f.s.rateCapCost) || 0, contrib: r.contrib, wf: Math.abs(w.lp.contrib) + Math.abs(w.gp.contrib), eqEngine: f.dev ? f.x.equityTotal : d.equity, commit: f.commit, principal: f.principal, ceiling: f.ceiling, takeEq: f.takeoutEquity, opShort: f.operatingShortfall, gpShare: Number(f.s.gpShare) || 0, all: bkAllInputsTie() }; });
     check(tag + ': deal type read as ' + (dev ? 'development' : 'acquisition'), F.dev === dev);
     check(tag + ': every funding tie passes (' + F.ties.map(t => t[0] + (t[1] ? '' : ' FAIL')).join(', ') + ')', F.ties.every(t => t[1]));
     check(tag + ': total uses = sum of the use lines, total sources = sum of the source lines, and they agree to the dollar', Math.abs(F.uses - F.usesSum) < 0.5 && Math.abs(F.srcs - F.srcSum) < 0.5 && Math.abs(F.uses - F.srcs) < 1, [F.uses, F.srcs]);
     check(tag + ': equity at funding = the engine equity (' + (dev ? 'funding engine total equity requirement' : 'Debt page equity plus any rate cap') + ')', Math.abs(F.equity - (F.eqEngine + (dev ? 0 : F.cap))) < 1, [F.equity, F.eqEngine]);
     if (dev) check(tag + ': facility drawn plus capitalized interest is within the commitment', F.loan <= F.commit + 1, [F.loan, F.commit]);
     else check(tag + ': the loan in Sources equals the Debt page loan', Math.abs(F.loan - F.debtLoan) < 1, [F.loan, F.debtLoan]);
+    if (dev) {   /* two different limits: the commitment caps the principal drawn; the ceiling caps the balance (principal plus capitalized interest) */
+      check(tag + ': principal drawn is within the committed loan amount and the balance is within the permitted ceiling', F.principal <= F.commit + 1 && F.loan <= F.ceiling + 1 && F.ceiling >= F.commit, [F.principal, F.commit, F.loan, F.ceiling]);
+      check(tag + ': equity contributed in the returns = equity at funding + takeout equity + lease-up operating shortfall (each read from its own engine)', Math.abs(F.contrib - (F.equity + F.takeEq + F.opShort)) < 1, [F.contrib, F.equity, F.takeEq, F.opShort]); }
     check(tag + ': GP + LP contributions in the waterfall = the equity contributed in the returns', Math.abs(F.wf - F.contrib) < 1, [F.wf, F.contrib]);
     check(tag + ': GP + LP equity at funding = total equity at funding (GP share ' + (F.gpShare * 100).toFixed(1) + '% from Partnership)', Math.abs(F.gpE + F.lpE - F.equity) < 0.5 && Math.abs(F.gpE - F.equity * F.gpShare) < 0.5, [F.gpE, F.lpE]);
     check(tag + ': ALL INPUTS TIE reads ok (' + F.all.checks + ' checks)', F.all.ok === true && F.all.checks > 5, JSON.stringify(F.all.failed));

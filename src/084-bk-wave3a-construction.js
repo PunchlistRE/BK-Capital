@@ -142,7 +142,7 @@ extend('Debt','w3aConstructionSizing', function(o){
         + '<td class="v">'+(Number(x.refiShortfall)>0?chip('warn','SHORTFALL'):chip('pass','FUNDS PAYOFF'))+'</td></tr>'
       + (Number(x.refiShortfall)>0
           ? '<tr>'+lbl('Refinance Shortfall - equity required at takeout')+val(money(x.refiShortfall))
-            + txt('The permanent loan does not fully retire the facility')+'<td></td></tr>' : '')
+            + txt(x.takeoutInHold === false && Number(s.refiAtStab||0) ? 'Not called: the hold ends in month '+x.hold+', before stabilization in month '+x.stab+'; the sale repays the facility' : 'The permanent loan does not fully retire the facility')+'<td></td></tr>' : '')
       + '<tr>'+lbl('Permanent Debt at Sale')+val(money(x.permDebtAtSale))+txt('Balance carried to the exit month')+'<td></td></tr>');
   }
 

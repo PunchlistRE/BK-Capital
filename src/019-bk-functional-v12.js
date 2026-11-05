@@ -50,8 +50,10 @@ function bkDevMonthlyReturnsV12(){
    /* unlevered flow: every project cost as it falls (no financing fee, no interest), the property's own income, and the sale net of selling costs; no loan, no refinance, no equity split */
    uCost.push(Number(funding.land||0)+Number(funding.hard||0)+Number(funding.soft||0)+Number(funding.lease||0)); uVals.push(-uCost[uCost.length-1]+noi-assetFee-leaseCapMo+sale-dispoFee);
    /* investors contribute and receive gross: the equity called (and any shortfall in the month's other cash) is a contribution, the surplus of the other cash is a distribution; they are never netted against each other */
-   const otherCF=cf+equityDraw+refiEq, wfContrib=equityDraw+refiEq+Math.max(0,-otherCF), wfDist=Math.max(0,otherCF);
-   rows.push({m:mo,y:Math.ceil(mo/12),dt,resRelease:resRel,resOp,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale,wfContrib,wfDist});
+   /* opShort is the month's operating cash shortfall (negative NOI while the building leases up, an asset fee or leasing capital with no income to pay it) that the partners fund when it falls.
+      It is a component of wfContrib, named so the contributions can be reconciled to the funding ledger (equity) plus the takeout equity plus this. */
+   const otherCF=cf+equityDraw+refiEq, opShort=Math.max(0,-otherCF), wfContrib=equityDraw+refiEq+opShort, wfDist=Math.max(0,otherCF);
+   rows.push({m:mo,y:Math.ceil(mo/12),dt,resRelease:resRel,resOp,egi:egiMo,noi,leaseCap:leaseCapMo,reserve:0,ds,assetFee,sale,dispoFee,payoff,refi,refiEq,equityDraw,eqDraw:(mo===1?equityDraw:0),cf,grossSale,wfContrib,wfDist,opShort});
    values.push(cf);dates.push(dt);
  }
  const irr=bkXirrClose(values,dates,start,-(rows[0]?Number(rows[0].eqDraw)||0:0)),dist=rows.reduce((z,r)=>z+r.wfDist,0),contrib=rows.reduce((z,r)=>z+r.wfContrib,0),moic=contrib?dist/contrib:0;
