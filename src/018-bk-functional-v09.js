@@ -180,6 +180,8 @@ function bkDevBudgetPlan(x,s){
   return {rows:out,hard:byMo.hard,soft:byMo.soft,all:byMo.all,LC};
 }
 window.bkDevBudgetPlan=bkDevBudgetPlan;window.BK_RATE_PRESETS=BK_RATE_PRESETS;window.BK_BUDGET_CLASSES=BK_BUDGET_CLASSES;
+/* one colour per cost class, used by the Budget panel, the cash charts and the Dev Schedule Gantt (blue = hard cost, amber = contingency, teal = soft cost, violet = FF&E) */
+window.BK_CLASS_COLORS={hard:'#2f6db5',cont:'#e08a2c',soft:'#2a9d8f',ffe:'#7b5ea7'};
 /* Contingency register: the hard-cost contingency in the budget tracked as original / allocated / change orders (used) / remaining / forecast. Change orders and expected further use draw it down; use beyond the original is an overrun added to hard cost, and (when release is 'saved') what is not used is taken out of cost. With no register the contingency is spent in full, as before. */
 window.bkContingencyStats=function(s,original){const c=(s&&s.contingency&&typeof s.contingency==='object')?s.contingency:null;if(!c)return null;const sum=a=>(Array.isArray(a)?a:[]).reduce((t,r)=>t+(Number(r&&r.amount)||0),0);const alloc=sum(c.allocations),used=sum(c.changeOrders),more=Math.max(0,Number(c.forecastMore)||0),forecast=used+more,remaining=original-used,fRemaining=original-forecast,over=Math.max(0,-fRemaining),saved=c.release==='saved'?Math.max(0,fRemaining):0;return{original,allocated:alloc,unallocated:original-alloc,used,remaining,more,forecast,forecastRemaining:fRemaining,overrun:over,saved,release:c.release==='saved'?'saved':'spent',adj:over-saved};};
 function bkDevV09(){

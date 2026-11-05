@@ -319,7 +319,7 @@ window.bkEdBudCopy = function(){ var s = bkLoad(), had = Array.isArray(s.budgetL
   sl.lines.forEach(function(l){ add(/FF&E/i.test(l.name) ? 'ffe' : 'soft', l.name, l.total); }); add('soft', 'Development fee', sl.devFee); add('soft', 'Soft cost contingency', sl.contingency);
   s.budgetLines = out; s.devBudgetMode = 'LINES'; bkSave(s); showSheet(cur()); };
 /* cash by month as stacked bars (one colour per cost class); also drawn on the Dev Schedule page */
-var BCOL = { hard:'#1f4e8c', cont:'#b0592a', soft:'#3E9AE6', ffe:'#5B4B8A' };
+var BCOL = window.BK_CLASS_COLORS || { hard:'#2f6db5', cont:'#e08a2c', soft:'#2a9d8f', ffe:'#7b5ea7' };
 window.bkBudgetSpendSvg = function(plan, o){ o = o || {}; if(!plan || !plan.rows || !plan.rows.length) return '';
   var byCls = { hard:{}, cont:{}, soft:{}, ffe:{} }, last = 0; plan.rows.forEach(function(r){ Object.keys(r.monthly).forEach(function(m){ byCls[r.cls][m] = (byCls[r.cls][m] || 0) + r.monthly[m]; last = Math.max(last, Number(m)); }); });
   var N = Math.max(last, o.months || 0, 6), mx = 0, tot = {}; for(var m = 1; m <= N; m++){ var v = 0; ['hard', 'cont', 'soft', 'ffe'].forEach(function(c){ v += byCls[c][m] || 0; }); tot[m] = v; mx = Math.max(mx, v); }
