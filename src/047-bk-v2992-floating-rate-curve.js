@@ -125,13 +125,15 @@
 
   // Floating-rate QA: fixed-path parity and rate mechanics sanity checks.
   window.bkFloatingDebtQA=function(){
+    /* A deal with no debt has no rate mechanics to check: say so, before the deal is touched (the checks below save changed rate terms and restore them). */
+    const d0=bkDebt(); if(d0.debtEnabled===false||!(Number(d0.loan)>0)||!Array.isArray(d0.months)||!d0.months.length) return{na:true,reason:'This deal has no debt, so there are no rate mechanics to check.',passed:0,failed:0,tests:[]};
     const original=JSON.parse(JSON.stringify(bkLoad())),tests=[]; const add=(n,p,d='')=>tests.push({name:n,pass:!!p,detail:d});
     try{
       let s=bkLoad();s.debtRateType='Fixed';bkSave(s);const f=bkDebt();add('Fixed coupon equals acqRate',Math.abs(f.coupon-(Number(s.acqRate)||0))<1e-12);
       s=bkLoad();s.debtRateType='Floating';s.debtIndexRate=.05;s.debtSpread=.025;s.debtFloor=0;s.debtCap=0;curveKeys.forEach(k=>s[k]=null);bkSave(s);let x=bkDebt();add('Floating base = index + spread',Math.abs(x.coupon-.075)<1e-12);
       s=bkLoad();s.debtFloor=.08;bkSave(s);x=bkDebt();add('Coupon floor enforced',Math.abs(x.coupon-.08)<1e-12);
       s=bkLoad();s.debtFloor=0;s.debtCap=.07;bkSave(s);x=bkDebt();add('Coupon cap enforced',Math.abs(x.coupon-.07)<1e-12);
-      s=bkLoad();s.debtCap=0;s.debtIndexY1=.04;s.debtIndexY2=.06;bkSave(s);x=bkDebt();add('Year 1 curve applied',Math.abs(x.months[0].annualRate-.065)<1e-12); if(x.months.length>12)add('Year 2 curve applied',Math.abs(x.months[12].annualRate-.085)<1e-12);
+      s=bkLoad();s.debtCap=0;s.debtIndexY1=.04;s.debtIndexY2=.06;bkSave(s);x=bkDebt();add('Year 1 curve applied',x.months.length>0&&Math.abs(x.months[0].annualRate-.065)<1e-12); if(x.months.length>12)add('Year 2 curve applied',Math.abs(x.months[12].annualRate-.085)<1e-12);
       add('Debt balance never negative',x.months.every(m=>m.balance>=-1e-8));add('Payments finite',x.months.every(m=>Number.isFinite(m.payment)&&Number.isFinite(m.interest)&&Number.isFinite(m.principal)));
     } finally {bkSave(original);}
     return{passed:tests.filter(t=>t.pass).length,failed:tests.filter(t=>!t.pass).length,tests};
