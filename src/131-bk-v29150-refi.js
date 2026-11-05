@@ -4,7 +4,7 @@
    ===========================================================================
    For a chosen refinance year, and for every possible year:
      position      trailing NOI, value at the appraisal cap, the existing balance
-     new loan      the lowest of LTV, DSCR and debt-yield capacity; the binding one
+     new loan      the lowest of LTV, DSCR and debt-yield capacity; the binding one (the sizing rule is bkSizeLoan, src/130a, shared with the Refinancing Analysis)
      cash-out      new loan - existing balance - refinance costs - prepayment
      afterwards    post-refinance DSCR, debt yield, LTV, balance and penalty at exit
      impact        the equity cash flow rebuilt MONTHLY with the cash-out, the new
@@ -37,7 +37,6 @@ window.bkRefiSet = function(k, v){
 };
 window.bkRefiReset = function(){ var s = bkLoad(); if(!s) return; delete s._refi; bkSave(s); setTimeout(function(){ if(typeof showSheet === 'function') showSheet('Refi / Recap'); }, 0); };
 
-function pvAnn(rate, years, annual){ var i = rate / 12, n = Math.round(years * 12); return i > 0 ? annual / 12 * (1 - Math.pow(1 + i, -n)) / i : annual * years; }
 function pmtM(rate, years, loan){ var i = rate / 12, n = Math.round(years * 12); return i > 0 ? loan * i / (1 - Math.pow(1 + i, -n)) : loan / n; }
 function balAfter(loan, rate, years, k){ var i = rate / 12, p = pmtM(rate, years, loan), g = Math.pow(1 + i, k); return i > 0 ? loan * g - p * (g - 1) / i : loan - p * k; }
 
@@ -49,8 +48,9 @@ function metricsOf(values, dates, closeDt, eq0){
 function refiAt(y, inp, ctx){
   var u = ctx.u, d = ctx.d, r = ctx.r, n = ctx.n, rows = r.rows, last = rows.length - 1;
   var noi = u.arr[y - 1].after, bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
-  var cLTV = value * inp.maxLTV, cDSCR = pvAnn(inp.rate, inp.amort, noi / inp.minDSCR), cDY = noi / inp.minDebtYield;
-  var loan = Math.min(cLTV, cDSCR, cDY), binding = loan === cLTV ? 'LTV' : loan === cDSCR ? 'DSCR' : 'Debt yield';
+  /* the three ratio tests and the lowest of them: the shared sizing rule, applied as given (all three; the amortization in whole months, as this tool always has) */
+  var z = window.bkSizeLoan({ noi:noi, value:value, rate:inp.rate, amortYears:inp.amort, roundMonths:true, maxLTV:inp.maxLTV, minDSCR:inp.minDSCR, minDY:inp.minDebtYield });
+  var cLTV = z.caps[0].loan, cDSCR = z.caps[1].loan, cDY = z.caps[2].loan, loan = z.loan, binding = { ltv:'LTV', dscr:'DSCR', dy:'Debt yield' }[z.binding];
   var costs = loan * inp.costsPct, prepay = bal * inp.prepayPct, gross = loan - bal, net = gross - costs - prepay;
   var pm = pmtM(inp.rate, inp.amort, loan), ds = pm * 12, kExit = (n - y) * 12, balExit = balAfter(loan, inp.rate, inp.amort, kExit), pen = balExit * inp.exitPenaltyPct;
   var mr = y * 12, vals = rows.map(function(q){ return q.cf; }), dsDelta = 0, oldPayoff = rows[last].payoff || 0;

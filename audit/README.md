@@ -88,6 +88,18 @@ after costs and prepayment, post-refinance coverage, and the equity cash flow re
 (IRR, multiple, profit, cash returned before exit vs. holding the original loan), a verdict, and a reconciliation (closed-form existing
 balance, profit bridge). `refi_ref.py` re-derives all of it from `model.py`'s monthly cash flow; REF-1 uses custom inputs.
 
+## Loan sizing (`src/130a-bk-loan-sizing.js`, `loan_sizing_test.js`, `sizing_ref.py`)
+One rule, `bkSizeLoan`, turns a lender's ratio tests (LTV, debt service coverage, debt yield, plus an amount requested) into a loan: the lowest of them, ties to the first. Refi / Recap (a refinance inside an
+acquisition's hold) and the Refinancing Analysis (a property already owned) both size through it, and any analysis that has to say how much a lender will lend should. Each tool keeps what is its own:
+which tests apply, the wording, rounding (the Refinancing Analysis rounds down to $1,000), the missing-input rules, and everything after the loan amount (payment, balance, proceeds, returns, reports).
+The test checks three things. (1) The rule against `sizing_ref.py`, a model written from the definition: 6,000 seeded random cases, each test binding on its own, three different limits, ties, interest-only and
+derived debt service, a requested amount, and invalid inputs (used as given, never guessed). (2) Both tools on 67 designed scenarios (every test binding, ties, interest-only, requested amounts, alternatives, missing,
+zero, negative and non-numeric inputs): the engine's full output and the rendered sheet and report must equal, exactly, what the tools produced before the rule was extracted
+(`fixtures/loan_sizing_golden.json`, recorded from main at 61b71ef with `--record`). (3) Both tools really call the rule. `--diff base.html new.html [n]` runs the scenarios and n seeded random ones through two
+builds and lists every difference. If sizing is ever changed on purpose, re-record the results with `--record` and say so in the pull request: a changed number is then a decision, not an accident.
+The two ways the debt-service test is stated (derived from the rate and amortization, or from a supplied debt service per $1) are the same quantity but differ in the last digits of a floating-point number; both are
+kept so that no number moved. Bringing them to one form is a separate step.
+
 ## Input flow (`input_flow_test.js`)
 Leaving a cell re-renders the sheet so the value commits and derived rows refresh. A final `showSheet` wrapper keeps the page's scroll
 position, hands focus back to the cell you were heading for (including dropdowns), and coalesces a re-render requested from inside a

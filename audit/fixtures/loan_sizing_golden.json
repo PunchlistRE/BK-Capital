@@ -1,0 +1,1873 @@
+{
+ "recordedFrom": "main at 61b71ef (before the sizing rule was extracted)",
+ "old": {
+  "default": {
+   "engine": "063fee61cca30cc4cc396ec0",
+   "sheet": "f4c65e6f5448047dab8aedea",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": 14686261.650811242,
+    "binding": "DSCR",
+    "net": 2765497.293273816,
+    "irr": 0.14042647202781272,
+    "moic": 1.80271204400261,
+    "profit": 6627039.9045031965
+   }
+  },
+  "ltv-binds": {
+   "engine": "f86ddc04d92d90d6f16ffbc0",
+   "sheet": "8fdef26e1807d802ce6421fa",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     7264734.553666015,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": 7264734.553666015,
+    "binding": "LTV",
+    "net": -4581814.532899959,
+    "irr": 0.1350177134117559,
+    "moic": 1.566628860059083,
+    "profit": 7254597.820541091
+   }
+  },
+  "dscr-binds": {
+   "engine": "72d02051bdaa3c7edd84ac50",
+   "sheet": "06c4d1fe466c83d1df991f8d",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     9178913.531757029,
+     16381264.189639054
+    ],
+    "loan": 9178913.531757029,
+    "binding": "DSCR",
+    "net": -2686777.344589855,
+    "irr": 0.13631125715101944,
+    "moic": 1.6502296476989673,
+    "profit": 7092736.500803197
+   }
+  },
+  "dy-binds": {
+   "engine": "6d5cc454691788d11c9f5ecd",
+   "sheet": "cccca6e89e1f47148ed4721b",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     14686261.650811242,
+     6962037.280596598
+    ],
+    "loan": 6962037.280596598,
+    "binding": "Debt yield",
+    "net": -4881484.833238682,
+    "irr": 0.13481903824230718,
+    "moic": 1.5556230822216235,
+    "profit": 7280193.640295055
+   }
+  },
+  "three-different-limits-ltv-lowest": {
+   "engine": "5d94695dd18c89c4488a3466",
+   "sheet": "77a42c28bb936d2c45b619d7",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     12107890.922776692,
+     16688933.694103684,
+     19891535.08741885
+    ],
+    "loan": 12107890.922776692,
+    "binding": "LTV",
+    "net": 212910.27251961117,
+    "irr": 0.13842280973169968,
+    "moic": 1.8291206872811356,
+    "profit": 6845064.704477435
+   }
+  },
+  "three-different-limits-dy-lowest": {
+   "engine": "fcdef7249e70088c4d8a6043",
+   "sheet": "8eb2259886d2af0d151fb2b8",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     19372625.476442706,
+     16688933.694103684,
+     11603395.467660997
+    ],
+    "loan": 11603395.467660997,
+    "binding": "Debt yield",
+    "net": -286540.2280449264,
+    "irr": 0.1380470990004774,
+    "moic": 1.8095765331428757,
+    "profit": 6887724.404067391
+   }
+  },
+  "year-1": {
+   "engine": "276c8a579203880341bf82ec",
+   "sheet": "68227db66d0bd875f1893b1e",
+   "key": {
+    "valid": true,
+    "year": 1,
+    "caps": [
+     14360468.765217386,
+     13398865.446788818,
+     14945284.23529411
+    ],
+    "loan": 13398865.446788818,
+    "binding": "DSCR",
+    "net": 1038225.7735943662,
+    "irr": 0.14452611615285185,
+    "moic": 1.8004885450048167,
+    "profit": 6608683.114299179
+   }
+  },
+  "year-2": {
+   "engine": "9c9473a377acf63c126d25a8",
+   "sheet": "ab56a3390c163dd0352ac699",
+   "key": {
+    "valid": true,
+    "year": 2,
+    "caps": [
+     14806570.828173911,
+     13815095.697681949,
+     15409553.350588232
+    ],
+    "loan": 13815095.697681949,
+    "binding": "DSCR",
+    "net": 1591173.327846046,
+    "irr": 0.14453048401025176,
+    "moic": 1.7923856595786822,
+    "profit": 6541787.213755753
+   }
+  },
+  "year-3": {
+   "engine": "43db81b285757ad7c06d5f04",
+   "sheet": "3ea47f603acf5231a3d82729",
+   "key": {
+    "valid": true,
+    "year": 3,
+    "caps": [
+     15266361.713019127,
+     14244098.14185166,
+     15888068.751105879
+    ],
+    "loan": 14244098.14185166,
+    "binding": "DSCR",
+    "net": 2166574.509703143,
+    "irr": 0.14305178829522014,
+    "moic": 1.792990427167589,
+    "profit": 6546780.061408367
+   }
+  },
+  "year-0-invalid": {
+   "engine": "d1c1dba5b35e7bfb35797a4a",
+   "sheet": "749a1ebf48704327eaebd78b",
+   "key": {
+    "valid": false,
+    "year": null,
+    "caps": null,
+    "loan": null,
+    "binding": null,
+    "net": null,
+    "irr": null,
+    "moic": null,
+    "profit": null
+   }
+  },
+  "year-5-invalid": {
+   "engine": "00af86362aec413617f847a2",
+   "sheet": "0bfe339259b1984b07e845f9",
+   "key": {
+    "valid": false,
+    "year": null,
+    "caps": null,
+    "loan": null,
+    "binding": null,
+    "net": null,
+    "irr": null,
+    "moic": null,
+    "profit": null
+   }
+  },
+  "year-9-invalid": {
+   "engine": "b87f59eb0eb0337bf1992374",
+   "sheet": "2432afde75b2522710ce8c82",
+   "key": {
+    "valid": false,
+    "year": null,
+    "caps": null,
+    "loan": null,
+    "binding": null,
+    "net": null,
+    "irr": null,
+    "moic": null,
+    "profit": null
+   }
+  },
+  "rate-0": {
+   "engine": "3ea0fa9bb6fb3cb2fb857cca",
+   "sheet": "6e78e634e48f8679cb3f0107",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     33417778.94686367,
+     16381264.189639054
+    ],
+    "loan": 15740258.199609699,
+    "binding": "LTV",
+    "net": 3808953.8765842877,
+    "irr": 0.15828012581052642,
+    "moic": 1.9156384470845766,
+    "profit": 7559339.083377572
+   }
+  },
+  "rate-12-percent": {
+   "engine": "372ddd1242cdacbfe9e81d87",
+   "sheet": "4cfa4222fcc41aedd101295a",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     9024501.937731065,
+     16381264.189639054
+    ],
+    "loan": 9024501.937731065,
+    "binding": "DSCR",
+    "net": -2839644.8226755597,
+    "irr": 0.12818258729918725,
+    "moic": 1.5973788308391237,
+    "profit": 6607557.025199905
+   }
+  },
+  "amortization-0": {
+   "engine": "d7acd4bf470b3db4f3e6627a",
+   "sheet": "5e8954c898da6a2d544ea1cc",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     0,
+     16381264.189639054
+    ],
+    "loan": 0,
+    "binding": "DSCR",
+    "net": -11773901.741029313,
+    "irr": null,
+    "moic": 0,
+    "profit": null
+   }
+  },
+  "amortization-25": {
+   "engine": "d26f6ae5e002e075c3527bea",
+   "sheet": "902ad48b798183f38553eb58",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     13747953.080949973,
+     16381264.189639054
+    ],
+    "loan": 13747953.080949973,
+    "binding": "DSCR",
+    "net": 1836571.80911116,
+    "irr": 0.1396554427695772,
+    "moic": 1.8126728854649887,
+    "profit": 6709274.741200625
+   }
+  },
+  "amortization-40": {
+   "engine": "39aba92b5fb379a625c39827",
+   "sheet": "703da06b4e89700f4cf73f0c",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     15855510.115155715,
+     16381264.189639054
+    ],
+    "loan": 15740258.199609699,
+    "binding": "LTV",
+    "net": 3808953.8765842877,
+    "irr": 0.1413209569364015,
+    "moic": 1.791483231033418,
+    "profit": 6534336.933141276
+   }
+  },
+  "amortization-27.3-whole-months": {
+   "engine": "82f2270ea6bd9f60cc0014f2",
+   "sheet": "d2cb7947f408f9425349adca",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     14223731.007257512,
+     16381264.189639054
+    ],
+    "loan": 14223731.007257512,
+    "binding": "DSCR",
+    "net": 2307591.956155623,
+    "irr": 0.14004379533169387,
+    "moic": 1.807622149867477,
+    "profit": 6667576.816519059
+   }
+  },
+  "amortization-27.5": {
+   "engine": "c772b74dfc47be7a52712921",
+   "sheet": "273ca2aad4d1d68ec31a0cf1",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     14255040.29846819,
+     16381264.189639054
+    ],
+    "loan": 14255040.29846819,
+    "binding": "DSCR",
+    "net": 2338588.1544541935,
+    "irr": 0.14006953835763075,
+    "moic": 1.8072897785175115,
+    "profit": 6664832.821065409
+   }
+  },
+  "appraisal-cap-0": {
+   "engine": "759322c1b8376cccaa737462",
+   "sheet": "3fe30ae7f61a6d41905be0fc",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     null,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": 14686261.650811242,
+    "binding": "DSCR",
+    "net": 2765497.293273816,
+    "irr": 0.14042647202781272,
+    "moic": 1.80271204400261,
+    "profit": 6627039.9045031965
+   }
+  },
+  "appraisal-cap-20-percent": {
+   "engine": "c54a79d5be103eebb3498afb",
+   "sheet": "2acc6b08f5cee15b6d77ccc9",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     4525324.232387789,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": 4525324.232387789,
+    "binding": "LTV",
+    "net": -7293830.750965403,
+    "irr": 0.13327504670250412,
+    "moic": 1.482513106169624,
+    "profit": 7486239.989314575
+   }
+  },
+  "exit-cap-blank": {
+   "engine": "cc523882e3bc980ecef88366",
+   "sheet": "c5471940b5d06653f353d41f",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     null,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": 14686261.650811242,
+    "binding": "DSCR",
+    "net": 2765497.293273816,
+    "irr": null,
+    "moic": 0.19334957439865447,
+    "profit": -18471108.006250508
+   }
+  },
+  "ltv-limit-0": {
+   "engine": "4f4df0184fb17c57fa1d652f",
+   "sheet": "382bcfaf0728641f367fb4c5",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     0,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": 0,
+    "binding": "LTV",
+    "net": -11773901.741029313,
+    "irr": 0.13064786643085563,
+    "moic": 1.3935398585959968,
+    "profit": 7868897.494636569
+   }
+  },
+  "dscr-limit-0": {
+   "engine": "dae9c37f612661265c87f818",
+   "sheet": "7222a02479a85ca472d833d2",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     null,
+     16381264.189639054
+    ],
+    "loan": 15740258.199609699,
+    "binding": "LTV",
+    "net": 3808953.8765842877,
+    "irr": 0.1412878506302492,
+    "moic": 1.7919166147141175,
+    "profit": 6537914.867429687
+   }
+  },
+  "dy-limit-0": {
+   "engine": "a4607ea4d42a11c19c80b6a9",
+   "sheet": "23056913923efca21ae5e6a9",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     14686261.650811242,
+     null
+    ],
+    "loan": 14686261.650811242,
+    "binding": "DSCR",
+    "net": 2765497.293273816,
+    "irr": 0.14042647202781272,
+    "moic": 1.80271204400261,
+    "profit": 6627039.9045031965
+   }
+  },
+  "ltv-limit-negative": {
+   "engine": "e0617c5f993b43e47ee970d2",
+   "sheet": "ad8b54fe72e6936cec8d17b8",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     -12107890.922776692,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": -12107890.922776692,
+    "binding": "LTV",
+    "net": -23760713.75457824,
+    "irr": 0.12486398987079447,
+    "moic": 1.278054358530086,
+    "profit": 8892730.284795702
+   }
+  },
+  "invalid-entries-fall-back-to-defaults": {
+   "engine": "063fee61cca30cc4cc396ec0",
+   "sheet": "f4c65e6f5448047dab8aedea",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": 14686261.650811242,
+    "binding": "DSCR",
+    "net": 2765497.293273816,
+    "irr": 0.14042647202781272,
+    "moic": 1.80271204400261,
+    "profit": 6627039.9045031965
+   }
+  },
+  "costs-and-penalties": {
+   "engine": "d2d9189eb0ea1acc31ad76f6",
+   "sheet": "53214ac6788807738d49f2d6",
+   "key": {
+    "valid": true,
+    "year": 4,
+    "caps": [
+     15740258.199609699,
+     14686261.650811242,
+     16381264.189639054
+    ],
+    "loan": 14686261.650811242,
+    "binding": "DSCR",
+    "net": 2355198.7756929444,
+    "irr": 0.13517841184188129,
+    "moic": 1.7706040678545718,
+    "profit": 6361962.482561345
+   }
+  },
+  "hold-8-years": {
+   "engine": "181f68f08b977531c19eee9c",
+   "sheet": "677e3d2943104b4aecbe8b9c",
+   "key": {
+    "valid": true,
+    "year": 5,
+    "caps": [
+     16228689.693501998,
+     15141986.876333704,
+     16889586.558848232
+    ],
+    "loan": 15141986.876333704,
+    "binding": "DSCR",
+    "net": 3389068.8703989713,
+    "irr": 0.13391779640168816,
+    "moic": 2.307134958698654,
+    "profit": 10791460.76926055
+   }
+  },
+  "hold-3-years": {
+   "engine": "7b8a8b4406f06c519a78a27b",
+   "sheet": "79b7e92b058775e971775cb8",
+   "key": {
+    "valid": true,
+    "year": 2,
+    "caps": [
+     14806570.828173911,
+     13815095.697681949,
+     15409553.350588232
+    ],
+    "loan": 13815095.697681949,
+    "binding": "DSCR",
+    "net": 1591173.327846046,
+    "irr": 0.1557299498408613,
+    "moic": 1.4880968465562407,
+    "profit": 4029635.9118536757
+   }
+  },
+  "no-debt": {
+   "engine": "74234e98afe7498fb5daf1f3",
+   "sheet": "354647a67434ea99e044b98f",
+   "key": null
+  },
+  "development-deal": {
+   "engine": "74234e98afe7498fb5daf1f3",
+   "sheet": "49a13d2234b908440f1edde7",
+   "key": null
+  }
+ },
+ "new": {
+  "default": {
+   "engine": "68c91a290f7484c0502c44b2",
+   "sheet": "6546a2538ed4d8507b1b3a1e",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7140000,
+    "raw": 7140666.034210319,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 541555.8825287727,
+    "net": 2535000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "580bd491fc2375acfd926f06"
+  },
+  "ltv-binds": {
+   "engine": "0f02d5a912804e33e99df94f",
+   "sheet": "d2cbee41ca56146e53b457ba",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 4513000,
+    "raw": 4513386.666666667,
+    "binding": "Loan to value",
+    "tests": [
+     [
+      "Loan to value",
+      4513386.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 342302.75880285027,
+    "net": -92000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "8bc37e9086de921ca5b4294b"
+  },
+  "dscr-binds-hard": {
+   "engine": "1ea00f1afda95dc155d96785",
+   "sheet": "7b49a54df707808622cdbf8a",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 4462000,
+    "raw": 4462916.271381449,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      4462916.271381449
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 338434.50249907334,
+    "net": -143000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "779e88ce40671c66a6e41259"
+  },
+  "dy-binds": {
+   "engine": "3c81baacd62adb609c64362b",
+   "sheet": "e8194640b4b2b1db1be490bf",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 5641000,
+    "raw": 5641733.333333334,
+    "binding": "Debt yield",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      5641733.333333334
+     ]
+    ],
+    "ds1": 427859.4864628581,
+    "net": 1036000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt yield",
+      5641000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt yield",
+      5641000
+     ]
+    ]
+   },
+   "report": "39d2bb0cfdb7227a08a3fb4a"
+  },
+  "requested-binds": {
+   "engine": "d3612d911f0db27179a52d3a",
+   "sheet": "176a7185d999dd5a07aab509",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 5000000,
+    "raw": 5000000,
+    "binding": "Amount requested",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ],
+     [
+      "Amount requested",
+      5000000
+     ]
+    ],
+    "ds1": 379240.8140957792,
+    "net": 395000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Amount requested",
+      5000000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Amount requested",
+      5000000
+     ]
+    ]
+   },
+   "report": "c64878130ae39801e3d40fbc"
+  },
+  "requested-above-every-test": {
+   "engine": "aed1cbbe00c3502604bb5dbb",
+   "sheet": "1ca352985e0e3fae44e23475",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7140000,
+    "raw": 7140666.034210319,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ],
+     [
+      "Amount requested",
+      99000000
+     ]
+    ],
+    "ds1": 541555.8825287727,
+    "net": 2535000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "9f83c3e8e4142643332bc093"
+  },
+  "requested-only": {
+   "engine": "0c8095c1342f2fe842901088",
+   "sheet": "040cd22230361bfd77fd1b4b",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 5000000,
+    "raw": 5000000,
+    "binding": "Amount requested",
+    "tests": [
+     [
+      "Amount requested",
+      5000000
+     ]
+    ],
+    "ds1": 379240.8140957792,
+    "net": 395000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Amount requested",
+      5000000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Amount requested",
+      5000000
+     ]
+    ]
+   },
+   "report": "2bf9009e9305d3b61ad6ad34"
+  },
+  "three-different-limits-ltv-lowest": {
+   "engine": "0457764bdd6495d61c4a42d5",
+   "sheet": "a93d731506a7d780e67aae27",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 5641000,
+    "raw": 5641733.333333334,
+    "binding": "Loan to value",
+    "tests": [
+     [
+      "Loan to value",
+      5641733.333333334
+     ],
+     [
+      "Debt service coverage",
+      8114393.220693543
+     ],
+     [
+      "Debt yield",
+      9671542.857142856
+     ]
+    ],
+    "ds1": 427859.4864628581,
+    "net": 1036000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "2fbf317a7b15083ec83bc1bd"
+  },
+  "three-different-limits-dy-lowest": {
+   "engine": "4ce7fdf7a956bd581ef3d995",
+   "sheet": "ddafec9c58e23cc9ebeb5002",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 6770000,
+    "raw": 6770080,
+    "binding": "Debt yield",
+    "tests": [
+     [
+      "Loan to value",
+      9026773.333333334
+     ],
+     [
+      "Debt service coverage",
+      8114393.220693543
+     ],
+     [
+      "Debt yield",
+      6770080
+     ]
+    ],
+    "ds1": 513492.06228568504,
+    "net": 2165000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt yield",
+      6770000
+     ]
+    ]
+   },
+   "report": "f389f857d62c60dcc9c5964c"
+  },
+  "tie-ltv-and-dy": {
+   "engine": "eedadf9073773b8592b98d2f",
+   "sheet": "5b10bf78f8e3edd643e61c5b",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 2708000,
+    "raw": 2708032,
+    "binding": "Loan to value",
+    "tests": [
+     [
+      "Loan to value",
+      2708032
+     ],
+     [
+      "Debt service coverage",
+      8925832.542762898
+     ],
+     [
+      "Debt yield",
+      2708032
+     ]
+    ],
+    "ds1": 205396.824914274,
+    "net": -1897000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt yield",
+      2708000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt yield",
+      2708000
+     ]
+    ]
+   },
+   "report": "b9ab2f2a45b44959ef8c5fea"
+  },
+  "tie-dy-and-requested": {
+   "engine": "1e201bdd48e2cddb94426d0c",
+   "sheet": "7407bf7546bbb6e213551f93",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 2708000,
+    "raw": 2708032,
+    "binding": "Debt yield",
+    "tests": [
+     [
+      "Debt yield",
+      2708032
+     ],
+     [
+      "Amount requested",
+      2708032
+     ]
+    ],
+    "ds1": 205396.824914274,
+    "net": -1897000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt yield",
+      2708000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt yield",
+      2708000
+     ]
+    ]
+   },
+   "report": "08bacf939f818f0b51a3a279"
+  },
+  "interest-only-2-years": {
+   "engine": "937477d07b4e0b0ff9696c83",
+   "sheet": "98e316a28e592e01a153764f",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7140000,
+    "raw": 7140666.034210319,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 464100,
+    "net": 2535000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "f13e04392038cba1c1c1ed23"
+  },
+  "interest-only-whole-term": {
+   "engine": "e7cb9e0b7ae4d4511a526999",
+   "sheet": "6056485bec708948a712cfd8",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7898000,
+    "raw": 7898426.666666667,
+    "binding": "Loan to value",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      8332406.153846154
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 513370,
+    "net": 3293000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Loan to value",
+      8462000
+     ]
+    ]
+   },
+   "report": "e6c340518b6d2da0d0d436a0"
+  },
+  "amortization-blank": {
+   "engine": "3a910cf838eecc0a044e830e",
+   "sheet": "93673dec1799492427e494e9",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7898000,
+    "raw": 7898426.666666667,
+    "binding": "Loan to value",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      8332406.153846154
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 513370,
+    "net": 3293000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Loan to value",
+      8462000
+     ]
+    ]
+   },
+   "report": "e6c340518b6d2da0d0d436a0"
+  },
+  "amortization-27.3-not-rounded": {
+   "engine": "beaef310f5e9a87d1f9556ea",
+   "sheet": "7f861b979bec6b24cab09cac",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 6912000,
+    "raw": 6912712.77004509,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      6912712.77004509
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 541550.5549459683,
+    "net": 2307000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7301000
+     ]
+    ]
+   },
+   "report": "75785dce02fb86d77db96e6e"
+  },
+  "amortization-27.5": {
+   "engine": "88f427527d683e033f924553",
+   "sheet": "25d1c7472ee2a2c46c272386",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 6931000,
+    "raw": 6931000.175252113,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      6931000.175252113
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 541606.3863053436,
+    "net": 2326000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7323000
+     ]
+    ]
+   },
+   "report": "1e2b0dbfe580f913042a394e"
+  },
+  "amortization-40": {
+   "engine": "e41f481bbdce5856948af5c6",
+   "sheet": "e67f6473be7b4e55cc825546",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7709000,
+    "raw": 7709171.008002336,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7709171.008002336
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 541594.3858640547,
+    "net": 3104000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      8255000
+     ]
+    ]
+   },
+   "report": "c3a0eada2715940becfda9ab"
+  },
+  "lender-noi-after-reserves": {
+   "engine": "271302496b106abacc562799",
+   "sheet": "06d8c412be33ca4421b3603b",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7014000,
+    "raw": 7014097.37858066,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7758426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7014097.37858066
+     ],
+     [
+      "Debt yield",
+      8312600
+     ]
+    ],
+    "ds1": 531999.0140135591,
+    "net": 2409000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6462000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7434000
+     ]
+    ]
+   },
+   "report": "8685f441d9e55755d81ae84a"
+  },
+  "value-entered": {
+   "engine": "daa870ca93c2aceb9592cabe",
+   "sheet": "71546a38c4422ab2cbf0a1a5",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7140000,
+    "raw": 7140666.034210319,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      8400000
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 541555.8825287727,
+    "net": 2535000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "dd2df3b20c44e5a5e6a86e8c"
+  },
+  "payoff-exceeds-loan": {
+   "engine": "ade6266a8177bc71c2aae3ac",
+   "sheet": "d167bd4ff70c0b2cddc6475f",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7140000,
+    "raw": 7140666.034210319,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 541555.8825287727,
+    "net": -1965000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "39a49e84dc855962b700577e"
+  },
+  "alternatives-each-test-binding": {
+   "engine": "228f762e7fceb0fe5ce6f3c4",
+   "sheet": "dfeba8e0d75ca0a75a0740e3",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7140000,
+    "raw": 7140666.034210319,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 541555.8825287727,
+    "net": 2535000,
+    "alts": [
+     [
+      "LTV-bound",
+      "Loan to value",
+      3385000
+     ],
+     [
+      "DSCR-bound",
+      "Debt service coverage",
+      3570000
+     ],
+     [
+      "DY-bound",
+      "Debt yield",
+      2256000
+     ],
+     [
+      "Requested-bound",
+      "Amount requested",
+      1000000
+     ],
+     [
+      "IO 3 years",
+      "Debt service coverage",
+      6684000
+     ],
+     [
+      "Interest-only term",
+      "Loan to value",
+      7898000
+     ],
+     [
+      "Inherits everything",
+      "Debt service coverage",
+      7140000
+     ]
+    ]
+   },
+   "report": "82ffdeab93a0b63fb6854279"
+  },
+  "huge-numbers": {
+   "engine": "7ec5112ab82b282bb9d9be21",
+   "sheet": "721ae730c621d468f7544c52",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7140000,
+    "raw": 7140666.034210319,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Loan to value",
+      3500000000000
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ],
+     [
+      "Amount requested",
+      1000000000000
+     ]
+    ],
+    "ds1": 541555.8825287727,
+    "net": -449992965000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "799afea3a6a9f5ebd1504b3b"
+  },
+  "rate-blank": {
+   "engine": "14f139708a223fcc9c54eba9",
+   "sheet": "84b0a9833c67c212a322ba59",
+   "key": {
+    "ok": false,
+    "missing": [
+     "interest rate"
+    ],
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      16248192
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "b7edf82bbb2241088daef917"
+  },
+  "rate-text": {
+   "engine": "14f139708a223fcc9c54eba9",
+   "sheet": "9c22f3c7a84768507dd94a8c",
+   "key": {
+    "ok": false,
+    "missing": [
+     "interest rate"
+    ],
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      16248192
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "b7edf82bbb2241088daef917"
+  },
+  "rate-zero": {
+   "engine": "14f139708a223fcc9c54eba9",
+   "sheet": "6ba0a771af0017c04e72275f",
+   "key": {
+    "ok": false,
+    "missing": [
+     "interest rate"
+    ],
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      16248192
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "b7edf82bbb2241088daef917"
+  },
+  "costs-blank": {
+   "engine": "c6c6bd926a3ede7a6dcf8f59",
+   "sheet": "bc30f0d2f2c55b10735eae10",
+   "key": {
+    "ok": false,
+    "missing": [
+     "refinance costs"
+    ],
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "b7edf82bbb2241088daef917"
+  },
+  "no-lender-test-or-amount": {
+   "engine": "a516a60ed57f0cfa3206e45d",
+   "sheet": "2ae687263211c8292bf15ab7",
+   "key": {
+    "ok": false,
+    "missing": [
+     "a lender test or a loan amount"
+    ],
+    "tests": [],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "b7edf82bbb2241088daef917"
+  },
+  "ltv-limit-without-a-value": {
+   "engine": "724bd634544bc681430957bc",
+   "sheet": "77b12e8fc779a75d5db6e935",
+   "key": {
+    "ok": false,
+    "missing": [
+     "a current value or cap rate (for the LTV test)"
+    ],
+    "tests": [
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      null,
+      null
+     ],
+     [
+      "Agency, 2 yrs IO",
+      null,
+      null
+     ]
+    ]
+   },
+   "report": "28f9cf77ad2422bd33a98e64"
+  },
+  "no-value-and-no-ltv-limit": {
+   "engine": "f249a17bbecd7a4c0932fc3e",
+   "sheet": "8e44f8609f1332756c4d1a20",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7140000,
+    "raw": 7140666.034210319,
+    "binding": "Debt service coverage",
+    "tests": [
+     [
+      "Debt service coverage",
+      7140666.034210319
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 541555.8825287727,
+    "net": 2535000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      null,
+      null
+     ],
+     [
+      "Agency, 2 yrs IO",
+      null,
+      null
+     ]
+    ]
+   },
+   "report": "740356c9d8267530c60cc398"
+  },
+  "noi-not-positive": {
+   "engine": "d3490469bb42fbbd9a589ff0",
+   "sheet": "9ef57e438c2171169fc05852",
+   "key": {
+    "ok": false,
+    "missing": [
+     "Operating income and expenses (a positive NOI)",
+     "a current value or cap rate (for the LTV test)",
+     "a positive NOI"
+    ],
+    "tests": [],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      null,
+      null
+     ],
+     [
+      "Agency, 2 yrs IO",
+      null,
+      null
+     ]
+    ]
+   },
+   "report": "61ab131186761d63273eda01"
+  },
+  "limits-negative": {
+   "engine": "a516a60ed57f0cfa3206e45d",
+   "sheet": "f22d9e4e9a589d4a20300220",
+   "key": {
+    "ok": false,
+    "missing": [
+     "a lender test or a loan amount"
+    ],
+    "tests": [],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "b7edf82bbb2241088daef917"
+  },
+  "limits-zero": {
+   "engine": "a516a60ed57f0cfa3206e45d",
+   "sheet": "a5526c6ae1d7cc5d3f77e57f",
+   "key": {
+    "ok": false,
+    "missing": [
+     "a lender test or a loan amount"
+    ],
+    "tests": [],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "b7edf82bbb2241088daef917"
+  },
+  "limits-text": {
+   "engine": "a516a60ed57f0cfa3206e45d",
+   "sheet": "4d5b4dab75051434abd75b15",
+   "key": {
+    "ok": false,
+    "missing": [
+     "a lender test or a loan amount"
+    ],
+    "tests": [],
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "b7edf82bbb2241088daef917"
+  },
+  "dscr-limit-infinity": {
+   "engine": "3547f40c445ab4f8e32e0682",
+   "sheet": "f2403e2cb5c2b2feebc69eff",
+   "key": {
+    "ok": true,
+    "missing": [],
+    "loan": 7898000,
+    "raw": 7898426.666666667,
+    "binding": "Loan to value",
+    "tests": [
+     [
+      "Loan to value",
+      7898426.666666667
+     ],
+     [
+      "Debt yield",
+      8462600
+     ]
+    ],
+    "ds1": 599048.7899456928,
+    "net": 3293000,
+    "alts": [
+     [
+      "Bank, 5-yr IO-free",
+      "Debt service coverage",
+      6578000
+     ],
+     [
+      "Agency, 2 yrs IO",
+      "Debt service coverage",
+      7568000
+     ]
+    ]
+   },
+   "report": "cf29ea1b22788b5a9d9aac4e"
+  },
+  "existing-balance-blank": {
+   "engine": "6fd354c0c8e3a852df0f7614",
+   "sheet": "199a57c2b81413b960e5696c",
+   "key": {
+    "ok": false,
+    "missing": [
+     "Existing loan balance"
+    ],
+    "loan": null,
+    "raw": null,
+    "binding": null,
+    "tests": null,
+    "ds1": null,
+    "net": null,
+    "alts": []
+   },
+   "report": "164278e4f71bac58c89eb53e"
+  }
+ }
+}

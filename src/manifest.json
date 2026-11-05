@@ -655,6 +655,11 @@
 "close": "</script>"
 },
 {
+"file": "130a-bk-loan-sizing.js",
+"open": "\n\n<script id=\"bk-loan-sizing\">",
+"close": "</script>"
+},
+{
 "file": "131-bk-v29150-refi.js",
 "open": "\n\n<script id=\"bk-v29150-refi\">",
 "close": "</script>"
