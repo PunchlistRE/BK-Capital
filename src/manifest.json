@@ -1015,6 +1015,11 @@
 "close": "</style>"
 },
 {
+"file": "187-bk-report-argus.css",
+"open": "\n<style id=\"bk-report-argus-css\">",
+"close": "</style>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
