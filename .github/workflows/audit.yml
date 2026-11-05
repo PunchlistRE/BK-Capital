@@ -9,6 +9,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: node build.js --check && node build.js --lint
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils   # pdftotext / pdfinfo, used by the print and schedule-report tests
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils fonts-inter   # pdftotext / pdfinfo for the print and schedule-report tests; Inter, the app's UI font (the tests block web fonts, so layout checks need it installed)
       - run: npm install --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
       - run: PLAYWRIGHT_MODULE=$PWD/node_modules/playwright audit/run_all.sh

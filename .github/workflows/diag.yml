@@ -1,22 +1,40 @@
 name: diag (temporary)
-# Temporary: shows, with every check visible, the audit sections that fail only on the CI runner. Removed before the change is merged.
+# Temporary: (1) the three sections that failed only on the runner, with every failing check shown; (2) every section, three at a time.
+# Removed before the change is merged.
 on: push
 jobs:
-  diag:
+  three:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 2 }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils fonts-inter
       - run: npm install --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
-      - name: the runner's fonts and browser
+      - name: fonts
         run: |
-          echo "fonts installed: $(fc-list | wc -l)"; fc-list : family | sort -u | head -40; echo "sans-serif -> $(fc-match sans-serif)"; echo "serif -> $(fc-match serif)"; echo "monospace -> $(fc-match monospace)"
-          node -e "console.log('playwright', require('playwright/package.json').version)"; pdftotext -v 2>&1 | head -1
-      - name: the sections that fail on the runner, every failing check shown
+          fc-list | grep -i "/inter" | head -3; dpkg -l | grep -i fonts-inter; echo "Inter -> $(fc-match Inter)"; echo "sans-serif -> $(fc-match sans-serif)"; echo "system-ui -> $(fc-match system-ui)"
+      - name: the sections that failed on the runner, every failing check shown
         run: |
           export PLAYWRIGHT_MODULE=$PWD/node_modules/playwright
           for t in print_years_test layout_test paneltabs_test; do echo "=================== $t"; node audit/$t.js index.html 2>&1 | grep -v '^PASS' | cut -c1-700; done; true
+  all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils fonts-inter
+      - run: npm install --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
+      - name: every section, three at a time
+        run: PLAYWRIGHT_MODULE=$PWD/node_modules/playwright python3 audit/run_parallel.py --workers 3 --out "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/par.log"; true
+      - name: logs of the sections that failed
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/out/*.exit; do rc=$(cut -d' ' -f1 "$f"); [ "$rc" = 0 ] && continue; n=$(basename "$f" .exit); echo "=================== section $n (exit $rc)"; tail -n 60 "$RUNNER_TEMP/out/$n.log"; done; true
+      - name: fail if any section failed
+        run: grep -q "ALL SECTIONS PASSED" "$RUNNER_TEMP/par.log"
