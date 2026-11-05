@@ -1,4 +1,4 @@
-// Fill rule (engine-wide): HEADER blue-grey names things (title bars, column headings, section dividers); KEY light blue (lighter and clearer than the header blue-grey) marks the answer
+// Fill rule (engine-wide): HEADER blue-grey names things (title bars, column headings, section dividers); KEY gold marks the answer
 // (grand totals, headline metrics) and only sits on a row that carries values; SUB is a light tint for subtotals. Walks every sheet at a
 // desktop and a phone width and fails on a value row filled as a header, or a heading filled as a key metric. The rule is written at the
 // top of src/162a-bk-design-unify.css and in audit/README.md.
