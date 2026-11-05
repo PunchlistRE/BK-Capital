@@ -2,6 +2,11 @@
 
 Run everything: `PLAYWRIGHT_MODULE=<path> CHROMIUM_PATH=<chrome> audit/run_all.sh` (CI runs it on every push).
 
+What the machine needs (CI installs both; a section that is missing one fails in a way that looks like an application bug):
+- **`poppler-utils`** (`pdftotext`, `pdfinfo`): the print, print-years and schedule-report tests read the text and page count of real PDFs.
+- **The Inter font** (`fonts-inter`): the app's UI font. The tests block web fonts so they run offline, so Inter has to be installed; without it the browser falls back to a wider font and the layout checks (brand name fits on a phone, the tab strip is one row, a 10-year report fits one page) fail with no change to the application.
+- Before any test runs, CI checks `node build.js --check` (the committed `index.html` is exactly what `src/` builds) and `node build.js --lint` (every part compiles and every file in `src/` is in `src/manifest.json`). Work that is not meant to ship does not belong in `src/`; park it in `wip/`.
+
 | Script | What it proves |
 |---|---|
 | `suite_run.js` + `suite_test.py` | The deal book (`deals/index.js`: 7 acquisition, 6 real, 3 development deals) is re-computed independently (`model.py`, `dev_audit.py`); real deals tie to their T-12 NOI and market cap; every figure equals the stored golden result. |
