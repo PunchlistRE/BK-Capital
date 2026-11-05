@@ -1,0 +1,23 @@
+name: diag (temporary)
+# Temporary: runs every audit section on the CI runner three at a time and prints the log of each one that fails, so every CI-only failure shows at once.
+# Removed before the change is merged.
+on: push
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+      - run: npm install --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
+      - name: every section, three at a time
+        run: PLAYWRIGHT_MODULE=$PWD/node_modules/playwright python3 audit/run_parallel.py --workers 3 --out "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/par.log"; true
+      - name: logs of the sections that failed
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/out/*.exit; do rc=$(cut -d' ' -f1 "$f"); [ "$rc" = 0 ] && continue; n=$(basename "$f" .exit); echo "=================== section $n (exit $rc)"; tail -n 60 "$RUNNER_TEMP/out/$n.log"; done; true
+      - name: fail if any section failed
+        run: grep -q "ALL SECTIONS PASSED" "$RUNNER_TEMP/par.log"
