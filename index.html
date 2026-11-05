@@ -31596,6 +31596,12 @@ html[data-theme="dark"] body #viewport .rp .rp-tbl tr.sec td{ color:#9fcdf5; }
   html body #viewport .rp .rp-tbl tr.sub td.r, html body #viewport .rp .rp-tbl tr.tot td.r, html body #viewport .rp #rp-cashflow tr > :first-child{ border-color:#000 !important; }
   html body #viewport .rp .rp-tbl tbody tr td:first-child{ color:#000 !important; }
 }
+
+/* phone: labels wrap at about 150px so the figures get the width (the table scrolls sideways for the rest, with its cue) */
+@media (max-width:760px){
+  html body #viewport .rp .rp-tbl tbody td:first-child, html body #viewport .rp .rp-tbl thead th:first-child{ white-space:normal; min-width:120px; max-width:150px; }
+  html body #viewport .rp .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:14px; }
+}
 </style>
 </body>
 </html>
