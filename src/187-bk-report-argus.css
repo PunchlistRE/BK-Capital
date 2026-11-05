@@ -62,3 +62,6 @@ html[data-theme="dark"] body #viewport .rp .rp-tbl tr.sec td{ color:#9fcdf5; }
   html body #viewport .rp .rp-tbl tbody td:first-child, html body #viewport .rp .rp-tbl thead th:first-child{ white-space:normal; min-width:120px; max-width:150px; }
   html body #viewport .rp .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:14px; }
 }
+/* Sources and Uses Report: the difference row under the totals is quiet when it is zero and red when it is not */
+html body #viewport .rp .rp-tbl tr.dim td{ font-size:11px; font-style:italic; color:var(--ae-dim); }
+html body #viewport .rp .rp-tbl tr.rp-bad td{ color:var(--bk-attn-red,#c0392b) !important; font-weight:700; }
