@@ -22,6 +22,7 @@ echo "== import rent roll (CSV / XLSX / PDF, synthetic fixtures)"; node audit/im
 echo "== tie-out to the owner's V7.2 master workbook (10 stored deals)"; node audit/gold_tieout.js index.html --check | tail -1
 echo "== editor engine support (growth curves, miscellaneous income, capital items)"; node audit/editor_engine_test.js index.html | tail -2
 echo "== property editor (7 tabs, 31 sub-tabs, writes and conversions)"; node audit/editor_test.js index.html | tail -2
+echo "== Mixed-use properties (residential and commercial units with the total, the commercial area, commercial market rent beside residential; no engine figure moves)"; node audit/units_test.js index.html | grep -v '^PASS'
 echo "== reports (cash flow, valuation, tenant, audit; reconcile to the engine)"; node audit/reports_test.js index.html | tail -2
 echo "== commercial lease model (rollover branches, recoveries, TI/LC, editor, reports)"; node audit/lease_test.js index.html | tail -2
 echo "== lease model fixes (merged rollover, market defaults, general vacancy stress, bump anchor)"; node audit/lease_fix_test.js index.html "$REF" | tail -1

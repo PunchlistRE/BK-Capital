@@ -13,10 +13,11 @@ window.BKReg.addFields([
   F('name', 'Name', 'text', { help:'What the deal is called on every page and report.', ex:'14 Main Street' }),
   F('location', 'City, state', 'text', { ex:'Stamford, CT' }),
   F('propertyType', 'Property type', 'choice', { options:['Multifamily', 'Mixed-Use', 'Industrial', 'Retail', 'Office', 'Hospitality', 'Land', 'Other'] }),
-  F('units', 'Units', 'int', { help:'Residential units, or suites for a commercial building. Per-unit figures divide by this.', ex:'120' }),
+  F('units', 'Units', 'int', { help:'Residential units (apartments), or the suites of a building with none. Per-unit figures divide by this. Commercial suites of a mixed-use building go in Commercial units.', ex:'120' }),
   F('gsf', 'Gross building area (GBA), SF', 'int', { help:'Everything inside the building envelope: corridors, lobbies, mechanical and amenity space as well as rentable space. Construction costs per SF and the building size divide by this.', ex:'108,000' }),
   F('gla', 'Leasable area (GLA / NRA), SF', 'int', { help:'The area tenants pay rent on. Always the same as or smaller than the gross building area; the difference is the building\'s inefficiency. Rent per SF and efficiency use it. Leave blank if unknown: nothing is estimated.', ex:'96,000' }),
   F('commercialArea', 'Commercial area, SF', 'int', { help:'Retail or office space, if any.' }),
+  F('commercialUnits', 'Commercial units (suites)', 'int', { help:'The retail or office suites in a mixed-use building. Shown with the commercial area and added to the residential units for the total; per-unit figures still divide by the residential units. Leave blank if there are none.', ex:'6' }),
   F('rentRoll', 'Rent roll', 'table', { help:'Unit by unit: rent in place, market rent, lease dates. Import it or enter it on the Rent Roll sheet.', sheet:'Rent Roll' }),
   F('leases', 'Commercial tenant schedule', 'table', { help:'Tenant by tenant: rent, bumps, expiry and recoveries.', sheet:'Tenants' }),
   /* acquisition */
