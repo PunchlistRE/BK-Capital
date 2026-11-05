@@ -960,6 +960,36 @@
 "close": "</script>"
 },
 {
+"file": "185-bk-ingest-core.js",
+"open": "\n\n<script id=\"bk-ingest-core\">",
+"close": "</script>"
+},
+{
+"file": "185a-bk-ingest-store.js",
+"open": "\n\n<script id=\"bk-ingest-store\">",
+"close": "</script>"
+},
+{
+"file": "185b-bk-ingest-intake.js",
+"open": "\n\n<script id=\"bk-ingest-intake\">",
+"close": "</script>"
+},
+{
+"file": "185c-bk-ingest-classify.js",
+"open": "\n\n<script id=\"bk-ingest-classify\">",
+"close": "</script>"
+},
+{
+"file": "185d-bk-ingest-pipeline.js",
+"open": "\n\n<script id=\"bk-ingest-pipeline\">",
+"close": "</script>"
+},
+{
+"file": "185e-bk-ingest-providers.js",
+"open": "\n\n<script id=\"bk-ingest-providers\">",
+"close": "</script>"
+},
+{
 "file": "184-bk-funding-summary.js",
 "open": "\n<script id=\"bk-funding-summary\">",
 "close": "</script>"

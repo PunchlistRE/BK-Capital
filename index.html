@@ -30237,6 +30237,674 @@ var st = document.createElement('style'); st.textContent = '.rf .rf-in{width:100
 document.head.appendChild(st);
 })();
 </script>
+
+<script id="bk-ingest-core">/* DOCUMENT INGESTION, core (Phase 2). Nothing here changes what the app does today: it defines the pieces every later ingestion phase stands on, and it has no screen of its own.
+   Behind a flag (BKIngest.enabled(): localStorage 'bk-ingest' = '1', or ?ingest=1); off by default.
+
+     the fact record     one schema for every extracted value, whichever reader or model produced it: the field it is for, the value, exactly what was printed, WHERE (page, or sheet and cell,
+                         and the quoted line), how it was read, how sure, what checks it passed, and what a person decided. Values that disagree are separate records, never one winner.
+     validateFact        a fact that cannot say where it came from, or whose value does not match what was printed, is rejected with a reason. Nothing is accepted because it is valid JSON.
+     verifyQuote         the quoted line must really be on the page it names, and must contain what was printed. A model that cites a page it did not read is caught here, in our code.
+     parseNumber         the one parser for printed figures: "$11,131", "(5,493)", "5.00%", "14,985 SF", "$3.6M", "0.29 Acres". It says what a lone dash means by an explicit rule.
+                         (The T-12, rent-roll, OM and hub readers each still carry their own parser; they move to this one in the reader phases, each with a parity test.)
+     sha256              content hash for duplicate detection (WebCrypto, with a pure-JS fallback that is tested against it). */
+(function(){
+'use strict';
+var I = window.BKIngest = window.BKIngest || {};
+I.VERSION = '2.0.0';
+
+I.enabled = function(){ try { if(/[?&]ingest=1\b/.test(String(location.search || ''))) return true; return localStorage.getItem('bk-ingest') === '1'; } catch(e){ return false; } };
+
+/* clock and ids: replaceable, so a test can be deterministic */
+I.clock = function(){ return new Date().toISOString(); };
+I.newId = function(prefix){
+  var u; try { if(window.crypto && crypto.randomUUID) u = crypto.randomUUID(); } catch(e){}
+  if(!u){ var a = new Uint8Array(16); try { crypto.getRandomValues(a); } catch(e){ for(var i = 0; i < 16; i++) a[i] = Math.floor(Math.random() * 256); } u = Array.prototype.map.call(a, function(b){ return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  return (prefix ? prefix + '_' : '') + u;
+};
+
+/* ---------------------------------------------------------------- sha-256 */
+var K256 = null, H256 = null;
+function primes(n){ var p = [], k = 2; while(p.length < n){ var ok = true; for(var i = 0; i < p.length; i++){ if(k % p[i] === 0){ ok = false; break; } } if(ok) p.push(k); k++; } return p; }
+function frac32(x){ return Math.floor((x - Math.floor(x)) * 4294967296) >>> 0; }
+function tables(){ if(K256) return; var p = primes(64); K256 = p.map(function(q){ return frac32(Math.cbrt(q)); }); H256 = p.slice(0, 8).map(function(q){ return frac32(Math.sqrt(q)); }); }
+I.sha256js = function(u8){
+  tables(); var H = H256.slice(), len = u8.length, bits = len * 8, padded = ((len + 9 + 63) >> 6) << 6, m = new Uint8Array(padded); m.set(u8); m[len] = 0x80;
+  var dv = new DataView(m.buffer); dv.setUint32(padded - 8, Math.floor(bits / 4294967296)); dv.setUint32(padded - 4, bits >>> 0);
+  var w = new Uint32Array(64); function rotr(x, n){ return (x >>> n) | (x << (32 - n)); }
+  for(var off = 0; off < padded; off += 64){
+    for(var t = 0; t < 16; t++) w[t] = dv.getUint32(off + t * 4);
+    for(t = 16; t < 64; t++){ var s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3), s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10); w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0; }
+    var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+    for(t = 0; t < 64; t++){ var S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25), ch = (e & f) ^ (~e & g), t1 = (h + S1 + ch + K256[t] + w[t]) >>> 0, S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22), mj = (a & b) ^ (a & c) ^ (b & c), t2 = (S0 + mj) >>> 0;
+      h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0; }
+    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0; H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+  }
+  return H.map(function(x){ return ('00000000' + x.toString(16)).slice(-8); }).join('');
+};
+/* bytes: a Uint8Array, an ArrayBuffer, a Blob / File, or a string (UTF-8) */
+I.sha256 = function(bytes){
+  var get = typeof bytes === 'string' ? Promise.resolve(new TextEncoder().encode(bytes)) : (bytes && typeof bytes.arrayBuffer === 'function') ? bytes.arrayBuffer().then(function(b){ return new Uint8Array(b); }) : Promise.resolve(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes);
+  return get.then(function(u8){
+    try { if(window.crypto && crypto.subtle && crypto.subtle.digest) return crypto.subtle.digest('SHA-256', u8).then(function(d){ return Array.prototype.map.call(new Uint8Array(d), function(b){ return ('0' + b.toString(16)).slice(-2); }).join(''); }, function(){ return I.sha256js(u8); }); } catch(e){}
+    return I.sha256js(u8); });
+};
+
+/* ---------------------------------------------------------------- the stages every document passes through, in order */
+I.STAGES = ['intake', 'classify', 'read', 'extract', 'normalize', 'validate', 'reconcile', 'propose'];
+/* a document's stages when it arrives: intake is done; a document that will not be processed (a duplicate, a rejection) has every later stage skipped with the reason */
+I.freshStages = function(skipReason){ var o = {}, now = I.clock(); I.STAGES.forEach(function(n, i){ o[n] = i === 0 ? { status:'done', attempts:1, startedAt:now, finishedAt:now, error:null, note:'' } : skipReason ? { status:'skipped', attempts:0, startedAt:null, finishedAt:now, error:null, note:skipReason } : { status:'pending', attempts:0, startedAt:null, finishedAt:null, error:null, note:'' }; }); return o; };
+
+/* ---------------------------------------------------------------- printed figures */
+var NIL = /^(?:[-–—−]{1,3}|\$\s*[-–—−]{1,3})$/, NOT_A_NUMBER = /^(?:n\/?a|na|tbd|tba|none|nil|null|unknown|not (?:stated|available|provided)|call (?:for|broker)(?: price)?|price (?:upon|on) request|upon request|\?+)$/i;
+var UNIT_RX = [[/^(?:%|percent)$/i, 'pct'], [/^(?:sf|s\.f\.|sq\.?\s*ft\.?|sqft|square\s+f(?:ee|oo)t)$/i, 'sf'], [/^(?:acres?|ac)$/i, 'acres'], [/^(?:units?|doors?|apts?|apartments?|suites?|beds?|keys?)$/i, 'count'], [/^(?:months?|mos?)$/i, 'months'], [/^(?:years?|yrs?)$/i, 'years'], [/^x$/i, 'x']];
+/* parseNumber(raw, { dash: 'null' | 'zero' }) -> { ok, value, unit, raw, negative, reason }
+   dash: what a lone dash means. 'null' (the default) is "no value": a descriptive field or an unknown. 'zero' is for a financial statement, which prints a dash for nil. Never guessed from context.
+   unit: '' (a bare number), 'usd', 'pct' (value is the fraction: "5%" -> 0.05), 'sf', 'acres', 'count', 'months', 'years', 'x'.
+   Not a number, and never forced into one: a range ("613-615"), a date, text, "N/A", "Call for price", a figure with unreadable leftovers. */
+I.parseNumber = function(raw, opts){
+  opts = opts || {}; var out = function(ok, value, unit, why, neg){ return ok ? { ok:true, value:value, unit:unit || '', raw:raw, negative:!!neg } : { ok:false, value:null, unit:'', raw:raw, negative:false, reason:why }; };
+  if(typeof raw === 'number') return isFinite(raw) ? out(true, raw, '', '', raw < 0) : out(false, null, '', 'not-finite');
+  if(raw == null) return out(false, null, '', 'empty');
+  var s = String(raw).replace(/[   ]/g, ' ').trim(); if(!s) return out(false, null, '', 'empty');
+  if(/^#+$/.test(s)) return out(false, null, '', 'column-too-narrow');
+  if(NIL.test(s)) return opts.dash === 'zero' ? out(true, 0, /\$/.test(s) ? 'usd' : '', '', false) : out(false, null, '', 'dash');
+  if(NOT_A_NUMBER.test(s)) return out(false, null, '', 'not-a-number');
+  var neg = false, t = s;
+  var wrapped = /^\(\s*(.*?)\s*\)$/.exec(t); if(wrapped){ neg = true; t = wrapped[1]; }
+  if(/^[-−]/.test(t)){ neg = !neg ? true : neg; t = t.replace(/^[-−]\s*/, ''); } if(/[-−]$/.test(t) && /\d[-−]$/.test(t)){ neg = true; t = t.replace(/[-−]$/, ''); }
+  var usd = false; if(/^(?:US)?\$\s*/i.test(t)){ usd = true; t = t.replace(/^(?:US)?\$\s*/i, ''); } else if(/\s*(?:USD|dollars?)$/i.test(t)){ usd = true; t = t.replace(/\s*(?:USD|dollars?)$/i, ''); }
+  if(/^[-−]/.test(t)){ neg = true; t = t.replace(/^[-−]\s*/, ''); }
+  var m = /^(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\.\d+)\s*([A-Za-z%][A-Za-z.%\s]*)?$/.exec(t);
+  if(!m) return out(false, null, '', /\d\s*[-–—\/]\s*\d/.test(t) ? 'range-or-date' : 'residue');
+  var v = parseFloat(m[1].replace(/,/g, '')), suf = (m[2] || '').trim(), unit = usd ? 'usd' : '';
+  if(suf){ var scale = /^([KkMmBb])$/.exec(suf);
+    if(scale){ v *= { k:1e3, m:1e6, b:1e9 }[scale[1].toLowerCase()]; }
+    else { var hit = null; for(var i = 0; i < UNIT_RX.length; i++) if(UNIT_RX[i][0].test(suf)){ hit = UNIT_RX[i][1]; break; } if(!hit) return out(false, null, '', 'residue'); if(usd && hit !== 'usd') return out(false, null, '', 'residue'); unit = hit; if(hit === 'pct') v = v / 100; } }
+  if(!isFinite(v)) return out(false, null, '', 'not-finite');
+  return out(true, neg ? -v : v, unit, '', neg);
+};
+
+/* ---------------------------------------------------------------- the fact record */
+I.FACT_STATUS = ['verified', 'check', 'low', 'assumed', 'missing', 'conflict'];
+I.FACT_METHOD = ['text', 'ocr', 'sheet', 'vision', 'manual'];
+I.FACT_DECISION = ['proposed', 'accepted', 'rejected', 'edited'];
+I.FACT_UNITS = ['', 'usd', 'usd/yr', 'usd/mo', 'usd/sf', 'pct', 'count', 'sf', 'acres', 'years', 'months', 'x', 'date', 'text', 'bool'];
+I.PERIOD_BASIS = ['current', 't12', 'proforma', 'year1', 'asof', 'annual', 'monthly', 'unknown'];
+/* what a registry field kind accepts as a unit; a field that is a table or a derived figure is not a single fact */
+var KIND_UNITS = { money:['usd', 'usd/yr', 'usd/mo', 'usd/sf'], pct:['pct'], int:['count', 'years', 'months', 'sf', ''], num:['', 'x', 'count', 'years', 'months', 'pct', 'sf', 'acres'], text:['text', 'date'], choice:['text'], bool:['bool'] };
+function isoDate(s){ return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
+
+/* makeFact: fills what has a sensible default (id, time, an undecided decision) and nothing else; it never invents a value, a source or a confidence */
+I.makeFact = function(p){
+  p = p || {}; var f = { id:p.id || I.newId('fact'), dealId:p.dealId == null ? null : p.dealId, documentId:p.documentId == null ? null : p.documentId, field:p.field, label:p.label == null ? '' : p.label, raw:p.raw == null ? '' : p.raw,
+    value:p.value === undefined ? null : p.value, unit:p.unit == null ? '' : p.unit, period:p.period == null ? null : p.period, source:p.source || null, method:p.method, extractor:p.extractor || '', model:p.model || null,
+    confidence:p.confidence, status:p.status || 'check', checks:Array.isArray(p.checks) ? p.checks.slice() : [], decision:p.decision || { state:'proposed', by:null, at:null, value:null }, createdAt:p.createdAt || I.clock() };
+  return f;
+};
+
+/* validateFact(f) -> [{ code, message }]; empty means the record is well formed. It says nothing about whether the value is RIGHT: that is what verification and the benchmark are for. */
+I.validateFact = function(f){
+  var bad = [], add = function(code, message){ bad.push({ code:code, message:message }); };
+  if(!f || typeof f !== 'object') return [{ code:'not-an-object', message:'A fact is an object.' }];
+  var reg = (window.BKReg && window.BKReg.field) ? window.BKReg.field(f.field) : null, isExtra = typeof f.field === 'string' && /^extra:[a-z0-9][a-z0-9_.-]*$/i.test(f.field);
+  if(typeof f.field !== 'string' || !f.field) add('field-missing', 'A fact names the field it is for (a registry field, or extra:<name> for a fact the model has no field for).');
+  else if(window.BKReg && !reg && !isExtra) add('field-unknown', 'The field "' + f.field + '" is not in the field registry. Use a registry field, or extra:<name>.');
+  if(reg && (reg.kind === 'table' || reg.kind === 'derived')) add('field-not-a-single-fact', 'The field "' + f.field + '" is a ' + reg.kind + ', not a single value; its rows or inputs are facts of their own.');
+  if(typeof f.label !== 'string') add('label-type', 'label is the text as printed, a string.');
+  if(typeof f.raw !== 'string') add('raw-type', 'raw is exactly what was printed, a string.');
+  if(I.FACT_STATUS.indexOf(f.status) < 0) add('status-invalid', 'status is one of ' + I.FACT_STATUS.join(', ') + '.');
+  if(I.FACT_METHOD.indexOf(f.method) < 0) add('method-invalid', 'method is one of ' + I.FACT_METHOD.join(', ') + '.');
+  if(I.FACT_UNITS.indexOf(f.unit) < 0) add('unit-invalid', 'unit "' + f.unit + '" is not a known unit.');
+  var missing = f.status === 'missing';
+  if(missing){ if(f.value !== null) add('missing-has-value', 'A missing fact has no value; blank means blank.'); }
+  else {
+    if(f.value === null || f.value === undefined || (typeof f.value === 'number' && !isFinite(f.value))) add('value-missing', 'A fact that is not marked missing has a value.');
+    if(typeof f.raw === 'string' && !f.raw.trim() && f.method !== 'manual') add('raw-missing', 'A fact says what was printed (raw); an empty raw cannot be checked.');
+  }
+  if(reg && KIND_UNITS[reg.kind] && I.FACT_UNITS.indexOf(f.unit) >= 0 && !missing && KIND_UNITS[reg.kind].indexOf(f.unit) < 0) add('unit-kind', 'A ' + reg.kind + ' field ("' + f.field + '") takes ' + KIND_UNITS[reg.kind].map(function(u){ return u || '(none)'; }).join(' / ') + ', not "' + f.unit + '".');
+  if(reg && reg.kind === 'pct' && typeof f.value === 'number' && (f.value > 1.5 || f.value < -1.5) && !missing) add('pct-not-a-fraction', 'A percent is stored as a fraction (5% is 0.05); ' + f.value + ' looks like a percentage point.');
+  /* where it came from */
+  var s = f.source;
+  if(!s || typeof s !== 'object') { if(!missing) add('source-missing', 'A fact says where it came from.'); }
+  else {
+    if(f.documentId != null && s.documentId != null && s.documentId !== f.documentId) add('source-document-mismatch', 'source.documentId differs from the fact\'s documentId.');
+    var page = s.page != null && s.page !== '', sheet = !!s.sheet, cell = !!s.cell || s.row != null;
+    if(page && !(Number.isInteger(s.page) && s.page >= 1)) add('page-invalid', 'page is a whole number from 1.');
+    if(!missing && !(page || (sheet && cell))) add('locator-missing', 'A fact names a page, or a sheet and a cell or row.');
+    if(!missing && (f.method === 'text' || f.method === 'ocr' || f.method === 'vision') && !(typeof s.quote === 'string' && s.quote.trim())) add('quote-missing', 'A fact read from text, OCR or a model quotes the line it came from, so the line can be checked against the page.');
+    if(typeof s.quote === 'string' && s.quote.length > 400) add('quote-too-long', 'A quote is the line the value sits on (400 characters at most).');
+  }
+  if(typeof f.confidence !== 'number' || !(f.confidence >= 0 && f.confidence <= 1)) add('confidence-invalid', 'confidence is a number from 0 to 1, stated by the reader (never filled in for it).');
+  if(f.period != null){ var p = f.period; if(typeof p !== 'object' || I.PERIOD_BASIS.indexOf(p.basis) < 0) add('period-invalid', 'period.basis is one of ' + I.PERIOD_BASIS.join(', ') + '.'); else { if(p.from != null && !isoDate(p.from)) add('period-from', 'period.from is an ISO date (yyyy-mm-dd).'); if(p.to != null && !isoDate(p.to)) add('period-to', 'period.to is an ISO date (yyyy-mm-dd).'); if(p.from && p.to && p.from > p.to) add('period-order', 'period.from is after period.to.'); } }
+  if(!Array.isArray(f.checks)) add('checks-type', 'checks is a list.'); else f.checks.forEach(function(c, i){ if(!c || typeof c.id !== 'string' || typeof c.ok !== 'boolean') add('check-shape', 'checks[' + i + '] is { id, ok, detail }.'); });
+  var d = f.decision; if(!d || I.FACT_DECISION.indexOf(d.state) < 0) add('decision-invalid', 'decision.state is one of ' + I.FACT_DECISION.join(', ') + '.'); else if(d.state === 'edited' && (d.value === null || d.value === undefined)) add('decision-edit-value', 'An edited decision carries the value the person entered.');
+  /* what was printed must agree with the number stored: this catches a transposed digit between the page and the record */
+  if(!missing && typeof f.raw === 'string' && f.raw.trim() && typeof f.value === 'number' && isFinite(f.value) && (!reg || ['money', 'pct', 'int', 'num'].indexOf(reg.kind) >= 0)){
+    var pr = I.parseNumber(f.raw, { dash:'zero' }); if(pr.ok && pr.value !== f.value) add('raw-value-mismatch', 'The printed "' + f.raw + '" reads as ' + pr.value + ', but the fact stores ' + f.value + '. (A fact stores the figure as printed; annualizing or per-unit conversion is a separate, derived fact.)'); }
+  return bad;
+};
+
+/* ---------------------------------------------------------------- the quoted line must be on the page */
+function squash(s){ return String(s == null ? '' : s).replace(/[   ]/g, ' ').replace(/[‘’‚‛]/g, "'").replace(/[“”„]/g, '"').replace(/[‐-―−]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase(); }
+I.squash = squash;
+/* verifyQuote(quote, pageText) -> { ok, index }: the line, ignoring case, spacing and typographic quotes and dashes, appears in the page text */
+I.verifyQuote = function(quote, pageText){ var q = squash(quote), t = squash(pageText); if(!q) return { ok:false, index:-1, reason:'empty-quote' }; var i = t.indexOf(q); return i >= 0 ? { ok:true, index:i } : { ok:false, index:-1, reason:'not-on-page' }; };
+/* checkSource(fact, pages) -> checks[]: pages is { 1: 'text of page 1', ... } or an array of { page, text }. The page must exist, the quote must be on it, and what was printed must be in the quote. */
+I.checkSource = function(f, pages){
+  var by = {}; if(Array.isArray(pages)) pages.forEach(function(p){ by[p.page] = p.text; }); else if(pages) by = pages;
+  var checks = [], s = f.source || {}, pg = s.page;
+  if(pg == null){ checks.push({ id:'source-page', ok:true, detail:'not a page source (' + (s.sheet ? 'sheet ' + s.sheet : 'no page') + '); quote not checked against page text' }); return checks; }
+  if(by[pg] == null){ checks.push({ id:'source-page', ok:false, detail:'page ' + pg + ' was not read' }); return checks; }
+  checks.push({ id:'source-page', ok:true, detail:'page ' + pg });
+  var q = I.verifyQuote(s.quote, by[pg]); checks.push({ id:'quote-on-page', ok:q.ok, detail:q.ok ? 'the quoted line is on page ' + pg : 'the quoted line is not on page ' + pg });
+  if(f.raw && typeof s.quote === 'string' && s.quote.trim()){ var inQ = squash(s.quote).indexOf(squash(f.raw)) >= 0; checks.push({ id:'raw-in-quote', ok:inQ, detail:inQ ? 'what was printed ("' + f.raw + '") is in the quote' : '"' + f.raw + '" is not in the quoted line' }); }
+  return checks;
+};
+})();
+</script>
+
+<script id="bk-ingest-store">/* DOCUMENT INGESTION, store (Phase 2). Where ingestion keeps what it knows: documents, the text of their pages, extracted facts, and the audit history. Two implementations with one contract:
+   an IndexedDB store (the default: it survives a reload, so a half-processed batch resumes) and an in-memory store (tests, and the fallback when IndexedDB is unavailable).
+   The file bytes are NOT kept here: they stay in Deal Documents (see the blob adapter in the intake). This store holds records about them.
+
+   The audit history is APPEND-ONLY. There is no call that changes or removes an event, in either implementation; a correction is a new event.
+
+   BKIngest.createStore({ kind: 'indexeddb' | 'memory', name }) -> Promise<store>. Every call returns a promise; every object handed out is a copy, so changing it changes nothing stored.
+     putDocument(doc) / getDocument(id) / listDocuments({ dealId, includeDeleted }) / updateDocument(id, patchOrFn)     listed in the order added: received time, then the order within the batch
+     putPages(documentId, pages) / getPages(documentId)                      pages: [{ page, text, ... }], replaced as a set
+     putFacts(facts) / listFacts({ dealId, documentId, field }) / updateFact(id, patchOrFn)
+     appendEvent(ev) -> ev with seq and at / listEvents({ dealId, documentId, afterSeq })
+     purgeDeal(dealId)   removes a deal's documents, pages and facts (never its events) and records that it did */
+(function(){
+'use strict';
+var I = window.BKIngest = window.BKIngest || {};
+function clone(x){ return x === undefined ? x : JSON.parse(JSON.stringify(x)); }
+function applyPatch(cur, patchOrFn){ var next = typeof patchOrFn === 'function' ? patchOrFn(clone(cur)) : Object.assign(clone(cur), clone(patchOrFn)); return next === undefined ? cur : next; }
+function matches(o, f){ f = f || {}; return Object.keys(f).every(function(k){ return k === 'includeDeleted' || k === 'afterSeq' || f[k] === undefined || o[k] === f[k]; }); }
+function evOf(ev, at){ var e = clone(ev) || {}; e.at = at; return e; }
+
+/* ---------------------------------------------------------------- memory */
+function memoryStore(){
+  var docs = {}, pages = {}, facts = {}, events = [], seq = 0, ok = function(v){ return Promise.resolve(v); };
+  return { kind:'memory',
+    putDocument:function(d){ if(!d || !d.id) return Promise.reject(new Error('A document needs an id.')); docs[d.id] = clone(d); return ok(clone(d)); },
+    getDocument:function(id){ return ok(clone(docs[id] || null)); },
+    listDocuments:function(f){ f = f || {}; return ok(Object.keys(docs).map(function(k){ return docs[k]; }).filter(function(d){ return matches(d, { dealId:f.dealId }) && (f.includeDeleted || !d.deletedAt); }).sort(function(a, b){ return String(a.receivedAt).localeCompare(String(b.receivedAt)) || ((a.seq || 0) - (b.seq || 0)) || String(a.id).localeCompare(String(b.id)); }).map(clone)); },
+    updateDocument:function(id, p){ if(!docs[id]) return Promise.reject(new Error('No document ' + id)); docs[id] = clone(applyPatch(docs[id], p)); return ok(clone(docs[id])); },
+    putPages:function(did, list){ pages[did] = clone(list || []).map(function(p){ return Object.assign({ documentId:did }, p); }); return ok(true); },
+    getPages:function(did){ return ok(clone((pages[did] || []).slice().sort(function(a, b){ return a.page - b.page; }))); },
+    putFacts:function(list){ (list || []).forEach(function(f){ if(!f || !f.id) throw new Error('A fact needs an id.'); facts[f.id] = clone(f); }); return ok(true); },
+    listFacts:function(f){ return ok(Object.keys(facts).map(function(k){ return facts[k]; }).filter(function(x){ return matches(x, f); }).sort(function(a, b){ return String(a.createdAt).localeCompare(String(b.createdAt)) || String(a.id).localeCompare(String(b.id)); }).map(clone)); },
+    updateFact:function(id, p){ if(!facts[id]) return Promise.reject(new Error('No fact ' + id)); facts[id] = clone(applyPatch(facts[id], p)); return ok(clone(facts[id])); },
+    appendEvent:function(ev){ var e = evOf(ev, I.clock()); e.seq = ++seq; events.push(Object.freeze(clone(e))); return ok(clone(e)); },
+    listEvents:function(f){ f = f || {}; return ok(events.filter(function(e){ return matches(e, { dealId:f.dealId, documentId:f.documentId }) && (f.afterSeq == null || e.seq > f.afterSeq); }).map(clone)); },
+    purgeDeal:function(dealId){ var n = { documents:0, facts:0 }; Object.keys(docs).forEach(function(k){ if(docs[k].dealId === dealId){ delete pages[k]; delete docs[k]; n.documents++; } }); Object.keys(facts).forEach(function(k){ if(facts[k].dealId === dealId){ delete facts[k]; n.facts++; } });
+      var e = { dealId:dealId, documentId:null, stage:null, type:'purged', detail:n, actor:'system' }; e = evOf(e, I.clock()); e.seq = ++seq; events.push(Object.freeze(clone(e))); return ok(n); } };
+}
+
+/* ---------------------------------------------------------------- IndexedDB */
+function idbStore(name){
+  var dbp = null;
+  function open(){ if(dbp) return dbp; dbp = new Promise(function(res, rej){ var r = indexedDB.open(name, 1);
+    r.onupgradeneeded = function(){ var db = r.result, d = db.createObjectStore('documents', { keyPath:'id' }); d.createIndex('dealId', 'dealId'); d.createIndex('sha256', 'sha256');
+      var p = db.createObjectStore('pages', { keyPath:['documentId', 'page'] }); p.createIndex('documentId', 'documentId');
+      var f = db.createObjectStore('facts', { keyPath:'id' }); f.createIndex('documentId', 'documentId'); f.createIndex('dealId', 'dealId'); f.createIndex('field', 'field');
+      var e = db.createObjectStore('events', { keyPath:'seq', autoIncrement:true }); e.createIndex('dealId', 'dealId'); e.createIndex('documentId', 'documentId'); };
+    r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error || new Error('IndexedDB could not be opened.')); }; r.onblocked = function(){ rej(new Error('IndexedDB is blocked by another tab.')); }; }); return dbp; }
+  /* one transaction, one result: fn(stores) may return a request or a value; the promise settles when the transaction commits */
+  function tx(names, mode, fn){ return open().then(function(db){ return new Promise(function(res, rej){ var t = db.transaction(names, mode), st = {}; names.forEach(function(n){ st[n] = t.objectStore(n); }); var out; try { out = fn(st, t); } catch(e){ try { t.abort(); } catch(x){} return rej(e); }
+    t.oncomplete = function(){ res(out && typeof out === 'object' && 'result' in out ? out.result : out); }; t.onerror = function(){ rej(t.error || new Error('IndexedDB transaction failed.')); }; t.onabort = function(){ rej(t.error || new Error('IndexedDB transaction aborted.')); }; }); }); }
+  function getAll(store, indexName, key){ return new Promise(function(res, rej){ var src = indexName ? store.index(indexName) : store, r = key === undefined ? src.getAll() : src.getAll(key); r.onsuccess = function(){ res(r.result || []); }; r.onerror = function(){ rej(r.error); }; }); }
+  function readAll(name, indexName, key){ return open().then(function(db){ return getAll(db.transaction([name], 'readonly').objectStore(name), indexName, key); }); }
+  function rmw(storeName, id, p, label){ return open().then(function(db){ return new Promise(function(res, rej){ var t = db.transaction([storeName], 'readwrite'), st = t.objectStore(storeName), g = st.get(id), next;
+    g.onsuccess = function(){ if(!g.result){ t.abort(); return rej(new Error('No ' + label + ' ' + id)); } try { next = clone(applyPatch(g.result, p)); } catch(e){ t.abort(); return rej(e); } st.put(next); };
+    t.oncomplete = function(){ res(clone(next)); }; t.onerror = function(){ rej(t.error); }; t.onabort = function(){ rej(t.error || new Error('aborted')); }; }); }); }
+  var byTime = function(a, b){ return String(a.receivedAt || a.createdAt).localeCompare(String(b.receivedAt || b.createdAt)) || ((a.seq || 0) - (b.seq || 0)) || String(a.id).localeCompare(String(b.id)); };
+  return { kind:'indexeddb',
+    putDocument:function(d){ if(!d || !d.id) return Promise.reject(new Error('A document needs an id.')); var c = clone(d); return tx(['documents'], 'readwrite', function(s){ s.documents.put(c); }).then(function(){ return clone(c); }); },
+    getDocument:function(id){ return open().then(function(db){ return new Promise(function(res, rej){ var r = db.transaction(['documents'], 'readonly').objectStore('documents').get(id); r.onsuccess = function(){ res(clone(r.result || null)); }; r.onerror = function(){ rej(r.error); }; }); }); },
+    listDocuments:function(f){ f = f || {}; return (f.dealId !== undefined ? readAll('documents', 'dealId', f.dealId) : readAll('documents')).then(function(a){ return a.filter(function(d){ return f.includeDeleted || !d.deletedAt; }).sort(byTime).map(clone); }); },
+    updateDocument:function(id, p){ return rmw('documents', id, p, 'document'); },
+    putPages:function(did, list){ var rows = clone(list || []).map(function(p){ return Object.assign({}, p, { documentId:did }); }); return tx(['pages'], 'readwrite', function(s){ var q = s.pages.index('documentId').openKeyCursor(IDBKeyRange.only(did)); q.onsuccess = function(){ var c = q.result; if(c){ s.pages.delete(c.primaryKey); c.continue(); } else rows.forEach(function(r){ s.pages.put(r); }); }; }).then(function(){ return true; }); },
+    getPages:function(did){ return readAll('pages', 'documentId', did).then(function(a){ return a.sort(function(x, y){ return x.page - y.page; }).map(clone); }); },
+    putFacts:function(list){ var rows = clone(list || []); rows.forEach(function(f){ if(!f || !f.id) throw new Error('A fact needs an id.'); }); return tx(['facts'], 'readwrite', function(s){ rows.forEach(function(f){ s.facts.put(f); }); }).then(function(){ return true; }); },
+    listFacts:function(f){ f = f || {}; var src = f.documentId !== undefined ? readAll('facts', 'documentId', f.documentId) : f.dealId !== undefined ? readAll('facts', 'dealId', f.dealId) : f.field !== undefined ? readAll('facts', 'field', f.field) : readAll('facts');
+      return src.then(function(a){ return a.filter(function(x){ return matches(x, f); }).sort(byTime).map(clone); }); },
+    updateFact:function(id, p){ return rmw('facts', id, p, 'fact'); },
+    appendEvent:function(ev){ var e = evOf(ev, I.clock()); delete e.seq; return open().then(function(db){ return new Promise(function(res, rej){ var t = db.transaction(['events'], 'readwrite'), r = t.objectStore('events').add(e); r.onsuccess = function(){ e.seq = r.result; }; t.oncomplete = function(){ res(clone(e)); }; t.onerror = function(){ rej(t.error); }; t.onabort = function(){ rej(t.error || new Error('aborted')); }; }); }); },
+    listEvents:function(f){ f = f || {}; var src = f.documentId !== undefined ? readAll('events', 'documentId', f.documentId) : f.dealId !== undefined ? readAll('events', 'dealId', f.dealId) : readAll('events');
+      return src.then(function(a){ return a.filter(function(e){ return matches(e, { dealId:f.dealId, documentId:f.documentId }) && (f.afterSeq == null || e.seq > f.afterSeq); }).sort(function(x, y){ return x.seq - y.seq; }).map(clone); }); },
+    purgeDeal:function(dealId){ var self = this; return Promise.all([readAll('documents', 'dealId', dealId), readAll('facts', 'dealId', dealId)]).then(function(r){ var docs = r[0], facts = r[1];
+      return tx(['documents', 'pages', 'facts'], 'readwrite', function(s){ docs.forEach(function(d){ s.documents.delete(d.id); var q = s.pages.index('documentId').openKeyCursor(IDBKeyRange.only(d.id)); q.onsuccess = function(){ var c = q.result; if(c){ s.pages.delete(c.primaryKey); c.continue(); } }; }); facts.forEach(function(f){ s.facts.delete(f.id); }); })
+        .then(function(){ var n = { documents:docs.length, facts:facts.length }; return self.appendEvent({ dealId:dealId, documentId:null, stage:null, type:'purged', detail:n, actor:'system' }).then(function(){ return n; }); }); }); } };
+}
+
+I.createStore = function(opts){ opts = opts || {}; var kind = opts.kind || (typeof indexedDB !== 'undefined' ? 'indexeddb' : 'memory');
+  if(kind === 'memory') return Promise.resolve(memoryStore());
+  var s; try { s = idbStore(opts.name || 'bkcapital-ingest'); } catch(e){ return Promise.resolve(memoryStore()); }
+  /* open now, so a store that cannot open is found out here and falls back to memory, with the reason kept */
+  return s.listDocuments({ dealId:'__probe__' }).then(function(){ return s; }, function(err){ var m = memoryStore(); m.fellBackFrom = 'indexeddb'; m.fallbackReason = String(err && err.message || err); return m; }); };
+})();
+</script>
+
+<script id="bk-ingest-intake">/* DOCUMENT INGESTION, intake (Phase 2). What happens to a file the moment it is added: what it REALLY is (from its bytes, not its name), a content hash, duplicate and corrupt detection, and a
+   record with an audit event. Nothing is read or interpreted here; a document that will not be processed (an exact duplicate, an empty or unreadable file) is still recorded, so the history shows it.
+
+     BKIngest.sniff(bytes, name) -> { kind, mime, ext, mismatch, warnings }       kind: pdf, xlsx, xlsm, xls, docx, doc, pptx, csv, txt, png, jpeg, gif, webp, tiff, bmp, heic, zip, ole, unknown
+     BKIngest.intake(ctx, files, opts) -> Promise<{ documents, duplicates, rejected }>
+         ctx = { store, blobs, dealId, actor }     blobs: where the file bytes live (BKIngest.blobs.dealDocuments() uses the existing Deal Documents store; BKIngest.blobs.memory() for tests)
+         opts = { maxBytes (45 MB, the Deal Documents sync limit), force (process an exact duplicate anyway) }
+   An exact duplicate (same SHA-256 in the same deal) is recorded as a duplicate and not processed again. A file whose NAME matches another's after stripping "copy", "final", "opt", "dragged", version
+   numbers, but whose content differs, is flagged similar-name (advice only: the two can be different versions, or different documents). */
+(function(){
+'use strict';
+var I = window.BKIngest = window.BKIngest || {};
+
+/* ---------------------------------------------------------------- what a file really is */
+function zipNames(u8){
+  var dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), min = Math.max(0, u8.length - 65557), i;
+  for(i = u8.length - 22; i >= min; i--) if(dv.getUint32(i, true) === 0x06054b50) break;
+  if(i < min) return null;
+  var total = dv.getUint16(i + 10, true), off = dv.getUint32(i + 16, true); if(off === 0xFFFFFFFF) return { zip64:true, names:[] };
+  var names = [], p = off; for(var n = 0; n < total && p + 46 <= u8.length; n++){ if(dv.getUint32(p, true) !== 0x02014b50) break; var nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    names.push(String.fromCharCode.apply(null, u8.subarray(p + 46, p + 46 + nl))); p += 46 + nl + el + cl; }
+  return { zip64:false, names:names };
+}
+var MIME = { pdf:'application/pdf', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xlsm:'application/vnd.ms-excel.sheet.macroEnabled.12', xls:'application/vnd.ms-excel', docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc:'application/msword',
+  pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation', csv:'text/csv', txt:'text/plain', png:'image/png', jpeg:'image/jpeg', gif:'image/gif', webp:'image/webp', tiff:'image/tiff', bmp:'image/bmp', heic:'image/heic', zip:'application/zip', ole:'application/x-ole-storage' };
+var EXT = { pdf:'pdf', xlsx:'xlsx', xlsm:'xlsx', xls:'ole', csv:'csv', txt:'txt', tsv:'csv', docx:'docx', doc:'ole', pptx:'pptx', ppt:'ole', jpg:'jpeg', jpeg:'jpeg', png:'png', gif:'gif', webp:'webp', tif:'tiff', tiff:'tiff', bmp:'bmp', heic:'heic', heif:'heic', zip:'zip' };
+function extOf(name){ var m = /\.([A-Za-z0-9]{1,5})$/.exec(String(name || '')); return m ? m[1].toLowerCase() : ''; }
+function isText(u8){ var n = Math.min(u8.length, 8192), printable = 0; if(!n) return false; for(var i = 0; i < n; i++){ var b = u8[i]; if(b === 0) return false; if(b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127) || b >= 128) printable++; } return printable / n >= 0.97; }
+function delimited(u8){ var t = ''; try { t = new TextDecoder('utf-8', { fatal:false }).decode(u8.subarray(0, Math.min(u8.length, 16384))); } catch(e){ return false; } var lines = t.split(/\r?\n/).filter(function(l){ return l.trim(); }).slice(0, 12); if(lines.length < 2) return false;
+  return [',', '\t', ';', '|'].some(function(d){ var c = lines.map(function(l){ return l.split(d).length - 1; }); return c[0] >= 1 && c.filter(function(x){ return x === c[0]; }).length >= Math.max(2, Math.floor(lines.length * 0.7)); }); }
+I.sniff = function(u8, name){
+  var out = { kind:'unknown', mime:'application/octet-stream', ext:extOf(name), mismatch:null, warnings:[] }, n = u8.length, at = function(i, a){ for(var k = 0; k < a.length; k++) if(u8[i + k] !== a[k]) return false; return true; };
+  var head = n ? String.fromCharCode.apply(null, u8.subarray(0, Math.min(n, 1024))) : '';
+  if(head.indexOf('%PDF-') >= 0){ out.kind = 'pdf'; var tail = String.fromCharCode.apply(null, u8.subarray(Math.max(0, n - 2048))); if(tail.indexOf('%%EOF') < 0) out.warnings.push('no %%EOF marker: the file may be truncated'); }
+  else if(at(0, [0x50, 0x4B, 3, 4]) || at(0, [0x50, 0x4B, 5, 6])){ var z = zipNames(u8);
+    if(!z){ out.kind = 'zip'; out.warnings.push('corrupt-zip: the archive has no central directory (the file is damaged or cut short)'); }
+    else { var nm = z.names.join('|'); out.kind = /(^|\|)xl\/workbook\.xml/.test(nm) ? (/xl\/vbaProject\.bin/.test(nm) ? 'xlsm' : 'xlsx') : /(^|\|)word\/document\.xml/.test(nm) ? 'docx' : /(^|\|)ppt\/presentation\.xml/.test(nm) ? 'pptx' : 'zip'; } }
+  else if(at(0, [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1])){ var e = extOf(name); out.kind = e === 'xls' ? 'xls' : e === 'doc' ? 'doc' : 'ole'; }
+  else if(at(0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) out.kind = 'png';
+  else if(at(0, [0xFF, 0xD8, 0xFF])) out.kind = 'jpeg';
+  else if(head.slice(0, 6) === 'GIF87a' || head.slice(0, 6) === 'GIF89a') out.kind = 'gif';
+  else if(head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WEBP') out.kind = 'webp';
+  else if(at(0, [0x49, 0x49, 0x2A, 0]) || at(0, [0x4D, 0x4D, 0, 0x2A])) out.kind = 'tiff';
+  else if(head.slice(0, 2) === 'BM' && n > 26 && extOf(name) === 'bmp') out.kind = 'bmp';
+  else if(head.slice(4, 8) === 'ftyp' && /^(heic|heix|hevc|mif1|heif)/.test(head.slice(8, 12))) out.kind = 'heic';
+  else if(isText(u8)) out.kind = (extOf(name) === 'csv' || extOf(name) === 'tsv' || delimited(u8)) ? 'csv' : 'txt';
+  out.mime = MIME[out.kind] || out.mime;
+  var want = EXT[out.ext], same = want === out.kind || (want === 'xlsx' && (out.kind === 'xlsx' || out.kind === 'xlsm')) || (want === 'ole' && (out.kind === 'xls' || out.kind === 'doc' || out.kind === 'ole')) || (want === 'csv' && out.kind === 'txt') || (want === 'txt' && out.kind === 'csv');
+  if(want && !same) out.mismatch = 'the name says .' + out.ext + ' but the content is ' + out.kind;
+  return out;
+};
+
+/* ---------------------------------------------------------------- the same document under another name */
+I.normName = function(name){ return String(name || '').toLowerCase().replace(/\.[a-z0-9]{1,5}$/, '').replace(/[^a-z0-9]+/g, ' ').replace(/\b(copy|dragged|final|opt|optimi[sz]ed|draft|rev|revised|updated|new|v\d+)\b/g, ' ').replace(/\s+\d{1,2}\s*$/, '').replace(/\s+/g, ' ').trim(); };
+
+/* ---------------------------------------------------------------- where the file bytes live */
+I.blobs = I.blobs || {};
+I.blobs.memory = function(){ var files = {}, n = 0; return { kind:'memory', put:function(file, meta){ var id = 'm' + (++n); files[id] = { blob:file, name:file.name, type:file.type, size:file.size, meta:meta || {} }; return Promise.resolve({ fileId:id }); },
+  get:function(id){ return Promise.resolve(files[id] || null); }, remove:function(id){ delete files[id]; return Promise.resolve(true); } }; };
+/* the existing Deal Documents store (IndexedDB 'punchlist-docs', synced to the private bucket when signed in): the files appear in Deal Documents and sync like any other */
+I.blobs.dealDocuments = function(slot){ return { kind:'deal-documents', put:function(file, meta){ if(typeof window.bkDocsAdd !== 'function') return Promise.reject(new Error('Deal Documents is not available.')); return window.bkDocsAdd(slot || 'other', file, meta && meta.dealId != null ? meta.dealId : undefined).then(function(rec){ return { fileId:rec.id }; }); },
+  get:function(id){ return typeof window.bkDocsGet === 'function' ? window.bkDocsGet(id).then(function(r){ return r ? { blob:r.blob, name:r.name, type:r.type, size:r.size } : null; }) : Promise.resolve(null); }, remove:function(id){ return typeof window.bkDocsRemove === 'function' ? window.bkDocsRemove(id) : Promise.resolve(false); } }; };
+
+/* ---------------------------------------------------------------- intake */
+I.intake = function(ctx, files, opts){
+  opts = opts || {}; var max = opts.maxBytes == null ? 45 * 1048576 : opts.maxBytes, actor = ctx.actor || 'user', out = { documents:[], duplicates:[], rejected:[] };
+  var list = Array.prototype.slice.call(files || []);
+  function ev(doc, type, detail){ return ctx.store.appendEvent({ dealId:ctx.dealId, documentId:doc.id, stage:'intake', type:type, detail:detail || {}, actor:actor }); }
+  function one(file){
+    return file.arrayBuffer().then(function(buf){ return new Uint8Array(buf); }, function(){ return null; }).then(function(u8){
+      var rec = { id:I.newId('doc'), seq:(I._intakeSeq = (I._intakeSeq || 0) + 1), dealId:ctx.dealId, name:file.name || 'unnamed', size:file.size, mime:file.type || '', kind:'unknown', ext:extOf(file.name), sha256:null, fileId:null, receivedAt:I.clock(), receivedBy:actor, lastModified:file.lastModified || null,
+        status:'received', rejectReason:null, flags:[], duplicateOf:null, similarTo:[], docType:null, period:null, propertyKey:null, pageCount:null, stages:null };
+      var reject = function(code, message){ rec.status = 'rejected'; rec.rejectReason = code; rec.flags.push({ code:code, detail:message }); rec.stages = I.freshStages('rejected: ' + message); return ctx.store.putDocument(rec).then(function(){ return ev(rec, 'rejected', { reason:code, message:message, name:rec.name, size:rec.size }); }).then(function(){ out.rejected.push(rec); out.documents.push(rec); }); };
+      if(!u8) return reject('unreadable', 'The file could not be read.');
+      if(!u8.length) return reject('empty', 'The file is empty.');
+      var sn = I.sniff(u8, file.name); rec.kind = sn.kind; rec.mime = sn.mime; sn.warnings.forEach(function(w){ rec.flags.push({ code:/^corrupt-zip/.test(w) ? 'corrupt-zip' : 'warning', detail:w }); }); if(sn.mismatch) rec.flags.push({ code:'extension-mismatch', detail:sn.mismatch });
+      return I.sha256(u8).then(function(sha){
+        rec.sha256 = sha;
+        if(u8.length > max) return reject('too-large', 'The file is ' + Math.round(u8.length / 1048576) + ' MB; the limit is ' + Math.round(max / 1048576) + ' MB.');
+        if(rec.flags.some(function(f){ return f.code === 'corrupt-zip'; })) return reject('corrupt', 'The file is damaged: ' + rec.flags.filter(function(f){ return f.code === 'corrupt-zip'; })[0].detail);
+        if(sn.kind === 'zip') return reject('unsupported-type', 'Zip archives are not opened yet; add the documents inside it.');
+        if(sn.kind === 'unknown' || sn.kind === 'ole' && !/^(xls|doc|ppt)$/.test(rec.ext)) return reject('unsupported-type', 'This kind of file is not one the ingestion reads.');
+        return ctx.store.listDocuments({ dealId:ctx.dealId }).then(function(existing){
+          var dupe = existing.filter(function(d){ return d.sha256 === sha && d.status !== 'rejected'; })[0];
+          if(dupe && !opts.force){ rec.status = 'duplicate'; rec.duplicateOf = dupe.id; rec.fileId = dupe.fileId; rec.docType = dupe.docType; rec.flags.push({ code:'duplicate', detail:'Identical to "' + dupe.name + '", already added.' }); rec.stages = I.freshStages('duplicate of ' + dupe.name);
+            return ctx.store.putDocument(rec).then(function(){ return ev(rec, 'duplicate', { of:dupe.id, ofName:dupe.name, sha256:sha }); }).then(function(){ out.duplicates.push(rec); out.documents.push(rec); }); }
+          var nn = I.normName(file.name); rec.similarTo = existing.filter(function(d){ return d.sha256 !== sha && d.status !== 'rejected' && I.normName(d.name) === nn && nn; }).map(function(d){ return d.id; });
+          if(rec.similarTo.length) rec.flags.push({ code:'similar-name', detail:'The name matches ' + rec.similarTo.length + ' other document' + (rec.similarTo.length === 1 ? '' : 's') + ' but the content differs: a different version, or a different document.' });
+          rec.stages = I.freshStages();
+          return ctx.blobs.put(file, { dealId:ctx.dealId }).then(function(b){ rec.fileId = b.fileId; return ctx.store.putDocument(rec); }, function(err){ rec.flags.push({ code:'not-stored', detail:'The file could not be saved: ' + String(err && err.message || err) }); rec.fileId = null; return ctx.store.putDocument(rec); })
+            .then(function(){ return ev(rec, 'intake', { name:rec.name, size:rec.size, kind:rec.kind, sha256:sha, flags:rec.flags.map(function(f){ return f.code; }) }); }).then(function(){ out.documents.push(rec); }); }); });
+    });
+  }
+  return list.reduce(function(p, f){ return p.then(function(){ return one(f); }); }, Promise.resolve()).then(function(){ return out; });
+};
+})();
+</script>
+
+<script id="bk-ingest-classify">/* DOCUMENT INGESTION, classification (Phase 2). What kind of document is this, for which period, and which property? Rules first, and every answer carries its reasons, so a person can see WHY.
+   A model is asked only when the rules are not sure (a later phase); a document that cannot be recognized is "unknown", never forced into a type.
+
+     BKIngest.classifyDocument({ name, kind, sheets, pages }) -> { type, confidence, reasons[], alternatives[], period, property, needsOcr }
+         sheets: [{ name, rows }] as the existing file loader returns them; pages: [{ page, text }]. Spreadsheets also go through the existing, tested Import classifier (bkImportClassify).
+     BKIngest.detectPeriod(text) -> { basis, label, from, to, asOf, columns[], evidence } | null
+     BKIngest.detectProperty(text) -> { key, address, number, alt, street, suffix, city, state, zip, count } | null     the address the document repeats most is the subject; a broker's office printed once is not
+     BKIngest.sameProperty(a, b) -> boolean
+   Types: om, rent_roll, operating_statement, pro_forma, property_record, portfolio_master, property_list, package, tax_bill, insurance, loan_document, appraisal, construction_budget,
+   development_schedule, partnership_agreement, environmental_report, engineering_report, inspection_report, lease, image, other, unknown. */
+(function(){
+'use strict';
+var I = window.BKIngest = window.BKIngest || {};
+I.DOC_TYPES = ['om', 'rent_roll', 'operating_statement', 'pro_forma', 'property_record', 'portfolio_master', 'property_list', 'package', 'tax_bill', 'insurance', 'loan_document', 'appraisal', 'construction_budget', 'development_schedule', 'partnership_agreement', 'environmental_report', 'engineering_report', 'inspection_report', 'lease', 'image', 'other', 'unknown'];
+
+/* [type, pattern, weight, reason, where]. where 'name' tests the file name, otherwise the text. */
+var CUES = [
+  ['om', /\b(?:offering memorandum|investment (?:summary|highlights|offering)|executive summary|exclusively (?:listed|offered)|for sale|confidentiality (?:and |& )?disclaimer|property overview|listing price|asking price|offering price)\b/i, 3, 'offering-memorandum wording'],
+  ['om', /\b(?:cap rate|price per unit|investment sales|deal contacts|broker(?:age)?)\b/i, 1, 'brokerage terms'],
+  ['om', /(?:^|[^a-z])(?:om|offering|memorandum|brochure|flyer)(?:[^a-z]|$)/i, 3, 'file name', 'name'],
+  ['rent_roll', /\brent[ _-]?roll\b/i, 5, 'the words "rent roll"'],
+  ['rent_roll', /\b(?:lease (?:from|to|start|end|expir\w*)|unit sq ?ft|market rent|lease rent|resident|tenant name|move[- ]in)\b/i, 2, 'unit and lease columns'],
+  ['rent_roll', /(?:^|[^a-z])(?:rent[ _-]?roll|rr)(?:[^a-z]|$)/i, 4, 'file name', 'name'],
+  ['operating_statement', /\b(?:trailing (?:12|twelve)|t-?12|income statement|operating statement|profit (?:and|&) loss|statement of (?:income|operations)|12 months ended|twelve months ended)\b/i, 4, 'income-statement wording'],
+  ['operating_statement', /\b(?:net operating income|total operating expenses|effective gross income|gross potential rent|total income|net income)\b/i, 2, 'income and expense lines'],
+  ['operating_statement', /(?:^|[^a-z])(?:t-?12|trailing|operating[ _-]?statement|income[ _-]?statement|p&l|profit)(?:[^a-z]|$)/i, 4, 'file name', 'name'],
+  ['pro_forma', /\b(?:pro ?forma|development budget|sources (?:and|&) uses|underwriting (?:assumptions|summary)|construction costs?|completed project)\b/i, 4, 'pro-forma wording'],
+  ['pro_forma', /(?:pro[ _-]?forma|underwriting|model|budget)/i, 3, 'file name', 'name'],
+  ['tax_bill', /\b(?:real estate tax(?:es)? bill|tax bill|mill rate|grand list|assessor|assessed value|taxable value|tax collector|installment (?:due|1|2)|supplemental (?:tax )?bill)\b/i, 4, 'tax-bill wording'],
+  ['tax_bill', /(?:tax[ _-]?bill|property[ _-]?tax|assessment)/i, 3, 'file name', 'name'],
+  ['insurance', /\b(?:certificate of (?:liability )?insurance|acord|declarations? page|named insured|policy (?:number|period|no\.?)|coverage limit|additional insured|loss payee)\b/i, 5, 'insurance wording'],
+  ['insurance', /(?:insurance|acord|coi|policy|binder)/i, 3, 'file name', 'name'],
+  ['loan_document', /\b(?:term sheet|loan agreement|promissory note|deed of trust|mortgage note|commitment letter|prepayment (?:penalty|premium)|non-?recourse|extension options?)\b/i, 5, 'loan-document wording'],
+  ['loan_document', /\b(?:maturity date|guarant(?:or|y)|origination fee|loan amount|interest[- ]only period|debt service coverage)\b/i, 1, 'loan terms'],
+  ['loan_document', /(?:term[ _-]?sheet|loan|promissory|mortgage|commitment)/i, 3, 'file name', 'name'],
+  ['appraisal', /\b(?:appraiser|opinion of value|broker opinion|sales comparison approach|income capitalization approach|highest and best use|as[- ]is (?:market )?value|as[- ]stabilized|extraordinary assumptions?|certification of appraiser|appraisal report)\b/i, 5, 'appraisal wording'],
+  ['appraisal', /(?:apprais|bov|opinion[ _-]?of[ _-]?value)/i, 4, 'file name', 'name'],
+  ['construction_budget', /\b(?:schedule of values|construction budget|hard costs?|soft costs?|general contractor|guaranteed maximum price|gmp|aia g70\d|line[- ]item budget|contingency)\b/i, 3, 'construction-cost wording'],
+  ['construction_budget', /(?:construction[ _-]?budget|sov|schedule[ _-]?of[ _-]?values|gmp)/i, 3, 'file name', 'name'],
+  ['development_schedule', /\b(?:construction schedule|development schedule|critical path|notice to proceed|substantial completion|gantt|milestones?|permitting|certificate of occupancy)\b/i, 3, 'schedule wording'],
+  ['development_schedule', /(?:gantt|timeline|construction[ _-]?schedule|dev[ _-]?schedule)/i, 3, 'file name', 'name'],
+  ['partnership_agreement', /\b(?:operating agreement|limited partnership agreement|llc agreement|capital contributions?|preferred return|managing member|general partner|limited partners?|catch-?up|hurdle|promote|waterfall|distributable cash)\b/i, 3, 'partnership terms'],
+  ['partnership_agreement', /(?:operating[ _-]?agreement|partnership|lpa|waterfall|subscription)/i, 3, 'file name', 'name'],
+  ['environmental_report', /\b(?:phase (?:i|1|ii|2) environmental|environmental site assessment|astm e ?1527|recognized environmental conditions?|\brecs?\b|vapor encroachment)\b/i, 5, 'environmental wording'],
+  ['environmental_report', /(?:phase[ _-]?(?:i|1|ii|2)|environmental|esa\b)/i, 4, 'file name', 'name'],
+  ['engineering_report', /\b(?:property condition (?:assessment|report)|astm e ?2018|immediate repairs|replacement reserve|remaining useful life|deferred maintenance|structural engineer)\b/i, 5, 'engineering wording'],
+  ['engineering_report', /(?:pca|property[ _-]?condition|engineering|structural)/i, 4, 'file name', 'name'],
+  ['inspection_report', /\b(?:inspection report|inspected by|deficienc(?:y|ies)|inspection date|inspector)\b/i, 4, 'inspection wording'],
+  ['inspection_report', /inspection/i, 3, 'file name', 'name'],
+  ['property_record', /\b(?:mblu|owner of record|building sub-?areas?|valuation history|ownership history|parcel (?:id|number)|land use|outbuildings?|current assessment|assessment year)\b/i, 4, 'assessor record-card wording'],
+  ['pro_forma', /\b(?:asking|resale rate|cap rate|dwelling units|offer price|purchase price|apartment count|net rentable area|exit cap|loan to value|hold period)\b/i, 2, 'deal assumptions'],
+  ['package', /(?:^|[^a-z])(?:package|data[ _-]?room|bundle)(?:[^a-z]|$)/i, 4, 'file name', 'name'],
+  ['package', /\b(?:owner package|property package|information package)\b/i, 4, 'package wording'],
+  ['lease', /\b(?:lease agreement|landlord|tenant|term of (?:the )?lease|commencement date|premises|security deposit|rent commencement|guarantor of (?:the )?lease|demised)\b/i, 3, 'lease wording'],
+  ['lease', /(?:^|[^a-z])lease(?:[^a-z]|$)/i, 2, 'file name', 'name']
+];
+
+/* ---------------------------------------------------------------- dates */
+var MONTHS = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, sept:9, oct:10, nov:11, dec:12 };
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+function eom(y, m){ return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+/* parseDate(text, wantEnd): ISO date from "December 31, 2024", "12/31/2024", "6/30/26", "Dec 2024" (the last day of the month when wantEnd, else the first), "12/2024" */
+function mon(w){ return MONTHS[w.slice(0, 4).toLowerCase()] || MONTHS[w.slice(0, 3).toLowerCase()] || 0; }
+I.parseDate = function(t, wantEnd){ t = String(t || '').trim().replace(/\./g, ''); var m, mo, y;
+  if((m = /^([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})$/.exec(t)) && (mo = mon(m[1]))) return m[3] + '-' + pad(mo) + '-' + pad(+m[2]);
+  if((m = /^([A-Za-z]{3,9})\s+(\d{4})$/.exec(t)) && (mo = mon(m[1]))){ y = +m[2]; return y + '-' + pad(mo) + '-' + pad(wantEnd ? eom(y, mo) : 1); }
+  if((m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(t))){ y = +m[3]; if(y < 100) y += y < 70 ? 2000 : 1900; if(+m[1] >= 1 && +m[1] <= 12 && +m[2] >= 1 && +m[2] <= 31) return y + '-' + pad(+m[1]) + '-' + pad(+m[2]); }
+  if((m = /^(\d{1,2})\/(\d{4})$/.exec(t)) && +m[1] >= 1 && +m[1] <= 12){ y = +m[2]; return y + '-' + pad(+m[1]) + '-' + pad(wantEnd ? eom(y, +m[1]) : 1); }
+  return null; };
+var DATE_RX = '([A-Za-z]{3,9}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}|[A-Za-z]{3,9}\\.?\\s+\\d{4}|\\d{1,2}\\/\\d{1,2}\\/\\d{2,4}|\\d{1,2}\\/\\d{4})';
+/* detectPeriod: the reporting period a document states. basis: t12 (twelve months ending a date), annual (a calendar or fiscal year), asof (a snapshot: rent roll, balance), proforma, current, unknown */
+I.detectPeriod = function(text){
+  var t = String(text || ''), m, out = { basis:'unknown', label:'', from:null, to:null, asOf:null, columns:[], evidence:'' };
+  if(/\bpro ?forma\b/i.test(t)) out.columns.push('proforma'); if(/\b(?:current|in-?place|year 1|year one)\b/i.test(t)) out.columns.push('current'); if(/\b(?:t-?12|trailing)\b/i.test(t)) out.columns.push('t12');
+  if((m = new RegExp('(?:trailing\\s*(?:12|twelve)\\s*months?|t[- ]?12)[^\\n]{0,40}?(?:ending|ended|through|thru|as of|to)\\s+' + DATE_RX, 'i').exec(t)) || (m = new RegExp('(?:for the\\s+)?(?:twelve|12)\\s*months?\\s+(?:ended|ending)\\s+' + DATE_RX, 'i').exec(t))){
+    var to = I.parseDate(m[1], true); if(to){ var tp = to.split('-').map(Number), fd = new Date(Date.UTC(tp[0] - 1, tp[1] - 1, tp[2] + 1)); out.basis = 't12'; out.to = to; out.from = fd.getUTCFullYear() + '-' + pad(fd.getUTCMonth() + 1) + '-' + pad(fd.getUTCDate()); out.label = 'trailing 12 months ending ' + to; out.evidence = m[0].replace(/\s+/g, ' ').slice(0, 120); return out; } }
+  if((m = new RegExp('(?:period|from|for|statement period)?:?\\s*' + DATE_RX + '\\s*(?:-|\\u2013|\\u2014|to|through|thru)\\s*' + DATE_RX, 'i').exec(t))){ var f = I.parseDate(m[1], false), e = I.parseDate(m[2], true);
+    if(f && e && f < e){ var months = (+e.slice(0, 4) - +f.slice(0, 4)) * 12 + (+e.slice(5, 7) - +f.slice(5, 7)) + 1; if(months >= 11 && months <= 13){ out.basis = f.slice(5, 7) === '01' && e.slice(5, 7) === '12' ? 'annual' : 't12'; out.from = f; out.to = e; out.label = (out.basis === 'annual' ? 'calendar year ' + f.slice(0, 4) : '12 months ' + f + ' to ' + e); out.evidence = m[0].replace(/\s+/g, ' ').slice(0, 120); return out; } } }
+  if((m = /\b(?:fy|fiscal year|calendar year|year ended)\s*(?:ending|ended)?\s*(?:[A-Za-z]+\s+\d{1,2},?\s+)?(\d{4})\b/i.exec(t))){ out.basis = 'annual'; out.from = m[1] + '-01-01'; out.to = m[1] + '-12-31'; out.label = 'year ' + m[1]; out.evidence = m[0].slice(0, 80); return out; }
+  if((m = new RegExp('\\bas of(?: date)?:?\\s*' + DATE_RX, 'i').exec(t))){ var a = I.parseDate(m[1], true); if(a){ out.basis = 'asof'; out.asOf = a; out.label = 'as of ' + a; out.evidence = m[0].replace(/\s+/g, ' ').slice(0, 80); return out; } }
+  if(out.columns.length){ out.basis = out.columns.indexOf('current') >= 0 ? 'current' : out.columns[0]; out.label = out.columns.join(' / ') + ' columns'; out.evidence = 'column headings'; return out; }
+  return null;
+};
+
+/* ---------------------------------------------------------------- which property */
+var SUFFIX = { st:'street', street:'street', ave:'avenue', av:'avenue', avenue:'avenue', rd:'road', road:'road', blvd:'boulevard', boulevard:'boulevard', dr:'drive', drive:'drive', ln:'lane', lane:'lane', ct:'court', court:'court', pl:'place', place:'place', way:'way', pkwy:'parkway', parkway:'parkway', ter:'terrace', terrace:'terrace', hwy:'highway', highway:'highway', cir:'circle', circle:'circle' };
+var NOT_STREET = /^(?:acres?|sf|units?|floors?|stor(?:y|ies)|miles?|minutes?|mins?|bedrooms?|br|ba|years?|months?|parking|spaces?|rooms?|suites?|buildings?|lots?|parcels?|apartments?|total|per|of|and|the)$/i;
+var ADDR = /(?<![\d.,$])\b(\d{1,5})(?:[ \t]*[-–][ \t]*(\d{1,5}))?[ \t]+((?:[NSEW]\.?[ \t]+)?[A-Z][A-Za-z0-9'.-]*(?:[ \t]+[A-Z][A-Za-z0-9'.-]*){0,2})[ \t]+(Street|St|Avenue|Ave|Av|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Place|Pl|Way|Parkway|Pkwy|Terrace|Ter|Highway|Hwy|Circle|Cir)\b\.?(?:\s*,?\s*([A-Z][A-Za-z .'-]{2,30}?),?\s+([A-Z]{2})\b(?:\s+(\d{5})(?:-\d{4})?)?)?/g;
+I.detectProperty = function(text){
+  var t = String(text || '').replace(/\b[A-Z]{3,}\b/g, function(w){ return w.charAt(0) + w.slice(1).toLowerCase(); }), by = {}, m; ADDR.lastIndex = 0;   /* ALL-CAPS addresses read as Title Case; two-letter state codes stay */
+  while((m = ADDR.exec(t))){ if(m[3].split(' ').every(function(w){ return NOT_STREET.test(w); }) || NOT_STREET.test(m[3].split(' ')[0])) continue; var street = m[3].replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase(), suf = SUFFIX[m[4].toLowerCase()] || m[4].toLowerCase(), key = m[1] + ' ' + street + ' ' + suf, e = by[key] || (by[key] = { key:key, address:'', number:m[1], alt:m[2] || null, street:street, suffix:suf, city:null, state:null, zip:null, count:0, first:m.index });
+    e.count++; if(m[5] && !e.city){ e.city = m[5].trim(); e.state = m[6]; e.zip = m[7] || null; } if(!e.address) e.address = m[0].replace(/\s+/g, ' ').trim(); }
+  var list = Object.keys(by).map(function(k){ return by[k]; }); if(!list.length) return null;
+  list.sort(function(a, b){ return b.count - a.count || a.first - b.first; });
+  return list[0];
+};
+I.sameProperty = function(a, b){ if(!a || !b) return false; var nums = function(p){ var s = [+p.number]; if(p.alt) for(var n = +p.number; n <= +p.alt && n - +p.number < 40; n += 2) s.push(n); return s; }; var na = nums(a), nb = nums(b);
+  return a.street === b.street && a.suffix === b.suffix && na.some(function(x){ return nb.indexOf(x) >= 0; }); };
+
+/* ---------------------------------------------------------------- classification */
+/* one statement repeated for each property: several sheets whose first column carries the same line labels (and are not simply twelve months) */
+function layoutSig(sh){ var L = {}, n = 0; (sh.rows || []).slice(0, 60).forEach(function(r){ var c = (r || []).filter(function(x){ return x != null && String(x).trim() !== ''; })[0]; if(typeof c === 'string' && /[A-Za-z]{3}/.test(c)){ L[c.toLowerCase().replace(/[^a-z]+/g, ' ').trim()] = 1; n++; } }); return n >= 8 ? L : null; }
+function repeatedLayout(sheets){ sheets = sheets || []; var months = sheets.filter(function(sh){ return /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(String(sh.name || '').trim()); }).length; if(months >= 6) return false;
+  var sigs = sheets.map(layoutSig).filter(Boolean); if(sigs.length < 4) return false; var best = 0;
+  sigs.forEach(function(a, i){ var group = 1; sigs.forEach(function(b, j){ if(i === j) return; var inter = 0, ua = Object.keys(a).length, ub = Object.keys(b).length; Object.keys(a).forEach(function(k){ if(b[k]) inter++; }); if(inter / (ua + ub - inter) >= 0.6) group++; }); if(group > best) best = group; });
+  return best >= 4 && best >= sheets.length * 0.25; }
+function looksLikePropertyList(sheets){ return (sheets || []).some(function(sh){ var rows = sh.rows || []; for(var i = 0; i < Math.min(rows.length, 12); i++){ var h = (rows[i] || []).map(function(c){ return String(c == null ? '' : c).toLowerCase(); }), hit = 0;
+  [/^(property|address|building|asset)( name)?$/, /^(city|town|market)$/, /^state$/, /(asking|list(ing)?|sale)?\s*price/, /^(sf|sq ?ft|square f\w+|units?)$/].forEach(function(rx){ if(h.some(function(x){ return rx.test(x.trim()); })) hit++; }); if(hit >= 3 && rows.length - i >= 4) return true; } return false; }); }
+function sheetText(sheets){ var o = []; (sheets || []).forEach(function(sh){ o.push(String(sh.name || '')); (sh.rows || []).slice(0, 60).forEach(function(r){ var c = (r || []).filter(function(x){ return x != null && String(x).trim() !== ''; }).map(function(x){ return String(x).trim(); }); if(c.length) o.push(c.join('  ')); }); }); return o.join('\n'); }
+I.classifyDocument = function(d){
+  d = d || {}; var kind = d.kind || '', name = String(d.name || ''), pages = d.pages || [], sheets = d.sheets || null, text = pages.length ? pages.map(function(p){ return p.text; }).join('\n') : sheets ? sheetText(sheets) : '';
+  var score = {}, why = {}, add = function(type, w, reason){ score[type] = (score[type] || 0) + w; (why[type] = why[type] || []).push(reason); };
+  CUES.forEach(function(c){ var hay = c[4] === 'name' ? name : text; if(!hay) return; var re = new RegExp(c[1].source, c[1].flags.replace('g', '') + 'g'), n = (hay.match(re) || []).length; if(n) add(c[0], c[2] * (1 + 0.25 * (Math.min(n, 5) - 1)), c[3] + (n > 1 ? ' (x' + n + ')' : '')); });
+  /* spreadsheets and page text also go through the existing, tested Import classifier */
+  var hub = null; if(typeof window.bkImportClassify === 'function' && (sheets || pages.length)){ try { var parsed = sheets ? { kind:kind, sheets:sheets } : { kind:'pdf', sheets:pages.map(function(p){ return { name:'Page ' + p.page, rows:String(p.text).split(/\r?\n/).map(function(l){ return l.split(/\s{2,}|\t/); }) }; }) }; hub = window.bkImportClassify(parsed); } catch(e){ hub = null; } }
+  if(hub){ if(hub.record) add('property_record', 8, 'an assessor property record card'); if(hub.portfolio) add('portfolio_master', 8, 'several properties in one workbook'); if(hub.rentRoll) add('rent_roll', 8, 'unit and rent columns (Import classifier)'); if(hub.statement) add('operating_statement', 4, 'income, expenses and NOI lines (Import classifier)');
+    if(hub.dev && kind !== 'pdf') add('pro_forma', 6, 'development budget and financing content (Import classifier)'); if(hub.listing && kind === 'pdf') add('om', 6, 'listing / offering wording (Import classifier)'); }
+  if(sheets && looksLikePropertyList(sheets)) add('property_list', 9, 'a table with one property per row (address, city, price, size)');
+  if(sheets && repeatedLayout(sheets)) add('portfolio_master', 14, 'several sheets with the same layout: one statement for each property');
+  var imageKind = /^(png|jpeg|gif|webp|tiff|bmp|heic)$/.test(kind), noText = !text.replace(/\s+/g, '').length;
+  var rank = Object.keys(score).map(function(k){ return { type:k, score:Math.round(score[k] * 100) / 100 }; }).sort(function(a, b){ return b.score - a.score; });
+  var out = { type:'unknown', confidence:0, reasons:[], alternatives:rank.slice(1, 4), period:null, property:null, needsOcr:false };
+  if(imageKind){ out.type = 'image'; out.confidence = 0.9; out.reasons = ['an image file: reading it takes text recognition or a model']; out.needsOcr = true; return out; }
+  if(noText && !sheets){ out.reasons = [kind === 'pdf' ? 'no readable text: the pages are images and need text recognition' : 'nothing to read']; out.needsOcr = kind === 'pdf'; if(rank.length && rank[0].score >= 3){ out.type = rank[0].type; out.confidence = 0.35; out.reasons.push('guessed from the file name only: ' + why[rank[0].type].join('; ')); } return out; }
+  var top = rank[0], second = rank[1];
+  if(!top || top.score < 3){ out.reasons = ['no wording or structure matched a known document type']; return out; }
+  /* a rent roll or statement inside an OM does not make the whole file one: when an OM's wording is as strong, the OM wins (the OM reader reads the pages inside it) */
+  if(top.type !== 'om' && score.om && score.om >= top.score * 0.8 && kind === 'pdf') { top = rank.filter(function(r){ return r.type === 'om'; })[0]; second = rank.filter(function(r){ return r.type !== 'om'; })[0]; why.om.push('the OM carries pages of ' + (second ? second.type.replace(/_/g, ' ') : 'detail') + ', and is still one OM'); }
+  var margin = second ? (top.score - second.score) / top.score : 1; out.type = top.type; out.confidence = Math.max(0.2, Math.min(0.98, (0.45 + 0.55 * margin) * (top.score >= 6 ? 1 : 0.75))); out.confidence = Math.round(out.confidence * 100) / 100;
+  out.reasons = why[top.type].slice(); out.alternatives = rank.filter(function(r){ return r.type !== top.type; }).slice(0, 3);
+  out.period = I.detectPeriod(text); out.property = (out.type === 'property_list' || out.type === 'portfolio_master') ? null : I.detectProperty(text);
+  return out;
+};
+})();
+</script>
+
+<script id="bk-ingest-pipeline">/* DOCUMENT INGESTION, pipeline (Phase 2). Each document moves through the same stages, one at a time, and every step is recorded: started, done, skipped, failed (with the reason), retried.
+     intake > classify > read > extract > normalize > validate > reconcile > propose
+   A stage is a function registered by name. In this phase classify, read and validate do real work; extract runs only when a provider is explicitly configured; normalize, reconcile and propose are
+   registered as skipped with the reason, so the machinery (status, retry, resume, audit) is exercised end to end now and the later phases fill in stages without changing it.
+
+     BKIngest.stage(name, fn, { timeoutMs })          fn(ctx, doc) -> Promise<{ status?: 'done' | 'skipped', note?, result?, docPatch? }>; throwing fails the stage
+     BKIngest.run(ctx, { documentIds, until })       runs the pending stages of each document, one document at a time; a failed stage stops that document and leaves the rest pending
+     BKIngest.retry(ctx, docId, stage)               a failed stage goes back to pending (and the stages after it), with an event
+     BKIngest.resume(ctx)                            stages left "running" by a closed or reloaded page are marked failed (interrupted) so they can be retried
+     BKIngest.skip(ctx, docId, stage, reason)        a person skips a stage
+     BKIngest.docStatus(doc)                         rejected | duplicate | failed | processing | complete | pending
+   ctx = { store, blobs, dealId, actor, provider?, onProgress?, cache? } */
+(function(){
+'use strict';
+var I = window.BKIngest = window.BKIngest || {};
+I.stages = I.stages || {};
+I.stage = function(name, fn, opts){ I.stages[name] = { fn:fn, timeoutMs:(opts && opts.timeoutMs) || 120000 }; };
+
+I.docStatus = function(d){
+  if(!d) return 'pending'; if(d.status === 'rejected' || d.status === 'duplicate') return d.status; var s = d.stages || {}, v = I.STAGES.map(function(n){ return (s[n] || {}).status; });
+  if(v.indexOf('failed') >= 0) return 'failed'; if(v.indexOf('running') >= 0) return 'processing'; if(v.every(function(x){ return x === 'done' || x === 'skipped'; })) return 'complete'; return 'pending';
+};
+function ev(ctx, doc, stage, type, detail){ return ctx.store.appendEvent({ dealId:ctx.dealId, documentId:doc.id, stage:stage, type:type, detail:detail || {}, actor:ctx.actor || 'system' }); }
+function patchStage(ctx, id, name, p, docPatch){ return ctx.store.updateDocument(id, function(d){ d.stages[name] = Object.assign({}, d.stages[name], p); if(docPatch) Object.keys(docPatch).forEach(function(k){ d[k] = docPatch[k]; }); return d; }); }
+function withTimeout(promise, ms, label){ var t; return Promise.race([promise, new Promise(function(_, rej){ t = setTimeout(function(){ rej(new Error(label + ' timed out after ' + (ms < 1000 ? ms + ' ms' : Math.round(ms / 1000) + ' s'))); }, ms); })]).then(function(v){ clearTimeout(t); return v; }, function(e){ clearTimeout(t); throw e; }); }
+
+function runStage(ctx, doc, name){
+  var reg = I.stages[name], now = I.clock();
+  if(!reg){ return patchStage(ctx, doc.id, name, { status:'skipped', finishedAt:now, note:'no ' + name + ' stage is registered in this version' }).then(function(d){ return ev(ctx, d, name, 'stage-skipped', { reason:'not registered' }).then(function(){ return d; }); }); }
+  return patchStage(ctx, doc.id, name, { status:'running', startedAt:now, finishedAt:null, error:null, attempts:((doc.stages[name] || {}).attempts || 0) + 1 }).then(function(d){
+    if(ctx.onProgress) try { ctx.onProgress(d, name, 'running'); } catch(e){}
+    return ev(ctx, d, name, 'stage-start', { attempt:d.stages[name].attempts }).then(function(){
+      return withTimeout(Promise.resolve().then(function(){ return reg.fn(ctx, d); }), reg.timeoutMs, name).then(function(r){ r = r || {}; var st = r.status === 'skipped' ? 'skipped' : 'done';
+        return patchStage(ctx, d.id, name, { status:st, finishedAt:I.clock(), note:r.note || '', error:null, result:r.result === undefined ? null : r.result }, r.docPatch).then(function(d2){ return ev(ctx, d2, name, st === 'skipped' ? 'stage-skipped' : 'stage-done', { note:r.note || '', result:r.result === undefined ? null : r.result }).then(function(){ if(ctx.onProgress) try { ctx.onProgress(d2, name, st); } catch(e){} return d2; }); });
+      }, function(err){ var msg = String(err && err.message || err);
+        return patchStage(ctx, d.id, name, { status:'failed', finishedAt:I.clock(), error:msg }).then(function(d2){ return ev(ctx, d2, name, 'stage-failed', { error:msg }).then(function(){ if(ctx.onProgress) try { ctx.onProgress(d2, name, 'failed'); } catch(e){} return d2; }); }); }); }); });
+}
+function runDoc(ctx, doc, until){
+  var names = I.STAGES.slice(1), i = 0;
+  function next(d){
+    if(i >= names.length) return Promise.resolve(d); var n = names[i++], st = d.stages[n] || { status:'pending' };
+    if(st.status === 'done' || st.status === 'skipped') return n === until ? Promise.resolve(d) : next(d);
+    if(st.status === 'failed' || st.status === 'running') return Promise.resolve(d);
+    return runStage(ctx, d, n).then(function(d2){ if(d2.stages[n].status === 'failed' || n === until) return d2; return next(d2); });
+  }
+  return next(doc);
+}
+I.run = function(ctx, opts){
+  opts = opts || {};
+  return ctx.store.listDocuments({ dealId:ctx.dealId }).then(function(docs){
+    var todo = docs.filter(function(d){ return d.status !== 'rejected' && d.status !== 'duplicate' && (!opts.documentIds || opts.documentIds.indexOf(d.id) >= 0); });
+    return todo.reduce(function(p, d){ return p.then(function(acc){ return runDoc(ctx, d, opts.until).then(function(d2){ acc.push({ documentId:d2.id, name:d2.name, status:I.docStatus(d2), stages:I.STAGES.reduce(function(o, n){ o[n] = (d2.stages[n] || {}).status; return o; }, {}) }); return acc; }); }); }, Promise.resolve([]));
+  });
+};
+/* reset a stage, and every stage after it, to pending */
+function reset(ctx, docId, name, why){ var from = I.STAGES.indexOf(name); if(from < 1) return Promise.reject(new Error('Intake cannot be run again; add the file again.'));
+  return ctx.store.updateDocument(docId, function(d){ I.STAGES.slice(from).forEach(function(n){ var s = d.stages[n] || {}; d.stages[n] = { status:'pending', attempts:s.attempts || 0, startedAt:null, finishedAt:null, error:null, note:'' }; }); return d; }).then(function(d){ return ev(ctx, d, name, 'retry', { reason:why }).then(function(){ return d; }); }); }
+I.retry = function(ctx, docId, name){ return ctx.store.getDocument(docId).then(function(d){ if(!d) throw new Error('No such document.'); if(!d.stages[name] || d.stages[name].status !== 'failed') throw new Error('Only a failed stage is retried (this one is ' + ((d.stages[name] || {}).status || 'unknown') + ').'); return reset(ctx, docId, name, 'retry after failure'); }); };
+I.rerun = function(ctx, docId, name){ return reset(ctx, docId, name, 're-run requested'); };
+I.skip = function(ctx, docId, name, reason){ return ctx.store.getDocument(docId).then(function(d){ if(!d) throw new Error('No such document.'); if(!reason) throw new Error('A skipped stage says why.'); return patchStage(ctx, docId, name, { status:'skipped', finishedAt:I.clock(), note:'skipped by a person: ' + reason, error:null }).then(function(d2){ return ev(ctx, d2, name, 'stage-skipped', { reason:reason, by:'person' }).then(function(){ return d2; }); }); }); };
+I.resume = function(ctx){ return ctx.store.listDocuments({ dealId:ctx.dealId }).then(function(docs){ var out = []; return docs.reduce(function(p, d){ return p.then(function(){ var run = I.STAGES.filter(function(n){ return (d.stages[n] || {}).status === 'running'; }); return run.reduce(function(q, n){ return q.then(function(){ return patchStage(ctx, d.id, n, { status:'failed', finishedAt:I.clock(), error:'interrupted: the page was closed or reloaded while this stage ran' }).then(function(d2){ out.push({ documentId:d.id, stage:n }); return ev(ctx, d2, n, 'resume-interrupted', {}); }); }); }, Promise.resolve()); }); }, Promise.resolve()).then(function(){ return out; }); }); };
+
+/* ---------------------------------------------------------------- reading a stored file with the existing readers */
+function getFile(ctx, doc){ return ctx.blobs.get(doc.fileId).then(function(r){ if(!r || !r.blob) throw new Error('The file is no longer stored (it was removed from Deal Documents).'); var b = r.blob; return (typeof File !== 'undefined' && b instanceof File) ? b : new File([b], doc.name, { type:doc.mime || b.type }); }); }
+function lines(rows){ return (rows || []).map(function(r){ return (r || []).filter(function(c){ return c != null && String(c).trim() !== ''; }).map(function(c){ return String(c).trim(); }).join('  '); }).filter(Boolean).join('\n'); }
+I.pagesFromParsed = function(parsed){ return (parsed.sheets || []).map(function(sh, i){ return { page:i + 1, text:lines(sh.rows), source:parsed.kind === 'pdf' ? 'text' : 'sheet', sheet:sh.name || null }; }); };
+var SHEET_KINDS = { xlsx:1, xlsm:1, csv:1, txt:1 };
+function parseWith(ctx, doc){ ctx.cache = ctx.cache || {}; if(ctx.cache[doc.id]) return Promise.resolve(ctx.cache[doc.id]);
+  if(typeof window.bkImportParseFile !== 'function') return Promise.reject(new Error('The file reader is not available.'));
+  return getFile(ctx, doc).then(function(f){ return window.bkImportParseFile(f); }).then(function(parsed){ ctx.cache[doc.id] = parsed; return parsed; }); }
+function unreadable(doc){ if(doc.kind === 'xls') return 'legacy .xls is not read; save it as .xlsx'; if(doc.kind === 'docx' || doc.kind === 'doc') return 'Word documents are read in a later phase'; if(/^(png|jpeg|gif|webp|tiff|bmp|heic)$/.test(doc.kind)) return 'images are read with text recognition in a later phase'; if(doc.kind === 'pptx') return 'PowerPoint files are not read'; return ''; }
+
+/* classify: a peek at the content (sheets, or the text layer of a PDF), never text recognition */
+I.stage('classify', function(ctx, doc){
+  var why = unreadable(doc), peek;
+  if(SHEET_KINDS[doc.kind] || doc.kind === 'pdf') peek = parseWith(ctx, doc).then(function(parsed){ return { parsed:parsed }; }, function(err){ return { error:String(err && err.message || err) }; }); else peek = Promise.resolve({});
+  return peek.then(function(p){
+    var parsed = p.parsed, pages = parsed && parsed.kind === 'pdf' ? I.pagesFromParsed(parsed).filter(function(x){ return x.text.trim(); }) : null, sheets = parsed && parsed.kind !== 'pdf' ? parsed.sheets : null;
+    var c = I.classifyDocument({ name:doc.name, kind:doc.kind, pages:pages, sheets:sheets }), note = c.type + ' (' + Math.round(c.confidence * 100) + '%)' + (p.error ? '; the content could not be peeked: ' + p.error : '') + (why ? '; ' + why : '');
+    return { status:'done', note:note, result:{ type:c.type, confidence:c.confidence, reasons:c.reasons.slice(0, 4), needsOcr:c.needsOcr }, docPatch:{ docType:c.type, classification:{ confidence:c.confidence, reasons:c.reasons, alternatives:c.alternatives, needsOcr:c.needsOcr }, period:c.period, property:c.property, propertyKey:c.property ? c.property.key : null } };
+  });
+}, { timeoutMs:120000 });
+
+/* read: every page or sheet becomes a page record with its text (kept in the store for the stages after); the PDF.js reader (with text recognition for image pages) is used when it can load, the in-app text reader otherwise */
+I.stage('read', function(ctx, doc){
+  var why = unreadable(doc); if(why) return Promise.resolve({ status:'skipped', note:why });
+  var pagesP;
+  if(SHEET_KINDS[doc.kind]) pagesP = parseWith(ctx, doc).then(function(parsed){ return { pages:I.pagesFromParsed(parsed), method:'sheet' }; });
+  else if(doc.kind === 'pdf'){
+    var viaPdfJs = (ctx.allowPdfJs !== false && typeof window.bkOMPageText === 'function') ? getFile(ctx, doc).then(function(f){ return window.bkOMPageText(f); }).then(function(arr){ if(!arr || !arr.length) throw new Error('PDF.js returned no pages'); return { pages:arr.map(function(t, i){ return { page:i + 1, text:String(t || ''), source:'text' }; }), method:'pdfjs' }; }) : Promise.reject(new Error('PDF.js reader not available'));
+    pagesP = viaPdfJs.catch(function(e1){ return parseWith(ctx, doc).then(function(parsed){ return { pages:I.pagesFromParsed(parsed), method:'text-decoder', fallbackFrom:String(e1 && e1.message || e1) }; }); });
+  } else return Promise.resolve({ status:'skipped', note:'nothing to read for a ' + doc.kind + ' file' });
+  return pagesP.then(function(r){
+    var empty = r.pages.filter(function(p){ return !p.text.trim(); }).length;
+    return ctx.store.putPages(doc.id, r.pages).then(function(){
+      var res = { pages:r.pages.length, emptyPages:empty, method:r.method }, patch = { pageCount:r.pages.length };
+      /* a document the peek could not place is placed again from every page */
+      return ctx.store.getDocument(doc.id).then(function(cur){ var c = cur.classification || {}; if(doc.kind === 'pdf' && (!cur.docType || cur.docType === 'unknown' || (c.confidence != null && c.confidence < 0.6))){
+        var cl = I.classifyDocument({ name:doc.name, kind:doc.kind, pages:r.pages.filter(function(p){ return p.text.trim(); }) });
+        if(cl.type !== 'unknown' && cl.confidence > (c.confidence || 0)){ patch.docType = cl.type; patch.classification = { confidence:cl.confidence, reasons:cl.reasons, alternatives:cl.alternatives, needsOcr:cl.needsOcr }; patch.period = cl.period || cur.period; patch.property = cl.property || cur.property; patch.propertyKey = cl.property ? cl.property.key : cur.propertyKey; res.reclassified = cl.type; } }
+        return { status:'done', note:r.pages.length + ' ' + (doc.kind === 'pdf' ? 'page' : 'sheet') + (r.pages.length === 1 ? '' : 's') + ' read (' + r.method + ')' + (empty ? '; ' + empty + ' with no text (needs text recognition)' : '') + (r.fallbackFrom ? '; PDF.js unavailable: ' + r.fallbackFrom : ''), result:res, docPatch:patch }; }); });
+  });
+}, { timeoutMs:900000 });
+
+/* extract: only when a provider has been configured for this run (nothing is sent anywhere otherwise) */
+I.stage('extract', function(ctx, doc){
+  if(!ctx.provider) return Promise.resolve({ status:'skipped', note:'no extraction provider is configured, so nothing is extracted or sent anywhere' });
+  return ctx.store.getPages(doc.id).then(function(pages){ var withText = pages.filter(function(p){ return p.text && p.text.trim(); }); if(!withText.length) return { status:'skipped', note:'no readable text on any page' };
+    return I.extractWith(ctx.provider, { document:doc, pages:withText, schema:I.schemaFor(doc.docType), budget:ctx.budget, dealId:ctx.dealId }).then(function(r){
+      var facts = r.accepted.map(function(f){ return Object.assign({}, f, { dealId:ctx.dealId, documentId:doc.id }); });
+      return ctx.store.putFacts(facts).then(function(){ return { status:'done', note:facts.length + ' fact' + (facts.length === 1 ? '' : 's') + ' extracted' + (r.rejected.length ? ', ' + r.rejected.length + ' rejected' : '') + (r.overBudget ? '; stopped at the budget' : ''), result:{ accepted:facts.length, rejected:r.rejected.length, usage:r.usage, overBudget:!!r.overBudget } }; }); }); });
+}, { timeoutMs:600000 });
+
+['normalize', 'reconcile', 'propose'].forEach(function(n){ var why = { normalize:'units, periods and sign conventions are normalized in the reader phases', reconcile:'cross-document reconciliation is built in a later phase', propose:'proposing values to the model is built in a later phase' }[n]; I.stage(n, function(){ return Promise.resolve({ status:'skipped', note:why }); }); });
+
+/* validate: every fact the document has is checked again here: well formed, and its quoted line must be on the page it names. A fact that fails is marked Low with the reason; none is dropped silently. */
+I.stage('validate', function(ctx, doc){
+  return Promise.all([ctx.store.listFacts({ documentId:doc.id }), ctx.store.getPages(doc.id)]).then(function(r){
+    var facts = r[0], pages = r[1]; if(!facts.length) return { status:'skipped', note:'no facts to validate' };
+    var bad = 0, low = 0; return facts.reduce(function(p, f){ return p.then(function(){
+      var probs = I.validateFact(f), checks = f.checks.filter(function(c){ return !/^(source-page|quote-on-page|raw-in-quote|schema)$/.test(c.id); }).concat(I.checkSource(f, pages)); checks.push({ id:'schema', ok:probs.length === 0, detail:probs.length ? probs.map(function(x){ return x.code; }).join(', ') : 'well formed' });
+      var failed = checks.some(function(c){ return !c.ok; }), next = failed && f.status !== 'missing' && f.status !== 'conflict' ? 'low' : f.status; if(failed) bad++; if(next === 'low' && f.status !== 'low') low++;
+      return ctx.store.updateFact(f.id, { checks:checks, status:next }); }); }, Promise.resolve()).then(function(){ return { status:'done', note:facts.length + ' facts checked; ' + bad + ' failed a check' + (low ? ' (' + low + ' marked Low)' : ''), result:{ facts:facts.length, failed:bad, markedLow:low } }; });
+  });
+});
+})();
+</script>
+
+<script id="bk-ingest-providers">/* DOCUMENT INGESTION, providers (Phase 2). The ingestion never talks to a model directly. It talks to a PROVIDER, an object with one job (read these pages, return facts), so the model behind it can change
+   without rewriting anything, and so tests can use a scripted fake. No real provider is included in this phase: using one is a decision about where documents go (see the architecture assessment).
+
+   A provider: { name, capabilities: { vision, pdf, maxPages }, extract(input) -> Promise<{ facts, usage: { inputTokens, outputTokens, costUsd }, model, promptVersion }> }
+   input: { document, pages: [{ page, text }], schema, budget, dealId }
+
+   BKIngest.extractWith(provider, input) is the ONLY way provider output enters the ingestion, and it does not trust it:
+     - every fact is built into the fact record and validated; one that is malformed is REJECTED with the reasons and kept in the result, never dropped silently
+     - the quoted line must be on the page the fact names, and the printed value must be in the quote; a fact that fails is kept but marked Low
+     - a provider cannot grant its own Verified status: that is capped at Check (only our own checks and cross-document agreement can verify)
+     - cost is counted against a budget; once it is spent, no further calls are made
+   BKIngest.schemaFor(docType) -> { docType, fields: [{ field, label, kind }], allowExtra: true } from the field registry (the single list of what the model can receive). */
+(function(){
+'use strict';
+var I = window.BKIngest = window.BKIngest || {};
+
+I.providers = { _p:{}, register:function(name, p){ if(!p || typeof p.extract !== 'function') throw new Error('A provider has an extract() function.'); this._p[name] = p; return p; }, get:function(name){ return this._p[name] || null; }, list:function(){ return Object.keys(this._p); }, unregister:function(name){ delete this._p[name]; } };
+
+I.schemaFor = function(docType){
+  var reg = (window.BKReg && window.BKReg._raw && window.BKReg._raw.fields) || {}, fields = Object.keys(reg).filter(function(k){ var f = reg[k]; return f && f.kind !== 'table' && f.kind !== 'derived' && k[0] !== '_'; }).map(function(k){ return { field:k, label:reg[k].label, kind:reg[k].kind }; });
+  return { docType:docType || 'unknown', fields:fields, allowExtra:true };
+};
+
+function pagesMap(pages){ var m = {}; (pages || []).forEach(function(p){ m[p.page] = p.text; }); return m; }
+I.extractWith = function(provider, input){
+  input = input || {}; var budget = input.budget || null, doc = input.document || {}, out = { accepted:[], rejected:[], usage:{ inputTokens:0, outputTokens:0, costUsd:0 }, model:null, promptVersion:null, overBudget:false };
+  if(budget && budget.maxUsd != null && (budget.spentUsd || 0) >= budget.maxUsd){ out.overBudget = true; return Promise.resolve(out); }
+  return Promise.resolve().then(function(){ return provider.extract({ document:doc, pages:input.pages || [], schema:input.schema || I.schemaFor(doc.docType), budget:budget, dealId:input.dealId }); }).then(function(res){
+    res = res || {}; var u = res.usage || {}; out.usage = { inputTokens:+u.inputTokens || 0, outputTokens:+u.outputTokens || 0, costUsd:+u.costUsd || 0 }; out.model = res.model || null; out.promptVersion = res.promptVersion || null;
+    if(budget){ budget.spentUsd = (budget.spentUsd || 0) + out.usage.costUsd; if(budget.maxUsd != null && budget.spentUsd > budget.maxUsd) out.overBudget = true; }
+    if(!Array.isArray(res.facts)){ out.rejected.push({ fact:null, problems:[{ code:'provider-returned-no-facts', message:'The provider returned no list of facts.' }] }); return out; }
+    var by = pagesMap(input.pages), seen = {};
+    res.facts.forEach(function(raw){
+      var f = I.makeFact(Object.assign({}, raw, { dealId:input.dealId != null ? input.dealId : raw && raw.dealId, documentId:doc.id != null ? doc.id : raw && raw.documentId, model:(raw && raw.model) || res.model || null, extractor:(raw && raw.extractor) || (provider.name || 'provider') + (res.promptVersion ? '@' + res.promptVersion : '') }));
+      if(f.source && doc.id != null && f.source.documentId == null) f.source = Object.assign({}, f.source, { documentId:doc.id });
+      var probs = I.validateFact(f); if(probs.length){ out.rejected.push({ fact:raw, problems:probs }); return; }
+      var k = [f.field, f.value, f.source && f.source.page, f.source && f.source.quote].join('|'); if(seen[k]) return; seen[k] = 1;
+      if(f.status === 'verified') { f.status = 'check'; f.checks.push({ id:'status-capped', ok:true, detail:'a provider cannot mark its own output Verified; it is Check until our checks or another document agree' }); }
+      var checks = I.checkSource(f, by); checks.forEach(function(c){ f.checks.push(c); });
+      if(checks.some(function(c){ return !c.ok; }) && f.status !== 'missing'){ f.status = 'low'; }
+      out.accepted.push(f); });
+    return out; });
+};
+
+/* a scripted provider for tests and rehearsals: script is { facts: [...] } or a function(input) -> { facts, usage?, model? }; every call is recorded in .calls */
+I.providers.fake = function(script, opts){
+  opts = opts || {}; var p = { name:opts.name || 'fake', capabilities:{ vision:false, pdf:false, maxPages:opts.maxPages || 200 }, calls:[],
+    extract:function(input){ p.calls.push({ document:input.document && input.document.id, pages:(input.pages || []).map(function(x){ return x.page; }), schemaFields:(input.schema && input.schema.fields || []).length });
+      if(opts.fail) return Promise.reject(new Error(opts.fail)); var r = typeof script === 'function' ? script(input) : script; r = r || { facts:[] };
+      var chars = (input.pages || []).reduce(function(n, x){ return n + (x.text || '').length; }, 0), usage = r.usage || { inputTokens:Math.ceil(chars / 4), outputTokens:(r.facts || []).length * 60, costUsd:opts.costUsd == null ? 0.01 : opts.costUsd };
+      return Promise.resolve({ facts:r.facts, usage:usage, model:r.model || 'fake-model', promptVersion:r.promptVersion || 'fake-1' }); } };
+  return p;
+};
+})();
+</script>
 <script id="bk-funding-summary">/* One calculation of the funding picture, read by every page that shows it (Sources & Uses, the guided Step-by-Step Guide, the Home tie indicator, the tests).
    It adds no input and recomputes no engine result: every figure is read from bkDebt / bkDevTakeoutV11 (funding) / bkMonthlyReturns / bkWaterfallV07,
    and the ties compare those engines with each other.
