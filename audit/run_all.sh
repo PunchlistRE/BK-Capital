@@ -24,6 +24,7 @@ echo "== editor engine support (growth curves, miscellaneous income, capital ite
 echo "== property editor (7 tabs, 31 sub-tabs, writes and conversions)"; node audit/editor_test.js index.html | tail -2
 echo "== Field widths (one width per kind of value box on every Property Editor page: percents as percents, dollars as dollars, text, choices; grids as wide as their boxes; typing keeps a box's width)"; node audit/field_widths_test.js index.html | grep -v '^PASS'
 echo "== Inflation by year (entered and inherited years look different, an Average column, taxes from year 2; a development deal offers only what its engine reads, proved by moving the rates)"; node audit/inflation_test.js index.html | grep -v '^PASS'
+echo "== Header second row (the section's pages as tabs: the shape of the section tabs, lighter; the open page marked; readable in both themes; nothing cut off on a phone)"; node audit/subtabs_test.js index.html | grep -v '^PASS'
 echo "== reports (cash flow, valuation, tenant, audit; reconcile to the engine)"; node audit/reports_test.js index.html | tail -2
 echo "== Mixed-use properties (residential and commercial units with the total, the commercial area, commercial market rent beside residential; no engine figure moves)"; node audit/units_test.js index.html | grep -v '^PASS'
 echo "== commercial lease model (rollover branches, recoveries, TI/LC, editor, reports)"; node audit/lease_test.js index.html | tail -2

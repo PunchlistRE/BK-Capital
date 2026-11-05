@@ -285,3 +285,16 @@ html body #viewport#viewport table.fin input.gx-l, html body #viewport#viewport 
 html body #viewport#viewport table.fin thead th.gx-lh{ text-align:left !important; }
 /* the month and percent boxes take the room they need, not the width a number box would like (it is what made every column of the task table 230px wide) */
 html body #viewport#viewport table.fin input.gx-n{ max-width:84px !important; }
+
+/* HEADER, SECOND ROW: the section's pages as tabs, the same shape as the section tabs above them (rounded top corners, a border, no bottom edge) but light. Inactive pages are pale slate; the open page is white with the accent edge across its top and no line under it, so it joins the page below. Colour only and shape: the same buttons, the same order, the same names. */
+html body .bk-ribbon{ background:var(--ae-cell); padding:6px 12px 0; gap:12px; }
+html body .bk-ribbon .rb-tabs{ align-items:flex-end; gap:2px; row-gap:2px; }
+html body .bk-ribbon .rb-t{ border:1px solid var(--ae-line); border-bottom:0; border-radius:3px 3px 0 0 !important; background:var(--ae-tab); color:var(--ae-ink); opacity:1; margin-bottom:-1px; padding:0 12px; line-height:30px; font-size:12.5px; font-weight:500; }
+html body .bk-ribbon .rb-t + .rb-t::before{ content:none; }
+html body .bk-ribbon .rb-t:hover{ background:var(--ae-sel); border-color:var(--ae-line); }
+html body .bk-ribbon .rb-t.on{ position:relative; z-index:1; background:var(--ae-tab-on); border:1px solid var(--ae-line); border-top:2px solid var(--ae-accent); border-bottom:1px solid var(--ae-tab-on); line-height:29px; font-weight:650; color:var(--bk-navy); }
+html body .bk-ribbon .rb-sep{ height:18px; width:1px; flex-basis:1px; background:var(--ae-line); opacity:1; margin:0 8px; align-self:center; }
+html body .bk-ribbon .rb-cmds{ align-self:center; min-height:0; padding-bottom:4px; }
+html[data-theme="dark"] body .bk-ribbon .rb-t.on{ border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); color:#9fcdf5 !important; }
+@media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on{ border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); color:#9fcdf5 !important; } }
+@media (min-width:1200px){ html body .bk-ribbon .rb-t{ padding:0 12px; } }
