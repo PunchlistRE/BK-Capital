@@ -85,6 +85,54 @@ try{
   }
   var HEAD5 = function(first){ return '<tr><th class="rowlabel-h">'+first+'</th><th class="v">Total ($)</th><th class="v">$/unit</th><th class="v">$/SF</th><th class="v">% of Uses</th></tr>'; };
 
+  /* ---------- the four capital measures, laid out once for both deal types (the calculation is bkFundingSummary().measures, src/184; BK_CAPITAL_TERMS names them) ----------
+     Four different questions with four different numbers. They are reconciled to the cash flows they are made of and never forced to equal one another. */
+  function capTables(F){
+    var m = F.measures; if(!m) return '';
+    var M = function(v){ v = Math.round(Number(v) || 0); return (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US'); };   /* whole dollars, in the text as in the cells */
+    var T = window.BK_CAPITAL_TERMS || {}, nm = function(k, d){ return (T[k] && T[k].name) || d; }, dev = !!F.dev;
+    var ce = m.closingEquity, tc = m.totalContributedEquity, oc = m.operatingCashRequirement, tp = m.totalProjectCapitalization, cl = nm('closingEquity', 'Closing equity'), ct = nm('totalContributedEquity', 'Total contributed equity'), co = nm('operatingCashRequirement', 'Operating cash requirement'), cp = nm('totalProjectCapitalization', 'Total project capitalization');
+    var mo = function(a, b){ return !a ? '' : (b && b !== a ? 'months ' + a + ' to ' + b : 'month ' + a); };
+    var good = function(ids){ return !(F.ties || []).some(function(t){ return ids.indexOf(t.id) >= 0 && !t.ok; }); };
+    var st = function(ids){ var g = good(ids); return '<td>' + CR.chip(g ? 'pass' : 'fail', g ? 'TIES' : 'VARIANCE') + '</td>'; };
+    var x = F.x || {}, months = x.months || [], span = function(k){ var q = months.filter(function(z){ return (Number(z[k]) || 0) > 0.5; }); return q.length ? mo(q[0].mo, q[q.length - 1].mo) : ''; };
+    var who = function(lp, gp){ return CR.val(M(lp)) + CR.val(M(gp)); };
+    /* 1. the four measures, each with the question it answers and what it reconciles to */
+    var t1 = CR.table('Capital Measures - four different questions, four different numbers', '<tr><th class="rowlabel-h">Measure</th><th class="v">Amount</th><th style="text-align:left">The question it answers</th><th style="text-align:left">What it reconciles to</th><th>Status</th></tr>',
+        '<tr>' + CR.lbl(cl) + CR.val(M(ce.amount)) + CR.txt(dev ? 'Equity required at closing: the equity in Sources &amp; Uses, called from closing through the funding schedule (' + mo(ce.from, ce.to) + (ce.month1 ? '; ' + M(ce.month1) + ' in month 1' : '') + ').' : 'Equity required at closing: price, closing costs, fees and any rate cap premium, less the loan.')
+          + CR.txt(dev ? 'The equity lines of Sources &amp; Uses, the funding engine\'s closing equity and the equity drawn in the returns cash flow.' : 'Total uses at closing less the acquisition loan.') + st(dev ? ['eqEngine', 'eqReturns'] : ['su']) + '</tr>'
+      + '<tr>' + CR.lbl(ct) + CR.val(M(tc.amount)) + CR.txt('All GP and LP capital actually contributed over the hold: ' + cl.toLowerCase() + ' plus every capital call after closing.')
+          + CR.txt(M(ce.amount) + ' ' + cl.toLowerCase() + ' + ' + M(m.callsTotal) + ' called after closing. The waterfall\'s LP ' + M(tc.lp) + ' + GP ' + M(tc.gp) + ' contributions.') + st(['capContrib', 'wfReturns']) + '</tr>'
+      + '<tr>' + CR.lbl(co) + CR.val(M(oc.amount)) + CR.txt('Interim cash needed to cover operating shortfalls before operating cash flow arrives' + (oc.months ? ' (' + mo(oc.from, oc.to) + ')' : '') + ', and who funds it.')
+          + CR.txt((dev ? M(oc.inFunding) + ' funded in Sources &amp; Uses (the net lease-up deficit) + ' : 'Nothing is funded in Sources &amp; Uses; ') + M(oc.afterFunding) + ' after closing' + (dev ? ': ' + M(oc.byPartners) + ' called from the partners' + (oc.byReserve > 0.5 ? ', ' + M(oc.byReserve) + ' from the operating reserve' : '') + (oc.nettedFromDistributions > 0.5 ? ', ' + M(oc.nettedFromDistributions) + ' netted against later distributions' : '') + '.' : ' from the partners (operating and capital shortfalls).')) + (dev ? st(['capOperating']) : '<td></td>') + '</tr>'
+      + '<tr>' + CR.lbl(cp) + CR.val(M(tp.amount)) + CR.txt('All sources of capital over the investment life: the closing sources plus every capital call after closing.')
+          + CR.txt(M(tp.closingSources) + ' closing sources + ' + M(tp.laterCalls) + ' called after closing = ' + M(tp.debt) + ' ' + (dev ? 'construction facility' : 'loan') + (tp.reserves > 0.5 ? ' + ' + M(tp.reserves) + ' reserves drawn' : '') + ' + ' + M(tp.contributedEquity) + ' ' + ct.toLowerCase() + '.') + st(['capTotal']) + '</tr>');
+    /* 2. when each dollar is needed and who supplies it */
+    var rows = '<tr>' + CR.lbl(dev ? 'Construction facility (draws + capitalized interest)' : 'Acquisition loan') + CR.val(M(F.loan)) + CR.txt(dev ? span('loanDraw') : mo(1, 1)) + CR.val('') + CR.val('') + CR.txt('Lender') + '</tr>';
+    if(dev && F.reserveDraws > 0.5) rows += '<tr>' + CR.lbl('Initial reserves drawn') + CR.val(M(F.reserveDraws)) + CR.txt(span('resLease') || span('resInt')) + CR.val('') + CR.val('') + CR.txt('Reserves funded at closing') + '</tr>';
+    rows += '<tr>' + CR.lbl(cl) + CR.val(M(ce.amount)) + CR.txt(mo(ce.from, ce.to)) + who(F.lpEquity, F.gpEquity) + CR.txt('Partners (LP and GP)') + '</tr>'
+          + '<tr class="grandtotal">' + CR.lbl('Closing sources (total sources in Sources &amp; Uses)') + CR.val(M(tp.closingSources)) + CR.txt('') + CR.val('') + CR.val('') + CR.txt('') + '</tr>';
+    var lpC = 0, gpC = 0;
+    (m.calls || []).forEach(function(c){ lpC += c.lp; gpC += c.gp;
+      var note = c.kind === 'takeout' ? (F.takeoutShortfall > 1 ? 'The permanent loan ' + M(x.permLoan) + ' is short of the facility payoff ' + M(x.conPayoff) + ' plus the permanent fee ' + M(x.permFee) + '.' : '')
+        : c.kind === 'operating' ? (dev ? 'Operating shortfall outside the funding schedule' + (oc.byReserve > 0.5 ? '; a further ' + M(oc.byReserve) + ' was covered by the operating reserve' : '') + (oc.nettedFromDistributions > 0.5 ? '; ' + M(oc.nettedFromDistributions) + ' more was netted against later distributions (an operating-reserve draw repaid from a month with surplus cash)' : '') + '.' : 'Operating and capital shortfalls after closing.')
+        : c.kind === 'refinance' ? 'The refinance loan does not repay the old loan and its fee.' : c.kind === 'balloon' ? 'The loan matures without a refinance.' : '';
+      rows += '<tr>' + CR.lbl(c.name) + CR.val(M(c.amount)) + CR.txt(mo(c.from, c.to)) + who(c.lp, c.gp) + CR.txt('Partners (LP and GP)' + (note ? '. ' + note : '')) + '</tr>'; });
+    if(!(m.calls || []).length) rows += '<tr>' + CR.lbl('Capital called after closing') + CR.val(M(0)) + CR.txt('None') + CR.val('') + CR.val('') + CR.txt('No capital is called after closing, so ' + cp.toLowerCase() + ' equals the closing sources.') + '</tr>';
+    else rows += '<tr class="grandtotal">' + CR.lbl('Capital called after closing') + CR.val(M(m.callsTotal)) + CR.txt('') + who(lpC, gpC) + CR.txt('') + '</tr>';
+    rows += '<tr class="grandtotal">' + CR.lbl(cp.toUpperCase()) + CR.val(M(tp.amount)) + CR.txt('') + CR.val('') + CR.val('') + CR.txt('') + '</tr>'
+          + '<tr>' + CR.lbl('of which ' + ct.toLowerCase()) + CR.val(M(tc.amount)) + CR.txt('Closing equity plus the capital called after closing') + who(tc.lp, tc.gp) + CR.txt('Included in the levered IRR, the equity multiple and the waterfall') + '</tr>';
+    var t2 = CR.table('Capitalization Over the Life of the Deal - when each dollar is needed and who supplies it', '<tr><th class="rowlabel-h">Source of capital</th><th class="v">Amount</th><th style="text-align:left">When</th><th class="v">LP</th><th class="v">GP</th><th style="text-align:left">Supplied by</th></tr>', rows);
+    /* 3. the operating cash requirement: the net view the funding schedule carries and the peak view the partners supply */
+    var t3 = '';
+    if(dev && (oc.amount > 0.5 || oc.leaseUpMonths)) t3 = CR.table(co + ' - the net view in the funding schedule and the peak view the partners supply', '<tr><th class="rowlabel-h">View</th><th class="v">Amount</th><th style="text-align:left">What it means</th></tr>',
+        '<tr>' + CR.lbl('Net lease-up deficit funded in Sources &amp; Uses') + CR.val(M(oc.inFunding)) + CR.txt('The lease-up result after later income offsets the early losses: the ' + oc.leaseUpMonths + ' lease-up months lose ' + M(-oc.leaseUpLoss) + ' and then earn ' + M(oc.leaseUpGain) + ' (net ' + (oc.leaseUpNet >= 0 ? '+' : '-') + M(Math.abs(oc.leaseUpNet)) + '). This is the deficit the funding schedule carries. It is not raised to the peak.') + '</tr>'
+      + '<tr>' + CR.lbl('Interim operating cash required after closing') + CR.val(M(oc.afterFunding)) + CR.txt('The unfunded interim requirement' + (oc.months ? ' (' + mo(oc.from, oc.to) + ')' : '') + ': cash the partners' + (oc.byReserve > 0.5 ? ' and the operating reserve' : '') + ' must supply as shortfalls fall, before operating cash flow arrives. It is outside Sources &amp; Uses: funding the peak there would change the timing and amount of contributed capital, and with it the returns and the waterfall. It is included in ' + ct.toLowerCase() + '.') + '</tr>'
+      + '<tr>' + CR.lbl('Funded by') + CR.val('') + CR.txt((oc.byReserve > 0.5 ? 'Operating reserve ' + M(oc.byReserve) + '; ' : '') + (oc.nettedFromDistributions > 0.5 ? 'Netted against later distributions ' + M(oc.nettedFromDistributions) + '; ' : '') + 'Partners ' + M(oc.byPartners) + ' (LP ' + M(oc.lp) + ', GP ' + M(oc.gp) + ').') + '</tr>'
+      + '<tr>' + CR.lbl('Peak cumulative operating cash deficit outside the funding schedule') + CR.val(M(oc.peakCumulative)) + CR.txt('The most cash outstanding at any month before later operating cash flow repays it.') + '</tr>');
+    return t1 + t2 + t3;
+  }
+
   /* ---------- development ---------- */
   CR.wrapDev('Sources & Uses', function(o){
     var q = CR.state(), x = q.x, s = q.s, r = q.r;
@@ -112,45 +160,35 @@ try{
       + '<tr>'+CR.lbl('Facility balance (principal plus capitalized interest) does not exceed the permitted ceiling')+CR.val(M(facility))
         + CR.txt(F.ceiling > (Number(F.commit)||0)+1 ? 'Ceiling '+M(F.ceiling)+', above the committed amount '+M(F.commit)+': interest may capitalize up to the ceiling' : 'No separate ceiling: the balance is limited to the committed amount '+M(F.commit))
         + chip2(tieOk('ceiling'),'WITHIN CEILING','OVER CEILING')+'</tr>'
-      + '<tr>'+CR.lbl('Equity per Sources equals the engine Total Equity Requirement')+CR.val(M(equity))+CR.txt('Engine total equity requirement '+M(x.equityTotal))+chip2(tieOk('eqEngine'),'TIES','VARIANCE')+'</tr>'
-      + '<tr>'+CR.lbl('Equity charged in the monthly returns cash flow')+CR.val(M(retEq))+CR.txt('Sum of monthly equity draws used by the Returns page')+'<td></td></tr>'
-      + '<tr>'+CR.lbl('Equity per Sources less equity charged in returns')+CR.val(M(eqVsRet))
+      + '<tr>'+CR.lbl('Closing equity per Sources equals the funding engine\'s closing equity')+CR.val(M(equity))+CR.txt('Funding engine closing equity '+M(x.equityTotal))+chip2(tieOk('eqEngine'),'TIES','VARIANCE')+'</tr>'
+      + '<tr>'+CR.lbl('Equity drawn in the monthly returns cash flow')+CR.val(M(retEq))+CR.txt('Sum of the monthly equity draws used by the Returns page (excludes capital called after closing)')+'<td></td></tr>'
+      + '<tr>'+CR.lbl('Closing equity per Sources less equity drawn in the returns')+CR.val(M(eqVsRet))
         + CR.txt(tieOk('eqReturns') ? 'Equity in the funding schedule and in the returns cash flow agree' : 'The funding schedule and the returns cash flow charge different equity - review.')
         + chip2(tieOk('eqReturns'),'AGREES','REVIEW')+'</tr>'
       + '<tr>'+CR.lbl('Figures belong to the active deal')+CR.val(CR.esc(s.dealId||'-')+' - '+CR.esc(s.name||''))+CR.txt('Guards against stale cached values')+'<td>'+CR.chip(s.dealId?'pass':'warn', s.dealId?'PASS':'NO DEAL ID')+'</td></tr>');
-    /* the returns charge the partners more than the funding schedule does; each added item is read from its own engine and the total is tied, not left as a remainder */
-    var tk = F.x || {}, hold = Number(tk.hold)||0, stabMo = Number(tk.stab)||0;
-    var takeTxt = !Number(s.refiAtStab||0) ? 'No permanent takeout is assumed.'
-      : !F.takeoutInHold ? 'Not called: the hold ends in month '+hold+', before stabilization in month '+stabMo+', so the sale repays the facility. At stabilization the permanent loan would be '+M(F.takeoutShortfall)+' short of the facility payoff and fee.'
-      : F.takeoutShortfall > 1 ? 'The permanent loan '+M(tk.permLoan)+' is short of the facility payoff '+M(tk.conPayoff)+' plus the permanent fee '+M(tk.permFee)+'; the partners fund the difference in month '+stabMo+'.'
-      : 'The permanent loan repays the facility and the fee; no equity is called at takeout.';
-    var opTxt = F.operatingShortfall > 0.5 ? 'Net operating loss in lease-up months '+F.operatingShortfallFrom+' to '+F.operatingShortfallTo+' (negative NOI, asset fee or leasing capital before the building earns), funded by the partners as it falls. The funding schedule carries only the net cumulative lease-up deficit ('+M(tk.leaseDef)+'), so this is outside Sources &amp; Uses.' : 'None: no month has an operating shortfall after the operating reserve.';
-    var after = CR.table('Capital Called After Funding - in the returns, outside Sources &amp; Uses','<tr><th class="rowlabel-h">Item</th><th>Amount</th><th style="text-align:left">Basis</th><th>Status</th></tr>',
-        '<tr>'+CR.lbl('Equity at funding (Sources &amp; Uses)')+CR.val(M(equity))+CR.txt('Equity-first funding, cost overflow and interest after any reserve')+'<td></td></tr>'
-      + '<tr>'+CR.lbl('Takeout equity')+CR.val(M(F.takeoutEquity))+CR.txt(takeTxt)+chip2(tieOk('takeout'),'TIES TO LOAN SIZING','VARIANCE')+'</tr>'
-      + '<tr>'+CR.lbl('Lease-up operating shortfall')+CR.val(M(F.operatingShortfall))+CR.txt(opTxt)+'<td></td></tr>'
-      + '<tr class="grandtotal">'+CR.lbl('Equity contributed in the returns')+CR.val(M(F.contributed))+CR.txt('Equity at funding + takeout equity + lease-up operating shortfall = '+M(equity+F.takeoutEquity+F.operatingShortfall))+chip2(tieOk('contrib'),'TIES','VARIANCE')+'</tr>');
     var caps = CR.table('Capitalization Metrics','<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
         '<tr>'+CR.lbl('Construction Facility Commitment')+CR.val(M(x.commit))+CR.txt('Sized commitment')+'</tr>'
       + '<tr>'+CR.lbl('Facility Funded to Total Uses')+CR.val(totalUses?pct(facility/totalUses):'-')+CR.txt('Facility draws + capitalized interest &divide; total uses')+'</tr>'
-      + '<tr>'+CR.lbl('Equity as % of Total Uses')+CR.val(totalUses?pct(equity/totalUses):'-')+CR.txt('Equity funded &divide; total uses')+'</tr>'
-      + '<tr>'+CR.lbl('Peak Equity Requirement')+CR.val(M(equity))+CR.txt('Total equity funded through the facility close-out')+'</tr>'
+      + '<tr>'+CR.lbl('Closing equity as % of Total Uses')+CR.val(totalUses?pct(equity/totalUses):'-')+CR.txt('Closing equity &divide; total uses')+'</tr>'
+      + '<tr>'+CR.lbl('Closing equity')+CR.val(M(equity))+CR.txt('Equity in Sources &amp; Uses, called through the funding schedule')+'</tr>'
       + '<tr>'+CR.lbl('Facility per Unit')+CR.val(units?M(facility/units):'-')+CR.txt(units?intf(units)+' units':'No unit count')+'</tr>'
       + '<tr>'+CR.lbl('Facility per SF')+CR.val(gsf?M(facility/gsf):'-')+CR.txt(gsf?intf(gsf)+' GSF':'No GSF')+'</tr>');
     var perUse = CR.table('Uses - total, per unit, per SF, and as a share', HEAD5('Use'),
         uses.map(function(u){ return r5(u[0],u[1],totalUses,units,gsf); }).join('') + r5('TOTAL USES',totalUses,totalUses,units,gsf,'grandtotal'));
     var perSrc = CR.table('Sources - total, per unit, per SF, and as a share', HEAD5('Source'),
         srcs.map(function(u){ return r5(u[0],u[1],totalUses,units,gsf); }).join('') + r5('TOTAL SOURCES',totalSrc,totalUses,units,gsf,'grandtotal'));
-    o.main = main + checks + after + caps + perUse + perSrc;
+    o.main = main + checks + capTables(F) + caps + perUse + perSrc;
     o.meta = {Property:s.name,'Total Uses':intf(totalUses),Currency:'USD'};
     if(typeof sidebarShell==='function'){
-      o.sidebar = sidebarShell('<div class="card"><div class="card-head">S&amp;U Check</div><div class="metric-list"><div class="metric-row"><span class="k">Total Uses</span><span class="v">'+M(totalUses)+'</span></div><div class="metric-row"><span class="k">Total Sources</span><span class="v">'+M(totalSrc)+'</span></div><div class="metric-row"><span class="k">Facility / Equity</span><span class="v">'+M(facility)+' / '+M(equity)+'</span></div></div></div>'
+      o.sidebar = sidebarShell('<div class="card"><div class="card-head">S&amp;U Check</div><div class="metric-list"><div class="metric-row"><span class="k">Total Uses</span><span class="v">'+M(totalUses)+'</span></div><div class="metric-row"><span class="k">Total Sources</span><span class="v">'+M(totalSrc)+'</span></div><div class="metric-row"><span class="k">Facility / Closing equity</span><span class="v">'+M(facility)+' / '+M(equity)+'</span></div></div></div>'
         + (typeof modelInfoCard==='function' ? modelInfoCard('<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>') : '')
         + (typeof colorKeyCard==='function' ? colorKeyCard() : ''));
     }
   });
 
-  /* ---------- acquisition table 3 (only when a rate-cap premium or post-closing equity exists) ---------- */
+  /* ---------- acquisition: two different views, never forced to equal one another ----------
+     Closing Sources & Uses = the capital and debt required at closing (the rate cap premium included). Total project capitalization = the closing sources plus every capital call after closing (refinance shortfall, balloon equity,
+     operating cash requirement). Both are legitimate, so the page shows the closing tables with closing totals, then the calls as separate rows, then the total capitalization (capTables). */
   (function(){
     if(typeof RENDERERS==='undefined' || typeof RENDERERS['Sources & Uses']!=='function') return;
     var prev = RENDERERS['Sources & Uses'];
@@ -161,24 +199,14 @@ try{
         var s = bkLoad(); if(CR.isDevSnap(s)) return o;
         var m = String(o && o.main || ''); var iu = m.indexOf('<caption>Uses - total, per unit, per SF'), is = m.indexOf('<caption>Sources - total, per unit, per SF');
         if(iu<0 || is<0) return o;
-        var F = bkFundingSummary(), d = F.d, cap = Number(s.rateCapCost)||0, closingEq = F.equity;   /* shared funding calculation (src/184) */
-        var lp = F.lp || null, gp = F.gp || null;
-        if(lp===null || gp===null){ var share = Number(s.gpShare); if(!isFinite(share)) share = 0.5; gp = closingEq*share; lp = closingEq-gp; }
-        var post = (lp+gp) - closingEq;
-        if(!(cap>0) && !(Math.abs(post)>=1)) return o;                     // nothing to add: page stays byte-identical
-        var units = Number(s.units)||0, gsf = Number(s.gsf)||0, price = Number(s.purchasePrice)||0, closing = price*Number(s.closingCostsPct||0);
-        var acqFee = price*(typeof bkAcqFeePct==='function' ? bkAcqFeePct(s) : Number(s.acqFeePct||0));
-        var uses = [['Purchase Price',price],['Closing / Diligence Costs',closing],['Acquisition Fee',acqFee],['Loan Origination Fee',Number(d.fee)||0]];
-        if(cap>0) uses.push(['Rate Cap Premium (funded as Month-1 equity)', cap]);
-        if(post>=1) uses.push(['Post-Closing Capital Funded by Equity (balloon equity / refinance shortfall / operating shortfalls)', post]);
-        var tu = uses.reduce(function(t,u){ return t+u[1]; },0);
-        var srcs = [['Acquisition Loan',Number(d.loan)||0],['LP Equity',lp],['GP Equity',gp]];
-        var ts = srcs.reduce(function(t,u){ return t+u[1]; },0);
-        var tU = CR.table('Uses - total, per unit, per SF, and as a share', HEAD5('Use'), uses.map(function(u){ return r5(u[0],u[1],tu,units,gsf); }).join('') + r5('TOTAL USES',tu,tu,units,gsf,'grandtotal'));
-        var tS = CR.table('Sources - total, per unit, per SF, and as a share', HEAD5('Source'), srcs.map(function(u){ return r5(u[0],u[1],tu,units,gsf); }).join('') + r5('TOTAL SOURCES',ts,tu,units,gsf,'grandtotal'));
+        var F = bkFundingSummary();   /* shared funding calculation (src/184) */
+        var units = Number(s.units)||0, gsf = Number(s.gsf)||0, uses = F.uses, tu = F.totalUses;
+        var srcs = [['Acquisition Loan',F.loan],['LP Equity (closing)',F.lpEquity],['GP Equity (closing)',F.gpEquity]], ts = F.totalSources;
+        var tU = CR.table('Uses at closing - total, per unit, per SF, and as a share', HEAD5('Use'), uses.map(function(u){ return r5(u[0],u[1],tu,units,gsf); }).join('') + r5('TOTAL USES AT CLOSING',tu,tu,units,gsf,'grandtotal'));
+        var tS = CR.table('Sources at closing - total, per unit, per SF, and as a share', HEAD5('Source'), srcs.map(function(u){ return r5(u[0],u[1],tu,units,gsf); }).join('') + r5('TOTAL SOURCES AT CLOSING',ts,tu,units,gsf,'grandtotal'));
         var a = m.lastIndexOf('<div class="tbl-wrap"', iu), b0 = m.indexOf('</table></div>', is) + 14;
         if(a<0 || b0<14) return o;
-        o.main = m.slice(0,a) + tU + tS + m.slice(b0);
+        o.main = m.slice(0,a) + tU + tS + capTables(F) + m.slice(b0);
       }catch(e){ if(CR.errors.indexOf('P-C2 acq: '+e.message)<0) CR.errors.push('P-C2 acq: '+e.message); }
       return o;
     };
@@ -470,6 +498,11 @@ try{
     var m = String(o.main||''), j = CR.splitBefore(m,'Construction Facility Sizing');
     if(j<0) throw new Error('F17: development block not found on Debt page');
     o.main = m.slice(j) + CR.details(SUM, m.slice(0,j));
+    /* the sidebar summarises the debt this deal actually has (the construction facility and the takeout), with the closing equity by its name - not the acquisition loan sized off the land price */
+    if(typeof sidebarShell==='function'){ try{ var t = bkDevTakeoutV11(), F = bkFundingSummary(), D = function(v){ return '$'+bkFmt(Number(v)||0); }, kv = function(k,v){ return '<div class="metric-row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; };
+      o.sidebar = sidebarShell('<div class="card"><div class="card-head">Development Debt Summary</div><div class="metric-list">'
+        + kv('Construction Commitment', D(t.commit)) + kv('Capitalized Interest', D(t.actualCapInt)) + kv('Permanent Loan', t.conHeldToSale ? 'None' : D(t.permLoan)) + kv('Construction Balance at Takeout', D(t.conPayoff))
+        + kv('Takeout Equity', D(F.takeoutEquity)) + kv('Closing equity', D(F.equity)) + '</div></div>' + (typeof colorKeyCard==='function' ? colorKeyCard() : '')); }catch(e){} }
   });
   CR.wrapDev('Debt Schedule', function(o){
     var m = String(o.main||''), j = CR.splitBefore(m,'Construction Facility Schedule');

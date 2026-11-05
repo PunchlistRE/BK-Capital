@@ -352,7 +352,7 @@ extend('Portfolio Dashboard','w2cDashYield', function(o){
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
       '<tr>'+lbl('Year 1 Combined NOI')+val(n?money(totNOI):'-')+txt(n?(intf(n)+' of '+intf(deals.length)+' deal(s) reporting NOI'):'No deal reports NOI')+'</tr>'
     + '<tr>'+lbl('Weighted Average Going-In Yield')+val((n&&totPrice)?pct(totNOI/totPrice):'-')+txt('Combined NOI &divide; combined purchase price')+'</tr>'
-    + '<tr>'+lbl('Total Equity Invested')+val(money(totEq))+txt('Across included deals')+'</tr>');
+    + '<tr>'+lbl('Total closing equity')+val(money(totEq))+txt('Across included deals')+'</tr>');
 });
 
 /* =====================================================================

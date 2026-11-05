@@ -55,7 +55,7 @@ function headline(){
     return { c:c, s:s, levIRR:x.irr, levMOIC:x.moic, unlevIRR:x.u ? x.u.irr : NaN, unlevMOIC:x.u ? x.u.moic : NaN,
       lpIRR:w ? w.lpIRR : NaN, gpIRR:w ? w.gpIRR : NaN, lpMOIC:w ? w.lp.moic : NaN, gpMOIC:w ? w.gp.moic : NaN,
       loan:dv ? dv.loan : d.loan, binding:dv ? dv.binding : d.binding, equity:dv ? dv.equity : d.equity, dscr:dv ? dv.dscr : d.dscr, yoc:dv ? dv.yoc : (basis ? calc.noi/basis : NaN),
-      profit:(x.dist||0) - (x.contrib||0), peak:(dv ? dv.equity : Number(d.equity)) + Number(s.rateCapCost || 0), noi:calc.noi };
+      profit:(x.dist||0) - (x.contrib||0), peak:dv ? dv.equity : Number(d.equity) + Number(s.rateCapCost || 0), contrib:x.contrib || 0, noi:calc.noi };
   });
 }
 
@@ -460,7 +460,7 @@ function drastic(target){
       if(a.calc !== b.calc){ flag = true; lines.push(b.calc ? 'Results that are withheld now (' + a.state + ') will show again.' : 'The deal becomes ' + b.state + ' and its results are withheld.'); }
       if(a.calc && b.calc){
         if(isFinite(a.irr) && isFinite(b.irr) && Math.abs(a.irr - b.irr) >= THRESH.irr){ flag = true; lines.push('Levered IRR goes from ' + (a.irr * 100).toFixed(2) + '% to ' + (b.irr * 100).toFixed(2) + '% (' + (b.irr >= a.irr ? '+' : '−') + (Math.abs(b.irr - a.irr) * 100).toFixed(2) + ' points).'); }
-        [['price', 'Purchase price'], ['noi', 'Year-1 NOI'], ['loan', 'The loan'], ['equity', 'Equity required']].forEach(function(p){ var x = a[p[0]], y = b[p[0]], base = Math.max(Math.abs(x), 1); if(Math.abs(y - x) / base >= THRESH.rel && Math.abs(y - x) > 1000){ flag = true; lines.push(p[1] + ' goes from ' + mo(x) + ' to ' + mo(y) + ' (' + (y >= x ? '+' : '−') + Math.round(Math.abs(y - x) / base * 100) + '%).'); } });
+        [['price', 'Purchase price'], ['noi', 'Year-1 NOI'], ['loan', 'The loan'], ['equity', 'Closing equity']].forEach(function(p){ var x = a[p[0]], y = b[p[0]], base = Math.max(Math.abs(x), 1); if(Math.abs(y - x) / base >= THRESH.rel && Math.abs(y - x) > 1000){ flag = true; lines.push(p[1] + ' goes from ' + mo(x) + ' to ' + mo(y) + ' (' + (y >= x ? '+' : '−') + Math.round(Math.abs(y - x) / base * 100) + '%).'); } });
       } } }
   var cp = parse(cur['bkcapital.cre.portfolio.v01']) || [], tp = parse(target['bkcapital.cre.portfolio.v01']) || [], ci = parse(cur['bkcapital.cre.investors.v01']) || [], ti = parse(target['bkcapital.cre.investors.v01']) || [];
   if(Array.isArray(cp) && Array.isArray(tp) && tp.length < cp.length){ flag = true; lines.push('It removes ' + (cp.length - tp.length) + ' saved deal' + (cp.length - tp.length === 1 ? '' : 's') + ' from the portfolio.'); }
@@ -512,7 +512,7 @@ document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && docum
         + tile('Unlevered IRR', pct(h.unlevIRR), mult(h.unlevMOIC) + ' multiple')
         + tile('LP IRR', pct(h.lpIRR), mult(h.lpMOIC) + ' LP multiple')
         + tile('GP IRR', pct(h.gpIRR), mult(h.gpMOIC) + ' GP multiple')
-        + tile('Peak Equity', money(h.peak), 'funded at close')
+        + tile('Closing equity', money(h.peak), 'total contributed ' + money(h.contrib))
         + '</div>' + (o.main || '');
     } catch(e){}
     return o;

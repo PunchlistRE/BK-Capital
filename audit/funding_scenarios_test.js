@@ -10,6 +10,10 @@
 //   node audit/funding_scenarios_test.js index.html --json out.json     also write one headline record per scenario (used for before / after comparisons)
 //   node audit/funding_scenarios_test.js index.html --only "ceiling"    run only the scenarios whose name contains the text
 //
+// The four capital measures (audit/CAPITAL_MEASURES.md) are re-derived here in every scenario from the months and the returns rows and compared with the funding summary:
+// closing equity, total contributed equity (and the capital called after closing it is made of), the operating cash requirement (what the funding schedule carries, what is
+// needed after closing, who funds it) and total project capitalization. They are never expected to equal one another; they are expected to reconcile.
+//
 // Scenario groups: construction sizing (LTC, LTSV, rate, fees, utilisation), schedule (construction, lease-up, pre-development), facility structure (ceiling above or at
 // the commitment, fixed amount, equity-first, unused-commitment fee, no loan), initial reserves (interest, operating, held; smaller and larger than the need; funded at
 // close, completion or a month), takeout (none, shortfall, cash-out, debt-yield bound, interest-only), budget modes, GP share and waterfall terms, a hold sweep of 1 to
@@ -35,7 +39,7 @@ const PROBE = () => {
     conflicts: (typeof bkConflicts === 'function' ? bkConflicts() : []).map((c) => c.id), hard: I.hard.map((c) => c.id), warn: I.warn.map((c) => c.id), hardDetail: I.hard.map((c) => c.id + ': ' + c.detail), tie: { ok: T.ok, failed: T.failed.map((q) => q.label + ' (' + q.detail + ')') },
     F: { totalUses: F.totalUses, totalSources: F.totalSources, equity: F.equity, engineEquity: F.engineEquity, loan: F.loan, commit: F.commit, ceiling: F.ceiling, principal: F.principal, uses: F.uses, sources: F.sources,
       ties: (F.ties || []).map((q) => [q.id, q.ok, q.a, q.b]), contributed: F.contributed, postClosing: F.postClosing, takeoutEquity: F.takeoutEquity, operatingShortfall: F.operatingShortfall, reserveDraws: F.reserveDraws,
-      returnsEquityDraws: F.returnsEquityDraws, gpEquity: F.gpEquity, lpEquity: F.lpEquity, gpPct: F.gpPct } };
+      returnsEquityDraws: F.returnsEquityDraws, gpEquity: F.gpEquity, lpEquity: F.lpEquity, gpPct: F.gpPct, measures: JSON.parse(JSON.stringify(F.measures || null)) }, terms: JSON.parse(JSON.stringify(window.BK_CAPITAL_TERMS || null)) };
   if (dev) {
     const x = bkDevTakeoutV11(); out.months = x.months.map((z) => Object.assign({}, z));
     out.x = { hold: x.hold, stab: x.stab, co: x.co, preMo: x.preMo, eqTarget: x.eqTarget, commit: x.commit, balCap: x.balCap, fixedFacility: !!x.fixedFacility, unlev: x.unlev, upfrontFees: x.upfrontFees, actualCapInt: x.actualCapInt, equityTotal: x.equityTotal, resFunded: x.resFunded, resDrawn: x.resDrawn,
@@ -175,6 +179,33 @@ function commonChecks(P, chk, sc) {
   chk('funding_ties', failedTies.length === 0, failedTies.length ? 'failed ties: ' + failedTies.join(', ') : '');
   return { con, dist, ids };
 }
+/* ------------------------------------------------------------------ the four capital measures (audit/CAPITAL_MEASURES.md)
+   Each is re-derived by the caller from the months and the returns rows - never from the summary - and the summary is then required to report it under exactly this name.
+   The measures are different questions with different answers; the only relations required between them are the reconciliations below. */
+const TERMS = ['Closing equity', 'Total contributed equity', 'Operating cash requirement', 'Total project capitalization'];
+function measureChecks(P, chk, K) {
+  const Z = P.F.measures, W = P.W, T = P.terms || {};
+  if (!Z) { chk('measure_names', false, 'the funding summary reports no measures'); return; }
+  const E = Z.closingEquity, C = Z.totalContributedEquity, O = Z.operatingCashRequirement, Q = Z.totalProjectCapitalization, gpW = W && W.lpC + W.gpC > 0 ? W.gpC / (W.lpC + W.gpC) : 0;
+  const names = [E.name, C.name, O.name, Q.name], reg = [T.closingEquity, T.totalContributedEquity, T.operatingCashRequirement, T.totalProjectCapitalization].map((t) => t && t.name);
+  chk('measure_names', TERMS.every((t, i) => names[i] === t && reg[i] === t), 'summary: ' + names.join(' | ') + '; registry: ' + reg.join(' | '));
+  chk('measure_closing', near(E.amount, K.closing, 1) && near(E.month1, K.month1, 1), 'closing equity ' + M(E.amount) + ' vs ' + M(K.closing) + ' (' + K.closingFrom + '); in month 1 ' + M(E.month1) + ' vs ' + M(K.month1));
+  chk('measure_contributed', near(C.amount, K.con, 1) && near(C.amount, K.closing + K.calls, 1) && (!W || (near(C.lp, W.lpC, 1) && near(C.gp, W.gpC, 1))),
+    'total contributed equity ' + M(C.amount) + ' vs the returns\' contributions ' + M(K.con) + ' and closing equity ' + M(K.closing) + ' + capital called after closing ' + M(K.calls) + (W ? '; LP ' + M(C.lp) + ' / GP ' + M(C.gp) + ' vs the waterfall ' + M(W.lpC) + ' / ' + M(W.gpC) : ''));
+  const listed = (Z.calls || []).reduce((t, c) => t + num(c.amount), 0), byKind = (k) => num(((Z.calls || []).filter((c) => c.kind === k)[0] || {}).amount);
+  chk('measure_calls', near(Z.callsTotal, K.calls, 1) && near(listed, K.calls, 1) && K.parts.every((q) => near(byKind(q[0]), q[1], 1)) && (Z.calls || []).every((c) => K.parts.some((q) => q[0] === c.kind) && near(num(c.lp) + num(c.gp), c.amount, 0.01) && near(c.gp, c.amount * gpW, 1)),
+    'capital called after closing ' + M(Z.callsTotal) + ' (listed ' + M(listed) + ') vs ' + M(K.calls) + ' = ' + K.parts.map((q) => q[0] + ' ' + M(q[1])).join(' + ') + (Z.calls || []).filter((c) => !K.parts.some((q) => q[0] === c.kind)).map((c) => '; unexpected call "' + c.kind + '"').join(''));
+  chk('measure_operating', near(O.amount, K.lease + K.need, 1) && near(O.inFunding, K.lease, 1) && near(O.afterFunding, K.need, 1) && near(O.byPartners, K.opCalled, 1) && near(O.byReserve, K.resUsed, 1) && near(O.nettedFromDistributions, K.netted, 1) && near(K.need, K.opCalled + K.resUsed + K.netted, 1) &&
+    near(num(O.lp) + num(O.gp), O.byPartners, 0.01) && near(O.gp, O.byPartners * gpW, 1) && near(O.peakCumulative, K.peak, 1) && O.peakCumulative <= O.afterFunding + 0.5,
+    'operating cash requirement ' + M(O.amount) + ' = in Sources & Uses ' + M(O.inFunding) + ' (' + M(K.lease) + ') + after closing ' + M(O.afterFunding) + ' (' + M(K.need) + '): partners ' + M(O.byPartners) + ' (' + M(K.opCalled) + '), operating reserve ' + M(O.byReserve) + ' (' + M(K.resUsed) + '), netted against distributions ' + M(O.nettedFromDistributions) + ' (' + M(K.netted) + '); peak cumulative ' + M(O.peakCumulative) + ' (' + M(K.peak) + ')');
+  chk('measure_capitalization', near(Q.amount, K.debt + K.reserves + K.con, 1) && near(Q.amount, K.sources + K.calls, 1) && near(Q.debt, K.debt, 1) && near(Q.reserves, K.reserves, 1) && near(Q.closingSources, K.sources, 1) && near(Q.contributedEquity, K.con, 1) && near(Q.laterCalls, K.calls, 1),
+    'total project capitalization ' + M(Q.amount) + ' vs debt ' + M(K.debt) + ' + reserves ' + M(K.reserves) + ' + contributed equity ' + M(K.con) + ' = ' + M(K.debt + K.reserves + K.con) + '; closing sources ' + M(K.sources) + ' + calls ' + M(K.calls) + ' = ' + M(K.sources + K.calls));
+  /* the closing view and the lifecycle view are different figures and are never forced to agree: they differ by exactly the capital called after closing */
+  chk('measure_distinct', near(Q.amount - K.sources, K.calls, 1) && (K.calls < 0.5 || Math.abs(Q.amount - K.sources) > 0.5), 'total project capitalization less the closing sources is ' + M(Q.amount - K.sources) + '; the capital called after closing is ' + M(K.calls));
+  const callAt = (k) => (Z.calls || []).filter((c) => c.kind === k)[0], tm = [['closing equity first month', E.from, K.months.eq[0]], ['closing equity last month', E.to, K.months.eq[1]], ['operating requirement first month', O.from, K.months.need[0]], ['operating requirement last month', O.to, K.months.need[1]], ['operating requirement months', O.months, K.months.need[2]]];
+  Object.keys(K.months.calls).forEach((k) => { const q = K.months.calls[k], c = callAt(k); if (q[2] > 0 && c) tm.push([k + ' call first month', c.from, q[0]], [k + ' call last month', c.to, q[1]]); });
+  chk('measure_timing', tm.every((t) => num(t[1]) === num(t[2])), tm.filter((t) => num(t[1]) !== num(t[2])).map((t) => t[0] + ' ' + t[1] + ' vs ' + t[2]).join('; '));
+}
 function checkDev(P, sc) {
   const R = [], chk = (id, ok, detail) => R.push({ id, ok: !!ok, detail: detail === undefined ? '' : String(detail) }), x = P.x, ms = P.months, s = P.s, F = P.F, rows = P.rows;
   const draws = sum(ms, 'loanDraw'), capInt = sum(ms, 'capInt'), excess = sum(ms, 'excess'), eq = sum(ms, 'eq'), over = sum(ms, 'overflow'), resInt = sum(ms, 'resInt'), resLease = sum(ms, 'resLease'), resFund = sum(ms, 'resFund');
@@ -238,14 +269,22 @@ function checkDev(P, sc) {
   const last = rows[rows.length - 1] || {}, expectPay = x.hold < x.stab ? num((ms[x.hold - 1] || {}).end) : (x.conHeldToSale ? num(x.conHeldBalance) : num(x.permDebtAtSale));
   chk('sale_payoff', near(last.sale, num(last.grossSale) * (1 - num(s.saleCostPct)), 2) && near(last.payoff, expectPay, 1), 'sale ' + M(last.sale) + ' vs ' + M(num(last.grossSale) * (1 - num(s.saleCostPct))) + '; debt repaid ' + M(last.payoff) + ' vs outstanding ' + M(expectPay));
   const c = commonChecks(P, chk, sc);
-  ['su', 'commit', 'ceiling', 'eqEngine', 'eqReturns', 'takeout', 'contrib'].forEach((id) => { if (c.ids.indexOf(id) < 0) chk('tie_present_' + id, false, 'the funding summary has no "' + id + '" tie'); });
+  ['su', 'commit', 'ceiling', 'eqEngine', 'eqReturns', 'takeout', 'contrib', 'capContrib', 'capTotal', 'capOperating'].forEach((id) => { if (c.ids.indexOf(id) < 0) chk('tie_present_' + id, false, 'the funding summary has no "' + id + '" tie'); });
+  /* the four capital measures. The operating cash requirement outside the funding schedule is rebuilt month by month from the components of the monthly cash (NOI, fees, debt service, takeout, sale, payoff, leasing capital), before the reserve and before any call;
+     a month's cash after the reserve is wfDist - opShort. The requirement must equal what the partners call + the operating reserve's net use + any reserve draw repaid out of a month with surplus cash. */
+  const opm = (r) => num(r.noi) - num(r.assetFee) - num(r.ds) + num(r.refi) + num(r.sale) - num(r.dispoFee) - num(r.payoff) - num(r.leaseCap);
+  let cumOp = 0, peakOp = 0, needOp = 0, nettedOp = 0;
+  rows.forEach((r) => { const o = opm(r); needOp += Math.max(0, -o); cumOp -= o; if (cumOp > peakOp) peakOp = cumOp; if (num(r.wfDist) - num(r.opShort) >= 0 && num(r.resOp) < 0) nettedOp -= num(r.resOp); });
+  const mo = (f) => { const q = rows.filter(f); return [q.length ? q[0].m : 0, q.length ? q[q.length - 1].m : 0, q.length]; };
+  measureChecks(P, chk, { closing: eqInd, closingFrom: 'the funding months', month1: num(rows[0] && rows[0].equityDraw), con: c.con, calls: takeEq + opInd, parts: [['takeout', takeEq], ['operating', opInd]], lease: sum(ms, 'lease'), need: needOp, netted: nettedOp, opCalled: opInd, resUsed: sum(rows, 'resOp'), peak: peakOp,
+    debt: draws + capInt, reserves: resLease + resInt, sources: srcInd, months: { eq: mo((r) => num(r.equityDraw) > 0.5), need: mo((r) => num(r.opShort) + num(r.resOp) > 0.5), calls: { takeout: mo((r) => num(r.refiEq) > 0.5), operating: mo((r) => num(r.opShort) > 0.5) } } });
   /* the verdicts: a valid configuration is clean; an invalid one (the hold ends before the building is complete) must be reported as a failed check */
   if (sc.invalid) { chk('invalid_reported_hard', P.hard.indexOf('hold_co') >= 0 && !P.tie.ok, 'hard checks: ' + (P.hard.join(', ') || 'none') + '; ALL INPUTS TIE ' + (P.tie.ok ? 'reads OK' : 'fails')); }
   else { chk('integrity_clean', P.hard.length === 0, P.hardDetail.join(' | ')); chk('all_inputs_tie', P.tie.ok, P.tie.failed.join(' | ')); }
   /* the disclosures that must stand */
   if (x.hold < x.stab && x.hold > x.co) chk('sale_before_stabilization_disclosed', P.warn.indexOf('w_sale') >= 0, 'a sale before stabilization is a valid case that must be disclosed');
   if (excess > 1) chk('interest_beyond_limit_disclosed', P.warn.indexOf('w_interest') >= 0, M(excess) + ' of interest accrues beyond the facility limit');
-  return { R, facts: { excess, resInt, resLease, resFund, takeEq, opInd, shortfall: num(x.refiShortfall), inHold, leaseDef: num(x.leaseDef), ceilingAboveCommit: ceiling > commit + 1, peakOverCommit: peak > commit + 1, fixed: num(s.conFixedAmt) > 0, noLoan: commit <= 0, saleBeforeStab: x.hold < x.stab && x.hold > x.co, proceeds: num(x.refiProceeds) } };
+  return { R, facts: { netted: nettedOp, excess, resInt, resLease, resFund, takeEq, opInd, shortfall: num(x.refiShortfall), inHold, leaseDef: num(x.leaseDef), ceilingAboveCommit: ceiling > commit + 1, peakOverCommit: peak > commit + 1, fixed: num(s.conFixedAmt) > 0, noLoan: commit <= 0, saleBeforeStab: x.hold < x.stab && x.hold > x.co, proceeds: num(x.refiProceeds) } };
 }
 function checkAcq(P, sc) {
   const R = [], chk = (id, ok, detail) => R.push({ id, ok: !!ok, detail: detail === undefined ? '' : String(detail) }), s = P.s, d = P.d, F = P.F, rows = P.rows;
@@ -259,9 +298,18 @@ function checkAcq(P, sc) {
   const last = rows[rows.length - 1] || {};
   chk('sale_costs', near(last.sale + num(last.dispoFee), num(last.grossSale || 0) ? num(last.grossSale) * (1 - num(s.saleCostPct)) : last.sale + num(last.dispoFee), 5) || last.grossSale == null, 'net sale ' + M(last.sale));
   const c = commonChecks(P, chk, sc);
-  ['su', 'loan'].forEach((id) => { if (c.ids.indexOf(id) < 0) chk('tie_present_' + id, false, 'the funding summary has no "' + id + '" tie'); });
+  ['su', 'loan', 'capContrib', 'capTotal'].forEach((id) => { if (c.ids.indexOf(id) < 0) chk('tie_present_' + id, false, 'the funding summary has no "' + id + '" tie'); });
+  /* the capital called after closing is each month's contribution above the closing draw. The convention attributes it to the refinance shortfall and the balloon equity of that month first (pro rata between them);
+     what is left is the operating cash requirement (operating and capital shortfalls). Acquisitions carry nothing in Sources & Uses beyond the closing view and have no operating reserve. */
+  let cRefi = 0, cBal = 0, cOp = 0; const mRefi = [], mBal = [], mOp = [];
+  rows.forEach((q) => { const call = Math.max(0, num(q.wfContrib) - num(q.eqDraw)); if (call <= 0.005) return; const ev = num(q.refiEq) + num(q.balloonEq), evCall = Math.min(call, ev), opCall = call - evCall;
+    if (ev > 0) { cRefi += evCall * num(q.refiEq) / ev; cBal += evCall * num(q.balloonEq) / ev; if (num(q.refiEq) > 0) mRefi.push(q.m); if (num(q.balloonEq) > 0) mBal.push(q.m); }
+    if (opCall > 0.005) { cOp += opCall; mOp.push(q.m); } });
+  const mm = (a) => [a[0] || 0, a[a.length - 1] || 0, a.length];
+  measureChecks(P, chk, { closing: eqClose, closingFrom: 'price, closing costs, fees and the rate cap, less the loan', month1: num(rows[0] && rows[0].eqDraw), con: c.con, calls: cRefi + cBal + cOp, parts: [['refinance', cRefi], ['balloon', cBal], ['operating', cOp]], lease: 0, need: cOp, netted: 0, opCalled: cOp, resUsed: 0, peak: 0,
+    debt: num(d.loan), reserves: 0, sources: uses, months: { eq: [1, 1, 1], need: mm(mOp), calls: { refinance: mm(mRefi), balloon: mm(mBal), operating: mm(mOp) } } });
   chk('integrity_clean', P.hard.length === 0, P.hardDetail.join(' | ')); chk('all_inputs_tie', P.tie.ok, P.tie.failed.join(' | '));
-  return { R, facts: { debtOff, cap: cap > 0, refi: num(s.refiAtMaturity) > 0, postClosing: num(F.postClosing) } };
+  return { R, facts: { debtOff, cap: cap > 0, refi: num(s.refiAtMaturity) > 0, postClosing: num(F.postClosing), refiCall: cRefi > 1, balloonCall: cBal > 1, opCall: cOp > 1 } };
 }
 
 /* ------------------------------------------------------------------ page-level checks: the pages and the investor PDF show what the summary says */
@@ -274,12 +322,35 @@ async function pageChecks(p, tag, deal, sc) {
     const P = await p.evaluate(() => window.__fsProbe()), F = P.F;   /* the saved deal, which is what the pages read */
     await p.evaluate(() => showSheet('Sources & Uses')); await rendered();
     const su = await p.evaluate(() => document.getElementById('viewport').innerText), has = (t) => su.indexOf(t) > -1;
+    /* the tables of the page by caption, as cell text: the four measures must be on the page with the amounts the summary reports, each reconciled (TIES) and the closing totals kept apart from the total capitalization */
+    const tables = await p.evaluate(() => { const o = {}; document.querySelectorAll('#viewport table').forEach((t) => { const cap = ((t.querySelector('caption') || {}).innerText || '').replace(/\s+/g, ' ').trim(); o[cap] = [...t.querySelectorAll('tr')].map((tr) => [...tr.children].map((c) => c.innerText.replace(/\s+/g, ' ').trim())); }); return o; });
+    const tab = (prefix) => { const k = Object.keys(tables).filter((c) => c.indexOf(prefix) === 0)[0]; return k ? tables[k] : null; }, rowOf = (t, label) => (t || []).filter((r) => r[0] === label)[0];
+    const amt = (t) => { const m = String(t).replace(/\s+/g, '').match(/^(\()?-?\$?([\d,]+(?:\.\d+)?)\)?$/); return m ? (/^\(|^-/.test(String(t).trim()) ? -1 : 1) * Number(m[2].replace(/,/g, '')) : NaN; };
+    const measurePage = () => {
+      const Z = F.measures, NM = [Z.closingEquity, Z.totalContributedEquity, Z.operatingCashRequirement, Z.totalProjectCapitalization], t1 = tab('Capital Measures'), t2 = tab('Capitalization Over the Life of the Deal'), r1 = NM.map((z) => rowOf(t1, z.name));
+      chk('page_measures', !!t1 && r1.every((r, i) => !!r && near(amt(r[1]), NM[i].amount, 1)), 'Capital Measures table: ' + NM.map((z, i) => z.name + ' ' + (r1[i] ? r1[i][1] : 'missing') + ' (summary ' + M(z.amount) + ')').join('; '));
+      chk('page_measures_status', !!t1 && r1.every((r, i) => !!r && (i === 2 && !P.dev ? true : /^TIES$/.test(r[r.length - 1]))), 'reconciliation status of the four measures: ' + r1.map((r) => (r ? r[r.length - 1] || '(none)' : 'missing')).join(', '));
+      const calls = Z.calls || [], life = [[P.dev ? 'Construction facility (draws + capitalized interest)' : 'Acquisition loan', F.loan], ['Closing equity', Z.closingEquity.amount], ['Closing sources (total sources in Sources & Uses)', Z.totalProjectCapitalization.closingSources], ['TOTAL PROJECT CAPITALIZATION', Z.totalProjectCapitalization.amount], ['of which total contributed equity', Z.totalContributedEquity.amount]]
+        .concat(calls.length ? [['Capital called after closing', Z.callsTotal]] : []).concat(calls.map((c) => [c.name, c.amount])), badLife = life.filter(([l, v]) => { const r = rowOf(t2, l); return !r || !near(amt(r[1]), v, 1); }).map(([l]) => l);
+      const split = [['Closing equity', Z.closingEquity.amount]].concat(calls.map((c) => [c.name, c.amount])).concat([['of which total contributed equity', Z.totalContributedEquity.amount]]), badSplit = split.filter(([l, v]) => { const r = rowOf(t2, l); return !r || !near(amt(r[3]) + amt(r[4]), v, 1.5); }).map(([l]) => l);
+      chk('page_capitalization', !!t2 && badLife.length === 0 && (calls.length > 0 || !!rowOf(t2, 'Capital called after closing')) && badSplit.length === 0, !t2 ? 'no "Capitalization Over the Life of the Deal" table' : (badLife.length ? 'not shown with its amount: ' + badLife.join('; ') : '') + (badSplit.length ? ' LP + GP do not add to the amount: ' + badSplit.join('; ') : ''));
+      /* the closing total and the total capitalization are two figures on the page and differ by exactly the capital called after closing */
+      const cs = rowOf(t2, 'Closing sources (total sources in Sources & Uses)'), tp = rowOf(t2, 'TOTAL PROJECT CAPITALIZATION');
+      chk('page_closing_vs_total', !!cs && !!tp && near(amt(tp[1]) - amt(cs[1]), Z.callsTotal, 1.5) && (Z.callsTotal < 0.5 || amt(tp[1]) > amt(cs[1])), 'total project capitalization ' + (tp && tp[1]) + ' less the closing sources ' + (cs && cs[1]) + ' vs the capital called after closing ' + M(Z.callsTotal));
+      const O = Z.operatingCashRequirement, t3 = tab('Operating cash requirement');
+      if (P.dev && (O.amount > 0.5 || O.leaseUpMonths)) {
+        const want = [['Net lease-up deficit funded in Sources & Uses', O.inFunding], ['Interim operating cash required after closing', O.afterFunding], ['Peak cumulative operating cash deficit outside the funding schedule', O.peakCumulative]], bad = want.filter(([l, v]) => { const r = rowOf(t3, l); return !r || !near(amt(r[1]), v, 1); }).map(([l]) => l), fb = rowOf(t3, 'Funded by');
+        chk('page_operating', !!t3 && bad.length === 0 && !!fb && (fb[2] || '').indexOf('Partners $' + money(O.byPartners)) > -1 && (O.byReserve < 0.5 || (fb[2] || '').indexOf('Operating reserve $' + money(O.byReserve)) > -1) && (O.nettedFromDistributions < 0.5 || (fb[2] || '').indexOf('Netted against later distributions $' + money(O.nettedFromDistributions)) > -1),
+          !t3 ? 'no operating cash requirement table' : (bad.length ? 'not shown with its amount: ' + bad.join('; ') : '') + ' funded by: ' + (fb ? fb[2] : 'missing') + ' (partners ' + money(O.byPartners) + ', reserve ' + money(O.byReserve) + ', netted ' + money(O.nettedFromDistributions) + ')');
+      }
+    };
+    measurePage();
     if (P.dev) {
       chk('page_totals', has(money(F.totalUses)) && has(money(F.totalSources)) && /TOTAL USES/.test(su) && /TOTAL SOURCES/.test(su), 'the page shows total uses ' + money(F.totalUses) + ' and total sources ' + money(F.totalSources));
       const missing = F.uses.concat(F.sources).filter((q) => Math.abs(num(q[1])) > 0.5 && !(has(q[0]) && has(money(q[1])))).map((q) => q[0]);
       chk('page_lines', missing.length === 0, missing.length ? 'not shown with its amount: ' + missing.join('; ') : '');
       chk('page_status', /TIES/.test(su) && !/VARIANCE|OVER COMMITMENT|OVER CEILING|REVIEW/.test(su) && /WITHIN COMMITMENT/.test(su) && /WITHIN CEILING/.test(su), 'chips: ' + ['TIES', 'VARIANCE', 'WITHIN COMMITMENT', 'WITHIN CEILING', 'OVER CEILING', 'REVIEW'].filter(has).join(', '));
-      chk('page_post_funding', /Capital Called After Funding/.test(su) && has(money(F.contributed)) && (num(F.takeoutEquity) < 0.5 || has(money(F.takeoutEquity))) && (num(F.operatingShortfall) < 0.5 || has(money(F.operatingShortfall))), 'the "capital called after funding" table shows contributed ' + money(F.contributed) + ', takeout ' + money(F.takeoutEquity) + ', operating shortfall ' + money(F.operatingShortfall));
+      chk('page_post_funding', has(money(F.contributed)) && (num(F.takeoutEquity) < 0.5 || has(money(F.takeoutEquity))) && (num(F.operatingShortfall) < 0.5 || has(money(F.operatingShortfall))), 'the page shows contributed equity ' + money(F.contributed) + ', takeout equity ' + money(F.takeoutEquity) + ', the operating shortfall called ' + money(F.operatingShortfall));
       await p.evaluate(() => showSheet('Debt')); await p.waitForTimeout(600);
       const debt = await p.evaluate(() => document.getElementById('viewport').innerText.replace(/\s+/g, ' ')), x = P.x;
       if (num(x.refiShortfall) > 1 && num(P.s.refiAtStab) > 0) chk('debt_page_takeout', x.takeoutInHold ? /does not fully retire the facility/.test(debt) && !/Not called: the hold ends/.test(debt) : /Not called: the hold ends in month \d+, before stabilization in month \d+/.test(debt), 'Debt page shortfall row for a takeout ' + (x.takeoutInHold ? 'inside' : 'after the end of') + ' the hold');
@@ -287,7 +358,15 @@ async function pageChecks(p, tag, deal, sc) {
       await p.evaluate(() => { bkGuideOn(); bkGuideGo('sources'); }); await p.waitForTimeout(600);
       const g = await p.evaluate(() => { const el = document.getElementById('gd-su'); return el ? { t: el.innerText, inputs: el.querySelectorAll('input,select,textarea').length } : null; });
       chk('guide_step', !!g && g.inputs === 0 && g.t.indexOf(money(F.totalUses)) > -1 && g.t.indexOf(money(F.equity)) > -1 && g.t.indexOf(money(F.totalSources)) > -1 && (num(F.reserveDraws) < 0.5 || (g.t.indexOf('Initial reserves drawn') > -1 && g.t.indexOf(money(F.reserveDraws)) > -1)), g && g.t.slice(0, 160));
+      const Zg = F.measures;
+      chk('guide_measures', !!g && TERMS.every((t) => g.t.indexOf(t) > -1) && g.t.indexOf(money(Zg.totalContributedEquity.amount)) > -1 && g.t.indexOf(money(Zg.totalProjectCapitalization.amount)) > -1 && (Zg.operatingCashRequirement.amount < 0.5 || g.t.indexOf(money(Zg.operatingCashRequirement.amount)) > -1), 'the guide step names the four measures with ' + money(Zg.totalContributedEquity.amount) + ' contributed, ' + money(Zg.operatingCashRequirement.amount) + ' operating cash requirement and ' + money(Zg.totalProjectCapitalization.amount) + ' total capitalization');
       await p.evaluate(() => { bkGuideOff(); });
+      const pdfText = await p.evaluate(() => new DOMParser().parseFromString(bkReportHTML(), 'text/html').body.textContent.replace(/\s+/g, ' '));
+      /* the PDF writes large amounts in millions ($13.26M) and small ones in full ($426,569): read each as written and compare within the precision it was written to */
+      const grab = (re) => { const m = pdfText.match(re); if (!m) return null; const v = Number(m[1].replace(/,/g, '')), sfx = m[2] || ''; return { v: sfx === 'M' ? v * 1e6 : sfx === 'K' ? v * 1e3 : v, tol: sfx === 'M' ? 5000 : sfx === 'K' ? 5 : 1 }; }, agree = (g, want) => !!g && Math.abs(g.v - want) <= g.tol + 0.5;
+      chk('pdf_measures', agree(grab(/Closing equity \$([\d.,]+)(M|K)? \(with any overflow/), Zg.closingEquity.amount) && agree(grab(/total contributed equity of \$([\d.,]+)(M|K)?/), Zg.totalContributedEquity.amount) && agree(grab(/Total project capitalization: \$([\d.,]+)(M|K)?/), Zg.totalProjectCapitalization.amount)
+        && (Zg.operatingCashRequirement.afterFunding < 0.5 || agree(grab(/operating cash requirement after closing is \$([\d.,]+)(M|K)?/), Zg.operatingCashRequirement.afterFunding)),
+        'the investor PDF funding page states closing equity ' + money(Zg.closingEquity.amount) + ', total contributed equity ' + money(Zg.totalContributedEquity.amount) + ', the operating cash requirement after closing ' + money(Zg.operatingCashRequirement.afterFunding) + ' and total project capitalization ' + money(Zg.totalProjectCapitalization.amount));
       const pdf = await p.evaluate(() => { const doc = new DOMParser().parseFromString(bkReportHTML(), 'text/html'), tab = (name) => [...doc.querySelectorAll('table')].filter((t) => { const th = t.querySelector('th'); return th && th.textContent.trim() === name; })[0];
         const rows = (t) => t ? [...t.querySelectorAll('tbody tr')].map((tr) => { const td = [...tr.querySelectorAll('td')]; return [td[0] ? td[0].textContent.trim() : '', td[1] ? td[1].textContent.trim() : '']; }) : null; return { uses: rows(tab('Uses')), sources: rows(tab('Sources')) }; });
       const amt = (t) => Number(String(t).replace(/[^0-9.\-]/g, '')) || 0;
@@ -295,13 +374,16 @@ async function pageChecks(p, tag, deal, sc) {
         const pu = pdf.uses.filter((r) => !/^Total/.test(r[0])), ps = pdf.sources.filter((r) => !/^Total/.test(r[0])), tu = (pdf.uses.filter((r) => /^Total/.test(r[0]))[0] || [0, 0])[1], ts = (pdf.sources.filter((r) => /^Total/.test(r[0]))[0] || [0, 0])[1];
         chk('pdf_totals', near(amt(tu), F.totalUses, 1) && near(amt(ts), F.totalSources, 1), 'investor PDF: total project cost ' + tu + ', total sources ' + ts + ' vs ' + money(F.totalUses) + ' / ' + money(F.totalSources));
         chk('pdf_lines_add', near(pu.reduce((t, r) => t + amt(r[1]), 0), amt(tu), 1) && near(ps.reduce((t, r) => t + amt(r[1]), 0), amt(ts), 1), 'investor PDF: the listed uses add to ' + money(pu.reduce((t, r) => t + amt(r[1]), 0)) + ' (total ' + tu + '), the sources to ' + money(ps.reduce((t, r) => t + amt(r[1]), 0)) + ' (total ' + ts + ')');
-        const pe = ps.filter((r) => /^Equity$/.test(r[0]))[0], pr = ps.filter((r) => /^Initial reserves drawn/.test(r[0]))[0];
+        const pe = ps.filter((r) => /^Closing equity$/.test(r[0]))[0], pr = ps.filter((r) => /^Initial reserves drawn/.test(r[0]))[0];
         chk('pdf_equity_reserves', pe && near(amt(pe[1]), F.equity, 1) && near(pr ? amt(pr[1]) : 0, F.reserveDraws, 1), 'investor PDF equity ' + (pe && pe[1]) + ' vs ' + money(F.equity) + '; reserves drawn ' + (pr ? pr[1] : 'none') + ' vs ' + money(F.reserveDraws));
       } else chk('pdf_tables', false, 'the investor PDF has no Uses / Sources tables');
     } else {
       /* the acquisition page lays out its own lines (LP / GP equity) and, when capital is called after closing, adds it as an explicit use and source */
-      const post = num(F.postClosing) >= 1 ? num(F.postClosing) : 0;
-      chk('page_totals', has(money(F.totalUses + post)) && has(money(F.totalSources + post)) && /TOTAL USES/.test(su) && /TOTAL SOURCES/.test(su), 'the page shows total uses ' + money(F.totalUses + post) + ' (closing ' + money(F.totalUses) + ' + capital after closing ' + money(post) + ')');
+      chk('page_totals', has(money(F.totalUses)) && has(money(F.totalSources)) && /TOTAL USES AT CLOSING/.test(su) && /TOTAL SOURCES AT CLOSING/.test(su), 'the page shows the closing totals: total uses at closing ' + money(F.totalUses) + ' and total sources at closing ' + money(F.totalSources) + ' (capital called after closing is a separate row: ' + money(F.measures.callsTotal) + ')');
+      const rc = rowOf(tab('Sources at closing'), 'Acquisition Loan');
+      chk('page_closing_lines', !!rc && near(amt(rc[1]), F.loan, 1) && has(money(F.measures.closingEquity.amount)), 'closing equity ' + money(F.measures.closingEquity.amount) + ' and the loan ' + money(F.loan) + ' are the closing sources');
+      const pdfA = await p.evaluate(() => new DOMParser().parseFromString(bkReportHTML(), 'text/html').body.textContent.replace(/\s+/g, ' '));
+      chk('pdf_measures', /Closing equity/.test(pdfA) && pdfA.indexOf(money(F.measures.closingEquity.amount)) > -1 && (num(P.s.rateCapCost) <= 0 || /Rate cap premium/.test(pdfA)) && !/Equity invested/.test(pdfA), 'the investor PDF names the closing equity ' + money(F.measures.closingEquity.amount) + (num(P.s.rateCapCost) > 0 ? ' with the rate cap premium' : ''));
       chk('page_status', !/VARIANCE|OVER COMMITMENT|REVIEW/.test(su), 'the acquisition Sources & Uses page shows no variance');
     }
   } finally { try { await p.evaluate(() => { bkGuideOff(); }); } catch (e) {} await setState({}); }   /* the next scenario starts from the base deal, never from this one */
@@ -314,6 +396,14 @@ const MUTS = [
   { name: '$5,000 of extra equity in the first month of the returns', deal: 'V', ov: {}, want: ['equity_components', 'funding_ties'], mut: () => { const o = window.bkMonthlyReturns; window.bkMonthlyReturns = function () { const m = o.apply(this, arguments); if (!m.rows || !m.rows[0] || m.rows[0].equityDraw === undefined) return m; return Object.assign({}, m, { contrib: m.contrib + 5000, rows: m.rows.map((r, i) => (i ? r : Object.assign({}, r, { equityDraw: r.equityDraw + 5000, wfContrib: r.wfContrib + 5000 }))) }); }; return () => { window.bkMonthlyReturns = o; }; } },
   { name: 'the lease-up operating shortfall left out of the returns rows', deal: 'V', ov: {}, want: ['contrib_parts', 'opshort_rows'], mut: () => { const o = window.bkMonthlyReturns; window.bkMonthlyReturns = function () { const m = o.apply(this, arguments); if (!m.rows || m.rows[0].opShort === undefined) return m; return Object.assign({}, m, { rows: m.rows.map((r) => Object.assign({}, r, { opShort: 0 })) }); }; return () => { window.bkMonthlyReturns = o; }; } },
   { name: 'a takeout shortfall misstated by $10,000', deal: 'V', ov: {}, want: ['takeout_independent'], mut: () => { const o = window.bkDevTakeoutV11; window.bkDevTakeoutV11 = function () { const x = o.apply(this, arguments); return Object.assign({}, x, { refiShortfall: (Number(x.refiShortfall) || 0) + 10000 }); }; return () => { window.bkDevTakeoutV11 = o; }; } },
+  { name: 'total contributed equity that leaves out the capital called after closing', deal: 'V', ov: {}, want: ['measure_contributed', 'measure_calls'], mut: () => { const o = window.bkFundingSummary; window.bkFundingSummary = function () { const f = o.apply(this, arguments); if (f.measures) f.measures.totalContributedEquity.amount -= f.measures.callsTotal; return f; }; return () => { window.bkFundingSummary = o; }; } },
+  { name: 'closing equity that includes the takeout equity', deal: 'V', ov: {}, want: ['measure_closing'], mut: () => { const o = window.bkFundingSummary; window.bkFundingSummary = function () { const f = o.apply(this, arguments); if (f.measures) f.measures.closingEquity.amount += f.measures.calls.filter((c) => c.kind === 'takeout').reduce((t, c) => t + c.amount, 0); return f; }; return () => { window.bkFundingSummary = o; }; } },
+  { name: 'an operating cash requirement that omits the unfunded interim cash called after closing', deal: 'V', ov: {}, want: ['measure_operating'], mut: () => { const o = window.bkFundingSummary; window.bkFundingSummary = function () { const f = o.apply(this, arguments); if (f.measures) { const q = f.measures.operatingCashRequirement; q.amount -= q.afterFunding; q.afterFunding = 0; } return f; }; return () => { window.bkFundingSummary = o; }; } },
+  { name: 'a peak cumulative operating deficit replaced by the net lease-up view', deal: 'V', ov: {}, want: ['measure_operating'], mut: () => { const o = window.bkFundingSummary; window.bkFundingSummary = function () { const f = o.apply(this, arguments); if (f.measures) f.measures.operatingCashRequirement.peakCumulative = Math.max(0, -f.measures.operatingCashRequirement.leaseUpNet); return f; }; return () => { window.bkFundingSummary = o; }; } },
+  { name: 'an operating-reserve repayment netted against distributions that the requirement leaves out', deal: 'V', ov: { leaseupMonths: 3, initReserves: OR(50000) }, want: ['measure_operating'], mut: () => { const o = window.bkFundingSummary; window.bkFundingSummary = function () { const f = o.apply(this, arguments); if (f.measures) { const q = f.measures.operatingCashRequirement; q.afterFunding -= q.nettedFromDistributions; q.amount -= q.nettedFromDistributions; q.nettedFromDistributions = 0; } return f; }; return () => { window.bkFundingSummary = o; }; } },
+  { name: 'a total project capitalization that leaves out the reserves drawn', deal: 'H', ov: { initReserves: IR(1e6) }, want: ['measure_capitalization', 'measure_distinct'], mut: () => { const o = window.bkFundingSummary; window.bkFundingSummary = function () { const f = o.apply(this, arguments); if (f.measures) f.measures.totalProjectCapitalization.amount -= f.measures.totalProjectCapitalization.reserves; return f; }; return () => { window.bkFundingSummary = o; }; } },
+  { name: 'a measure renamed on the way out', deal: 'V', ov: {}, want: ['measure_names'], mut: () => { const o = window.bkFundingSummary; window.bkFundingSummary = function () { const f = o.apply(this, arguments); if (f.measures) f.measures.closingEquity.name = 'Equity required'; return f; }; return () => { window.bkFundingSummary = o; }; } },
+  { name: 'an acquisition refinance shortfall dropped from the capital called after closing', deal: 'A', ov: { refiAtMaturity: 1, debtTerm: 3, refiLTV: 0.35 }, want: ['measure_calls', 'measure_capitalization'], mut: () => { const o = window.bkFundingSummary; window.bkFundingSummary = function () { const f = o.apply(this, arguments); if (f.measures) { const g = f.measures.calls.filter((c) => c.kind === 'refinance').reduce((t, c) => t + c.amount, 0); f.measures.calls = f.measures.calls.filter((c) => c.kind !== 'refinance'); f.measures.callsTotal -= g; } return f; }; return () => { window.bkFundingSummary = o; }; } },
   { name: 'a committed amount that is not what the inputs size', deal: 'H', ov: {}, want: ['commit_sizing'], mut: () => { const o = window.bkDevFundingV10; window.bkDevFundingV10 = function () { const f = o.apply(this, arguments); return Object.assign({}, f, { commit: f.commit + 1000 }); }; return () => { window.bkDevFundingV10 = o; }; } },
   { name: 'capitalized interest pushed $500,000 past the permitted ceiling', deal: 'H', ov: {}, want: ['balance_vs_ceiling', 'monthly_interest'], mut: () => { const o = window.bkDevFundingV10; window.bkDevFundingV10 = function () { const f = o.apply(this, arguments); return Object.assign({}, f, { months: f.months.map((z) => (z.mo === 20 ? Object.assign({}, z, { capInt: z.capInt + 500000, end: z.end + 500000 }) : z)) }); }; return () => { window.bkDevFundingV10 = o; }; } },
 ];
@@ -328,7 +418,7 @@ const MUTS = [
   const probe = (p, ov) => p.evaluate((ov) => window.bkRunWith(ov, window.__fsProbe), ov);
   const report = (tag, sc, R, facts, P) => {
     const bad = R.filter((r) => !r.ok); nScen++; checks += R.length; fails += bad.length;
-    const rec = { deal: tag, name: sc.name, reg: sc.reg || null, invalid: !!sc.invalid, checks: R.length, failed: bad.map((r) => r.id), tieOk: P.tie.ok, failedTies: P.F.ties.filter((q) => !q[1]).map((q) => q[0]), integrityHard: P.hard, allInputsFailed: P.tie.failed, sourcesLessUses: num(P.F.totalSources) - num(P.F.totalUses), equityShown: P.F.equity, equityEngine: P.F.engineEquity, contributed: P.m.contrib, distributed: P.m.dist, irr: P.m.irr, moic: P.m.moic };
+    const rec = { deal: tag, name: sc.name, reg: sc.reg || null, invalid: !!sc.invalid, checks: R.length, failed: bad.map((r) => r.id), tieOk: P.tie.ok, failedTies: P.F.ties.filter((q) => !q[1]).map((q) => q[0]), integrityHard: P.hard, allInputsFailed: P.tie.failed, sourcesLessUses: num(P.F.totalSources) - num(P.F.totalUses), equityShown: P.F.equity, equityEngine: P.F.engineEquity, closingEquity: num(P.F.measures && P.F.measures.closingEquity.amount), contributedEquity: num(P.F.measures && P.F.measures.totalContributedEquity.amount), operatingCashRequirement: num(P.F.measures && P.F.measures.operatingCashRequirement.amount), capitalCalledAfterClosing: num(P.F.measures && P.F.measures.callsTotal), totalProjectCapitalization: num(P.F.measures && P.F.measures.totalProjectCapitalization.amount), contributed: P.m.contrib, distributed: P.m.dist, irr: P.m.irr, moic: P.m.moic };
     records.push(rec);
     console.log((bad.length ? 'FAIL ' : 'PASS ') + tag + ' | ' + sc.name + (sc.reg ? ' [regression ' + sc.reg + ']' : '') + (sc.invalid ? ' [invalid configuration]' : '') + ' | ' + (R.length - bad.length) + '/' + R.length + ' checks' + (bad.length ? ' | ' + bad.map((r) => r.id + (r.detail ? ' (' + r.detail.slice(0, 220) + ')' : '')).join(' ;; ') : ''));
     return bad.length;
@@ -341,21 +431,21 @@ const MUTS = [
       const P = Object.keys(sc.ov).length === 0 ? baseP : await probe(p, sc.ov), out = kind === 'dev' ? checkDev(P, sc) : checkAcq(P, sc), f = out.facts;
       if (kind === 'dev') { cover('development scenarios'); if (f.resInt > 1) cover('interest reserve drawn'); if (f.resLease > 1) cover('operating reserve drawn in the ledger'); if (f.resFund > 1 && f.resInt + f.resLease < 1) cover('reserve funded but not drawn'); if (f.excess > 1) cover('interest paid currently beyond the facility limit');
         if (f.ceilingAboveCommit) cover('ceiling above the committed amount'); if (f.peakOverCommit) cover('balance above the committed amount (interest capitalized past the commitment)'); if (f.fixed) cover('fixed facility'); if (f.noLoan) cover('no construction loan'); if (f.shortfall > 1 && f.inHold) cover('takeout shortfall called inside the hold'); if (f.shortfall > 1 && !f.inHold) cover('takeout shortfall never called (sale before stabilization)');
-        if (f.proceeds > 1) cover('takeout with cash-out proceeds'); if (f.opInd > 1) cover('lease-up operating shortfall funded by the partners'); if (f.leaseDef > 1) cover('lease-up deficit funded in the ledger'); if (f.saleBeforeStab) cover('valid sale between completion and stabilization'); if (sc.invalid) cover('invalid hold (ends at or before completion)'); }
-      else { cover('acquisition scenarios'); if (f.cap) cover('acquisition rate cap'); if (f.refi) cover('acquisition refinance at maturity'); if (f.debtOff) cover('acquisition without debt'); }
+        if (f.proceeds > 1) cover('takeout with cash-out proceeds'); if (f.opInd > 1) cover('lease-up operating shortfall funded by the partners'); if (f.netted > 0.5) cover('operating reserve draw repaid out of a month with surplus cash'); if (f.leaseDef > 1) cover('lease-up deficit funded in the ledger'); if (f.saleBeforeStab) cover('valid sale between completion and stabilization'); if (sc.invalid) cover('invalid hold (ends at or before completion)'); }
+      else { cover('acquisition scenarios'); if (f.cap) cover('acquisition rate cap'); if (f.refi) cover('acquisition refinance at maturity'); if (f.debtOff) cover('acquisition without debt'); if (f.refiCall) cover('acquisition capital call for a refinance shortfall'); if (f.balloonCall) cover('acquisition capital call for balloon equity'); }
       if (!sc.invalid || kind === 'acq') { const pg = PAGE[kind].indexOf(sc.name) >= 0 ? await pageChecks(p, tag, deal, sc) : []; out.R.push.apply(out.R, pg); if (pg.length) cover('page and PDF checks'); }
       report(tag, sc, out.R, f, P);
     }
-    if (!ONLY) { const again = await probe(p, {}); checks++; const same = near(again.F.totalUses, baseP.F.totalUses, 0.01) && near(again.m.contrib, baseP.m.contrib, 0.01) && near(again.F.equity, baseP.F.equity, 0.01);
+    if (!ONLY) { const again = await probe(p, {}); checks++; const same = near(again.F.totalUses, baseP.F.totalUses, 0.01) && near(again.m.contrib, baseP.m.contrib, 0.01) && near(again.F.equity, baseP.F.equity, 0.01) && near(again.F.measures.totalProjectCapitalization.amount, baseP.F.measures.totalProjectCapitalization.amount, 0.01) && near(again.F.measures.operatingCashRequirement.amount, baseP.F.measures.operatingCashRequirement.amount, 0.01);
       if (!same) fails++; console.log((same ? 'PASS ' : 'FAIL ') + tag + ' | harness: the base deal gives the same result after every scenario and page check (no state carried from one scenario to the next)' + (same ? '' : ' | uses ' + money(again.F.totalUses) + ' vs ' + money(baseP.F.totalUses))); }
     if (p.errs.length) { checks++; fails++; console.log('FAIL ' + tag + ' | page errors: ' + p.errs.slice(0, 2).join(' | ')); } else checks++;
     await p.close();
   }
   /* mutations */
   if (!ONLY) for (const mu of MUTS) {
-    const p = await open(mu.deal === 'H' ? H : V), sc = { name: mu.name, ov: mu.ov };
+    const p = await open(mu.deal === 'H' ? H : mu.deal === 'A' ? A : V), sc = { name: mu.name, ov: mu.ov };
     const P = await p.evaluate(([src, ov]) => { const restore = eval('(' + src + ')')(); try { bkPerfClear(); return window.bkRunWith(ov, window.__fsProbe); } finally { restore(); bkPerfClear(); } }, [mu.mut.toString(), mu.ov]);
-    const R = checkDev(P, sc).R, caught = R.filter((r) => !r.ok).map((r) => r.id), ok = mu.want.some((w) => caught.indexOf(w) >= 0);
+    const R = (mu.deal === 'A' ? checkAcq : checkDev)(P, sc).R, caught = R.filter((r) => !r.ok).map((r) => r.id), ok = mu.want.some((w) => caught.indexOf(w) >= 0);
     checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + 'mutation | ' + mu.name + ' | the suite fails it (' + (caught.join(', ') || 'nothing failed') + '), wanted ' + mu.want.join(' or ')); await p.close();
   }
   /* the Debt page reconciliation rows used to carry a tolerance of a billion dollars and could not fail: with the facility tampered with they must now say so */
@@ -365,7 +455,7 @@ const MUTS = [
     console.log((ok ? 'PASS ' : 'FAIL ') + 'mutation | Debt page: capitalized interest $500,000 past what the sources cover and a balance $6,000,000 over the ceiling | the reconciliations show ' + ['VARIANCE', 'OVER CEILING', 'TIES', 'WITHIN CEILING'].filter((w) => t.indexOf(w) > -1).join(', ')); await p.close(); }
   /* the suite must exercise what it claims to */
   const NEED = ['interest reserve drawn', 'operating reserve drawn in the ledger', 'reserve funded but not drawn', 'interest paid currently beyond the facility limit', 'ceiling above the committed amount', 'balance above the committed amount (interest capitalized past the commitment)', 'fixed facility', 'no construction loan',
-    'takeout shortfall called inside the hold', 'takeout shortfall never called (sale before stabilization)', 'takeout with cash-out proceeds', 'lease-up operating shortfall funded by the partners', 'lease-up deficit funded in the ledger', 'valid sale between completion and stabilization', 'invalid hold (ends at or before completion)', 'acquisition rate cap', 'acquisition refinance at maturity', 'acquisition without debt', 'page and PDF checks'];
+    'takeout shortfall called inside the hold', 'takeout shortfall never called (sale before stabilization)', 'takeout with cash-out proceeds', 'lease-up operating shortfall funded by the partners', 'lease-up deficit funded in the ledger', 'operating reserve draw repaid out of a month with surplus cash', 'acquisition capital call for a refinance shortfall', 'acquisition capital call for balloon equity', 'valid sale between completion and stabilization', 'invalid hold (ends at or before completion)', 'acquisition rate cap', 'acquisition refinance at maturity', 'acquisition without debt', 'page and PDF checks'];
   if (!ONLY) { const miss = NEED.filter((k) => !coverage[k]); checks++; if (miss.length) fails++; console.log((miss.length ? 'FAIL ' : 'PASS ') + 'coverage | the scenarios exercise every case the suite claims to' + (miss.length ? ' | never exercised: ' + miss.join('; ') : ' (' + NEED.map((k) => coverage[k] + ' x ' + k).join('; ') + ')')); }
   if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify(records, null, 1));
   console.log('funding scenarios: ' + nScen + ' scenarios, ' + checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);

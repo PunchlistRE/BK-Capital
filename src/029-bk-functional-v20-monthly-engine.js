@@ -148,7 +148,13 @@ RENDERERS['Ledger (M)'] = function(){
     if(Math.abs(reserve)>0.005) entries.push({m:row.m, dt:label, item:'Reserves', amt: reserve});
     entries.push({m:row.m, dt:label, item:'Debt Service', amt: -row.ds});
     if(row.assetFee) entries.push({m:row.m, dt:label, item:'Asset Management Fee', amt: -row.assetFee});
-    if(row.m===1) entries.push({m:row.m, dt:label, item:'Equity Contribution', amt: -Number(r.d.equity)});
+    /* equity by what it is and when it is called: the closing equity (an acquisition pays it in month 1, a development deal calls it through its funding schedule), then each capital call after closing */
+    const devRow = row.equityDraw !== undefined, closeCall = devRow ? (Number(row.equityDraw)||0) : (row.m===1 ? (Number(row.eqDraw)||0) : 0);
+    if(closeCall > 0.005) entries.push({m:row.m, dt:label, item:'Closing equity', amt: -closeCall});
+    if(devRow){
+      if((Number(row.refiEq)||0) > 0.005) entries.push({m:row.m, dt:label, item:'Capital call - takeout equity', amt: -Number(row.refiEq)});
+      if((Number(row.opShort)||0) > 0.005) entries.push({m:row.m, dt:label, item:'Capital call - operating cash requirement', amt: -Number(row.opShort)});
+    } else { const call = Math.max(0, (Number(row.wfContrib)||0) - (Number(row.eqDraw)||0)); if(call > 0.005) entries.push({m:row.m, dt:label, item:'Capital call after closing', amt: -call}); }
     if(row.sale) entries.push({m:row.m, dt:label, item:'Sale Proceeds (Net)', amt: row.sale});
     if(row.dispoFee) entries.push({m:row.m, dt:label, item:'Disposition Fee', amt: -row.dispoFee});
     if(row.payoff) entries.push({m:row.m, dt:label, item:'Debt Payoff at Sale', amt: -row.payoff});

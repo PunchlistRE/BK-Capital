@@ -210,7 +210,7 @@ It is called in month 38, the stabilization month, together with that month's $3
 
 ## 7. E. Scenario suite
 
-`audit/funding_scenarios_test.js` is registered as audit section 72 in `audit/run_all.sh` (the parallel runner's coverage guard counts 72 sections, 73 command lines). Each scenario is evaluated with `bkRunWith`, so no saved state is touched, and then checked from the engines' raw monthly output with the test's own arithmetic.
+`audit/funding_scenarios_test.js` is registered as audit section 72 in `audit/run_all.sh` (the parallel runner's coverage guard counted 72 sections, 73 command lines when this was written; the capital-measures section brought it to 73 sections, 74 command lines). Each scenario is evaluated with `bkRunWith`, so no saved state is touched, and then checked from the engines' raw monthly output with the test's own arithmetic.
 
 **Coverage**: construction sizing (LTC, loan to stabilized value, rate, fees, utilisation), schedule (construction, lease-up, pre-development), facility structure (ceiling above or at the commitment, fixed amount, equity-first, unused-commitment fee, no loan), initial reserves (interest, operating, held; smaller and larger than the need; at close, completion or a month; several at once), takeout (none, shortfall, cash-out, debt-yield bound, interest-only), budget modes, GP share and waterfall terms, a hold sweep of 1 to 10 years, and the acquisition modes (LTV, LTC, DSCR, rate, interest-only, amortization, fees, rate cap, no debt, refinance at maturity, balloon), plus combinations. A coverage guard fails the suite if a case it claims to exercise is never reached (for example, an operating reserve drawn in the ledger, a ceiling that lets the balance pass the commitment, a takeout shortfall that is never called).
 
@@ -276,11 +276,13 @@ Failing items in the "before" column are the funding ties and integrity checks t
 
 Scope limits: three decks (Harbor Point, the audit development deal, the acquisition deal), one closing date, no unit-level lease-up variant, no deal built from an imported OM.
 
-## 9. Not changed: decisions for you
+## 9. Decisions taken (after review of this report)
 
-1. **Lease-up funding convention.** The ledger funds the net cumulative lease-up deficit; the partners fund the early losses gross, as they fall. For the audit deal that is $426,569 that Sources & Uses did not carry (3.4% of equity at funding); for Harbor, $208,366 (1.3%). Sizing the ledger to the *peak* cumulative deficit would move that amount into funding and may change how much the facility pays for, and with it the returns on every development deal. Left alone; it is now disclosed and tied.
-2. **Acquisition Sources & Uses page.** When capital is called after closing, the page adds it as an explicit use and source, so its totals are the shared summary's closing totals plus that capital. Intentional and labelled; say if you want them to match exactly.
-3. **Audit time.** The new section adds about 75 seconds of one parallel worker.
+1. **Lease-up funding convention: the peak is not funded.** Net funding treatment is kept; the unfunded interim cash requirement is disclosed, not hidden. The distinction matters: the *net* deficit is the cumulative shortfall after positive operating cash flow offsets it; the *peak* deficit is the most cash outstanding before later operating cash flow arrives. Funding the peak in the schedule would change the timing and amount of contributed capital, and with it the returns and the waterfall, and must not be done merely to make Sources & Uses match another figure. The $426,569 (audit deal; $208,366 for Harbor) is therefore a separate **operating cash requirement**, visible on Sources & Uses with its funding source identified (the partners, LP and GP), tied (`capOperating`) and counted in total contributed equity. Implemented in the capital-measures branch (`CAPITAL_MEASURES.md` section 1.3).
+2. **Acquisition Sources & Uses: the post-closing capital call stays a separate row.** The two totals are not forced to match. *Closing Sources & Uses* is the capital and debt required at closing (`TOTAL USES AT CLOSING`, `TOTAL SOURCES AT CLOSING`). *Total project capitalization* is the closing funding plus the capital called after closing, shown beside it with each call as its own row. Both are legitimate and the page says which is which (`CAPITAL_MEASURES.md` section 1.4).
+3. **A permanent modeling convention** distinguishes four measures throughout BK Capital: closing equity, total contributed equity, operating cash requirement and total project capitalization (`CAPITAL_MEASURES.md`). They reconcile to the underlying cash flows and are never forced to equal one another.
+
+Still open (unchanged by these decisions): the audit time added by the scenario section (about 75 seconds of one parallel worker; the capital-measures section adds about the same).
 
 ## 10. Files
 

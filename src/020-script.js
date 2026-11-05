@@ -19,7 +19,7 @@
        ['Unlevered MOIC',u.moic,BASE.unlevMOIC,.002,v=>Number(v).toFixed(3)+'x'],
        ['Levered XIRR',r.irr,BASE.levIRR,.002,v=>bkPct(v)],
        ['Levered MOIC',r.moic,BASE.levMOIC,.002,v=>Number(v).toFixed(3)+'x'],
-       ['Peak / Initial Equity',r.d.equity,BASE.peakEq,.002,v=>bkFmt(v)],
+       ['Closing equity (workbook: Peak / Initial Equity)',r.d.equity,BASE.peakEq,.002,v=>bkFmt(v)],
        ['Gross Sale Price',u.grossSale,BASE.grossSale,.002,v=>bkFmt(v)]
      ];
      tests.forEach(t=>{total++; if(isFinite(t[1])&&pctDiff(t[1],t[2])<=t[3])pass++; rows+=qaRow(...t)});
