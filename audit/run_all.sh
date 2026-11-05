@@ -81,5 +81,6 @@ echo "== Funding ties (Sources & Uses, guide, Debt, Funding, Returns share one c
 echo "== Funding scenarios (180 development and acquisition configurations: Sources & Uses, funding ledger, contributed equity, the four capital measures, waterfall and returns each checked from the raw monthly output; facility ceilings, interest reserves, takeout, holds; mutation checks)"; node audit/funding_scenarios_test.js index.html
 echo "== Capital measures (closing equity, total contributed equity, operating cash requirement, total project capitalization: one name for one number on every sheet, the investor PDF and the schedule report; ambiguous equity labels refused)"; node audit/capital_measures_test.js index.html
 echo "== Import tab routing (an OM with a rent roll page stays an OM; a plain rent roll stays a rent roll)"; node audit/import_route_test.js index.html | tail -1
+echo "== Document ingestion foundation (fact record and validation, quote verification, number parser, hashing, both stores, intake, pipeline failure / retry / resume, provider guard, classification measured on labeled fixtures)"; node audit/ingest_core_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"
