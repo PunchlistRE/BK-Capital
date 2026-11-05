@@ -31225,7 +31225,7 @@ if(typeof window.bkDisplayPass !== 'function') return;
 var SEL = 'input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]):not([type=range]):not([type=color]):not([type=button]):not([type=submit]):not([type=image]):not([type=password]),select,span.ae-ro';
 var SKIP = '.bk-flow,.bk-ribbon,.tabnav,.brand-bar,#pl-palette,.pl-search,.bk-ask,#bk-kpibar,[data-bk-w="free"],.bk-nofield,table.fin';   /* table.fin: its input cells are the boxes and are sized by the cell authority (src/110) */
 var HANDLER = /bkEdSet\('[^']*','(pct|int|num|text|month)'/, KIND = { pct:'s', int:'s', num:'m', month:'m', text:'l' };
-var H_DATE = /\b(date|start|expir\w*|ending|begin|closing)\b/i, H_PCT = /%|growth|vacanc|bump|share|yield|ltv|dscr|probab|escalat|inflation|concession|occupan|haircut|spread|margin/i,
+var H_DATE = /\b(date|start|expir\w*|ending|begin|closing)\b/i, H_PCT = /%|growth|vacanc|bump|share|yield|ltv|dscr|probab|escalat|inflation|concession|occupan|haircut|spread|margin|loss to lease|credit loss|bad debt/i,
     H_TXT = /\b(name|tenant|suite|description|label|notes?|memo|comment|address|source|title|item|line|property|city)\b/i, H_USD = /\$|rent|amount|cost|price|total|fee|income|expense|balance|payment|proceeds|equity|loan|value|noi|cash|budget|reserve|tax|insurance|capex|charge/i;
 var U_AREA = /^(g?sf\b|gsf|sq|acres?|ft\b)/i, U_COUNT = /^(units?|suites?|spaces?|years?|yrs?|months?|mos?\b|rows?|stories|floors|beds|tenants|leases)/i, DATEPAT = /^(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|[A-Za-z]{3,9}\.?,? \d{4})$/;
 function txt(n){ return n ? String(n.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
@@ -31247,7 +31247,7 @@ function kindOf(el){
   if(U_COUNT.test(u)) return 's';
   var k = hint(headText(el), true) || hint(u, false) || ((s === '' || s === '-' || s === '–') ? hint(labelText(el), false) : null); if(k) return k;
   if(DATEPAT.test(s)) return 'm';
-  if(/^[\s\d,.\-−()x]*$/.test(s)) return /^\d{1,3}$/.test(s) ? 's' : 'm';
+  if(/^[\s\d,.\-+\/−()x]*$/.test(s)) return /^\d{1,3}$/.test(s) ? 's' : 'm';
   return 'l';
 }
 function put(el, a, v){ if(el.getAttribute(a) !== v) el.setAttribute(a, v); }
