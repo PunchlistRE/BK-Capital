@@ -49,7 +49,7 @@ function chartCoverage(D){
   for(var t = 0; t <= 4; t++){ var v = mx * t / 4, y = Yp(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="' + COL.grid + '"/><text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">' + axisLbl(v) + '</text>'; }
   var pts = [];
   var k = every(bw);
-  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.46, bx = x + (bw - w) / 2, top = Yp(r.dscrNoi), ok = r.dscr == null || r.dscr >= (D.pol.minDSCR || 1.25), lab = i === n - 1 || (i % k === 0 && n - 1 - i >= k);   /* the first year, every k-th, and the last; never two side by side */
+  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.46, bx = x + (bw - w) / 2, top = Yp(r.dscrNoi), ok = r.dscr == null || r.dscr >= bkLenderDscrMin(), lab = i === n - 1 || (i % k === 0 && n - 1 - i >= k);   /* the first year, every k-th, and the last; never two side by side */
     g += '<rect x="' + bx + '" y="' + top + '" width="' + w + '" height="' + (T + bh - top) + '" rx="3" fill="' + COL.navy + '" opacity=".92"><title>Year ' + r.y + ': ' + bkNoiBasisLabel('dscr') + ' ' + M(r.dscrNoi) + '</title></rect>';
     if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (top - 6) + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">' + axisLbl(r.dscrNoi) + '</text>';
     if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 26) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".75">' + yl(r.y) + '</text>';
@@ -159,7 +159,7 @@ function proFormaBlock(D){
   var Y = D.Y, n = Y.length, y1 = Y[0], yn = Y[n - 1], g = cagr(y1.noi, yn.noi, n - 1), minD = Math.min.apply(null, Y.map(function(r){ return r.dscr == null ? 99 : r.dscr; })), avgCoc = sum(Y.map(function(r){ return r.coc || 0; })) / n;
   var ins = [];
   ins.push('NOI grows <b>' + P(g) + ' a year</b> (' + M(y1.noi) + ' to ' + M(yn.noi) + ') while debt service ' + (Math.abs(yn.ds - y1.ds) < 1 ? 'is flat at ' + M(-y1.ds) : 'moves from ' + M(-y1.ds) + ' to ' + M(-yn.ds)) + ', so coverage goes from <b>' + X(y1.dscr) + '</b> to <b>' + X(yn.dscr) + '</b>.');
-  var pm = D.pol.minDSCR || 1.25; if(minD < pm) ins.push('The lender DSCR (' + bkDscrBasis('lender') + ') is below the <b>' + X(pm) + '</b> house minimum in ' + Y.filter(function(r){ return r.dscr != null && r.dscr < pm; }).map(function(r){ return 'Year ' + r.y; }).join(', ') + '. The credit gate tests the house DSCR (NOI after reserves); see Credit Policy.');
+  var pm = bkLenderDscrMin(); if(minD < pm) ins.push('The lender DSCR (' + bkDscrBasis('lender') + ') is below the <b>' + X(pm) + '</b> loan minimum in ' + Y.filter(function(r){ return r.dscr != null && r.dscr < pm; }).map(function(r){ return 'Year ' + r.y; }).join(', ') + '. The credit gate separately tests the House DSCR (NOI after reserves) against the house minimum; see Credit Policy.');
   var er = -y1.opex / y1.egi; ins.push('Year 1 expenses take <b>' + P(er, 0) + '</b> of income (' + M(-y1.opex / D.units, 0) + ' per unit); taxes alone are ' + P(-y1.taxes / y1.egi, 0) + '.');
   return '<div class="pf">' + printBar()
     + '<div class="pf-kpis">' + kpi('Year-1 NOI', M(y1.noi), P(y1.noi / y1.egi, 0) + ' of income') + kpi('NOI growth', P(g), 'per year, Year 1 to ' + n) + kpi('Year-1 cash-on-cash', P(y1.coc), 'after debt service') + kpi('Lowest coverage', X(minD), 'policy minimum ' + X(pm)) + kpi('Going-in yield', D.price ? P(y1.noiAfter / D.price) : '—', 'NOI after reserves / price') + '</div>'

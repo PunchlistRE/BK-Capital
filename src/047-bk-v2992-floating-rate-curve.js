@@ -45,7 +45,7 @@
     const balloon=orig[Math.min(maturity,holdM)-1]?orig[Math.min(maturity,holdM)-1].balance:0;
     let refi=null;
     if(Number(s.refiAtMaturity||0)&&preExit&&!debtOff){
-      const arr=noiArrFn(),y=Math.min(arr.length-1,Math.max(0,Math.ceil(maturity/12)-1)),noi=Number(arr[y]?.noi||0),cap=Math.max(.0001,Number(s.refiCapRate||s.exitCap||.07)),val=noi/cap,
+      const arr=noiArrFn(),y=Math.min(arr.length-1,Math.max(0,Math.ceil(maturity/12)-1)),noi=Number(bkLenderNoi(arr[y],s)||0),cap=Math.max(.0001,Number(s.refiCapRate||s.exitCap||.07)),val=noi/cap,
         unit=bkPmt(Number(s.refiRate||0)/12,Math.max(1,Number(s.refiAmort||30)*12),1),byLTV=val*Number(s.refiLTV||0),
         byDSCR=(Number(s.refiDSCR)>0&&unit>0)?(noi/Number(s.refiDSCR))/(unit*12):Infinity,
         rl=Math.max(0,Math.floor(Math.min(byLTV,byDSCR)/1000)*1000),fee=rl*Number(s.refiOrigFee||0);
@@ -88,7 +88,7 @@
        DSCR test uses, so adding a constraint never changes the debt engine's NOI basis.
        acqDebtYield is the ACQUISITION minimum and is deliberately a DIFFERENT field from
        minDebtYield, the ongoing Covenant Monitor threshold created by bkEnsureV17. */
-    const byDebtYield=Number(s.acqDebtYield)>0?op.noi/Number(s.acqDebtYield):Infinity;
+    const byDebtYield=Number(s.acqDebtYield)>0?dscrNoi/Number(s.acqDebtYield):Infinity;   /* OWNER DECISION B: the debt-yield test reads the same lender NOI basis as the DSCR test (it used NOI before reserves whatever the setting said) */
     /* debtEnabled is the ONLY way to model an unlevered deal. debtTerm=0 means term-equals-hold
        via a falsy-OR and must never be used to mean no debt. */
     const debtOff=(s.debtEnabled===false);

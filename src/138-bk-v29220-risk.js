@@ -42,7 +42,7 @@ function scenarioRun(s){
   var hurdle = Number(pol.targetIRR) || 0.12;
   return { cases:out, probTotal:tot, expProfit:W(function(x){ return x.profit; }), expMoic:W(function(x){ return x.moic; }), avgIRR:W(function(x){ return x.irr; }), irrOfExpectedCF:eirr, hurdle:hurdle,
     pLoss:out.filter(function(x){ return x.profit < 0; }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1), pMiss:out.filter(function(x){ return !(x.irr >= hurdle); }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1),
-    pDscr:out.filter(function(x){ return x.dscr != null && x.dscr < (Number(pol.minDSCR) || 1.25); }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1), minDSCR:Number(pol.minDSCR) || 1.25 };
+    pDscr:out.filter(function(x){ return x.dscr != null && x.dscr < (bkLenderDscrMin()); }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1), minDSCR:bkLenderDscrMin() };
 }
 window.bkRiskScenarios = function(){ var s = bkLoad(); return s && isAcq(s) ? scenarioRun(s) : null; };
 
@@ -75,14 +75,14 @@ function summarize(runs, hurdle, minDSCR){
 window.bkRiskSummarise = summarize;
 function sigOf(s){ var o = {}; Object.keys(s).forEach(function(k){ if(k.charAt(0) !== '_' && k !== 'seededAt') o[k] = s[k]; }); return JSON.stringify(o) + JSON.stringify(risk(s)); }
 window.bkRiskRunSync = function(n){ var s = bkLoad(), R = risk(s); n = n || R.n; var dr = draws(s, R, n), pol = bkPolicy(), runs = dr.map(function(d){ var m = metrics(d.ov); return { irr:m.irr, moic:m.moic, profit:m.profit, dscr:m.dscr, shifts:d.shifts }; });
-  return { runs:runs, summary:summarize(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25) }; };
+  return { runs:runs, summary:summarize(runs, Number(pol.targetIRR) || 0.12, bkLenderDscrMin()) }; };
 window.bkRiskRun = function(){
   var s = bkLoad(); if(!s || !isAcq(s) || MC.running) return; var R = risk(s), pol = bkPolicy(), dr = draws(s, R, R.n), runs = [], i = 0, sig = sigOf(s);
   MC = { sig:sig, runs:null, running:true, done:0, total:R.n };
   function tick(){ var t0 = Date.now();
     while(i < dr.length && Date.now() - t0 < 40){ var m = metrics(dr[i].ov); runs.push({ irr:m.irr, moic:m.moic, profit:m.profit, dscr:m.dscr, shifts:dr[i].shifts }); i++; }
     MC.done = i; var el = document.getElementById('bkRiskProg'); if(el) el.textContent = 'Running: ' + i + ' of ' + dr.length + ' draws';
-    if(i < dr.length) setTimeout(tick, 0); else { MC.running = false; MC.runs = runs; MC.summary = summarize(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25); MC.R = R; if(typeof showSheet === 'function') showSheet('Probability-Weighted'); } }
+    if(i < dr.length) setTimeout(tick, 0); else { MC.running = false; MC.runs = runs; MC.summary = summarize(runs, Number(pol.targetIRR) || 0.12, bkLenderDscrMin()); MC.R = R; if(typeof showSheet === 'function') showSheet('Probability-Weighted'); } }
   var el0 = document.getElementById('bkRiskProg'); if(el0) el0.textContent = 'Running: 0 of ' + dr.length + ' draws'; setTimeout(tick, 0);
 };
 
@@ -114,7 +114,7 @@ function render(){
     + '<tr><td class="rowlabel">Weighted average of the three IRRs</td><td>' + P(S_.avgIRR) + '</td><td style="text-align:left">Not the same thing: an IRR is not a linear measure, so the average of the IRRs is not the return on the expected cash flow. Use the cash-flow figure above.</td></tr>'
     + '<tr><td class="rowlabel">Probability of losing money</td><td>' + P(S_.pLoss, 0) + '</td><td style="text-align:left">Total probability of the cases with negative equity profit.</td></tr>'
     + '<tr><td class="rowlabel">Probability of missing the ' + P(S_.hurdle, 1) + ' hurdle</td><td>' + P(S_.pMiss, 0) + '</td><td style="text-align:left">Hurdle is the target levered IRR on Credit Policy.</td></tr>'
-    + '<tr><td class="rowlabel">Probability the year-1 lender DSCR is below ' + X(S_.minDSCR) + '</td><td>' + P(S_.pDscr, 0) + '</td><td style="text-align:left">The house minimum DSCR, tested on each case’s lender DSCR (' + bkDscrBasis('lender') + '), with its own rate and rent.</td></tr></tbody></table></div>'
+    + '<tr><td class="rowlabel">Probability the year-1 lender DSCR is below ' + X(S_.minDSCR) + '</td><td>' + P(S_.pDscr, 0) + '</td><td style="text-align:left">The loan’s own minimum DSCR, tested on each case’s lender DSCR (' + bkDscrBasis('lender') + '), with its own rate and rent.</td></tr></tbody></table></div>'
     + box('Three cases are coarse: the probability of loss can only move in steps of one case’s weight. The Monte Carlo below spreads the main drivers continuously for a smoother answer. Case definitions (exit-cap, rent-growth and rate shifts) are edited under Deal Underwrite, Underwriting Cases.');
   /* Monte Carlo */
   var drv = window.bkSensDrivers(s), by = {}; drv.forEach(function(d){ by[d.id] = d; });
@@ -133,7 +133,7 @@ function render(){
       + row('Levered IRR', sm.irr, function(v){ return P(v); }) + row('Equity multiple', sm.moic, X) + row('Equity profit', sm.profit, $) + (sm.dscr ? row('Lender DSCR, year 1', sm.dscr, X) : '') + '</tbody></table></div>'
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Odds</caption><thead><tr><th class="rowlabel-h">Question</th><th>Probability</th></tr></thead><tbody>'
       + '<tr><td class="rowlabel">Lose money (equity profit below zero)</td><td><b>' + P(sm.pLoss) + '</b></td></tr><tr><td class="rowlabel">Miss the ' + P(sm.hurdle, 1) + ' levered IRR hurdle</td><td><b>' + P(sm.pMiss) + '</b></td></tr>'
-      + '<tr><td class="rowlabel">Lender DSCR, year 1, below the ' + X(sm.minDSCR) + ' house minimum</td><td>' + P(sm.pDscr) + '</td></tr></tbody></table></div>'
+      + '<tr><td class="rowlabel">Lender DSCR, year 1, below the ' + X(sm.minDSCR) + ' loan minimum</td><td>' + P(sm.pDscr) + '</td></tr></tbody></table></div>'
       + '<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin-bottom:6px">Levered IRR across ' + sm.n + ' draws</div>' + histogram(sm, 'irr') + '</div>'
       + '<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin-bottom:6px">Equity profit across ' + sm.n + ' draws</div>' + histogram(sm, 'profit') + '</div>'
       + box('Each draw moves the drivers above together and re-runs the full underwriting engine (debt resizes, taxes and the waterfall follow). Draws are limited to ±2.5 standard deviations. The spread comes only from the drivers you list: it says how sensitive this deal is to those assumptions, not how likely they are in your market. Change a standard deviation to your own view.');

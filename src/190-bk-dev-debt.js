@@ -18,7 +18,7 @@ window.bkDevDebtView = function(){
     /* the permanent loan repays the construction facility in the stabilization month; after that month only the permanent loan is outstanding */
     conEnd = (f.months && f.months[i] && !(takeout && m >= stab)) ? num(f.months[i].end) : 0;
     permEnd = pz ? num(pz.end) : 0; pay = pz ? num(pz.payment) : 0; prin = pz && pay > 0 ? num(pz.principal) : 0;
-    monthly.push({ m:m, y:r.y, noi:num(r.noi), ds:num(r.ds), principal:prin, interest:num(r.ds) - prin, perm:permEnd, con:conEnd, bal:conEnd + permEnd, pay:pay, hasDs:pay > 0 });
+    monthly.push({ m:m, y:r.y, noi:num(bkLenderNoi(r, s)), ds:num(r.ds), principal:prin, interest:num(r.ds) - prin, perm:permEnd, con:conEnd, bal:conEnd + permEnd, pay:pay, hasDs:pay > 0 });
   }
   var years = [], ny = n ? monthly[n - 1].y : 0, y, k, a;
   for(y = 1; y <= ny; y++){
@@ -66,7 +66,7 @@ window.bkDevCovenantSheet = function(s, dv){
   var main = '<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - Lender DSCR (NOI after reserves) &amp; Debt Yield, tested annually against the permanent loan after takeout</caption>'
     + '<thead><tr><th class="rowlabel-h">Line Item</th>' + rows.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
     + '<tr><td class="rowlabel">Months with Permanent Debt Service</td>' + rows.map(function(r){ return v(r, r.n); }).join('') + '</tr>'
-    + '<tr><td class="rowlabel">NOI After Reserves (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">' + bkNoiBasisLabel('lender', null) + ' (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Debt Service (those months)</td>' + rows.map(function(r){ return v(r, money(-r.ds)); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Ending Loan Balance</td>' + rows.map(function(r){ return v(r, money(r.ending)); }).join('') + '</tr>'
     + '<tr class="grandtotal"><td class="rowlabel">Lender DSCR (min ' + minDSCR.toFixed(2) + 'x)</td>' + rows.map(function(r){ return v(r, isFinite(r.dscr) ? r.dscr.toFixed(2) + 'x' : '-'); }).join('') + '</tr>'

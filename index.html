@@ -2511,7 +2511,7 @@ function bkPmtV11(rate,n,pv){if(!n)return 0;if(!rate)return pv/n;return pv*rate/
 // post-stabilization operating curve, so the sizing NOI and the cash-flow NOI are one consistent
 // source rather than two different proxies for the same thing.
 function bkDevForwardNOI(x){
-  const s=x.s, baseNOI=Math.max(0,Number(s.stabilizedNOI||0)||Number(bkCalc().noi||0));   // CV-DV1/D1: permanent sizing NOI BEFORE reserves
+  const s=x.s, cc=bkCalc(), resv=(s.lenderNoiBasis==='after'&&isFinite(cc.after)&&isFinite(cc.noi))?Math.max(0,cc.noi-cc.after):0, baseNOI=Math.max(0,(Number(s.stabilizedNOI||0)||Number(cc.noi||0))-resv);   // CV-DV1/D1: permanent sizing NOI BEFORE reserves unless the deal's lender NOI basis is 'after' (owner decision B: one lender NOI basis)
   const noiGrowth=Number(s.noiGrowth||s.rentGrowth||0);
   let fwdNOI=0;
   for(let mo=x.stab+1; mo<=x.stab+12; mo++){
@@ -3854,12 +3854,10 @@ bkRefreshRailStatus();
 
 function bkEnsureV18(){
   const s = bkLoad(); let dirty=false;
-  const isRes = /resident|multifamily|apartment/i.test(String(s.propertyType||''));
   if(s.taxRate===undefined){ s.taxRate=0.37; dirty=true; }
   if(s.capGainsRate===undefined){ s.capGainsRate=0.20; dirty=true; }
   if(s.depRecaptureRate===undefined){ s.depRecaptureRate=0.25; dirty=true; }
   if(s.landValuePct===undefined){ s.landValuePct=0.20; dirty=true; }
-  if(s.deprLife===undefined){ s.deprLife=isRes?27.5:39; dirty=true; }
   if(dirty) bkSave(s);
   return s;
 }
@@ -3872,7 +3870,8 @@ function bkAfterTaxV18(){
   const totalBasis = Math.abs(u.initial);
   const landValue = totalBasis * Number(s.landValuePct||0);
   const deprBasis = Math.max(0, totalBasis - landValue);
-  const life = Number(s.deprLife||39);
+  const lifeInfo = (typeof bkRecoveryPeriod==='function') ? bkRecoveryPeriod(s) : { years:Number(s.deprLife||39), basis:'' };   /* one shared determination (src/077), recomputed with the inputs */
+  const life = lifeInfo.years;
   const annualDepr = life>0 ? deprBasis/life : 0;
 
   let accumDepr = 0, lossCF = 0;
@@ -3926,6 +3925,7 @@ const _dealV18 = sheetDealUnderwrite;
 sheetDealUnderwrite = function(){
   const o = _dealV18();
   o.main += `<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>After-Tax Assumptions</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('Ordinary Income Tax Rate','taxRate','%','pct')}${bkInput('Land Value (% of Basis)','landValuePct','%','pct')}${bkInput('Depreciable Life','deprLife','years')}${bkInput('Depreciation Recapture Rate','depRecaptureRate','% (Sec. 1250)','pct')}${bkInput('Long-Term Capital Gains Rate','capGainsRate','%','pct')}</tbody></table></div>`;
+  try { const li = bkRecoveryPeriod(s); o.main += '<div class="note-flag"><span>&#9432;</span><div><b>Recovery period: ' + li.years + ' years.</b> ' + li.basis + (li.override ? '' : '. It follows the rent mix and changes with the inputs; enter a period on the Depreciation page to fix it.') + '</div></div>'; } catch(e){}
   return o;
 };
 
@@ -7095,7 +7095,7 @@ try{implement(document);}catch(e){}
     const balloon=orig[Math.min(maturity,holdM)-1]?orig[Math.min(maturity,holdM)-1].balance:0;
     let refi=null;
     if(Number(s.refiAtMaturity||0)&&preExit&&!debtOff){
-      const arr=noiArrFn(),y=Math.min(arr.length-1,Math.max(0,Math.ceil(maturity/12)-1)),noi=Number(arr[y]?.noi||0),cap=Math.max(.0001,Number(s.refiCapRate||s.exitCap||.07)),val=noi/cap,
+      const arr=noiArrFn(),y=Math.min(arr.length-1,Math.max(0,Math.ceil(maturity/12)-1)),noi=Number(bkLenderNoi(arr[y],s)||0),cap=Math.max(.0001,Number(s.refiCapRate||s.exitCap||.07)),val=noi/cap,
         unit=bkPmt(Number(s.refiRate||0)/12,Math.max(1,Number(s.refiAmort||30)*12),1),byLTV=val*Number(s.refiLTV||0),
         byDSCR=(Number(s.refiDSCR)>0&&unit>0)?(noi/Number(s.refiDSCR))/(unit*12):Infinity,
         rl=Math.max(0,Math.floor(Math.min(byLTV,byDSCR)/1000)*1000),fee=rl*Number(s.refiOrigFee||0);
@@ -7138,7 +7138,7 @@ try{implement(document);}catch(e){}
        DSCR test uses, so adding a constraint never changes the debt engine's NOI basis.
        acqDebtYield is the ACQUISITION minimum and is deliberately a DIFFERENT field from
        minDebtYield, the ongoing Covenant Monitor threshold created by bkEnsureV17. */
-    const byDebtYield=Number(s.acqDebtYield)>0?op.noi/Number(s.acqDebtYield):Infinity;
+    const byDebtYield=Number(s.acqDebtYield)>0?dscrNoi/Number(s.acqDebtYield):Infinity;   /* OWNER DECISION B: the debt-yield test reads the same lender NOI basis as the DSCR test (it used NOI before reserves whatever the setting said) */
     /* debtEnabled is the ONLY way to model an unlevered deal. debtTerm=0 means term-equals-hold
        via a falsy-OR and must never be used to mean no debt. */
     const debtOff=(s.debtEnabled===false);
@@ -9700,13 +9700,29 @@ var HARVARD_STUDY = {
 function deal(){
   try { return (typeof bkActiveDeal==='function') ? bkActiveDeal() : null; } catch(e){ return null; }
 }
+/* RECOVERY PERIOD. One determination for the whole app (the After-Tax sheet and this engine both read it). Residential rental property recovers over 27.5 years, anything else over 39. It is decided from the rent the model
+   actually has: residential gross rent >= 80% of total gross rent -> 27.5 years. It is recomputed whenever inputs change (never saved as an inferred value), a period entered on the Depreciation page is kept, and the basis of the
+   decision is returned so the After-Tax report can show it. With no rent to measure it falls back to the property-type wording. */
+window.bkRecoveryPeriod = function(s){
+  s = s || deal();
+  var raw = (s && s._depr && s._depr.settings) ? s._depr.settings : {}, entered = raw.baseLife;
+  if(entered !== null && entered !== undefined && isFinite(Number(entered)) && Number(entered) > 0) return { years:Number(entered), override:true, basis:'Entered on the Depreciation page: ' + Number(entered) + ' years' };
+  var legacy = s ? Number(s.deprLife) : NaN;   /* a custom period saved before this rule existed; the two values the old default wrote (27.5, 39) are inferred, not entered */
+  if(isFinite(legacy) && legacy > 0 && legacy !== 27.5 && legacy !== 39) return { years:legacy, override:true, basis:'Saved with the deal: ' + legacy + ' years' };
+  var res = 0, com = 0;
+  try { var arr = bkAnnualCF().arr || []; arr.forEach(function(a){ var L = a.lines || {}; res += Math.max(0, Number(L.gprGross) || 0); com += Math.max(0, Number(L.commGross) || 0); }); } catch(e){}
+  if(res + com > 0){
+    var share = res / (res + com), pct = (share * 100).toFixed(0) + '%';
+    return share >= 0.8 ? { years:27.5, override:false, basis:'Residential rental - ' + pct + ' residential gross rent -> 27.5 years' } : { years:39, override:false, basis:'Not residential rental - ' + pct + ' residential gross rent (80% needed) -> 39 years' };
+  }
+  var isRes = /resident|multifamily|apartment/i.test(String(s && s.propertyType || ''));
+  return { years:isRes ? 27.5 : 39, override:false, basis:(isRes ? 'Residential rental by property type' : 'Not residential rental by property type') + ' (no rent to measure yet) -> ' + (isRes ? 27.5 : 39) + ' years' };
+};
 function settings(){
   var s = deal();
   var raw = (s && s._depr && s._depr.settings) ? s._depr.settings : {};
   var out = Object.assign({}, DEF, raw);
-  if(out.baseLife === null || out.baseLife === undefined){
-    out.baseLife = /resident|multifamily|apartment/i.test(String(s && s.propertyType || '')) ? 27.5 : 39;
-  }
+  if(out.baseLife === null || out.baseLife === undefined) out.baseLife = window.bkRecoveryPeriod(s).years;
   return out;
 }
 function components(){
@@ -10483,6 +10499,8 @@ window.bkNoiBasisLabel = function(kind, s, short){ s = s || bkLoad(); var b = ki
    A lender test that divides its own fixed NOI (the permanent loan's forward 12 months, a refinance tool) passes that NOI as basis, so its label says what it divides.
    bkDscrName gives the full name, bkDscrShort the two words for a narrow column whose caption or note gives the basis. */
 window.bkDscrBasis = function(kind, s, basis){ return kind === 'house' ? 'NOI after reserves' : (basis || 'lender NOI, ' + window.bkLenderNoiBasis(s) + ' reserves'); };
+/* OWNER DECISION A (November 2026): the Lender DSCR is tested against the LOAN'S OWN minimum (acqDSCR, the minimum the loan is sized to); the House DSCR is tested against the house minimum (Credit Policy). With no loan minimum set the house value is the fallback. */
+window.bkLenderDscrMin = function(s){ s = s || bkLoad(); var own = Number(s.acqDSCR); if(own > 0) return own; var p = {}; try { p = bkPolicy() || {}; } catch(e){} return Number(p.minDSCR) || 1.25; };
 window.bkDscrShort = function(kind){ return kind === 'house' ? 'House DSCR' : 'Lender DSCR'; };
 window.bkDscrName = function(kind, s, basis){ return window.bkDscrShort(kind) + ' (' + window.bkDscrBasis(kind, s, basis) + ')'; };
 /* the sizing engines keep 'DSCR' as the binding test's key (the deal book and the independent models compare on it); a page shows it as the lender DSCR it is */
@@ -18996,7 +19014,7 @@ function headline(){
     var basis = Number(d.basis) || 0, dv = null, tce = null;
     try { tce = Number(bkFundingSummary().measures.totalContributedEquity.amount); } catch(e){}   /* the headline equity figure is the Total contributed equity measure, read from the shared funding summary */
     /* a development deal is financed by the construction facility, not the acquisition loan bkDebt() sizes: loan, equity, coverage and yield come from the development funding engine */
-    if(isDev(s)){ try { var t = bkDevTakeoutV11(), ds = t.conHeldToSale ? Number(t.conHeldBalance || 0) * Math.max(0, Number(s.conRate || 0)) : Number(t.permPmt || 0) * 12, bal = t.conHeldToSale ? Number(t.conHeldBalance || 0) : Number(t.permLoan || 0), stabNOI = Number(t.stabPointNOI || t.noi || 0);
+    if(isDev(s)){ try { var t = bkDevTakeoutV11(), ds = t.conHeldToSale ? Number(t.conHeldBalance || 0) * Math.max(0, Number(s.conRate || 0)) : Number(t.permPmt || 0) * 12, bal = t.conHeldToSale ? Number(t.conHeldBalance || 0) : Number(t.permLoan || 0), stabNOI = Number(t.stabPointNOI || t.noi || 0) - (function(){ if(bkLenderNoiBasis(s) !== 'after') return 0; var c = bkCalc(); return isFinite(c.after) && isFinite(c.noi) ? Math.max(0, c.noi - c.after) : 0; })();   /* owner decision B: the headline reads the deal's lender NOI basis */
       dv = { loan:Number(t.commit || 0), binding:'construction facility', equity:Number(t.equityTotal || 0), dscr:ds > 0 ? stabNOI / ds : NaN, yoc:Number(t.unlev) ? stabNOI / Number(t.unlev) : NaN, debtAtSale:bal, cost:Number(t.unlev || 0) }; } catch(e){ dv = null; } }
     return { c:c, s:s, levIRR:x.irr, levMOIC:x.moic, unlevIRR:x.u ? x.u.irr : NaN, unlevMOIC:x.u ? x.u.moic : NaN,
       lpIRR:w ? w.lpIRR : NaN, gpIRR:w ? w.gpIRR : NaN, lpMOIC:w ? w.lp.moic : NaN, gpMOIC:w ? w.gp.moic : NaN,
@@ -21073,7 +21091,7 @@ function metricsOf(values, dates, closeDt, eq0){
 }
 function refiAt(y, inp, ctx){
   var u = ctx.u, d = ctx.d, r = ctx.r, n = ctx.n, rows = r.rows, last = rows.length - 1;
-  var noi = u.arr[y - 1].after, bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
+  var noi = bkLenderNoi(u.arr[y - 1]), bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
   /* the three ratio tests and the lowest of them: the shared sizing rule, applied as given (all three; the amortization in whole months, as this tool always has) */
   var z = window.bkSizeLoan({ noi:noi, value:value, rate:inp.rate, amortYears:inp.amort, roundMonths:true, maxLTV:inp.maxLTV, minDSCR:inp.minDSCR, minDY:inp.minDebtYield });
   var cLTV = z.caps[0].loan, cDSCR = z.caps[1].loan, cDY = z.caps[2].loan, loan = z.loan, binding = { ltv:'LTV', dscr:'DSCR', dy:'Debt yield' }[z.binding];
@@ -21153,12 +21171,12 @@ var render = function(){
   else {
     var vc = /^REFINANCE/.test(R.verdict) ? 'pass' : /^TRADE/.test(R.verdict) ? 'warn' : 'fail';
     main += '<div class="note-flag" style="margin-top:12px"><span>' + (vc === 'pass' ? '&#10003;' : '&#9888;') + '</span><div><b>' + R.verdict.replace(/&/g, '&amp;') + '</b></div></div>'
-      + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing NOI after reserves', $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
-      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('Lender DSCR constraint (NOI after reserves)', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
+      + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing ' + bkNoiBasisLabel('lender'), $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
+      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('Lender DSCR constraint (' + bkNoiBasisLabel('lender') + ')', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
         + '<tr class="grandtotal"><td class="rowlabel">New loan amount</td><td class="v">' + $(S.newLoan) + '</td><td data-bk-align="text">Binding: ' + (S.binding === 'DSCR' ? 'Lender DSCR' : S.binding) + '</td></tr>'
         + row3('Refinance costs', $(-S.costs)) + row3('Prepayment on existing loan', $(-S.prepay)) + row3('Gross cash-out', $(S.grossCashOut))
         + '<tr class="grandtotal"><td class="rowlabel">Net cash-out to equity</td><td class="v">' + $(S.netCashOut) + '</td><td data-bk-align="text">' + P(S.netCashOut / R.commonEquity) + ' of common equity</td></tr>'
-        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance lender DSCR (NOI after reserves)', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
+        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance lender DSCR (' + bkNoiBasisLabel('lender') + ')', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
         + row3('New loan balance at exit', $(S.newBalanceAtExit)) + row3('Exit prepayment on new loan', $(S.exitPenalty)));
   }
   var trows = R.timing.map(function(x){ var sel = S && x.year === S.year, peak = R.peak && x.year === R.peak.year;
@@ -22015,7 +22033,7 @@ function scenarioRun(s){
   var hurdle = Number(pol.targetIRR) || 0.12;
   return { cases:out, probTotal:tot, expProfit:W(function(x){ return x.profit; }), expMoic:W(function(x){ return x.moic; }), avgIRR:W(function(x){ return x.irr; }), irrOfExpectedCF:eirr, hurdle:hurdle,
     pLoss:out.filter(function(x){ return x.profit < 0; }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1), pMiss:out.filter(function(x){ return !(x.irr >= hurdle); }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1),
-    pDscr:out.filter(function(x){ return x.dscr != null && x.dscr < (Number(pol.minDSCR) || 1.25); }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1), minDSCR:Number(pol.minDSCR) || 1.25 };
+    pDscr:out.filter(function(x){ return x.dscr != null && x.dscr < (bkLenderDscrMin()); }).reduce(function(a, x){ return a + x.p; }, 0) / (tot || 1), minDSCR:bkLenderDscrMin() };
 }
 window.bkRiskScenarios = function(){ var s = bkLoad(); return s && isAcq(s) ? scenarioRun(s) : null; };
 
@@ -22048,14 +22066,14 @@ function summarize(runs, hurdle, minDSCR){
 window.bkRiskSummarise = summarize;
 function sigOf(s){ var o = {}; Object.keys(s).forEach(function(k){ if(k.charAt(0) !== '_' && k !== 'seededAt') o[k] = s[k]; }); return JSON.stringify(o) + JSON.stringify(risk(s)); }
 window.bkRiskRunSync = function(n){ var s = bkLoad(), R = risk(s); n = n || R.n; var dr = draws(s, R, n), pol = bkPolicy(), runs = dr.map(function(d){ var m = metrics(d.ov); return { irr:m.irr, moic:m.moic, profit:m.profit, dscr:m.dscr, shifts:d.shifts }; });
-  return { runs:runs, summary:summarize(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25) }; };
+  return { runs:runs, summary:summarize(runs, Number(pol.targetIRR) || 0.12, bkLenderDscrMin()) }; };
 window.bkRiskRun = function(){
   var s = bkLoad(); if(!s || !isAcq(s) || MC.running) return; var R = risk(s), pol = bkPolicy(), dr = draws(s, R, R.n), runs = [], i = 0, sig = sigOf(s);
   MC = { sig:sig, runs:null, running:true, done:0, total:R.n };
   function tick(){ var t0 = Date.now();
     while(i < dr.length && Date.now() - t0 < 40){ var m = metrics(dr[i].ov); runs.push({ irr:m.irr, moic:m.moic, profit:m.profit, dscr:m.dscr, shifts:dr[i].shifts }); i++; }
     MC.done = i; var el = document.getElementById('bkRiskProg'); if(el) el.textContent = 'Running: ' + i + ' of ' + dr.length + ' draws';
-    if(i < dr.length) setTimeout(tick, 0); else { MC.running = false; MC.runs = runs; MC.summary = summarize(runs, Number(pol.targetIRR) || 0.12, Number(pol.minDSCR) || 1.25); MC.R = R; if(typeof showSheet === 'function') showSheet('Probability-Weighted'); } }
+    if(i < dr.length) setTimeout(tick, 0); else { MC.running = false; MC.runs = runs; MC.summary = summarize(runs, Number(pol.targetIRR) || 0.12, bkLenderDscrMin()); MC.R = R; if(typeof showSheet === 'function') showSheet('Probability-Weighted'); } }
   var el0 = document.getElementById('bkRiskProg'); if(el0) el0.textContent = 'Running: 0 of ' + dr.length + ' draws'; setTimeout(tick, 0);
 };
 
@@ -22087,7 +22105,7 @@ function render(){
     + '<tr><td class="rowlabel">Weighted average of the three IRRs</td><td>' + P(S_.avgIRR) + '</td><td style="text-align:left">Not the same thing: an IRR is not a linear measure, so the average of the IRRs is not the return on the expected cash flow. Use the cash-flow figure above.</td></tr>'
     + '<tr><td class="rowlabel">Probability of losing money</td><td>' + P(S_.pLoss, 0) + '</td><td style="text-align:left">Total probability of the cases with negative equity profit.</td></tr>'
     + '<tr><td class="rowlabel">Probability of missing the ' + P(S_.hurdle, 1) + ' hurdle</td><td>' + P(S_.pMiss, 0) + '</td><td style="text-align:left">Hurdle is the target levered IRR on Credit Policy.</td></tr>'
-    + '<tr><td class="rowlabel">Probability the year-1 lender DSCR is below ' + X(S_.minDSCR) + '</td><td>' + P(S_.pDscr, 0) + '</td><td style="text-align:left">The house minimum DSCR, tested on each case’s lender DSCR (' + bkDscrBasis('lender') + '), with its own rate and rent.</td></tr></tbody></table></div>'
+    + '<tr><td class="rowlabel">Probability the year-1 lender DSCR is below ' + X(S_.minDSCR) + '</td><td>' + P(S_.pDscr, 0) + '</td><td style="text-align:left">The loan’s own minimum DSCR, tested on each case’s lender DSCR (' + bkDscrBasis('lender') + '), with its own rate and rent.</td></tr></tbody></table></div>'
     + box('Three cases are coarse: the probability of loss can only move in steps of one case’s weight. The Monte Carlo below spreads the main drivers continuously for a smoother answer. Case definitions (exit-cap, rent-growth and rate shifts) are edited under Deal Underwrite, Underwriting Cases.');
   /* Monte Carlo */
   var drv = window.bkSensDrivers(s), by = {}; drv.forEach(function(d){ by[d.id] = d; });
@@ -22106,7 +22124,7 @@ function render(){
       + row('Levered IRR', sm.irr, function(v){ return P(v); }) + row('Equity multiple', sm.moic, X) + row('Equity profit', sm.profit, $) + (sm.dscr ? row('Lender DSCR, year 1', sm.dscr, X) : '') + '</tbody></table></div>'
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Odds</caption><thead><tr><th class="rowlabel-h">Question</th><th>Probability</th></tr></thead><tbody>'
       + '<tr><td class="rowlabel">Lose money (equity profit below zero)</td><td><b>' + P(sm.pLoss) + '</b></td></tr><tr><td class="rowlabel">Miss the ' + P(sm.hurdle, 1) + ' levered IRR hurdle</td><td><b>' + P(sm.pMiss) + '</b></td></tr>'
-      + '<tr><td class="rowlabel">Lender DSCR, year 1, below the ' + X(sm.minDSCR) + ' house minimum</td><td>' + P(sm.pDscr) + '</td></tr></tbody></table></div>'
+      + '<tr><td class="rowlabel">Lender DSCR, year 1, below the ' + X(sm.minDSCR) + ' loan minimum</td><td>' + P(sm.pDscr) + '</td></tr></tbody></table></div>'
       + '<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin-bottom:6px">Levered IRR across ' + sm.n + ' draws</div>' + histogram(sm, 'irr') + '</div>'
       + '<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin-bottom:6px">Equity profit across ' + sm.n + ' draws</div>' + histogram(sm, 'profit') + '</div>'
       + box('Each draw moves the drivers above together and re-runs the full underwriting engine (debt resizes, taxes and the waterfall follow). Draws are limited to ±2.5 standard deviations. The spread comes only from the drivers you list: it says how sensitive this deal is to those assumptions, not how likely they are in your market. Change a standard deviation to your own view.');
@@ -22977,13 +22995,13 @@ function build(s, oldMain){
   var dev = isDev(s), h = safe(function(){ return window.bkHeadline(); }, null), pol = safe(function(){ return bkPolicy(); }, {}), ready = safe(function(){ return bkDealReadiness(); }, null);
   var gate = dev ? null : safe(function(){ return bkDealGate(); }, null), ctl = safe(function(){ return bkModelControls(); }, []), mk = dev ? null : safe(function(){ return bkMarketCompare(); }, null);
   var fails = ctl.filter(function(c){ return c.level === 'FAIL'; }), warns = ctl.filter(function(c){ return c.level !== 'FAIL'; });
-  var hurdle = Number(pol.targetIRR) || 0.12, mind = Number(pol.minDSCR) || 1.25, em = Number(pol.targetEM) || 2.0, can = ready && ready.canCalculate;
+  var hurdle = Number(pol.targetIRR) || 0.12, mind = bkLenderDscrMin(), em = Number(pol.targetEM) || 2.0, can = ready && ready.canCalculate;
   var irrOk = h && isFinite(h.levIRR) ? (h.levIRR >= hurdle ? 'pass' : (h.levIRR >= hurdle - 0.03 ? 'warn' : 'fail')) : '';
   var dscrOk = h && isFinite(h.dscr) && h.dscr ? (h.dscr >= mind ? 'pass' : 'fail') : '';
   var price = Number(s.purchasePrice) || 0, loan = h ? Number(h.loan) || 0 : 0;
   /* the tiles: which figures lead, and in what order, come from the analysis registry (src/139h); each is read from the same headline as the Deal Snapshot */
   var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
-    yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Lender DSCR, year 1', X(h.dscr), bkDscrBasis('lender', s) + ' · house min ' + X(mind), dscrOk, 'Debt']; },
+    yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Lender DSCR, year 1', X(h.dscr), bkDscrBasis('lender', s) + ' · loan min ' + X(mind), dscrOk, 'Debt']; },
     loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ var tce = isFinite(h.tce) ? h.tce : h.equity; return [typeof window.bkCapName === 'function' ? window.bkCapName('totalContributedEquity') : 'Total contributed equity', M(tce), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };   /* the headline equity names its measure, as the bottom band and the Deal Snapshot do */
   var tileIds = safe(function(){ return window.BKReg.tiles(window.BKReg.of(s).id); }, null) || ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
   var kpis = can && h ? tileIds.filter(function(id){ return TILE[id]; }).map(function(id){ return TILE[id](); }) : [];
@@ -23346,7 +23364,7 @@ function chartCoverage(D){
   for(var t = 0; t <= 4; t++){ var v = mx * t / 4, y = Yp(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="' + COL.grid + '"/><text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">' + axisLbl(v) + '</text>'; }
   var pts = [];
   var k = every(bw);
-  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.46, bx = x + (bw - w) / 2, top = Yp(r.dscrNoi), ok = r.dscr == null || r.dscr >= (D.pol.minDSCR || 1.25), lab = i === n - 1 || (i % k === 0 && n - 1 - i >= k);   /* the first year, every k-th, and the last; never two side by side */
+  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.46, bx = x + (bw - w) / 2, top = Yp(r.dscrNoi), ok = r.dscr == null || r.dscr >= bkLenderDscrMin(), lab = i === n - 1 || (i % k === 0 && n - 1 - i >= k);   /* the first year, every k-th, and the last; never two side by side */
     g += '<rect x="' + bx + '" y="' + top + '" width="' + w + '" height="' + (T + bh - top) + '" rx="3" fill="' + COL.navy + '" opacity=".92"><title>Year ' + r.y + ': ' + bkNoiBasisLabel('dscr') + ' ' + M(r.dscrNoi) + '</title></rect>';
     if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (top - 6) + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">' + axisLbl(r.dscrNoi) + '</text>';
     if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 26) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".75">' + yl(r.y) + '</text>';
@@ -23456,7 +23474,7 @@ function proFormaBlock(D){
   var Y = D.Y, n = Y.length, y1 = Y[0], yn = Y[n - 1], g = cagr(y1.noi, yn.noi, n - 1), minD = Math.min.apply(null, Y.map(function(r){ return r.dscr == null ? 99 : r.dscr; })), avgCoc = sum(Y.map(function(r){ return r.coc || 0; })) / n;
   var ins = [];
   ins.push('NOI grows <b>' + P(g) + ' a year</b> (' + M(y1.noi) + ' to ' + M(yn.noi) + ') while debt service ' + (Math.abs(yn.ds - y1.ds) < 1 ? 'is flat at ' + M(-y1.ds) : 'moves from ' + M(-y1.ds) + ' to ' + M(-yn.ds)) + ', so coverage goes from <b>' + X(y1.dscr) + '</b> to <b>' + X(yn.dscr) + '</b>.');
-  var pm = D.pol.minDSCR || 1.25; if(minD < pm) ins.push('The lender DSCR (' + bkDscrBasis('lender') + ') is below the <b>' + X(pm) + '</b> house minimum in ' + Y.filter(function(r){ return r.dscr != null && r.dscr < pm; }).map(function(r){ return 'Year ' + r.y; }).join(', ') + '. The credit gate tests the house DSCR (NOI after reserves); see Credit Policy.');
+  var pm = bkLenderDscrMin(); if(minD < pm) ins.push('The lender DSCR (' + bkDscrBasis('lender') + ') is below the <b>' + X(pm) + '</b> loan minimum in ' + Y.filter(function(r){ return r.dscr != null && r.dscr < pm; }).map(function(r){ return 'Year ' + r.y; }).join(', ') + '. The credit gate separately tests the House DSCR (NOI after reserves) against the house minimum; see Credit Policy.');
   var er = -y1.opex / y1.egi; ins.push('Year 1 expenses take <b>' + P(er, 0) + '</b> of income (' + M(-y1.opex / D.units, 0) + ' per unit); taxes alone are ' + P(-y1.taxes / y1.egi, 0) + '.');
   return '<div class="pf">' + printBar()
     + '<div class="pf-kpis">' + kpi('Year-1 NOI', M(y1.noi), P(y1.noi / y1.egi, 0) + ' of income') + kpi('NOI growth', P(g), 'per year, Year 1 to ' + n) + kpi('Year-1 cash-on-cash', P(y1.coc), 'after debt service') + kpi('Lowest coverage', X(minD), 'policy minimum ' + X(pm)) + kpi('Going-in yield', D.price ? P(y1.noiAfter / D.price) : '—', 'NOI after reserves / price') + '</div>'
@@ -23796,12 +23814,12 @@ function build(){
   var opShare = (D.tot.op + D.tot.events) ? D.tot.op / (D.tot.op + D.tot.events) : null;
   var ins = ['<div>Equity of <b>' + M(D.eq) + '</b> returns <b>' + M(D.m.dist) + '</b> over ' + D.H + ' years: <b>' + X(D.moic) + '</b> and a <b>' + P(D.irr, 1) + '</b> levered IRR, ' + (!isFinite(D.irr) ? '<b>which cannot be compared with</b>' : ok ? '<b>' + ((D.irr - hurdle) * 100).toFixed(1) + ' points above</b>' : '<b>' + ((hurdle - D.irr) * 100).toFixed(1) + ' points below</b>') + ' the ' + P(hurdle, 1) + ' hurdle.</div>',
     '<div>' + (opShare == null ? '' : 'About <b>' + Math.round(opShare * 100) + '%</b> of what equity gets back comes from running the property; <b>' + Math.round((1 - opShare) * 100) + '%</b> comes from the sale and refinancing, after repaying the loan.') + '</div>',
-    '<div>Year 1 NOI after reserves is <b>' + M(y1.noiAfter) + '</b> (' + P(goingIn, 2) + ' on price), ; the lender DSCR (' + bkDscrBasis('lender') + ') is <b>' + X(y1.dscr) + '</b> against a ' + X(D.pol.minDSCR) + ' house minimum.</div>'].filter(function(x){ return x.length > 12; }).join('');
+    '<div>Year 1 NOI after reserves is <b>' + M(y1.noiAfter) + '</b> (' + P(goingIn, 2) + ' on price), ; the lender DSCR (' + bkDscrBasis('lender') + ') is <b>' + X(y1.dscr) + '</b> against the loan\'s ' + X(bkLenderDscrMin()) + ' minimum.</div>'].filter(function(x){ return x.length > 12; }).join('');
   var scenHtml = scen && scen.cases ? '<div class="sc mt">' + scen.cases.map(function(c){ return '<div class="c' + (c.name === caseName ? ' cur' : '') + '"><div class="n">' + esc(c.name) + ' · ' + Math.round((c.p || 0) * 100) + '% likely</div><div class="v" style="color:' + (c.irr >= hurdle ? '#1F7A4C' : c.irr < 0 ? '#B23A2C' : '#0e2a4a') + '">' + P(c.irr, 1) + '</div><div class="d">' + X(c.moic) + ' multiple · ' + M(c.profit) + ' profit</div></div>'; }).join('') + '</div>'
     + '<div class="note" style="margin-top:6px">Probability-weighted: expected profit <b>' + M(scen.expProfit) + '</b>, expected multiple <b>' + X(scen.expMoic) + '</b>, IRR of expected cash flow <b>' + P(scen.irrOfExpectedCF, 1) + '</b>; chance of missing the hurdle <b>' + Math.round((scen.pMiss || 0) * 100) + '%</b>, of losing money <b>' + Math.round((scen.pLoss || 0) * 100) + '%</b>.</div>' : '';
   var cuA = gate.cushions || {}, narrA = investSummary({ dev:false, name:s.name, type:s.propertyType, location:s.location, units:D.units, sf:Number(s.gsf), price:price, holdYears:Number(s.holdYears), exitCap:Number(s.exitCap), goingIn:goingIn, cost:basis, equity:D.eq, loan:Number(d.loan) || 0, rate:Number(d.coupon), ltc:Number(d.ltc), irr:D.irr, moic:D.moic, profit:D.tot.profit, hurdle:hurdle, uirr:safe(function(){ return D.u.irr; }, null), yoc:yoc, rentGrowth:Number(s.rentGrowth), saleShare:opShare == null ? null : 1 - opShare, capBps:cuA.exitCapCushionBps, rentPct:cuA.rentCushion == null ? null : -Math.abs(cuA.rentCushion), caseName:caseName, integrity:gate.integrity, verdict:gate.verdict });
   pages.push(page('<h2>Dashboard</h2><div class="kp"><div class="c hl"><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 2) + '</div><div class="d">' + esc(caseName) + ' case</div></div><div class="c hl"><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(D.tot.profit) + ' profit</div></div><div class="c"><div class="k">Unlevered IRR</div><div class="v">' + P(D.u.irr, 2) + '</div><div class="d">' + X(D.u.moic) + ' multiple</div></div><div class="c"><div class="k">Net LP IRR</div><div class="v">' + (lp ? P(lp.value, 2) : '—') + '</div><div class="d">after promote</div></div>'
-    + '<div class="c"><div class="k">Going-in cap</div><div class="v">' + P(goingIn, 2) + '</div><div class="d">Y1 NOI after reserves / price</div></div><div class="c"><div class="k">Yield on cost</div><div class="v">' + P(yoc, 2) + '</div><div class="d">on total basis ' + M(basis) + '</div></div><div class="c"><div class="k">Lender DSCR, year 1</div><div class="v">' + X(y1.dscr) + '</div><div class="d">house min ' + X(D.pol.minDSCR) + '</div></div><div class="c"><div class="k">Leverage</div><div class="v">' + P(d.ltv, 0) + ' LTV</div><div class="d">' + P(d.ltc, 0) + ' LTC · ' + P(d.coupon, 2) + ' rate</div></div></div>'
+    + '<div class="c"><div class="k">Going-in cap</div><div class="v">' + P(goingIn, 2) + '</div><div class="d">Y1 NOI after reserves / price</div></div><div class="c"><div class="k">Yield on cost</div><div class="v">' + P(yoc, 2) + '</div><div class="d">on total basis ' + M(basis) + '</div></div><div class="c"><div class="k">Lender DSCR, year 1</div><div class="v">' + X(y1.dscr) + '</div><div class="d">loan min ' + X(bkLenderDscrMin()) + '</div></div><div class="c"><div class="k">Leverage</div><div class="v">' + P(d.ltv, 0) + ' LTV</div><div class="d">' + P(d.ltc, 0) + ' LTC · ' + P(d.coupon, 2) + ' rate</div></div></div>'
     + narrA + '<div class="bx mt"><div class="t">Levered return against the hurdle</div>' + K.gauge(D) + '</div>'
     + '<div class="g1 mt"><div class="bx"><div class="t">Equity cash flow</div><div class="s">Each year\'s cash to equity; the line is the running total. Year 1 includes the equity invested at close.</div><div class="cc">' + K.chartCash(D) + '</div></div></div>'
     + '<h2 class="mt" style="margin-top:8px">How it holds up by case</h2>' + scenHtml, 2, N, D));
@@ -24098,7 +24116,7 @@ window.bkFinLabReset = function(){ st.cap = st.exit = st.rate = st.rg = st.og = 
 window.bkFinLabData = function(){
   if(!active()) return null; var B = base(), pol = safe(function(){ return bkPolicy(); }, {}) || {}, u = unlev(B);
   var grid = LTVS.map(function(l){ return RATES.map(function(r){ return lev(B, l, r); }); });
-  return { B:B, u:u, grid:grid, ltvs:LTVS, rates:RATES, minDSCR:Number(pol.minDSCR) || 1.25, hurdle:Number(pol.targetIRR) || 0.12 };
+  return { B:B, u:u, grid:grid, ltvs:LTVS, rates:RATES, minDSCR:bkLenderDscrMin(), hurdle:Number(pol.targetIRR) || 0.12 };
 };
 
 function cellColor(metric, v, L){
@@ -24121,7 +24139,7 @@ function render(){
   var main = box('<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">' + inp('Purchase cap rate %', 'cap', B.cap) + inp('Exit cap rate %', 'exit', B.exit) + inp('Rent growth %', 'rg', B.rg) + inp('Expense growth %', 'og', B.og) + '<div style="font-size:13px;padding-bottom:6px">Price = Year-1 NOI ' + M(B.noi) + ' ÷ ' + P(B.cap, 2) + ' = <b>' + M(B.noi / B.cap) + '</b>' + (Number(B.s.units) ? ' (' + K.F(B.noi / B.cap / Number(B.s.units)) + ' per unit)' : '') + '</div><button type="button" class="pl-hbtn" onclick="bkFinLabReset()">Reset to the deal</button></div><div style="font-size:12px;opacity:.7;margin-top:8px">The deal itself is priced at ' + P(B.cap0, 2) + ' on its entered price. Unlevered, this purchase returns <b>' + P(L.u.irr, 1) + '</b> (' + X(L.u.moic) + ').</div>');
   var head = '<tr><th style="text-align:left;padding:6px 8px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase">LTV \\ Rate</th>' + RATES.map(function(r){ return '<th style="padding:6px 8px;font-size:11px;text-align:center;border-bottom:2px solid #0e2a4a">' + P(r, 2) + '</th>'; }).join('') + '</tr>';
   var rows = L.grid.map(function(row, i){ return '<tr><td style="padding:6px 8px;font-weight:700;border-right:2px solid #0e2a4a">' + P(LTVS[i], 0) + '</td>' + row.map(function(c){ var warn = c && c.dscr < L.minDSCR; return '<td style="padding:9px 6px;text-align:center;font-weight:600;color:#14283d;background:' + cellColor(m, c && c[m], L) + ';border:2px solid #fff;border-radius:6px;' + (warn && m !== 'dscr' ? 'outline:1.5px dashed #b23a2c;outline-offset:-4px' : '') + '" title="' + (c ? 'Loan ' + M(c.loan) + ' · equity ' + M(c.eq) + ' · lender DSCR ' + X(c.dscr) + ' · IRR ' + P(c.irr, 1) : '') + '">' + fmt(m, c) + '</td>'; }).join('') + '</tr>'; }).join('');
-  main += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b style="margin-right:6px">Show</b>' + btn('irr', 'Levered IRR') + btn('dscr', 'Lender DSCR, year 1') + btn('coc', 'Year-1 cash-on-cash') + btn('moic', 'Equity multiple') + '</div><div style="overflow-x:auto"><table style="' + T + ';min-width:520px">' + head + rows + '</table></div><div style="font-size:12px;opacity:.75;margin-top:8px">Rows: loan-to-value on price. Columns: fixed interest rate, 30-year amortization unless the deal says otherwise. Green beats the unlevered return (or the ' + X(L.minDSCR) + ' house minimum DSCR), red falls short. A dashed red outline marks loans whose year-1 lender DSCR (' + bkDscrBasis('lender') + ') is below the ' + X(L.minDSCR) + ' house minimum. Hover a cell for the loan and equity.</div>');
+  main += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b style="margin-right:6px">Show</b>' + btn('irr', 'Levered IRR') + btn('dscr', 'Lender DSCR, year 1') + btn('coc', 'Year-1 cash-on-cash') + btn('moic', 'Equity multiple') + '</div><div style="overflow-x:auto"><table style="' + T + ';min-width:520px">' + head + rows + '</table></div><div style="font-size:12px;opacity:.75;margin-top:8px">Rows: loan-to-value on price. Columns: fixed interest rate, 30-year amortization unless the deal says otherwise. Green beats the unlevered return (or the ' + X(L.minDSCR) + ' loan\'s minimum DSCR), red falls short. A dashed red outline marks loans whose year-1 lender DSCR (' + bkDscrBasis('lender') + ') is below the ' + X(L.minDSCR) + ' house minimum. Hover a cell for the loan and equity.</div>');
   /* where does leverage stop helping */
   var lt = st.ltv, be = null, prev = null;
   for(var r = 0.04; r <= 0.1001; r += 0.0025){ var c = lev(B, lt, r); if(!c) continue; var d = c.irr - L.u.irr; if(prev && prev.d > 0 && d <= 0){ be = prev.r + (r - prev.r) * prev.d / (prev.d - d); break; } prev = { r:r, d:d }; }
@@ -27857,7 +27875,7 @@ function raw(s){ return (s && s._bid) || {}; }
 function conCfg(s){
   var r = raw(s), pol = safe(function(){ return window.bkPolicy(); }, {}) || {}, on = r.on || {}, vals = r.val || {};
   return CONS.map(function(c){
-    var v = vals[c[0]]; v = (v !== undefined && v !== '' && isFinite(Number(v))) ? Number(v) : (c[4] && isFinite(Number(pol[c[4]])) ? Number(pol[c[4]]) : DEFAULTS[c[0]]);
+    var v = vals[c[0]]; v = (v !== undefined && v !== '' && isFinite(Number(v))) ? Number(v) : (c[0] === 'dscr' && typeof bkLenderDscrMin === 'function' ? bkLenderDscrMin() : c[4] && isFinite(Number(pol[c[4]])) ? Number(pol[c[4]]) : DEFAULTS[c[0]]);
     return { id:c[0], label:c[1], metric:c[2], dir:c[3], unit:c[5], value:v, on:on[c[0]] !== undefined ? !!on[c[0]] : c[6] && v != null && isFinite(v), custom:vals[c[0]] !== undefined && vals[c[0]] !== '' };
   });
 }
@@ -31880,7 +31898,7 @@ window.bkDevDebtView = function(){
     /* the permanent loan repays the construction facility in the stabilization month; after that month only the permanent loan is outstanding */
     conEnd = (f.months && f.months[i] && !(takeout && m >= stab)) ? num(f.months[i].end) : 0;
     permEnd = pz ? num(pz.end) : 0; pay = pz ? num(pz.payment) : 0; prin = pz && pay > 0 ? num(pz.principal) : 0;
-    monthly.push({ m:m, y:r.y, noi:num(r.noi), ds:num(r.ds), principal:prin, interest:num(r.ds) - prin, perm:permEnd, con:conEnd, bal:conEnd + permEnd, pay:pay, hasDs:pay > 0 });
+    monthly.push({ m:m, y:r.y, noi:num(bkLenderNoi(r, s)), ds:num(r.ds), principal:prin, interest:num(r.ds) - prin, perm:permEnd, con:conEnd, bal:conEnd + permEnd, pay:pay, hasDs:pay > 0 });
   }
   var years = [], ny = n ? monthly[n - 1].y : 0, y, k, a;
   for(y = 1; y <= ny; y++){
@@ -31928,7 +31946,7 @@ window.bkDevCovenantSheet = function(s, dv){
   var main = '<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - Lender DSCR (NOI after reserves) &amp; Debt Yield, tested annually against the permanent loan after takeout</caption>'
     + '<thead><tr><th class="rowlabel-h">Line Item</th>' + rows.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
     + '<tr><td class="rowlabel">Months with Permanent Debt Service</td>' + rows.map(function(r){ return v(r, r.n); }).join('') + '</tr>'
-    + '<tr><td class="rowlabel">NOI After Reserves (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">' + bkNoiBasisLabel('lender', null) + ' (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Debt Service (those months)</td>' + rows.map(function(r){ return v(r, money(-r.ds)); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Ending Loan Balance</td>' + rows.map(function(r){ return v(r, money(r.ending)); }).join('') + '</tr>'
     + '<tr class="grandtotal"><td class="rowlabel">Lender DSCR (min ' + minDSCR.toFixed(2) + 'x)</td>' + rows.map(function(r){ return v(r, isFinite(r.dscr) ? r.dscr.toFixed(2) + 'x' : '-'); }).join('') + '</tr>'

@@ -325,7 +325,7 @@ function bkPmtV11(rate,n,pv){if(!n)return 0;if(!rate)return pv/n;return pv*rate/
 // post-stabilization operating curve, so the sizing NOI and the cash-flow NOI are one consistent
 // source rather than two different proxies for the same thing.
 function bkDevForwardNOI(x){
-  const s=x.s, baseNOI=Math.max(0,Number(s.stabilizedNOI||0)||Number(bkCalc().noi||0));   // CV-DV1/D1: permanent sizing NOI BEFORE reserves
+  const s=x.s, cc=bkCalc(), resv=(s.lenderNoiBasis==='after'&&isFinite(cc.after)&&isFinite(cc.noi))?Math.max(0,cc.noi-cc.after):0, baseNOI=Math.max(0,(Number(s.stabilizedNOI||0)||Number(cc.noi||0))-resv);   // CV-DV1/D1: permanent sizing NOI BEFORE reserves unless the deal's lender NOI basis is 'after' (owner decision B: one lender NOI basis)
   const noiGrowth=Number(s.noiGrowth||s.rentGrowth||0);
   let fwdNOI=0;
   for(let mo=x.stab+1; mo<=x.stab+12; mo++){

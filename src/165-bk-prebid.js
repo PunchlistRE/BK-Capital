@@ -39,7 +39,7 @@ function raw(s){ return (s && s._bid) || {}; }
 function conCfg(s){
   var r = raw(s), pol = safe(function(){ return window.bkPolicy(); }, {}) || {}, on = r.on || {}, vals = r.val || {};
   return CONS.map(function(c){
-    var v = vals[c[0]]; v = (v !== undefined && v !== '' && isFinite(Number(v))) ? Number(v) : (c[4] && isFinite(Number(pol[c[4]])) ? Number(pol[c[4]]) : DEFAULTS[c[0]]);
+    var v = vals[c[0]]; v = (v !== undefined && v !== '' && isFinite(Number(v))) ? Number(v) : (c[0] === 'dscr' && typeof bkLenderDscrMin === 'function' ? bkLenderDscrMin() : c[4] && isFinite(Number(pol[c[4]])) ? Number(pol[c[4]]) : DEFAULTS[c[0]]);
     return { id:c[0], label:c[1], metric:c[2], dir:c[3], unit:c[5], value:v, on:on[c[0]] !== undefined ? !!on[c[0]] : c[6] && v != null && isFinite(v), custom:vals[c[0]] !== undefined && vals[c[0]] !== '' };
   });
 }
