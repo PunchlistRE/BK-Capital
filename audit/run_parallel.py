@@ -95,9 +95,11 @@ def run_audit(a):
         except subprocess.TimeoutExpired: out, rc = 'timed out after 25 minutes', 124
         open(os.path.join(a.out, '%02d.log' % i), 'w').write(out); res = '%d %ds' % (rc, time.time() - t0); open(ex, 'w').write(res); return i, res
 
-    print(len(secs), 'sections, %d at a time, results in %s' % (a.workers, a.out), flush=True); bad = []
+    idx = [i for i in range(len(secs)) if not a.only or re.search(a.only, title_of(secs[i]), re.I)]
+    if a.only and not idx: raise ValueError('--only %r matches no section' % a.only)
+    print(len(secs), 'sections' + (' (quick run: %d of them, chosen by --only)' % len(idx) if a.only else '') + ', %d at a time, results in %s' % (a.workers, a.out), flush=True); bad = []
     with cf.ThreadPoolExecutor(a.workers) as e:
-        for i, res in e.map(run, range(len(secs))):
+        for i, res in e.map(run, idx):
             rc = int(res.split()[0]); title = title_of(secs[i]); print(('ok   ' if rc == 0 else 'FAIL ') + '%02d %s (%s)' % (i, title, res.split()[1]), flush=True)
             if rc: bad.append(i)
             if a.logs == 'all' or (a.logs == 'failed' and rc):
@@ -106,7 +108,7 @@ def run_audit(a):
                 if gh and rc: print('::error title=audit section %02d failed::%s' % (i, title))
                 print(body, flush=True)
                 if gh: print('::endgroup::', flush=True)
-    print('ALL SECTIONS PASSED' if not bad else 'FAILED: ' + ', '.join('%02d' % i for i in bad) + ' (see the .log files)')
+    print(('ALL SECTIONS PASSED' if not a.only else 'QUICK RUN PASSED (%d of %d sections; the full audit runs on main and nightly)' % (len(idx), len(secs))) if not bad else 'FAILED: ' + ', '.join('%02d' % i for i in bad) + ' (see the .log files)')
     for i in bad: print('  %02d %s' % (i, title_of(secs[i])))
     return 1 if bad else 0
 
@@ -155,7 +157,7 @@ def main():
     ap = argparse.ArgumentParser(description='Runs the sections of audit/run_all.sh several at a time.')
     ap.add_argument('--workers', type=int, default=3); ap.add_argument('--out', default=os.path.join(tempfile.gettempdir(), 'bk-full-run'))
     ap.add_argument('--script', default=os.path.join(REPO, 'audit', 'run_all.sh')); ap.add_argument('--logs', choices=['failed', 'all', 'none'], default='failed')
-    ap.add_argument('--check', action='store_true'); ap.add_argument('--selftest', action='store_true'); a = ap.parse_args()
+    ap.add_argument('--only', default='', help='a quick run: only the sections whose title matches this regular expression (the check and selftest guards still cover the whole script)'); ap.add_argument('--check', action='store_true'); ap.add_argument('--selftest', action='store_true'); a = ap.parse_args()
     try:
         if a.check: check(a.script); return 0
         if a.selftest: selftest(); return 0
