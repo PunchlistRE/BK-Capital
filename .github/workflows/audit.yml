@@ -1,13 +1,19 @@
 name: audit
-# One audit per commit. A branch with an open pull request used to run it twice (the push and the pull_request trigger fire on the same commit, about 14 minutes each):
-# pushes to main are audited, every other branch is audited through its pull request, and a newer push to a pull request cancels the run it supersedes.
+# Quick on every pull request (about 5 minutes): build check, lint, the runner's own proofs, and the sections that guard the numbers and the pages. The FULL audit (every section of
+# audit/run_all.sh) runs on every push to main, every night, and on demand (Actions > audit > Run workflow). Nothing is dropped from the full audit.
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
 concurrency:
-  group: audit-${{ github.ref }}
+  group: audit-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  # the quick set: deal book and independent models, conventions, persistence, registry, the NOI/DSCR naming, owner decisions, editor, reports, print, blank start, guide
+  QUICK: 'deal book|conventions vs|persistence|Analysis registry|NOI basis|DSCR names|Owner decisions|property editor|^reports|Print / Save PDF|Blank start|Ask the guide|Guide walkthrough|Layout guards|Panel tabs|Fill rule'
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -18,9 +24,13 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: node build.js --check && node build.js --lint
-      # the parallel runner must cover exactly what audit/run_all.sh runs and must report a failing section; both are proved before any test is trusted
+      # the parallel runner must cover exactly what audit/run_all.sh runs and must report a failing section; both are proved before any test is trusted (quick runs too)
       - run: python3 audit/run_parallel.py --check && python3 audit/run_parallel.py --selftest
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils fonts-inter   # pdftotext / pdfinfo for the print and schedule-report tests; Inter, the app's UI font (the tests block web fonts, so layout checks need it installed)
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils fonts-inter   # pdftotext / pdfinfo for the print and schedule-report tests; Inter, the app's UI font
       - run: npm install --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
-      # every section of audit/run_all.sh, three at a time; each section's output is printed (as the serial script did) and a failing section is named, with its output, in the summary
-      - run: PLAYWRIGHT_MODULE=$PWD/node_modules/playwright python3 audit/run_parallel.py --workers 3 --logs all --out "$RUNNER_TEMP/audit"
+      - name: quick audit (pull requests)
+        if: github.event_name == 'pull_request'
+        run: PLAYWRIGHT_MODULE=$PWD/node_modules/playwright python3 audit/run_parallel.py --workers 4 --only "$QUICK" --logs failed --out "$RUNNER_TEMP/audit"
+      - name: full audit (main, nightly, on demand)
+        if: github.event_name != 'pull_request'
+        run: PLAYWRIGHT_MODULE=$PWD/node_modules/playwright python3 audit/run_parallel.py --workers 4 --logs all --out "$RUNNER_TEMP/audit"
