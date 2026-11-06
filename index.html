@@ -3053,6 +3053,8 @@ window.bkAnnualCF = function(){
   const concessLUPct = (s.concessionLeaseUpPct===undefined||s.concessionLeaseUpPct===null||s.concessionLeaseUpPct==='')
                        ? concessPct : (Number(s.concessionLeaseUpPct)||0);
   const stabMonths   = Math.max(0, Math.round(Number(s.leaseupMonths)||0));
+  /* LEASE ROLLOVER (owner decision C, November 2026): the per-unit rent roll's expiries (renewal probability, downtime, market rent at renewal, TI and LC) feed the rent lines and the leasing capital. null = no unit has a lease end inside the hold, or the deal turns it off (rolloverInNoi false): every existing deal runs exactly as before. */
+  const RO = (typeof window.bkRolloverAdj === 'function') ? window.bkRolloverAdj(s, holdMonths) : null;
 
   // CONVENTIONS (see bkConventions). 'month1' keeps the original continuous m/12 exponent exactly;
   // 'year2' holds Year 1 at the underwritten figures and steps growth once per operating year.
@@ -3083,20 +3085,21 @@ window.bkAnnualCF = function(){
   const LM = (typeof bkLeaseOn === 'function' && bkLeaseOn(s)) ? bkLeaseEval(s, holdMonths + 12, { tax:taxFactor, opex:opexF }, true) : null;
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
-    const resRev = (k_GPR/12) * resOcc * rentF(m);
+    const _gB = k_GPR/12 + (RO ? RO.res[m-1] : 0), _cB = k_RetailAnn/12 + (RO ? RO.comm[m-1] : 0);
+    const resRev = _gB * resOcc * rentF(m);
     // CONVENTION cvBadDebtBasis: 'gross' charges gross potential rent; 'afterVacancy' and the legacy
     // monthly behavior charge rent after vacancy (the legacy expression is kept literally).
-    const bad = _cv.cvBadDebtBasis==='gross' ? -((k_GPR/12) * rentF(m))*badDebtPct : -resRev*badDebtPct;
+    const bad = _cv.cvBadDebtBasis==='gross' ? -(_gB * rentF(m))*badDebtPct : -resRev*badDebtPct;
     // Applied to GROSS potential rent, exactly as the workbook does, using the same
     // expression the vacancy split below already uses so the parts still sum to the whole.
     // At the default of zero both terms are -0, and x + -0 === x for every x, so no existing
     // figure can move by a floating-point bit.
-    const _gprG   = (k_GPR/12) * rentF(m);
+    const _gprG   = _gB * rentF(m);
     const ltl     = -_gprG*ltlPct;
     const concess = -_gprG*(m<=stabMonths ? concessLUPct : concessPct);
     const netRes = resRev+bad+ltl+concess;
     // lease model: general vacancy in excess of the schedule's own vacancy comes off first (zero unless the rate exceeds it)
-    const comm = LM ? (LM.rent[m-1] + LM.rec[m-1] - LM.genVac[m-1]) * (1 - LM.creditLoss) : (k_RetailAnn/12) * commOcc * commF(m);
+    const comm = LM ? (LM.rent[m-1] + LM.rec[m-1] - LM.genVac[m-1]) * (1 - LM.creditLoss) : _cB * commOcc * commF(m);
     const other = (k_OtherAnn/12) * otherF(m);
     const egi = netRes+comm+other;
     const opexGF = opexF(m);
@@ -3106,7 +3109,7 @@ window.bkAnnualCF = function(){
     const commOccM = LM ? LM.occ[m-1] : commOcc;
     // lease model: weight by THIS month's residential and retail potential, so retail that is dark or in free rent in
     // Year 1 still carries its weight once it leases up (the flat path keeps its Year-1 weights unchanged)
-    const resW = LM ? (k_GPR/12) * rentF(m) : 0, retW = LM ? LM.potential[m-1] : 0;
+    const resW = LM ? _gB * rentF(m) : 0, retW = LM ? LM.potential[m-1] : 0;
     const blendedOcc = LM ? ((resW + retW) > 0 ? (resW*resOcc + retW*commOccM)/(resW + retW) : 1)
                           : (revWeightTotal>0 ? (k_GPR*resOcc + k_RetailAnn*commOccM)/revWeightTotal : 1);
     // legacy split kept as the literal expression so legacy deals reproduce bit-for-bit
@@ -3130,7 +3133,7 @@ window.bkAnnualCF = function(){
     const resVac    = resRev - gprGross;          // negative; resRev = gprGross * resOcc
     // lease model: gross is the schedule's potential at full occupancy; the bridge to collected splits into free rent
     // (a concession), credit loss and vacancy (downtime, vacant suites and any general allowance), still summing exactly
-    const commGross = LM ? LM.potential[m-1] : (k_RetailAnn/12) * commF(m);
+    const commGross = LM ? LM.potential[m-1] : _cB * commF(m);
     const commFree  = LM ? -LM.free[m-1] : 0;
     const commCredit = LM ? -(LM.rent[m-1] + LM.rec[m-1] - LM.genVac[m-1]) * LM.creditLoss : 0;
     const commVac   = comm - commGross;           // negative; comm = commGross * commOcc (lease model: all retail losses)
@@ -3184,7 +3187,7 @@ window.bkAnnualCF = function(){
      moved the unlevered multiple by 0.05-0.30%. Both flows keep the same modeled date, so
      the date-weighted IRR is mathematically unchanged; the multiple is now conventional
      (total inflows / total outflows). */
-  const capexM = bkCapexByMonth(s, holdMonths);
+  const capexM = bkCapexByMonth(s, holdMonths).map(function(v, i){ return v + (RO ? (RO.cost[i] || 0) : 0); });   /* rollover TI and LC are leasing capital below NOI, like the lease model's */
   const values=[initial], dates=[new Date(acqDate)];
   for(let m=1; m<=holdMonths; m++){
     const r = monthNOI(m);
@@ -3418,7 +3421,7 @@ RENDERERS['Rent Roll'] = function(){
     </tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Lease Dates &amp; Per-Unit Override</caption><thead><tr><th class="rowlabel-h">Unit / Tenant</th><th>Lease Start</th><th>Lease End</th><th>Status</th><th>Rollover Override (JSON, blank = use global)</th><th>Recovery Gate</th><th>Recovery Override (force active)</th></tr></thead><tbody>${leaseRows}</tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Rollover Schedule Preview - effective assumptions per unit, read-only</caption><thead><tr><th class="rowlabel-h">Unit</th><th>SF</th><th>Rolls</th><th>Renewal Prob.</th><th>Downtime</th><th>TI New/Renew</th><th>LC New/Renew</th><th>Source</th></tr></thead><tbody>${schedule || '<tr><td colspan="8" class="rowlabel">No occupied unit has a Lease End date set yet.</td></tr>'}${vacantAtAcq}</tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Rollover data structure -</b> lease start/end dates, global rollover assumptions, and per-unit JSON overrides are now captured and previewed here. This is the data layer only: the revenue calculation is untouched, so NOI, IRR and MOIC are unchanged by what is entered here. The schedule is not yet wired into the monthly cash flow.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Rollover data structure -</b> lease start/end dates, global rollover assumptions, and per-unit JSON overrides are now captured and previewed here. Each occupied unit with a lease end inside the hold now feeds the monthly cash flow: after the end date the rent is the renewal-probability blend of the renewal rent and the rent after downtime, and the TI and leasing commissions are leasing capital below NOI. Units without a lease end date, and deals with no rent roll, are unchanged. It can be switched off with rolloverInNoi = false.</div></div>`;
   return o;
 };
 </script>
@@ -4150,6 +4153,17 @@ function bkCohortMonthEntry(unit, month, closing, dealState){
   }
   return {status: monthsPast<downtime?'Rollover (blended)':'Rolled / Re-Leased (blended)', rent:blendedRent, oneTime};
 }
+/* The rollover as a monthly adjustment to the operating engine's rent lines (bkAnnualCF): for each OCCUPIED unit with a lease end inside the hold, the cohort's rent that month minus the in-place rent the base line already carries, in the dollars of the rent roll (the engine grows them with the rent growth, as it grows the rest). Residential units adjust the residential line, commercial units the retail line. The one-time TI and LC go to leasing capital. Undated units are left alone. */
+window.bkRolloverAdj = function(s, holdMonths){
+  s = s || bkLoad(); if(s.rolloverInNoi === false) return null;
+  const rr = Array.isArray(s.rentRoll) ? s.rentRoll : []; if(!rr.length) return null;
+  const live = rr.filter(function(u){ if(u.status !== 'Occupied' || !u.leaseEnd) return false; const rm = bkLeaseRolloverMonth(u.leaseEnd, s.closing); return rm !== null && rm >= 1 && rm <= holdMonths; });
+  if(!live.length) return null;
+  const z = function(){ return new Array(holdMonths).fill(0); }, out = { res:z(), comm:z(), cost:z(), units:live.length };
+  live.forEach(function(u){ const inPl = Number(u.inPlaceRent) || 0, tgt = u.tenantType === 'Commercial' ? out.comm : out.res;
+    for(let m = 1; m <= holdMonths; m++){ const e = bkCohortMonthEntry(u, m, s.closing, s); tgt[m-1] += e.rent - inPl; out.cost[m-1] += e.oneTime; } });
+  return out;
+};
 function bkLeaseCohortCFV20(){
   const s = bkEnsureV16();
   const rr = Array.isArray(s.rentRoll) ? s.rentRoll : [];
@@ -4182,7 +4196,7 @@ RENDERERS['Lease Cohort CF'] = function(){
     <div class="metric-row"><span class="k">Units Tracked</span><span class="v">${x.rr.length}</span></div>
     <div class="metric-row"><span class="k">Year 1 Blended Rent</span><span class="v">${x.annual[0]?money(x.annual[0].rent):'-'}</span></div>
   </div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Monthly Engine</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip warn">Projection</span></span></div>`)}${colorKeyCard()}`);
-  return {title:'Lease Cohort CF', crumbs:'Monthly Engine', desc:'Per-lease rollover projection: renewal-probability-weighted rent and TI/LC, not yet wired into core NOI.', meta:{Property:s.name,Units:x.rr.length,Currency:'USD',Status:'Projection'}, main, sidebar};
+  return {title:'Lease Cohort CF', crumbs:'Monthly Engine', desc:'Per-lease rollover projection: renewal-probability-weighted rent and TI/LC, wired into NOI (and the leasing capital) for every occupied unit with a lease end inside the hold; switch it off with rolloverInNoi = false.', meta:{Property:s.name,Units:x.rr.length,Currency:'USD',Status:'Projection'}, main, sidebar};
 };
 
 // ---- Shared helper: full monthly bkMonthlyReturns() for a portfolio snapshot, via the same
