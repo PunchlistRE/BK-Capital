@@ -1020,6 +1020,11 @@
 "close": "</script>"
 },
 {
+"file": "193-bk-intake-matrix.js",
+"open": "\n<script id=\"bk-intake-matrix\">",
+"close": "</script>"
+},
+{
 "file": "188-bk-field-widths.js",
 "open": "\n<script id=\"bk-field-widths\">",
 "close": "</script>"

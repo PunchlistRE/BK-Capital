@@ -143,10 +143,19 @@ window.bkRRRun = async function(inp){
 };
 window.bkRRMap = function(k, v){ S.map[k] = v === '' ? null : +v; showSheet('Import Rent Roll'); };
 window.bkRROpt = function(k, v){ S[k] = v; showSheet('Import Rent Roll'); };
+/* RENT ROLL ON IMPORT (1.4): the roll is always applied when a file is imported; anything that disagrees with what the deal had is flagged, never silently resolved (the deal's units are only set from the roll when it had none). */
+function rrMismatch(R, s){ var out = [], want = Number(s && s.units) || 0, st = R.stats || {};
+  if(want > 0 && st.resUnits > 0 && st.resUnits !== want) out.push('The deal had ' + want + ' units; the rent roll has ' + st.resUnits + ' residential units.');
+  var occ = R.units.filter(function(u){ return u.status === 'Occupied' && u.tenantType === 'Residential' && u.inPlaceRent > 0; }), avg = occ.length ? occ.reduce(function(t, u){ return t + u.inPlaceRent; }, 0) / occ.length : 0, dealAvg = Number(s && s.avgRent) || 0;
+  if(avg > 0 && dealAvg > 0 && Math.abs(avg / dealAvg - 1) > 0.05) out.push('Occupied residential units average ' + $(avg) + ' a month on the roll; the deal\'s average rent was ' + $(dealAvg) + '.');
+  (R.warnings || []).forEach(function(w){ out.push(w); });
+  return out; }
+window.bkRRApplyAuto = function(){ if(S.head < 0) return false; var R = parseUnits(), s = bkLoad(); if(!s || !R.units.length) return false; window.bkRRApply('replace', !(Number(s.units) > 0)); return true; };
 window.bkRRApply = function(mode, setUnits){
   if(S.head < 0) return; var R = parseUnits(), s = bkLoad(); if(!s || !R.units.length) return;
   var rows = R.units.map(function(u){ return { unitId:u.unitId, sf:u.sf, tenantType:u.tenantType, status:u.status, inPlaceRent:u.inPlaceRent, marketRent:u.marketRent, recovery:u.recovery, leaseStart:u.leaseStart, leaseEnd:u.leaseEnd, recType:u.recType, baseYear:u.baseYear, recStop:u.recStop, recShare:u.recShare }; });
   var old = Array.isArray(s.rentRoll) ? s.rentRoll : [];
+  s._rrMismatch = rrMismatch(R, s);   /* what the roll says against what the deal already had, kept with the deal and shown on the Rent Roll page and in Model Checks */
   s.rentRoll = mode === 'add' ? old.concat(rows) : rows;
   s.revenueBasis = 'RENT ROLL'; var C = confRR(R); s._impRR = window.bkConf.stamp({}, C, S.file)._imp;
   if(setUnits){ var st = bkRentRollStats(s.rentRoll); if(st.resUnits > 0) s.units = st.resUnits; }
@@ -201,4 +210,8 @@ function render(){
 }
 var g = function(){ if(typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Import Rent Roll'); return render(); };
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Import Rent Roll', g); else RENDERERS['Import Rent Roll'] = g;
+
+/* the Rent Roll page says where the imported roll disagreed with the deal */
+(function(){ var prev = window.RENDERERS && window.RENDERERS['Rent Roll']; if(typeof prev !== 'function') return;
+  window.RENDERERS['Rent Roll'] = function(){ var o = prev.apply(this, arguments); try { var mm = (bkLoad() || {})._rrMismatch; if(Array.isArray(mm) && mm.length && o && typeof o.main === 'string') o.main = '<div class="note-flag"><span>&#9888;</span><div><b>The imported rent roll was applied. It disagrees with the deal in ' + mm.length + ' place' + (mm.length === 1 ? '' : 's') + ':</b><ul style="margin:6px 0 0 18px">' + mm.map(function(m){ return '<li>' + String(m).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>'; }).join('') + '</ul></div></div>' + o.main; } catch(e){} return o; }; })();
 })();

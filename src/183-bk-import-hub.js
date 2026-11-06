@@ -348,7 +348,7 @@ function ingest(files){
     /* a lone rent roll or plain operating statement goes to the existing, tested reader for it */
     if(rs.length === 1 && rs[0].info.cls){ var c = rs[0].info.cls, f0 = rs[0].f;
       if(c.portfolio){ S.busy = false; S.routed = 'portfolio'; S.files.push(rs[0]); showSheet('Portfolio Import'); setTimeout(function(){ var inp = document.getElementById('bkMasterFile'); if(inp && window.DataTransfer){ var dt = new DataTransfer(); dt.items.add(f0); inp.files = dt.files; if(typeof window.bkImportMasterFile === 'function') window.bkImportMasterFile(); } }, 250); return; }
-      if(c.rentRoll && typeof window.bkRRRun === 'function'){ S.busy = false; S.routed = 'rent roll'; window.bkRRRun({ files:[f0] }); return; }
+      if(c.rentRoll && typeof window.bkRRRun === 'function'){ S.busy = false; S.routed = 'rent roll'; var rrp = window.bkRRRun({ files:[f0] }); if(rrp && rrp.then) rrp.then(function(){ if(typeof window.bkRRApplyAuto === 'function') window.bkRRApplyAuto(); }); return; }
       if(c.statement && !/\.pdf$/i.test(f0.name) && typeof window.bkImportRun === 'function'){ S.busy = false; S.routed = 'operating statement'; window.bkImportRun({ files:[f0] }); return; }
       if(!c.dev && !c.record && /\.pdf$/i.test(f0.name) && typeof window.bkOMRun === 'function'){ S.busy = false; S.routed = 'offering memorandum / listing'; window.bkOMRun({ files:[f0] }); return; } }
     var facts = [], ctx = { dev:false };
