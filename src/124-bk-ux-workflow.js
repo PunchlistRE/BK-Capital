@@ -622,7 +622,7 @@ function kpiBar(sheet){
     html = R.tiles(sm.analysis.id).map(function(id){ var m = all.filter(function(x){ return x.id === id; })[0]; return m ? cell(esc(m.label), f(m)) : ''; }).join(''); }
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
-      + cell('<span title="' + esc(dscrTitle()) + '">Lender DSCR</span>', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(bkBindingName(h.binding)) : '') + cell(capName('totalContributedEquity'), money(h.tce)) + cell('Net Profit', money(h.profit))
+      + cell('<span title="' + esc(dscrTitle()) + '">Lender DSCR</span>', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(bkBindingName(h.binding)) : '') + cell('Equity contributed', money(h.tce)) + cell('Net Profit', money(h.profit))
       + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) + (tieChip() ? cell('Inputs', tieChip()) : '') : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }
