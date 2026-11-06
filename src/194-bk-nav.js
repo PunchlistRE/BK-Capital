@@ -15,6 +15,7 @@ window.BK_NAV = [
       { label:'Market', sheets:['Market Benchmarks'] } ] },
   { id:'operations', label:'Operations', q:'What does it earn?', color:'#163a62', groups:[
       { label:'Operations', sheets:['Operating Underwrite', 'Property CF', 'Property Valuation'] },
+      { label:'Asset management', sheets:['Budget vs Actual', 'Actuals'] },
       { id:'dev', label:'Development', cond:'development', sheets:['Development', 'Dev Schedule', 'Dev Lease-Up', 'Dev Draws', 'Residual Land'] } ] },
   { id:'debt', label:'Debt', q:'Can we finance it, and is the loan safe?', color:'#2E6E6E', groups:[
       { label:'Capital stack', sheets:['Sources & Uses'] },
@@ -41,6 +42,7 @@ window.BK_NAV_LABELS = { 'Benchmarks':'Deal Targets', 'Refinancing':'Refinance A
 window.BK_NAV_FOLD = {
   'Property':             { label:'Section editor', views:[['Deal Underwrite', 'All inputs on one sheet']] },
   'Import':               { label:'Read a document', views:[['Deal Documents', 'Documents'], ['Source Ingestion', 'Ingestion'], ['Source Data', 'Source data']] },
+  'Budget vs Actual':     { label:'Variance', views:[['Actuals', 'Enter actuals']] },
   'Property CF':          { label:'Cash flow', views:[['Operating Underwrite', 'Operating underwrite']] },
   'Development':          { label:'Budget', views:[['Dev Schedule', 'Schedule'], ['Dev Lease-Up', 'Lease-up'], ['Dev Draws', 'Draws']] },
   'Debt':                 { label:'Loan', views:[['Debt Schedule', 'Schedule'], ['Covenant Monitor', 'Covenants']] },

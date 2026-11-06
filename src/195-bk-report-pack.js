@@ -25,6 +25,7 @@ function tabOfSheet(s){ var g = groupOfSheet(s); if(!g) return null; return NAV_
 /* does this page have a PDF summary? Not on a hidden SYS_ sheet, a tool, or a page that does not apply to this deal (a development page on an acquisition, the Business tab without a business) */
 window.bkPackHas = function(sheet){
   if(!sheet || /^SYS_/.test(sheet) || NO_SUMMARY[sheet] || typeof RENDERERS[sheet] !== 'function') return false;
+  if((sheet === 'Budget vs Actual' || sheet === 'Actuals') && !(safe(function(){ return (bkLoad() || {}).actuals || []; }, []).length)) return false;   /* nothing entered: nothing to summarize */
   var g = groupOfSheet(sheet); if(!g) return false; var t = tabOfSheet(sheet);
   if(t && window.bkNavTabHidden && window.bkNavTabHidden(t, '')) return false;
   if(window.bkNavGroupShown && !window.bkNavGroupShown(g, '')) return false;
