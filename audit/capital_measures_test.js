@@ -50,8 +50,10 @@ const KEY_SHEETS = ['Sources & Uses', 'Debt', 'Returns', 'Liquidity', 'Dev Draws
         document.querySelectorAll('tr').forEach((tr) => { if (inRef(tr)) return; const c = [...tr.children].map(t); if (c.length >= 2) pairs.push([c[0], c[1]]); });
         document.querySelectorAll('.metric-row').forEach((r) => pairs.push([t(r.querySelector('.k')), t(r.querySelector('.v'))])); document.querySelectorAll('.bk-tile').forEach((r) => pairs.push([t(r.querySelector('.kk')), t(r.querySelector('.kv'))]));
         const chips = [...document.querySelectorAll('.status-chip')].map(t).filter((x) => /^(VARIANCE|OVER COMMITMENT|OVER CEILING)$/i.test(x));
-        return { pairs, chips, hasViewport: !!document.getElementById('viewport') }; }, sh);
+        const own = []; document.querySelectorAll('td, th, .k, .v, .kk, .kv, .t, label').forEach((e) => { if (inRef(e)) return; const x = String(e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim(); if (/^(closing equity|initial funding equity)$/i.test(x)) own.push(x); });   /* any cell, not only a row's label: the Ledger carries the name in its item column */
+        return { pairs, own, chips, hasViewport: !!document.getElementById('viewport') }; }, sh);
       if (R.err) { errs++; continue; }
+      R.own.forEach((x) => { if (M.dev && /^closing equity$/i.test(x)) { nBanned++; found.push('a development page shows "Closing equity" in a cell instead of "' + DEVNAME + '" on ' + sh + ' (' + tag + ')'); } if (!M.dev && /^initial funding equity$/i.test(x)) { nBanned++; found.push('an acquisition page shows "' + DEVNAME + '" on ' + sh + ' (' + tag + ')'); } });
       R.pairs.forEach(([label, val]) => {
         if (BANNED.some((re) => re.test(label))) { nBanned++; found.push('ambiguous label "' + label + '" on ' + sh + ' (' + tag + ')'); }
         if (M.dev && /^closing equity$/i.test(label)) { nBanned++; found.push('a development page says "Closing equity" instead of "' + DEVNAME + '" on ' + sh + ' (' + tag + ')'); }
