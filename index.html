@@ -19059,12 +19059,12 @@ function advancedIds(){ var s = hasDeal() ? bkLoad() : {}; var a = ['monthly','d
 function decorateRail(){
   var rail = document.getElementById('rail-groups'); if(!rail) return;
   var adv = advancedIds(), groups = [].slice.call(rail.querySelectorAll('.rail-group'));
-  var open = !!uiPrefs().advOpen, c = cur();
+  var open = uiPrefs().advOpen !== false, c = cur();   /* open unless you folded it: the advanced groups have been shown by default */
   var curGroup = (GROUPS.find(function(g){ return g.sheets.indexOf(c) > -1; }) || {}).id;
   if(adv.indexOf(curGroup) > -1) open = true;
   var head = rail.querySelector('.bk-adv-head');
   if(!head){ head = document.createElement('div'); head.className = 'bk-adv-head'; head.setAttribute('role','button'); head.tabIndex = 0;
-    head.addEventListener('click', function(){ setUiPref('advOpen', !uiPrefs().advOpen); decorateRail(); }); }
+    head.addEventListener('click', function(){ setUiPref('advOpen', uiPrefs().advOpen === false); decorateRail(); }); }
   var first = null;
   groups.forEach(function(el){
     var lab = (el.querySelector('.rail-group-label span') || {}).textContent || '';
@@ -20647,6 +20647,28 @@ rule('acct.exit-below-going-in', 'WARN', 'Exit', 'Deal Underwrite', function(s){
   var gi = u.arr[0].after / pp;
   if(cap < gi - 0.0005) return { msg:'Exit cap (' + pc(cap, 2) + ') is below the going-in yield (' + pc(gi, 2) + ').',
     why:'That assumes the market prices the property more richly when you sell than when you buy (cap-rate compression). Institutional underwriting normally holds the exit cap at or above going-in, adding 25-50 bps for age. Part of the return then comes from the assumption, not from operations.' };
+});
+/* Plausibility of the cap rates. The sale price is forward NOI divided by the exit cap, so a cap rate typed ten times too low (0.90% for 9.0%) prices the sale ten
+   times too high and carries the returns with it. Below 2% or above 20% is almost certainly a typo (ERROR, like the tax-rate percent typo); outside 3-15% is unusual (WARN). */
+rule('val.exit-cap-typo', 'ERROR', 'Exit', 'Deal Underwrite', function(s){
+  var cap = num(s.exitCap); if(!(cap > 0)) return;
+  if(cap < 0.02 || cap > 0.20) return { msg:'The exit cap rate is ' + pc(cap, 2) + '. Cap rates for income property are almost always between 3% and 15%; ' + (cap < 0.02 ? 'check whether ' + pc(cap * 10, 2) + ' was meant.' : 'check the entry.'),
+    why:'The sale price is forward NOI divided by the exit cap. At ' + pc(cap, 2) + ' the sale is priced at ' + (cap > 0 ? Math.round(1 / cap) : 0) + ' times NOI, and the sale then drives the IRR and the multiple.' };
+});
+rule('val.exit-cap-unusual', 'WARN', 'Exit', 'Deal Underwrite', function(s){
+  var cap = num(s.exitCap); if(!(cap > 0) || cap < 0.02 || cap > 0.20) return;
+  if(cap < 0.03 || cap > 0.15) return { msg:'The exit cap rate (' + pc(cap, 2) + ') is outside the usual 3-15% range for income property.',
+    why:'The sale price is forward NOI divided by the exit cap, so the cap rate carries much of the return. Confirm it against market evidence.' };
+});
+rule('val.going-in-cap-low', 'WARN', 'Property', 'Deal Underwrite', function(s){
+  if(isDev(s)) return; var c = safe(function(){ return bkCalc(); }, null), pp = num(s.purchasePrice); if(!c || !(pp > 0) || !(num(c.noi) > 0)) return;
+  var gi = num(c.noi) / pp; if(gi < 0.02) return { msg:'The going-in cap rate is ' + pc(gi, 2) + ' (Year-1 NOI ' + $(c.noi) + ' on a price of ' + $(pp) + ').',
+    why:'A going-in cap below 2% usually means the price, the rents or the expenses were entered in the wrong units. Every return measure starts from these two figures.' };
+});
+rule('val.exit-far-above-going-in', 'WARN', 'Exit', 'Deal Underwrite', function(s){
+  if(isDev(s)) return; var c = safe(function(){ return bkCalc(); }, null), pp = num(s.purchasePrice), cap = num(s.exitCap); if(!c || !(pp > 0) || !(cap > 0) || !(num(c.noi) > 0)) return;
+  var gi = num(c.noi) / pp; if(cap > gi + 0.03) return { msg:'The exit cap (' + pc(cap, 2) + ') is more than 300 bps above the going-in cap (' + pc(gi, 2) + ').',
+    why:'A gap that wide assumes the market will price the property far more cheaply at sale than today. It may be intended as a stress case; as a base case it understates the sale price.' };
 });
 rule('acct.units-vs-gsf', 'WARN', 'Property', 'Deal Underwrite', function(s){
   var u = num(s.units), g = num(s.gsf); if(!(u > 0) || !(g > 0) || /office|retail|industrial|land/i.test(String(s.propertyType || ''))) return;
@@ -24775,6 +24797,8 @@ function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
 function fmt(n, d){ n = Number(n); if(!isFinite(n)) return '-'; if(Math.abs(n) < 0.5 && !d) return '0'; var a = Math.abs(n), b = a.toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 }); return n < 0 ? '(' + b + ')' : b; }
 function pct(n, d){ n = Number(n); return isFinite(n) ? (n * 100).toFixed(d == null ? 2 : d) + '%' : '-'; }
 function money(n, d){ n = Number(n); if(!isFinite(n)) return '-'; var a = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 }); return n < 0 ? '($' + a + ')' : '$' + a; }
+/* Argus "Detailed Lines": a detail line that is zero in every year is left out of the table (Loss to Lease, Free Rent, retail lines on a residential deal, and so on); subtotals and totals always print. */
+function zeroLine(r, ys){ if(r.sec || r.cls) return false; for(var i = 0; i < ys.length; i++) if(Math.abs(num(r.f(ys[i]))) >= 0.5) return false; return true; }
 var OPT = (function(){ try { return JSON.parse(localStorage.getItem('bkcapital.rp.opt.v1') || '{}') || {}; } catch(e){ return {}; } })();
 function saveOpt(){ try { localStorage.setItem('bkcapital.rp.opt.v1', JSON.stringify(OPT)); } catch(e){} }
 window.bkRpOpt = function(k, v){ OPT[k] = v; saveOpt(); showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Cash Flow Report'); };
@@ -24820,7 +24844,7 @@ function cashFlow(s){
   SEC('Sale (final year)'); R('Gross Sale Price', sale); R('Selling Costs', cost); R('Net Sales Price', nsp, 'sub'); R('Disposition Fee', dispo); R('Loan Payoff', payoff); R('Proceeds from Sale', sum([sale, cost, dispo, payoff]), 'tot');
   var head = '<tr><th>' + (mode === 'total' ? 'Dollars' : mode === 'unit' ? 'Dollars per unit' : 'Dollars per GSF') + '</th>' + arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th><th class="r">Y1 % of EGR</th></tr>'
     + '<tr class="rp-pe"><th>For the years ending</th>' + arr.map(function(a){ return '<th class="r">' + esc(periodEnd(s, a.y)) + '</th>'; }).join('') + '<th></th><th></th></tr>';
-  var d = mode === 'gsf' ? 2 : 0, body = rows.map(function(r){ if(r.sec) return '<tr class="sec"><td>' + esc(r.sec) + '</td><td colspan="' + (n + 2) + '"></td></tr>';   /* label in its own cell so the rule between labels and figures runs unbroken */ var vals = arr.map(function(a){ return r.f(a.y) / per; }), tot = vals.reduce(function(t, v){ return t + v; }, 0), e1 = egr(1);
+  var ys = arr.map(function(a){ return a.y; }), d = mode === 'gsf' ? 2 : 0, body = rows.filter(function(r){ return !zeroLine(r, ys); }).map(function(r){ if(r.sec) return '<tr class="sec"><td>' + esc(r.sec) + '</td><td colspan="' + (n + 2) + '"></td></tr>';   /* label in its own cell so the rule between labels and figures runs unbroken */ var vals = arr.map(function(a){ return r.f(a.y) / per; }), tot = vals.reduce(function(t, v){ return t + v; }, 0), e1 = egr(1);
     return '<tr class="' + r.cls + '"><td>' + esc(r.label) + '</td>' + vals.map(function(v){ return '<td class="r">' + fmt(v, d) + '</td>'; }).join('') + '<td class="r">' + fmt(tot, d) + '</td><td class="r dim">' + (e1 ? pct(r.f(1) / e1, 1) : '-') + '</td></tr>'; }).join('');
   return { html:'<table class="rp-tbl" id="rp-cashflow"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>', rows:rows, arr:arr, f:{ egr:egr, noi:noi, cfb:cfb, cfa:cfa, eq:eq, opx:opx, noib:noib, net:net, saleNet:sum([sale, cost, dispo, payoff]), sched:sched, pgr:pgr, vac:vac, bad:bad, oth:oth, res:res, capItems:capItems, totCap:totCap, totLC:totLC, leasing:leasing, ti:tiF, lc:lcF, intr:intr, prin:prin, ds:ds, fee:fee, nsp:nsp, dispo:dispo, payoff:payoff } }; }
 function sheetCF(){ var s = bkLoad();
@@ -24849,7 +24873,7 @@ function devCF(s){
   SEC('Cash Flow to Equity'); R('Equity Contributions - Development', eqOut); R('Equity Contributions - Takeout', takeEq); R('Cash Flow After Debt Service', cfa); R('Permanent Loan Proceeds after Construction Payoff', take); R('Proceeds from Sale', saleNet); R('Operating Reserve Applied and Released', resO); R('Net Cash Flow to Equity', net, 'tot');
   SEC('Contributions and Distributions'); R('Total Contributions', function(y){ return -Rm(y, 'wfContrib'); }); R('Total Distributions', function(y){ return Rm(y, 'wfDist'); }); R('Net Cash Flow to Equity', function(y){ return Rm(y, 'wfDist') - Rm(y, 'wfContrib'); }, 'sub');
   var endOf = function(y){ var last = null; rows.forEach(function(r){ if(r.y === y) last = r; }); var d = last && last.dt ? new Date(last.dt) : null; return d && isFinite(d.getTime()) ? MON[d.getMonth()] + '-' + d.getFullYear() : ''; };
-  var body = lines.map(function(r){ if(r.sec) return '<tr class="sec"><td>' + esc(r.sec) + '</td><td colspan="' + (n + 1) + '"></td></tr>';
+  var body = lines.filter(function(r){ return !zeroLine(r, yrs); }).map(function(r){ if(r.sec) return '<tr class="sec"><td>' + esc(r.sec) + '</td><td colspan="' + (n + 1) + '"></td></tr>';
     var vals = yrs.map(function(y){ return r.f(y); }), tot = vals.reduce(function(t, v){ return t + v; }, 0), bad = r.cls === 'dim' && vals.some(function(v){ return Math.abs(v) > 1; });
     return '<tr class="' + (r.cls + (bad ? ' rp-bad' : '')).trim() + '"><td>' + esc(r.label) + '</td>' + vals.map(function(v){ return '<td class="r">' + fmt(v) + '</td>'; }).join('') + '<td class="r">' + fmt(tot) + '</td></tr>'; }).join('');
   var head = '<tr><th>Dollars</th>' + yrs.map(function(y){ return '<th class="r">Year ' + y + '</th>'; }).join('') + '<th class="r">Total</th></tr><tr class="rp-pe"><th>For the years ending</th>' + yrs.map(function(y){ return '<th class="r">' + esc(endOf(y)) + '</th>'; }).join('') + '<th></th></tr>';
@@ -27044,13 +27068,11 @@ html body #viewport table.fin td > .bk-sfx{ display:inline-block; width:24px; bo
 html body #viewport table.fin td:has(> .bk-sfx){ white-space:nowrap; }
 
 
-/* LEFT RAIL: every group is always open (no fold-out arrows); the sidebar still collapses to its strip of group letters */
+/* LEFT RAIL base rules. The tree look in src/182 (+/- boxes, folded groups hidden) is more specific and wins whenever the sidebar is open; the sidebar still collapses to its strip of group letters */
 html body .rail .rail-group.pl-collapsed .rail-item, html body .rail .rail-group .rail-item{ display:flex !important; }
 html body .rail .rail-group-label::after{ display:none !important; }
 html body .rail .rail-group-label{ cursor:default !important; }
-html body .rail .rail-group.bk-adv-hidden{ display:block !important; }
-html body .rail .bk-adv-head{ cursor:default !important; }
-html body .rail .bk-adv-head span:last-child{ display:none !important; }
+html body .rail .bk-adv-head{ cursor:pointer; }   /* the Advanced heading folds its groups again (src/124); its arrow shows the state */
 html.bk-rail-collapsed body .rail .rail-group-label{ cursor:pointer !important; }
 
 /* OVERVIEW: a quiet, professional palette. Status is carried by a small marker and a muted tone, not by saturated colour fields. */
@@ -27411,8 +27433,8 @@ function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || s
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });
-/* the rail's groups are always open: a click on a group name does nothing (except in the collapsed strip, where it re-opens the sidebar) */
-document.addEventListener('click', function(e){ var t = e.target; if(!t || !t.closest) return; if(html.classList.contains('bk-rail-collapsed')) return; if(t.closest('#rail-groups .rail-group-label') || t.closest('.rail .bk-adv-head')){ e.stopPropagation(); e.preventDefault(); } }, true);
+/* The rail's groups fold: a click on a group name (its +/- box) opens or folds it (src/141), and the Advanced heading folds the advanced groups (src/124).
+   An earlier rule swallowed these clicks in the capture phase to keep every group open; it is gone, so the tree's +/- boxes work again. */
 var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz = setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 200); });
 function start(){ run(); var mo = new MutationObserver(later); ['viewport', 'rail'].forEach(function(id){ var el = document.getElementById(id); if(el) mo.observe(el, { childList:true, subtree:true }); }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

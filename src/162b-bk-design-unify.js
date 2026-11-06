@@ -127,8 +127,8 @@ function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || s
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });
-/* the rail's groups are always open: a click on a group name does nothing (except in the collapsed strip, where it re-opens the sidebar) */
-document.addEventListener('click', function(e){ var t = e.target; if(!t || !t.closest) return; if(html.classList.contains('bk-rail-collapsed')) return; if(t.closest('#rail-groups .rail-group-label') || t.closest('.rail .bk-adv-head')){ e.stopPropagation(); e.preventDefault(); } }, true);
+/* The rail's groups fold: a click on a group name (its +/- box) opens or folds it (src/141), and the Advanced heading folds the advanced groups (src/124).
+   An earlier rule swallowed these clicks in the capture phase to keep every group open; it is gone, so the tree's +/- boxes work again. */
 var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz = setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 200); });
 function start(){ run(); var mo = new MutationObserver(later); ['viewport', 'rail'].forEach(function(id){ var el = document.getElementById(id); if(el) mo.observe(el, { childList:true, subtree:true }); }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

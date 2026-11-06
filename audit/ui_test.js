@@ -189,6 +189,15 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('Enter opens the chosen sheet and closes the palette', await p.evaluate(() => /^Refi/.test(currentSheet) && !document.getElementById('pl-palette').classList.contains('open')));
   const rail = await p.evaluate(() => [...document.querySelectorAll('#rail-groups .rail-group')].filter(g => !g.classList.contains('bk-adv') && !g.classList.contains('pl-collapsed')).length);
   check('the left rail keeps only the working group open', rail === 1, String(rail));
+  /* the tree's +/- boxes: a click on a folded group's name opens it, a second click folds it; the Advanced heading folds and reopens the advanced groups */
+  await p.keyboard.press('Escape');
+  const fold = await p.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const g = [...document.querySelectorAll('#rail-groups .rail-group')].find(x => x.classList.contains('pl-collapsed') && !x.classList.contains('bk-adv'));
+    const lab = g.querySelector('.rail-group-label'), vis = () => [...g.querySelectorAll('.rail-item')].filter(i => getComputedStyle(i).display !== 'none').length;
+    const n0 = vis(); lab.click(); await wait(50); const n1 = vis(), open1 = !g.classList.contains('pl-collapsed'); lab.click(); await wait(50); const n2 = vis();
+    const head = document.querySelector('.rail .bk-adv-head'), adv = () => [...document.querySelectorAll('.rail-group.bk-adv')].filter(x => getComputedStyle(x).display !== 'none').length;
+    const a0 = adv(); head.click(); await wait(50); const a1 = adv(); head.click(); await wait(50); const a2 = adv();
+    return { n0, n1, open1, n2, a0, a1, a2, items: g.querySelectorAll('.rail-item').length }; });
+  check('left rail: a click on a folded group\'s +/- opens it and a second click folds it; the Advanced heading folds and reopens its groups', fold.n0 === 0 && fold.open1 && fold.n1 === fold.items && fold.n1 > 0 && fold.n2 === 0 && fold.a0 > 0 && fold.a1 === 0 && fold.a2 === fold.a0, JSON.stringify(fold));
   await p.keyboard.press('Escape');
   // 13. New deal and Clear inputs on Overview
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(400);

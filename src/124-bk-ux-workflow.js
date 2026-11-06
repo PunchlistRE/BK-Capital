@@ -159,12 +159,12 @@ function advancedIds(){ var s = hasDeal() ? bkLoad() : {}; var a = ['monthly','d
 function decorateRail(){
   var rail = document.getElementById('rail-groups'); if(!rail) return;
   var adv = advancedIds(), groups = [].slice.call(rail.querySelectorAll('.rail-group'));
-  var open = !!uiPrefs().advOpen, c = cur();
+  var open = uiPrefs().advOpen !== false, c = cur();   /* open unless you folded it: the advanced groups have been shown by default */
   var curGroup = (GROUPS.find(function(g){ return g.sheets.indexOf(c) > -1; }) || {}).id;
   if(adv.indexOf(curGroup) > -1) open = true;
   var head = rail.querySelector('.bk-adv-head');
   if(!head){ head = document.createElement('div'); head.className = 'bk-adv-head'; head.setAttribute('role','button'); head.tabIndex = 0;
-    head.addEventListener('click', function(){ setUiPref('advOpen', !uiPrefs().advOpen); decorateRail(); }); }
+    head.addEventListener('click', function(){ setUiPref('advOpen', uiPrefs().advOpen === false); decorateRail(); }); }
   var first = null;
   groups.forEach(function(el){
     var lab = (el.querySelector('.rail-group-label span') || {}).textContent || '';
