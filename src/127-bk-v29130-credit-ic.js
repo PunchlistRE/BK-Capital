@@ -45,7 +45,7 @@ var GATES = [
   ['grossIRR',  'Gross levered IRR (property)',               'targetIRR',      '>=', 'HARD', 0.00, 'pct'],
   ['lpIRR',     'Net LP IRR (after promote)',                  'targetLpIRR',    '>=', 'HARD', 0.18, 'pct'],
   ['lpEM',      'Net LP equity multiple',                      'targetLpEM',     '>=', 'SOFT', 0.08, 'x'],
-  ['dscr',      'Year-1 DSCR (senior)',                        'minDSCR',        '>=', 'HARD', 0.12, 'x'],
+  ['dscr',      'House DSCR, year 1 (senior; NOI after reserves)', 'minDSCR',        '>=', 'HARD', 0.12, 'x'],
   ['debtYield', 'Year-1 debt yield (senior)',                  'minDebtYield',   '>=', 'HARD', 0.08, 'pct'],
   ['ltv',       'Senior LTV',                                  'maxLTV',         '<=', 'HARD', 0.04, 'pct'],
   ['capacity',  'Requested debt vs. house capacity',           'capacity',       '<=', 'HARD', 0.16, 'usd'],
@@ -118,12 +118,12 @@ function debtCapacity(){
   var rows = [
     ['Loan-to-value',                         'Value x maximum LTV',                     value * p.maxLTV],
     ['Loan-to-cost',                          'Cost basis x maximum LTC',                cost * p.maxLTC],
-    ['DSCR, actual rate, amortizing',         'NOI / minimum DSCR, capitalized',         pvAnnuity(coupon, years, noi / p.minDSCR)],
-    ['DSCR, stressed rate, amortizing',       'NOI / minimum DSCR at coupon + stress',   pvAnnuity(stressed, years, noi / p.minDSCR)],
-    ['DSCR, interest-only, actual rate',      'NOI / minimum DSCR / coupon',             coupon > 0 ? noi / p.minDSCR / coupon : Infinity],
+    ['DSCR, actual rate, amortizing',         'NOI after reserves / house minimum DSCR, capitalized', pvAnnuity(coupon, years, noi / p.minDSCR)],
+    ['DSCR, stressed rate, amortizing',       'NOI after reserves / house minimum DSCR at coupon + stress', pvAnnuity(stressed, years, noi / p.minDSCR)],
+    ['DSCR, interest-only, actual rate',      'NOI after reserves / house minimum DSCR / coupon', coupon > 0 ? noi / p.minDSCR / coupon : Infinity],
     ['Debt yield, underwriting NOI',          'NOI / minimum debt yield',                noi / p.minDebtYield],
     ['Debt yield, stabilized NOI',            'Year-3 NOI / minimum debt yield',         stab / p.minDebtYield]
-  ].map(function(r){ return { name:r[0], basis:r[1], max:r[2], ltv:value > 0 ? r[2] / value : 0, vsRequest:r[2] - req }; });
+  ].map(function(r){ return { name:r[0], label:r[0].replace(/^DSCR, /, 'House DSCR, '), basis:r[1], max:r[2], ltv:value > 0 ? r[2] / value : 0, vsRequest:r[2] - req }; });
   var min = Math.min.apply(null, rows.map(function(r){ return r.max; }));
   var binding = rows.filter(function(r){ return r.max === min; })[0];
   var next = Math.min.apply(null, rows.filter(function(r){ return r !== binding; }).map(function(r){ return r.max; }));

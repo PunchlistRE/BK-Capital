@@ -38,27 +38,27 @@ RENDERERS['Covenant Monitor'] = function(){
   });
   const heads = rows.map(r=>`<th>Year ${r.y}</th>`).join('');
   const cell = (r,ok)=>`<td class="${ok?'':'fail-cell'}">${ok?'<span class="status-chip pass">PASS</span>':'<span class="status-chip fail">FAIL</span>'}</td>`;
-  const main = `<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - DSCR &amp; Debt Yield, tested annually against the acquisition loan</caption>
+  const main = `<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - ${bkDscrName('lender', s)} &amp; Debt Yield, tested annually against the acquisition loan</caption>
     <thead><tr><th class="rowlabel-h">Line Item</th>${heads}</tr></thead><tbody>
     <tr><td class="rowlabel">${bkNoiBasisLabel('dscr', s).replace(/\b[a-z]/g, c => c.toUpperCase())} (lender basis)</td>${rows.map(r=>`<td>${money(r.noi)}</td>`).join('')}</tr>
     <tr><td class="rowlabel">Annual Debt Service</td>${rows.map(r=>`<td>${money(-r.ds)}</td>`).join('')}</tr>
     <tr><td class="rowlabel">Ending Loan Balance</td>${rows.map(r=>`<td>${money(r.ending)}</td>`).join('')}</tr>
-    <tr class="grandtotal"><td class="rowlabel">DSCR (min ${minDSCR.toFixed(2)}x)</td>${rows.map(r=>`<td>${isFinite(r.dscr)?r.dscr.toFixed(2)+'x':'-'}</td>`).join('')}</tr>
-    <tr>${(()=>`<td class="rowlabel">DSCR Test</td>`)()}${rows.map(r=>cell(r,r.dscrPass)).join('')}</tr>
+    <tr class="grandtotal"><td class="rowlabel">Lender DSCR (min ${minDSCR.toFixed(2)}x)</td>${rows.map(r=>`<td>${isFinite(r.dscr)?r.dscr.toFixed(2)+'x':'-'}</td>`).join('')}</tr>
+    <tr>${(()=>`<td class="rowlabel">Lender DSCR Test</td>`)()}${rows.map(r=>cell(r,r.dscrPass)).join('')}</tr>
     <tr class="grandtotal"><td class="rowlabel">Debt Yield (min ${bkPct(minDY)})</td>${rows.map(r=>`<td>${isFinite(r.dy)?bkPct(r.dy):'-'}</td>`).join('')}</tr>
     <tr><td class="rowlabel">Debt Yield Test</td>${rows.map(r=>cell(r,r.dyPass)).join('')}</tr>
     </tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Covenant Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>
     ${bkInput('Minimum Debt Yield Covenant','minDebtYield','%','pct')}
     </tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live covenant monitor -</b> pulled from the same exact monthly-verified NOI (<code>bkAnnualCF</code>) and amortization schedule (<code>bkDebt</code>) used everywhere else in this app; no separate calculation. Minimum DSCR reuses the acquisition loan's underwriting DSCR input.</div></div>`;
+    <div class="note-flag"><span>&#10003;</span><div><b>Live covenant monitor -</b> pulled from the same exact monthly-verified NOI (<code>bkAnnualCF</code>) and amortization schedule (<code>bkDebt</code>) used everywhere else in this app; no separate calculation. The lender minimum DSCR reuses the acquisition loan's underwriting minimum (the lender DSCR it is sized to).</div></div>`;
   const allPass = rows.every(r=>r.dscrPass && r.dyPass);
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Covenant Status</div><div class="metric-list">
     <div class="metric-row"><span class="k">Overall</span><span class="v"><span class="status-chip ${allPass?'pass':'fail'}">${allPass?'All Years Pass':'Breach Detected'}</span></span></div>
-    <div class="metric-row"><span class="k">Min DSCR</span><span class="v">${minDSCR.toFixed(2)}x</span></div>
+    <div class="metric-row"><span class="k">Lender min DSCR</span><span class="v">${minDSCR.toFixed(2)}x</span></div>
     <div class="metric-row"><span class="k">Min Debt Yield</span><span class="v">${bkPct(minDY)}</span></div>
   </div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Debt</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
-  return {title:'Covenant Monitor', crumbs:'Debt', desc:'Annual DSCR and Debt Yield covenant tests against the acquisition loan.', meta:{Property:s.name,Loan:money(d.loan),Rate:bkPct(s.acqRate),Amort:s.acqAmort+' yrs',Currency:'USD'}, main, sidebar};
+  return {title:'Covenant Monitor', crumbs:'Debt', desc:'Annual lender DSCR and Debt Yield covenant tests against the acquisition loan.', meta:{Property:s.name,Loan:money(d.loan),Rate:bkPct(s.acqRate),Amort:s.acqAmort+' yrs',Currency:'USD'}, main, sidebar};
 };
 
 // ---- Sensitivity ----

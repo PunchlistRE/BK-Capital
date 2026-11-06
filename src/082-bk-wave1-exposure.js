@@ -410,7 +410,7 @@ extend('Liquidity','w1Liquidity', function(o){
     var F = bkFundingSummary(), isDevL = !!F.dev;   /* the closing sources, from the shared funding calculation, for either deal type (a development deal is financed by the construction facility, not the acquisition loan) */
     src = wrapTable(isDevL ? 'Funding Plan at Closing - source split' : 'Funding at Close - source split',
       '<tr><th class="rowlabel-h">Source</th><th>Amount</th><th style="text-align:left">Basis</th></tr>',
-        '<tr>'+lbl(isDevL ? 'Construction Facility (draws + capitalized interest)' : 'Acquisition Loan Funding')+val(money(F.loan))+txt(isDevL ? 'Sized by loan to cost or loan to stabilized value; draws follow the equity-first schedule' : 'Sized by '+esc((F.d&&F.d.binding)||'constraint')+' at close')+'</tr>'
+        '<tr>'+lbl(isDevL ? 'Construction Facility (draws + capitalized interest)' : 'Acquisition Loan Funding')+val(money(F.loan))+txt(isDevL ? 'Sized by loan to cost or loan to stabilized value; draws follow the equity-first schedule' : 'Sized by '+esc(bkBindingName(F.d&&F.d.binding)||'constraint')+' at close')+'</tr>'
       + (F.reserveDraws>0.5 ? '<tr>'+lbl('Initial Reserves Drawn')+val(money(F.reserveDraws))+txt('Reserves funded at closing and drawn for lease-up or interest')+'</tr>' : '')
       + '<tr>'+lbl(isDevL ? bkCapName('closingEquity', true) : 'Closing Equity')+val(money(F.equity))+txt(isDevL ? 'Equity in Sources &amp; Uses, called through the funding schedule' : 'Total basis less loan proceeds')+'</tr>'
       + '<tr class="grandtotal">'+lbl(isDevL ? 'Total Sources in Sources &amp; Uses' : 'Total Funding at Close')+val(money(F.totalSources))+txt('Sources equal uses')+'</tr>');
@@ -578,7 +578,7 @@ extend('Covenant Monitor','w1Covenant', function(o){
   var status = !tested ? ['', 'NOT TESTED'] : watch ? ['warn','WATCH - '+watch+' period(s) below'] : ['pass','PASS'];
   o.main = (o.main||'') + wrapTable('Covenant Period Summary',
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
-      '<tr>'+lbl('Minimum DSCR Observed')+val(isFinite(minD)?mult(minD):'-')+txt('Covenant '+(covDSCR?mult(covDSCR):'not set'))+'</tr>'
+      '<tr>'+lbl('Minimum Lender DSCR Observed')+val(isFinite(minD)?mult(minD):'-')+txt('Covenant '+(covDSCR?mult(covDSCR):'not set')+'; '+(dv?bkDscrBasis('lender', s, 'NOI after reserves'):bkDscrBasis('lender', s)))+'</tr>'
     + '<tr>'+lbl('Minimum Debt Yield Observed')+val(isFinite(minY)?pct(minY):'-')+txt('Covenant '+(covDY?pct(covDY):'not set'))+'</tr>'
     + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(maxL)?pct(maxL):'-')+txt(dv?'Ending balance &divide; total development cost':'Ending balance &divide; purchase price')+'</tr>'
     + '<tr>'+lbl('Periods Tested')+val(intf(tested))+txt('Annual periods with debt service')+'</tr>'
@@ -782,7 +782,7 @@ extend('Debt','w1Refi', function(o){
     + '<tr>'+lbl('Refinance Month')+val('Month '+intf(r.month))+txt('Year '+intf(Math.ceil(r.month/12))+' of the hold')+'</tr>'
     + '<tr>'+lbl('Appraised Value at Refinance')+val(money(r.value))+txt('Forward NOI '+money(r.noi)+' &divide; valuation cap '+pct(r.cap))+'</tr>'
     + '<tr>'+lbl('Constraint - Maximum LTV')+val(money(r.byLTV))+txt('Against the appraised value above')+'</tr>'
-    + '<tr>'+lbl('Constraint - Minimum DSCR')+val(money(r.byDSCR))+txt('Against forward NOI at the refinance coupon')+'</tr>'
+    + '<tr>'+lbl('Constraint - Lender Minimum DSCR')+val(money(r.byDSCR))+txt('Against forward NOI at the refinance coupon')+'</tr>'
     + '<tr class="grandtotal">'+lbl('PERMANENT LOAN AMOUNT')+val(money(r.loan))
       + '<td data-bk-align="text">Lowest binding capacity - '+chip('pass', esc(r.binding))+'</td></tr>'
     + '<tr>'+lbl('Financing Fee')+val(money(r.fee))+txt('On the permanent loan')+'</tr>'
@@ -793,7 +793,7 @@ extend('Debt','w1Refi', function(o){
   o.main = (o.main||'') + wrapTable('Refinance / Permanent Loan Sizing - which constraint binds',
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>', body)
     + note('&#9888;','The workbook sizes the permanent loan on <b>three</b> constraints. Two are computed here - maximum LTV and '
-      + 'minimum DSCR. A <b>minimum debt yield</b> constraint at refinance is not among the engine outputs, so it is not shown and not '
+      + 'lender minimum DSCR. A <b>minimum debt yield</b> constraint at refinance is not among the engine outputs, so it is not shown and not '
       + 'inferred; it stays on the engine-gap list. The <code>permDebtYield</code> assumption exists in state but does not bind here.');
 });
 
@@ -893,7 +893,7 @@ extend('Portfolio Rollup','w1PortfolioRollup', function(o){
   o.main = (o.main||'')
     + wrapTable('Per-Deal Detail',
         '<tr><th class="rowlabel-h">Deal</th><th>Type</th><th>Location</th><th>Purchase Price</th><th>Equity</th>'
-        + '<th>Debt</th><th>Levered XIRR</th><th>MOIC</th><th>DSCR</th></tr>', rows)
+        + '<th>Debt</th><th>Levered XIRR</th><th>MOIC</th><th title="Each deal\'s going-in lender DSCR, on its own lender NOI">Lender DSCR</th></tr>', rows)
     + breakdown('Exposure by Property Type', byType, totEq)
     + breakdown('Exposure by Deal Status', byStatus, totEq)
     + integrity;
@@ -916,7 +916,7 @@ extend('Capital Allocation','w1CapAlloc', function(o){
   }).join('');
   o.main = (o.main||'') + wrapTable('Per-Property Return Profile',
     '<tr><th class="rowlabel-h">Deal</th><th>Purchase Price</th><th>Equity</th><th>Debt</th>'
-    + '<th>Going-In Cap</th><th>Levered XIRR</th><th>MOIC</th><th>DSCR</th></tr>', rows)
+    + '<th>Going-In Cap</th><th>Levered XIRR</th><th>MOIC</th><th title="Each deal\'s going-in lender DSCR, on its own lender NOI">Lender DSCR</th></tr>', rows)
     + note('&#9888;','The workbook carries a REFI / SELL / KEEP recommendation column. In the workbook that column is <b>static placeholder '
       + 'text</b> against no live threshold logic, so it is deliberately not reproduced here rather than porting a defect.');
 });

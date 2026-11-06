@@ -78,9 +78,9 @@ function refi(){
   var verdict = null;
   if(sel){
     var dIRR = sel.irr - base.irr, dProfit = sel.profit - base.profit, dMoic = sel.moic - base.moic;
-    verdict = sel.postDSCR < inp.minDSCR ? 'DO NOT REFINANCE — post-refinance DSCR breaches the minimum'
-      : (dIRR > 0 && dProfit > 0) ? 'REFINANCE — accretive to both IRR and total profit; clears minimum DSCR'
-      : dIRR > 0 ? 'TRADE-OFF — refinance lifts IRR by ' + Math.round(dIRR * 10000) + ' bps but reduces total profit by $' + Math.round(-dProfit).toLocaleString('en-US') + ' and the multiple by ' + (-dMoic).toFixed(2) + 'x; clears minimum DSCR'
+    verdict = sel.postDSCR < inp.minDSCR ? 'DO NOT REFINANCE — post-refinance lender DSCR breaches the minimum'
+      : (dIRR > 0 && dProfit > 0) ? 'REFINANCE — accretive to both IRR and total profit; clears the lender minimum DSCR'
+      : dIRR > 0 ? 'TRADE-OFF — refinance lifts IRR by ' + Math.round(dIRR * 10000) + ' bps but reduces total profit by $' + Math.round(-dProfit).toLocaleString('en-US') + ' and the multiple by ' + (-dMoic).toFixed(2) + 'x; clears the lender minimum DSCR'
       : 'DO NOT REFINANCE — dilutive to IRR';
   }
   /* reconciliation: independent re-derivation of the existing balance, and the profit bridge */
@@ -117,7 +117,7 @@ var render = function(){
   /* the position and sizing tables carry a note column on some rows: every row gets the third cell, so the columns line up and no row is squeezed */
   var row3 = function(a, b, c){ return row(a, b, c === undefined ? '' : c); };
   var inRows = [['Refinance year (end of year)', inp('year', I.year, 60), 'Between 1 and ' + (R.holdYears - 1)], ['Appraisal cap rate', inp('appraisalCap', (I.appraisalCap * 100).toFixed(2)) + ' %', 'Value = trailing NOI / cap'],
-    ['Maximum new loan LTV', inp('maxLTV', (I.maxLTV * 100).toFixed(1)) + ' %', ''], ['Minimum DSCR', X(I.minDSCR), 'Deal refinance DSCR (Inputs); edit under Credit Policy for the house minimum'],
+    ['Maximum new loan LTV', inp('maxLTV', (I.maxLTV * 100).toFixed(1)) + ' %', ''], ['Lender minimum DSCR', X(I.minDSCR), 'The refinance lender minimum (Inputs), tested on NOI after reserves; the house minimum is on Credit Policy'],
     ['Minimum debt yield', inp('minDebtYield', (I.minDebtYield * 100).toFixed(2)) + ' %', 'Defaults to the house policy'], ['New loan coupon', inp('rate', (I.rate * 100).toFixed(2)) + ' %', ''],
     ['New loan amortization (years)', inp('amort', I.amort, 60), ''], ['Refinance costs', inp('costsPct', (I.costsPct * 100).toFixed(2)) + ' %', 'Of the new loan'],
     ['Prepayment / defeasance on existing loan', inp('prepayPct', (I.prepayPct * 100).toFixed(2)) + ' %', 'Of the existing balance'], ['Exit prepayment on new loan', inp('exitPenaltyPct', (I.exitPenaltyPct * 100).toFixed(2)) + ' %', 'Of the balance at sale']]
@@ -128,16 +128,16 @@ var render = function(){
     var vc = /^REFINANCE/.test(R.verdict) ? 'pass' : /^TRADE/.test(R.verdict) ? 'warn' : 'fail';
     main += '<div class="note-flag" style="margin-top:12px"><span>' + (vc === 'pass' ? '&#10003;' : '&#9888;') + '</span><div><b>' + R.verdict.replace(/&/g, '&amp;') + '</b></div></div>'
       + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing NOI after reserves', $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
-      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('DSCR constraint', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
-        + '<tr class="grandtotal"><td class="rowlabel">New loan amount</td><td class="v">' + $(S.newLoan) + '</td><td data-bk-align="text">Binding: ' + S.binding + '</td></tr>'
+      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('Lender DSCR constraint (NOI after reserves)', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
+        + '<tr class="grandtotal"><td class="rowlabel">New loan amount</td><td class="v">' + $(S.newLoan) + '</td><td data-bk-align="text">Binding: ' + (S.binding === 'DSCR' ? 'Lender DSCR' : S.binding) + '</td></tr>'
         + row3('Refinance costs', $(-S.costs)) + row3('Prepayment on existing loan', $(-S.prepay)) + row3('Gross cash-out', $(S.grossCashOut))
         + '<tr class="grandtotal"><td class="rowlabel">Net cash-out to equity</td><td class="v">' + $(S.netCashOut) + '</td><td data-bk-align="text">' + P(S.netCashOut / R.commonEquity) + ' of common equity</td></tr>'
-        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance DSCR', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
+        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance lender DSCR (NOI after reserves)', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
         + row3('New loan balance at exit', $(S.newBalanceAtExit)) + row3('Exit prepayment on new loan', $(S.exitPenalty)));
   }
   var trows = R.timing.map(function(x){ var sel = S && x.year === S.year, peak = R.peak && x.year === R.peak.year;
-    return '<tr' + (sel ? ' class="subtotal"' : '') + '><td class="rowlabel">' + x.year + (peak ? ' (peak)' : '') + '</td><td>' + $(x.noi) + '</td><td>' + $(x.value) + '</td><td>' + $(x.existingBalance) + '</td><td>' + $(x.newLoan) + '</td><td>' + $(x.netCashOut) + '</td><td>' + X(x.postDSCR) + '</td><td>' + x.binding + '</td><td>' + P(x.irr) + '</td><td>' + ((x.irr - B.irr) * 10000 >= 0 ? '+' : '') + Math.round((x.irr - B.irr) * 10000) + ' bps</td></tr>'; }).join('');
-  main += t('3. Refinance Timing - Every Possible Year', '<th class="rowlabel-h">Year</th><th>NOI</th><th>Value</th><th>Existing balance</th><th>Maximum new loan</th><th>Net cash-out</th><th>Post-refi DSCR</th><th>Binding</th><th>Equity IRR</th><th>vs. hold</th>', trows,
+    return '<tr' + (sel ? ' class="subtotal"' : '') + '><td class="rowlabel">' + x.year + (peak ? ' (peak)' : '') + '</td><td>' + $(x.noi) + '</td><td>' + $(x.value) + '</td><td>' + $(x.existingBalance) + '</td><td>' + $(x.newLoan) + '</td><td>' + $(x.netCashOut) + '</td><td>' + X(x.postDSCR) + '</td><td>' + (x.binding === 'DSCR' ? 'Lender DSCR' : x.binding) + '</td><td>' + P(x.irr) + '</td><td>' + ((x.irr - B.irr) * 10000 >= 0 ? '+' : '') + Math.round((x.irr - B.irr) * 10000) + ' bps</td></tr>'; }).join('');
+  main += t('3. Refinance Timing - Every Possible Year', '<th class="rowlabel-h">Year</th><th>NOI</th><th>Value</th><th>Existing balance</th><th>Maximum new loan</th><th>Net cash-out</th><th title="NOI after reserves over the new loan\'s debt service">Post-refi lender DSCR</th><th>Binding</th><th>Equity IRR</th><th>vs. hold</th>', trows,
     R.peak ? '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div>Peak net cash-out: <b>' + $(R.peak.netCashOut) + '</b> in year ' + R.peak.year + '. The most cash-out is not always the best year: refinancing earlier raises IRR; later raises the amount.</div></div>' : '');
   if(S){
     var f = function(a, b, fm){ return '<tr><td class="rowlabel">' + a + '</td><td>' + fm(b) + '</td><td>' + fm(a === '' ? 0 : 0) + '</td></tr>'; };
@@ -153,7 +153,7 @@ var render = function(){
   main += '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div>This is a property-level, pre-tax view of the equity cash flow rebuilt monthly: the cash-out arrives at the end of the refinance year, debt service changes from the next month, and the payoff at sale is the new loan’s balance plus its prepayment penalty. It does not re-run the JV waterfall, and the refinance is not part of the base case unless you add it there.</div></div>';
   return { title:'Refi / Recap', crumbs:'Debt', desc:'Cash-out refinance sizing, timing and return impact against holding the original loan.',
     meta:{ Property:s.name, Year:I.year, 'Net cash-out':S ? $(S.netCashOut) : 'n/a' }, main:main,
-    sidebar:(typeof sidebarShell === 'function' && S) ? sidebarShell('<div class="card"><div class="card-head">Refinance</div><div class="metric-list"><div class="metric-row"><span class="k">Net cash-out</span><span class="v">' + $(S.netCashOut) + '</span></div><div class="metric-row"><span class="k">New loan</span><span class="v">' + $(S.newLoan) + '</span></div><div class="metric-row"><span class="k">Post-refi DSCR</span><span class="v">' + X(S.postDSCR) + '</span></div><div class="metric-row"><span class="k">IRR vs. hold</span><span class="v">' + Math.round((S.irr - B.irr) * 10000) + ' bps</span></div></div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : '' };
+    sidebar:(typeof sidebarShell === 'function' && S) ? sidebarShell('<div class="card"><div class="card-head">Refinance</div><div class="metric-list"><div class="metric-row"><span class="k">Net cash-out</span><span class="v">' + $(S.netCashOut) + '</span></div><div class="metric-row"><span class="k">New loan</span><span class="v">' + $(S.newLoan) + '</span></div><div class="metric-row"><span class="k">Post-refi lender DSCR</span><span class="v">' + X(S.postDSCR) + '</span></div><div class="metric-row"><span class="k">IRR vs. hold</span><span class="v">' + Math.round((S.irr - B.irr) * 10000) + ' bps</span></div></div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : '' };
 };
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Refi / Recap', render); else if(typeof RENDERERS !== 'undefined') RENDERERS['Refi / Recap'] = render;
 })();

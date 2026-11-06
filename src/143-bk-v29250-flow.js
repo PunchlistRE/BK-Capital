@@ -23,9 +23,9 @@ window.bkSizeLoanPlan = plan;
 window.bkSizeLoanDialog = function(){
   var p = plan(), modal = window.bkModal; if(!modal) return;
   if(!p){ modal('<h3>Loan is within policy</h3><p>The loan the engine sized is not above what house credit policy supports, so there is nothing to resize.</p><div class="btns"><button type="button" class="pl-hbtn primary" onclick="bkModalClose()">Close</button></div>'); return; }
-  if(!p.ok){ modal('<h3>Raising the DSCR will not reach policy</h3><p>The loan is ' + M(p.cap.overage) + ' above what policy supports (' + M(p.cap.capacity) + ', binding on ' + esc(p.cap.binding && p.cap.binding.name || 'policy') + '), but the engine’s DSCR sizing is not what is setting it. Lower the maximum LTV or LTC on Deal Underwrite, or change the price.</p><div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Close</button><button type="button" class="pl-hbtn primary" onclick="bkModalClose();showSheet(\'Debt Capacity\')">Open Debt Capacity</button></div>'); return; }
-  modal('<h3>Size the loan to policy</h3><p>The loan the engine sized is <b>' + M(p.now) + '</b>, which is ' + M(p.cap.overage) + ' above what house policy supports (<b>' + M(p.cap.capacity) + '</b>, binding on ' + esc(p.cap.binding && p.cap.binding.name || 'policy') + ').</p>'
-    + '<p>This raises the minimum DSCR the loan is sized to from <b>' + p.from.toFixed(2) + 'x</b> to <b>' + p.dscr.toFixed(3) + 'x</b>. The engine then sizes the loan at <b>' + M(p.loan) + '</b>; debt service, returns, tax and the credit gate all recompute. Undo restores the old DSCR.</p>'
+  if(!p.ok){ modal('<h3>Raising the lender minimum DSCR will not reach policy</h3><p>The loan is ' + M(p.cap.overage) + ' above what policy supports (' + M(p.cap.capacity) + ', binding on ' + esc(p.cap.binding && (p.cap.binding.label || p.cap.binding.name) || 'policy') + '), but the engine’s lender DSCR sizing is not what is setting it. Lower the maximum LTV or LTC on Deal Underwrite, or change the price.</p><div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Close</button><button type="button" class="pl-hbtn primary" onclick="bkModalClose();showSheet(\'Debt Capacity\')">Open Debt Capacity</button></div>'); return; }
+  modal('<h3>Size the loan to policy</h3><p>The loan the engine sized is <b>' + M(p.now) + '</b>, which is ' + M(p.cap.overage) + ' above what house policy supports (<b>' + M(p.cap.capacity) + '</b>, binding on ' + esc(p.cap.binding && (p.cap.binding.label || p.cap.binding.name) || 'policy') + ').</p>'
+    + '<p>This raises the lender minimum DSCR the loan is sized to from <b>' + p.from.toFixed(2) + 'x</b> to <b>' + p.dscr.toFixed(3) + 'x</b>. The engine then sizes the loan at <b>' + M(p.loan) + '</b>; debt service, returns, tax and the credit gate all recompute. Undo restores the old lender minimum DSCR.</p>'
     + '<div class="btns"><button type="button" class="pl-hbtn" onclick="bkModalClose()">Cancel</button><button type="button" class="pl-hbtn primary" onclick="bkSizeLoanGo()">Apply</button></div>');
 };
 window.bkSizeLoanGo = function(){
@@ -34,8 +34,8 @@ window.bkSizeLoanGo = function(){
 
 /* ---------------------------------------------------------------- 2. glossary */
 var G = [
-  ['DSCR', /\bDSCR\b|debt service coverage/i, 'Debt service coverage ratio: net operating income divided by the year’s loan payments. 1.25x means income covers the payment 1.25 times. Lenders set a minimum.'],
-  ['Stressed DSCR', /stressed (underwriting )?(DSCR|coupon|rate)/i, 'DSCR recalculated with the interest rate raised by a cushion (here the policy’s stress, e.g. 150 bps), to see whether the loan still works if rates are worse than the quote.'],
+  ['DSCR', /\bDSCR\b|debt service coverage/i, 'Debt service coverage ratio: NOI divided by the year’s loan payments; 1.25x means income covers the payment 1.25 times. Two are shown and they are not interchangeable. The house DSCR (NOI after reserves) is the firm’s own credit-policy test. The lender DSCR (the deal’s lender NOI) is the coverage the lender sizes and tests the loan on.'],
+  ['Stressed DSCR', /stressed (underwriting )?(DSCR|coupon|rate)/i, 'A coverage ratio recalculated under stress, to see whether the loan still works if things are worse than the quote. On Credit Policy and Debt Capacity it is the house DSCR at the coupon raised by the policy’s stress (e.g. 150 bps); on Financing Compare and Pre-Offer Bid it is the lender DSCR with NOI cut by the decline shown.'],
   ['LTV', /\bLTV\b|loan[- ]to[- ]value/i, 'Loan-to-value: the loan as a share of the property’s value. Higher means more leverage and less equity cushion.'],
   ['LTC', /\bLTC\b|loan[- ]to[- ]cost/i, 'Loan-to-cost: the loan as a share of total project cost (price plus closing costs and fees; for development, all costs).'],
   ['Debt yield', /debt yield/i, 'Year-1 NOI divided by the loan. It ignores the interest rate, so it shows how fast the income alone would repay the loan.'],
@@ -46,7 +46,7 @@ var G = [
   ['Hurdle', /hurdle/i, 'The return a deal must clear: the target IRR on Credit Policy, or the preferred return tiers in the waterfall.'],
   ['Yield on cost', /yield on cost/i, 'Stabilized NOI divided by total cost. For development, compare it to the exit cap: the gap is the profit margin for taking construction risk.'],
   ['Loss to lease', /loss to lease/i, 'The gap between what units could rent for at market and what in-place leases pay. Closing it is the upside; it is not extra vacancy.'],
-  ['Binding constraint', /binding/i, 'The one sizing test (LTV, LTC, DSCR, debt yield) that allows the smallest loan. Loosening any other test changes nothing.'],
+  ['Binding constraint', /binding/i, 'The one sizing test (LTV, LTC, lender DSCR, debt yield) that allows the smallest loan. Loosening any other test changes nothing.'],
   ['Preferred return', /preferred return|\bpref\b/i, 'The return investors earn first, before the sponsor shares in profit.'],
   ['Promote', /promote/i, 'The sponsor’s share of profit above the preferred return, paid in tiers as the deal clears higher hurdles.'],
   ['Catch-up', /catch-?up/i, 'A tier that pays the sponsor extra until it has received its promote share of all profit so far.'],

@@ -150,8 +150,8 @@ function bkExportDebtSchedule(){
   const rows = d.months.map((m,i)=>[m.m, i? d.months[i-1].balance : d.loan, m.payment, m.interest, m.principal, m.balance]);
   rows.push([]); rows.push(['--- SUMMARY ---']);
   rows.push(['Loan Amount', d.loan]); rows.push(['Origination Fee', d.fee]); rows.push(['Rate', d.s.acqRate]);
-  rows.push(['Amortization (yrs)', d.s.acqAmort]); rows.push(['Going-In DSCR', d.dscr]);
-  rows.push(['LTV', d.ltv]); rows.push(['LTC', d.ltc]); rows.push(['Binding Constraint', d.binding]);
+  rows.push(['Amortization (yrs)', d.s.acqAmort]); rows.push(['Lender DSCR, going-in (' + bkDscrBasis('lender') + ')', d.dscr]);
+  rows.push(['LTV', d.ltv]); rows.push(['LTC', d.ltc]); rows.push(['Binding Constraint', bkBindingName(d.binding)]);
   rows.push(['Debt at Sale', d.debtAtSale]);
   return {name:'Debt Schedule', filename:bkSlug(s.name)+'_Debt_Schedule.csv', headers, rows, count:d.months.length, available:true};
 }

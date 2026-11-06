@@ -32,6 +32,17 @@ window.bkLenderNoiBasis = function(s){ s = s || bkLoad(); return s.lenderNoiBasi
 window.bkLenderNoi = function(row, s){ if(!row) return 0; var after = window.bkLenderNoiBasis(s) === 'after', monthly = Object.prototype.hasOwnProperty.call(row, 'noiBeforeReserves');
   var before = monthly ? row.noiBeforeReserves : row.noi, aft = monthly ? row.noi : (row.after != null ? row.after : row.noiAfter); return Number(after ? aft : before) || 0; };
 window.bkNoiBasisLabel = function(kind, s, short){ s = s || bkLoad(); var b = kind === 'exit' ? (s.exitNoiBasis === 'before' ? 'before' : 'after') : window.bkLenderNoiBasis(s); return 'NOI ' + b + (short ? ' reserves' : ' capital reserves'); };   /* short: for a narrow print column */
+/* TWO DSCRs, and the platform never prints a bare "DSCR" (owner's decision, November 2026). They answer different questions and are not interchangeable:
+     House DSCR   the firm's own credit-policy tests (Credit Policy, the credit gate, Debt Capacity's credit box and ladder): NOI after capital reserves, as the certified
+                  Capital Markets model (audit/credit_ref.py). It does not move when a lender uses a different NOI.
+     Lender DSCR  the loan's coverage as its lender tests it (the loan sizing, the covenants, the pro forma, the investor PDF): the deal's lender NOI (lenderNoiBasis, above).
+   A lender test that divides its own fixed NOI (the permanent loan's forward 12 months, a refinance tool) passes that NOI as basis, so its label says what it divides.
+   bkDscrName gives the full name, bkDscrShort the two words for a narrow column whose caption or note gives the basis. */
+window.bkDscrBasis = function(kind, s, basis){ return kind === 'house' ? 'NOI after reserves' : (basis || 'lender NOI, ' + window.bkLenderNoiBasis(s) + ' reserves'); };
+window.bkDscrShort = function(kind){ return kind === 'house' ? 'House DSCR' : 'Lender DSCR'; };
+window.bkDscrName = function(kind, s, basis){ return window.bkDscrShort(kind) + ' (' + window.bkDscrBasis(kind, s, basis) + ')'; };
+/* the sizing engines keep 'DSCR' as the binding test's key (the deal book and the independent models compare on it); a page shows it as the lender DSCR it is */
+window.bkBindingName = function(b){ return /^dscr$/i.test(String(b == null ? '' : b)) ? 'Lender DSCR' : b; };
 window.bkSetLenderNoiBasis = function(v){
   var s = bkLoad(); s.lenderNoiBasis = (v === 'after') ? 'after' : ''; bkSave(s);
   if(typeof showSheet === 'function') showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Debt');
@@ -78,7 +89,7 @@ function panel(){
     +     ' onchange="bkSetAcqDebtYield(this.value)"></td>'
     +   '<td data-bk-align="text">%</td>'
     +   '<td>' + (Number(s.acqDebtYield)>0 ? chip('','INPUT') : chip('','NOT APPLIED')) + '</td></tr>'
-    + '<tr class="input"><td class="rowlabel" data-bk-align="text">Lender Tests Use<span class="bk-sub">NOI before or after replacement reserves (DSCR, and LTV on value)</span></td>'
+    + '<tr class="input"><td class="rowlabel" data-bk-align="text">Lender Tests Use<span class="bk-sub">NOI before or after replacement reserves (lender DSCR, and LTV on value)</span></td>'
     +   '<td class="v"><select onchange="bkSetLenderNoiBasis(this.value)">'
     +     '<option value=""'  + (s.lenderNoiBasis === 'after' ? '' : ' selected') + '>Before reserves</option>'
     +     '<option value="after"' + (s.lenderNoiBasis === 'after' ? ' selected' : '') + '>After reserves</option>'
@@ -96,7 +107,7 @@ function panel(){
   var rows = [
     ['Maximum LTV',          d.byLTV,        'acqLTV '   + pct(s.acqLTV) + ' \u00d7 ' + window.bkLtvBasisLabel(s, true), 'LTV'],
     ['Maximum LTC',          d.byLTC,        'acqLTC '   + pct(s.acqLTC),        'LTC'],
-    ['Minimum DSCR',         d.byDSCR,       'acqDSCR '  + (Number(s.acqDSCR)||0).toFixed(2)+'x', 'DSCR'],
+    ['Lender Minimum DSCR',  d.byDSCR,       'acqDSCR '  + (Number(s.acqDSCR)||0).toFixed(2)+'x', 'DSCR'],
     ['Minimum Debt Yield',   d.byDebtYield,  Number(s.acqDebtYield)>0 ? 'acqDebtYield '+pct(s.acqDebtYield) : 'not applied', 'DEBT YIELD']
   ];
   var body = rows.map(function(r){
@@ -120,7 +131,7 @@ function panel(){
     +   '<td data-bk-align="text">' + (off
           ? 'Debt is switched off'
           : 'Lowest capacity, rounded down to the nearest $1,000') + '</td>'
-    +   '<td>' + (off ? chip('fail','DEBT OFF') : chip('pass', d.binding)) + '</td></tr>'
+    +   '<td>' + (off ? chip('fail','DEBT OFF') : chip('pass', bkBindingName(d.binding))) + '</td></tr>'
     + '</tbody></table></div>'
     + (off
         ? '<div class="note-flag" style="margin-top:10px;"><span>&#9888;</span><div>'
@@ -162,7 +173,7 @@ if(typeof RENDERERS !== 'undefined' && typeof RENDERERS['Debt'] === 'function'){
         var d = bkDebt();
         o.meta = Object.assign({}, o.meta, {
           Debt: d.debtEnabled === false ? 'Off' : 'On',
-          Binding: d.binding
+          Binding: bkBindingName(d.binding)
         });
       } catch(e){}
       return o;

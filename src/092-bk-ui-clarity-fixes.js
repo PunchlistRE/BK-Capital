@@ -308,7 +308,7 @@ extend('Deal Underwrite','clarityInputs', function(o){
     // what the LTC constraint is measured against
     var basisCost = price * (1 + (Number(s.closingCostsPct)||0) + (Number(s.acqFeePct)||0));
     var _hasDebt = (Number(s.acqLTV)||0) > 0 || (Number(s.acqLTC)||0) > 0 || (Number(s.acqRate)||0) > 0;
-    if(!_hasDebt){ o.main = (o.main||'') + note('&#9432;','<b>This deal has no financing: it is all cash.</b> Debt constraints (maximum LTV, LTC and minimum DSCR), the loan rate in the cases and refinance settings appear once financing is added on the Debt step.'); }
+    if(!_hasDebt){ o.main = (o.main||'') + note('&#9432;','<b>This deal has no financing: it is all cash.</b> Debt constraints (maximum LTV, LTC and lender minimum DSCR), the loan rate in the cases and refinance settings appear once financing is added on the Debt step.'); }
     else
     o.main = (o.main||'')
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-constraint-grid">'
@@ -323,13 +323,13 @@ extend('Deal Underwrite','clarityInputs', function(o){
       +   '<td class="v">'+money(basisCost)+'</td>'
       +   '<td class="v" data-bk-align="num">'+pct(Number(s.acqLTC))+'</td>'
       +   '<td class="v">'+money(basisCost*(Number(s.acqLTC)||0))+'</td></tr>'
-      + '<tr><td class="rowlabel" data-bk-align="text">Min DSCR</td>'
-      +   '<td class="v">Year-1 NOI '+money(noi)+'</td>'
+      + '<tr><td class="rowlabel" data-bk-align="text">Lender Min DSCR</td>'
+      +   '<td class="v">Year-1 '+bkDscrBasis('lender', s)+' '+money(c ? (bkLenderNoiBasis(s) === 'after' ? Number(c.after)||0 : Number(c.noi)||0) : 0)+'</td>'
       +   '<td class="v" data-bk-align="num">'+(Number(s.acqDSCR)||0).toFixed(2)+'x</td>'
       +   '<td class="v">'+chip('','sized by coverage')+'</td></tr>'
       + '</tbody></table></div>'
       + (_lb === 'price' ? note('&#9432;','<b>LTV is measured against the purchase price</b> (this deal&rsquo;s LTV basis setting). '
-        + 'LTC is measured against the total cost basis and DSCR against Year-1 NOI; the loan is the lowest of them.') :
+        + 'LTC is measured against the total cost basis and the lender DSCR against Year-1 lender NOI; the loan is the lowest of them.') :
         note('&#9432;','<b>Underwritten value is not the purchase price.</b> It is Year-1 NOI capitalized at the exit cap - '
         + (isFinite(_uv) ? (money(noi)+' &divide; '+pct(cap)+' = '+money(_uv)) : 'NOI &divide; exit cap')
         + ' - which is how a lender sizes against value rather than against what you paid. '

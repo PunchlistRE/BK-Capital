@@ -44,6 +44,8 @@ function inCase(fn){
   try { return fn(scratch, c); } finally { window.bkLoad = oL; window.bkSave = oS; }
 }
 window.bkHeadline = function(){ return headline(); };
+/* the headline coverage is the lender DSCR: an acquisition's going-in figure on its lender NOI, a development's permanent loan on stabilized NOI before reserves */
+function dscrTitle(){ var s = null; try { s = bkLoad(); } catch(e){} return /develop/i.test(String((s || {}).dealType || '')) ? 'Lender DSCR, stabilized' : 'Lender DSCR, going-in'; }
 /* a capital measure's name as the app names it everywhere (BK_CAPITAL_TERMS, src/184): the band, the sidebar and the Home tile never use a bare "Equity" */
 function capName(k, dev){ return typeof window.bkCapName === 'function' ? window.bkCapName(k, dev) : (k === 'totalContributedEquity' ? 'Total contributed equity' : 'Closing equity'); }
 function headline(){
@@ -221,8 +223,8 @@ function snapshotCard(){
   return head + '<div class="metric-list">'
     + row('Levered IRR', pct(h.levIRR), 'big') + row('Equity Multiple', mult(h.levMOIC))
     + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + (Number(bkLoad().gpShare) > 0 ? pct(h.gpIRR) : 'N/A'))
-    + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(h.binding) + '</span>' : ''))
-    + row(capName('totalContributedEquity'), money(h.tce)) + row('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
+    + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
+    + row(capName('totalContributedEquity'), money(h.tce)) + row(dscrTitle(), isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
     + (tieChip() ? row('Inputs', tieChip()) : '')
     + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '')
@@ -389,7 +391,7 @@ function changedCount(){
 }
 
 /* ---- words for a step ---- */
-var FLABEL = { exitCap:'Exit cap', purchasePrice:'Purchase price', holdYears:'Hold period', avgRent:'Average rent', vacancy:'Vacancy', rentGrowth:'Rent growth', opexGrowth:'Expense growth', acqLTV:'Max LTV', acqLTC:'Max LTC', acqRate:'Loan rate', acqAmort:'Amortization', acqDSCR:'Min DSCR',
+var FLABEL = { exitCap:'Exit cap', purchasePrice:'Purchase price', holdYears:'Hold period', avgRent:'Average rent', vacancy:'Vacancy', rentGrowth:'Rent growth', opexGrowth:'Expense growth', acqLTV:'Max LTV', acqLTC:'Max LTC', acqRate:'Loan rate', acqAmort:'Amortization', acqDSCR:'Lender min DSCR',
   units:'Units', gsf:'Building area', closing:'Closing date', name:'Name', dealId:'Deal ID', location:'Location', propertyType:'Property type', dealType:'Deal type', scenarioCase:'Case', gpShare:'GP share', pref:'Preferred return', saleCostPct:'Cost of sale', mgmtPct:'Management fee',
   constructionMonths:'Construction months', predevMonths:'Pre-development months', leaseupMonths:'Lease-up months', conLTC:'Construction loan LTC', conRate:'Construction loan rate', taxes:'Real estate taxes', insurance:'Insurance', reserves:'Reserves', rentRoll:'Rent roll', devGantt:'Development schedule',
   investors:'Investors', leases:'Tenant leases', devUnits:'Unit lease-up', _template:'Assumption template', _conv:'Conventions' };
@@ -620,7 +622,7 @@ function kpiBar(sheet){
     html = R.tiles(sm.analysis.id).map(function(id){ var m = all.filter(function(x){ return x.id === id; })[0]; return m ? cell(esc(m.label), f(m)) : ''; }).join(''); }
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
-      + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell(capName('totalContributedEquity'), money(h.tce)) + cell('Net Profit', money(h.profit))
+      + cell('<span title="' + esc(dscrTitle()) + '">Lender DSCR</span>', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(bkBindingName(h.binding)) : '') + cell(capName('totalContributedEquity'), money(h.tce)) + cell('Net Profit', money(h.profit))
       + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) + (tieChip() ? cell('Inputs', tieChip()) : '') : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }

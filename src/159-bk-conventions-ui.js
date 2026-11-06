@@ -26,7 +26,7 @@ var DEF = [
     why:{ _:'Share of controllable expenses that falls with occupancy. Vacancy is always applied to rent; at 0% expenses are not reduced by vacancy.' } },
   { key:'cvLtvBasis', label:'Acquisition LTV Basis',
     opts:[['price','Purchase price'],['lesser','Lesser of price / value'],['value','Underwritten value']],
-    why:{ price:'Standard for an acquisition loan. LTC and DSCR still apply; the loan is the lowest constraint.',
+    why:{ price:'Standard for an acquisition loan. LTC and the lender DSCR still apply; the loan is the lowest constraint.',
           lesser:'Lender-conservative: the lower of what you paid and what the income supports.',
           value:'Year-1 NOI ÷ exit cap. For refinance or value-based lending; the exit cap then drives the loan size.' } },
   { key:'cvHurdleBasis', label:'Waterfall Hurdles Measured On',

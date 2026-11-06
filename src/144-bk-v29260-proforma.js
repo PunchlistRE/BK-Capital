@@ -149,7 +149,7 @@ function statement(D){
     + sec('Operating expenses') + row('Real estate taxes', 'taxes') + row('Insurance', 'ins') + row('Operating costs (repairs, payroll, utilities, other)', 'ctrl') + row('Management fee', 'mgmt') + row('Total operating expenses', 'opex', 'sub')
     + row('Net operating income', 'noi', 'tot') + row('Replacement reserves', 'res') + row('NOI after reserves', 'noiAfter', 'sub')
     + sec('Debt and cash flow') + row('Debt service', 'ds') + row('Asset management fee', 'fee') + row('Cash flow after debt service', 'cfads', 'tot')
-    + row('Debt service coverage (' + bkNoiBasisLabel('dscr') + ')', 'dscr', '', { fmt:X, noUnit:true, noPct:true, noG:true, plain:true }) + row('Cash-on-cash return', 'coc', '', { fmt:function(v){ return P(v); }, noUnit:true, noPct:true, noG:true, plain:true })
+    + row(bkDscrName('lender'), 'dscr', '', { fmt:X, noUnit:true, noPct:true, noG:true, plain:true }) + row('Cash-on-cash return', 'coc', '', { fmt:function(v){ return P(v); }, noUnit:true, noPct:true, noG:true, plain:true })
     + '</tbody></table></div>';
   return html;
 }
@@ -159,12 +159,12 @@ function proFormaBlock(D){
   var Y = D.Y, n = Y.length, y1 = Y[0], yn = Y[n - 1], g = cagr(y1.noi, yn.noi, n - 1), minD = Math.min.apply(null, Y.map(function(r){ return r.dscr == null ? 99 : r.dscr; })), avgCoc = sum(Y.map(function(r){ return r.coc || 0; })) / n;
   var ins = [];
   ins.push('NOI grows <b>' + P(g) + ' a year</b> (' + M(y1.noi) + ' to ' + M(yn.noi) + ') while debt service ' + (Math.abs(yn.ds - y1.ds) < 1 ? 'is flat at ' + M(-y1.ds) : 'moves from ' + M(-y1.ds) + ' to ' + M(-yn.ds)) + ', so coverage goes from <b>' + X(y1.dscr) + '</b> to <b>' + X(yn.dscr) + '</b>.');
-  var pm = D.pol.minDSCR || 1.25; if(minD < pm) ins.push('Coverage is below the <b>' + X(pm) + '</b> policy minimum in ' + Y.filter(function(r){ return r.dscr != null && r.dscr < pm; }).map(function(r){ return 'Year ' + r.y; }).join(', ') + ': this is what the credit gate is reacting to.');
+  var pm = D.pol.minDSCR || 1.25; if(minD < pm) ins.push('The lender DSCR (' + bkDscrBasis('lender') + ') is below the <b>' + X(pm) + '</b> house minimum in ' + Y.filter(function(r){ return r.dscr != null && r.dscr < pm; }).map(function(r){ return 'Year ' + r.y; }).join(', ') + '. The credit gate tests the house DSCR (NOI after reserves); see Credit Policy.');
   var er = -y1.opex / y1.egi; ins.push('Year 1 expenses take <b>' + P(er, 0) + '</b> of income (' + M(-y1.opex / D.units, 0) + ' per unit); taxes alone are ' + P(-y1.taxes / y1.egi, 0) + '.');
   return '<div class="pf">' + printBar()
     + '<div class="pf-kpis">' + kpi('Year-1 NOI', M(y1.noi), P(y1.noi / y1.egi, 0) + ' of income') + kpi('NOI growth', P(g), 'per year, Year 1 to ' + n) + kpi('Year-1 cash-on-cash', P(y1.coc), 'after debt service') + kpi('Lowest coverage', X(minD), 'policy minimum ' + X(pm)) + kpi('Going-in yield', D.price ? P(y1.noiAfter / D.price) : '—', 'NOI after reserves / price') + '</div>'
     + '<ul class="pf-ins">' + ins.map(function(t){ return '<li>' + t + '</li>'; }).join('') + '</ul>'
-    + '<div class="pf-cols">' + card('Income against debt service', 'Bars are ' + bkNoiBasisLabel('dscr') + ', the NOI the lender tests use; the line is debt service. The figure under each year is coverage on that NOI.', chartCoverage(D)) + card('Where each dollar of income goes', 'Year 1.', chartDollar(D)) + '</div>'
+    + '<div class="pf-cols">' + card('Income against debt service', 'Bars are ' + bkNoiBasisLabel('dscr') + ', the NOI the lender tests use; the line is debt service. The figure under each year is the lender DSCR on that NOI.', chartCoverage(D)) + card('Where each dollar of income goes', 'Year 1.', chartDollar(D)) + '</div>'
     + '<h3>Pro forma</h3>' + card('Annual statement', 'Per-unit and share-of-income columns are Year 1. Growth is the compound annual rate from Year 1 to Year ' + n + '.', statement(D)) + '<p class="pf-note">Detail below is the engine’s own operating statement; it ties to the figures above.</p></div>';
 }
 function returnsBlock(D, scen){

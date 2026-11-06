@@ -301,7 +301,7 @@ try{
       rows.push([]); rows.push(['--- SUMMARY ---']);
       rows.push(['Construction Commitment', x.commit]); rows.push(['Permanent Loan', takeoutMo<Infinity ? x.permLoan : 0]);
       rows.push(['Permanent Rate', s.permRate]); rows.push(['Permanent Amortization (yrs)', s.permAmort]);
-      rows.push(['Binding Constraint', x.bindingTest]); rows.push(['Debt at Sale', last.payoff||0]);
+      rows.push(['Binding Constraint', bkBindingName(x.bindingTest)]); rows.push(['Debt at Sale', last.payoff||0]);
       return {name:'Debt Schedule', filename:bkSlug(s.name)+'_Debt_Schedule.csv', headers:headers, rows:rows, count:rows.length-4, available:true};
     }; })();
 

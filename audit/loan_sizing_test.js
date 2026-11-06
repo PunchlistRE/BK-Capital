@@ -5,10 +5,10 @@
 // A check has three parts. (1) The rule against an independent model (audit/sizing_ref.py): seeded random cases, each test binding on its own, three different limits, ties, an
 // interest-only and a derived debt service, a requested amount, and invalid inputs (zero, negative, missing, not a number). (2) Both tools on designed scenarios that make every
 // test bind, tie, run interest-only, take a requested amount, or lack an input: the engine's full output (its numbers to 9 significant digits: the last bits of a float differ between Chromium versions) and the rendered
-// sheet and report (text, exactly) are compared with what the tools produced BEFORE the rule was extracted (audit/fixtures/loan_sizing_golden.json, recorded from main at 61b71ef); (3) both tools really go through the shared rule.
+// sheet and report (text, exactly) are compared with what the tools produced BEFORE the rule was extracted (audit/fixtures/loan_sizing_golden.json, recorded from main at 61b71ef; the text re-recorded once for the House/Lender DSCR names, every number unchanged); (3) both tools really go through the shared rule.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path'); const fs = require('fs'); const os = require('os'); const cp = require('child_process'); const crypto = require('crypto');
 const A = require(path.join(__dirname, 'deal.js')), H = require(path.join(__dirname, 'devdeal.js')), D = require(path.join(__dirname, 'refideal.js'));
-const GOLD = path.join(__dirname, 'fixtures', 'loan_sizing_golden.json'); const RECORDED_FROM = 'main at 61b71ef (before the sizing rule was extracted)';
+const GOLD = path.join(__dirname, 'fixtures', 'loan_sizing_golden.json'); const RECORDED_FROM = 'main at 61b71ef (before the sizing rule was extracted); the sheet, report and verdict text re-recorded for the House/Lender DSCR names (November 2026), after checking every number in all 67 scenarios is unchanged from the 61b71ef record';
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex').slice(0, 24);
 /* The engine's numbers are recorded and compared to 9 significant digits (anything under 1e-7 counts as 0): the last bits of a float differ between Chromium versions (CI runs 131, the results were recorded on 141), so a digest of the exact bits
    fails on a build that has not changed at all. A real change to a sizing figure moves it by far more than that. Two builds in ONE browser are compared bit for bit by --diff. */
