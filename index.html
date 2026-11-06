@@ -26368,7 +26368,15 @@ function active(){ return typeof window.bkHasActiveDeal !== 'function' || window
 var PREF = 'bkcapital.guide.on';
 function prefOn(){ try { return localStorage.getItem(PREF) === '1'; } catch(e){ return false; } }
 function setPref(v){ try { localStorage.setItem(PREF, v ? '1' : '0'); } catch(e){} }
-var st = { step:null, draft:{}, screen:'', checked:{}, q:null };
+var st = { step:null, draft:{}, screen:'', checked:{}, q:null, depth:null, fi:0 };
+/* per-deal guide memory kept in the browser, not on the deal: the depth chosen and the step last open (resume anywhere) */
+function memKey(k){ var id = ''; try { id = String((bkLoad() || {}).dealId || ''); } catch(e){} return 'bkcapital.guide.' + id + '.' + k; }
+function memGet(k){ try { return localStorage.getItem(memKey(k)); } catch(e){ return null; } }
+function memSet(k, v){ try { localStorage.setItem(memKey(k), v); } catch(e){} }
+function depth(){ return st.depth || memGet('depth') || 'standard'; }
+/* Full depth: each step also asks the optional figures of its own area (keys that exist in the registry's field dictionary; none is required) */
+var FULL_EXTRA = { property:['gla', 'commercialArea', 'commercialUnits'], income:['oiLaundry', 'oiLateFees', 'oiPetRent', 'oiPetFees', 'oiParking', 'oiStorage', 'oiRubsPct', 'badDebtPct', 'concessionPct', 'lossToLeasePct', 'renoUnitsPerYear', 'renoDownMonths', 'renoPremium', 'renoCapexPerUnit'],
+  expenses:['utilities', 'rm', 'payroll', 'contract', 'ga', 'reserves'], debt:['acqIO', 'acqOrigFee', 'acqDSCR'], exit:['saleCostPct', 'rentGrowth', 'opexGrowth'] };
 
 /* ------------------------------------------------------------ what each step asks (essentials only; "add detail" opens the full sheet) */
 var Q = { pct:'pct', money:'money', int:'int', num:'num', text:'text', bool:'bool' };
@@ -26405,7 +26413,9 @@ var DEVS = [
 function fromRegistry(s){ var R = window.BKReg; if(!R) return null; var a = R.of(s), wf = a && a.live ? R.workflow(a.id) : null; if(!wf || !wf.length) return null;
   return wf.map(function(st){ return { id:st.id, title:st.title, why:st.why, sheet:st.sheet, skippable:!!st.skippable, fields:(st.fields || []).filter(function(e){ var d = R.field(e.k); return d && d.kind !== 'derived' && d.kind !== 'table' && R.requirement(e, s) !== 'na'; }).map(function(e){ var d = R.field(e.k), o = { k:e.k, label:e.label || d.label, t:d.kind === 'choice' ? 'text' : d.kind };
       if(R.requirement(e, s) === 'required') o.req = 1; var h = e.help || d.help; if(h) o.help = h; var sg = e.sug || d.sug; if(sg) o.sug = sg; return o; }) }; }); }
-function sections(s){ s = s || bkLoad(); return fromRegistry(s) || (/develop/i.test(String(s.dealType || '')) ? DEVS : ACQ); }
+function fullExtras(list, s){ var R = window.BKReg; if(!R || depth() !== 'full') return list; return list.map(function(sec){ var have = {}; sec.fields.forEach(function(fl){ have[fl.k] = 1; }); var add = (FULL_EXTRA[sec.id] || []).filter(function(k){ var d = R.field(k); return d && !have[k] && d.kind !== 'derived' && d.kind !== 'table' && !d.planned; }).map(function(k){ var d = R.field(k), o = { k:k, label:d.label, t:d.kind === 'choice' ? 'text' : d.kind }; if(d.help) o.help = d.help; if(d.sug) o.sug = d.sug; return o; });
+  return add.length ? Object.assign({}, sec, { fields:sec.fields.concat(add) }) : sec; }); }
+function sections(s){ s = s || bkLoad(); return (fullExtras(fromRegistry(s) || (/develop/i.test(String(s.dealType || '')) ? DEVS : ACQ), s)); }
 window.bkGuideSections = function(s){ return sections(s); };
 
 /* ------------------------------------------------------------ values */
@@ -26538,7 +26548,7 @@ function suInner(s0){
 function paintSU(sec){ var el = document.getElementById('gd-su'); if(el) el.innerHTML = suInner(bkLoad()); }
 
 /* ------------------------------------------------------------ pages */
-function css(){ return css0() + '<style id="bk-guide-safe">.gd-m{grid-column:1/-1;font-size:12.5px}.gd-m div{padding:5px 9px;border-left:3px solid;margin-top:5px;line-height:1.4}.gd-m .err{color:#a32f24;background:#fbe6e3;border-color:#c0392b}.gd-m .warn{color:#8a5a12;background:#fbf1dc;border-color:#b7791f}.gd-m .info{color:#1b3f66;background:#eaf1fa;border-color:#1f4e8c}#gd-next:disabled{cursor:not-allowed}'
+function css(){ return css0() + '<style id="bk-guide-plus">.gd-depth{display:inline-flex;gap:0;border:1px solid #c9d1dc;border-radius:999px;overflow:hidden;margin:0 0 12px}.gd-depth button{border:0;background:#fff;padding:6px 14px;cursor:pointer;font:600 12px Inter,system-ui,sans-serif;color:#163a62;display:flex;flex-direction:column;align-items:center;line-height:1.2}.gd-depth button span{font-weight:400;font-size:10px;color:#566a80}.gd-depth button.on{background:#163a62;color:#fff}.gd-depth button.on span{color:#b9c8d8}.gd-opt.gd-first{border-color:#3E9AE6;background:#f3f8fe}.gd-tag.ent{background:#eef3f8;color:#44515f}.gd-what{font-size:11.5px;color:#12609f;margin-top:4px}.gd-what:empty{display:none}.gd-qbar{position:relative;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 12px;font:600 12px Inter,system-ui,sans-serif;color:#12609f}.gd-qbar i{position:absolute;left:0;bottom:4px;height:3px;background:#3E9AE6;border-radius:2px}</style>' + '<style id="bk-guide-safe">.gd-m{grid-column:1/-1;font-size:12.5px}.gd-m div{padding:5px 9px;border-left:3px solid;margin-top:5px;line-height:1.4}.gd-m .err{color:#a32f24;background:#fbe6e3;border-color:#c0392b}.gd-m .warn{color:#8a5a12;background:#fbf1dc;border-color:#b7791f}.gd-m .info{color:#1b3f66;background:#eaf1fa;border-color:#1f4e8c}#gd-next:disabled{cursor:not-allowed}'
  + '.gd-iw{display:inline-flex;align-items:center;gap:6px;max-width:100%;vertical-align:middle}.gd-iw > i{font-style:normal;font-size:14px;font-weight:600;color:var(--ink-500,#566a80)}.gd-iw > input{min-width:0}'
  + '.gd-key{display:flex;flex-wrap:wrap;gap:4px 14px;margin:-12px 0 20px;font-size:11.5px;color:var(--ink-500,#566a80)}.gd-key span{display:inline-flex;align-items:center;gap:5px}.gd-key i{font-style:normal;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px}.gd-key i.done{background:#2e8b57;color:#fff}.gd-key i.filled{background:#bfdbf5;color:#12609f}.gd-key i.partial,.gd-key i.skipped{background:#e3a72f;color:#fff}'
  + '.gd-more{display:none !important}.gd-imp.wait{background:var(--surface,#fff);color:var(--ink-500,#566a80);border-style:dashed}.gd-su tr.gd-wait td{font-size:12.5px;color:var(--ink-500,#566a80);font-style:italic}html body #viewport .gd h1[tabindex]:focus,html body #viewport .gd h1[tabindex]:focus-visible{outline:none !important;box-shadow:none !important}'
@@ -26560,7 +26570,8 @@ function progress(secs, s, g){ return '<div class="gd-prog">' + secs.map(functio
 function stepCount(type){ var id = type === 'Development' ? 'development' : 'acquisition', wf = safe(function(){ return window.BKReg && window.BKReg.workflow ? window.BKReg.workflow(id) : null; }, null); return (wf && wf.length) || (type === 'Development' ? DEVS.length : ACQ.length); }
 function startScreen(){
   return '<div class="gd"><h1>Let\'s set up a deal</h1><p class="sub">Start from blank or from a document. Whichever you pick, nothing is changed until you confirm it, you can skip any step, and the guide reminds you what you skipped.</p>'
-   + '<div class="gd-start"><button type="button" class="gd-opt" onclick="bkGuideBlank(\'Acquisition\')"><b>Start from blank: an acquisition</b><span>A building you would buy and operate. ' + stepCount('Acquisition') + ' short steps, in a logical order, then a review.</span></button>'
+   + depthPicker() + '<div class="gd-start"><button type="button" class="gd-opt gd-first" onclick="bkGuideDoc(\'Import\')"><b>Start from your documents</b><span>Drop an offering memorandum, listing, T-12, rent roll or a whole package on one page. I work out what each one is, read it, and then walk you through confirming what came from where and what is still missing.</span></button>'
+   + '<button type="button" class="gd-opt" onclick="bkGuideBlank(\'Acquisition\')"><b>Start from blank: an acquisition</b><span>A building you would buy and operate. ' + stepCount('Acquisition') + ' short steps, in a logical order, then a review.</span></button>'
    + '<button type="button" class="gd-opt" onclick="bkGuideBlank(\'Development\')"><b>Start from blank: a development</b><span>Land, a construction budget and a timeline, then financing and exit. ' + stepCount('Development') + ' short steps, then a review.</span></button>'
    + '<button type="button" class="gd-opt" onclick="bkGuideQuick()"><b>Quick start: nine numbers, a first answer</b><span>Price, units, rent, taxes, insurance and other expenses per unit, the loan and the exit cap on one page, with the levered IRR and both DSCRs as you type. Then carry on in the standard steps, or stop there.</span></button>'
    + '<button type="button" class="gd-opt" onclick="bkGuideDoc(\'Import OM\')"><b>Start from an offering memorandum</b><span>Upload the PDF. I read the price, units, rents and expenses, then walk you through confirming them and what is missing.</span></button>'
@@ -26573,13 +26584,14 @@ function fieldRow(fl, s, g){
   var unchecked = g.assumed.indexOf(fl.k) >= 0 && !g.confirmed[fl.k] && !st.checked[fl.k] && !changed; if(unchecked) tag = '<span class="gd-tag assumed">my assumption: check it</span>';
   var imp = s._imp && s._imp.fields && s._imp.fields[fl.k], flagged = imp && !changed && !st.checked[fl.k] && !unchecked;
   if(flagged) tag = '<span class="gd-tag assumed" title="' + esc(imp.why) + '">' + (imp.l === 'low' ? 'import: low confidence' : 'import: check it') + '</span>';
+  if(!tag && !changed){ if(g.confirmed[fl.k]) tag = '<span class="gd-tag ent">confirmed</span>'; else if(fl.t === 'text' ? String(v || '').trim() : Number(v) > 0) tag = '<span class="gd-tag ent">you entered</span>'; }
   var input;
   if(fl.t === 'bool') input = '<label style="display:flex;gap:8px;justify-content:flex-end;font-weight:400"><input type="checkbox" id="' + id + '"' + (v !== false && v !== 0 ? ' checked' : '') + ' onchange="bkGuideDraft(\'' + fl.k + '\',this.checked)"> Yes</label>';
-  else input = '<span class="gd-iw' + (fl.t === 'money' ? ' pre' : fl.t === 'pct' ? ' suf' : '') + '">' + (fl.t === 'money' ? '<i aria-hidden="true">$</i>' : '') + '<input type="text" id="' + id + '" value="' + esc(fmt(fl, v)) + '" class="' + (changed ? 'chg' : '') + '" inputmode="' + (fl.t === 'text' ? 'text' : 'decimal') + '" onchange="bkGuideDraft(\'' + fl.k + '\',this.value)" autocomplete="off">' + (fl.t === 'pct' ? '<i aria-hidden="true">%</i>' : '') + '</span>';   /* the unit sits in the box: $ before an amount, % after a percentage */
+  else input = '<span class="gd-iw' + (fl.t === 'money' ? ' pre' : fl.t === 'pct' ? ' suf' : '') + '">' + (fl.t === 'money' ? '<i aria-hidden="true">$</i>' : '') + '<input type="text" id="' + id + '" value="' + esc(fmt(fl, v)) + '" class="' + (changed ? 'chg' : '') + '" inputmode="' + (fl.t === 'text' ? 'text' : 'decimal') + '" onfocus="bkGuideWhat(\'' + fl.k + '\')" onchange="bkGuideDraft(\'' + fl.k + '\',this.value)" autocomplete="off">' + (fl.t === 'pct' ? '<i aria-hidden="true">%</i>' : '') + '</span>';   /* the unit sits in the box: $ before an amount, % after a percentage */
   var sug = fl.sug ? safe(function(){ return fl.sug(Object.assign({}, s, st.draft)); }, null) : null, empty = fl.t === 'text' ? !String(v || '').trim() : !(Number(v) > 0), same = sug && Math.abs(Number(v) - sug.v) < 1e-9;
   var sugRow = sug && !same && (empty || (g.assumed.indexOf(fl.k) >= 0 && !g.confirmed[fl.k])) ? '<div class="gd-sug" data-k="' + fl.k + '" data-v="' + esc(String(sug.v)) + '"><span>I suggest <b>' + esc(fmt(fl, sug.v)) + (fl.t === 'pct' ? '%' : '') + '</b>. ' + esc(sug.why) + '</span><button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideUse(\'' + fl.k + '\')">Use this</button></div>' : '';
   var chk = unchecked || flagged ? (flagged ? '<div style="font-size:12px;margin:0 0 4px">' + esc(imp.why) + '</div>' : '') + '<label class="gd-chk"><input type="checkbox" onchange="bkGuideCheck(\'' + fl.k + '\',this.checked)"> I have checked this figure</label>' : '';
-  return '<div class="gd-f"><label for="' + id + '">' + esc(fl.label + (fl.t === 'pct' && fl.label.indexOf('%') < 0 ? ' (%)' : '')) + (fl.req ? ' <span style="color:#b23a2c">*</span>' : '') + tag + (fl.help ? '<span class="h">' + esc(fl.help) + '</span>' : '') + '</label>' + input + '<div class="gd-m" id="gdm-' + fl.k + '">' + msgHtml((st.msgs || {})[fl.k]) + '</div>' + sugRow + (chk ? '<div style="grid-column:1/-1">' + chk + '</div>' : '') + '</div>';
+  return '<div class="gd-f"><label for="' + id + '">' + esc(fl.label + (fl.t === 'pct' && fl.label.indexOf('%') < 0 ? ' (%)' : '')) + (fl.req ? ' <span style="color:#b23a2c">*</span>' : '') + tag + (fl.help ? '<span class="h">' + esc(fl.help) + '</span>' : '') + '</label>' + input + '<div class="gd-m" id="gdm-' + fl.k + '">' + msgHtml((st.msgs || {})[fl.k]) + '</div><div class="gd-what" id="gdw-' + fl.k + '"></div>' + sugRow + (chk ? '<div style="grid-column:1/-1">' + chk + '</div>' : '') + '</div>';
 }
 function changeList(s, sec){ var rows = Object.keys(st.draft).map(function(k){ var fl = sec.fields.filter(function(x){ return x.k === k; })[0]; if(!fl) return ''; var a = fmt(fl, s[k]), b = fmt(fl, st.draft[k]), sfx = fl.t === 'pct' ? '%' : ''; return esc(fl.label) + ': ' + (a === '' ? '(blank)' : esc(a) + sfx) + ' → <b style="display:inline">' + esc(b) + sfx + '</b>'; }).filter(Boolean); return rows; }
 /* The guide shows BOTH coverage figures, each named, and each the same figure the model shows elsewhere (owner's decision, November 2026): the lender DSCR is the headline's
@@ -26603,7 +26615,7 @@ function resultStrip(s, sec){
 }
 function stepScreen(secs, sec, s, g){
   var i = secs.indexOf(sec), miss = missing(sec, s);
-  var body = '<div class="gd"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Step ' + (i + 1) + ' of ' + secs.length + '</div><button type="button" class="gd-btn link" style="padding:0" onclick="bkGuideWhere()">Where this deal stands</button></div><h1>' + esc(sec.title) + '</h1><p class="sub">' + esc(sec.why) + '</p>' + progress(secs, s, g);
+  var body = '<div class="gd">' + depthPicker(true) + '<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Step ' + (i + 1) + ' of ' + secs.length + '</div><button type="button" class="gd-btn link" style="padding:0" onclick="bkGuideWhere()">Where this deal stands</button></div><h1>' + esc(sec.title) + '</h1><p class="sub">' + esc(sec.why) + '</p>' + progress(secs, s, g);
   var fromNote = g.from && sec.fields.some(function(fl){ return g.from.keys.indexOf(fl.k) >= 0; }) ? '<div class="gd-card" style="background:#f4faf6;border-color:#cfe8d8;font-size:13px">Filled in from the ' + esc(g.from.label) + '. Check each figure against the source before you confirm.</div>' : '';
   var adv = advice(s).filter(function(a){ return a.sec === sec.id; }).slice(0, 3);
   var advBox = '<div id="gd-advw">' + advHtml(adv) + '</div>';
@@ -26674,7 +26686,8 @@ function reviewScreen(secs, s, g){
   adviceAll(s).forEach(function(a){ open.push('<li>' + esc(a.text) + '</li>'); });
   if(conf.length) open.push('<li>' + conf.length + ' model check' + (conf.length === 1 ? '' : 's') + ' to look at. <a href="#" onclick="bkGuideDetail(\'Model Checks\');return false">Open Model Checks</a></li>');
   h += '<div class="gd-card"><b>' + (open.length ? 'Still open' : 'Nothing is open') + '</b>' + (open.length ? '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.7">' + open.join('') + '</ul>' : '<p class="sub" style="margin:6px 0 0">Every step is done and every assumption has been checked.</p>') + '</div>';
-  h += '<div class="gd-act"><button type="button" class="gd-btn" onclick="bkReportOpen()">Create PDF summary</button><button type="button" class="gd-btn ghost" onclick="bkGuideDetail(\'Returns\')">Open Returns</button><button type="button" class="gd-btn link" onclick="bkGuideBack()">Back</button><button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideOff()">Turn the guide off</button></div></div>';
+  h += '<div class="gd-act"><button type="button" class="gd-btn" onclick="bkReportOpen()">Build investor PDF</button><button type="button" class="gd-btn ghost" onclick="bkPackOpen(\'full\')">Compile full property report</button><button type="button" class="gd-btn ghost" onclick="bkGuideDetail(\'Returns\')">Open Returns</button><button type="button" class="gd-btn link" onclick="bkGuideBack()">Back</button><button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideOff()">Turn the guide off</button></div></div>';
+  h += '<p class="sub" style="margin-top:8px">Send to IC: arrives with deal sharing. Until then the investor PDF and the full report above are the package to send.</p>';
   return h;
 }
 
@@ -26725,9 +26738,9 @@ function render(){
   var s = safe(function(){ return bkLoad(); }, null), hdr = { title:'', crumbs:'', desc:'', meta:{}, sidebar:'' };
   if(active() && s && st.screen === 'quick'){ hdr.main = css() + quickScreen(s); return hdr; }
   if(!active() || !s || !String(s.dealId || '').trim() || st.screen === 'start'){ hdr.main = css() + startScreen(); return hdr; }
-  var secs = sections(s), g = gstate(s); if(st.screen === 'where'){ hdr.main = css() + whereScreen(secs, s, g); return hdr; } if(!st.step) st.step = firstOpen(secs, s, g);
-  if(st.step === 'review'){ hdr.main = css() + reviewScreen(secs, s, g); return hdr; }
-  var sec = secs.filter(function(x){ return x.id === st.step; })[0] || secs[0]; st.step = sec.id;
+  var secs = sections(s), g = gstate(s); if(st.screen === 'where'){ hdr.main = css() + whereScreen(secs, s, g); return hdr; } if(!st.step){ var ms = memGet('step'); st.step = ms && (ms === 'review' || secs.some(function(x){ return x.id === ms; })) ? ms : firstOpen(secs, s, g); }
+  if(st.step === 'review'){ memSet('step', 'review'); hdr.main = css() + reviewScreen(secs, s, g); return hdr; }
+  var sec = secs.filter(function(x){ return x.id === st.step; })[0] || secs[0]; st.step = sec.id; memSet('step', sec.id);
   hdr.main = css() + stepScreen(secs, sec, s, g); return hdr;
 }
 function show(){ if((st.screen || '') + '|' + (st.step || '') !== lastKey) window.__bkFreshView = true; if(typeof showSheet === 'function') showSheet('Guide'); }   /* a new step or screen: the shared re-render keeps no old scroll position (src/161) */
@@ -26767,6 +26780,18 @@ function apply(sec){ var s = bkLoad(), g = gstate(s), ch = st.draft, keys = Obje
   if(s._imp && s._imp.fields) sec.fields.forEach(function(fl){ if(st.checked[fl.k] || fl.k in ch) delete s._imp.fields[fl.k]; });
   g.done[sec.id] = 1; delete g.skipped[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.checked = {}; }
 function nextId(secs, cur){ var i = secs.findIndex(function(x){ return x.id === cur; }); return i + 1 < secs.length ? secs[i + 1].id : 'review'; }
+/* what this input does: the same engine run on a copy with this figure nudged (up 10%, or 1 point for a rate); read-only */
+window.bkGuideWhat = function(k){
+  var el = document.getElementById('gdw-' + k); if(!el) return; var s = bkLoad(), fl = null; sections(s).forEach(function(sc){ sc.fields.forEach(function(x){ if(x.k === k) fl = x; }); });
+  var v = fl ? Number(cur(s, fl)) : NaN; if(!fl || fl.t === 'text' || fl.t === 'bool' || !(v > 0)){ el.textContent = ''; return; }
+  var up = fl.t === 'pct' ? v + 0.01 : v * 1.1, run = function(o){ return safe(function(){ return window.bkRunWith(Object.assign({}, st.draft, o), function(){ var m = bkMonthlyReturns(), d = bkDebt(); return { irr:m.irr, dscr:d.dscr }; }); }, null); };
+  var a = run({}), b = run((function(){ var o = {}; o[k] = up; return o; })()); if(!a || !b || !isFinite(a.irr) || !isFinite(b.irr)){ el.textContent = ''; return; }
+  var to = fl.t === 'pct' ? (up * 100).toFixed(2) + '%' : fmt(fl, up);
+  el.innerHTML = 'What this does: if it were ' + esc(to) + ' (' + (fl.t === 'pct' ? 'up 1 point' : 'up 10%') + '), levered IRR goes from <b>' + pc(a.irr, 2) + '</b> to <b>' + pc(b.irr, 2) + '</b>' + (isFinite(a.dscr) && isFinite(b.dscr) && Math.abs(a.dscr - b.dscr) > 0.004 ? ' and the loan\'s DSCR from <b>' + a.dscr.toFixed(2) + 'x</b> to <b>' + b.dscr.toFixed(2) + 'x</b>' : '') + '. Nothing is changed.';
+};
+window.bkGuideDepth = function(d){ if(d === 'quick'){ window.bkGuideQuick(); return; } st.depth = d; memSet('depth', d); st.draft = {}; st.fi = 0; if(st.screen === 'quick') st.screen = ''; show(); };
+window.bkGuideQ2 = function(d){ st.fi = Math.max(0, (st.fi || 0) + d); show(); };
+function depthPicker(inStep){ var d = depth(); return '<div class="gd-depth" role="group" aria-label="Depth">' + [['quick', 'Quick', 'nine numbers'], ['standard', 'Standard', 'the steps'], ['full', 'Full', 'every figure']].filter(function(x){ return !(inStep && x[0] === 'quick'); }).map(function(x){ return '<button type="button" class="' + (d === x[0] ? 'on' : '') + '" onclick="bkGuideDepth(\'' + x[0] + '\')"><b>' + x[1] + '</b><span>' + x[2] + '</span></button>'; }).join('') + '</div>'; }
 window.bkGuideNext = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var bad = errorsOf(sec, s); if(bad.length){ paintMsgs(sec); var first = document.getElementById('gdf-' + bad[0].k); if(first && first.focus) first.focus(); return; } apply(sec); st.step = nextId(secs, sec.id); show(); };
 window.bkGuideSkip = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var g = gstate(s); g.skipped[sec.id] = 1; delete g.done[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.step = nextId(secs, sec.id); show(); };
 window.bkGuideBack = function(){ var s = bkLoad(), secs = sections(s), i = st.step === 'review' ? secs.length : secs.findIndex(function(x){ return x.id === st.step; }); st.draft = {}; st.step = i > 0 ? secs[i - 1].id : secs[0].id; show(); };
@@ -26789,12 +26814,19 @@ function backPill(){ var p = document.getElementById('bk-guide-back'), cs = type
 window.bkGuideStep = function(){ return st.step; };
 document.addEventListener('keydown', function(e){ if(e.key !== 'Enter' || !e.target || !e.target.closest || !e.target.closest('.gd-f') || e.target.type !== 'text') return; e.preventDefault(); var all = [].slice.call(document.querySelectorAll('.gd-f input[type=text]')), i = all.indexOf(e.target); e.target.blur(); var nx = all[i + 1]; if(nx){ nx.focus(); nx.select(); } else { var b = document.getElementById('gd-next'); if(b) b.focus(); } }, true);
 var lastKey = '';
-function arrive(){ var key = (st.screen || '') + '|' + (st.step || ''); if(key === lastKey) return; lastKey = key; var h = document.querySelector('#viewport .gd h1'); if(!h) return; window.scrollTo(0, 0); h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll:true }); } catch(e){ h.focus(); } }
+/* a phone: one question to a screen (the step form stays whole on a wider window) */
+function phoneQ(){
+  if(window.innerWidth > 760 || st.screen || !st.step || st.step === 'review') return; var fs = [].slice.call(document.querySelectorAll('#viewport .gd-card > .gd-f')); if(fs.length < 2) return;
+  var i = Math.min(st.fi || 0, fs.length - 1); st.fi = i; fs.forEach(function(f, j){ f.style.display = j === i ? '' : 'none'; });
+  var bar = document.createElement('div'); bar.className = 'gd-qbar'; bar.innerHTML = '<span>Question ' + (i + 1) + ' of ' + fs.length + '</span><i style="width:' + Math.round((i + 1) / fs.length * 100) + '%"></i>' + (i > 0 ? '<button type="button" class="gd-btn link" onclick="bkGuideQ2(-1)">Previous</button>' : '') + (i < fs.length - 1 ? '<button type="button" class="gd-btn" onclick="bkGuideQ2(1)">Next question</button>' : '');
+  fs[0].parentNode.insertBefore(bar, fs[0]); if(i < fs.length - 1){ var nb = document.getElementById('gd-next'); if(nb) nb.style.display = 'none'; }
+}
+function arrive(){ var key = (st.screen || '') + '|' + (st.step || ''); if(key === lastKey) return; lastKey = key; st.fi = 0; var h = document.querySelector('#viewport .gd h1'); if(!h) return; window.scrollTo(0, 0); h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll:true }); } catch(e){ h.focus(); } }
 var prev = window.showSheet;
 window.showSheet = function(sheet){
   if(sheet === 'Home' && prefOn()) sheet = 'Guide';      /* while the guide is on it is the home page */
   var r = prev.call(this, sheet);
-  safe(function(){ document.documentElement.classList.toggle('bk-guide', sheet === 'Guide' && prefOn()); backPill(); paintToggle(); if(sheet === 'Guide'){ arrive(); var sec = secOf(sections(bkLoad()), st.step); if(sec && document.getElementById('gd-imp')) setTimeout(function(){ impact(sec); }, 0); } else lastKey = ''; });
+  safe(function(){ document.documentElement.classList.toggle('bk-guide', sheet === 'Guide' && prefOn()); backPill(); paintToggle(); if(sheet === 'Guide'){ phoneQ(); arrive(); var sec = secOf(sections(bkLoad()), st.step); if(sec && document.getElementById('gd-imp')) setTimeout(function(){ impact(sec); }, 0); } else lastKey = ''; });
   return r; };
 try { showSheet = window.showSheet; } catch(e){}
 document.addEventListener('DOMContentLoaded', paintToggle);
