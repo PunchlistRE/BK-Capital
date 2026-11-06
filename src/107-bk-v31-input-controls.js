@@ -44,6 +44,7 @@
       if(validDate(u.leaseStart) && validDate(u.leaseEnd) && pdate(u.leaseEnd) < pdate(u.leaseStart)) add('FAIL','Rent Roll',tag+': lease ends before it starts.');
     });
     if(/rent roll/i.test(String(s.revenueBasis||'')) && !rr.length) add('WARN','Rent Roll','Revenue basis is Rent Roll but the rent roll is empty.');
+    (Array.isArray(s._rrMismatch) ? s._rrMismatch : []).forEach(function(m){ add('WARN','Rent Roll','Imported rent roll: ' + m); });
     (Array.isArray(s.commitments)?s.commitments:[]).forEach(function(c,i){
       var funded=(c.calls||[]).reduce(function(a,x){ return a+(num(x.funded)||0); },0);
       if(num(c.commitment)<0) add('FAIL','Investors','Commitment '+(i+1)+' is negative.');
