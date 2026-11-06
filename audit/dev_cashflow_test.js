@@ -30,7 +30,7 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
   const near = (a, b2, tol) => a != null && b2 != null && Math.abs(a - b2) <= (tol == null ? 1 : tol);
   const sameArr = (x, y, tol) => x.length === y.length && x.every((v, i) => near(v, y[i], tol));
   const neg = (a) => a.map(v => -v), add = (...as) => as[0].map((_, i) => as.reduce((t, a) => t + a[i], 0));
-  const V_ = (R, k) => (R.rows[k] ? R.rows[k].v : []);
+  const V_ = (R, k) => (R.rows[k] ? R.rows[k].v : new Array(R.n + 1).fill(0));   /* a detail line that is zero in every year is left out of the page (Argus Detailed Lines): read it as zeros, so the engine's figures must be zero too */
   const tol = (R) => 0.5 * (R.n + 1) + 0.5;   /* the page rounds each year to a dollar; a total of n years may be off by n halves */
 
   const DECKS = { 'base development': {}, 'no takeout (the construction loan is held to the sale)': { refiAtStab: 0 }, 'a fixed facility': { conFixedAmt: 18000000 }, 'an unused fee on the undrawn loan': { conUnusedFeePct: 0.005 }, 'a seven-year hold': { holdYears: 7 }, 'no pre-development period': { predevMonths: 0 }, 'a lower loan to cost (more equity)': { conLTC: 0.5 },
@@ -78,8 +78,8 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
   /* the summary */
   let p = await open(V); const sm = await p.evaluate(async () => { showSheet('Cash Flow Report'); await new Promise(r => setTimeout(r, 500)); const rows = {}; document.querySelectorAll('#rp-devsum tbody tr').forEach(tr => { rows[tr.children[0].textContent.trim()] = tr.children[1].textContent.trim(); }); const mr = bkMonthlyReturns(), f = bkDevFundingV10(); return { rows, irr: mr.irr, moic: mr.moic, uirr: mr.u.irr, levered: f.levered, commit: f.commit, profit: mr.dist - mr.contrib }; });
   check('the return summary is the engine\'s: leveraged and unleveraged IRR, the multiple, total development cost, the loan and the profit to equity', sm.rows['IRR (Leveraged)'] === (sm.irr * 100).toFixed(2) + '%' && sm.rows['IRR (Unleveraged)'] === (sm.uirr * 100).toFixed(2) + '%' && sm.rows['Total Development Cost'] === '$' + Math.round(sm.levered).toLocaleString('en-US') && sm.rows['Construction Loan'] === '$' + Math.round(sm.commit).toLocaleString('en-US') && sm.rows['Profit to Equity'] === '$' + Math.round(sm.profit).toLocaleString('en-US'), JSON.stringify([sm.rows, sm.irr, sm.uirr]));
-  const csv = await p.evaluate(() => { const t = document.getElementById('rp-devcf'); return [...t.querySelectorAll('tr')].length > 40 && typeof bkRpCsv === 'function' && typeof bkRpDevCashFlow === 'function'; });
-  check('the table can be downloaded as CSV like the other reports (one table, every row)', csv); await p.close();
+  const csv = await p.evaluate(() => { const t = document.getElementById('rp-devcf'), d = bkRpDevCashFlow(), shown = d.lines.filter(r => r.sec || r.cls || d.years.some(y => Math.abs(Number(r.f(y)) || 0) >= 0.5)).length; return t.querySelectorAll('tbody tr').length === shown && shown > 30 && typeof bkRpCsv === 'function'; });
+  check('the table can be downloaded as CSV like the other reports (one table, every line with a figure, every section and total)', csv); await p.close();
   /* an acquisition keeps its Argus cash flow */
   p = await open(A); const acq = await p.evaluate(async () => { showSheet('Cash Flow Report'); await new Promise(r => setTimeout(r, 500)); return { table: !!document.getElementById('rp-cashflow'), dev: !!document.getElementById('rp-devcf'), text: (document.querySelector('#viewport .rp') || document.querySelector('#viewport')).innerText.slice(0, 400) }; });
   check('an acquisition still gets the Property Cash Flow and not the development one', acq.table && !acq.dev && /Property Cash Flow/.test(acq.text), acq.text.slice(0, 80)); await p.close();

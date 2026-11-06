@@ -82,6 +82,7 @@ listed; INFO states an assumption. WARN / INFO can be acknowledged per deal. Whe
 explains it at once (off under automation unless `window.BK_CONFLICT_TOASTS === true`). `conflicts_test.js`: every rule has a
 scenario that fires it, clears it when fixed, and checks the explanation; plus readiness integration, acknowledgement and the
 pop-up lifecycle. `suite_test.py` checks the reconciliation gap against the independent model and pins each deal's rule IDs.
+Cap-rate plausibility: an exit cap below 2% or above 20% is an ERROR (almost certainly a typo, such as 0.90% for 9.0%: the sale is priced at forward NOI over the cap, so it carries the returns); outside 3-15% is a WARN; so are a going-in cap below 2% and an exit cap more than 300 bps above going-in.
 
 ## Refi / Recap (from the Capital Markets model)
 `Debt > Refi / Recap`: for the chosen year and for every possible year, the new loan (lowest of LTV, DSCR, debt yield), net cash-out
