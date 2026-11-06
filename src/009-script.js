@@ -74,7 +74,7 @@ function buildChrome(sheet){
   const g = groupOf(sheet);
   try{ const tt = NAV_TABS.find(t=>t.groups.some(id=>{ const x = GROUPS.find(y=>y.id===id); return x && x.sheets.includes(sheet); })); if(tt){ window.__bkLastInTab = window.__bkLastInTab || {}; window.__bkLastInTab[tt.id] = sheet; } }catch(e){}
   let isDevDeal = false; try{ const d = bkLoad(); isDevDeal = !!d && d.dealType==='Development'; }catch(e){}
-  const primary = NAV_TABS.map(t=>{
+  const primary = NAV_TABS.filter(t=>!(window.bkNavTabHidden && window.bkNavTabHidden(t, sheet))).map(t=>{
     const gs = t.groups.map(id=>GROUPS.find(x=>x.id===id)).filter(x=>x && !x.hidden && (x.id!=='dev' || isDevDeal || x.sheets.includes(sheet)));
     const on = gs.some(x=>x.sheets.includes(sheet));
     const count = gs.reduce((n,x)=>n+x.sheets.length,0);

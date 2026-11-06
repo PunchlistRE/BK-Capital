@@ -1025,6 +1025,11 @@
 "close": "</script>"
 },
 {
+"file": "194-bk-nav.js",
+"open": "\n<script id=\"bk-nav\">",
+"close": "</script>"
+},
+{
 "file": "188-bk-field-widths.js",
 "open": "\n<script id=\"bk-field-widths\">",
 "close": "</script>"
