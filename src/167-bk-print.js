@@ -78,7 +78,7 @@ function splitKeep(t, groups){
     [].forEach.call(c.rows, function(r){ var cells = [].slice.call(r.cells), pos = 0, map = []; cells.forEach(function(cell){ map.push(pos); pos += cell.colSpan || 1; });
       cells.forEach(function(cell, q){ var cs = cell.colSpan || 1; if(cs > 1){ var inside = keep.filter(function(k){ return k >= map[q] && k < map[q] + cs; }).length; if(inside) cell.colSpan = inside; else cell.remove(); } else if(keep.indexOf(map[q]) < 0) cell.remove(); }); });
     anchor.parentNode.insertBefore(c, anchor.nextSibling); anchor = c; });
-  t.classList.add('bk-print-orig');
+  t.classList.add('bk-print-orig'); t.classList.remove('bk-print-clone');   /* a piece that is cut again is hidden like any original */
 }
 function splitYears(t){
   var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
