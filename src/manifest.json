@@ -1035,6 +1035,11 @@
 "close": "</script>"
 },
 {
+"file": "198-bk-kpibar-motion.js",
+"open": "\n<script id=\"bk-kpibar-motion\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
