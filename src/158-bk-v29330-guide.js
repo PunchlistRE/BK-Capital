@@ -269,12 +269,42 @@ function paintLive(sec){
 }
 function canCalc(draft){ return !!safe(function(){ return draft && Object.keys(draft).length ? window.bkRunWith(Object.assign({}, draft), function(){ return bkDealReadiness().canCalculate; }) : bkDealReadiness().canCalculate; }, false); }
 function adviceAll(s){ return advice(s).filter(function(a){ return a.lvl === 'warn'; }).slice(0, 4); }
+/* THE DECISION (1.9): the review reads like an IC summary. The verdict against house policy, the three drivers of the result and what would fix it are the existing engines' own answers: the credit gate (bkDealGate), the sensitivity drivers (bkSensDrivers, run through bkRunWith) and Deal Remedies (bkRemRun); nothing is recalculated here. */
+var REM = null, DRV = null;
+function dealKeyG(){ try { return JSON.stringify(bkLoad()); } catch(e){ return ''; } }
+window.bkGuideFix = function(){ if(typeof window.bkRemRun !== 'function') return; var key = dealKeyG(); window.bkRemRun(function(P){ REM = { key:key, P:P }; if(typeof showSheet === 'function') showSheet('Guide'); }); };
+window.bkGuideApplyFix = function(k){ if(!REM || REM.key !== dealKeyG()) return; var z = REM.P[k]; if(!z || !z.ov) return; var s = bkLoad(); Object.assign(s, z.ov); bkSave(s); REM = null; DRV = null; if(typeof showSheet === 'function') showSheet('Guide'); };
+window.bkGuideDrivers = function(){ var key = dealKeyG(), el = document.getElementById('gd-drv'); if(!el) return; if(DRV && DRV.key === key){ el.innerHTML = DRV.html; return; }
+  setTimeout(function(){ var list = [];
+    try { var s = bkLoad(), D = window.bkSensDrivers ? window.bkSensDrivers(s) : []; var irrOf = function(ov){ return window.bkInCase(function(){ return window.bkRunWith(ov, function(){ return bkMonthlyReturns().irr; }); }); };
+      D.forEach(function(d){ var a = irrOf(d.ov(-d.step)), b = irrOf(d.ov(d.step)); if(isFinite(a) && isFinite(b)) list.push({ label:d.label, a:a, b:b, swing:Math.abs(b - a) }); });
+    } catch(e){}
+    list.sort(function(x, y){ return y.swing - x.swing; });
+    var html = list.length ? '<ol style="margin:6px 0 0 18px;padding:0;line-height:1.7">' + list.slice(0, 3).map(function(d){ return '<li><b>' + esc(d.label) + '</b>: levered IRR ' + (d.a * 100).toFixed(2) + '% to ' + (d.b * 100).toFixed(2) + '% over one step down and up.</li>'; }).join('') + '</ol>' : '<span class="sub">The drivers could not be run for this deal.</span>';
+    DRV = { key:dealKeyG(), html:html }; var e2 = document.getElementById('gd-drv'); if(e2) e2.innerHTML = html; }, 30); };
+function fixList(s){ if(!REM || REM.key !== dealKeyG()) return '';
+  var P = REM.P || {}, M = function(v){ return '$' + Math.round(Number(v) || 0).toLocaleString('en-US'); }, rows = [];
+  var line = function(k, text, sn){ rows.push('<li>' + text + (sn && sn.verdict ? ' <span class="sub">(credit verdict then: <b>' + esc(sn.verdict) + '</b>)</span>' : '') + ' <a href="#" onclick="bkGuideApplyFix(\'' + k + '\');return false">Apply it</a></li>'); };
+  if(P.resize && P.resize.ov && P.resize.s) line('resize', 'Cut the senior loan to <b>' + M(P.resize.target) + '</b>: ' + M(P.base ? P.resize.s.loan - P.base.loan : 0) + ' of debt, ' + M(P.base ? P.resize.s.equity - P.base.equity : 0) + ' more equity', P.resize.s);
+  if(P.price && P.price.ov && P.price.atX) line('price', 'Pay no more than <b>' + M(P.price.atX.price) + '</b>' + (P.base ? ' (' + M(P.price.atX.price - P.base.price) + ')' : ''), P.price.atX);
+  if(P.rent && P.rent.ov && P.rent.atX) line('rent', 'Raise residential rents about <b>' + (P.rent.u * 100).toFixed(1) + '%</b>', P.rent.atX);
+  if(P.occ && P.occ.ov && P.occ.atX) line('occ', 'Reach <b>' + ((1 - P.occ.v) * 100).toFixed(1) + '%</b> occupancy', P.occ.atX);
+  return rows.length ? '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.8">' + rows.join('') + '</ul><p class="sub" style="margin:6px 0 0">Each was solved with the real engine; applying one changes the deal (Undo reverses it).</p>' : '<p class="sub" style="margin:6px 0 0">No single change clears the policy within the ranges tried. See Deal Remedies for the closest cases.</p>'; }
+function decisionCard(s, gate){
+  var v = gate && gate.verdict ? String(gate.verdict) : '', bad = /DECLINE|HOLD/i.test(v), dev = /develop/i.test(String(s.dealType || ''));
+  var h = '<div class="gd-card"><b>The decision</b><p style="margin:6px 0 0">' + (v ? 'Against house policy this deal is <b style="color:' + (bad ? '#b42318' : /APPROVE|PASS/i.test(v) ? '#1a7f37' : '#b26a00') + '">' + esc(v) + '</b>' + (gate.action ? '. ' + esc(gate.action) : '.') : 'The credit gate has no verdict yet: enter the missing inputs above.') + '</p>'
+    + '<p class="sub" style="margin:8px 0 0"><b>Two DSCRs, two questions.</b> The Lender DSCR is the coverage as the lender tests it (the lender NOI, against the loan\'s own minimum). The House DSCR is the firm\'s own credit test (NOI after reserves, against the house minimum). They can differ; neither is wrong.</p>'
+    + '<div style="margin-top:10px"><b style="font-size:12.5px">The three drivers of the result</b><div id="gd-drv"><span class="sub">Working them out…</span></div></div>';
+  if(!dev && bad){ h += '<div style="margin-top:10px"><b style="font-size:12.5px">What would fix it</b>' + (REM && REM.key === dealKeyG() ? fixList(s) : '<p class="sub" style="margin:6px 0 0">Resize the debt, cut the price, raise rents or fill the building: <button type="button" class="gd-btn ghost" onclick="bkGuideFix()">Work out each fix</button> <span id="bk-rem-prog" class="sub"></span></p>') + '</div>'; }
+  setTimeout(window.bkGuideDrivers, 0);
+  return h + '</div>'; }
 function reviewScreen(secs, s, g){
   var skipped = secs.filter(function(sec){ return g.skipped[sec.id]; }), todo = secs.filter(function(sec){ return !g.done[sec.id] && !g.skipped[sec.id]; }), partial = secs.filter(function(sec){ return g.done[sec.id] && missing(sec, s).length; });
   var unconf = g.assumed.filter(function(k){ return !g.confirmed[k]; });
   var k = safe(function(){ return window.bkProFormaKit && bkProFormaKit.build(); }, null), gate = safe(function(){ return bkDealGate(); }, null), conf = safe(function(){ return window.bkConflicts ? window.bkConflicts().filter(function(c){ return c.level !== 'INFO' && !c.acknowledged; }) : []; }, []);
   var h = '<div class="gd"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Last step</div><h1>Review</h1><p class="sub">Here is where the deal stands and what is still open.</p>' + progress(secs, s, g);
   if(k) h += '<div class="gd-card"><div class="gd-res" style="font-size:14px"><span>Levered IRR <b>' + (isFinite(k.irr) ? (k.irr * 100).toFixed(2) + '%' : '—') + '</b></span><span>Multiple <b>' + (isFinite(k.moic) ? k.moic.toFixed(2) + 'x' : '—') + '</b></span>' + bothDscr(s, true).html + (gate ? '<span>Credit gate <b>' + esc(gate.verdict) + '</b></span>' : '') + '</div></div>';
+  if(k) h += decisionCard(s, gate);
   var open = [];
   skipped.forEach(function(sec){ open.push('<li><b>' + esc(sec.title) + '</b> was skipped. <a href="#" onclick="bkGuideGo(\'' + sec.id + '\');return false">Go back</a></li>'); });
   todo.forEach(function(sec){ open.push('<li><b>' + esc(sec.title) + '</b> has not been done. <a href="#" onclick="bkGuideGo(\'' + sec.id + '\');return false">Do it</a></li>'); });
