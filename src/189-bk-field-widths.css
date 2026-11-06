@@ -23,3 +23,7 @@ html body #viewport table.ae-grid td[data-bk-wc="m"]{ width:var(--bk-w-m); }
 html body #viewport table.ae-grid td[data-bk-wc="l"]{ width:var(--bk-w-l); }
 html body #viewport table.ae-grid td[data-bk-wc="c"]{ width:var(--bk-w-c); }
 @media (max-width:760px){ html body #viewport [data-bk-w]{ max-width:100% !important; } }
+/* in a label-and-value form every box of a column is the same width, whatever it holds (a percent, a dollar amount, text or a choice): the left and right edges line up down the page */
+html body #viewport .ae-form [data-bk-w="s"], html body #viewport .ae-form [data-bk-w="m"], html body #viewport .ae-form [data-bk-w="l"], html body #viewport .ae-form [data-bk-w="c"]{ width:var(--bk-w-form,220px) !important; min-width:var(--bk-w-form,220px) !important; max-width:var(--bk-w-form,220px) !important; }
+html body #viewport .ae-form > div > [data-bk-w]{ margin-right:0; }
+@media (max-width:760px){ html body #viewport .ae-form [data-bk-w]{ width:100% !important; min-width:0 !important; max-width:100% !important; } }
