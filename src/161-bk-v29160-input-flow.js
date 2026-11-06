@@ -63,6 +63,8 @@ var wrapped = function(sheet){
      (its value was already committed by the handler, so the final render shows it). */
   if(busy){ again = sheet; return; }
   var same = (typeof currentSheet !== 'undefined') && sheet === currentSheet;
+  /* a caller that is showing a NEW view on the same sheet (the Guide's next step) sets window.__bkFreshView once: that render starts at the top instead of keeping the old scroll position */
+  if(window.__bkFreshView){ window.__bkFreshView = false; same = false; }
   var s = same ? snap() : null, r;
   busy = true; try { r = prev.apply(this, arguments); } finally { busy = false; }
   if(s){ restore(s); requestAnimationFrame(function(){ restore(s); }); setTimeout(function(){ restore(s); applyPending(); }, 25); }
