@@ -89,7 +89,7 @@ extend('Debt','w2cDebtConsolidate', function(o){
   });
   var cap = dup.querySelector('caption');
   if(kept === 0){ dup.parentNode.removeChild(dup); }
-  else if(cap){ cap.textContent = 'Acquisition Loan Terms'; var hh=dup.querySelectorAll('thead th'); if(hh.length===3){ hh[0].textContent='Term'; hh[1].textContent='Amount ($)'; hh[2].textContent='Basis'; } }
+  else if(cap){ cap.textContent = 'Acquisition Loan Terms'; var hh=dup.querySelectorAll('thead th'); if(hh.length===3){ hh[0].textContent='Term'; hh[1].textContent='Value'; hh[2].textContent='Basis'; } }
   o.main = root.innerHTML
     + note('&#9432;','<b>Sizing presentation consolidated.</b> The loan is sized once, on <b>Sizing Constraints - Which One Binds</b>, '
       + 'and its result is presented once, on <b>Resulting Capital Structure</b>. The rows that used to repeat that sizing a second time have '
