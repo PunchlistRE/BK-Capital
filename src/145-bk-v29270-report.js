@@ -379,6 +379,8 @@ function build(){
   });
   /* 5 distribution waterfall */
   waterfallPages(D, 4 + ranges.length, N).forEach(function(pg){ pages.push(pg); });
+  /* exit-year returns and after-tax returns (src/196): read from the engines, one page each */
+  [safe(function(){ return window.bkExitYearPdfHtml(); }, null), safe(function(){ return window.bkAfterTaxPdfHtml(); }, null)].forEach(function(h){ if(h) pages.push(page(h, 0, N, D)); });
   /* 4 credit and risk */
   var rows = (gate.rows || []).filter(function(r){ return r.applicable !== false; }).slice(0, 12);
   var gateTbl = '<table><thead><tr><th>Credit gate</th><th>Deal</th><th>Policy</th><th>Result</th></tr></thead><tbody>' + rows.map(function(r){ var f = fmtGate(r); return '<tr><td class="l">' + esc(r.label) + (r.severity === 'HARD' ? ' <span class="note">(hard)</span>' : '') + '</td><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td><td><span class="pill ' + (r.pass ? 'pass' : 'fail') + '">' + (r.pass ? 'PASS' : 'FAIL') + '</span></td></tr>'; }).join('') + '</tbody></table>';
@@ -397,6 +399,7 @@ function build(){
     + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid reruns the model for each cell. This summary is an analytical aid, not an offer or a fairness opinion, and is only as good as the assumptions behind it. Check it against your own model before relying on it.</div></div>', N, N, D));
   /* impact to portfolio (src/179): near the end, before the credit page's closing notes; footers renumbered over the final list */
   if(typeof window.bkPortfolioImpactPage === 'function'){ var pgi = safe(function(){ return window.bkPortfolioImpactPage(); }, null); if(pgi && !/First deal in the portfolio/.test(pgi)){ pages.push(page(pgi, 0, 0, D)); pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); } }
+  pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); });
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Investment Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
 

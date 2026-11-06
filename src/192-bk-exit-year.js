@@ -10,7 +10,7 @@ window.bkExitYearTable = function(){
   var s = bkLoad(); if(isDev(s)) return null;
   var hold = Math.max(1, Math.min(15, Math.round(Number(s.holdYears) || 10))), rows = [];
   for(var y = 1; y <= hold; y++){
-    var r = window.bkInCase(function(){ return bkRunWith({ holdYears:y }, function(){ var x = bkMonthlyReturns(); return { irr:x.irr, moic:x.moic, profit:x.profit }; }); }) || {};
+    var r = window.bkInCase(function(){ return bkRunWith({ holdYears:y }, function(){ var x = bkMonthlyReturns(); return { irr:x.irr, moic:x.moic, profit:isFinite(x.profit) ? x.profit : (Number(x.dist) || 0) - (Number(x.contrib) || 0) }; }); }) || {};
     rows.push({ y:y, irr:r.irr, moic:r.moic, profit:r.profit, sel:y === hold });
   }
   return rows;
