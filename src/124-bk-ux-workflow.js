@@ -44,18 +44,21 @@ function inCase(fn){
   try { return fn(scratch, c); } finally { window.bkLoad = oL; window.bkSave = oS; }
 }
 window.bkHeadline = function(){ return headline(); };
+/* a capital measure's name as the app names it everywhere (BK_CAPITAL_TERMS, src/184): the band, the sidebar and the Home tile never use a bare "Equity" */
+function capName(k, dev){ return typeof window.bkCapName === 'function' ? window.bkCapName(k, dev) : (k === 'totalContributedEquity' ? 'Total contributed equity' : 'Closing equity'); }
 function headline(){
   return inCase(function(s, c){
     var x = bkMonthlyReturns(), d = bkDebt(), w = null, calc = bkCalc();
     try { w = bkWaterfallV07(); } catch(e){}
-    var basis = Number(d.basis) || 0, dv = null;
+    var basis = Number(d.basis) || 0, dv = null, tce = null;
+    try { tce = Number(bkFundingSummary().measures.totalContributedEquity.amount); } catch(e){}   /* the headline equity figure is the Total contributed equity measure, read from the shared funding summary */
     /* a development deal is financed by the construction facility, not the acquisition loan bkDebt() sizes: loan, equity, coverage and yield come from the development funding engine */
     if(isDev(s)){ try { var t = bkDevTakeoutV11(), ds = t.conHeldToSale ? Number(t.conHeldBalance || 0) * Math.max(0, Number(s.conRate || 0)) : Number(t.permPmt || 0) * 12, bal = t.conHeldToSale ? Number(t.conHeldBalance || 0) : Number(t.permLoan || 0), stabNOI = Number(t.stabPointNOI || t.noi || 0);
       dv = { loan:Number(t.commit || 0), binding:'construction facility', equity:Number(t.equityTotal || 0), dscr:ds > 0 ? stabNOI / ds : NaN, yoc:Number(t.unlev) ? stabNOI / Number(t.unlev) : NaN, debtAtSale:bal, cost:Number(t.unlev || 0) }; } catch(e){ dv = null; } }
     return { c:c, s:s, levIRR:x.irr, levMOIC:x.moic, unlevIRR:x.u ? x.u.irr : NaN, unlevMOIC:x.u ? x.u.moic : NaN,
       lpIRR:w ? w.lpIRR : NaN, gpIRR:w ? w.gpIRR : NaN, lpMOIC:w ? w.lp.moic : NaN, gpMOIC:w ? w.gp.moic : NaN,
       loan:dv ? dv.loan : d.loan, binding:dv ? dv.binding : d.binding, equity:dv ? dv.equity : d.equity, dscr:dv ? dv.dscr : d.dscr, yoc:dv ? dv.yoc : (basis ? calc.noi/basis : NaN),
-      profit:(x.dist||0) - (x.contrib||0), peak:dv ? dv.equity : Number(d.equity) + Number(s.rateCapCost || 0), contrib:x.contrib || 0, noi:calc.noi };
+      profit:(x.dist||0) - (x.contrib||0), peak:dv ? dv.equity : Number(d.equity) + Number(s.rateCapCost || 0), contrib:x.contrib || 0, tce:isFinite(tce) ? tce : (x.contrib || 0), noi:calc.noi };
   });
 }
 
@@ -219,7 +222,7 @@ function snapshotCard(){
     + row('Levered IRR', pct(h.levIRR), 'big') + row('Equity Multiple', mult(h.levMOIC))
     + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + (Number(bkLoad().gpShare) > 0 ? pct(h.gpIRR) : 'N/A'))
     + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(h.binding) + '</span>' : ''))
-    + row('Equity', money(h.equity)) + row('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
+    + row(capName('totalContributedEquity'), money(h.tce)) + row('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
     + (tieChip() ? row('Inputs', tieChip()) : '')
     + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '')
@@ -512,7 +515,7 @@ document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && docum
         + tile('Unlevered IRR', pct(h.unlevIRR), mult(h.unlevMOIC) + ' multiple')
         + tile('LP IRR', pct(h.lpIRR), mult(h.lpMOIC) + ' LP multiple')
         + tile('GP IRR', pct(h.gpIRR), mult(h.gpMOIC) + ' GP multiple')
-        + tile('Closing equity', money(h.peak), 'total contributed ' + money(h.contrib))
+        + tile(capName('closingEquity', isDev(h.s)), money(h.peak), 'total contributed ' + money(h.contrib))
         + '</div>' + (o.main || '');
     } catch(e){}
     return o;
@@ -609,7 +612,7 @@ function kpiBar(sheet){
   var el = document.getElementById('bk-kpibar');
   if(!hasDeal() || sheet === 'Guide'){ if(el) el.hidden = true; document.body.classList.remove('bk-has-kpibar'); return; }
   if(!el){ el = document.createElement('div'); el.id = 'bk-kpibar'; el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Key figures'); document.body.appendChild(el); }
-  var r = readiness(), cell = function(k, v, sub){ return '<div class="kb-c"><div class="kb-k">' + k + '</div><div class="kb-v">' + v + '</div>' + (sub ? '<div class="kb-s">' + sub + '</div>' : '') + '</div>'; };
+  var r = readiness(), cell = function(k, v, sub){ return '<div class="kb-c' + (String(k).replace(/<[^>]*>/g, '').length > 18 ? ' kb-long' : '') + '"><div class="kb-k">' + k + '</div><div class="kb-v">' + v + '</div>' + (sub ? '<div class="kb-s">' + sub + '</div>' : '') + '</div>'; };
   var html;
   if(!r || !r.canCalculate){ html = cell('Status', esc(r ? r.state : 'DRAFT'), 'results withheld until ' + (r ? r.missing.length : 0) + ' required input' + (r && r.missing.length === 1 ? ' is' : 's are') + ' entered'); }
   else if(window.BKReg && (function(){ try { return window.BKReg.of(bkLoad()).ownReadiness; } catch(e){ return false; } })()){ /* an analysis with its own engine shows its own figures: the registry's tiles from its summary */
@@ -617,7 +620,7 @@ function kpiBar(sheet){
     html = R.tiles(sm.analysis.id).map(function(id){ var m = all.filter(function(x){ return x.id === id; })[0]; return m ? cell(esc(m.label), f(m)) : ''; }).join(''); }
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
-      + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell('Equity', money(h.equity)) + cell('Net Profit', money(h.profit))
+      + cell('Going-in DSCR', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(h.binding) : '') + cell(capName('totalContributedEquity'), money(h.tce)) + cell('Net Profit', money(h.profit))
       + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) + (tieChip() ? cell('Inputs', tieChip()) : '') : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
 }

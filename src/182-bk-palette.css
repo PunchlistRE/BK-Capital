@@ -39,6 +39,10 @@ html body #viewport a{ color:var(--ae-accent); }
 #bk-kpibar[hidden]{ display:none; }
 #bk-kpibar .kb-c{ flex:1 1 0; min-width:0; padding:7px 14px 6px; border-left:1px solid rgba(255,255,255,.14); }
 #bk-kpibar .kb-c:first-child{ border-left:0; }
+/* a long label (Total contributed equity) takes the width it needs, so it wraps to two lines at most and the bar keeps the height the Loan cell gives it */
+#bk-kpibar .kb-c.kb-long{ flex-grow:1.45; }
+@media (max-width:1180px){ #bk-kpibar .kb-c{ padding-left:9px; padding-right:9px; } }
+@media (max-width:1060px){ #bk-kpibar .kb-c.kb-long{ flex-grow:1.8; } #bk-kpibar .kb-c.kb-long .kb-k{ font-size:10px; letter-spacing:.02em; } }
 #bk-kpibar .kb-k{ font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:#9FB3CC; font-weight:600; }
 #bk-kpibar .kb-v{ font-size:21px; line-height:1.15; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #bk-kpibar .kb-s{ font-size:10.5px; color:#8FB4E3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

@@ -171,7 +171,7 @@ extend('Portfolio CF','fbChecks', function(o){
           Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'IN LINE' : 'REVIEW')+'</td>'
       + txt('Purchase price against equity plus debt; a gap is closing costs and fees, not an error')+'</tr>')
     + wrapTable('Deals in the Portfolio',
-      '<tr><th class="rowlabel-h">Deal</th><th>Purchase Price</th><th>Year-1 NOI</th><th>Loan</th><th>Closing equity</th>'
+      '<tr><th class="rowlabel-h">Deal</th><th>Purchase Price</th><th>Year-1 NOI</th><th>Loan</th><th>Closing / initial funding equity</th>'
       + '<th>Levered IRR</th><th>MOIC</th></tr>',
       deals.map(function(d){
         return '<tr>'+lbl(esc(d.snap.name || d.snap.dealId || 'Deal'))
@@ -216,7 +216,7 @@ extend('Portfolio Dashboard','fbExposure', function(o){
     body += '<tr class="grandtotal">'+lbl('TOTAL')+val(intf(deals.length))+val(money(totPrice))
           + val(money(totEq))+val(totEq>0?'100.00%':'-')+val(money(totNOI))+'</tr>';
     return wrapTable(title,
-      '<tr><th class="rowlabel-h">Group</th><th>Deals</th><th>Purchase Price</th><th>Closing equity</th>'
+      '<tr><th class="rowlabel-h">Group</th><th>Deals</th><th>Purchase Price</th><th>Closing / initial funding equity</th>'
       + '<th>% of Equity</th><th>Year-1 NOI</th></tr>', body);
   }
 
