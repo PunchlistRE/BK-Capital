@@ -412,7 +412,7 @@ extend('Liquidity','w1Liquidity', function(o){
       '<tr><th class="rowlabel-h">Source</th><th>Amount</th><th style="text-align:left">Basis</th></tr>',
         '<tr>'+lbl(isDevL ? 'Construction Facility (draws + capitalized interest)' : 'Acquisition Loan Funding')+val(money(F.loan))+txt(isDevL ? 'Sized by loan to cost or loan to stabilized value; draws follow the equity-first schedule' : 'Sized by '+esc((F.d&&F.d.binding)||'constraint')+' at close')+'</tr>'
       + (F.reserveDraws>0.5 ? '<tr>'+lbl('Initial Reserves Drawn')+val(money(F.reserveDraws))+txt('Reserves funded at closing and drawn for lease-up or interest')+'</tr>' : '')
-      + '<tr>'+lbl('Closing Equity')+val(money(F.equity))+txt(isDevL ? 'Equity in Sources &amp; Uses, called through the funding schedule' : 'Total basis less loan proceeds')+'</tr>'
+      + '<tr>'+lbl(isDevL ? bkCapName('closingEquity', true) : 'Closing Equity')+val(money(F.equity))+txt(isDevL ? 'Equity in Sources &amp; Uses, called through the funding schedule' : 'Total basis less loan proceeds')+'</tr>'
       + '<tr class="grandtotal">'+lbl(isDevL ? 'Total Sources in Sources &amp; Uses' : 'Total Funding at Close')+val(money(F.totalSources))+txt('Sources equal uses')+'</tr>');
   } catch(e){}
 
@@ -500,8 +500,8 @@ extend('Returns','w1Returns', function(o){
           + '<tr>'+lbl('Net Sale Proceeds After Debt Payoff')+val(money(u.netSale-d.debtAtSale))+txt('To equity at exit')+'</tr>';
   }
   /* the two equity measures, by their names: what was paid at closing and what was contributed over the hold */
-  if(F && F.measures) body += '<tr>'+lbl('Closing equity')+val(money(F.measures.closingEquity.amount))+txt(dev ? 'Equity in Sources &amp; Uses, called through the funding schedule' : 'Paid at closing: total basis and fees less loan proceeds')+'</tr>'
-        + '<tr>'+lbl('Total contributed equity')+val(money(F.measures.totalContributedEquity.amount))+txt('Closing equity plus every capital call after closing; the capital the returns and the waterfall use')+'</tr>';
+  if(F && F.measures) body += '<tr>'+lbl(F.measures.closingEquity.name)+val(money(F.measures.closingEquity.amount))+txt(dev ? 'Equity in Sources &amp; Uses, called through the funding schedule' : 'Paid at closing: total basis and fees less loan proceeds')+'</tr>'
+        + '<tr>'+lbl('Total contributed equity')+val(money(F.measures.totalContributedEquity.amount))+txt(F.measures.closingEquity.name+' plus every post-closing capital call; the capital the returns and the waterfall use')+'</tr>';
   var keyEcon = wrapTable('Key Economics at Exit',
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>', body);
 
@@ -676,7 +676,7 @@ extend('Sources & Uses','w1SourcesUses', function(o){
       '<tr>'+lbl('Loan to Value')+val(pct(d.ltv))+txt('Against '+window.bkLtvBasisLabel(d.s||bkLoad(), true))+'</tr>'
     + '<tr>'+lbl('Loan to Cost')+val(pct(d.ltc))+txt('Against acquisition basis')+'</tr>'
     + '<tr>'+lbl('Closing equity as % of total uses')+val(uses?pct(closingEq/uses):'-')+txt('Closing equity &divide; total uses at closing')+'</tr>'
-    + '<tr>'+lbl('Closing equity')+val(money(closingEq))+txt('Paid at closing for an acquisition; capital called after closing is shown separately')+'</tr>'
+    + '<tr>'+lbl('Closing equity')+val(money(closingEq))+txt('Paid at closing for an acquisition; post-closing capital calls are shown separately')+'</tr>'
     + '<tr>'+lbl('Loan per Unit')+val(units?money(d.loan/units):'-')+txt(units?intf(units)+' units':'No unit count')+'</tr>'
     + '<tr>'+lbl('Loan per SF')+val(gsf?money(d.loan/gsf):'-')+txt(gsf?intf(gsf)+' GSF':'No GSF')+'</tr>');
 

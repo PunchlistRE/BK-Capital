@@ -5,10 +5,11 @@
    (pref, catch-up and promote tiers). Only the first is used here.
 
    CAPITAL MEASURES (the modeling convention, see audit/CAPITAL_MEASURES.md). Four different questions, four different numbers, never forced to equal one another:
-     Closing equity              equity required at closing (the equity in Sources & Uses)
+     Closing equity              equity required at closing (the equity in Sources & Uses). A development's is called INITIAL FUNDING EQUITY: it is called through the funding schedule, not at one closing
      Total contributed equity    all GP and LP capital actually contributed (closing equity plus every later capital call)
-     Operating cash requirement  interim cash needed to cover operating shortfalls, and who funds it
+     Operating cash requirement  the NET interim cash needed to fund operating shortfalls: what the funding schedule carries (the net lease-up deficit); never added to the unfunded interim requirement
      Total project capitalization  all sources of capital over the investment life: closing sources plus later capital calls
+   Two named disclosures sit beside them: the UNFUNDED INTERIM CASH REQUIREMENT (the operating cash needed after closing, outside the funding schedule, with its peak and who supplies it) and the POST-CLOSING CAPITAL CALLS (the calls after closing).
    Each is reconciled to the cash flows it is made of by the ties capContrib, capTotal and (development) capOperating. A page that shows one of them uses its name from BK_CAPITAL_TERMS. */
 (function(){
   if(typeof BK_BASE === 'object' && BK_BASE && !('gla' in BK_BASE)) BK_BASE.gla = 0;   /* leasable area (GLA / NRA): separate from the gross building area, blank until entered */
@@ -17,11 +18,15 @@
   function tie(id, label, a, b, tol, note){ var ok = Math.abs(n(a) - n(b)) <= (tol == null ? 1 : tol); return { id:id, label:label, a:n(a), b:n(b), ok:ok, note:note || '' }; }
   /* the names (one place); pages read them so a measure is never called by two names */
   var TERMS = window.BK_CAPITAL_TERMS = {
-    closingEquity:              { name:'Closing equity',               short:'Equity required at closing' },
+    closingEquity:              { name:'Closing equity',               devName:'Initial funding equity', short:'Equity required at closing', devShort:'Equity required to initially fund the development' },
     totalContributedEquity:     { name:'Total contributed equity',     short:'All GP and LP capital actually contributed' },
-    operatingCashRequirement:   { name:'Operating cash requirement',   short:'Interim cash needed to cover operating shortfalls' },
-    totalProjectCapitalization: { name:'Total project capitalization', short:'All sources of capital over the investment life' }
+    operatingCashRequirement:   { name:'Operating cash requirement',   short:'Net interim cash needed to fund operating shortfalls' },
+    totalProjectCapitalization: { name:'Total project capitalization', short:'All sources of capital over the investment life' },
+    unfundedInterimCashRequirement: { name:'Unfunded interim cash requirement', short:'Operating cash needed after closing, outside the funding schedule' },
+    postClosingCapitalCalls:    { name:'Post-closing capital calls',   short:'Capital called from the partners after closing' }
   };
+  /* a measure's name for the kind of deal (a development's closing equity is its initial funding equity); pages read this, never a literal */
+  window.bkCapName = function(key, dev){ var t = TERMS[key]; return t ? (dev && t.devName ? t.devName : t.name) : ''; };
   /* the months a list of returns rows spans, for the pages that say when */
   function span(rows, pred){ var q = (rows || []).filter(pred); return { from:q.length ? q[0].m : 0, to:q.length ? q[q.length - 1].m : 0, n:q.length }; }
   window.bkFundingSummary = function(){
@@ -63,30 +68,34 @@
       var callsTotal = takeEq + opShort, tpc = facility + reserveDraws + contrib;
       var callList = [];
       if(takeEq > 0.5) callList.push({ kind:'takeout', name:'Takeout equity', amount:takeEq, from:x.stab, to:x.stab, source:'Partners (LP and GP)' });
-      if(opShort > 0.5) callList.push({ kind:'operating', name:TERMS.operatingCashRequirement.name + ' called after closing', amount:opShort, from:opRows.length ? opRows[0].m : 0, to:opRows.length ? opRows[opRows.length - 1].m : 0, source:'Partners (LP and GP)' });
+      if(opShort > 0.5) callList.push({ kind:'operating', name:TERMS.unfundedInterimCashRequirement.name + ' called after closing', amount:opShort, from:opRows.length ? opRows[0].m : 0, to:opRows.length ? opRows[opRows.length - 1].m : 0, source:'Partners (LP and GP)' });
       callList.forEach(function(c){ c.gp = c.amount * gpW; c.lp = c.amount - c.gp; });
       out.measures = {
-        closingEquity:{ name:TERMS.closingEquity.name, amount:equity, from:eqSpan.from, to:eqSpan.to, month1:r && r.rows[0] ? n(r.rows[0].equityDraw) : 0 },
+        closingEquity:{ name:bkCapName('closingEquity', true), amount:equity, from:eqSpan.from, to:eqSpan.to, month1:r && r.rows[0] ? n(r.rows[0].equityDraw) : 0 },
         totalContributedEquity:{ name:TERMS.totalContributedEquity.name, amount:contrib, lp:lpC, gp:gpC },
-        operatingCashRequirement:{ name:TERMS.operatingCashRequirement.name, amount:n(x.leaseDef) + needO, inFunding:n(x.leaseDef), afterFunding:needO, byReserve:resOpUsed, byPartners:opShort, nettedFromDistributions:nettedO, lp:opShort * (1 - gpW), gp:opShort * gpW,
-          from:needSpan.from, to:needSpan.to, months:needSpan.n, peakCumulative:peakO, leaseUpLoss:luLoss, leaseUpGain:luGain, leaseUpNet:luLoss + luGain, leaseUpMonths:(x.leaseupRamp || []).length },
+        /* the NET view: what the funding schedule carries (the lease-up result after later income offsets the early losses). The interim cash needed after closing is its own measure below and is never added to this one. */
+        operatingCashRequirement:{ name:TERMS.operatingCashRequirement.name, amount:n(x.leaseDef), inFunding:n(x.leaseDef), leaseUpLoss:luLoss, leaseUpGain:luGain, leaseUpNet:luLoss + luGain, leaseUpMonths:(x.leaseupRamp || []).length },
+        unfundedInterimCashRequirement:{ name:TERMS.unfundedInterimCashRequirement.name, amount:needO, byReserve:resOpUsed, byPartners:opShort, nettedFromDistributions:nettedO, lp:opShort * (1 - gpW), gp:opShort * gpW,
+          from:needSpan.from, to:needSpan.to, months:needSpan.n, peakCumulative:peakO },
         totalProjectCapitalization:{ name:TERMS.totalProjectCapitalization.name, amount:tpc, closingSources:totalSrc, debt:facility, reserves:reserveDraws, contributedEquity:contrib, laterCalls:callsTotal },
+        postClosingCapitalCalls:{ name:TERMS.postClosingCapitalCalls.name, amount:callsTotal, calls:callList },
         calls:callList, callsTotal:callsTotal };
       ties.push(tie('su', 'Total sources equal total uses', totalSrc, totalUses, 1));
       /* two different limits: the COMMITMENT caps the principal that can be drawn; the CEILING caps the balance, which is principal plus the interest capitalized into it. With no ceiling set the two are the same figure. */
       ties.push({ id:'commit', label:'Principal drawn on the facility is within the committed loan amount', a:draws, b:n(x.commit), ok:draws <= n(x.commit) + 1, note:'' });
       ties.push({ id:'ceiling', label:'Facility balance (principal plus capitalized interest) is within the permitted ceiling', a:facility, b:ceiling, ok:facility <= ceiling + 1, note:ceiling > n(x.commit) + 1 ? 'Ceiling ' + Math.round(ceiling).toLocaleString('en-US') + ' above the committed amount ' + Math.round(n(x.commit)).toLocaleString('en-US') + ' lets interest capitalize' : '' });
-      ties.push(tie('eqEngine', 'Closing equity per Sources equals the funding engine\'s closing equity', equity, x.equityTotal, 1));
+      ties.push(tie('eqEngine', bkCapName('closingEquity', true) + ' per Sources equals the funding engine\'s ' + bkCapName('closingEquity', true).toLowerCase(), equity, x.equityTotal, 1));
       ties.push(tie('eqReturns', 'Equity in the funding schedule equals the equity drawn in the returns cash flow', equity, retEq, 1));
       /* the returns charge the partners for three things and the funding schedule only for the first: equity at funding, the equity called at takeout (the permanent loan is short of the facility payoff and fee) and the lease-up months'
          operating shortfall. Each is read from its own engine, so the contributions are reconciled to their parts rather than left as a remainder. */
       ties.push(tie('takeout', 'Takeout equity in the returns equals the permanent-loan shortfall (called only if the hold reaches stabilization)', takeEq, x.takeoutInHold ? n(x.refiShortfall) : 0, 1));
       ties.push(tie('contrib', 'Equity contributed in the returns equals equity at funding + takeout equity + lease-up operating shortfall', contrib, retEq + takeEq + opShort, 1));
       /* the four measures reconcile to the cash flows they are made of: contributed equity = closing equity + the capital called after closing; total project capitalization is the debt, the reserve draws and all contributed equity, and also the closing sources plus the same calls */
-      ties.push(tie('capContrib', TERMS.totalContributedEquity.name + ' equals ' + TERMS.closingEquity.name.toLowerCase() + ' plus the capital called after closing', contrib, equity + callsTotal, 1));
-      ties.push(tie('capTotal', TERMS.totalProjectCapitalization.name + ' equals the closing sources plus the capital called after closing', tpc, totalSrc + callsTotal, 1));
-      var om = out.measures.operatingCashRequirement;
-      ties.push(tie('capOperating', TERMS.operatingCashRequirement.name + ' after closing (the monthly shortfall re-derived from the cash flow) equals the partners\' calls plus the operating reserve plus any reserve repaid out of later cash', om.afterFunding, om.byPartners + om.byReserve + om.nettedFromDistributions, 1));
+      ties.push(tie('capContrib', TERMS.totalContributedEquity.name + ' equals ' + bkCapName('closingEquity', true).toLowerCase() + ' plus the ' + TERMS.postClosingCapitalCalls.name.toLowerCase(), contrib, equity + callsTotal, 1));
+      ties.push(tie('capTotal', TERMS.totalProjectCapitalization.name + ' equals the closing sources plus the ' + TERMS.postClosingCapitalCalls.name.toLowerCase(), tpc, totalSrc + callsTotal, 1));
+      var om = out.measures.operatingCashRequirement, ui = out.measures.unfundedInterimCashRequirement;
+      ties.push(tie('capOperating', TERMS.unfundedInterimCashRequirement.name + ' (the monthly shortfall re-derived from the cash flow) equals the partners\' calls plus the operating reserve plus any reserve repaid out of later cash', ui.amount, ui.byPartners + ui.byReserve + ui.nettedFromDistributions, 1));
+      ties.push(tie('opFunding', TERMS.operatingCashRequirement.name + ' equals the lease-up deficit the funding ledger carries (summed from its months)', om.amount, sum(x.months, 'lease'), 1));
     } else {
       var d = bkDebt(), price = n(s.purchasePrice), closing = price * n(s.closingCostsPct), acqFee = price * (typeof bkAcqFeePct === 'function' ? bkAcqFeePct(s) : n(s.acqFeePct)), cap = n(s.rateCapCost);
       var uses2 = [['Purchase Price', price], ['Closing Costs', closing], ['Acquisition Fee', acqFee], ['Loan Origination Fee', n(d.fee)]];
@@ -111,13 +120,16 @@
       callListA.forEach(function(c){ c.gp = c.amount * gpWa; c.lp = c.amount - c.gp; });
       var tpcA = n(d.loan) + contrib2;
       out.measures = {
-        closingEquity:{ name:TERMS.closingEquity.name, amount:eqClose, from:1, to:1, month1:eqClose },
+        closingEquity:{ name:bkCapName('closingEquity', false), amount:eqClose, from:1, to:1, month1:eqClose },
         totalContributedEquity:{ name:TERMS.totalContributedEquity.name, amount:contrib2, lp:lpC, gp:gpC },
-        operatingCashRequirement:{ name:TERMS.operatingCashRequirement.name, amount:cOper, inFunding:0, afterFunding:cOper, byReserve:0, byPartners:cOper, nettedFromDistributions:0, lp:cOper * (1 - gpWa), gp:cOper * gpWa, from:opMonths[0] || 0, to:opMonths[opMonths.length - 1] || 0, months:opMonths.length, peakCumulative:0, leaseUpLoss:0, leaseUpGain:0, leaseUpNet:0, leaseUpMonths:0 },
+        /* an acquisition has no funding schedule, so its operating shortfalls are met by calls on the partners after closing: that is the net requirement, and nothing is left unfunded */
+        operatingCashRequirement:{ name:TERMS.operatingCashRequirement.name, amount:cOper, inFunding:0, byPartners:cOper, lp:cOper * (1 - gpWa), gp:cOper * gpWa, from:opMonths[0] || 0, to:opMonths[opMonths.length - 1] || 0, months:opMonths.length, leaseUpLoss:0, leaseUpGain:0, leaseUpNet:0, leaseUpMonths:0 },
+        unfundedInterimCashRequirement:{ name:TERMS.unfundedInterimCashRequirement.name, amount:0, byReserve:0, byPartners:0, nettedFromDistributions:0, lp:0, gp:0, from:0, to:0, months:0, peakCumulative:0 },
         totalProjectCapitalization:{ name:TERMS.totalProjectCapitalization.name, amount:tpcA, closingSources:out.totalSources, debt:n(d.loan), reserves:0, contributedEquity:contrib2, laterCalls:callsTotalA },
+        postClosingCapitalCalls:{ name:TERMS.postClosingCapitalCalls.name, amount:callsTotalA, calls:callListA },
         calls:callListA, callsTotal:callsTotalA };
-      ties.push(tie('capContrib', TERMS.totalContributedEquity.name + ' equals ' + TERMS.closingEquity.name.toLowerCase() + ' plus the capital called after closing', contrib2, eqClose + callsTotalA, 1));
-      ties.push(tie('capTotal', TERMS.totalProjectCapitalization.name + ' equals the closing sources plus the capital called after closing', tpcA, out.totalSources + callsTotalA, 1));
+      ties.push(tie('capContrib', TERMS.totalContributedEquity.name + ' equals ' + bkCapName('closingEquity', false).toLowerCase() + ' plus the ' + TERMS.postClosingCapitalCalls.name.toLowerCase(), contrib2, eqClose + callsTotalA, 1));
+      ties.push(tie('capTotal', TERMS.totalProjectCapitalization.name + ' equals the closing sources plus the ' + TERMS.postClosingCapitalCalls.name.toLowerCase(), tpcA, out.totalSources + callsTotalA, 1));
     }
     out.lp = lpC; out.gp = gpC; out.gpShareInput = s.gpShare === '' || s.gpShare == null ? null : n(s.gpShare);
     var tot = lpC + gpC;

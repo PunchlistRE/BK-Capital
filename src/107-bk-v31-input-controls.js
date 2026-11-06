@@ -61,8 +61,8 @@
           var extra=num(f.equityTotal)-num(f.eqTarget);
           if(isFinite(extra) && extra>0.5){
             var cap=num(s.maxEquityCommitment);
-            if(isFinite(cap) && cap>0 && num(f.equityTotal)>cap+0.5) add('FAIL','Capitalization','Closing equity is $'+Math.round(extra).toLocaleString()+' above the planned equity; closing equity of $'+Math.round(num(f.equityTotal)).toLocaleString()+' exceeds the maximum equity commitment of $'+Math.round(cap).toLocaleString()+'.');
-            else add('WARN','Capitalization','Closing equity is $'+Math.round(extra).toLocaleString()+' above the planned equity funding (the construction loan commitment is fully drawn).');
+            if(isFinite(cap) && cap>0 && num(f.equityTotal)>cap+0.5) add('FAIL','Capitalization','Initial funding equity is $'+Math.round(extra).toLocaleString()+' above the planned equity; initial funding equity of $'+Math.round(num(f.equityTotal)).toLocaleString()+' exceeds the maximum equity commitment of $'+Math.round(cap).toLocaleString()+'.');
+            else add('WARN','Capitalization','Initial funding equity is $'+Math.round(extra).toLocaleString()+' above the planned equity funding (the construction loan commitment is fully drawn).');
           }
         }
       }catch(e){}

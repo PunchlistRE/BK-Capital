@@ -113,7 +113,7 @@ extend('Debt','w3aConstructionSizing', function(o){
     + '<tr>'+lbl('Equity-First Funding Target')+val(money(x.eqTarget))+txt('Equity funds first; the facility funds the remainder')+'<td></td></tr>'
     + '<tr class="grandtotal">'+lbl('LEVERED ALL-IN COST')+val(money(x.levered))
       + txt('Unlevered cost + upfront fees + actual capitalized interest')+'<td></td></tr>'
-    + '<tr>'+lbl('Closing Equity')+val(money(x.equityTotal))+txt('Equity-first funding + cost overflow + interest beyond the facility limit after any interest reserve (the equity in Sources &amp; Uses)')+'<td></td></tr>');
+    + '<tr>'+lbl(bkCapName('closingEquity', true))+val(money(x.equityTotal))+txt('Equity-first funding + cost overflow + interest beyond the facility limit after any interest reserve (the equity in Sources &amp; Uses)')+'<td></td></tr>');
 
   var perm = '';
   if(isFinite(x.permLoan)){
