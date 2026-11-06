@@ -24,9 +24,10 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), B = require(path.j
     check(k + ' deck: IRR, multiple, contributions, distributions and LP / GP IRR are identical (to the last digit)', c.irr === r.irr && c.moic === r.moic && c.contrib === r.contrib && c.dist === r.dist && c.lp === r.lp && c.gp === r.gp, JSON.stringify([c.irr, r.irr]));
   }
   /* owner's decision 1 (November 2026): a NEW acquisition starts with closing costs of 2% instead of the template's 5% (BK_TEMPLATE_OVERRIDES_ACQ; BK_BASE and the named template unchanged,
-     checked above). Every other template term must still be exactly as before, and closing costs must be exactly 0.02 now against exactly 0.05 in the reference. */
+     checked above). Every other template term must still be exactly as before, and closing costs must be exactly 0.02 now. The reference is the previous commit's build, so it holds 0.05 until
+     the decision lands and 0.02 after; either is accepted for the reference, never for this build. */
   const CC = 3, others = (a) => a.filter((v, i) => i !== CC);
-  check('a deal created without the new flag gets the same template terms as before, except closing costs, which are now 2% (owner\'s decision) where the reference had 5%', JSON.stringify(others(cur.plain)) === JSON.stringify(others(ref.plain)) && cur.plain[CC] === 0.02 && ref.plain[CC] === 0.05 && cur.plain[0] > 0, JSON.stringify([cur.plain, ref.plain]));
+  check('a deal created without the new flag gets the same template terms as before, except closing costs, which are now 2% (owner\'s decision; the reference holds 5% before the decision and 2% after)', JSON.stringify(others(cur.plain)) === JSON.stringify(others(ref.plain)) && cur.plain[CC] === 0.02 && (ref.plain[CC] === 0.05 || ref.plain[CC] === 0.02) && cur.plain[0] > 0, JSON.stringify([cur.plain, ref.plain]));
   check('a saved deal with missing keys resolves them from BK_BASE as before', JSON.stringify(cur.legacy) === JSON.stringify(ref.legacy), JSON.stringify([cur.legacy, ref.legacy]));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
