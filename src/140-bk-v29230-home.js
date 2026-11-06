@@ -84,7 +84,7 @@ function build(s, oldMain){
   /* the tiles: which figures lead, and in what order, come from the analysis registry (src/139h); each is read from the same headline as the Deal Snapshot */
   var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
     yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Year-1 DSCR', X(h.dscr), 'policy min ' + X(mind), dscrOk, 'Debt']; },
-    loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ return ['Equity', M(h.equity), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };
+    loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ var tce = isFinite(h.tce) ? h.tce : h.equity; return [typeof window.bkCapName === 'function' ? window.bkCapName('totalContributedEquity') : 'Total contributed equity', M(tce), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };   /* the headline equity names its measure, as the bottom band and the Deal Snapshot do */
   var tileIds = safe(function(){ return window.BKReg.tiles(window.BKReg.of(s).id); }, null) || ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
   var kpis = can && h ? tileIds.filter(function(id){ return TILE[id]; }).map(function(id){ return TILE[id](); }) : [];
   var next;

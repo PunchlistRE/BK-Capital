@@ -41,6 +41,20 @@ html body #viewport table.fin tbody tr.total > :first-child,
 html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > :first-child{ box-shadow:none !important; }
 html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-imp-rule) !important; }
 
+/* ---- phone: a stacked table (table.fin.bk-m-stack, one block per row) shows a key or total row as ONE band: ruled on the row, no fill (the same rules-not-fill choice), and no rule cutting between a label and its
+   figure. Before this the stacked rows still painted --bk-key-fill and every cell carried its own top and bottom rule, and the left bar sat on the first letter. ---- */
+@media (max-width:760px){
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal{
+    background:transparent !important; border-top:1px solid var(--bk-imp-rule); border-bottom:1px solid var(--bk-imp-rule); }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal,
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{
+    background:transparent !important; border-top:1px solid var(--bk-key-rule); border-bottom:1px solid var(--bk-key-rule); box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.total > td, html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.subtotal > td,
+  html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.grandtotal > td, html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr[data-bk-emph="key"] > td,
+  html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.total > th, html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.grandtotal > th{
+    border-top:0 !important; border-bottom:0 !important; box-shadow:none !important; padding-left:10px !important; }
+}
+
 /* print: the bands and their rules print as on screen */
 @media print{
   html body #viewport .rp .rp-tbl tr.tot > td, html body #viewport table.fin tbody tr.grandtotal > td, html body #viewport table.fin tbody tr.total > td,

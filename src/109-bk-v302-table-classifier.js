@@ -41,7 +41,13 @@
     /* charts and tables in their own sideways-scrolling box (Sensitivity charts, inline overflow boxes) get the same cue when they overflow */
     vp.querySelectorAll('.bk-sx-svgwrap, div[style*="overflow-x:auto"]').forEach(function(t){ if(t.classList.contains('tbl-wrap')) return; var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc && !t.classList.contains('bk-xs')) t.classList.add('bk-xs'); if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); });
-    vp.querySelectorAll('.ae table.ae-grid').forEach(function(g){ var t = g.parentElement; if(!t || t.classList.contains('ae-panel')) return; var sc = t.scrollWidth > t.clientWidth + 2;
+    /* a card's table in a box that scrolls sideways (the pro forma on Property CF) gets the cue as well */
+    vp.querySelectorAll('.tbl-wrap').forEach(function(w){ var sc = w.scrollWidth > w.clientWidth + 2; if(sc !== w.classList.contains('bk-scrollable')) w.classList.toggle('bk-scrollable', sc); });
+    vp.querySelectorAll('.ae table.ae-grid').forEach(function(g){ var t = g.parentElement;
+      var own = g.scrollWidth > g.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(g).overflowX);
+      if(own || !t || t.classList.contains('ae-panel')){ /* the grid scrolls itself (phone editor grids): the cue goes on the grid */
+        if(own !== g.classList.contains('bk-scrollable')) g.classList.toggle('bk-scrollable', own); return; }
+      var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); }); }
   var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
   if(typeof window.bkDisplayPass==='function') window.bkDisplayPass(schedule);

@@ -12046,7 +12046,9 @@ extend('Debt','w2cDebtConsolidate', function(o){
   });
   var cap = dup.querySelector('caption');
   if(kept === 0){ dup.parentNode.removeChild(dup); }
-  else if(cap){ cap.textContent = 'Acquisition Loan Terms'; var hh=dup.querySelectorAll('thead th'); if(hh.length===3){ hh[0].textContent='Term'; hh[1].textContent='Amount ($)'; hh[2].textContent='Basis'; } }
+  else if(cap){ cap.textContent = 'Acquisition Loan Terms'; var hh=dup.querySelectorAll('thead th'); if(hh.length===3){ hh[0].textContent='Term'; hh[1].textContent='Value'; hh[2].textContent='Basis';
+    /* the dollar sign used to come from the "Amount ($)" header; a plain number in the value column (the monthly payment) now carries its own */
+    [].slice.call(dup.querySelectorAll('tbody tr')).forEach(function(tr){ var c = tr.children[1]; if(c && /^\(?[\d,]+(\.\d+)?\)?$/.test((c.textContent || '').trim())) c.textContent = '$' + c.textContent.trim(); }); } }
   o.main = root.innerHTML
     + note('&#9432;','<b>Sizing presentation consolidated.</b> The loan is sized once, on <b>Sizing Constraints - Which One Binds</b>, '
       + 'and its result is presented once, on <b>Resulting Capital Structure</b>. The rows that used to repeat that sizing a second time have '
@@ -16796,7 +16798,13 @@ html.bk-auth-ok body { background: #F4EFE3; }
     /* charts and tables in their own sideways-scrolling box (Sensitivity charts, inline overflow boxes) get the same cue when they overflow */
     vp.querySelectorAll('.bk-sx-svgwrap, div[style*="overflow-x:auto"]').forEach(function(t){ if(t.classList.contains('tbl-wrap')) return; var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc && !t.classList.contains('bk-xs')) t.classList.add('bk-xs'); if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); });
-    vp.querySelectorAll('.ae table.ae-grid').forEach(function(g){ var t = g.parentElement; if(!t || t.classList.contains('ae-panel')) return; var sc = t.scrollWidth > t.clientWidth + 2;
+    /* a card's table in a box that scrolls sideways (the pro forma on Property CF) gets the cue as well */
+    vp.querySelectorAll('.tbl-wrap').forEach(function(w){ var sc = w.scrollWidth > w.clientWidth + 2; if(sc !== w.classList.contains('bk-scrollable')) w.classList.toggle('bk-scrollable', sc); });
+    vp.querySelectorAll('.ae table.ae-grid').forEach(function(g){ var t = g.parentElement;
+      var own = g.scrollWidth > g.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(g).overflowX);
+      if(own || !t || t.classList.contains('ae-panel')){ /* the grid scrolls itself (phone editor grids): the cue goes on the grid */
+        if(own !== g.classList.contains('bk-scrollable')) g.classList.toggle('bk-scrollable', own); return; }
+      var sc = t.scrollWidth > t.clientWidth + 2;
       if(sc !== t.classList.contains('bk-scrollable')) t.classList.toggle('bk-scrollable', sc); }); }
   var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
   if(typeof window.bkDisplayPass==='function') window.bkDisplayPass(schedule);
@@ -17784,6 +17792,8 @@ try{
      Four different questions with four different numbers. They are reconciled to the cash flows they are made of and never forced to equal one another. */
   function capTables(F){
     var m = F.measures; if(!m) return '';
+    var lb = function(t){ return '<td class="rowlabel bk-wrap" data-bk-align="text">' + t + '</td>'; };
+    var wt = function(t){ return '<td class="bk-wrap" data-bk-align="text">' + t + '</td>'; };   /* long text columns wrap inside the card instead of widening the table past it */
     var M = function(v){ v = Math.round(Number(v) || 0); return (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US'); };   /* whole dollars, in the text as in the cells */
     var T = window.BK_CAPITAL_TERMS || {}, nm = function(k, d){ return (T[k] && T[k].name) || d; }, dev = !!F.dev;
     var ce = m.closingEquity, tc = m.totalContributedEquity, oc = m.operatingCashRequirement, tp = m.totalProjectCapitalization, cl = (typeof bkCapName === 'function' ? bkCapName('closingEquity', dev) : 'Closing equity'), ct = nm('totalContributedEquity', 'Total contributed equity'), co = nm('operatingCashRequirement', 'Operating cash requirement'), cp = nm('totalProjectCapitalization', 'Total project capitalization'), cu = nm('unfundedInterimCashRequirement', 'Unfunded interim cash requirement'), cc = nm('postClosingCapitalCalls', 'Post-closing capital calls'), ui = m.unfundedInterimCashRequirement || { amount:0 };
@@ -17794,41 +17804,41 @@ try{
     var who = function(lp, gp){ return CR.val(M(lp)) + CR.val(M(gp)); };
     /* 1. the four measures, each with the question it answers and what it reconciles to */
     var t1 = CR.table('Capital Measures - four different questions, four different numbers, and two disclosures', '<tr><th class="rowlabel-h">Measure</th><th class="v">Amount</th><th style="text-align:left">The question it answers</th><th style="text-align:left">What it reconciles to</th><th>Status</th></tr>',
-        '<tr>' + CR.lbl(cl) + CR.val(M(ce.amount)) + CR.txt(dev ? 'Equity required to initially fund the development: the equity in Sources &amp; Uses, called from the start through the funding schedule (' + mo(ce.from, ce.to) + (ce.month1 ? '; ' + M(ce.month1) + ' in month 1' : '') + ').' : 'Equity required at closing: price, closing costs, fees and any rate cap premium, less the loan.')
-          + CR.txt(dev ? 'The equity lines of Sources &amp; Uses, the funding engine\'s closing equity and the equity drawn in the returns cash flow.' : 'Total uses at closing less the acquisition loan.') + st(dev ? ['eqEngine', 'eqReturns'] : ['su']) + '</tr>'
-      + '<tr>' + CR.lbl(ct) + CR.val(M(tc.amount)) + CR.txt('All GP and LP capital actually contributed over the hold: ' + cl.toLowerCase() + ' plus every post-closing capital call.')
-          + CR.txt(M(ce.amount) + ' ' + cl.toLowerCase() + ' + ' + M(m.callsTotal) + ' ' + cc.toLowerCase() + '. The waterfall\'s LP ' + M(tc.lp) + ' + GP ' + M(tc.gp) + ' contributions.') + st(['capContrib', 'wfReturns']) + '</tr>'
-      + '<tr>' + CR.lbl(co) + CR.val(M(oc.amount)) + CR.txt('Net interim cash needed to fund operating shortfalls' + (dev ? ': the lease-up deficit the funding schedule carries, after later income offsets the early losses.' : ': the operating shortfalls called from the partners after closing (an acquisition has no funding schedule).'))
-          + CR.txt(dev ? M(oc.inFunding) + ' funded in Sources &amp; Uses (the net lease-up deficit). The ' + cu.toLowerCase() + ' is disclosed on its own below and is not added to it.' : M(oc.amount) + ' called from the partners after closing' + (oc.months ? ' (' + mo(oc.from, oc.to) + ')' : '') + '. Nothing is funded in Sources &amp; Uses.') + (dev ? st(['opFunding']) : '<td></td>') + '</tr>'
-      + (dev ? '<tr>' + CR.lbl(cu) + CR.val(M(ui.amount)) + CR.txt('Operating cash needed after closing, outside the funding schedule' + (ui.months ? ' (' + mo(ui.from, ui.to) + ')' : '') + ', before operating cash flow arrives. Disclosed beside the ' + co.toLowerCase() + ', never added to it.')
-          + CR.txt(M(ui.byPartners) + ' called from the partners' + (ui.byReserve > 0.5 ? ', ' + M(ui.byReserve) + ' from the operating reserve' : '') + (ui.nettedFromDistributions > 0.5 ? ', ' + M(ui.nettedFromDistributions) + ' netted against later distributions' : '') + '; peak cumulative deficit ' + M(ui.peakCumulative) + '.') + st(['capOperating']) + '</tr>' : '')
-      + '<tr>' + CR.lbl(cc) + CR.val(M(m.callsTotal)) + CR.txt('Capital called from the partners after closing: ' + (dev ? 'the takeout equity and the ' + cu.toLowerCase() + ' called.' : 'the refinance shortfall, balloon equity and operating shortfalls.') + ' Included in ' + ct.toLowerCase() + '.')
-          + CR.txt(M(ce.amount) + ' ' + cl.toLowerCase() + ' + ' + M(m.callsTotal) + ' = ' + M(tc.amount) + ' ' + ct.toLowerCase() + '.') + st(['capContrib']) + '</tr>'
-      + '<tr>' + CR.lbl(cp) + CR.val(M(tp.amount)) + CR.txt('All sources of capital over the investment life: the closing sources plus every post-closing capital call.')
-          + CR.txt(M(tp.closingSources) + ' closing sources + ' + M(tp.laterCalls) + ' ' + cc.toLowerCase() + ' = ' + M(tp.debt) + ' ' + (dev ? 'construction facility' : 'loan') + (tp.reserves > 0.5 ? ' + ' + M(tp.reserves) + ' reserves drawn' : '') + ' + ' + M(tp.contributedEquity) + ' ' + ct.toLowerCase() + '.') + st(['capTotal']) + '</tr>');
+        '<tr>' + lb(cl) + CR.val(M(ce.amount)) + wt(dev ? 'Equity required to initially fund the development: the equity in Sources &amp; Uses, called from the start through the funding schedule (' + mo(ce.from, ce.to) + (ce.month1 ? '; ' + M(ce.month1) + ' in month 1' : '') + ').' : 'Equity required at closing: price, closing costs, fees and any rate cap premium, less the loan.')
+          + wt(dev ? 'The equity lines of Sources &amp; Uses, the funding engine\'s closing equity and the equity drawn in the returns cash flow.' : 'Total uses at closing less the acquisition loan.') + st(dev ? ['eqEngine', 'eqReturns'] : ['su']) + '</tr>'
+      + '<tr>' + lb(ct) + CR.val(M(tc.amount)) + wt('All GP and LP capital actually contributed over the hold: ' + cl.toLowerCase() + ' plus every post-closing capital call.')
+          + wt(M(ce.amount) + ' ' + cl.toLowerCase() + ' + ' + M(m.callsTotal) + ' ' + cc.toLowerCase() + '. The waterfall\'s LP ' + M(tc.lp) + ' + GP ' + M(tc.gp) + ' contributions.') + st(['capContrib', 'wfReturns']) + '</tr>'
+      + '<tr>' + lb(co) + CR.val(M(oc.amount)) + wt('Net interim cash needed to fund operating shortfalls' + (dev ? ': the lease-up deficit the funding schedule carries, after later income offsets the early losses.' : ': the operating shortfalls called from the partners after closing (an acquisition has no funding schedule).'))
+          + wt(dev ? M(oc.inFunding) + ' funded in Sources &amp; Uses (the net lease-up deficit). The ' + cu.toLowerCase() + ' is disclosed on its own below and is not added to it.' : M(oc.amount) + ' called from the partners after closing' + (oc.months ? ' (' + mo(oc.from, oc.to) + ')' : '') + '. Nothing is funded in Sources &amp; Uses.') + (dev ? st(['opFunding']) : '<td></td>') + '</tr>'
+      + (dev ? '<tr>' + lb(cu) + CR.val(M(ui.amount)) + wt('Operating cash needed after closing, outside the funding schedule' + (ui.months ? ' (' + mo(ui.from, ui.to) + ')' : '') + ', before operating cash flow arrives. Disclosed beside the ' + co.toLowerCase() + ', never added to it.')
+          + wt(M(ui.byPartners) + ' called from the partners' + (ui.byReserve > 0.5 ? ', ' + M(ui.byReserve) + ' from the operating reserve' : '') + (ui.nettedFromDistributions > 0.5 ? ', ' + M(ui.nettedFromDistributions) + ' netted against later distributions' : '') + '; peak cumulative deficit ' + M(ui.peakCumulative) + '.') + st(['capOperating']) + '</tr>' : '')
+      + '<tr>' + lb(cc) + CR.val(M(m.callsTotal)) + wt('Capital called from the partners after closing: ' + (dev ? 'the takeout equity and the ' + cu.toLowerCase() + ' called.' : 'the refinance shortfall, balloon equity and operating shortfalls.') + ' Included in ' + ct.toLowerCase() + '.')
+          + wt(M(ce.amount) + ' ' + cl.toLowerCase() + ' + ' + M(m.callsTotal) + ' = ' + M(tc.amount) + ' ' + ct.toLowerCase() + '.') + st(['capContrib']) + '</tr>'
+      + '<tr>' + lb(cp) + CR.val(M(tp.amount)) + wt('All sources of capital over the investment life: the closing sources plus every post-closing capital call.')
+          + wt(M(tp.closingSources) + ' closing sources + ' + M(tp.laterCalls) + ' ' + cc.toLowerCase() + ' = ' + M(tp.debt) + ' ' + (dev ? 'construction facility' : 'loan') + (tp.reserves > 0.5 ? ' + ' + M(tp.reserves) + ' reserves drawn' : '') + ' + ' + M(tp.contributedEquity) + ' ' + ct.toLowerCase() + '.') + st(['capTotal']) + '</tr>');
     /* 2. when each dollar is needed and who supplies it */
-    var rows = '<tr>' + CR.lbl(dev ? 'Construction facility (draws + capitalized interest)' : 'Acquisition loan') + CR.val(M(F.loan)) + CR.txt(dev ? span('loanDraw') : mo(1, 1)) + CR.val('') + CR.val('') + CR.txt('Lender') + '</tr>';
-    if(dev && F.reserveDraws > 0.5) rows += '<tr>' + CR.lbl('Initial reserves drawn') + CR.val(M(F.reserveDraws)) + CR.txt(span('resLease') || span('resInt')) + CR.val('') + CR.val('') + CR.txt('Reserves funded at closing') + '</tr>';
-    rows += '<tr>' + CR.lbl(cl) + CR.val(M(ce.amount)) + CR.txt(mo(ce.from, ce.to)) + who(F.lpEquity, F.gpEquity) + CR.txt('Partners (LP and GP)') + '</tr>'
-          + '<tr class="grandtotal">' + CR.lbl('Closing sources (total sources in Sources &amp; Uses)') + CR.val(M(tp.closingSources)) + CR.txt('') + CR.val('') + CR.val('') + CR.txt('') + '</tr>';
+    var rows = '<tr>' + lb(dev ? 'Construction facility (draws + capitalized interest)' : 'Acquisition loan') + CR.val(M(F.loan)) + wt(dev ? span('loanDraw') : mo(1, 1)) + CR.val('') + CR.val('') + wt('Lender') + '</tr>';
+    if(dev && F.reserveDraws > 0.5) rows += '<tr>' + lb('Initial reserves drawn') + CR.val(M(F.reserveDraws)) + wt(span('resLease') || span('resInt')) + CR.val('') + CR.val('') + wt('Reserves funded at closing') + '</tr>';
+    rows += '<tr>' + lb(cl) + CR.val(M(ce.amount)) + wt(mo(ce.from, ce.to)) + who(F.lpEquity, F.gpEquity) + wt('Partners (LP and GP)') + '</tr>'
+          + '<tr class="grandtotal">' + lb('Closing sources (total sources in Sources &amp; Uses)') + CR.val(M(tp.closingSources)) + wt('') + CR.val('') + CR.val('') + wt('') + '</tr>';
     var lpC = 0, gpC = 0;
     (m.calls || []).forEach(function(c){ lpC += c.lp; gpC += c.gp;
       var note = c.kind === 'takeout' ? (F.takeoutShortfall > 1 ? 'The permanent loan ' + M(x.permLoan) + ' is short of the facility payoff ' + M(x.conPayoff) + ' plus the permanent fee ' + M(x.permFee) + '.' : '')
         : c.kind === 'operating' ? (dev ? 'Operating shortfall outside the funding schedule' + (ui.byReserve > 0.5 ? '; a further ' + M(ui.byReserve) + ' was covered by the operating reserve' : '') + (ui.nettedFromDistributions > 0.5 ? '; ' + M(ui.nettedFromDistributions) + ' more was netted against later distributions (an operating-reserve draw repaid from a month with surplus cash)' : '') + '.' : 'Operating and capital shortfalls after closing.')
         : c.kind === 'refinance' ? 'The refinance loan does not repay the old loan and its fee.' : c.kind === 'balloon' ? 'The loan matures without a refinance.' : '';
-      rows += '<tr>' + CR.lbl(c.name) + CR.val(M(c.amount)) + CR.txt(mo(c.from, c.to)) + who(c.lp, c.gp) + CR.txt('Partners (LP and GP)' + (note ? '. ' + note : '')) + '</tr>'; });
-    if(!(m.calls || []).length) rows += '<tr>' + CR.lbl(cc) + CR.val(M(0)) + CR.txt('None') + CR.val('') + CR.val('') + CR.txt('No capital is called after closing, so ' + cp.toLowerCase() + ' equals the closing sources.') + '</tr>';
-    else rows += '<tr class="grandtotal">' + CR.lbl(cc) + CR.val(M(m.callsTotal)) + CR.txt('') + who(lpC, gpC) + CR.txt('') + '</tr>';
-    rows += '<tr class="grandtotal">' + CR.lbl(cp.toUpperCase()) + CR.val(M(tp.amount)) + CR.txt('') + CR.val('') + CR.val('') + CR.txt('') + '</tr>'
-          + '<tr>' + CR.lbl('of which ' + ct.toLowerCase()) + CR.val(M(tc.amount)) + CR.txt(cl + ' plus the ' + cc.toLowerCase()) + who(tc.lp, tc.gp) + CR.txt('Included in the levered IRR, the equity multiple and the waterfall') + '</tr>';
+      rows += '<tr>' + lb(c.name) + CR.val(M(c.amount)) + wt(mo(c.from, c.to)) + who(c.lp, c.gp) + wt('Partners (LP and GP)' + (note ? '. ' + note : '')) + '</tr>'; });
+    if(!(m.calls || []).length) rows += '<tr>' + lb(cc) + CR.val(M(0)) + wt('None') + CR.val('') + CR.val('') + wt('No capital is called after closing, so ' + cp.toLowerCase() + ' equals the closing sources.') + '</tr>';
+    else rows += '<tr class="grandtotal">' + lb(cc) + CR.val(M(m.callsTotal)) + wt('') + who(lpC, gpC) + wt('') + '</tr>';
+    rows += '<tr class="grandtotal">' + lb(cp.toUpperCase()) + CR.val(M(tp.amount)) + wt('') + CR.val('') + CR.val('') + wt('') + '</tr>'
+          + '<tr>' + lb('of which ' + ct.toLowerCase()) + CR.val(M(tc.amount)) + wt(cl + ' plus the ' + cc.toLowerCase()) + who(tc.lp, tc.gp) + wt('Included in the levered IRR, the equity multiple and the waterfall') + '</tr>';
     var t2 = CR.table('Capitalization Over the Life of the Deal - when each dollar is needed and who supplies it', '<tr><th class="rowlabel-h">Source of capital</th><th class="v">Amount</th><th style="text-align:left">When</th><th class="v">LP</th><th class="v">GP</th><th style="text-align:left">Supplied by</th></tr>', rows);
     /* 3. the net view the funding schedule carries and the unfunded interim view the partners supply: two measures, never added */
     var t3 = '';
     if(dev && (oc.amount > 0.5 || oc.leaseUpMonths || ui.amount > 0.5)) t3 = CR.table(co + ' and the ' + cu.toLowerCase() + ' - the net view in the funding schedule and the interim view the partners supply', '<tr><th class="rowlabel-h">View</th><th class="v">Amount</th><th style="text-align:left">What it means</th></tr>',
-        '<tr>' + CR.lbl('Net lease-up deficit funded in Sources &amp; Uses') + CR.val(M(oc.inFunding)) + CR.txt('This is the ' + co.toLowerCase() + '. The lease-up result after later income offsets the early losses: the ' + oc.leaseUpMonths + ' lease-up months lose ' + M(-oc.leaseUpLoss) + ' and then earn ' + M(oc.leaseUpGain) + ' (net ' + (oc.leaseUpNet >= 0 ? '+' : '-') + M(Math.abs(oc.leaseUpNet)) + '). It is the deficit the funding schedule carries and it is not raised to the peak.') + '</tr>'
-      + '<tr>' + CR.lbl(cu) + CR.val(M(ui.amount)) + CR.txt('Disclosed beside the ' + co.toLowerCase() + ' and never added to it' + (ui.months ? ' (' + mo(ui.from, ui.to) + ')' : '') + ': cash the partners' + (ui.byReserve > 0.5 ? ' and the operating reserve' : '') + ' must supply as shortfalls fall, before operating cash flow arrives. It is outside Sources &amp; Uses: funding the peak there would change the timing and amount of contributed capital, and with it the returns and the waterfall. It is included in ' + ct.toLowerCase() + '.') + '</tr>'
-      + '<tr>' + CR.lbl('Funded by') + CR.val('') + CR.txt((ui.byReserve > 0.5 ? 'Operating reserve ' + M(ui.byReserve) + '; ' : '') + (ui.nettedFromDistributions > 0.5 ? 'Netted against later distributions ' + M(ui.nettedFromDistributions) + '; ' : '') + 'Partners ' + M(ui.byPartners) + ' (LP ' + M(ui.lp) + ', GP ' + M(ui.gp) + ').') + '</tr>'
-      + '<tr>' + CR.lbl('Peak cumulative operating cash deficit outside the funding schedule') + CR.val(M(ui.peakCumulative)) + CR.txt('The most cash outstanding at any month before later operating cash flow repays it.') + '</tr>');
+        '<tr>' + lb('Net lease-up deficit funded in Sources &amp; Uses') + CR.val(M(oc.inFunding)) + wt('This is the ' + co.toLowerCase() + '. The lease-up result after later income offsets the early losses: the ' + oc.leaseUpMonths + ' lease-up months lose ' + M(-oc.leaseUpLoss) + ' and then earn ' + M(oc.leaseUpGain) + ' (net ' + (oc.leaseUpNet >= 0 ? '+' : '-') + M(Math.abs(oc.leaseUpNet)) + '). It is the deficit the funding schedule carries and it is not raised to the peak.') + '</tr>'
+      + '<tr>' + lb(cu) + CR.val(M(ui.amount)) + wt('Disclosed beside the ' + co.toLowerCase() + ' and never added to it' + (ui.months ? ' (' + mo(ui.from, ui.to) + ')' : '') + ': cash the partners' + (ui.byReserve > 0.5 ? ' and the operating reserve' : '') + ' must supply as shortfalls fall, before operating cash flow arrives. It is outside Sources &amp; Uses: funding the peak there would change the timing and amount of contributed capital, and with it the returns and the waterfall. It is included in ' + ct.toLowerCase() + '.') + '</tr>'
+      + '<tr>' + lb('Funded by') + CR.val('') + wt((ui.byReserve > 0.5 ? 'Operating reserve ' + M(ui.byReserve) + '; ' : '') + (ui.nettedFromDistributions > 0.5 ? 'Netted against later distributions ' + M(ui.nettedFromDistributions) + '; ' : '') + 'Partners ' + M(ui.byPartners) + ' (LP ' + M(ui.lp) + ', GP ' + M(ui.gp) + ').') + '</tr>'
+      + '<tr>' + lb('Peak cumulative operating cash deficit outside the funding schedule') + CR.val(M(ui.peakCumulative)) + wt('The most cash outstanding at any month before later operating cash flow repays it.') + '</tr>');
     return t1 + t2 + t3;
   }
 
@@ -22944,7 +22954,7 @@ function build(s, oldMain){
   /* the tiles: which figures lead, and in what order, come from the analysis registry (src/139h); each is read from the same headline as the Deal Snapshot */
   var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
     yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Year-1 DSCR', X(h.dscr), 'policy min ' + X(mind), dscrOk, 'Debt']; },
-    loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ return ['Equity', M(h.equity), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };
+    loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ var tce = isFinite(h.tce) ? h.tce : h.equity; return [typeof window.bkCapName === 'function' ? window.bkCapName('totalContributedEquity') : 'Total contributed equity', M(tce), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };   /* the headline equity names its measure, as the bottom band and the Deal Snapshot do */
   var tileIds = safe(function(){ return window.BKReg.tiles(window.BKReg.of(s).id); }, null) || ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
   var kpis = can && h ? tileIds.filter(function(id){ return TILE[id]; }).map(function(id){ return TILE[id](); }) : [];
   var next;
@@ -27284,13 +27294,13 @@ html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-the
 }
 
 /* Visual QA: wide tables. One cue on every screen size: a "scroll sideways" line that stays put while the table moves, plus a shaded edge on whichever side still has columns hidden, so the last column is always reachable. */
-html body #viewport .tbl-wrap.bk-scrollable, html body #viewport table.rp-tbl.bk-scrollable, html body #viewport .ae div.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+html body #viewport .tbl-wrap.bk-scrollable, html body #viewport table.rp-tbl.bk-scrollable, html body #viewport .ae div.bk-scrollable, html body #viewport .ae table.ae-grid.bk-scrollable{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
   background:linear-gradient(to right,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 0 0/40px 100% no-repeat local,
              linear-gradient(to left,var(--ae-cell-ro) 30%,rgba(255,255,255,0)) 100% 0/40px 100% no-repeat local,
              linear-gradient(to right,rgba(14,42,74,.22),rgba(14,42,74,0)) 0 0/10px 100% no-repeat scroll,
              linear-gradient(to left,rgba(14,42,74,.22),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll,
              var(--ae-cell-ro) !important; }
-html body #viewport .tbl-wrap.bk-scrollable::before, html body #viewport table.rp-tbl.bk-scrollable::before, html body #viewport .ae div.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
+html body #viewport .tbl-wrap.bk-scrollable::before, html body #viewport table.rp-tbl.bk-scrollable::before, html body #viewport .ae div.bk-scrollable::before, html body #viewport .ae table.ae-grid.bk-scrollable::before{ content:'Scroll sideways for all columns \2192'; display:block; position:sticky; left:0; width:100%; box-sizing:border-box; text-align:right; padding:4px 10px; font:600 10px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; color:var(--ae-dim); background:var(--ae-cell-ro); border-bottom:1px solid var(--ae-line); z-index:3; }
 @media print{ html body #viewport .tbl-wrap.bk-scrollable::before{ display:none !important; } }
 
 /* Visual QA: empty-state kinds are visibly different (see emptyKinds in 162b). Zero stays a plain number. */
@@ -27318,6 +27328,18 @@ html body #viewport details.bk-conv-na > summary{ list-style:revert; }
 html body #viewport .pf-card{ padding:0 0 12px; }
 html body #viewport .pf-card > *{ margin-left:12px; margin-right:12px; }
 html body #viewport .pf-card > .t{ display:flex; align-items:center; margin:0 0 10px; padding:6px 10px; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border-bottom:1px solid var(--ae-line); color:var(--ae-ink); font:700 12.5px/1.3 Inter,"Segoe UI",system-ui,sans-serif; letter-spacing:.01em; text-transform:none; }
+
+/* Visual QA, phone: in a stacked row (table.fin.bk-m-stack) the column-width percentages of the wide layout (bk-tt2 / tt3 / tt4) do not apply. A value cell that holds a select took 22% of the row, so the control's text ran across the description beside it
+   (Depreciation > Tax-Grade settings). The cell now takes the room its control needs, up to the row, and the description wraps below it. */
+@media (max-width:760px){
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr > td:nth-child(n+2){ width:auto !important; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr > td:has(> select){ flex:0 1 auto; max-width:100%; }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack td select{ max-width:100%; }
+}
+
+/* Visual QA: a text column that is long (the questions a measure answers, what it reconciles to) wraps inside its card and keeps a readable measure, instead of making the table 2,000 px wide so the answer is off the screen. */
+html body #viewport table.fin td.bk-wrap{ white-space:normal !important; min-width:150px; max-width:420px; line-height:1.4; }
+
 </style>
 <script id="bk-design-unify">/* ONE DESIGN LANGUAGE, the parts CSS cannot do: each panel header (table caption, card head) and each top-nav tab gets the
    editor's letter icon, and the sidebar collapses to a strip of group letters (button in the rail, or the [ key; remembered). */
@@ -28888,7 +28910,7 @@ function ganttSheet(M, o){
   var colAlt = function(m){ var k = 0, acc = 0; for(var i = 0; i < yearRuns.length; i++){ acc += yearRuns[i].n; if(m <= acc) return yearRuns[i].alt; } return false; };
   var th = 'background:' + GX.head + ';color:' + GX.ink + ';font-weight:600;border:1px solid ' + GX.line + ';padding:3px 6px;font-size:11px;white-space:nowrap';
   /* the work breakdown: summary rows (indented tasks, a fold box, a WBS number) appear when the schedule has a summary task, and the percent-complete column once a percent has been entered (it is entered in the task table below); otherwise the sheet is as it was */
-  var RU = M.roll || { by:{}, any:false, total:{}, weigh:function(){ return { pct:null }; } }, hasWbs = !!M.hasWbs, showPct = !!RU.any, fold = foldGet(s), taskW = hasWbs ? 236 : 190, WB = '#e4e8ef';
+  var RU = M.roll || { by:{}, any:false, total:{}, weigh:function(){ return { pct:null }; } }, hasWbs = !!M.hasWbs, showPct = !!RU.any, fold = foldGet(s), taskW = hasWbs ? 300 : 256, WB = '#e4e8ef';
   var h = '<div class="bk-gx" style="overflow-x:auto;border:1px solid ' + GX.line + ';border-radius:4px;background:#fff;margin-top:8px"><table style="border-collapse:collapse;table-layout:fixed;width:100%;min-width:' + (496 + (hasWbs ? 46 : 0) + (hasCost ? 96 : 0) + (showPct ? 60 : 0) + N * 8) + 'px;font-size:12px;color:' + GX.ink + ';font-variant-numeric:tabular-nums"><colgroup><col style="width:36px"><col style="width:' + taskW + 'px"><col style="width:78px"><col style="width:78px"><col style="width:48px">' + (hasCost ? '<col style="width:96px">' : '') + '<col style="width:54px">' + (showPct ? '<col style="width:60px">' : '');
   for(var c = 1; c <= N; c++) h += '<col>';
   h += '</colgroup><thead><tr><th style="' + th + ';text-align:center" rowspan="2">#</th><th style="' + th + ';text-align:left" rowspan="2">Task</th><th style="' + th + ';text-align:right" rowspan="2">Start</th><th style="' + th + ';text-align:right" rowspan="2">End</th><th style="' + th + ';text-align:right" rowspan="2">Months</th>' + (hasCost ? '<th style="' + th + ';text-align:right" rowspan="2" title="The dollars of each budget line (Investment > Budget)">Cost</th>' : '') + '<th style="' + th + ';text-align:left" rowspan="2" title="Predecessor rows; +n / -n is a lag / overlap in months">Pred.</th>' + (showPct ? '<th style="' + th + ';text-align:right" rowspan="2" title="Percent complete. A summary task shows the roll-up of the tasks inside it, weighted by cost (by months where no cost is tied). For tracking only: it does not change the schedule, the draws or the returns.">% done</th>' : '');
@@ -32328,6 +32350,20 @@ html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk
 html body #viewport table.fin tbody tr.total > :first-child,
 html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > :first-child{ box-shadow:none !important; }
 html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-imp-rule) !important; }
+
+/* ---- phone: a stacked table (table.fin.bk-m-stack, one block per row) shows a key or total row as ONE band: ruled on the row, no fill (the same rules-not-fill choice), and no rule cutting between a label and its
+   figure. Before this the stacked rows still painted --bk-key-fill and every cell carried its own top and bottom rule, and the left bar sat on the first letter. ---- */
+@media (max-width:760px){
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.subtotal{
+    background:transparent !important; border-top:1px solid var(--bk-imp-rule); border-bottom:1px solid var(--bk-imp-rule); }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal,
+  html body #viewport table.fin.bk-m-stack.bk-m-stack tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"]{
+    background:transparent !important; border-top:1px solid var(--bk-key-rule); border-bottom:1px solid var(--bk-key-rule); box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+  html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.total > td, html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.subtotal > td,
+  html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.grandtotal > td, html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr[data-bk-emph="key"] > td,
+  html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.total > th, html body #viewport table.fin.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack.bk-m-stack tr.grandtotal > th{
+    border-top:0 !important; border-bottom:0 !important; box-shadow:none !important; padding-left:10px !important; }
+}
 
 /* print: the bands and their rules print as on screen */
 @media print{
