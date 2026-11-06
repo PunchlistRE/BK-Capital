@@ -36,6 +36,36 @@ window.BK_NAV = [
 ];
 /* display names (the keys stay) */
 window.BK_NAV_LABELS = { 'Benchmarks':'Deal Targets', 'Refinancing':'Refinance Analysis', 'Valuation Report':'Valuation and Return Summary', 'Property Valuation Report':'Property Value Report', 'Audit Report':'Input Audit Report' };
+/* PAGES FOLDED INTO ONE (2.1, about 50 visible pages). A family is one page with its views as tabs: the host is the page named in the menus, the others are views of it (a strip of view tabs under the title).
+   Presentation only: every view keeps its own sheet key and renderer (links, search, Print / PDF and the audit reach them as before); the menus, sub-tab row and counts show the host once. Each family stays inside one group. */
+window.BK_NAV_FOLD = {
+  'Property':             { label:'Section editor', views:[['Deal Underwrite', 'All inputs on one sheet']] },
+  'Import':               { label:'Read a document', views:[['Deal Documents', 'Documents'], ['Source Ingestion', 'Ingestion'], ['Source Data', 'Source data']] },
+  'Property CF':          { label:'Cash flow', views:[['Operating Underwrite', 'Operating underwrite']] },
+  'Development':          { label:'Budget', views:[['Dev Schedule', 'Schedule'], ['Dev Lease-Up', 'Lease-up'], ['Dev Draws', 'Draws']] },
+  'Debt':                 { label:'Loan', views:[['Debt Schedule', 'Schedule'], ['Covenant Monitor', 'Covenants']] },
+  'Refinancing':          { label:'Refinance at maturity', views:[['Refi / Recap', 'Refi / recap']] },
+  'Financing Lab':        { label:'Lab', views:[['Financing Compare', 'Compare']] },
+  'Equity Waterfall':     { label:'Annual', views:[['Waterfall (M)', 'Monthly']] },
+  'Investors':            { label:'Investors', views:[['Investor Schedules', 'Schedules'], ['Liquidity', 'Liquidity']] },
+  'Sensitivity':          { label:'Sensitivity', views:[['Probability-Weighted', 'Probability-weighted']] },
+  'Reverse Solve':        { label:'Reverse solve', views:[['Pre-Offer Bid', 'Pre-offer bid']] },
+  'Credit Policy':        { label:'Credit policy', views:[['Debt Capacity', 'Debt capacity']] },
+  'Valuation Report':     { label:'Return summary', views:[['Property Valuation Report', 'Property value'], ['Present Value Report', 'Present value']] },
+  'Tenant Report':        { label:'Tenants', views:[['Lease Schedule', 'Lease schedule'], ['Lease Audit Report', 'Lease audit']] },
+  'Portfolio':            { label:'Portfolio', views:[['Portfolio Dashboard', 'Dashboard'], ['Portfolio Rollup', 'Rollup']] },
+  'Portfolio CF':         { label:'Annual', views:[['Portfolio M', 'Monthly']] },
+  'Capital Allocation':   { label:'Allocation', views:[['Capital Calls', 'Capital calls']] },
+  'Equity Partners':      { label:'Partners', views:[['Investor Summary', 'Investor summary']] },
+  'Model Checks':         { label:'Checks', views:[['QA', 'QA']] },
+  'Data Export':          { label:'Export', views:[['Portfolio Import', 'Portfolio import']] },
+  'Deal Vectors (M)':     { label:'Vectors', views:[['Ledger (M)', 'Ledger'], ['Lease Cohort CF', 'Lease cohorts']] }
+};
+var FOLDED = {}; Object.keys(window.BK_NAV_FOLD).forEach(function(h){ window.BK_NAV_FOLD[h].views.forEach(function(v){ FOLDED[v[0]] = h; }); });
+window.BK_NAV_FOLDED = FOLDED;
+/* the pages a group lists in its menus: the folded views are reached from their host's tabs, not listed again; the host stands for its family */
+window.bkNavVisible = function(g){ return g.sheets.filter(function(n){ return !FOLDED[n]; }); };
+window.bkNavHostOf = function(n){ return FOLDED[n] || n; };
 var label = function(s){ return window.BK_NAV_LABELS[s] || s; };
 window.bkNavLabel = label;
 function slug(t){ return String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
@@ -68,12 +98,12 @@ function railBuild(){
   NAV_TABS.forEach(function(t){
     if(window.bkNavTabHidden(t, cur)) return;
     var gs = t.groups.map(function(id){ return GROUPS.filter(function(x){ return x.id === id; })[0]; }).filter(function(g){ return g && !g.hidden && groupShown(g, cur); });
-    var n = gs.reduce(function(a, g){ return a + g.sheets.length; }, 0); if(!n) return;
+    var n = gs.reduce(function(a, g){ return a + window.bkNavVisible(g).length; }, 0); if(!n) return;
     var wrap = document.createElement('div'); wrap.className = 'rail-group'; wrap.setAttribute('data-nav-tab', t.id);
     var lab = document.createElement('div'); lab.className = 'rail-group-label'; lab.innerHTML = '<span>' + t.label + '</span><span class="grp-tag">' + n + '</span>'; wrap.appendChild(lab);
     gs.forEach(function(g, gi){
       if(gs.length > 1){ var sub = document.createElement('div'); sub.className = 'rail-sub'; sub.textContent = g.label; wrap.appendChild(sub); }
-      g.sheets.forEach(function(s){ var item = document.createElement('div'); item.className = 'rail-item' + (cur === s ? ' active' : ''); item.style.setProperty('--gid-color', g.color); item.dataset.sheet = s;
+      window.bkNavVisible(g).forEach(function(s){ var item = document.createElement('div'); item.className = 'rail-item' + (cur === s || FOLDED[cur] === s ? ' active' : ''); item.style.setProperty('--gid-color', g.color); item.dataset.sheet = s;
         item.innerHTML = '<span class="dot"></span><span class="name">' + label(s) + '</span>'; item.addEventListener('click', function(){ showSheet(s); }); wrap.appendChild(item); }); });
     rail.appendChild(wrap); });
   var sg = GROUPS.filter(function(g){ return g.hidden; }); /* the SYS_ sheets stay hidden in both menus */
@@ -88,11 +118,20 @@ function decorate(){
   document.querySelectorAll('#viewport .rb-t[data-goto-sheet2]').forEach(function(b){ var k = b.getAttribute('data-goto-sheet2'); if(window.BK_NAV_LABELS[k]) b.textContent = label(k); });
   var cr = document.querySelector('#viewport .title-block .crumbs'); if(cr && t) cr.textContent = t.label;
   if(nm){ var h = document.querySelector('#viewport .title-block h2'); if(h) h.textContent = nm; var cu = document.querySelector('#viewport .tabnav .cur'); if(cu) cu.textContent = nm; }
+  viewStrip(cs);
   railBuild();
+}
+/* the view tabs under a folded page's title: the host first, then its views; the open one is marked */
+function viewStrip(cs){
+  document.querySelectorAll('#viewport .bk-views').forEach(function(e){ e.parentNode.removeChild(e); });
+  var host = FOLDED[cs] || (window.BK_NAV_FOLD[cs] ? cs : null); if(!host) return;
+  var fam = window.BK_NAV_FOLD[host], all = [[host, fam.label]].concat(fam.views).filter(function(v){ return RENDERERS[v[0]]; }); if(all.length < 2) return;
+  var html = '<div class="bk-views no-print" role="tablist" aria-label="Views of this page"><span class="bkv-l">View</span>' + all.map(function(v){ var on = v[0] === cs; return '<button type="button" role="tab" class="bkv-b' + (on ? ' on' : '') + '" aria-selected="' + (on ? 'true' : 'false') + '" data-goto-sheet2="' + v[0].replace(/"/g, '&quot;') + '">' + v[1] + '</button>'; }).join('') + '</div>';
+  var tb = document.querySelector('#viewport .title-block'); if(tb) tb.insertAdjacentHTML('afterend', html);
 }
 var prev = window.showSheet;
 if(typeof prev === 'function'){ window.showSheet = function(sheet){ var r = prev.apply(this, arguments); try { decorate(); } catch(e){} return r; }; try { showSheet = window.showSheet; } catch(e){} }
 var css = document.createElement('style'); css.id = 'bk-nav-css';
-css.textContent = '.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
+css.textContent = '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}.bk-views .bkv-b{font:600 12.5px Inter,system-ui,sans-serif;padding:6px 12px;border:1px solid var(--ae-line,#c9d1dc);border-radius:999px;background:var(--ae-card,#fff);color:var(--ae-ink,#163a62);cursor:pointer}.bk-views .bkv-b:hover{border-color:#3E9AE6}.bk-views .bkv-b.on{background:#163a62;border-color:#163a62;color:#fff}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
 document.head.appendChild(css);
 })();
