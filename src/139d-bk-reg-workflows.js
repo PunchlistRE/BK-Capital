@@ -20,9 +20,15 @@ var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume 
   [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
 
 R.addWorkflow('acquisition', [
-  S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf'), q('gla')]),
+  S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('propertyType'), q('acqStrategy'), q('units', 'required'), q('gsf'), q('gla')]),
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
   INCOME, EXPENSES,
+  /* deal-type paths: a step that only some deals walk (value-add, commercial space); the guide shows it when its test passes */
+  S('valueadd', 'Value-add programme', 'A renovation programme: how many units a year, the rent lost while a unit is down, the premium afterwards and the capex per unit. Other income by line (laundry, parking, pet, storage, RUBS) is the other usual source of upside.', 'Revenues',
+    [q('renoUnitsPerYear'), q('renoDownMonths'), q('renoPremium'), q('renoCapexPerUnit'), q('oiLaundry'), q('oiLateFees'), q('oiPetRent'), q('oiPetFees'), q('oiParking'), q('oiStorage'), q('oiRubsPct')],
+    { skippable:true, when:function(s){ return /value-add|opportunistic|redevelopment|lease-up/i.test(String(s.acqStrategy || '')) || Number(s.renoUnitsPerYear) > 0; } }),
+  S('commercial', 'Commercial space', 'Retail or office space in the building: its area and suites here; tenant by tenant rent, bumps, expiry and rollover on the Tenants page.', 'Tenants',
+    [q('commercialArea'), q('commercialUnits')], { skippable:true, when:function(s){ return Number(s.commercialArea) > 0 || Number(s.commercialUnits) > 0 || /mixed|retail|office|industrial/i.test(String(s.propertyType || '')); } }),
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
   S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Everything on this step is read from the model and shown for checking; nothing is entered here.', 'Sources & Uses', [], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
