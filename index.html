@@ -19573,7 +19573,7 @@ function ribbon(frame, sheet){
     + '<button type="button" class="rb-nav rb-prev" aria-hidden="true" tabindex="-1" title="Earlier pages">' + chev('M15 6l-6 6 6 6') + '</button>'
     + '<div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
     + '<button type="button" class="rb-nav rb-next" aria-hidden="true" tabindex="-1" title="More pages">' + chev('M9 6l6 6-6 6') + '</button></div>'
-    + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
+    + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + (window.bkPackHas && window.bkPackHas(sheet) ? cmd('doc', 'PDF summary', 'onclick="bkPackOpen(\'page\')"') : '') + (window.bkPackOpen ? cmd('doc', 'Full report', 'onclick="bkPackOpen(\'full\')"') : '') + '</div></div>';
   nav.insertAdjacentHTML('afterend', h);
   ribbonScroll(nav.nextElementSibling, sec);
 }
@@ -28310,7 +28310,7 @@ var CSS = '#bk-print-head,#bk-print-foot{display:none}table.bk-print-clone{displ
  + 'table.fin td:has(input),table.fin td:has(select){box-shadow:none !important;background:transparent !important}'
  + 'table.fin.bk-m-scroll,table.fin.bk-scrollable{display:table !important;overflow:visible !important}'
  + '#viewport [style*="overflow-x"]{overflow:visible !important}.rp-tbl{width:100% !important;min-width:0 !important;border-collapse:collapse !important}.rp-tbl th,.rp-tbl td{padding:3px 6px !important}.bk-print-fit th,.bk-print-fit td{padding:2px 3px !important;white-space:nowrap}.bk-print-fit th:first-child,.bk-print-fit td:first-child{white-space:normal;min-width:120px}'
- + 'table.bk-print-orig{display:none !important}table.bk-print-clone{display:table !important;margin-bottom:10px;break-inside:auto}table.rp-tbl tr{break-inside:avoid;page-break-inside:avoid}'
+ + 'table.fin.bk-print-orig,table.rp-tbl.bk-print-orig,table.bk-print-orig{display:none !important}table.bk-print-clone{display:table !important;margin-bottom:10px;break-inside:auto}table.rp-tbl tr{break-inside:avoid;page-break-inside:avoid}'
  + '.bk-print-wide table.fin{font-size:7pt !important}.bk-print-wide table.fin th,.bk-print-wide table.fin td{padding:2px 4px !important}'
  + 'svg{max-width:100%;height:auto;break-inside:avoid}'
  + 'a{color:inherit !important;text-decoration:none !important}'
@@ -28339,22 +28339,26 @@ function headHtml(){
     + '<div class="ph-sec">' + esc(m.title) + (m.crumb && m.crumb.toLowerCase() !== m.title.toLowerCase() ? ' <span style="font-weight:500;color:#566a80;letter-spacing:.06em"> · ' + esc(m.crumb) + '</span>' : '') + '</div>' + (m.desc ? '<div class="ph-desc">' + esc(m.desc) + '</div>' : '');
 }
 function wide(){ var t = [].slice.call(document.querySelectorAll('#viewport table.fin, #viewport table.rp-tbl')).filter(function(x){ return !x.classList.contains('bk-print-orig'); }), mx = 0; t.forEach(function(x){ var r = x.rows[0] ? x.rows[0].cells.length : 0; if(x.tHead && x.tHead.rows[0]) r = Math.max(r, x.tHead.rows[0].cells.length); mx = Math.max(mx, r); }); return mx; }
-/* A schedule with a column per year has to fit the page whatever the hold: up to 12 year columns it is set on one page (landscape from 9 columns), the type sized to the
-   column count; a longer hold is split into pages of 10 years, the label column repeated and the totals on the last. Nothing is clipped, nothing is dropped. */
-var YEARS_PER_PAGE = 10, PAGE_PX = { land:973, port:733 };
+/* A schedule with a column per year has to fit the portrait page whatever the hold: up to 8 year columns it is set on one page, the type sized to the column count; a longer hold is split into pages of 8 years,
+   the label column repeated and the totals on the last. Every PDF is portrait (8.5 x 11 in). Nothing is clipped, nothing is dropped. */
+var YEARS_PER_PAGE = 8, PAGE_PX = { land:973, port:733 };
 function headCells(t){ var rs = t.tHead ? [].slice.call(t.tHead.rows) : [], hr = rs.filter(function(r){ return [].some.call(r.cells, function(c){ return /^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent); }); })[0] || rs[0] || t.rows[0]; return hr ? [].slice.call(hr.cells) : []; }   /* the row that names the years (a Forecast band may sit above it) */
-function splitYears(t){
-  var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
-  if(yr.length <= 12 || t.classList.contains('bk-print-clone')) return;
-  var rest = hc.map(function(c, q){ return q; }).filter(function(q){ return q !== 0 && yr.indexOf(q) < 0; }), chunks = [];
-  for(var a = 0; a < yr.length; a += YEARS_PER_PAGE) chunks.push(yr.slice(a, a + YEARS_PER_PAGE));
+/* a table cut into column groups: each group keeps the label column (column 0), the original is hidden and the groups follow it, each with the same caption and header rows */
+function splitKeep(t, groups){
   var anchor = t;
-  chunks.forEach(function(ch, n){
-    var keep = [0].concat(ch).concat(n === chunks.length - 1 ? rest : []), c = t.cloneNode(true); c.removeAttribute('id'); c.classList.add('bk-print-clone');
+  groups.forEach(function(keep){
+    var c = t.cloneNode(true); c.removeAttribute('id'); c.classList.add('bk-print-clone');
     [].forEach.call(c.rows, function(r){ var cells = [].slice.call(r.cells), pos = 0, map = []; cells.forEach(function(cell){ map.push(pos); pos += cell.colSpan || 1; });
       cells.forEach(function(cell, q){ var cs = cell.colSpan || 1; if(cs > 1){ var inside = keep.filter(function(k){ return k >= map[q] && k < map[q] + cs; }).length; if(inside) cell.colSpan = inside; else cell.remove(); } else if(keep.indexOf(map[q]) < 0) cell.remove(); }); });
     anchor.parentNode.insertBefore(c, anchor.nextSibling); anchor = c; });
   t.classList.add('bk-print-orig');
+}
+function splitYears(t){
+  var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
+  if(yr.length <= YEARS_PER_PAGE || t.classList.contains('bk-print-clone')) return;
+  var rest = hc.map(function(c, q){ return q; }).filter(function(q){ return q !== 0 && yr.indexOf(q) < 0; }), chunks = [];
+  for(var a = 0; a < yr.length; a += YEARS_PER_PAGE) chunks.push(yr.slice(a, a + YEARS_PER_PAGE));
+  splitKeep(t, chunks.map(function(ch, n){ return [0].concat(ch).concat(n === chunks.length - 1 ? rest : []); }));
 }
 function fitTables(land){
   var px = land ? PAGE_PX.land : PAGE_PX.port;
@@ -28365,6 +28369,8 @@ function fitTables(land){
 }
 function unfit(){ [].forEach.call(document.querySelectorAll('table.bk-print-clone'), function(c){ c.remove(); }); [].forEach.call(document.querySelectorAll('table.bk-print-orig'), function(t){ t.classList.remove('bk-print-orig'); });
   [].forEach.call(document.querySelectorAll('table.bk-print-fit'), function(t){ t.classList.remove('bk-print-fit'); t.style.removeProperty('font-size'); }); }
+/* the print rules and the year-splitter, shared with the report pack (src/195), which lays the same rules on pages of its own */
+window.BK_PRINT_RULES = CSS.slice(CSS.indexOf('@media print{') + 13, CSS.length - 1); window.bkPrintSplitYears = splitYears; window.bkPrintSplitCols = splitKeep;
 var pageStyle = null;
 function prepare(){
   if(document.documentElement.classList.contains('bk-sr-open')) return;   /* the schedule summary prints its own pages */
@@ -28373,7 +28379,7 @@ function prepare(){
   var head = document.createElement('div'); head.id = 'bk-print-head'; head.innerHTML = headHtml(); fr.insertBefore(head, fr.firstChild);
   var s = safe(function(){ return bkLoad(); }, {}) || {}, foot = document.createElement('div'); foot.id = 'bk-print-foot'; foot.textContent = 'Punchlist Capital · Beta · ' + (s.name || '') + ' · figures from the underwriting model; check against your own'; document.body.appendChild(foot);
   [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl'), splitYears);
-  var w = wide(), land = w >= 9; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land);
+  var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land);
   pageStyle = document.createElement('style'); pageStyle.id = 'bk-print-page'; pageStyle.textContent = '@page{size:letter ' + (land ? 'landscape' : 'portrait') + ';margin:12mm 11mm 14mm}'; document.head.appendChild(pageStyle);
   document.querySelectorAll('input[type=text],input[type=number],input:not([type])').forEach(function(i){ if(i.value !== i.getAttribute('value')) i.setAttribute('value', i.value); });
 }
@@ -32318,6 +32324,286 @@ if(typeof prev === 'function'){ window.showSheet = function(sheet){ var r = prev
 var css = document.createElement('style'); css.id = 'bk-nav-css';
 css.textContent = '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}.bk-views .bkv-b{font:600 12.5px Inter,system-ui,sans-serif;padding:6px 12px;border:1px solid var(--ae-line,#c9d1dc);border-radius:999px;background:var(--ae-card,#fff);color:var(--ae-ink,#163a62);cursor:pointer}.bk-views .bkv-b:hover{border-color:#3E9AE6}.bk-views .bkv-b.on{background:#163a62;border-color:#163a62;color:#fff}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
 document.head.appendChild(css);
+})();
+</script>
+<script id="bk-report-pack">/* PDF SUMMARIES AND THE FULL PROPERTY REPORT (2.2). One shell, three scopes: the open page, the open tab (its summary page and each of its pages), or the whole property.
+   Nothing is calculated here. Each summary is the page itself as it renders on screen (its title and key-figure strip, then its own tables and panels), taken after every display pass has run, with the
+   application chrome and the controls removed (a control shows the value it holds), then laid out on letter pages, portrait, 8.5 x 11 in. A summary is at most two pages; if the page is longer, the
+   summary says so and the page's own Print / PDF has all of it. The full report is: cover, contents with page numbers, the executive summary (the Overview), then each tab's summary page followed by the
+   summaries of its pages in the order of the menus. Pages that do not apply to the deal (a development page on an acquisition, a page with nothing on it) are left out; the portfolio and the import and
+   admin tools are not part of a property's report. Every page has the deal, the case and the date in its footer. Tables that are wider than the page are set smaller and, past eight years, split by years
+   with the labels repeated (the same rules as Print / PDF, src/167). Presentation only. */
+(function(){
+'use strict';
+if(typeof NAV_TABS === 'undefined' || typeof GROUPS === 'undefined' || typeof showSheet !== 'function' || typeof bkLoad !== 'function' || !window.BK_NAV_FOLD) return;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function T(e){ return e ? String(e.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function label(s){ return window.bkNavLabel ? window.bkNavLabel(s) : s; }
+function cur(){ return safe(function(){ return currentSheet; }, ''); }
+var XHTML = 'http://www.w3.org/1999/xhtml';
+
+/* tools and admin pages: no summary, not in the report (reading a document, cloud sync, export, the monthly detail vectors) */
+var NO_SUMMARY = { 'Import':1, 'Deal Documents':1, 'Source Ingestion':1, 'Source Data':1, 'Data Export':1, 'Portfolio Import':1, 'Cloud Sync':1, 'Storage Lifecycle':1, 'Version History':1, 'Deal Vectors (M)':1, 'Ledger (M)':1 };
+var NOT_IN_PROPERTY = { portfolio:1 };   /* the portfolio is across deals: its pages have summaries, the property report leaves them out */
+
+function groupOfSheet(s){ return GROUPS.filter(function(g){ return !g.hidden && g.sheets.indexOf(s) > -1; })[0]; }
+function tabOfSheet(s){ var g = groupOfSheet(s); if(!g) return null; return NAV_TABS.filter(function(t){ return t.groups.indexOf(g.id) > -1; })[0] || null; }
+/* does this page have a PDF summary? Not on a hidden SYS_ sheet, a tool, or a page that does not apply to this deal (a development page on an acquisition, the Business tab without a business) */
+window.bkPackHas = function(sheet){
+  if(!sheet || /^SYS_/.test(sheet) || NO_SUMMARY[sheet] || typeof RENDERERS[sheet] !== 'function') return false;
+  var g = groupOfSheet(sheet); if(!g) return false; var t = tabOfSheet(sheet);
+  if(t && window.bkNavTabHidden && window.bkNavTabHidden(t, '')) return false;
+  if(window.bkNavGroupShown && !window.bkNavGroupShown(g, '')) return false;
+  return true;
+};
+/* a tab's pages in menu order, each host followed by its views */
+function tabPages(t){
+  var out = [], seen = {};
+  t.groups.forEach(function(id){ var g = GROUPS.filter(function(x){ return x.id === id; })[0]; if(!g || g.hidden || (window.bkNavGroupShown && !window.bkNavGroupShown(g, ''))) return;
+    g.sheets.forEach(function(s){ var h = window.bkNavHostOf ? window.bkNavHostOf(s) : s; if(seen[h]) return; seen[h] = 1;
+      var fam = window.BK_NAV_FOLD[h], list = [h].concat(fam ? fam.views.map(function(v){ return v[0]; }) : []);
+      list.forEach(function(n){ if(window.bkPackHas(n)) out.push({ sheet:n, group:g.label, view:n !== h }); }); }); });
+  return out;
+}
+
+/* the sections of a report */
+function plan(scope, here){
+  var secs = [], tabs = NAV_TABS.filter(function(t){ return !(window.bkNavTabHidden && window.bkNavTabHidden(t, '')); });
+  if(scope === 'page') return [{ kind:'page', id:'p-' + here, sheet:here, max:2 }];
+  if(scope === 'tab'){ var t = tabOfSheet(here); if(!t) return [{ kind:'page', id:'p-' + here, sheet:here, max:2 }];
+    var pg = tabPages(t); secs.push({ kind:'tab', id:'t-' + t.id, tab:t, pages:pg, max:2 });
+    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:2 }); }); return secs; }
+  secs.push({ kind:'cover', id:'cover' }, { kind:'toc', id:'toc', max:3 });
+  secs.push({ kind:'page', id:'p-Home', sheet:'Home', exec:true, tab:tabOfSheet('Home'), max:1 });
+  tabs.forEach(function(t){ if(t.id === 'overview' || NOT_IN_PROPERTY[t.id]) return; var pg = tabPages(t); if(!pg.length) return;
+    secs.push({ kind:'tab', id:'t-' + t.id, tab:t, pages:pg, max:2 });
+    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:2 }); }); });
+  return secs;
+}
+
+/* take the open page as it stands: its title, its key-figure strip, its own panels and tables; no chrome, controls as text */
+var DROP = '.bk-flow,.bk-stepnav,.bk-case,.side-col,.bk-dui,.pf-bar,.rp-bar,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,.bk-pt-bar,.ae-tabs,.bk-sg,.bk-views,.bk-pack-cta,script,style,noscript,[hidden]';
+function harvest(){
+  var fr = document.querySelector('#viewport .sheet-frame'), main = fr && fr.querySelector('.main-col'); if(!main) return null;
+  var tb = fr.querySelector('.title-block'), meta = [];
+  if(tb) [].forEach.call(tb.querySelectorAll('.meta-strip .cell'), function(c){ var k = T(c.querySelector('.k')), v = T(c.querySelector('.v')); if(k && v) meta.push([k, v]); });
+  var live = [].slice.call(main.querySelectorAll('input,select,textarea')), m = main.cloneNode(true), copy = [].slice.call(m.querySelectorAll('input,select,textarea'));
+  /* a control shows the value it holds (a clone does not keep what was typed, so read it from the live page) */
+  live.forEach(function(l, i){ var c = copy[i]; if(!c || !c.parentNode) return; var tag = c.tagName, ty = (l.type || '').toLowerCase(), txt = '';
+    if(tag === 'SELECT'){ var o = l.options && l.options[l.selectedIndex]; txt = o ? o.text : ''; }
+    else if(ty === 'checkbox' || ty === 'radio'){ if(!l.checked){ c.remove(); return; } txt = '✓'; }
+    else if(ty === 'hidden' || ty === 'file' || ty === 'range' || ty === 'button' || ty === 'submit'){ c.remove(); return; }
+    else txt = l.value;
+    var sp = document.createElement('span'); sp.className = 'pk-v'; sp.textContent = String(txt == null ? '' : txt).trim(); c.replaceWith(sp); });
+  /* panel tabs: name each panel before the bar of tab buttons goes */
+  var bar = m.querySelector('.bk-pt-bar'), names = bar ? [].map.call(bar.querySelectorAll('.ae-tab, [role=tab], button'), function(b){ return T(b); }) : [], panes = [].slice.call(m.querySelectorAll('.bk-pt-pane'));
+  if(names.length && names.length === panes.length) panes.forEach(function(p, i){ if(!names[i]) return; var h = document.createElement('div'); h.className = 'pk-pane'; h.textContent = names[i]; p.insertBefore(h, p.firstChild); });
+  [].forEach.call(m.querySelectorAll(DROP), function(e){ if(e.parentNode) e.parentNode.removeChild(e); });
+  var text = T(m);
+  if(text.length < 60 && !m.querySelector('table,svg')) return null;   /* nothing on the page: it does not apply yet */
+  return { crumb:T(tb && tb.querySelector('.crumbs')), title:T(tb && tb.querySelector('h2')), desc:T(tb && tb.querySelector('p, .desc')), meta:meta, node:m };
+}
+
+/* ---------- the report document ---------- */
+var NAVY = '#0e2a4a', BLUE = '#3E9AE6';
+var PACK_CSS = '@page{size:8.5in 11in;margin:0}'
+ + 'html,body{height:auto !important;min-height:0 !important;overflow:visible !important;background:#c9d6e2 !important;margin:0 !important;padding:0 !important;display:block !important;font:11px/1.4 Inter,"Helvetica Neue",Arial,sans-serif;color:' + NAVY + '}'
+ + '.pg{position:relative;width:8.5in;height:11in;margin:0 auto 16px;background:#fff;overflow:hidden;break-after:page;page-break-after:always;box-shadow:0 6px 30px rgba(0,0,0,.25);box-sizing:border-box}'
+ + '@media print{html,body{background:#fff !important}.pg{margin:0;box-shadow:none}}'
+ + '.pg-head{position:absolute;left:.55in;right:.55in;top:.36in;height:.36in;border-bottom:2px solid ' + NAVY + ';display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:5px;font:700 9px/1.2 Inter,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:' + NAVY + '}.pg-head .r{color:' + BLUE + '}'
+ + '.pg-body{position:absolute;left:.55in;right:.55in;top:.86in;height:9.5in;overflow:hidden}'
+ + '.pg-foot{position:absolute;left:.55in;right:.55in;bottom:.28in;display:flex;justify-content:space-between;gap:10px;border-top:1px solid #c5ced7;padding-top:4px;font:500 8px/1.3 Inter,Arial,sans-serif;color:#566a80}.pg-foot .pf-note{color:#a05a00;font-weight:600;text-align:center;flex:1}'
+ + '.pg.cover{background:linear-gradient(160deg,#081a30 0%,' + NAVY + ' 55%,#12609f 100%);color:#fff}.pk-cover{position:absolute;inset:0;padding:.8in .8in;display:flex;flex-direction:column}'
+ + '.pk-cover .lg{display:flex;align-items:center;gap:14px}.pk-cover .lg svg{width:58px;height:54px}.pk-cover .lg b{display:block;font:800 24px/1 Inter,Arial,sans-serif;letter-spacing:.01em}.pk-cover .lg span{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#B9C8D8}'
+ + '.pk-cover .ph{margin-top:.5in;height:3.1in;border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06)}.pk-cover .ph img{width:100%;height:100%;object-fit:cover;display:block}'
+ + '.pk-cover h1{font:800 32px/1.1 Inter,Arial,sans-serif;margin:.4in 0 6px}.pk-cover .sub{font-size:14px;color:#B9C8D8}.pk-cover .kv{margin-top:.35in;display:grid;grid-template-columns:repeat(3,1fr);gap:14px 18px;border-top:2px solid ' + BLUE + ';padding-top:14px}.pk-cover .kv i{display:block;font-style:normal;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#8fb4d8}.pk-cover .kv b{display:block;font-size:14px;margin-top:2px}'
+ + '.pk-cover .note{margin-top:auto;font-size:9.5px;color:#9db6d0;line-height:1.5}'
+ + '.pk-sec{margin:0 0 10px;padding:0 0 8px;border-bottom:1px solid #d5dce3}.pk-crumb{font:700 9px/1.2 Inter,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:' + BLUE + '}.pk-sec h2{font:800 19px/1.15 Inter,Arial,sans-serif;margin:3px 0 2px;color:' + NAVY + '}.pk-sec p{margin:0;color:#566a80;font-size:10px}'
+ + '.pk-meta{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px;border:1px solid #b8c2cc;border-width:1px 0 0 1px}.pk-meta div{padding:4px 7px;border:1px solid #d5dce3;border-width:0 1px 1px 0}.pk-meta i{display:block;font-style:normal;font:600 7.5px/1.2 Inter,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#566a80}.pk-meta b{display:block;font:700 10.5px/1.25 Inter,Arial,sans-serif;color:' + NAVY + '}'
+ + '.pk-cont{font:700 9px/1.2 Inter,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#566a80;margin:0 0 8px}'
+ + '.pk-pane{font:700 11px/1.2 Inter,Arial,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:' + NAVY + ';margin:12px 0 5px;padding-left:7px;border-left:3px solid ' + BLUE + '}'
+ + '.pk-v{font-weight:600}.pk-tight th,.pk-tight td{padding:2px 3px !important}'
+ + '.pg-body .tbl-wrap{overflow:visible !important}.pg-body table{max-width:100%}.bk-pt-pane.bk-pt-hide{display:block !important}.pg-body svg{max-width:100%;height:auto}'
+ + 'table.pk-toc{width:100%;border-collapse:collapse;font-size:11px}table.pk-toc td{padding:3px 4px;border-bottom:1px dotted #c5ced7}table.pk-toc td.n{text-align:right;width:44px;font-weight:700;color:' + NAVY + '}table.pk-toc tr.t td{font-weight:800;color:' + NAVY + ';padding-top:10px;border-bottom:1px solid ' + BLUE + '}table.pk-toc tr.p td:first-child{padding-left:16px}table.pk-toc tr.v td:first-child{padding-left:30px;color:#566a80}'
+ + 'table.pk-tab{width:100%;border-collapse:collapse;font-size:10px}table.pk-tab th{background:' + NAVY + ';color:#fff;text-align:left;padding:5px 7px;font-weight:700}table.pk-tab td{padding:5px 7px;border-bottom:1px solid #d5dce3;vertical-align:top}table.pk-tab td.g{color:#566a80;white-space:nowrap}'
+ + '#pk-stage{position:absolute;left:-9999px;top:0;width:7.4in;visibility:hidden}';
+
+function dealInfo(){ var s = safe(function(){ return bkLoad(); }, {}) || {}; return { s:s, name:String(s.name || 'Untitled deal'), id:String(s.dealId || ''), kase:String(s.scenarioCase || 'Base'), date:new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) }; }
+function secHead(sec, data){
+  var tabL = sec.tab ? sec.tab.label : '', crumb = sec.exec ? 'Overview' : [tabL, sec.group].filter(Boolean).join(' · ');
+  var title = sec.exec ? 'Executive summary' : label(sec.sheet), metas = (data.meta || []).slice(0, 8);
+  return '<div class="pk-sec"><div class="pk-crumb">' + esc(crumb || data.crumb || '') + '</div><h2>' + esc(title) + '</h2>' + (data.desc ? '<p>' + esc(data.desc) + '</p>' : '')
+    + (metas.length ? '<div class="pk-meta">' + metas.map(function(c){ return '<div><i>' + esc(c[0]) + '</i><b>' + esc(c[1]) + '</b></div>'; }).join('') + '</div>' : '') + '</div>';
+}
+function tabNode(sec, byId){
+  var rows = sec.pages.map(function(p){ var d = byId['p-' + p.sheet], k = d ? d.meta.filter(function(c){ return !/^(property|case|type|currency)$/i.test(c[0]); }).slice(0, 4).map(function(c){ return esc(c[0]) + ': <b>' + esc(c[1]) + '</b>'; }).join(' · ') : '';
+    return d === undefined ? '' : '<tr><td><b>' + esc(label(p.sheet)) + '</b></td><td class="g">' + esc(p.group) + '</td><td>' + (k || '<span style="color:#8a98a8">—</span>') + '</td></tr>'; }).join('');
+  var q = (window.BK_NAV.filter(function(x){ return x.id === sec.tab.id; })[0] || {}).q || '';
+  var w = document.createElement('div'); w.className = 'pk-page';
+  w.innerHTML = '<div class="pk-sec"><div class="pk-crumb">Tab summary</div><h2>' + esc(sec.tab.label) + '</h2>' + (q ? '<p>' + esc(q) + '</p>' : '') + '</div>'
+    + '<table class="pk-tab"><thead><tr><th>Page</th><th>Section</th><th>Key figures</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  return w;
+}
+function coverHtml(info, photo){
+  var logo = safe(function(){ var g = document.querySelector('.brand-mark .glyph svg'); return g ? g.outerHTML.replace(/id="(pl[a-z]+\d)"/g, 'id="c$1"').replace(/url\(#(pl[a-z]+\d)\)/g, 'url(#c$1)') : ''; }, ''), s = info.s;
+  var kv = [['Asset class', s.propertyType], ['Deal type', s.dealType], ['Case', info.kase], ['Deal ID', info.id], ['Prepared', info.date], ['Status', s.status]].filter(function(x){ return x[1]; });
+  return '<div class="pk-cover"><div class="lg">' + logo + '<div><b>Punchlist Capital</b><span>Real Estate Investments</span></div></div>'
+    + (photo ? '<div class="ph"><img alt="" src="' + esc(photo) + '"></div>' : '<div style="height:1.2in"></div>') + '<h1>' + esc(info.name) + '</h1><div class="sub">' + esc(s.location || '') + '</div>'
+    + '<div class="kv">' + kv.map(function(x){ return '<div><i>' + esc(x[0]) + '</i><b>' + esc(x[1]) + '</b></div>'; }).join('') + '</div>'
+    + '<div class="note">Full property report. Every figure is taken from the page it comes from in the underwriting model, in the ' + esc(info.kase) + ' case; nothing is recalculated for this document. Beta: check the figures against your own model before relying on them.</div></div>';
+}
+
+/* lay the sections on letter pages: blocks are kept whole when they fit, split by rows (headers repeated) when they do not */
+function paginate(doc, secs, info){
+  var out = doc.getElementById('pk-out'), stage = doc.getElementById('pk-stage-in'), S = { pg:null, body:null, root:null, chain:[], count:0, sec:null, secPages:0, stop:false, placed:0 }, starts = {}, all = [];
+  function mk(tag, cls){ var e = doc.createElement(tag); if(cls) e.className = cls; return e; }
+  var BLOCK = { DIV:1, SECTION:1, ARTICLE:1, MAIN:1, TABLE:1, TBODY:1, TFOOT:1, UL:1, OL:1 };
+  function shellOf(src){ var s = src.cloneNode(false); if(src.tagName === 'TABLE') [].forEach.call(src.children, function(c){ if(/^(CAPTION|THEAD|COLGROUP)$/.test(c.tagName)) s.appendChild(c.cloneNode(true)); }); return s; }
+  function kidsOf(n){
+    if(n.nodeType !== 1 || n.namespaceURI !== XHTML || !BLOCK[n.tagName]) return null;
+    if(n.tagName === 'TABLE'){ var k = [].filter.call(n.children, function(c){ return !/^(CAPTION|THEAD|COLGROUP)$/.test(c.tagName); }); return k.length ? k : null; }
+    var ks = [].filter.call(n.childNodes, function(c){ return c.nodeType === 1 || (c.nodeType === 3 && c.textContent.trim()); }); return ks.length > 1 || (ks.length === 1 && ks[0].nodeType === 1) ? ks : null;
+  }
+  function hasContent(shell){ return shell.tagName === 'TABLE' ? !!shell.querySelector('tbody tr, tfoot tr') : (shell.textContent.trim().length > 0 || !!shell.querySelector('svg,img,canvas')); }
+  function newPage(bare){
+    var pg = mk('div', 'pg' + (bare ? ' cover' : '')); S.count++; all.push(pg); out.appendChild(pg); S.pg = pg; S.placed = 0;
+    if(bare){ S.body = pg; S.root = pg; return pg; }
+    var hd = mk('div', 'pg-head'); hd.innerHTML = '<span>' + esc(info.name) + '</span><span class="r">' + esc(S.sec ? S.sec.headRight || '' : '') + '</span>'; pg.appendChild(hd);
+    var body = mk('div', 'pg-body'); pg.appendChild(body); var ft = mk('div', 'pg-foot'); ft.innerHTML = '<span>Punchlist Capital · Beta · ' + esc(info.id || info.name) + ' · ' + esc(info.kase) + ' case</span><span class="pf-note"></span><span>' + esc(info.date) + ' · <span class="pn"></span></span>'; pg.appendChild(ft);
+    var v = mk('div'); v.id = 'viewport'; var f = mk('div', 'sheet-frame active'), m = mk('div', 'main-col'); body.appendChild(v); v.appendChild(f); f.appendChild(m); S.body = body; S.root = m;
+    var parent = m; S.chain.forEach(function(c){ c.el = shellOf(c.src); parent.appendChild(c.el); parent = c.el; });
+    return pg;
+  }
+  function nextPage(){
+    if(S.secPages >= (S.sec.max || 2)){ S.stop = true; var n = S.pg && S.pg.querySelector('.pf-note'); if(n) n.textContent = 'Summary: the page itself has more (Print / PDF on the page)'; return false; }
+    S.secPages++; newPage(false);
+    var c = mk('div', 'pk-cont'); c.textContent = S.sec.headRight + ' (continued)'; S.root.insertBefore(c, S.root.firstChild); return true;
+  }
+  function fits(){ return S.body.scrollHeight <= S.body.clientHeight + 1; }
+  function cont(d){ return d === 0 ? S.root : S.chain[d - 1].el; }
+  function place(node, depth){
+    if(S.stop) return;
+    var c = cont(depth); c.appendChild(node);
+    if(fits()){ S.placed++; return; }
+    var h = node.nodeType === 1 ? node.offsetHeight : 0; c.removeChild(node);
+    /* a block that would fit on a fresh page and is not long (half a page or less) goes whole to the next page */
+    if(S.placed > 0 && h > 0 && h <= S.body.clientHeight * 0.5){ if(!nextPage()) return; place(node, depth); return; }
+    var kids = kidsOf(node);
+    if(kids){
+      var shell = shellOf(node), entry = { src:node, el:shell }; c.appendChild(shell); S.chain.push(entry);
+      kids.forEach(function(k){ place(k, depth + 1); });
+      S.chain.pop(); if(shell.parentNode && !hasContent(shell)) shell.parentNode.removeChild(shell);
+      return;
+    }
+    if(S.placed === 0){ c.appendChild(node); S.placed++; return; }   /* taller than a page and not splittable: what fits is shown */
+    if(!nextPage()) return; place(node, depth);
+  }
+  function prepTables(node){
+    stage.appendChild(node);
+    [].slice.call(node.querySelectorAll('table')).forEach(function(t){ if(typeof window.bkPrintSplitYears === 'function' && !t.classList.contains('bk-print-clone')) safe(function(){ window.bkPrintSplitYears(t); }); });
+    var W = stage.clientWidth, wid = function(t){ return t.getBoundingClientRect().width; };
+    [].slice.call(node.querySelectorAll('table')).forEach(function(t){ if(t.classList.contains('bk-print-orig')) return; var fs = 8.6;
+      while(wid(t) > W + 1 && fs > 7.4){ fs -= 0.4; t.style.setProperty('font-size', fs.toFixed(1) + 'pt', 'important'); }
+      if(wid(t) <= W + 1) return;
+      /* still wider than the page: cut it into column groups, the label column repeated in each (the same way a long hold is cut into years) */
+      var row = [].filter.call(t.rows, function(r){ return r.parentNode.tagName !== 'THEAD' && [].every.call(r.cells, function(c){ return (c.colSpan || 1) === 1; }); }).sort(function(a, b){ return b.cells.length - a.cells.length; })[0], groups = [];
+      if(row && row.cells.length > 2 && typeof window.bkPrintSplitCols === 'function'){
+        var ws = [].map.call(row.cells, function(c){ return c.getBoundingClientRect().width; }), cur = [0], sum = ws[0];
+        for(var i = 1; i < ws.length; i++){ if(sum + ws[i] > W && cur.length > 1){ groups.push(cur); cur = [0]; sum = ws[0]; } cur.push(i); sum += ws[i]; } groups.push(cur); }
+      if(groups.length > 1 && groups.length <= 5){ safe(function(){ window.bkPrintSplitCols(t, groups); });
+        [].slice.call(t.parentNode.querySelectorAll('table.bk-print-clone')).forEach(function(c){ var f = 8.6; while(wid(c) > W + 1 && f > 6.4){ f -= 0.4; c.style.setProperty('font-size', f.toFixed(1) + 'pt', 'important'); c.classList.add('pk-tight'); } }); return; }
+      /* a table that cannot be cut: set it smaller, not below half size */
+      for(var k = 0; k < 3 && wid(t) > W + 1; k++){ var z = parseFloat(t.style.zoom) || 1; t.style.zoom = Math.max(0.5, z * W / wid(t) - 0.005).toFixed(3); } });
+    stage.removeChild(node);
+  }
+  secs.forEach(function(sec){
+    if(sec.kind === 'cover'){ var cp = newPage(true); cp.innerHTML = sec.html; starts[sec.id] = S.count; return; }
+    S.sec = sec; S.secPages = 1; S.stop = false; S.chain = []; newPage(false); starts[sec.id] = S.count;
+    var node = doc.importNode(sec.node, true); prepTables(node); place(node, 0);
+  });
+  all.forEach(function(pg, i){ var pn = pg.querySelector('.pn'); if(pn) pn.textContent = 'Page ' + (i + 1) + ' of ' + all.length; });
+  [].forEach.call(doc.querySelectorAll('[data-pg]'), function(e){ e.textContent = starts[e.getAttribute('data-pg')] || ''; });
+  return all.length;
+}
+function tocNode(secs){
+  var rows = [];
+  secs.forEach(function(s){ if(s.kind === 'tab') rows.push('<tr class="t"><td>' + esc(s.tab.label) + ' — tab summary</td><td class="n" data-pg="' + s.id + '"></td></tr>');
+    else if(s.kind === 'page'){ var v = window.bkNavHostOf && window.bkNavHostOf(s.sheet) !== s.sheet; rows.push('<tr class="' + (v ? 'v' : 'p') + '"><td>' + esc(s.exec ? 'Executive summary' : label(s.sheet)) + '</td><td class="n" data-pg="' + s.id + '"></td></tr>'); } });
+  var w = document.createElement('div'); w.className = 'pk-page';
+  w.innerHTML = '<div class="pk-sec"><div class="pk-crumb">Full property report</div><h2>Contents</h2></div><table class="pk-toc"><tbody>' + rows.join('') + '</tbody></table>';
+  return w;
+}
+
+/* ---------- opening it ---------- */
+var busy = false;
+function modal(msg){ if(typeof window.bkModal === 'function') window.bkModal('<h3 style="margin:0 0 8px">PDF summary</h3><p>' + msg + '</p>'); else alert(msg); }
+function progress(){ var e = document.getElementById('pl-pack-prog'); if(e) return e;
+  e = document.createElement('div'); e.id = 'pl-pack-prog'; e.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(8,26,48,.94);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:Inter,system-ui,sans-serif';
+  e.innerHTML = '<b style="font-size:15px;letter-spacing:.06em">BUILDING THE REPORT</b><span id="pl-pack-prog-t" style="font-size:12px;color:#B9C8D8">Reading the pages…</span><button type="button" id="pl-pack-cancel" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:7px 18px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer">Cancel</button>';
+  document.body.appendChild(e); return e; }
+window.bkPackClose = function(){ ['pl-pack', 'pl-pack-prog'].forEach(function(id){ var e = document.getElementById(id); if(e) e.remove(); }); document.documentElement.style.overflow = ''; };
+window.bkPackPrint = function(){ var f = document.getElementById('pl-pack-frame'); if(f && f.contentWindow){ f.contentWindow.focus(); f.contentWindow.print(); } };
+window.bkPackOpen = function(scope){
+  if(busy) return; scope = scope || 'page';
+  var s = safe(function(){ return bkLoad(); }, null);
+  if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())){ modal('Open or create a deal first.'); return; }
+  var here = cur(); if(scope === 'page' && !window.bkPackHas(here)){ modal('This page has no PDF summary.'); return; }
+  busy = true; var canceled = false, secs = plan(scope, here), info = dealInfo(), data = {}, byId = {};
+  window.bkPackClose(); var prog = progress(), pt = document.getElementById('pl-pack-prog-t'); document.getElementById('pl-pack-cancel').onclick = function(){ canceled = true; };
+  var work = secs.filter(function(x){ return x.kind === 'page'; }), scroll = window.scrollY || 0;
+  (async function(){
+    try {
+      for(var i = 0; i < work.length && !canceled; i++){
+        var sec = work[i]; pt.textContent = 'Reading page ' + (i + 1) + ' of ' + work.length + ': ' + label(sec.sheet);
+        if(sec.sheet !== cur()){ safe(function(){ showSheet(sec.sheet); }); await sleep(360); }
+        var d = safe(harvest, null); if(d){ data[sec.id] = d; byId[sec.id] = d; }
+      }
+    } finally { if(cur() !== here) safe(function(){ showSheet(here); }); window.scrollTo(0, scroll); }
+    if(canceled){ busy = false; window.bkPackClose(); return; }
+    /* the sections that apply, in order */
+    var keep = [];
+    secs.forEach(function(sec){
+      if(sec.kind === 'page'){ var d = data[sec.id]; if(!d) return; sec.headRight = sec.exec ? 'Executive summary' : label(sec.sheet);
+        var w = document.createElement('div'); w.className = 'pk-page'; w.innerHTML = secHead(sec, d); w.appendChild(d.node); sec.node = w; keep.push(sec); }
+      else if(sec.kind === 'tab'){ sec.pages = sec.pages.filter(function(p){ return byId['p-' + p.sheet]; }); if(!sec.pages.length) return; sec.headRight = sec.tab.label + ' · tab summary'; sec.node = tabNode(sec, byId); keep.push(sec); }
+      else if(sec.kind === 'cover'){ sec.html = coverHtml(info, safe(function(){ return window.bkDealPhotoURL(); }, '')); keep.push(sec); }
+      else if(sec.kind === 'toc'){ keep.push(sec); } });
+    keep.forEach(function(sec){ if(sec.kind === 'toc'){ sec.headRight = 'Contents'; sec.node = tocNode(keep); } });
+    if(!keep.some(function(x){ return x.kind === 'page'; })){ busy = false; window.bkPackClose(); modal('There is nothing to summarize on ' + (scope === 'page' ? 'this page' : 'these pages') + ' yet. Enter the deal’s figures first.'); return; }
+    pt.textContent = 'Laying out the pages…';
+    var css = [].map.call(document.querySelectorAll('style'), function(x){ return x.textContent; }).join('\n'), links = [].map.call(document.querySelectorAll('link[rel=stylesheet]'), function(l){ return '<link rel="stylesheet" href="' + esc(l.href) + '">'; }).join('');
+    var title = (scope === 'full' ? 'Full property report' : scope === 'tab' ? 'Tab summary' : 'PDF summary'), name = info.name;
+    var html = '<!doctype html><html lang="en" data-theme="light" class="bk-auth-ok"><head><meta charset="utf-8"><title>' + esc(name + ' — ' + title) + '</title>' + links + '<style>' + css + '</style><style>' + (window.BK_PRINT_RULES || '') + PACK_CSS + '</style></head><body><div id="pk-stage"><div id="viewport"><div class="sheet-frame active"><div class="main-col" id="pk-stage-in"></div></div></div></div><div id="pk-out"></div></body></html>';
+    var o = document.createElement('div'); o.id = 'pl-pack'; o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#081a30;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif';
+    var seg = function(k, t, off){ return '<button type="button" ' + (off ? 'disabled style="opacity:.4" ' : '') + 'onclick="bkPackOpen(\'' + k + '\')" style="border-radius:999px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;padding:6px 13px;border:1px solid rgba(255,255,255,.4);background:' + (scope === k ? '#fff' : 'transparent') + ';color:' + (scope === k ? '#0e2a4a' : '#fff') + '">' + t + '</button>'; };
+    o.innerHTML = '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;padding:10px 16px;background:#0e2a4a;border-bottom:2px solid #3E9AE6;color:#fff"><b style="font-size:13px;letter-spacing:.06em">' + esc(title.toUpperCase()) + '</b><span id="pl-pack-n" style="font-size:12px;color:#B9C8D8">' + esc(name) + '</span>'
+      + '<span style="display:inline-flex;gap:6px;margin-left:8px">' + seg('page', 'This page', !window.bkPackHas(here)) + seg('tab', 'This tab') + seg('full', 'Full report') + '</span><span style="flex:1"></span>'
+      + '<button type="button" onclick="bkPackPrint()" style="background:#3E9AE6;color:#fff;border:0;border-radius:999px;font:700 12px Inter,system-ui,sans-serif;padding:8px 16px;cursor:pointer;letter-spacing:.04em">PRINT / SAVE PDF</button>'
+      + '<button type="button" onclick="bkPackClose()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;font:600 12px Inter,system-ui,sans-serif;padding:7px 14px;cursor:pointer">Close</button></div>'
+      + '<div style="flex:1;overflow:auto;background:#c9d6e2"><iframe id="pl-pack-frame" title="' + esc(title) + ' preview" style="border:0;width:8.5in;display:block;margin:0 auto;background:#c9d6e2;height:11in"></iframe></div>';
+    document.body.appendChild(o); document.documentElement.style.overflow = 'hidden'; prog.remove();
+    var f = document.getElementById('pl-pack-frame');
+    f.addEventListener('load', function(){
+      var doc = f.contentDocument, run = function(){ try {
+          var n = paginate(doc, keep, info); f.style.height = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight) + 'px';
+          var el = document.getElementById('pl-pack-n'); if(el) el.textContent = name + ' · ' + n + ' page' + (n === 1 ? '' : 's');
+          var w = f.parentNode.clientWidth, sc = Math.min(1, (w - 24) / 816); if(sc < 1){ f.style.zoom = sc; } } catch(e){ var el2 = document.getElementById('pl-pack-n'); if(el2) el2.textContent = 'The report could not be laid out: ' + (e && e.message || e); } };
+      (doc.fonts && doc.fonts.ready ? Promise.race([doc.fonts.ready, sleep(1500)]) : Promise.resolve()).then(run, run); });
+    f.srcdoc = html; busy = false;
+  })().catch(function(e){ busy = false; window.bkPackClose(); modal('The report could not be built: ' + esc(e && e.message || e)); });
+};
+
+/* the button on every Reports page: Compile full property report */
+var prev = window.showSheet;
+if(typeof prev === 'function'){ window.showSheet = function(sheet){ var r = prev.apply(this, arguments); try { cta(); } catch(e){} return r; }; try { showSheet = window.showSheet; } catch(e){} }
+function cta(){
+  var c = cur(), t = tabOfSheet(c); document.querySelectorAll('#viewport .bk-pack-cta').forEach(function(e){ e.remove(); });
+  if(!t || t.id !== 'reports') return; var tb = document.querySelector('#viewport .title-block'); if(!tb) return;
+  tb.insertAdjacentHTML('afterend', '<div class="bk-pack-cta no-print" style="display:flex;justify-content:flex-end;padding:0 22px 10px"><button type="button" class="bk-btn" onclick="bkPackOpen(\'full\')" title="Cover, contents, executive summary, then every tab and page in the order of the menus">Compile full property report</button></div>');
+}
+var css = document.createElement('style'); css.id = 'bk-pack-css'; css.textContent = '@media print{.bk-pack-cta,#pl-pack,#pl-pack-prog{display:none !important}}'; document.head.appendChild(css);
 })();
 </script>
 <script id="bk-field-widths">/* FIELD WIDTHS. One width per kind of value box, on every page: every percent box is as wide as every other percent box, every dollar amount as wide as every other dollar amount (inputs, choices and calculated read-only values alike), text as text. A page that draws its own boxes gets the same treatment because the kind is read from the box itself: the handler that saves it, the unit written beside it, the heading above it, the value in it.
