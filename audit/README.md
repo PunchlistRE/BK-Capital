@@ -280,7 +280,8 @@ Three fills, three jobs, never swapped. Defined once at the top of `src/162a-bk-
 | Role | Colour | Used for | Never on |
 |---|---|---|---|
 | **Header** | blue-grey (`--ae-head`, `--ae-head2`) | Names things: panel title bars, column-heading rows, section-divider rows | A row that carries a value |
-| **Key** | gold (`--bk-key-fill`, rule `--bk-key-rule` on the left edge) | The answer: grand totals and headline metrics (IRR, multiple, DSCR, NOI, loan, price) | A heading, caption or divider |
+| **Key** | deeper blue (`--bk-key-fill` #CFE0F4, navy rules above and below across the whole row, `--bk-key-rule` on the left edge; gold until November 2026) | The answer: grand totals and headline metrics (NOI, Cash Flow Available for Distribution, Proceeds from Sale, IRR, present value) | A heading, caption or divider |
+| **Important** | light blue (`--bk-imp-fill` #EBF3FC, rules above and below across the whole row) | Intermediate totals (Effective Gross Revenue, Cash Flow Before and After Debt Service, Total Sources / Uses; any non-grand total) | A heading, caption or divider |
 | **Sub** | light neutral tint (`--bk-fill-sub`) | A subtotal inside a table: quieter than Key, different from Header | Headings |
 
 Everything else takes no fill: cells are plain, calculated cells use the editor's read-only tint, inputs are boxed fields. Status chips keep their own pass / warn / fail colours.

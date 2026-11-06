@@ -35,6 +35,7 @@
     // Currency display standard: whole dollars workbook-wide. Never mutate form controls/state.
     vp.querySelectorAll('td,th,span,div').forEach(function(el){
       if(el.children.length || el.closest('input,select,textarea') || el.matches('input,select,textarea') || bkIsEditing(el)) return;
+      if(el.closest('table.rp-tbl')) return;   /* a report prints its own decimals (rent per SF to the cent, per-GSF cash flow); the whole-dollar rule is for the workbook's other tables */
       var v=money0(el.textContent);
       if(v!==null && v!==el.textContent.trim()) el.textContent=v;
     });
