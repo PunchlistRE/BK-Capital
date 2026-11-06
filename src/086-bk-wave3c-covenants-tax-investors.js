@@ -189,7 +189,7 @@ window.bkCovenantMonthlyT12 = function(){
   for(var i=0;i<n;i++){
     var m = i+1;
     var t12noi = 0, t12ds = 0, have = Math.min(12, i+1);
-    for(var k=i-have+1;k<=i;k++){ t12noi += (mo[k] ? mo[k].noi : 0); t12ds += (dm[k] ? dm[k].payment : 0); }
+    for(var k=i-have+1;k<=i;k++){ t12noi += (mo[k] ? bkLenderNoi(mo[k], s) : 0); t12ds += (dm[k] ? dm[k].payment : 0); }
     var bal = dm[i] ? dm[i].balance : 0;
     var dscr = t12ds > 0 ? t12noi/t12ds : NaN;
     var dy = bal > 0 ? t12noi/bal : NaN;

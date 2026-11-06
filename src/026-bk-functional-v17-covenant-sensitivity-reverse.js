@@ -30,16 +30,17 @@ RENDERERS['Covenant Monitor'] = function(){
   const minDSCR = Number(s.acqDSCR)||0, minDY = Number(s.minDebtYield)||0;
   const rows = u.arr.map((a,i)=>{
     const ds = d.annual[i] || {payment:0, ending:d.debtAtSale};
-    const dscr = ds.payment ? a.after/ds.payment : Infinity;
-    const dy = ds.ending ? a.after/ds.ending : Infinity;
+    const ln = bkLenderNoi(a, s);   /* the NOI the lender tests use (the deal's basis), as the loan sizing */
+    const dscr = ds.payment ? ln/ds.payment : Infinity;
+    const dy = ds.ending ? ln/ds.ending : Infinity;
     const dscrPass = dscr>=minDSCR-0.0001, dyPass = dy>=minDY-0.0001;
-    return {y:a.y, noi:a.after, ds:ds.payment, ending:ds.ending, dscr, dy, dscrPass, dyPass};
+    return {y:a.y, noi:ln, ds:ds.payment, ending:ds.ending, dscr, dy, dscrPass, dyPass};
   });
   const heads = rows.map(r=>`<th>Year ${r.y}</th>`).join('');
   const cell = (r,ok)=>`<td class="${ok?'':'fail-cell'}">${ok?'<span class="status-chip pass">PASS</span>':'<span class="status-chip fail">FAIL</span>'}</td>`;
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - DSCR &amp; Debt Yield, tested annually against the acquisition loan</caption>
     <thead><tr><th class="rowlabel-h">Line Item</th>${heads}</tr></thead><tbody>
-    <tr><td class="rowlabel">NOI After Reserves</td>${rows.map(r=>`<td>${money(r.noi)}</td>`).join('')}</tr>
+    <tr><td class="rowlabel">${bkNoiBasisLabel('dscr', s).replace(/\b[a-z]/g, c => c.toUpperCase())} (lender basis)</td>${rows.map(r=>`<td>${money(r.noi)}</td>`).join('')}</tr>
     <tr><td class="rowlabel">Annual Debt Service</td>${rows.map(r=>`<td>${money(-r.ds)}</td>`).join('')}</tr>
     <tr><td class="rowlabel">Ending Loan Balance</td>${rows.map(r=>`<td>${money(r.ending)}</td>`).join('')}</tr>
     <tr class="grandtotal"><td class="rowlabel">DSCR (min ${minDSCR.toFixed(2)}x)</td>${rows.map(r=>`<td>${isFinite(r.dscr)?r.dscr.toFixed(2)+'x':'-'}</td>`).join('')}</tr>

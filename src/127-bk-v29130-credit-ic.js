@@ -110,7 +110,7 @@ function annualDS(rate, years, loan){ return loan > 0 ? bkPmt(rate / 12, Math.ro
 function debtCapacity(){
   var s = bkLoad(), p = policy(), u = bkAnnualCF(), d = bkDebt();
   if(isDev(s) || !(d.loan > 0)) return null;
-  var noi = u.arr[0].after, stab = (u.arr[Math.min(2, u.arr.length - 1)] || u.arr[0]).after;
+  var noi = bkLenderNoi(u.arr[0]), stab = bkLenderNoi(u.arr[Math.min(2, u.arr.length - 1)] || u.arr[0]);   /* the lender NOI (the deal's basis), as the loan sizing */
   var coupon = d.coupon, years = Number(s.acqAmort) || 30, stressed = coupon + p.stressBps / 10000;
   var value = d.ltvValue, cost = d.basis, req = d.loan;
   var rows = [

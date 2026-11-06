@@ -28,7 +28,9 @@ const A = require(path.join(__dirname, 'deal.js'));
   const rt = await p.evaluate(async () => { showSheet('Returns'); await new Promise(r => setTimeout(r, 700)); return document.querySelector('#viewport .bk-sg').innerText; });
   check('Returns: the check quotes the engine\'s levered IRR (4.20%) against the 12.00% policy target and says how far below', rt.includes((mr.irr * 100).toFixed(2) + '%') && /12\.00%/.test(rt) && /below/.test(rt), (mr.irr * 100).toFixed(2));
   const dt = await p.evaluate(async () => { showSheet('Debt Capacity'); await new Promise(r => setTimeout(r, 900)); return document.querySelector('#viewport .bk-sg').innerText; });
-  check('Debt Capacity: it flags the loan above house capacity by the calculated amount', /above capacity/.test(dt) && /\$11,272,955/.test(dt), dt.replace(/\s+/g, ' ').slice(dt.indexOf('CHECKS'), dt.indexOf('CHECKS') + 160));
+  /* owner's decision 5 (November 2026): house capacity is tested on the deal's lender NOI (here before reserves, as the loan sizing). It was $11,272,955 on NOI after reserves; the capacity is
+     DSCR-bound, so it moves by exactly the NOI ratio: 11,272,955 x 1,306,349 / 1,270,349 is about 11,592,415 (the old figure was itself rounded) */
+  check('Debt Capacity: it flags the loan above house capacity by the calculated amount', /above capacity/.test(dt) && /\$11,592,415/.test(dt), dt.replace(/\s+/g, ' ').slice(dt.indexOf('CHECKS'), dt.indexOf('CHECKS') + 160));
   const dbt = await p.evaluate(async () => { showSheet('Debt'); await new Promise(r => setTimeout(r, 700)); return document.querySelector('#viewport .bk-sg').innerText; });
   check('Debt: it reports the loan, the binding constraint and the DSCR against the policy minimum', /\$13,427,000/.test(dbt) && /DSCR/.test(dbt) && /1\.25x/.test(dbt));
   const lay = await p.evaluate(async () => { showSheet('Debt'); await new Promise(r => setTimeout(r, 700)); const g = document.querySelector('#viewport .bk-sg'), li = [...g.querySelectorAll('.bk-sg-c li')], b = g.querySelector('.bk-sg-badge'); const cols = getComputedStyle(g.querySelector('.bk-sg-grid')).gridTemplateColumns.split(' ').length;

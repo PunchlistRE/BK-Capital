@@ -23,7 +23,7 @@ function build(){
       var ds = sum(rows.map(function(r){ return r.ds; })), fee = sum(rows.map(function(r){ return r.assetFee; })), noi = a.noi, res = -(L.reserves || 0) || sum(rows.map(function(r){ return r.reserve; })), eqin = sum(rows.map(function(r){ return r.eqDraw; }));
       var cf = sum(rows.map(function(r){ return r.cf; })), op = noi - res - ds - fee, events = cf - op + eqin;
       Y.push({ y:k + 1, gpr:(L.gprGross || 0) + (L.commGross || 0), vac:(L.resVac || 0) + (L.commVac || 0) - (L.commFree || 0) - (L.commCredit || 0), bad:(L.bad || 0) + (L.commCredit || 0), ltl:(L.ltl || 0) + (L.concess || 0) + (L.commFree || 0), other:L.other || 0, egi:a.egi,
-        taxes:L.taxes || 0, ins:L.insurance || 0, ctrl:L.ctrlOpex || 0, mgmt:L.mgmt || 0, opex:-a.expenses, noi:noi, res:-res, noiAfter:a.after, ds:-ds, fee:-fee, cfads:op, dscr:ds ? a.after / ds : null, eqin:eqin, cf:cf, events:events, coc:null });
+        taxes:L.taxes || 0, ins:L.insurance || 0, ctrl:L.ctrlOpex || 0, mgmt:L.mgmt || 0, opex:-a.expenses, noi:noi, res:-res, noiAfter:a.after, dscrNoi:bkLenderNoi(a, s), ds:-ds, fee:-fee, cfads:op, dscr:ds ? bkLenderNoi(a, s) / ds : null, eqin:eqin, cf:cf, events:events, coc:null });
     }
     var eq = (Number(d.equity) || sum(Y.map(function(r){ return r.eqin; }))) + (Number(s.rateCapCost) || 0);   /* closing equity: the rate cap premium is paid at closing as equity */
     Y.forEach(function(r){ r.coc = eq ? r.cfads / eq : null; });
@@ -42,21 +42,21 @@ function yl(y){ return chartW() < 600 ? 'Y' + y : 'Year ' + y; }
 function svgOpen(w, h, label){ return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(label) + '" style="width:100%;height:auto;display:block;overflow:visible">'; }
 function niceMax(v){ if(!(v > 0)) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
 function axisLbl(v){ var a = Math.abs(v); var t = a >= 1e6 ? (a / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : a >= 1e3 ? Math.round(a / 1e3) + 'K' : String(Math.round(a)); return (v < 0 ? '-' : '') + '$' + t; }
-/* NOI after reserves (bars) against debt service (line), with the coverage ratio under each year */
+/* the NOI the lender tests use (bars: the deal's lender basis, bkLenderNoi) against debt service (line), with the coverage ratio under each year on that same NOI */
 function chartCoverage(D){
-  var W = chartW(), Hh = 250, L = 52, R = 14, T = 16, B = 46, n = D.Y.length, mx = niceMax(Math.max.apply(null, D.Y.map(function(r){ return Math.max(r.noiAfter, -r.ds); })) * 1.08), bw = (W - L - R) / n, bh = Hh - T - B, g = '';
+  var W = chartW(), Hh = 250, L = 52, R = 14, T = 16, B = 46, n = D.Y.length, mx = niceMax(Math.max.apply(null, D.Y.map(function(r){ return Math.max(r.dscrNoi, -r.ds); })) * 1.08), bw = (W - L - R) / n, bh = Hh - T - B, g = '';
   var Yp = function(v){ return T + bh - v / mx * bh; };
   for(var t = 0; t <= 4; t++){ var v = mx * t / 4, y = Yp(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="' + COL.grid + '"/><text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">' + axisLbl(v) + '</text>'; }
   var pts = [];
   var k = every(bw);
-  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.46, bx = x + (bw - w) / 2, top = Yp(r.noiAfter), ok = r.dscr == null || r.dscr >= (D.pol.minDSCR || 1.25), lab = i === n - 1 || (i % k === 0 && n - 1 - i >= k);   /* the first year, every k-th, and the last; never two side by side */
-    g += '<rect x="' + bx + '" y="' + top + '" width="' + w + '" height="' + (T + bh - top) + '" rx="3" fill="' + COL.navy + '" opacity=".92"><title>Year ' + r.y + ': NOI after reserves ' + M(r.noiAfter) + '</title></rect>';
-    if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (top - 6) + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">' + axisLbl(r.noiAfter) + '</text>';
+  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.46, bx = x + (bw - w) / 2, top = Yp(r.dscrNoi), ok = r.dscr == null || r.dscr >= (D.pol.minDSCR || 1.25), lab = i === n - 1 || (i % k === 0 && n - 1 - i >= k);   /* the first year, every k-th, and the last; never two side by side */
+    g += '<rect x="' + bx + '" y="' + top + '" width="' + w + '" height="' + (T + bh - top) + '" rx="3" fill="' + COL.navy + '" opacity=".92"><title>Year ' + r.y + ': ' + bkNoiBasisLabel('dscr') + ' ' + M(r.dscrNoi) + '</title></rect>';
+    if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (top - 6) + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">' + axisLbl(r.dscrNoi) + '</text>';
     if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 26) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".75">' + yl(r.y) + '</text>';
     if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 9) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">' + X(r.dscr) + '</text>'; pts.push([bx + w / 2, Yp(-r.ds)]); });
   if(pts.length > 1) g += '<polyline points="' + pts.map(function(p){ return p[0] + ',' + p[1]; }).join(' ') + '" fill="none" stroke="' + COL.gold + '" stroke-width="2.5"/>';
   pts.forEach(function(p){ g += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4.5" fill="' + COL.gold + '" stroke="#fff" stroke-width="1.5"/>'; });
-  return svgOpen(W, Hh, 'NOI after reserves against debt service by year') + g + '</svg>';
+  return svgOpen(W, Hh, bkNoiBasisLabel('dscr') + ' against debt service by year') + g + '</svg>';
 }
 /* equity cash flow by year (negative at close, then distributions and sale) with the running total */
 function chartCash(D){
@@ -149,7 +149,7 @@ function statement(D){
     + sec('Operating expenses') + row('Real estate taxes', 'taxes') + row('Insurance', 'ins') + row('Operating costs (repairs, payroll, utilities, other)', 'ctrl') + row('Management fee', 'mgmt') + row('Total operating expenses', 'opex', 'sub')
     + row('Net operating income', 'noi', 'tot') + row('Replacement reserves', 'res') + row('NOI after reserves', 'noiAfter', 'sub')
     + sec('Debt and cash flow') + row('Debt service', 'ds') + row('Asset management fee', 'fee') + row('Cash flow after debt service', 'cfads', 'tot')
-    + row('Debt service coverage (NOI after reserves)', 'dscr', '', { fmt:X, noUnit:true, noPct:true, noG:true, plain:true }) + row('Cash-on-cash return', 'coc', '', { fmt:function(v){ return P(v); }, noUnit:true, noPct:true, noG:true, plain:true })
+    + row('Debt service coverage (' + bkNoiBasisLabel('dscr') + ')', 'dscr', '', { fmt:X, noUnit:true, noPct:true, noG:true, plain:true }) + row('Cash-on-cash return', 'coc', '', { fmt:function(v){ return P(v); }, noUnit:true, noPct:true, noG:true, plain:true })
     + '</tbody></table></div>';
   return html;
 }
@@ -164,7 +164,7 @@ function proFormaBlock(D){
   return '<div class="pf">' + printBar()
     + '<div class="pf-kpis">' + kpi('Year-1 NOI', M(y1.noi), P(y1.noi / y1.egi, 0) + ' of income') + kpi('NOI growth', P(g), 'per year, Year 1 to ' + n) + kpi('Year-1 cash-on-cash', P(y1.coc), 'after debt service') + kpi('Lowest coverage', X(minD), 'policy minimum ' + X(pm)) + kpi('Going-in yield', D.price ? P(y1.noiAfter / D.price) : '—', 'NOI after reserves / price') + '</div>'
     + '<ul class="pf-ins">' + ins.map(function(t){ return '<li>' + t + '</li>'; }).join('') + '</ul>'
-    + '<div class="pf-cols">' + card('Income against debt service', 'Bars are NOI after reserves; the line is debt service. The figure under each year is coverage.', chartCoverage(D)) + card('Where each dollar of income goes', 'Year 1.', chartDollar(D)) + '</div>'
+    + '<div class="pf-cols">' + card('Income against debt service', 'Bars are ' + bkNoiBasisLabel('dscr') + ', the NOI the lender tests use; the line is debt service. The figure under each year is coverage on that NOI.', chartCoverage(D)) + card('Where each dollar of income goes', 'Year 1.', chartDollar(D)) + '</div>'
     + '<h3>Pro forma</h3>' + card('Annual statement', 'Per-unit and share-of-income columns are Year 1. Growth is the compound annual rate from Year 1 to Year ' + n + '.', statement(D)) + '<p class="pf-note">Detail below is the engine’s own operating statement; it ties to the figures above.</p></div>';
 }
 function returnsBlock(D, scen){
