@@ -110,6 +110,8 @@ function annualDS(rate, years, loan){ return loan > 0 ? bkPmt(rate / 12, Math.ro
 function debtCapacity(){
   var s = bkLoad(), p = policy(), u = bkAnnualCF(), d = bkDebt();
   if(isDev(s) || !(d.loan > 0)) return null;
+  /* The HOUSE credit policy tests run on NOI after capital reserves, as the certified Capital Markets model's policy table does (audit/credit_ref.py). They are the firm's own
+     tests, not the lender's sizing (which uses the deal's lender basis, bkLenderNoi); the Debt Capacity page names this basis on every DSCR it shows. */
   var noi = u.arr[0].after, stab = (u.arr[Math.min(2, u.arr.length - 1)] || u.arr[0]).after;
   var coupon = d.coupon, years = Number(s.acqAmort) || 30, stressed = coupon + p.stressBps / 10000;
   var value = d.ltvValue, cost = d.basis, req = d.loan;

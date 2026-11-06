@@ -24,6 +24,14 @@ window.bkSetDebtEnabled = function(v){
   if(typeof showSheet === 'function') showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Debt');
 };
 /* Entered as a percentage, stored as a decimal, consistent with acqLTV/acqDSCR. */
+/* ONE definition of the NOI behind every debt test (owner's decision, November 2026). The loan sizing (src/047, dscrNoi) uses the deal's lender basis: NOI before capital
+   reserves unless "Lender tests use" is set to after reserves. Every coverage ratio and debt yield the app, the guide, the reports and the investor PDF show reads it here, so no
+   page can show a DSCR on a different NOI. The engine's rows come in two shapes: an annual row carries noi (before reserves) and after; a monthly row carries noiBeforeReserves and
+   noi (after reserves). The exit has its own setting (exitNoiBasis, forward 12-month NOI, after reserves unless set to before) and its own label here. */
+window.bkLenderNoiBasis = function(s){ s = s || bkLoad(); return s.lenderNoiBasis === 'after' ? 'after' : 'before'; };
+window.bkLenderNoi = function(row, s){ if(!row) return 0; var after = window.bkLenderNoiBasis(s) === 'after', monthly = Object.prototype.hasOwnProperty.call(row, 'noiBeforeReserves');
+  var before = monthly ? row.noiBeforeReserves : row.noi, aft = monthly ? row.noi : (row.after != null ? row.after : row.noiAfter); return Number(after ? aft : before) || 0; };
+window.bkNoiBasisLabel = function(kind, s, short){ s = s || bkLoad(); var b = kind === 'exit' ? (s.exitNoiBasis === 'before' ? 'before' : 'after') : window.bkLenderNoiBasis(s); return 'NOI ' + b + (short ? ' reserves' : ' capital reserves'); };   /* short: for a narrow print column */
 window.bkSetLenderNoiBasis = function(v){
   var s = bkLoad(); s.lenderNoiBasis = (v === 'after') ? 'after' : ''; bkSave(s);
   if(typeof showSheet === 'function') showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Debt');

@@ -82,6 +82,9 @@ window.BK_TEMPLATE_NAME = 'Institutional Standard v2';
    onto NEW deals only. BK_BASE itself is NOT changed: bkSave() omits any field equal to its BK_BASE
    default, so changing BK_BASE.gpShare would silently move every existing 50% deal to the new value. */
 window.BK_TEMPLATE_OVERRIDES = { gpShare: 0.10 };
+/* November 2026 (owner's decision): a new ACQUISITION starts with closing costs of 2% of price, inside the 1.5% to 3% range the guide itself checks against (BK_BASE's 5% made a blank deal
+   open by flagging its own default). New deals only, as above; a development keeps the base rate on its land, and a deal that sets its own closing costs keeps them. */
+window.BK_TEMPLATE_OVERRIDES_ACQ = { closingCostsPct: 0.02 };
 window.BK_TEMPLATE_KEYS = ['acqLTV','acqLTC','acqDSCR','acqRate','acqAmort','acqOrigFee','acqIO','debtTerm','permLTV','permDSCR','permRate','permAmort','permOrigFee','permIO','refiRate','refiLTV','refiDSCR','refiAmort','refiOrigFee','acqFeePct','acquisitionFeePct','assetMgmtPct','dispositionFeePct','saleCostPct','closingCostsPct','closingPct','gpShare','pref','hurdle2','hurdle3','t2LP','t3LP','t4LP','gpCatchup','gpCatchupTarget','upRentGrowthDelta','upExitCapDelta','upDebtRateDelta','downRentGrowthDelta','downExitCapDelta','downDebtRateDelta'];
 window.BK_MARKET_BLANK = ['gpr','misc','occupancy','residualLandValue','conRate','holdYears','exitCap','vacancy','commercialVacancy','badDebtPct','mgmtPct','miscPerGSF','rentGrowth','otherGrowth','opexGrowth','taxGrowth','commercialRentGrowth','refiCapRate','em1','em2','em3','capKeepCoE','capSellCoE','capRefiHeadroom','capRefiDebtYield','capSellNOIGrowth','debtIndexRate','debtSpread'];
 window.bkClearTemplateValues = function(){
@@ -115,6 +118,7 @@ window.bkCreateNewDeal = function(opts){
     var tv = {};
     window.BK_TEMPLATE_KEYS.forEach(function(k){ if(typeof BK_BASE[k] === 'number'){ tv[k] = BK_BASE[k]; blank[k] = BK_BASE[k]; } });
     Object.keys(window.BK_TEMPLATE_OVERRIDES || {}).forEach(function(k){ tv[k] = window.BK_TEMPLATE_OVERRIDES[k]; blank[k] = window.BK_TEMPLATE_OVERRIDES[k]; });
+    if(!/develop/i.test(String(opts.dealType || 'Acquisition'))) Object.keys(window.BK_TEMPLATE_OVERRIDES_ACQ || {}).forEach(function(k){ tv[k] = window.BK_TEMPLATE_OVERRIDES_ACQ[k]; blank[k] = window.BK_TEMPLATE_OVERRIDES_ACQ[k]; });
     blank._template = { name: tplName, values: tv, appliedAt: new Date().toISOString() };
   } else {
     window.BK_TEMPLATE_KEYS.forEach(function(k){ if(typeof BK_BASE[k] === 'number') blank[k] = 0; });

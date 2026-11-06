@@ -62,6 +62,7 @@ echo "== Readable in both themes (no text under 3:1 contrast on the sections tha
 echo "== Fill rule (header fill vs key-metric fill, every sheet)"; node audit/fillrule_test.js index.html | tail -1
 echo "== Waterfall verification (per-hurdle IRR error checks, tier order, conservation, promote)"; node audit/wfcheck_test.js index.html | tail -1
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1
+echo "== Sensitivity grid (investor summary: one blue scale from the lowest IRR to the highest, so an all-above-hurdle grid still varies; hurdle markers only when the grid straddles it; base case outlined; acquisition and development)"; node audit/sensitivity_grid_test.js index.html | tail -1
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
 echo "== Required marker and Status chip agree (one source, N/A on non-applicable tables)"; node audit/required_status_test.js index.html | tail -1
@@ -75,6 +76,8 @@ echo "== Harbor Point PDF fixture labels (base vs deal brief on the cover, foote
 echo "== Intake readers (property list, spreadsheet statement found by its arithmetic, facts-only flyer; REAL and SYNTHETIC inputs labelled)"; node audit/intake_test.js index.html | tail -1
 echo "== Blank start (a new deal is all cash with one investor; debt sections appear with financing; clear inputs; empty development schedule)"; node audit/blank_start_test.js index.html | tail -1
 echo "== QA self-tests on a deal with no debt (Floating Debt QA reads N/A with its reason, never ERROR; the deal is untouched; a deal with debt keeps its 8 checks)"; node audit/qa_na_test.js index.html | grep -v '^PASS'
+echo "== Owner decisions (new acquisitions close at 2%; Source Ingestion QA N/A until a source is read; phone charts at real text size with no overlapping labels; 40px header controls; the product name whole)"; node audit/owner_decisions_test.js index.html | tail -1
+echo "== NOI basis (every DSCR and debt yield on the deal's lender NOI, as the loan sizing, named on every page, the guide and the PDF; the exit on the next 12 months' NOI with its own basis named; both lender settings, DSCR- and LTV-bound deals)"; node audit/noi_basis_test.js index.html | tail -1
 echo "== Saved deals and audit fixtures keep their financing and waterfall terms (vs the reference build)"; node audit/saved_terms_test.js index.html "$REF" | tail -1
 echo "== Spreadsheet ingestion (formulas vs displayed values, merged cells, subtotals, rent-roll layouts, CSV, multi-sheet, property lists; SYNTHETIC files + the REAL workbook when supplied)"; node audit/sheet_ingest_test.js index.html | tail -1
 echo "== Harbor Point stage C (investor summary pages, summary of investment, portfolio impact, cover photo, Model Checks)"; node audit/harbor_stageC_test.js index.html | tail -1

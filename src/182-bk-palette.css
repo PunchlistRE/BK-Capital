@@ -333,3 +333,19 @@ html body .bk-ribbon .rb-cmds{ align-self:flex-end; margin-bottom:0; padding-bot
 html body .bk-ribbon .rb-cmds .rb-c span{ display:none; }
 html body .bk-ribbon .rb-cmds .rb-c{ padding:0 9px; height:30px; }
 @media (hover:none), (pointer:coarse){ html body .bk-ribbon .rb-nav, html body .bk-ribbon .rb-scroll.rb-can .rb-nav{ display:none; } }
+
+/* phone header (owner's decision, November 2026): every control in the top bar is at least 40px to tap. The Guide switch and Sign in were 22px tall and the theme switch 28px. */
+@media (max-width:760px){
+  html body .pl-searchwrap #pl-guide-toggle, html body .pl-user button, html body .pl-searchwrap #bk-theme-btn, html body .pl-searchwrap .pl-search{ min-height:40px; min-width:40px; box-sizing:border-box; }
+  html body .pl-searchwrap #pl-guide-toggle, html body .pl-user button{ display:inline-flex; align-items:center; justify-content:center; }
+}
+@media (max-width:560px){   /* the larger targets must not cost the product name its last letters */
+  html body .pl-searchwrap{ gap:4px !important; }
+  html body .pl-searchwrap #pl-guide-toggle{ padding-left:9px; padding-right:9px; }
+  html body .pl-user button{ padding-left:9px; padding-right:9px; }
+}
+@media (max-width:430px){   /* and on a narrow phone the product name takes two short lines instead of losing its end */
+  html body .brand-bar .brand-mark > div, html body .brand-bar .brand-mark .word{ white-space:normal !important; text-overflow:clip !important; }
+  html body .brand-bar .brand-mark .word{ line-height:1.15; }
+}
+@media (max-width:370px){ html body .brand-bar .brand-mark .word, html body .brand-bar .brand-mark .word *{ font-size:9px !important; letter-spacing:.03em !important; } }

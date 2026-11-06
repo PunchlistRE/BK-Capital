@@ -74,8 +74,8 @@ register('Debt Capacity', function(){
   var p = c.policy, b = c.box;
   var box = [
     ['Loan-to-value (senior)', P(b.ltv), P(p.maxLTV), '≤', b.ltv <= p.maxLTV], ['Loan-to-cost (senior)', P(b.ltc), P(p.maxLTC), '≤', b.ltc <= p.maxLTC],
-    ['DSCR, first operating year', X(b.dscr), X(p.minDSCR), '≥', b.dscr >= p.minDSCR], ['Debt yield', P(b.debtYield), P(p.minDebtYield), '≥', b.debtYield >= p.minDebtYield],
-    ['Stressed DSCR (coupon + ' + p.stressBps + ' bps, amortizing)', X(b.stressedDscr), X(p.minDSCR), '≥', b.stressedDscr >= p.minDSCR],
+    ['DSCR, first operating year (house test, NOI after reserves)', X(b.dscr), X(p.minDSCR), '≥', b.dscr >= p.minDSCR], ['Debt yield', P(b.debtYield), P(p.minDebtYield), '≥', b.debtYield >= p.minDebtYield],
+    ['Stressed DSCR (coupon + ' + p.stressBps + ' bps, amortizing; NOI after reserves)', X(b.stressedDscr), X(p.minDSCR), '≥', b.stressedDscr >= p.minDSCR],
     ['Senior loan vs. house capacity', $(c.requested), $(c.capacity + p.maxDebtOverage), '≤', c.overage <= p.maxDebtOverage]
   ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[3] + ' ' + r[2] + '</td><td>' + res(r[4] ? 'PASS' : 'FAIL') + '</td></tr>'; }).join('');
   var bridge = '<tr class="subtotal"><td class="rowlabel">Senior loan requested (sized by the engine)</td><td>Underwriting terms</td><td>' + $(c.requested) + '</td><td>' + P(c.requested / c.value) + '</td><td></td><td></td></tr>'
