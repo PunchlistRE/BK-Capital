@@ -19613,8 +19613,10 @@ function kpiBar(sheet){
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
       + cell('<span title="' + esc(dscrTitle()) + '">Lender DSCR</span>', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(bkBindingName(h.binding)) : '') + cell('Equity contributed', money(h.tce)) + cell('Net Profit', money(h.profit))
-      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) + (tieChip() ? cell('Inputs', tieChip()) : '') : ''; }
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
+  /* the inputs-tie chip lives in the header, beside the user (not in the bar) */
+  try { var hx = document.getElementById('bk-tie-hdr'), tc = html ? tieChip() : ''; if(!tc){ if(hx) hx.remove(); } else { var us = document.getElementById('pl-user'); if(us){ if(!hx){ hx = document.createElement('span'); hx.id = 'bk-tie-hdr'; us.parentNode.insertBefore(hx, us); } if(hx.innerHTML !== tc) hx.innerHTML = tc; } } } catch(e){}
 }
 function refreshFlow(){
   var vp = document.getElementById('viewport'), bar = vp && vp.querySelector('.bk-flow'); if(!bar) return;
@@ -32382,7 +32384,7 @@ document.addEventListener('click', function(){ setTimeout(place, 280); });
 setInterval(place, 1500);
 place();
 var css = document.createElement('style'); css.id = 'bk-kpibar-motion-css';
-css.textContent = '#bk-kpibar{left:var(--bk-kpi-left,0px) !important;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .2s}#bk-kpibar.bk-away{transform:translateY(105%);opacity:.0}@media (min-width:901px){html body.bk-has-kpibar .rail{max-height:100vh !important;height:100vh !important;top:0 !important}}@media (prefers-reduced-motion:reduce){#bk-kpibar{transition:none}}';
+css.textContent = '#bk-kpibar{left:var(--bk-kpi-left,0px) !important;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .2s}#bk-kpibar.bk-away{transform:translateY(105%);opacity:.0}@media (min-width:901px){html body.bk-has-kpibar .rail{max-height:100vh !important;height:100vh !important;top:0 !important}}#bk-kpibar{overflow:hidden}#bk-kpibar .kb-c,#bk-kpibar .kb-c.kb-long{flex:0 0 120px !important;width:120px;box-sizing:border-box;padding-left:10px;padding-right:8px}#bk-tie-hdr{display:inline-flex;align-items:center;margin-right:10px;font-size:11px}@media (prefers-reduced-motion:reduce){#bk-kpibar{transition:none}}';
 document.head.appendChild(css);
 })();
 </script>
@@ -32505,7 +32507,7 @@ window.bkNavVisible = function(g){ return g.sheets.filter(function(n){ return !F
 window.bkNavHostOf = function(n){ return FOLDED[n] || n; };
 /* the sub-tab row: at most two words a tab (the full name stays in the page title, the menus and the tooltip) */
 window.BK_NAV_SHORT = { 'Sources & Uses':'Sources/Uses', 'Refi / Recap':'Refi/Recap', 'Valuation Report':'Return Summary', 'Property Valuation Report':'Property Value', 'Sources and Uses Report':'S&U Report', 'Cash Flow Report':'Cash Flow',
-  'Present Value Report':'Present Value', 'Lease Audit Report':'Lease Audit', 'Audit Report':'Input Audit', 'Budget vs Actual':'Budget/Actual', 'Deal Vectors (M)':'Vectors (M)', 'Lease Cohort CF':'Lease Cohorts', 'Sell vs Hold':'Sell/Hold', 'Benchmarks':'Deal Targets', 'Probability-Weighted':'Probability', 'Refinancing':'Refinance' };
+  'Present Value Report':'Present Value', 'Lease Audit Report':'Lease Audit', 'Audit Report':'Input Audit', 'Budget vs Actual':'Budget/Actual', 'Deal Vectors (M)':'Vectors (M)', 'Lease Cohort CF':'Lease Cohorts', 'Sell vs Hold':'Sell/Hold', 'Benchmarks':'Deal Targets', 'Probability-Weighted':'Probability', 'Refinancing':'Refinance', 'Reserve Accounts':'Reserves' };
 var label = function(s){ return window.BK_NAV_LABELS[s] || s; };
 window.bkNavLabel = label;
 function slug(t){ return String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
@@ -32572,8 +32574,8 @@ function viewStrip(cs){
 var prev = window.showSheet;
 if(typeof prev === 'function'){ window.showSheet = function(sheet){ var r = prev.apply(this, arguments); try { decorate(); } catch(e){} return r; }; try { showSheet = window.showSheet; } catch(e){} }
 var css = document.createElement('style'); css.id = 'bk-nav-css';
-css.textContent = '.tabnav-primary .grp-btn{box-sizing:border-box;flex:0 0 132px;width:132px;min-width:132px;max-width:132px;justify-content:flex-start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.tabnav-primary .grp-btn{flex-basis:112px;width:112px;min-width:112px;max-width:112px}}'
- + '.rb-tabs .rb-t{box-sizing:border-box;width:132px;min-width:132px;max-width:132px;flex:0 0 132px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.rb-tabs .rb-t{width:112px;min-width:112px;max-width:112px;flex-basis:112px}}'
+css.textContent = '.tabnav-primary .grp-btn{box-sizing:border-box;flex:0 0 120px;width:120px;min-width:120px;max-width:120px;justify-content:flex-start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.tabnav-primary .grp-btn{flex-basis:112px;width:112px;min-width:112px;max-width:112px}}'
+ + '.rb-tabs .rb-t{box-sizing:border-box;width:120px;min-width:120px;max-width:120px;flex:0 0 120px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.rb-tabs .rb-t{width:112px;min-width:112px;max-width:112px;flex-basis:112px}}'
  + '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}.bk-views .bkv-b{font:600 12.5px Inter,system-ui,sans-serif;padding:6px 12px;border:1px solid var(--ae-line,#c9d1dc);border-radius:999px;background:var(--ae-card,#fff);color:var(--ae-ink,#163a62);cursor:pointer}.bk-views .bkv-b:hover{border-color:#3E9AE6}.bk-views .bkv-b.on{background:#163a62;border-color:#163a62;color:#fff}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
 document.head.appendChild(css);
 })();

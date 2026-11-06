@@ -623,8 +623,10 @@ function kpiBar(sheet){
   else { var h; try { h = headline(); } catch(e){ h = null; }
     html = h ? cell('Levered IRR', pct(h.levIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Yield on Cost', pct(h.yoc))
       + cell('<span title="' + esc(dscrTitle()) + '">Lender DSCR</span>', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—') + cell('Loan', money(h.loan), h.binding ? esc(bkBindingName(h.binding)) : '') + cell('Equity contributed', money(h.tce)) + cell('Net Profit', money(h.profit))
-      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) + (tieChip() ? cell('Inputs', tieChip()) : '') : ''; }
+      + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
+  /* the inputs-tie chip lives in the header, beside the user (not in the bar) */
+  try { var hx = document.getElementById('bk-tie-hdr'), tc = html ? tieChip() : ''; if(!tc){ if(hx) hx.remove(); } else { var us = document.getElementById('pl-user'); if(us){ if(!hx){ hx = document.createElement('span'); hx.id = 'bk-tie-hdr'; us.parentNode.insertBefore(hx, us); } if(hx.innerHTML !== tc) hx.innerHTML = tc; } } } catch(e){}
 }
 function refreshFlow(){
   var vp = document.getElementById('viewport'), bar = vp && vp.querySelector('.bk-flow'); if(!bar) return;
