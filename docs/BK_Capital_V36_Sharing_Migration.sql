@@ -1,4 +1,4 @@
--- BK Capital V36: DRAFT. Deal sharing with roles. NOT APPLIED and not run by the app: it waits for the owner's approval.
+-- BK Capital V36: deal sharing with roles. Approved by the owner (November 2026). Run once, by hand, in the Supabase SQL editor; the app never runs it.
 -- Additive only (a new table and its policies; nothing existing is altered or dropped). Safe to run again.
 -- Roles: viewer (read), commenter (read, comment), editor (read, edit, comment). The owner is the deal's creator and needs no row.
 -- Enforcing these roles on public.deals itself needs policies written against that table's ownership column, which this draft does not assume; review before running.

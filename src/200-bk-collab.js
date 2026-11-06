@@ -1,6 +1,6 @@
 /* DEAL REVIEW (1.8, local part): comments on the deal and an IC approval step, each action recorded with who and when and a snapshot of the headline figures at that moment. Stored on the deal (s._collab), so it goes
    wherever the deal goes (cloud sync included). The change log of every input is Version History (already there). Sharing with roles needs the cloud tables: the page shows the roles and the draft migration
-   (docs/BK_Capital_V36_Sharing_Migration.sql, NOT applied; nothing is deployed without the owner's approval). Until sharing exists every signed-in user of the deal can act, and the actor is recorded. */
+   (docs/BK_Capital_V36_Sharing_Migration.sql, approved by the owner; it is run by hand in the Supabase SQL editor, never by the app). Until it has been run the page says so; every signed-in user of the deal can act, and the actor is recorded. */
 (function(){
 'use strict';
 if(typeof RENDERERS === 'undefined' || typeof bkLoad !== 'function') return;
@@ -19,6 +19,22 @@ window.bkCollabAct = function(act){ var s = bkLoad(), c = col(s), note = (docume
   var next = { submit:'Submitted for IC', approve:'Approved', 'return':'Returned for changes', reopen:'Draft' }[act]; if(!next) return;
   if(act === 'return' && !String(note).trim()){ alert('Say what needs to change before returning the deal.'); return; }
   c.events.push({ at:now(), by:who(), action:next, note:String(note).trim().slice(0, 1000), snap:snap() }); c.status = next; put(c); };
+/* sharing: the deal's cloud row and its deal_shares rows (the table comes from the V36 migration) */
+function dealRow(){ var code = (bkLoad() || {}).dealId; var f = window.bkFindDealByCode || (typeof bkFindDealByCode === 'function' ? bkFindDealByCode : null); if(!f || !code) return Promise.resolve(null); return f(code); }
+function sharesBox(html){ var e = document.getElementById('bk-shares'); if(e) e.innerHTML = html; }
+function noTable(e){ return /deal_shares|PGRST20|404|relation|schema cache/i.test(String(e && (e.message || e.code || e)) + ' ' + (e && e.status)); }
+window.bkShareLoad = function(){
+  if(typeof window.bkSb !== 'function' || !(window.bkAuthSignedIn && window.bkAuthSignedIn())){ sharesBox('<div class="note-flag"><span>&#9432;</span><div>Sign in to share this deal. Sharing works through the cloud copy of the deal.</div></div>'); return; }
+  dealRow().then(function(d){ if(!d){ sharesBox('<div class="note-flag"><span>&#9432;</span><div>This deal is not in the cloud yet. Save it to the cloud (Cloud Sync), then share it.</div></div>'); return; }
+    return window.bkSb('deal_shares?deal_id=eq.' + encodeURIComponent(d.id) + '&select=id,shared_with_email,role,created_at&order=created_at.asc').then(function(rows){ rows = rows || [];
+      sharesBox((rows.length ? '<table class="fin"><thead><tr><th class="rowlabel-h">Shared with</th><th style="text-align:left">Role</th><th></th></tr></thead><tbody>' + rows.map(function(r){ return '<tr><td class="rowlabel">' + esc(r.shared_with_email) + '</td><td data-bk-align="text">' + esc(r.role) + '</td><td><button type="button" class="bk-btn" onclick="bkShareRemove(\'' + r.id + '\')">Remove</button></td></tr>'; }).join('') + '</tbody></table>' : '<p class="dim" style="margin:0 0 8px">Not shared with anyone yet.</p>')
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><input id="bk-sh-email" type="email" placeholder="Email address" style="flex:1;min-width:220px"><select id="bk-sh-role"><option value="viewer">Viewer</option><option value="commenter">Commenter</option><option value="editor">Editor</option></select><button type="button" class="bk-btn" onclick="bkShareInvite()">Share</button></div><p class="dim" style="font-size:11px;margin:6px 0 0">The person signs in with this email to see the deal. You stay the owner.</p>'); }); })
+  .catch(function(e){ sharesBox(noTable(e) ? '<div class="note-flag"><span>&#9432;</span><div>Sharing is not switched on in this database yet. Run <code>docs/BK_Capital_V36_Sharing_Migration.sql</code> once in the Supabase SQL editor, then reload.</div></div>' : '<div class="note-flag"><span>&#9888;</span><div>Could not read the sharing list: ' + esc(e && e.message || e) + '</div></div>'); });
+};
+window.bkShareInvite = function(){ var em = String((document.getElementById('bk-sh-email') || {}).value || '').trim().toLowerCase(), role = (document.getElementById('bk-sh-role') || {}).value || 'viewer';
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ alert('Enter a valid email address.'); return; }
+  dealRow().then(function(d){ if(!d) return; return window.bkSb('deal_shares?on_conflict=deal_id,shared_with_email', { method:'POST', prefer:'resolution=merge-duplicates,return=minimal', body:{ deal_id:d.id, shared_with_email:em, role:role } }); }).then(function(){ window.bkShareLoad(); }, function(e){ alert('Could not share: ' + (e && e.message || e)); }); };
+window.bkShareRemove = function(id){ if(!confirm('Stop sharing this deal with this person?')) return; window.bkSb('deal_shares?id=eq.' + encodeURIComponent(id), { method:'DELETE' }).then(function(){ window.bkShareLoad(); }, function(e){ alert('Could not remove: ' + (e && e.message || e)); }); };
 var ROLES = [['Owner', 'Everything, including who the deal is shared with.'], ['Editor', 'Changes inputs, comments, submits for IC.'], ['Commenter', 'Reads everything and comments.'], ['Viewer', 'Reads only.']];
 RENDERERS['Deal Review'] = function(){
   var s = bkLoad() || {}, c = col(JSON.parse(JSON.stringify(s))), o = { title:'Deal Review', crumbs:'Credit & IC', desc:'Comments on the deal and the IC approval step, each recorded with who and when.', meta:{ Property:s.name || '', 'IC status':c.status, 'Open comments':String(c.comments.filter(function(m){ return !m.resolved; }).length) }, sidebar:'' };
@@ -32,7 +48,8 @@ RENDERERS['Deal Review'] = function(){
   var P = function(v){ return isFinite(v) ? (v * 100).toFixed(2) + '%' : '—'; };
   main += '<div class="tbl-wrap" style="margin-top:16px;padding:14px"><b>Approval history</b>' + (c.events.length ? '<table class="fin" style="margin-top:10px"><thead><tr><th class="rowlabel-h">Who and when</th><th style="text-align:left">Action</th><th>Levered IRR then</th><th style="text-align:left">Credit gate then</th><th style="text-align:left">Note</th></tr></thead><tbody>' + c.events.slice().reverse().map(function(e){ var sn = e.snap || {}; return '<tr><td class="rowlabel">' + esc(e.by) + '<span class="dim" style="display:block;font-size:11px">' + esc(when(e.at)) + '</span></td><td data-bk-align="text">' + esc(e.action) + '</td><td>' + P(sn.irr) + '</td><td data-bk-align="text">' + esc(sn.verdict || '—') + '</td><td data-bk-align="text" style="white-space:normal">' + esc(e.note || '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="dim" style="margin:10px 0 0">Nothing submitted yet.</p>') + '</div>';
   main += '<div class="tbl-wrap" style="margin-top:16px;padding:14px"><b>Sharing</b><table class="fin" style="margin-top:10px"><thead><tr><th class="rowlabel-h">Role</th><th style="text-align:left">Can</th></tr></thead><tbody>' + ROLES.map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td data-bk-align="text">' + r[1] + '</td></tr>'; }).join('') + '</tbody></table>'
-    + '<div class="note-flag" style="margin-top:10px"><span>&#9432;</span><div>Inviting people by email and enforcing these roles needs a new cloud table. The change is written (<code>docs/BK_Capital_V36_Sharing_Migration.sql</code>) but not applied: it waits for the owner’s approval. Until then comments and approvals are recorded with the signed-in name, and the change log of every input is on Version History.</div></div></div>';
+    + '<div id="bk-shares" style="margin-top:12px"><span class="dim">Loading who this deal is shared with\u2026</span></div></div>';
+  setTimeout(window.bkShareLoad, 60);
   o.main = main; return o;
 };
 })();
