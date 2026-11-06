@@ -77,13 +77,13 @@ function build(s, oldMain){
   var dev = isDev(s), h = safe(function(){ return window.bkHeadline(); }, null), pol = safe(function(){ return bkPolicy(); }, {}), ready = safe(function(){ return bkDealReadiness(); }, null);
   var gate = dev ? null : safe(function(){ return bkDealGate(); }, null), ctl = safe(function(){ return bkModelControls(); }, []), mk = dev ? null : safe(function(){ return bkMarketCompare(); }, null);
   var fails = ctl.filter(function(c){ return c.level === 'FAIL'; }), warns = ctl.filter(function(c){ return c.level !== 'FAIL'; });
-  var hurdle = Number(pol.targetIRR) || 0.12, mind = Number(pol.minDSCR) || 1.25, em = Number(pol.targetEM) || 2.0, can = ready && ready.canCalculate;
+  var hurdle = Number(pol.targetIRR) || 0.12, mind = bkLenderDscrMin(), em = Number(pol.targetEM) || 2.0, can = ready && ready.canCalculate;
   var irrOk = h && isFinite(h.levIRR) ? (h.levIRR >= hurdle ? 'pass' : (h.levIRR >= hurdle - 0.03 ? 'warn' : 'fail')) : '';
   var dscrOk = h && isFinite(h.dscr) && h.dscr ? (h.dscr >= mind ? 'pass' : 'fail') : '';
   var price = Number(s.purchasePrice) || 0, loan = h ? Number(h.loan) || 0 : 0;
   /* the tiles: which figures lead, and in what order, come from the analysis registry (src/139h); each is read from the same headline as the Deal Snapshot */
   var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
-    yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Lender DSCR, year 1', X(h.dscr), bkDscrBasis('lender', s) + ' · house min ' + X(mind), dscrOk, 'Debt']; },
+    yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Lender DSCR, year 1', X(h.dscr), bkDscrBasis('lender', s) + ' · loan min ' + X(mind), dscrOk, 'Debt']; },
     loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ var tce = isFinite(h.tce) ? h.tce : h.equity; return [typeof window.bkCapName === 'function' ? window.bkCapName('totalContributedEquity') : 'Total contributed equity', M(tce), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };   /* the headline equity names its measure, as the bottom band and the Deal Snapshot do */
   var tileIds = safe(function(){ return window.BKReg.tiles(window.BKReg.of(s).id); }, null) || ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
   var kpis = can && h ? tileIds.filter(function(id){ return TILE[id]; }).map(function(id){ return TILE[id](); }) : [];

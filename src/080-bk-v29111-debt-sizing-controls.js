@@ -39,6 +39,8 @@ window.bkNoiBasisLabel = function(kind, s, short){ s = s || bkLoad(); var b = ki
    A lender test that divides its own fixed NOI (the permanent loan's forward 12 months, a refinance tool) passes that NOI as basis, so its label says what it divides.
    bkDscrName gives the full name, bkDscrShort the two words for a narrow column whose caption or note gives the basis. */
 window.bkDscrBasis = function(kind, s, basis){ return kind === 'house' ? 'NOI after reserves' : (basis || 'lender NOI, ' + window.bkLenderNoiBasis(s) + ' reserves'); };
+/* OWNER DECISION A (November 2026): the Lender DSCR is tested against the LOAN'S OWN minimum (acqDSCR, the minimum the loan is sized to); the House DSCR is tested against the house minimum (Credit Policy). With no loan minimum set the house value is the fallback. */
+window.bkLenderDscrMin = function(s){ s = s || bkLoad(); var own = Number(s.acqDSCR); if(own > 0) return own; var p = {}; try { p = bkPolicy() || {}; } catch(e){} return Number(p.minDSCR) || 1.25; };
 window.bkDscrShort = function(kind){ return kind === 'house' ? 'House DSCR' : 'Lender DSCR'; };
 window.bkDscrName = function(kind, s, basis){ return window.bkDscrShort(kind) + ' (' + window.bkDscrBasis(kind, s, basis) + ')'; };
 /* the sizing engines keep 'DSCR' as the binding test's key (the deal book and the independent models compare on it); a page shows it as the lender DSCR it is */
