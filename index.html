@@ -32052,30 +32052,42 @@ html body #viewport#viewport table.fin thead th.gx-lh{ text-align:left !importan
 /* the month and percent boxes take the room they need, not the width a number box would like (it is what made every column of the task table 230px wide) */
 html body #viewport#viewport table.fin input.gx-n{ max-width:84px !important; }
 
-/* HEADER, SECOND ROW: the section's pages as tabs, the same shape as the section tabs above them (rounded top corners, a border, no bottom edge) but light. Inactive pages are pale slate; the open page is white with the accent edge across its top and no line under it, so it joins the page below. Colour only and shape: the same buttons, the same order, the same names. */
-html body .bk-ribbon{ background:var(--ae-cell); padding:6px 12px 0; gap:12px; }
-html body .bk-ribbon .rb-tabs{ align-items:flex-end; gap:2px; row-gap:2px; }
-html body .bk-ribbon .rb-t{ border:1px solid var(--ae-line); border-bottom:0; border-radius:3px 3px 0 0 !important; background:var(--ae-tab); color:var(--ae-ink); opacity:1; margin-bottom:-1px; padding:0 12px; line-height:30px; font-size:12.5px; font-weight:500; }
+/* HEADER, SECOND ROW: the section's pages as a second level of folder tabs under the navy section tabs (owner, November 2026: "more depth, like the tabs above").
+   The strip is a tinted slate band with a soft shadow cast by the navy row above it, so the white open page stands out from it and joins the page below. Inactive
+   tabs are raised: a 1px border, a white top highlight and a faint gradient. The open tab is white with the accent edge across its top and no line under it.
+   Same shape and radius as the section tabs; the same buttons, order, names and behaviour. */
+html body .bk-ribbon{ background:linear-gradient(180deg,#D9E1EA 0,#E6EBF1 9px,#EDF1F5 100%); box-shadow:inset 0 3px 4px -2px rgba(14,42,74,.38); border-bottom:1px solid #B7C3D1; padding:7px 12px 0; gap:12px; }
+html body .bk-ribbon .rb-tabs{ align-items:flex-end; gap:3px; row-gap:3px; }
+html body .bk-ribbon .rb-t{ border:1px solid #B7C3D1; border-bottom:0; border-radius:3px 3px 0 0 !important; background-color:#F1F4F8; background-image:linear-gradient(180deg,#FDFEFE,#E8EDF3); box-shadow:inset 0 1px 0 #FFFFFF; color:var(--ae-ink); opacity:1; margin-bottom:-1px; padding:0 13px; line-height:30px; font-size:12.5px; font-weight:600; letter-spacing:.01em; }
 html body .bk-ribbon .rb-t + .rb-t::before{ content:none; }
-html body .bk-ribbon .rb-t:hover{ background:var(--ae-sel); border-color:var(--ae-line); }
-html body .bk-ribbon .rb-t.on{ position:relative; z-index:1; background:var(--ae-tab-on); border:1px solid var(--ae-line); border-top:2px solid var(--ae-accent); border-bottom:1px solid var(--ae-tab-on); line-height:29px; font-weight:650; color:var(--bk-navy); }
-html body .bk-ribbon .rb-sep{ height:18px; width:1px; flex-basis:1px; background:var(--ae-line); opacity:1; margin:0 8px; align-self:center; }
+html body .bk-ribbon .rb-t:hover{ background-color:var(--ae-sel); background-image:linear-gradient(180deg,#FFFFFF,var(--ae-sel)); border-color:#9FB0C5; }
+html body .bk-ribbon .rb-t.on{ position:relative; z-index:1; background:#FFFFFF; border:1px solid #B7C3D1; border-top:2px solid var(--ae-accent); border-bottom:1px solid #FFFFFF; box-shadow:0 -2px 5px rgba(14,42,74,.14); line-height:29px; font-weight:700; color:var(--bk-navy); }
+html body .bk-ribbon .rb-sep{ height:20px; width:1px; flex-basis:1px; background:#AEBBCB; opacity:1; margin:0 9px 5px; align-self:flex-end; }
 html body .bk-ribbon .rb-cmds{ align-self:center; min-height:0; padding-bottom:4px; }
-html[data-theme="dark"] body .bk-ribbon .rb-t.on{ border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); color:#9fcdf5 !important; }
-@media (prefers-color-scheme:dark){ html:not([data-theme="light"]) body .bk-ribbon .rb-t.on{ border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); color:#9fcdf5 !important; } }
-@media (min-width:1200px){ html body .bk-ribbon .rb-t{ padding:0 12px; } }
+html[data-theme="dark"] body .bk-ribbon{ background:linear-gradient(180deg,#0b1219 0,#121a22 9px,#151e27 100%); box-shadow:inset 0 3px 4px -2px rgba(0,0,0,.6); border-bottom-color:#2c3946; }
+html[data-theme="dark"] body .bk-ribbon .rb-t{ background-color:#1b2530; background-image:linear-gradient(180deg,#223040,#1a242e); border-color:#33414f; box-shadow:inset 0 1px 0 rgba(255,255,255,.06); color:#dbe5ef; }
+html[data-theme="dark"] body .bk-ribbon .rb-t:hover{ background-color:#25384c; background-image:none; }
+html[data-theme="dark"] body .bk-ribbon .rb-nav{ background-color:#1b2530; background-image:linear-gradient(180deg,#223040,#1a242e); border-color:#33414f; box-shadow:inset 0 1px 0 rgba(255,255,255,.06); color:#dbe5ef; }
+html[data-theme="dark"] body .bk-ribbon .rb-t.on{ background:var(--ae-tab-on); border-color:#33414f; border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); box-shadow:0 -2px 5px rgba(0,0,0,.45); color:#9fcdf5 !important; }
+@media (prefers-color-scheme:dark){
+  html:not([data-theme="light"]) body .bk-ribbon{ background:linear-gradient(180deg,#0b1219 0,#121a22 9px,#151e27 100%); box-shadow:inset 0 3px 4px -2px rgba(0,0,0,.6); border-bottom-color:#2c3946; }
+  html:not([data-theme="light"]) body .bk-ribbon .rb-t{ background-color:#1b2530; background-image:linear-gradient(180deg,#223040,#1a242e); border-color:#33414f; box-shadow:inset 0 1px 0 rgba(255,255,255,.06); color:#dbe5ef; }
+  html:not([data-theme="light"]) body .bk-ribbon .rb-t:hover{ background-color:#25384c; background-image:none; }
+  html:not([data-theme="light"]) body .bk-ribbon .rb-nav{ background-color:#1b2530; background-image:linear-gradient(180deg,#223040,#1a242e); border-color:#33414f; box-shadow:inset 0 1px 0 rgba(255,255,255,.06); color:#dbe5ef; }
+  html:not([data-theme="light"]) body .bk-ribbon .rb-t.on{ background:var(--ae-tab-on); border-color:#33414f; border-top-color:#4aa3ee; border-bottom-color:var(--ae-tab-on); box-shadow:0 -2px 5px rgba(0,0,0,.45); color:#9fcdf5 !important; } }
+@media (min-width:1200px){ html body .bk-ribbon .rb-t{ padding:0 13px; } }
 
 /* HEADER, SECOND ROW: ONE ROW THAT SLIDES SIDEWAYS. The pages of a section sit on a single 36px line at every width (it used to wrap onto up to three lines and push the page down by a different amount in every section). A section with more pages than fit
    slides inside the row: arrows at its ends (mouse), a fade where pages are hidden, swipe or trackpad (touch), and the open page is always brought into view (src/124). The three commands stay put at the right, as icons. */
 html body .bk-ribbon .rb-scroll{ position:relative; z-index:1; display:flex; align-items:flex-end; flex:1 1 auto; min-width:0; margin-bottom:-1px; }
 html body .bk-ribbon .rb-tabs{ position:relative; flex:1 1 auto; min-width:0; overflow-x:auto; overflow-y:hidden; padding-bottom:1px; scrollbar-width:none; scroll-padding-inline:44px; overscroll-behavior-x:contain; }
 html body .bk-ribbon .rb-tabs::-webkit-scrollbar{ display:none; }
-html body .bk-ribbon .rb-nav{ display:none; flex:0 0 26px; width:26px; height:31px; margin:0 0 1px; padding:0; align-items:center; justify-content:center; border:1px solid var(--ae-line); border-bottom:0; border-radius:3px 3px 0 0; background:var(--ae-tab); color:var(--ae-ink); cursor:pointer; }
+html body .bk-ribbon .rb-nav{ display:none; flex:0 0 26px; width:26px; height:31px; margin:0 0 1px; padding:0; align-items:center; justify-content:center; border:1px solid #B7C3D1; border-bottom:0; border-radius:3px 3px 0 0; background-color:#F1F4F8; background-image:linear-gradient(180deg,#FDFEFE,#E8EDF3); box-shadow:inset 0 1px 0 #FFFFFF; color:var(--ae-ink); cursor:pointer; }
 html body .bk-ribbon .rb-scroll.rb-can .rb-nav{ display:flex; }
 html body .bk-ribbon .rb-prev{ margin-right:4px; }
 html body .bk-ribbon .rb-next{ margin-left:4px; }
 html body .bk-ribbon .rb-nav:hover{ background:var(--ae-sel); }
-html body .bk-ribbon .rb-scroll[data-sl="0"] .rb-prev, html body .bk-ribbon .rb-scroll[data-sr="0"] .rb-next{ opacity:.35; cursor:default; background:var(--ae-tab); }
+html body .bk-ribbon .rb-scroll[data-sl="0"] .rb-prev, html body .bk-ribbon .rb-scroll[data-sr="0"] .rb-next{ opacity:.35; cursor:default; }
 html body .bk-ribbon .rb-nav svg{ width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 html body .bk-ribbon .rb-scroll[data-sr="1"] .rb-tabs{ -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent); mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent); }
 html body .bk-ribbon .rb-scroll[data-sl="1"] .rb-tabs{ -webkit-mask-image:linear-gradient(to left,#000 calc(100% - 32px),transparent); mask-image:linear-gradient(to left,#000 calc(100% - 32px),transparent); }
