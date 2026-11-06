@@ -18,7 +18,7 @@ window.BK_NAV = [
       { label:'Asset management', sheets:['Budget vs Actual', 'Actuals'] },
       { id:'dev', label:'Development', cond:'development', sheets:['Development', 'Dev Schedule', 'Dev Lease-Up', 'Dev Draws', 'Residual Land'] } ] },
   { id:'debt', label:'Debt', q:'Can we finance it, and is the loan safe?', color:'#2E6E6E', groups:[
-      { label:'Capital stack', sheets:['Sources & Uses'] },
+      { label:'Capital stack', sheets:['Sources & Uses', 'Reserve Accounts'] },
       { label:'Loan', sheets:['Debt', 'Debt Schedule', 'Covenant Monitor'] },
       { label:'Refinance', sheets:['Refinancing', 'Refi / Recap'] },
       { label:'Compare', sheets:['Financing Lab', 'Financing Compare'] } ] },
