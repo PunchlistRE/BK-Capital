@@ -50,6 +50,17 @@ function bkCohortMonthEntry(unit, month, closing, dealState){
   }
   return {status: monthsPast<downtime?'Rollover (blended)':'Rolled / Re-Leased (blended)', rent:blendedRent, oneTime};
 }
+/* The rollover as a monthly adjustment to the operating engine's rent lines (bkAnnualCF): for each OCCUPIED unit with a lease end inside the hold, the cohort's rent that month minus the in-place rent the base line already carries, in the dollars of the rent roll (the engine grows them with the rent growth, as it grows the rest). Residential units adjust the residential line, commercial units the retail line. The one-time TI and LC go to leasing capital. Undated units are left alone. */
+window.bkRolloverAdj = function(s, holdMonths){
+  s = s || bkLoad(); if(s.rolloverInNoi === false) return null;
+  const rr = Array.isArray(s.rentRoll) ? s.rentRoll : []; if(!rr.length) return null;
+  const live = rr.filter(function(u){ if(u.status !== 'Occupied' || !u.leaseEnd) return false; const rm = bkLeaseRolloverMonth(u.leaseEnd, s.closing); return rm !== null && rm >= 1 && rm <= holdMonths; });
+  if(!live.length) return null;
+  const z = function(){ return new Array(holdMonths).fill(0); }, out = { res:z(), comm:z(), cost:z(), units:live.length };
+  live.forEach(function(u){ const inPl = Number(u.inPlaceRent) || 0, tgt = u.tenantType === 'Commercial' ? out.comm : out.res;
+    for(let m = 1; m <= holdMonths; m++){ const e = bkCohortMonthEntry(u, m, s.closing, s); tgt[m-1] += e.rent - inPl; out.cost[m-1] += e.oneTime; } });
+  return out;
+};
 function bkLeaseCohortCFV20(){
   const s = bkEnsureV16();
   const rr = Array.isArray(s.rentRoll) ? s.rentRoll : [];
@@ -82,7 +93,7 @@ RENDERERS['Lease Cohort CF'] = function(){
     <div class="metric-row"><span class="k">Units Tracked</span><span class="v">${x.rr.length}</span></div>
     <div class="metric-row"><span class="k">Year 1 Blended Rent</span><span class="v">${x.annual[0]?money(x.annual[0].rent):'-'}</span></div>
   </div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Monthly Engine</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip warn">Projection</span></span></div>`)}${colorKeyCard()}`);
-  return {title:'Lease Cohort CF', crumbs:'Monthly Engine', desc:'Per-lease rollover projection: renewal-probability-weighted rent and TI/LC, not yet wired into core NOI.', meta:{Property:s.name,Units:x.rr.length,Currency:'USD',Status:'Projection'}, main, sidebar};
+  return {title:'Lease Cohort CF', crumbs:'Monthly Engine', desc:'Per-lease rollover projection: renewal-probability-weighted rent and TI/LC, wired into NOI (and the leasing capital) for every occupied unit with a lease end inside the hold; switch it off with rolloverInNoi = false.', meta:{Property:s.name,Units:x.rr.length,Currency:'USD',Status:'Projection'}, main, sidebar};
 };
 
 // ---- Shared helper: full monthly bkMonthlyReturns() for a portfolio snapshot, via the same
