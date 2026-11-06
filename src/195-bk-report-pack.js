@@ -57,7 +57,7 @@ function plan(scope, here){
 }
 
 /* take the open page as it stands: its title, its key-figure strip, its own panels and tables; no chrome, controls as text */
-var DROP = '.bk-flow,.bk-stepnav,.bk-case,.side-col,.bk-dui,.pf-bar,.rp-bar,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,.bk-pt-bar,.ae-tabs,.bk-sg,.bk-views,.bk-pack-cta,script,style,noscript,[hidden]';
+var DROP = '.bk-flow,.bk-stepnav,.bk-case,.side-col,.bk-dui,.pf-bar,.rp-bar,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,.bk-pt-bar,.ae-tabs,.ae-subs,.bk-sg,.bk-views,.bk-pack-cta,script,style,noscript,[hidden]';
 function harvest(){
   var fr = document.querySelector('#viewport .sheet-frame'), main = fr && fr.querySelector('.main-col'); if(!main) return null;
   var tb = fr.querySelector('.title-block'), meta = [];
@@ -196,6 +196,10 @@ function paginate(doc, secs, info){
     S.sec = sec; S.secPages = 1; S.stop = false; S.chain = []; newPage(false); starts[sec.id] = S.count;
     var node = doc.importNode(sec.node, true); prepTables(node); place(node, 0);
   });
+  /* a table inside nested panels has less room than the page body: scale any that still pass the right edge to fit what is left (never below 55%) */
+  all.forEach(function(pg){ var body = pg.querySelector('.pg-body'); if(!body) return; var edge = body.getBoundingClientRect().right;
+    [].forEach.call(body.querySelectorAll('table, svg'), function(t){ if(t.classList.contains('bk-print-orig') || t.offsetParent === null) return; var r = t.getBoundingClientRect(); if(r.right <= edge + 1 || r.width < 30) return;
+      var z = Math.max(0.55, (edge - r.left) / r.width); if(t.tagName === 'svg'){ t.style.maxWidth = '100%'; t.style.height = 'auto'; return; } t.style.zoom = ((parseFloat(t.style.zoom) || 1) * z - 0.005).toFixed(3); }); });
   all.forEach(function(pg, i){ var pn = pg.querySelector('.pn'); if(pn) pn.textContent = 'Page ' + (i + 1) + ' of ' + all.length; });
   [].forEach.call(doc.querySelectorAll('[data-pg]'), function(e){ e.textContent = starts[e.getAttribute('data-pg')] || ''; });
   return all.length;
@@ -231,7 +235,18 @@ window.bkPackOpen = function(scope){
       for(var i = 0; i < work.length && !canceled; i++){
         var sec = work[i]; pt.textContent = 'Reading page ' + (i + 1) + ' of ' + work.length + ': ' + label(sec.sheet);
         if(sec.sheet !== cur()){ safe(function(){ showSheet(sec.sheet); }); await sleep(360); }
-        var d = safe(harvest, null); if(d){ data[sec.id] = d; byId[sec.id] = d; }
+        var d = safe(harvest, null);
+        /* a Property Editor page has sub-tabs (Description, Location, ...): only the open one is on screen, so open each in turn and put them all in the summary, each under its own heading */
+        var subEls = [].slice.call(document.querySelectorAll('#viewport .ae-subs .ae-sub')), subList = subEls.map(function(e){ var m = /bkEdSub\('([^']*)','([^']*)'\)/.exec(e.getAttribute('onclick') || ''); return m ? { tab:m[1], id:m[2], label:T(e), on:e.classList.contains('on') } : null; }).filter(Boolean);
+        if(d && subList.length > 1 && typeof window.bkEdSub === 'function'){
+          var opened = subList.filter(function(x){ return x.on; })[0] || subList[0], parts = [];
+          for(var q = 0; q < subList.length; q++){ var sb = subList[q], dd = sb.on ? d : (safe(function(){ window.bkEdSub(sb.tab, sb.id); return 1; }, 0) ? (await sleep(320), safe(harvest, null)) : null);
+            if(dd){ var hd = document.createElement('div'); hd.className = 'pk-pane'; hd.textContent = sb.label; var wrap = document.createElement('div'); wrap.appendChild(hd); wrap.appendChild(dd.node); parts.push(wrap); } }
+          safe(function(){ window.bkEdSub(opened.tab, opened.id); });
+          await sleep(320);
+          var holder = document.createElement('div'); holder.className = 'main-col'; parts.forEach(function(w){ holder.appendChild(w); }); d.node = holder; sec.max = 4;
+        }
+        if(d){ data[sec.id] = d; byId[sec.id] = d; }
       }
     } finally { if(cur() !== here) safe(function(){ showSheet(here); }); window.scrollTo(0, scroll); }
     if(canceled){ busy = false; window.bkPackClose(); return; }
