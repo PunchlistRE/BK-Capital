@@ -68,6 +68,9 @@ window.BK_NAV_FOLDED = FOLDED;
 /* the pages a group lists in its menus: the folded views are reached from their host's tabs, not listed again; the host stands for its family */
 window.bkNavVisible = function(g){ return g.sheets.filter(function(n){ return !FOLDED[n]; }); };
 window.bkNavHostOf = function(n){ return FOLDED[n] || n; };
+/* the sub-tab row: at most two words a tab (the full name stays in the page title, the menus and the tooltip) */
+window.BK_NAV_SHORT = { 'Sources & Uses':'Sources/Uses', 'Refi / Recap':'Refi/Recap', 'Valuation Report':'Return Summary', 'Property Valuation Report':'Property Value', 'Sources and Uses Report':'S&U Report', 'Cash Flow Report':'Cash Flow',
+  'Present Value Report':'Present Value', 'Lease Audit Report':'Lease Audit', 'Audit Report':'Input Audit', 'Budget vs Actual':'Budget/Actual', 'Deal Vectors (M)':'Vectors (M)', 'Lease Cohort CF':'Lease Cohorts', 'Sell vs Hold':'Sell/Hold', 'Benchmarks':'Deal Targets', 'Probability-Weighted':'Probability' };
 var label = function(s){ return window.BK_NAV_LABELS[s] || s; };
 window.bkNavLabel = label;
 function slug(t){ return String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
@@ -117,7 +120,7 @@ railBuild();
 function decorate(){
   var cs = null; try { cs = currentSheet; } catch(e){} if(!cs) return;
   var t = tabOf(cs), nm = window.BK_NAV_LABELS[cs];
-  document.querySelectorAll('#viewport .rb-t[data-goto-sheet2]').forEach(function(b){ var k = b.getAttribute('data-goto-sheet2'); if(window.BK_NAV_LABELS[k]) b.textContent = label(k); });
+  document.querySelectorAll('#viewport .rb-t[data-goto-sheet2]').forEach(function(b){ var k = b.getAttribute('data-goto-sheet2'), t = window.BK_NAV_SHORT[k] || label(k); b.textContent = t; b.setAttribute('title', label(k) + (b.title ? ' \u00b7 ' + b.title.replace(/^.* \u00b7 /, '') : '')); });
   var cr = document.querySelector('#viewport .title-block .crumbs'); if(cr && t) cr.textContent = t.label;
   if(nm){ var h = document.querySelector('#viewport .title-block h2'); if(h) h.textContent = nm; var cu = document.querySelector('#viewport .tabnav .cur'); if(cu) cu.textContent = nm; }
   viewStrip(cs);
@@ -134,6 +137,7 @@ function viewStrip(cs){
 var prev = window.showSheet;
 if(typeof prev === 'function'){ window.showSheet = function(sheet){ var r = prev.apply(this, arguments); try { decorate(); } catch(e){} return r; }; try { showSheet = window.showSheet; } catch(e){} }
 var css = document.createElement('style'); css.id = 'bk-nav-css';
-css.textContent = '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}.bk-views .bkv-b{font:600 12.5px Inter,system-ui,sans-serif;padding:6px 12px;border:1px solid var(--ae-line,#c9d1dc);border-radius:999px;background:var(--ae-card,#fff);color:var(--ae-ink,#163a62);cursor:pointer}.bk-views .bkv-b:hover{border-color:#3E9AE6}.bk-views .bkv-b.on{background:#163a62;border-color:#163a62;color:#fff}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
+css.textContent = '.rb-tabs .rb-t{box-sizing:border-box;width:124px;min-width:124px;max-width:124px;flex:0 0 124px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.rb-tabs .rb-t{width:104px;min-width:104px;max-width:104px;flex-basis:104px}}'
+ + '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}.bk-views .bkv-b{font:600 12.5px Inter,system-ui,sans-serif;padding:6px 12px;border:1px solid var(--ae-line,#c9d1dc);border-radius:999px;background:var(--ae-card,#fff);color:var(--ae-ink,#163a62);cursor:pointer}.bk-views .bkv-b:hover{border-color:#3E9AE6}.bk-views .bkv-b.on{background:#163a62;border-color:#163a62;color:#fff}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
 document.head.appendChild(css);
 })();
