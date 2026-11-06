@@ -24775,6 +24775,8 @@ function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
 function fmt(n, d){ n = Number(n); if(!isFinite(n)) return '-'; if(Math.abs(n) < 0.5 && !d) return '0'; var a = Math.abs(n), b = a.toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 }); return n < 0 ? '(' + b + ')' : b; }
 function pct(n, d){ n = Number(n); return isFinite(n) ? (n * 100).toFixed(d == null ? 2 : d) + '%' : '-'; }
 function money(n, d){ n = Number(n); if(!isFinite(n)) return '-'; var a = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 }); return n < 0 ? '($' + a + ')' : '$' + a; }
+/* Argus marks every projected period: a grey band reading "Forecast" over each year column (Actual periods arrive with the actuals store). One cell per column, so the print splitter (src/167) keeps its column positions. */
+function fcRow(nYears, nAfter){ var h = '<tr class="rp-fc"><th></th>'; for(var i = 0; i < nYears; i++) h += '<th class="r">Forecast</th>'; for(var k = 0; k < (nAfter || 0); k++) h += '<th></th>'; return h + '</tr>'; }
 var OPT = (function(){ try { return JSON.parse(localStorage.getItem('bkcapital.rp.opt.v1') || '{}') || {}; } catch(e){ return {}; } })();
 function saveOpt(){ try { localStorage.setItem('bkcapital.rp.opt.v1', JSON.stringify(OPT)); } catch(e){} }
 window.bkRpOpt = function(k, v){ OPT[k] = v; saveOpt(); showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Cash Flow Report'); };
@@ -24811,14 +24813,14 @@ function cashFlow(s){
   var sched = sum([gpr, gprc, ltl, con]), pgr = sum([sched, oth]), capItems = function(y){ return cx(y) - leasing(y); }, totCap = sum([capItems, res]), totLC = sum([leasing, capItems, res]);
   SEC('Rental Revenue'); R('Potential Base Rent - Residential', gpr); R('Potential Base Rent and Recoveries - Retail', gprc); R('Loss to Lease', ltl); R('Free Rent', con); R('Scheduled Base Rent', sched, 'sub');
   SEC('Other Revenue'); R('Other Income', oth); R('Potential Gross Revenue', pgr, 'sub'); R('General Vacancy', vac); R('Credit Loss', bad); R('Effective Gross Revenue', egr, 'tot');
-  SEC('Operating Expenses'); R('Real Estate Taxes', tax); R('Insurance', ins); R('Controllable Operating Expenses', ctl); R('Management Fee', mg); R('Total Operating Expenses', opx, 'sub'); R('Net Operating Income', noib, 'tot');
+  SEC('Operating Expenses'); R('Real Estate Taxes', tax); R('Insurance', ins); R('Controllable Operating Expenses', ctl); R('Management Fee', mg); R('Total Operating Expenses', opx, 'sub'); R('Net Operating Income', noib, 'tot key');
   if(lk){ SEC('Leasing Costs'); R('Tenant Improvements', tiF); R('Leasing Commissions', lcF); R('Total Leasing Costs', leasing, 'sub'); }
   SEC('Capital Expenditures'); R('Capital Expenditures', capItems); R('Capital Reserves', res); R('Total Capital Expenditures', totCap, 'sub'); if(lk) R('Total Leasing & Capital Costs', totLC, 'sub');
   R('Cash Flow Before Debt Service', cfb, 'tot');
   if(hasDebt){ SEC('Debt Service'); R('Interest Payments', intr); R('Principal Payments', prin); R('Total Debt Service', ds, 'sub'); }
-  R('Cash Flow After Debt Service', cfa, 'tot'); R('Asset Management Fee', fee); R('Cash Flow Available for Distribution', eq, 'tot');
-  SEC('Sale (final year)'); R('Gross Sale Price', sale); R('Selling Costs', cost); R('Net Sales Price', nsp, 'sub'); R('Disposition Fee', dispo); R('Loan Payoff', payoff); R('Proceeds from Sale', sum([sale, cost, dispo, payoff]), 'tot');
-  var head = '<tr><th>' + (mode === 'total' ? 'Dollars' : mode === 'unit' ? 'Dollars per unit' : 'Dollars per GSF') + '</th>' + arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th><th class="r">Y1 % of EGR</th></tr>'
+  R('Cash Flow After Debt Service', cfa, 'tot'); R('Asset Management Fee', fee); R('Cash Flow Available for Distribution', eq, 'tot key');
+  SEC('Sale (final year)'); R('Gross Sale Price', sale); R('Selling Costs', cost); R('Net Sales Price', nsp, 'sub'); R('Disposition Fee', dispo); R('Loan Payoff', payoff); R('Proceeds from Sale', sum([sale, cost, dispo, payoff]), 'tot key');
+  var head = fcRow(arr.length, 2) + '<tr><th>' + (mode === 'total' ? 'Dollars' : mode === 'unit' ? 'Dollars per unit' : 'Dollars per GSF') + '</th>' + arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th><th class="r">Y1 % of EGR</th></tr>'
     + '<tr class="rp-pe"><th>For the years ending</th>' + arr.map(function(a){ return '<th class="r">' + esc(periodEnd(s, a.y)) + '</th>'; }).join('') + '<th></th><th></th></tr>';
   var d = mode === 'gsf' ? 2 : 0, body = rows.map(function(r){ if(r.sec) return '<tr class="sec"><td>' + esc(r.sec) + '</td><td colspan="' + (n + 2) + '"></td></tr>';   /* label in its own cell so the rule between labels and figures runs unbroken */ var vals = arr.map(function(a){ return r.f(a.y) / per; }), tot = vals.reduce(function(t, v){ return t + v; }, 0), e1 = egr(1);
     return '<tr class="' + r.cls + '"><td>' + esc(r.label) + '</td>' + vals.map(function(v){ return '<td class="r">' + fmt(v, d) + '</td>'; }).join('') + '<td class="r">' + fmt(tot, d) + '</td><td class="r dim">' + (e1 ? pct(r.f(1) / e1, 1) : '-') + '</td></tr>'; }).join('');
@@ -24846,13 +24848,13 @@ function devCF(s){
   SEC('Funding of Development Costs'); R('Equity Contributions', eqD); R('Construction Loan Draws', draw); R('Interest Capitalized into the Loan', capI); R('Operating Reserve Applied', resA); R('Total Funding', funds, 'tot'); R('Total Funding less Total Development Costs', function(y){ return funds(y) - costs(y); }, 'dim');
   SEC('Operations'); R('Net Operating Income', noi); R('Asset Management Fee', fee); R('Leasing Capital', lcap); R('Debt Service', ds); R('Cash Flow After Debt Service', cfa, 'sub');
   SEC('Takeout and Sale'); R('Permanent Loan Proceeds after Construction Payoff', take); R('Gross Sale Price', gross); R('Selling Costs', selling); R('Net Sales Price', nsp, 'sub'); R('Disposition Fee', dispo); R('Loan Payoff', payoff); R('Proceeds from Sale', saleNet, 'sub');
-  SEC('Cash Flow to Equity'); R('Equity Contributions - Development', eqOut); R('Equity Contributions - Takeout', takeEq); R('Cash Flow After Debt Service', cfa); R('Permanent Loan Proceeds after Construction Payoff', take); R('Proceeds from Sale', saleNet); R('Operating Reserve Applied and Released', resO); R('Net Cash Flow to Equity', net, 'tot');
+  SEC('Cash Flow to Equity'); R('Equity Contributions - Development', eqOut); R('Equity Contributions - Takeout', takeEq); R('Cash Flow After Debt Service', cfa); R('Permanent Loan Proceeds after Construction Payoff', take); R('Proceeds from Sale', saleNet); R('Operating Reserve Applied and Released', resO); R('Net Cash Flow to Equity', net, 'tot key');
   SEC('Contributions and Distributions'); R('Total Contributions', function(y){ return -Rm(y, 'wfContrib'); }); R('Total Distributions', function(y){ return Rm(y, 'wfDist'); }); R('Net Cash Flow to Equity', function(y){ return Rm(y, 'wfDist') - Rm(y, 'wfContrib'); }, 'sub');
   var endOf = function(y){ var last = null; rows.forEach(function(r){ if(r.y === y) last = r; }); var d = last && last.dt ? new Date(last.dt) : null; return d && isFinite(d.getTime()) ? MON[d.getMonth()] + '-' + d.getFullYear() : ''; };
   var body = lines.map(function(r){ if(r.sec) return '<tr class="sec"><td>' + esc(r.sec) + '</td><td colspan="' + (n + 1) + '"></td></tr>';
     var vals = yrs.map(function(y){ return r.f(y); }), tot = vals.reduce(function(t, v){ return t + v; }, 0), bad = r.cls === 'dim' && vals.some(function(v){ return Math.abs(v) > 1; });
     return '<tr class="' + (r.cls + (bad ? ' rp-bad' : '')).trim() + '"><td>' + esc(r.label) + '</td>' + vals.map(function(v){ return '<td class="r">' + fmt(v) + '</td>'; }).join('') + '<td class="r">' + fmt(tot) + '</td></tr>'; }).join('');
-  var head = '<tr><th>Dollars</th>' + yrs.map(function(y){ return '<th class="r">Year ' + y + '</th>'; }).join('') + '<th class="r">Total</th></tr><tr class="rp-pe"><th>For the years ending</th>' + yrs.map(function(y){ return '<th class="r">' + esc(endOf(y)) + '</th>'; }).join('') + '<th></th></tr>';
+  var head = fcRow(yrs.length, 1) + '<tr><th>Dollars</th>' + yrs.map(function(y){ return '<th class="r">Year ' + y + '</th>'; }).join('') + '<th class="r">Total</th></tr><tr class="rp-pe"><th>For the years ending</th>' + yrs.map(function(y){ return '<th class="r">' + esc(endOf(y)) + '</th>'; }).join('') + '<th></th></tr>';
   return { html:'<table class="rp-tbl" id="rp-devcf"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>', lines:lines, years:yrs, f:{ costs:costs, funds:funds, net:net, cfa:cfa, saleNet:saleNet, eqD:eqD, draw:draw, capI:capI }, mr:mr, fund:f }; }
 function sheetDevCF(s){ var d = devCF(s), mr = d.mr, u = mr.u || {}, x = d.fund;
   var sum = [['IRR (Unleveraged)', pct(u.irr), 'project cost, operations and sale, with no loan'], ['IRR (Leveraged)', pct(mr.irr), 'multiple ' + num(mr.moic).toFixed(2) + 'x on the equity called'], ['Total Development Cost', money(x.levered), 'budget, fees and capitalized interest'], ['Construction Loan', money(x.commit), pct(num(s.conLTC), 0) + ' of cost, ' + pct(num(s.conRate), 2)], ['Profit to Equity', money(num(mr.dist) - num(mr.contrib)), 'distributions less contributions']];
@@ -24896,13 +24898,13 @@ function sheetSU(){ var s = bkLoad();
   if(isDev(s)) return { title:'Sources and Uses Report', crumbs:'Reports', desc:'', sidebar:'', meta:{ Property:esc(s.name) }, main:'<div class="ae"><div class="ae-panel"><div class="ae-ph"><i>!</i>Development</div><div class="ae-row"><span>This report is for stabilized, operating properties. A development\'s sources and uses are the funding plan and the draw schedule.</span></div><div class="ae-row"><button class="ae-btn pri" onclick="showSheet(\'Sources & Uses\')">Sources &amp; Uses</button><button class="ae-btn" onclick="showSheet(\'Dev Draws\')">Dev Draws</button></div></div></div>' };
   if(an && an.id === 'refinance') return { title:'Sources and Uses Report', crumbs:'Reports', desc:'', sidebar:'', meta:{ Property:esc(s.name) }, main:'<div class="ae"><div class="ae-panel"><div class="ae-ph"><i>!</i>Refinancing</div><div class="ae-row"><span>A refinancing analysis has its own report: what the new loan pays off and what it leaves.</span><button class="ae-btn pri" onclick="showSheet(\'Refinance Report\')">Refinance Report</button></div></div></div>' };
   var c = suCalc(s), arr = c.ac.arr, n = c.n, e1 = 0;
-  var head2 = '<tr><th>Dollars</th>' + arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th></tr><tr class="rp-pe"><th>For the years ending</th>' + arr.map(function(a){ return '<th class="r">' + esc(periodEnd(s, a.y)) + '</th>'; }).join('') + '<th></th></tr>';
+  var head2 = fcRow(arr.length, 1) + '<tr><th>Dollars</th>' + arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th></tr><tr class="rp-pe"><th>For the years ending</th>' + arr.map(function(a){ return '<th class="r">' + esc(periodEnd(s, a.y)) + '</th>'; }).join('') + '<th></th></tr>';
   var body = c.rows.map(function(r){ if(r.sec) return '<tr class="sec"><td>' + esc(r.sec) + '</td><td colspan="' + (n + 1) + '"></td></tr>';
     var vals = arr.map(function(a){ return r.f(a.y); }), tot = vals.reduce(function(t, v){ return t + v; }, 0), tie = r.cls === 'dim', bad = tie && vals.some(function(v){ return Math.abs(v) > 1; });
     return '<tr class="' + r.cls + (bad ? ' rp-bad' : '') + '"><td>' + esc(r.label) + '</td>' + vals.map(function(v){ return '<td class="r">' + (tie ? fmt(Math.abs(v) < 0.5 ? 0 : v) : fmt(v)) + '</td>'; }).join('') + '<td class="r">' + fmt(tot) + '</td></tr>'; }).join('');
   var rb = c.ret.map(function(r){ if(!r[1]) return '<tr class="sec"><td>' + esc(r[0]) + '</td><td colspan="' + (n + 1) + '"></td></tr>';
     return '<tr><td>' + esc(r[0]) + '</td>' + arr.map(function(a){ var v = r[1](a.y); return '<td class="r">' + (v == null ? '-' : r[2] === 'p' ? pct(v) : fmt(v)) + '</td>'; }).join('') + '<td></td></tr>'; }).join('');
-  var irr = '<tr class="sec"><td>Annual IRR</td><td colspan="' + (n + 1) + '"></td></tr><tr class="tot"><td>IRR (Unleveraged)</td>' + arr.map(function(a, i){ return '<td class="r">' + (i === n - 1 ? pct(c.ac.irr) : '') + '</td>'; }).join('') + '<td></td></tr><tr class="tot"><td>IRR (Leveraged)</td>' + arr.map(function(a, i){ return '<td class="r">' + (i === n - 1 ? pct(c.mr.irr) : '') + '</td>'; }).join('') + '<td></td></tr>';
+  var irr = '<tr class="sec"><td>Annual IRR</td><td colspan="' + (n + 1) + '"></td></tr><tr class="tot key"><td>IRR (Unleveraged)</td>' + arr.map(function(a, i){ return '<td class="r">' + (i === n - 1 ? pct(c.ac.irr) : '') + '</td>'; }).join('') + '<td></td></tr><tr class="tot key"><td>IRR (Leveraged)</td>' + arr.map(function(a, i){ return '<td class="r">' + (i === n - 1 ? pct(c.mr.irr) : '') + '</td>'; }).join('') + '<td></td></tr>';
   return { title:'Sources and Uses Report', crumbs:'Reports', desc:'', sidebar:'', meta:{ Property:esc(s.name || 'Untitled'), Case:esc(s.scenarioCase || 'Base'), Years:n }, main:'<div class="ae rp">' + bar('rp-su') + head(s, 'Property Sources and Uses') + '<div style="overflow-x:auto"><table class="rp-tbl" id="rp-su"><thead>' + head2 + '</thead><tbody>' + body + rb + irr + '</tbody></table></div>'
     + '<div class="ae-hint">Every line is read from the model. Sources are net operating income (before capital reserves), the loan, the equity paid in at closing, the net sales price and the equity called after closing; uses are the closing costs, debt service, leasing and capital costs, reserves, fees, the loan retired and what is distributed. The two totals are summed separately, never balanced against each other, and the last row of the table is their difference. Closing equity and the capital called after it are the first two of the four capital measures (see Sources &amp; Uses). Cash to Purchase Price is cash flow before debt service over the purchase price; NOI to Book Value is net operating income over the acquisition basis plus the leasing and capital costs paid to date; Cash to Initial Equity and Cash to Equity Balance are cash flow available for distribution over closing equity and over closing equity plus the equity called to date. Results are the model\'s projected cash flows only.</div></div>' }; }
 /* ---------- PRESENT VALUE ---------- */
@@ -24937,7 +24939,7 @@ function sheetPV(){ var s = bkLoad();
     var ops = cols.map(function(k){ return sum(k.y); }), tot = '<tr class="sub"><td>Totals</td><td></td><td class="r">' + fmt(sum(cf)) + '</td>' + ops.map(function(v){ return '<td class="r">' + fmt(v) + '</td>'; }).join('') + '<td></td></tr>';
     var rs = '<tr><td>' + resaleLabel + '</td><td></td><td class="r">' + fmt(resale) + '</td>' + cols.map(function(k){ return '<td class="r">' + fmt(k.sale) + '</td>'; }).join('') + '<td></td></tr>';
     var db = debtRow ? '<tr><td>Debt Balance as of ' + startTxt + '</td><td></td><td class="r">' + fmt(c.debt0) + '</td>' + cols.map(function(){ return '<td class="r">' + fmt(c.debt0) + '</td>'; }).join('') + '<td></td></tr>' : '';
-    var tv = cols.map(function(k, i){ return ops[i] + k.sale + (debtRow ? c.debt0 : 0); }), total = '<tr class="tot"><td>' + totLabel + '</td><td></td><td></td>' + tv.map(function(v){ return '<td class="r">' + fmt(v) + '</td>'; }).join('') + '<td></td></tr>';
+    var tv = cols.map(function(k, i){ return ops[i] + k.sale + (debtRow ? c.debt0 : 0); }), total = '<tr class="tot key"><td>' + totLabel + '</td><td></td><td></td>' + tv.map(function(v){ return '<td class="r">' + fmt(v) + '</td>'; }).join('') + '<td></td></tr>';
     var dist = '<tr class="sec"><td>Percentage Value Distribution</td><td colspan="' + (R.length + 3) + '"></td></tr><tr><td>Income</td><td></td><td></td>' + cols.map(function(k, i){ var g = ops[i] + k.sale; return '<td class="r">' + (g ? pct(ops[i] / g) : '-') + '</td>'; }).join('') + '<td></td></tr><tr><td>Net Sale Price</td><td></td><td></td>' + cols.map(function(k, i){ var g = ops[i] + k.sale; return '<td class="r">' + (g ? pct(k.sale / g) : '-') + '</td>'; }).join('') + '<td></td></tr><tr class="sub"><td>Total</td><td></td><td></td>' + cols.map(function(){ return '<td class="r">100.00%</td>'; }).join('') + '<td></td></tr>';
     return '<table class="rp-tbl rp-pv" id="' + id + '">' + head + '<tbody>' + body + tot + rs + db + total + dist + '</tbody></table>'; };
   var tU = table('rp-pvu', 'Cash Flow Before Debt Service', c.colsU, c.cfU, c.netU, 'Property Resale @ ' + capTxt + ' Cap Rate', false, 'Total Unleveraged Present Value');
@@ -24999,7 +25001,7 @@ function avgYear(a, y, hm){ var t = 0, c = 0; for(var i = (y - 1) * 12; i < y * 
 function sheetLease(s){ s = bkLoad();
   if(!safe(function(){ return bkLeaseOn(s); }, false)) return { title:'Lease Schedule', crumbs:'Reports', desc:'', sidebar:'', meta:{ Property:esc(s.name) }, main:'<div class="ae"><div class="ae-panel"><div class="ae-ph"><i>L</i>Lease Schedule</div><div class="ae-row"><span>The commercial lease model is off. Build a tenant schedule to see rent, recoveries and leasing costs tenant by tenant.</span><button class="ae-btn pri" onclick="bkEdGo(\'Tenants\',\'Tenants\',\'lease\')">Open Commercial Leases</button></div></div></div>' };
   var ac = bkAnnualCF(), LM = ac.lease, n = ac.arr.length, ten = LM.tenants, yr = function(a, y){ return sumYear(a, y, ac.holdMonths); }, avg = function(a, y){ return avgYear(a, y, ac.holdMonths); };
-  var heads = '<tr><th>Dollars</th>' + ac.arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th></tr>', cols = n + 2;
+  var heads = fcRow(ac.arr.length, 1) + '<tr><th>Dollars</th>' + ac.arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th></tr>', cols = n + 2;
   var sec = function(title, key, sign){ var tot = new Array(n).fill(0), body = ten.map(function(t, i){ var vals = ac.arr.map(function(a){ return sign * yr(LM.byT[i][key], a.y); }); vals.forEach(function(v, k){ tot[k] += v; });
       return '<tr><td>' + esc(t.name) + '</td>' + vals.map(function(v){ return '<td class="r">' + fmt(v) + '</td>'; }).join('') + '<td class="r">' + fmt(vals.reduce(function(a, b){ return a + b; }, 0)) + '</td></tr>'; }).join('');
     return { html:'<tr class="sec"><td colspan="' + cols + '">' + title + '</td></tr>' + body + '<tr class="sub"><td>Total</td>' + tot.map(function(v){ return '<td class="r">' + fmt(v) + '</td>'; }).join('') + '<td class="r">' + fmt(tot.reduce(function(a, b){ return a + b; }, 0)) + '</td></tr>', tot:tot }; };
@@ -25032,7 +25034,7 @@ function sheetLeaseAudit(){ var s = bkLoad();
   var roll = '<div class="rp-sec">Rollover Terms at Expiry</div><table class="rp-tbl rp-auto" id="rp-lroll"><thead><tr><th>Tenant</th><th class="r">Renewal Probability</th><th class="r">Downtime (Months)</th><th class="r">New Lease Term (Months)</th><th class="r">Renewal Term (Months)</th><th class="r">Free Rent, New (Months)</th><th class="r">Free Rent, Renewal (Months)</th><th class="r">TI, New ($ / SF)</th><th class="r">TI, Renewal ($ / SF)</th><th class="r">LC, New</th><th class="r">LC, Renewal</th></tr></thead><tbody>'
     + ten.map(function(t){ var r = t.roll || {}; return '<tr><td>' + esc(t.name) + '</td><td class="r">' + pct(r.p, 0) + '</td><td class="r">' + fmt(r.down) + '</td><td class="r">' + fmt(r.termN) + '</td><td class="r">' + fmt(r.termR) + '</td><td class="r">' + fmt(r.freeN) + '</td><td class="r">' + fmt(r.freeR) + '</td><td class="r">' + fmt(r.tiN, 2) + '</td><td class="r">' + fmt(r.tiR, 2) + '</td><td class="r">' + pct(r.lcN, 1) + '</td><td class="r">' + pct(r.lcR, 1) + '</td></tr>'; }).join('') + '</tbody></table>';
   /* B. tenant by tenant, by year */
-  var heads = '<tr><th>Dollars</th>' + ac.arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th></tr><tr class="rp-pe"><th>For the years ending</th>' + ac.arr.map(function(a){ return '<th class="r">' + esc(periodEnd(s, a.y)) + '</th>'; }).join('') + '<th></th></tr>';
+  var heads = fcRow(ac.arr.length, 1) + '<tr><th>Dollars</th>' + ac.arr.map(function(a){ return '<th class="r">Year ' + a.y + '</th>'; }).join('') + '<th class="r">Total</th></tr><tr class="rp-pe"><th>For the years ending</th>' + ac.arr.map(function(a){ return '<th class="r">' + esc(periodEnd(s, a.y)) + '</th>'; }).join('') + '<th></th></tr>';
   var block = function(B){ return line('Base Rent Before Free Rent', function(y){ return yr(B.rent, y) + yr(B.free, y); }) + line('Free Rent', function(y){ return -yr(B.free, y); }) + line('Base Rent Collected', function(y){ return yr(B.rent, y); }, 'sub') + line('Expense Recoveries', function(y){ return yr(B.rec, y); }) + line('Total Rent Revenue', function(y){ return yr(B.rent, y) + yr(B.rec, y); }, 'sub')
     + line('Tenant Improvements', function(y){ return -yr(B.ti, y); }) + line('Leasing Commissions', function(y){ return -yr(B.lc, y); }) + line('Total Leasing Costs', function(y){ return -(yr(B.ti, y) + yr(B.lc, y)); }, 'sub'); };
   var per = ten.map(function(t, i){ return secRow(esc(t.name) + ' &middot; ' + fmt(t.sf) + ' SF &middot; ' + pct(t.sf / area, 2) + ' of the schedule') + occ('Occupancy (average of the year)', LM.byT[i].occ) + block(LM.byT[i]); }).join('');
@@ -27993,7 +27995,7 @@ function wide(){ var t = [].slice.call(document.querySelectorAll('#viewport tabl
 /* A schedule with a column per year has to fit the page whatever the hold: up to 12 year columns it is set on one page (landscape from 9 columns), the type sized to the
    column count; a longer hold is split into pages of 10 years, the label column repeated and the totals on the last. Nothing is clipped, nothing is dropped. */
 var YEARS_PER_PAGE = 10, PAGE_PX = { land:973, port:733 };
-function headCells(t){ var hr = t.tHead && t.tHead.rows[0] ? t.tHead.rows[0] : t.rows[0]; return hr ? [].slice.call(hr.cells) : []; }
+function headCells(t){ var rs = t.tHead ? [].slice.call(t.tHead.rows) : [], hr = rs.filter(function(r){ return [].some.call(r.cells, function(c){ return /^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent); }); })[0] || rs[0] || t.rows[0]; return hr ? [].slice.call(hr.cells) : []; }   /* the row that names the years (a Forecast band may sit above it) */
 function splitYears(t){
   var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
   if(yr.length <= 12 || t.classList.contains('bk-print-clone')) return;
@@ -32220,6 +32222,56 @@ html body #viewport table.ae-grid td[data-bk-wc="m"]{ width:var(--bk-w-m); }
 html body #viewport table.ae-grid td[data-bk-wc="l"]{ width:var(--bk-w-l); }
 html body #viewport table.ae-grid td[data-bk-wc="c"]{ width:var(--bk-w-c); }
 @media (max-width:760px){ html body #viewport [data-bk-w]{ max-width:100% !important; } }
+</style>
+<style id="bk-emphasis-tiers-css">/* EMPHASIS TIERS (owner, November 2026). Figures that matter get one of two fills, each ruled across the WHOLE row, label included:
+     KEY        gold        the bottom-line answers: Net Operating Income, Cash Flow Available for Distribution, Proceeds from Sale, IRR, the present value, a table's grand total
+     IMPORTANT  blue-grey   the intermediate totals: Effective Gross Revenue, Cash Flow Before / After Debt Service, Total Sources / Uses, a table's other totals
+   A plain total (a subtotal) is bold with one rule above it and no fill. The header blue-grey (--ae-head) only names things; neither tier sits on a heading
+   (audit/fillrule_test.js). This part loads after the palette and the report layout, and is the one place the tiers are set. */
+:root{ --bk-key-fill:#F6EEDA; --bk-key-ink:#1F2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28);
+       --bk-imp-fill:#E2EDF8; --bk-imp-ink:#0E2A4A; --bk-imp-rule:#7E9DC2; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(212,168,74,.17); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32);
+       --bk-imp-fill:rgba(111,180,242,.12); --bk-imp-ink:#e3eefa; --bk-imp-rule:#6f9fd0; } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(212,168,74,.17); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32);
+       --bk-imp-fill:rgba(111,180,242,.12); --bk-imp-ink:#e3eefa; --bk-imp-rule:#6f9fd0; }
+html body #viewport{ --bk-fill-key:var(--bk-key-fill); --bk-fill-imp:var(--bk-imp-fill); --bk-total-fill:var(--bk-key-fill); --bk-total-ink:var(--bk-key-ink); }
+
+/* ---- reports (Argus layout): the label cell carries the same fill and the same rules as the figures ---- */
+html body #viewport .rp .rp-tbl tr.sub > td{ border-top:1px solid var(--ae-ink) !important; }
+html body #viewport .rp .rp-tbl tr.tot:not(.key) > td{ background:var(--bk-imp-fill) !important; color:var(--bk-imp-ink) !important; font-weight:700;
+  border-top:1px solid var(--bk-imp-rule) !important; border-bottom:1px solid var(--bk-imp-rule) !important; box-shadow:none; }
+html body #viewport .rp .rp-tbl tr.tot.key.key > td{ background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; font-weight:700;
+  border-top:1px solid var(--bk-key-rule) !important; border-bottom:1px solid var(--bk-key-rule) !important; }
+html body #viewport .rp .rp-tbl tr.tot.key.key > td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+/* the Forecast band: Argus's grey band over each projected year */
+html body #viewport .rp .rp-tbl thead tr.rp-fc th{ padding-top:4px; padding-bottom:4px; font-size:11px; font-weight:600; letter-spacing:.02em; color:var(--ae-ink); }
+html body #viewport .rp .rp-tbl thead tr.rp-fc th.r{ background:var(--ae-head) !important; }
+html body #viewport .rp .rp-tbl thead tr.rp-fc + tr th.r{ background:transparent !important; padding-top:6px; }
+
+/* ---- every other table (table.fin): a grand total is KEY, any other total IMPORTANT, whether or not it closes its table ---- */
+html body #viewport table.fin tbody tr.grandtotal > td, html body #viewport table.fin tbody tr.grandtotal > th,
+html body #viewport table.fin tbody tr.grandtotal[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > td,
+html body #viewport table.fin tbody tr.grandtotal[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > th{
+  background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; font-weight:700 !important; opacity:1 !important;
+  border-top:1px solid var(--bk-key-rule) !important; border-bottom:1px solid var(--bk-key-rule) !important; }
+html body #viewport table.fin tbody tr.grandtotal > :first-child,
+html body #viewport table.fin tbody tr.grandtotal[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > :first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+html body #viewport table.fin tbody tr.total > td, html body #viewport table.fin tbody tr.total > th,
+html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > td,
+html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > th{
+  background:var(--bk-imp-fill) !important; color:var(--bk-imp-ink) !important; font-weight:700 !important; opacity:1 !important;
+  border-top:1px solid var(--bk-imp-rule) !important; border-bottom:1px solid var(--bk-imp-rule) !important; }
+html body #viewport table.fin tbody tr.total > :first-child,
+html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > :first-child{ box-shadow:none !important; }
+html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-imp-rule) !important; }
+
+/* print: the bands and their rules print as on screen */
+@media print{
+  html body #viewport .rp .rp-tbl tr.tot > td, html body #viewport table.fin tbody tr.grandtotal > td, html body #viewport table.fin tbody tr.total > td,
+  html body #viewport .rp .rp-tbl thead tr.rp-fc th.r{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  html body #viewport .rp .rp-tbl tr.tot:not(.key) > td{ border-color:var(--bk-imp-rule) !important; }
+  html body #viewport .rp .rp-tbl tr.tot.key.key > td{ border-color:var(--bk-key-rule) !important; }
+}
 </style>
 </body>
 </html>

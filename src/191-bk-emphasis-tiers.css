@@ -1,0 +1,49 @@
+/* EMPHASIS TIERS (owner, November 2026). Figures that matter get one of two fills, each ruled across the WHOLE row, label included:
+     KEY        gold        the bottom-line answers: Net Operating Income, Cash Flow Available for Distribution, Proceeds from Sale, IRR, the present value, a table's grand total
+     IMPORTANT  blue-grey   the intermediate totals: Effective Gross Revenue, Cash Flow Before / After Debt Service, Total Sources / Uses, a table's other totals
+   A plain total (a subtotal) is bold with one rule above it and no fill. The header blue-grey (--ae-head) only names things; neither tier sits on a heading
+   (audit/fillrule_test.js). This part loads after the palette and the report layout, and is the one place the tiers are set. */
+:root{ --bk-key-fill:#F6EEDA; --bk-key-ink:#1F2933; --bk-key-rule:#B8892B; --bk-key-line:rgba(120,90,20,.28);
+       --bk-imp-fill:#E2EDF8; --bk-imp-ink:#0E2A4A; --bk-imp-rule:#7E9DC2; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bk-key-fill:rgba(212,168,74,.17); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32);
+       --bk-imp-fill:rgba(111,180,242,.12); --bk-imp-ink:#e3eefa; --bk-imp-rule:#6f9fd0; } }
+:root[data-theme="dark"]{ --bk-key-fill:rgba(212,168,74,.17); --bk-key-ink:#f3e6c4; --bk-key-rule:#d4a84a; --bk-key-line:rgba(212,168,74,.32);
+       --bk-imp-fill:rgba(111,180,242,.12); --bk-imp-ink:#e3eefa; --bk-imp-rule:#6f9fd0; }
+html body #viewport{ --bk-fill-key:var(--bk-key-fill); --bk-fill-imp:var(--bk-imp-fill); --bk-total-fill:var(--bk-key-fill); --bk-total-ink:var(--bk-key-ink); }
+
+/* ---- reports (Argus layout): the label cell carries the same fill and the same rules as the figures ---- */
+html body #viewport .rp .rp-tbl tr.sub > td{ border-top:1px solid var(--ae-ink) !important; }
+html body #viewport .rp .rp-tbl tr.tot:not(.key) > td{ background:var(--bk-imp-fill) !important; color:var(--bk-imp-ink) !important; font-weight:700;
+  border-top:1px solid var(--bk-imp-rule) !important; border-bottom:1px solid var(--bk-imp-rule) !important; box-shadow:none; }
+html body #viewport .rp .rp-tbl tr.tot.key.key > td{ background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; font-weight:700;
+  border-top:1px solid var(--bk-key-rule) !important; border-bottom:1px solid var(--bk-key-rule) !important; }
+html body #viewport .rp .rp-tbl tr.tot.key.key > td:first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+/* the Forecast band: Argus's grey band over each projected year */
+html body #viewport .rp .rp-tbl thead tr.rp-fc th{ padding-top:4px; padding-bottom:4px; font-size:11px; font-weight:600; letter-spacing:.02em; color:var(--ae-ink); }
+html body #viewport .rp .rp-tbl thead tr.rp-fc th.r{ background:var(--ae-head) !important; }
+html body #viewport .rp .rp-tbl thead tr.rp-fc + tr th.r{ background:transparent !important; padding-top:6px; }
+
+/* ---- every other table (table.fin): a grand total is KEY, any other total IMPORTANT, whether or not it closes its table ---- */
+html body #viewport table.fin tbody tr.grandtotal > td, html body #viewport table.fin tbody tr.grandtotal > th,
+html body #viewport table.fin tbody tr.grandtotal[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > td,
+html body #viewport table.fin tbody tr.grandtotal[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > th{
+  background:var(--bk-key-fill) !important; color:var(--bk-key-ink) !important; font-weight:700 !important; opacity:1 !important;
+  border-top:1px solid var(--bk-key-rule) !important; border-bottom:1px solid var(--bk-key-rule) !important; }
+html body #viewport table.fin tbody tr.grandtotal > :first-child,
+html body #viewport table.fin tbody tr.grandtotal[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > :first-child{ box-shadow:inset 3px 0 0 var(--bk-key-rule); }
+html body #viewport table.fin tbody tr.total > td, html body #viewport table.fin tbody tr.total > th,
+html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > td,
+html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > th{
+  background:var(--bk-imp-fill) !important; color:var(--bk-imp-ink) !important; font-weight:700 !important; opacity:1 !important;
+  border-top:1px solid var(--bk-imp-rule) !important; border-bottom:1px solid var(--bk-imp-rule) !important; }
+html body #viewport table.fin tbody tr.total > :first-child,
+html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > :first-child{ box-shadow:none !important; }
+html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-imp-rule) !important; }
+
+/* print: the bands and their rules print as on screen */
+@media print{
+  html body #viewport .rp .rp-tbl tr.tot > td, html body #viewport table.fin tbody tr.grandtotal > td, html body #viewport table.fin tbody tr.total > td,
+  html body #viewport .rp .rp-tbl thead tr.rp-fc th.r{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  html body #viewport .rp .rp-tbl tr.tot:not(.key) > td{ border-color:var(--bk-imp-rule) !important; }
+  html body #viewport .rp .rp-tbl tr.tot.key.key > td{ border-color:var(--bk-key-rule) !important; }
+}

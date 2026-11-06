@@ -27,7 +27,7 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
   const READ = (p) => p.evaluate(async () => { showSheet('Lease Audit Report'); await new Promise(r => setTimeout(r, 600));
     const num = (t) => { t = String(t).trim(); if (t === '' || t === '-') return null; const neg = /^\(.*\)$/.test(t); const v = parseFloat(t.replace(/[(),%$]/g, '')); return neg ? -v : v; };
     const grid = (id) => [...document.querySelectorAll('#' + id + ' tbody tr')].map(tr => ({ cls: tr.className, c: [...tr.children].map(td => td.textContent.trim()) }));
-    const years = document.querySelectorAll('#rp-leaseaudit thead tr:first-child th.r').length - 1;
+    const years = document.querySelectorAll('#rp-leaseaudit thead tr:not(.rp-fc):not(.rp-pe) th.r').length - 1;
     /* tenant blocks: a section row names the tenant, the rows after it (until the next section) are its lines */
     const blocks = []; let cur = null; grid('rp-leaseaudit').forEach(r => { if (r.cls === 'sec') { cur = { name: r.c[0], rows: {} }; blocks.push(cur); } else if (cur) cur.rows[r.c[0]] = { cls: r.cls, raw: r.c.slice(1), v: r.c.slice(1).map(num) }; });
     const s = bkLoad(), ac = bkAnnualCF(), LM = ac.lease, hm = ac.holdMonths, cf = bkRpCashFlow(), F = cf.f;

@@ -69,7 +69,7 @@ function wide(){ var t = [].slice.call(document.querySelectorAll('#viewport tabl
 /* A schedule with a column per year has to fit the page whatever the hold: up to 12 year columns it is set on one page (landscape from 9 columns), the type sized to the
    column count; a longer hold is split into pages of 10 years, the label column repeated and the totals on the last. Nothing is clipped, nothing is dropped. */
 var YEARS_PER_PAGE = 10, PAGE_PX = { land:973, port:733 };
-function headCells(t){ var hr = t.tHead && t.tHead.rows[0] ? t.tHead.rows[0] : t.rows[0]; return hr ? [].slice.call(hr.cells) : []; }
+function headCells(t){ var rs = t.tHead ? [].slice.call(t.tHead.rows) : [], hr = rs.filter(function(r){ return [].some.call(r.cells, function(c){ return /^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent); }); })[0] || rs[0] || t.rows[0]; return hr ? [].slice.call(hr.cells) : []; }   /* the row that names the years (a Forecast band may sit above it) */
 function splitYears(t){
   var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
   if(yr.length <= 12 || t.classList.contains('bk-print-clone')) return;
