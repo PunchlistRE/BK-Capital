@@ -183,6 +183,28 @@ rule('acct.exit-below-going-in', 'WARN', 'Exit', 'Deal Underwrite', function(s){
   if(cap < gi - 0.0005) return { msg:'Exit cap (' + pc(cap, 2) + ') is below the going-in yield (' + pc(gi, 2) + ').',
     why:'That assumes the market prices the property more richly when you sell than when you buy (cap-rate compression). Institutional underwriting normally holds the exit cap at or above going-in, adding 25-50 bps for age. Part of the return then comes from the assumption, not from operations.' };
 });
+/* Plausibility of the cap rates. The sale price is forward NOI divided by the exit cap, so a cap rate typed ten times too low (0.90% for 9.0%) prices the sale ten
+   times too high and carries the returns with it. Below 2% or above 20% is almost certainly a typo (ERROR, like the tax-rate percent typo); outside 3-15% is unusual (WARN). */
+rule('val.exit-cap-typo', 'ERROR', 'Exit', 'Deal Underwrite', function(s){
+  var cap = num(s.exitCap); if(!(cap > 0)) return;
+  if(cap < 0.02 || cap > 0.20) return { msg:'The exit cap rate is ' + pc(cap, 2) + '. Cap rates for income property are almost always between 3% and 15%; ' + (cap < 0.02 ? 'check whether ' + pc(cap * 10, 2) + ' was meant.' : 'check the entry.'),
+    why:'The sale price is forward NOI divided by the exit cap. At ' + pc(cap, 2) + ' the sale is priced at ' + (cap > 0 ? Math.round(1 / cap) : 0) + ' times NOI, and the sale then drives the IRR and the multiple.' };
+});
+rule('val.exit-cap-unusual', 'WARN', 'Exit', 'Deal Underwrite', function(s){
+  var cap = num(s.exitCap); if(!(cap > 0) || cap < 0.02 || cap > 0.20) return;
+  if(cap < 0.03 || cap > 0.15) return { msg:'The exit cap rate (' + pc(cap, 2) + ') is outside the usual 3-15% range for income property.',
+    why:'The sale price is forward NOI divided by the exit cap, so the cap rate carries much of the return. Confirm it against market evidence.' };
+});
+rule('val.going-in-cap-low', 'WARN', 'Property', 'Deal Underwrite', function(s){
+  if(isDev(s)) return; var c = safe(function(){ return bkCalc(); }, null), pp = num(s.purchasePrice); if(!c || !(pp > 0) || !(num(c.noi) > 0)) return;
+  var gi = num(c.noi) / pp; if(gi < 0.02) return { msg:'The going-in cap rate is ' + pc(gi, 2) + ' (Year-1 NOI ' + $(c.noi) + ' on a price of ' + $(pp) + ').',
+    why:'A going-in cap below 2% usually means the price, the rents or the expenses were entered in the wrong units. Every return measure starts from these two figures.' };
+});
+rule('val.exit-far-above-going-in', 'WARN', 'Exit', 'Deal Underwrite', function(s){
+  if(isDev(s)) return; var c = safe(function(){ return bkCalc(); }, null), pp = num(s.purchasePrice), cap = num(s.exitCap); if(!c || !(pp > 0) || !(cap > 0) || !(num(c.noi) > 0)) return;
+  var gi = num(c.noi) / pp; if(cap > gi + 0.03) return { msg:'The exit cap (' + pc(cap, 2) + ') is more than 300 bps above the going-in cap (' + pc(gi, 2) + ').',
+    why:'A gap that wide assumes the market will price the property far more cheaply at sale than today. It may be intended as a stress case; as a base case it understates the sale price.' };
+});
 rule('acct.units-vs-gsf', 'WARN', 'Property', 'Deal Underwrite', function(s){
   var u = num(s.units), g = num(s.gsf); if(!(u > 0) || !(g > 0) || /office|retail|industrial|land/i.test(String(s.propertyType || ''))) return;
   var a = g / u; if(a < 300 || a > 3000) return { msg:'Average unit size of ' + Math.round(a).toLocaleString('en-US') + ' SF (GSF ÷ units) is outside a plausible 300-3,000 SF.',

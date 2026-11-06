@@ -120,13 +120,11 @@ html body #viewport table.fin td > .bk-sfx{ display:inline-block; width:24px; bo
 html body #viewport table.fin td:has(> .bk-sfx){ white-space:nowrap; }
 
 
-/* LEFT RAIL: every group is always open (no fold-out arrows); the sidebar still collapses to its strip of group letters */
+/* LEFT RAIL base rules. The tree look in src/182 (+/- boxes, folded groups hidden) is more specific and wins whenever the sidebar is open; the sidebar still collapses to its strip of group letters */
 html body .rail .rail-group.pl-collapsed .rail-item, html body .rail .rail-group .rail-item{ display:flex !important; }
 html body .rail .rail-group-label::after{ display:none !important; }
 html body .rail .rail-group-label{ cursor:default !important; }
-html body .rail .rail-group.bk-adv-hidden{ display:block !important; }
-html body .rail .bk-adv-head{ cursor:default !important; }
-html body .rail .bk-adv-head span:last-child{ display:none !important; }
+html body .rail .bk-adv-head{ cursor:pointer; }   /* the Advanced heading folds its groups again (src/124); its arrow shows the state */
 html.bk-rail-collapsed body .rail .rail-group-label{ cursor:pointer !important; }
 
 /* OVERVIEW: a quiet, professional palette. Status is carried by a small marker and a muted tone, not by saturated colour fields. */
