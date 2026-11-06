@@ -62,6 +62,7 @@ echo "== Readable in both themes (no text under 3:1 contrast on the sections tha
 echo "== Fill rule (header fill vs key-metric fill, every sheet)"; node audit/fillrule_test.js index.html | tail -1
 echo "== Waterfall verification (per-hurdle IRR error checks, tier order, conservation, promote)"; node audit/wfcheck_test.js index.html | tail -1
 echo "== PDF summary (financial summary, annual cash flow reconciles to the engine, page fit)"; node audit/summary_test.js index.html | tail -1
+echo "== Sensitivity grid (investor summary: one blue scale from the lowest IRR to the highest, so an all-above-hurdle grid still varies; hurdle markers only when the grid straddles it; base case outlined; acquisition and development)"; node audit/sensitivity_grid_test.js index.html | tail -1
 echo "== deal documents sync (mocked storage endpoint)"; node audit/docsync_test.js index.html | tail -2
 echo "== persistence";                        node audit/persistence_test.js index.html | tail -1
 echo "== Required marker and Status chip agree (one source, N/A on non-applicable tables)"; node audit/required_status_test.js index.html | tail -1
