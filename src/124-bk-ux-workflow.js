@@ -626,8 +626,8 @@ function kpiBar(sheet){
       + cell('Levered IRR', pct(h.levIRR)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Loan', money(h.loan), h.binding ? esc(bkBindingName(h.binding)) : '')
       + cell('Net Profit', money(h.profit)) + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
-  /* the inputs-tie chip lives in the header, beside the user (not in the bar) */
-  try { var hx = document.getElementById('bk-tie-hdr'), tc = html ? tieChip() : ''; if(!tc){ if(hx) hx.remove(); } else { var us = document.getElementById('pl-user'); if(us){ if(!hx){ hx = document.createElement('span'); hx.id = 'bk-tie-hdr'; us.parentNode.insertBefore(hx, us); } if(hx.innerHTML !== tc) hx.innerHTML = tc; } } } catch(e){}
+  /* the inputs-tie chip sits to the right of the last top tab */
+  try { var hx = document.getElementById('bk-tie-hdr'), tc = html ? tieChip() : '', tn = document.querySelector('.tabnav-primary'); if(!tc || !tn){ if(hx) hx.remove(); } else { if(hx && hx.parentNode !== tn){ hx.remove(); hx = null; } if(!hx){ hx = document.createElement('span'); hx.id = 'bk-tie-hdr'; tn.appendChild(hx); } if(hx.innerHTML !== tc) hx.innerHTML = tc; } } catch(e){}
 }
 function refreshFlow(){
   var vp = document.getElementById('viewport'), bar = vp && vp.querySelector('.bk-flow'); if(!bar) return;

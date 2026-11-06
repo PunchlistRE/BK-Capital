@@ -19616,8 +19616,8 @@ function kpiBar(sheet){
       + cell('Levered IRR', pct(h.levIRR)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Loan', money(h.loan), h.binding ? esc(bkBindingName(h.binding)) : '')
       + cell('Net Profit', money(h.profit)) + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
-  /* the inputs-tie chip lives in the header, beside the user (not in the bar) */
-  try { var hx = document.getElementById('bk-tie-hdr'), tc = html ? tieChip() : ''; if(!tc){ if(hx) hx.remove(); } else { var us = document.getElementById('pl-user'); if(us){ if(!hx){ hx = document.createElement('span'); hx.id = 'bk-tie-hdr'; us.parentNode.insertBefore(hx, us); } if(hx.innerHTML !== tc) hx.innerHTML = tc; } } } catch(e){}
+  /* the inputs-tie chip sits to the right of the last top tab */
+  try { var hx = document.getElementById('bk-tie-hdr'), tc = html ? tieChip() : '', tn = document.querySelector('.tabnav-primary'); if(!tc || !tn){ if(hx) hx.remove(); } else { if(hx && hx.parentNode !== tn){ hx.remove(); hx = null; } if(!hx){ hx = document.createElement('span'); hx.id = 'bk-tie-hdr'; tn.appendChild(hx); } if(hx.innerHTML !== tc) hx.innerHTML = tc; } } catch(e){}
 }
 function refreshFlow(){
   var vp = document.getElementById('viewport'), bar = vp && vp.querySelector('.bk-flow'); if(!bar) return;
@@ -32399,7 +32399,7 @@ function alignPass(){
 var qa = false; function laterAlign(){ if(qa) return; qa = true; (window.requestAnimationFrame || setTimeout)(function(){ qa = false; try { alignPass(); } catch(e){} }); }
 document.addEventListener('DOMContentLoaded', function(){ var vp = document.getElementById('viewport'); if(vp) new MutationObserver(laterAlign).observe(vp, { childList:true, subtree:true }); laterAlign(); });
 var css = document.createElement('style'); css.id = 'bk-kpibar-motion-css';
-css.textContent = '#bk-kpibar{left:var(--bk-kpi-left,0px) !important;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .2s}#bk-kpibar.bk-away{transform:translateY(105%);opacity:.0}@media (min-width:901px){html body.bk-has-kpibar .rail{max-height:100vh !important;height:100vh !important;top:0 !important}}#bk-kpibar{overflow:hidden}#bk-kpibar .kb-c,#bk-kpibar .kb-c.kb-long{flex:1 1 0 !important;width:auto;min-width:0;box-sizing:border-box;padding-left:10px;padding-right:8px}#bk-tie-hdr{display:inline-flex;align-items:center;margin-right:10px;font-size:11px}#viewport table.fin tbody tr td{height:28px;vertical-align:middle}#viewport table.fin tbody tr.grandtotal td,#viewport table.fin tbody tr.subtotal td{height:28px}@media (prefers-reduced-motion:reduce){#bk-kpibar{transition:none}}';
+css.textContent = '#bk-kpibar{left:var(--bk-kpi-left,0px) !important;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .2s}#bk-kpibar.bk-away{transform:translateY(105%);opacity:.0}@media (min-width:901px){html body.bk-has-kpibar .rail{max-height:100vh !important;height:100vh !important;top:0 !important}}#bk-kpibar{overflow:hidden}#bk-kpibar .kb-c,#bk-kpibar .kb-c.kb-long{flex:1 1 0 !important;width:auto;min-width:0;box-sizing:border-box;padding-left:10px;padding-right:8px}#bk-tie-hdr{display:inline-flex;align-items:center;flex:0 0 auto;margin:0 0 0 10px;font-size:10px;white-space:nowrap;align-self:center}#pl-user .who{display:none !important}#viewport table.fin tbody tr td{height:28px;vertical-align:middle}#viewport table.fin tbody tr.grandtotal td,#viewport table.fin tbody tr.subtotal td{height:28px}@media (prefers-reduced-motion:reduce){#bk-kpibar{transition:none}}';
 document.head.appendChild(css);
 })();
 </script>
@@ -32450,6 +32450,45 @@ RENDERERS['Reserve Accounts'] = function(){
 };
 })();
 </script>
+<script id="bk-collab">/* DEAL REVIEW (1.8, local part): comments on the deal and an IC approval step, each action recorded with who and when and a snapshot of the headline figures at that moment. Stored on the deal (s._collab), so it goes
+   wherever the deal goes (cloud sync included). The change log of every input is Version History (already there). Sharing with roles needs the cloud tables: the page shows the roles and the draft migration
+   (docs/BK_Capital_V36_Sharing_Migration.sql, NOT applied; nothing is deployed without the owner's approval). Until sharing exists every signed-in user of the deal can act, and the actor is recorded. */
+(function(){
+'use strict';
+if(typeof RENDERERS === 'undefined' || typeof bkLoad !== 'function') return;
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function who(){ var u = safe(function(){ return window.bkAuthUser ? window.bkAuthUser() : null; }, null); return (u && u.email) || 'You (not signed in)'; }
+function now(){ return new Date().toISOString(); }
+function when(t){ try { return new Date(t).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }); } catch(e){ return t; } }
+function col(s){ var c = s._collab = s._collab || {}; c.comments = c.comments || []; c.events = c.events || []; c.status = c.status || 'Draft'; return c; }
+function snap(){ return safe(function(){ var m = bkMonthlyReturns(), g = bkDealGate(); return { irr:m.irr, moic:m.moic, verdict:g && g.verdict }; }, {}); }
+function put(c){ var s = bkLoad(); s._collab = c; bkSave(s); if(typeof showSheet === 'function') showSheet('Deal Review'); }
+window.bkCollabComment = function(){ var t = document.getElementById('bk-cm-text'), a = document.getElementById('bk-cm-about'); if(!t || !String(t.value).trim()) return; var s = bkLoad(), c = col(s);
+  c.comments.push({ id:Date.now().toString(36), by:who(), at:now(), text:String(t.value).trim().slice(0, 2000), about:a ? a.value : '', resolved:false }); put(c); };
+window.bkCollabResolve = function(id){ var s = bkLoad(), c = col(s); c.comments.forEach(function(m){ if(m.id === id){ m.resolved = !m.resolved; m.resolvedBy = m.resolved ? who() : null; } }); put(c); };
+window.bkCollabAct = function(act){ var s = bkLoad(), c = col(s), note = (document.getElementById('bk-ic-note') || {}).value || '';
+  var next = { submit:'Submitted for IC', approve:'Approved', 'return':'Returned for changes', reopen:'Draft' }[act]; if(!next) return;
+  if(act === 'return' && !String(note).trim()){ alert('Say what needs to change before returning the deal.'); return; }
+  c.events.push({ at:now(), by:who(), action:next, note:String(note).trim().slice(0, 1000), snap:snap() }); c.status = next; put(c); };
+var ROLES = [['Owner', 'Everything, including who the deal is shared with.'], ['Editor', 'Changes inputs, comments, submits for IC.'], ['Commenter', 'Reads everything and comments.'], ['Viewer', 'Reads only.']];
+RENDERERS['Deal Review'] = function(){
+  var s = bkLoad() || {}, c = col(JSON.parse(JSON.stringify(s))), o = { title:'Deal Review', crumbs:'Credit & IC', desc:'Comments on the deal and the IC approval step, each recorded with who and when.', meta:{ Property:s.name || '', 'IC status':c.status, 'Open comments':String(c.comments.filter(function(m){ return !m.resolved; }).length) }, sidebar:'' };
+  var cls = c.status === 'Approved' ? 'pass' : c.status === 'Returned for changes' ? 'fail' : '', btn = function(a, t, ghost){ return '<button type="button" class="bk-btn" onclick="bkCollabAct(\'' + a + '\')">' + t + '</button>'; };
+  var acts = c.status === 'Draft' ? btn('submit', 'Submit for IC') : c.status === 'Submitted for IC' ? btn('approve', 'Approve') + btn('return', 'Return for changes') : btn('reopen', 'Reopen as draft');
+  var main = '<div class="tbl-wrap" style="padding:14px"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><b>IC status</b><span class="status-chip ' + cls + '">' + esc(c.status.toUpperCase()) + '</span><span style="flex:1"></span>' + acts + '</div>'
+    + (c.status === 'Submitted for IC' || c.status === 'Draft' ? '<input id="bk-ic-note" type="text" maxlength="1000" placeholder="' + (c.status === 'Draft' ? 'Note to the committee (optional)' : 'Note (required to return)') + '" style="width:100%;margin-top:10px">' : '') + '</div>';
+  var abouts = ['Whole deal', 'Property', 'Operations', 'Debt', 'Returns', 'Credit & IC', 'Reports'].map(function(a){ return '<option>' + a + '</option>'; }).join('');
+  main += '<div class="tbl-wrap" style="margin-top:16px;padding:14px"><b>Comments</b><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><select id="bk-cm-about">' + abouts + '</select><input id="bk-cm-text" type="text" maxlength="2000" placeholder="Add a comment" style="flex:1;min-width:200px"><button type="button" class="bk-btn" onclick="bkCollabComment()">Comment</button></div>'
+    + (c.comments.length ? '<table class="fin" style="margin-top:10px"><thead><tr><th class="rowlabel-h">Who and when</th><th style="text-align:left">About</th><th style="text-align:left">Comment</th><th></th></tr></thead><tbody>' + c.comments.slice().reverse().map(function(m){ return '<tr' + (m.resolved ? ' style="opacity:.55"' : '') + '><td class="rowlabel">' + esc(m.by) + '<span class="dim" style="display:block;font-size:11px">' + esc(when(m.at)) + '</span></td><td data-bk-align="text">' + esc(m.about) + '</td><td data-bk-align="text" style="white-space:normal">' + esc(m.text) + '</td><td><button type="button" class="bk-btn" onclick="bkCollabResolve(\'' + m.id + '\')">' + (m.resolved ? 'Reopen' : 'Resolve') + '</button></td></tr>'; }).join('') + '</tbody></table>' : '<p class="dim" style="margin:10px 0 0">No comments yet.</p>') + '</div>';
+  var P = function(v){ return isFinite(v) ? (v * 100).toFixed(2) + '%' : '—'; };
+  main += '<div class="tbl-wrap" style="margin-top:16px;padding:14px"><b>Approval history</b>' + (c.events.length ? '<table class="fin" style="margin-top:10px"><thead><tr><th class="rowlabel-h">Who and when</th><th style="text-align:left">Action</th><th>Levered IRR then</th><th style="text-align:left">Credit gate then</th><th style="text-align:left">Note</th></tr></thead><tbody>' + c.events.slice().reverse().map(function(e){ var sn = e.snap || {}; return '<tr><td class="rowlabel">' + esc(e.by) + '<span class="dim" style="display:block;font-size:11px">' + esc(when(e.at)) + '</span></td><td data-bk-align="text">' + esc(e.action) + '</td><td>' + P(sn.irr) + '</td><td data-bk-align="text">' + esc(sn.verdict || '—') + '</td><td data-bk-align="text" style="white-space:normal">' + esc(e.note || '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="dim" style="margin:10px 0 0">Nothing submitted yet.</p>') + '</div>';
+  main += '<div class="tbl-wrap" style="margin-top:16px;padding:14px"><b>Sharing</b><table class="fin" style="margin-top:10px"><thead><tr><th class="rowlabel-h">Role</th><th style="text-align:left">Can</th></tr></thead><tbody>' + ROLES.map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td data-bk-align="text">' + r[1] + '</td></tr>'; }).join('') + '</tbody></table>'
+    + '<div class="note-flag" style="margin-top:10px"><span>&#9432;</span><div>Inviting people by email and enforcing these roles needs a new cloud table. The change is written (<code>docs/BK_Capital_V36_Sharing_Migration.sql</code>) but not applied: it waits for the owner’s approval. Until then comments and approvals are recorded with the signed-in name, and the change log of every input is on Version History.</div></div></div>';
+  o.main = main; return o;
+};
+})();
+</script>
 <script id="bk-nav">/* NAVIGATION, ONE DEFINITION (2.1, owner's November 2026 regrouping). Tab -> groups -> sheets, defined once here, drives all three: the top tabs (NAV_TABS), the sub-tab row under them and the side menu (the vertical version of the same tabs,
    with the same groups and sheets in the same order and the same names). Presentation only: no sheet, renderer or calculation changes. A sheet is in exactly one place; a sheet that exists but is not listed lands in Model & Data > Other so none vanishes.
    Conditional: the Development group (Operations) shows on development deals, the Business tab on deals with an operating business; both menus follow together. The SYS_ sheets stay hidden in both.
@@ -32478,7 +32517,7 @@ window.BK_NAV = [
       { label:'Returns', sheets:['Returns', 'Equity Waterfall', 'Waterfall (M)', 'Sponsor CF', 'After-Tax'] },
       { label:'Investors', sheets:['Investors', 'Investor Schedules', 'Liquidity'] },
       { label:'Risk & pricing', sheets:['Sensitivity', 'Reverse Solve', 'Probability-Weighted', 'Pre-Offer Bid'] } ] },
-  { id:'credit', label:'Credit & IC', q:'Does it meet house policy?', color:'#7A3E4D', groups:[ { label:'Credit & IC', sheets:['IC Memo', 'Credit Policy', 'Debt Capacity', 'Deal Remedies'] } ] },
+  { id:'credit', label:'Credit & IC', q:'Does it meet house policy?', color:'#7A3E4D', groups:[ { label:'Credit & IC', sheets:['IC Memo', 'Credit Policy', 'Debt Capacity', 'Deal Remedies', 'Deal Review'] } ] },
   { id:'business', label:'Business', q:'Operating-business deals only', color:'#6B4E71', cond:'business', groups:[ { label:'Operating business', sheets:['Business Model', 'Business Valuation', 'Sell vs Hold'] } ] },
   { id:'reports', label:'Reports', q:'Documents to send out', color:'#B0592A', groups:[ { label:'Reports', sheets:['Cash Flow Report', 'After-Tax Report', 'Sources and Uses Report', 'Valuation Report', 'Property Valuation Report', 'Present Value Report', 'Tenant Report', 'Lease Schedule', 'Lease Audit Report', 'Refinance Report', 'Audit Report'] } ] },
   { id:'portfolio', label:'Portfolio', q:'Across all deals', color:'#5A6B7A', groups:[ { label:'Portfolio', sheets:['Portfolio', 'Portfolio Dashboard', 'Property DB', 'Portfolio CF', 'Portfolio M', 'Portfolio Rollup', 'Capital Allocation', 'Capital Calls', 'Equity Partners', 'Investor Summary', 'Benchmarks'] } ] },
@@ -32589,8 +32628,8 @@ function viewStrip(cs){
 var prev = window.showSheet;
 if(typeof prev === 'function'){ window.showSheet = function(sheet){ var r = prev.apply(this, arguments); try { decorate(); } catch(e){} return r; }; try { showSheet = window.showSheet; } catch(e){} }
 var css = document.createElement('style'); css.id = 'bk-nav-css';
-css.textContent = '.tabnav-primary .grp-btn{box-sizing:border-box;flex:0 0 120px;width:120px;min-width:120px;max-width:120px;justify-content:flex-start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.tabnav-primary .grp-btn{flex-basis:112px;width:112px;min-width:112px;max-width:112px}}'
- + '.rb-tabs .rb-t{box-sizing:border-box;width:120px;min-width:120px;max-width:120px;flex:0 0 120px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.rb-tabs .rb-t{width:112px;min-width:112px;max-width:112px;flex-basis:112px}}'
+css.textContent = '.tabnav-primary .grp-btn{padding-left:6px !important;padding-right:2px !important;font-size:11px !important;gap:3px !important;letter-spacing:0 !important;box-sizing:border-box;flex:0 0 106px;width:106px;min-width:106px;max-width:106px;justify-content:flex-start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.tabnav-primary .grp-btn{flex-basis:112px;width:112px;min-width:112px;max-width:112px}}'
+ + '.rb-tabs .rb-t{padding-left:5px !important;padding-right:5px !important;font-size:12px !important;box-sizing:border-box;width:106px;min-width:106px;max-width:106px;flex:0 0 106px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.rb-tabs .rb-t{width:112px;min-width:112px;max-width:112px;flex-basis:112px}}'
  + '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}.bk-views .bkv-b{font:600 12.5px Inter,system-ui,sans-serif;padding:6px 12px;border:1px solid var(--ae-line,#c9d1dc);border-radius:999px;background:var(--ae-card,#fff);color:var(--ae-ink,#163a62);cursor:pointer}.bk-views .bkv-b:hover{border-color:#3E9AE6}.bk-views .bkv-b.on{background:#163a62;border-color:#163a62;color:#fff}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
 document.head.appendChild(css);
 })();

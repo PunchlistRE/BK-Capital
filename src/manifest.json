@@ -1045,6 +1045,11 @@
 "close": "</script>"
 },
 {
+"file": "200-bk-collab.js",
+"open": "\n<script id=\"bk-collab\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
