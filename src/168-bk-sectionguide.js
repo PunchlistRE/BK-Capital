@@ -111,6 +111,7 @@ function paint(){ queued = false; var v = document.getElementById('viewport'); i
   var main = fr.querySelector('.main-col') || fr; if(tb && tb.nextSibling && tb.parentNode === main) main.insertBefore(el, tb.nextSibling); else main.insertBefore(el, main.firstChild); }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(paint); } }
 window.bkSectionGuideSheets = function(){ return Object.keys(G); };
+window.bkSectionWhat = function(sh){ return G[sh] && G[sh].what || ''; };
 window.bkSectionGuideHtml = cardFor;
 function start(){ var vp = document.getElementById('viewport'); if(vp) new MutationObserver(later).observe(vp, { childList:true, subtree:true }); later(); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

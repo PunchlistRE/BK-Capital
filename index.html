@@ -22486,8 +22486,8 @@ window.BKReg.addFields([
   /* income */
   F('avgRent', 'Average rent per unit, per month', 'money', { help:'Total monthly scheduled rent divided by units.', ex:'$1,650' }),
   F('otherIncomePerUnit', 'Other income per unit, per year', 'money', { zeroOk:true, help:'Laundry, parking, fees, utility bill-back.' }),
-  F('oiLaundry', 'Laundry income per unit, per year', 'money', { zeroOk:true }), F('oiLateFees', 'Late fees per unit, per year', 'money', { zeroOk:true }), F('oiPetRent', 'Pet rent per unit, per year', 'money', { zeroOk:true }), F('oiPetFees', 'Pet fees per unit, per year', 'money', { zeroOk:true }), F('oiParking', 'Parking / garage income per unit, per year', 'money', { zeroOk:true }), F('oiStorage', 'Storage income per unit, per year', 'money', { zeroOk:true }), F('oiRubsPct', 'RUBS: share of utilities billed back', 'pct', { zeroOk:true }),
-  F('renoUnitsPerYear', 'Units renovated per year', 'num', { zeroOk:true, help:'The unit renovation programme.' }), F('renoDownMonths', 'Months a renovated unit is down', 'num', { zeroOk:true }), F('renoPremium', 'Rent premium after renovation, per unit per month', 'money', { zeroOk:true }), F('renoCapexPerUnit', 'Renovation capex per unit', 'money', { zeroOk:true }),
+  F('oiLaundry', 'Laundry income per unit, per year', 'money', { zeroOk:true, sheet:'Revenues' }), F('oiLateFees', 'Late fees per unit, per year', 'money', { zeroOk:true, sheet:'Revenues' }), F('oiPetRent', 'Pet rent per unit, per year', 'money', { zeroOk:true, sheet:'Revenues' }), F('oiPetFees', 'Pet fees per unit, per year', 'money', { zeroOk:true, sheet:'Revenues' }), F('oiParking', 'Parking / garage income per unit, per year', 'money', { zeroOk:true, sheet:'Revenues' }), F('oiStorage', 'Storage income per unit, per year', 'money', { zeroOk:true, sheet:'Revenues' }), F('oiRubsPct', 'RUBS: share of utilities billed back', 'pct', { zeroOk:true, sheet:'Revenues' }),
+  F('renoUnitsPerYear', 'Units renovated per year', 'num', { zeroOk:true, help:'The unit renovation programme.', sheet:'Investment' }), F('renoDownMonths', 'Months a renovated unit is down', 'num', { zeroOk:true, sheet:'Investment' }), F('renoPremium', 'Rent premium after renovation, per unit per month', 'money', { zeroOk:true, sheet:'Investment' }), F('renoCapexPerUnit', 'Renovation capex per unit', 'money', { zeroOk:true, sheet:'Investment' }),
   F('vacancy', 'Vacancy', 'pct', { zeroOk:true, sug:sug(0.05, 'Stabilized multifamily is usually underwritten at 5%. Use more if the building is not full.') }),
   F('badDebtPct', 'Credit loss', 'pct', { zeroOk:true, sug:sug(0.01, 'About 1% of rent for a stabilized building.') }),
   F('concessionPct', 'Concessions', 'pct', { zeroOk:true }),
@@ -28444,6 +28444,7 @@ function paint(){ queued = false; var v = document.getElementById('viewport'); i
   var main = fr.querySelector('.main-col') || fr; if(tb && tb.nextSibling && tb.parentNode === main) main.insertBefore(el, tb.nextSibling); else main.insertBefore(el, main.firstChild); }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(paint); } }
 window.bkSectionGuideSheets = function(){ return Object.keys(G); };
+window.bkSectionWhat = function(sh){ return G[sh] && G[sh].what || ''; };
 window.bkSectionGuideHtml = cardFor;
 function start(){ var vp = document.getElementById('viewport'); if(vp) new MutationObserver(later).observe(vp, { childList:true, subtree:true }); later(); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
@@ -29615,6 +29616,42 @@ add('Probability-weighted returns', ['probability', 'probability weighted', 'exp
 add('The step-by-step guide itself', ['guide', 'step by step', 'walk me through', 'help', 'where do i start', 'getting started', 'start'], 'The guide walks the essentials one section at a time. It writes nothing until you confirm each step.', P('Guide', null, ['Guide']));
 add('The hidden SYS_ sheets', ['sys', 'sys engine', 'backend', 'engine sheets', 'sys_'], 'The SYS_ pages explain how the old workbook’s hidden calculation sheets map onto this app’s engines. They are hidden from the menu and compute nothing.', P('SYS_DealDB', null, ['SYS_ Engine']));
 
+/* ------------------------------------------------------------ generated topics (1.9.5)
+   Every input in the field registry (src/139b), every figure in the metric registry and every page in the sheet list is answerable without a hand-written entry: "where do I change X", "what is my Y" (the live value, from the deal), "what is Z". The answer reads the open deal; nothing is calculated here.
+   A hand-written topic that matches as well always comes first. */
+var GEN = null;
+function kindFmt(f, v){
+  if(v == null || v === '') return null;
+  if(f.kind === 'table') return Array.isArray(v) ? v.length + ' row' + (v.length === 1 ? '' : 's') : null;
+  if(f.kind === 'bool') return v === true ? 'yes' : v === false ? 'no' : null;
+  var n = Number(v);
+  if(f.kind === 'money') return isFinite(n) ? m0(n) : null;
+  if(f.kind === 'pct') return isFinite(n) ? pc(n) : null;
+  if(f.kind === 'int' || f.kind === 'num') return isFinite(n) ? n.toLocaleString('en-US') : null;
+  return String(v);
+}
+function fieldHomes(){ var m = {}, R = window.BKReg && window.BKReg._raw; if(!R) return m;
+  Object.keys(R.workflows).forEach(function(id){ (R.workflows[id] || []).forEach(function(st){ (st.fields || []).forEach(function(e){ if(!m[e.k]) m[e.k] = { sheet:st.sheet, step:st.title }; }); }); }); return m; }
+function plain(label){ return String(label || '').replace(/\([^)]*\)/g, ' ').replace(/,.*$/, '').trim(); }
+function generated(){
+  if(GEN) return GEN; GEN = []; var R = window.BKReg && window.BKReg._raw, homes = fieldHomes();
+  if(R){
+    Object.keys(R.fields).forEach(function(k){ var f = R.fields[k]; if(f.planned || f.kind === 'derived') return; var h = homes[k] || (f.sheet ? { sheet:f.sheet } : null); if(!h || !h.sheet) return;
+      var go = ED[h.sheet] ? { sheet:h.sheet, tab:h.sheet, sub:null, field:'ae-' + k, path:['Property', h.sheet] } : { sheet:h.sheet, panel:null, field:null, path:[h.sheet] };
+      GEN.push({ gen:true, title:f.label, k:[f.label, plain(f.label), k.replace(/([A-Z])/g, ' $1')], go:go,
+        a:function(s){ var v = kindFmt(f, (s || {})[k]); return '<b>' + esc(f.label) + '</b> ' + (v == null ? 'is not entered on this deal yet.' : 'is <b>' + esc(v) + '</b> on this deal.') + (f.help ? ' ' + esc(f.help) : '') + ' You change it on ' + esc(go.path.join(' › ')) + '.'; } }); });
+    Object.keys(R.metrics).forEach(function(id){ var m = R.metrics[id]; if(m.planned || !m.label) return;
+      GEN.push({ gen:true, title:m.label, k:[m.label, plain(m.label)], go:P('Returns', null, ['Returns']),
+        a:function(){ var sm = safe(function(){ return window.BKReg.summarize(deal()); }, null), row = sm && [sm.primary].concat(sm.metrics || []).filter(function(x){ return x && x.id === id; })[0], v = row && row.value != null && isFinite(row.value) ? (m.fmt === 'pct' ? pc(row.value) : m.fmt === 'x' ? row.value.toFixed(2) + 'x' : m0(row.value)) : null;
+          return '<b>' + esc(m.label) + '</b>' + (v ? ' is <b>' + esc(v) + '</b> on this deal.' : '.') + (m.note ? ' ' + esc(m.note) : ''); } }); });
+  }
+  if(typeof GROUPS !== 'undefined'){ GROUPS.forEach(function(g){ if(g.hidden) return; g.sheets.forEach(function(sh){
+    GEN.push({ gen:true, title:sh, k:[sh], go:P(sh, null, [g.label, sh]), a:function(){ var w = typeof window.bkSectionWhat === 'function' ? window.bkSectionWhat(sh) : ''; return '<b>' + esc(sh) + '</b> is on ' + esc(g.label) + (w ? '. ' + esc(w) : '.'); } }); }); }); }
+  var seen = {}, nt = function(t){ return String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }; T.forEach(function(t){ seen[nt(t.title)] = 1; });
+  GEN = GEN.filter(function(t){ var k = nt(t.title); if(seen[k]) return false; seen[k] = 1; return true; });   /* one topic per name: a hand-written one first, then a field, a figure, a page */
+  return GEN;
+}
+
 /* ------------------------------------------------------------ matching */
 var STOP = { a:1, an:1, the:1, is:1, are:1, was:1, do:1, does:1, did:1, i:1, we:1, my:1, me:1, you:1, it:1, its:1, to:1, of:1, in:1, on:1, at:1, for:1, and:1, or:1, how:1, what:1, where:1, which:1, can:1, should:1, would:1, find:1, change:1, set:1, show:1, see:1, view:1, get:1, put:1, enter:1, edit:1, this:1, that:1, there:1, deal:1, model:1, please:1, tell:1, about:1, much:1, many:1, go:1, need:1, want:1, make:1, use:1, with:1, from:1, by:1, be:1, am:1, so:1 };
 function stem(w){ if(w.length > 4 && /ies$/.test(w)) return w.slice(0, -3) + 'y'; if(w.length > 4 && /(ing|ed)$/.test(w)) return w.replace(/(ing|ed)$/, ''); if(w.length > 3 && /s$/.test(w) && !/ss$/.test(w)) return w.slice(0, -1); return w; }
@@ -29629,7 +29666,7 @@ function scoreTopic(t, q){
 }
 function ask(question){
   var q = toks(question); if(!q.length) return [];
-  return T.map(function(t){ return { t:t, s:scoreTopic(t, q) }; }).filter(function(z){ return z.s >= 8; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 3).map(function(z){ return z.t; });
+  return T.concat(generated()).map(function(t){ return { t:t, s:scoreTopic(t, q) - (t.gen ? 1 : 0) }; }).filter(function(z){ return z.s >= 8; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 3).map(function(z){ return z.t; });
 }
 function answerOf(t){ var s = deal(), a = typeof t.a === 'function' ? safe(function(){ return t.a(s); }, '') : t.a; var note = ''; if(t.dev && !isDev(s)) note = ' <i>(This is a development-deal page; the open deal is an acquisition.)</i>'; return a + note; }
 
@@ -29659,13 +29696,13 @@ var EXAMPLES = ['Where do I change the exit cap?', 'What is my lender DSCR?', 'H
 function resultsHtml(q){
   var hits = ask(q); window.__bkAskLast = hits;
   if(!String(q || '').trim()) return '';
-  if(!hits.length) return '<div class="bk-ask-card"><b>I couldn’t match that.</b> I only know the topics on my list, and I don’t search your data. Try one or two key words, such as <i>exit cap</i>, <i>vacancy</i>, <i>waterfall</i>, <i>house DSCR</i> or <i>rent roll</i>.</div>';
+  if(!hits.length) return '<div class="bk-ask-card"><b>I couldn’t match that</b> to an input, a figure or a page. Try the name of what you are after: <i>exit cap</i>, <i>vacancy</i>, <i>purchase price</i>, <i>levered IRR</i>, <i>waterfall</i> or <i>rent roll</i>.</div>';
   return hits.map(function(t, i){ return '<div class="bk-ask-card"><div class="bk-ask-t">' + esc(t.title) + '</div><div class="bk-ask-a">' + answerOf(t) + '</div><div class="bk-ask-p">' + t.go.path.map(esc).join(' › ') + '</div><button type="button" class="bk-ask-go" data-i="' + i + '">Take me there</button></div>'; }).join('');
 }
 function boxHtml(id){ return '<div class="bk-ask" id="' + id + '"><label class="bk-ask-l" for="' + id + '-q">Ask the guide</label><div class="bk-ask-r"><input type="text" id="' + id + '-q" class="bk-ask-q" placeholder="Ask where something is, or what a number is…" autocomplete="off" spellcheck="false"><button type="button" class="bk-ask-b" data-box="' + id + '">Ask</button></div><div class="bk-ask-ex">' + EXAMPLES.map(function(e){ return '<a href="#" data-q="' + esc(e) + '" data-box="' + id + '">' + esc(e) + '</a>'; }).join('') + '</div><div class="bk-ask-res" id="' + id + '-res" aria-live="polite"></div></div>'; }
 function run(id, q){ var inp = document.getElementById(id + '-q'), res = document.getElementById(id + '-res'); if(!inp || !res) return; if(q != null) inp.value = q; res.innerHTML = resultsHtml(inp.value); }
 window.bkAsk = function(q){ return ask(q).map(function(t){ return { title:t.title, answer:answerOf(t).replace(/<[^>]+>/g, ''), path:t.go.path.slice(), go:t.go }; }); };
-window.bkAskTopics = function(){ return T.map(function(t){ return { title:t.title, go:t.go, optional:!!t.optional }; }); };
+window.bkAskTopics = function(){ return T.concat(generated()).map(function(t){ return { title:t.title, go:t.go, optional:!!t.optional, generated:!!t.gen }; }); };
 window.bkAskGo = function(go){ window.__bkAskLast = [{ go:go }]; take(0); };
 
 var css = '.bk-ask{margin:0 0 16px;padding:14px 16px;border:1px solid var(--line,#b9c3ce);border-left:4px solid #3e9ae6;border-radius:8px;background:var(--surface,#fff)}.bk-ask-l{display:block;font-weight:700;font-size:13px;margin-bottom:6px}.bk-ask-r{display:flex;gap:8px}.bk-ask-q{flex:1;min-width:0;font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line,#b9c3ce);border-radius:6px;background:var(--bg,#fff);color:inherit}.bk-ask-b,.bk-ask-go{font:inherit;font-weight:600;font-size:13px;padding:8px 14px;border:0;border-radius:6px;background:#3e6fb0;color:#fff;cursor:pointer}'
