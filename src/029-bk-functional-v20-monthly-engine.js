@@ -56,9 +56,9 @@ window.bkRolloverAdj = function(s, holdMonths){
   const rr = Array.isArray(s.rentRoll) ? s.rentRoll : []; if(!rr.length) return null;
   const live = rr.filter(function(u){ if(u.status !== 'Occupied' || !u.leaseEnd) return false; const rm = bkLeaseRolloverMonth(u.leaseEnd, s.closing); return rm !== null && rm >= 1 && rm <= holdMonths; });
   if(!live.length) return null;
-  const z = function(){ return new Array(holdMonths).fill(0); }, out = { res:z(), comm:z(), cost:z(), units:live.length };
+  const H = holdMonths + 12, z = function(){ return new Array(H).fill(0); }, out = { res:z(), comm:z(), cost:z(), units:live.length };   /* the engine also looks 12 months past the hold for the terminal NOI */
   live.forEach(function(u){ const inPl = Number(u.inPlaceRent) || 0, tgt = u.tenantType === 'Commercial' ? out.comm : out.res;
-    for(let m = 1; m <= holdMonths; m++){ const e = bkCohortMonthEntry(u, m, s.closing, s); tgt[m-1] += e.rent - inPl; out.cost[m-1] += e.oneTime; } });
+    for(let m = 1; m <= H; m++){ const e = bkCohortMonthEntry(u, m, s.closing, s); tgt[m-1] += e.rent - inPl; out.cost[m-1] += e.oneTime; } });
   return out;
 };
 function bkLeaseCohortCFV20(){

@@ -39,6 +39,17 @@
 // zero residential revenue (100% commercial), so this choice doesn't affect any Havard-verified
 // figure -- it has not been checked against a residential-bearing deal.
 /* capex: dated one-off capital items below NOI, each {name, month:'YYYY-MM', amount}. Returns the amount falling in each operating month 1..months (month 1 is the closing month). */
+/* UNIT RENOVATION PROGRAMME (1.3): units renovated each year, the rent lost while a unit is down, the rent premium afterwards and the capex per unit, feeding the residential rent line and the capital below NOI. Units are renovated evenly through each programme year, never more than the residential units. null when no units are set (every existing deal). avgRentMo = the monthly rent per residential unit the base line carries. */
+window.bkRenoAdj = function(s, holdMonths, avgRentMo){
+  s = s || bkLoad(); const perYear = Number(s.renoUnitsPerYear) || 0; if(!(perYear > 0)) return null;
+  const start = Math.max(1, Math.round(Number(s.renoStartYear) || 1)), years = Math.max(1, Math.round(Number(s.renoYears) || 1)), down = Math.max(0, Math.round(Number(s.renoDownMonths) || 0));
+  const prem = Number(s.renoPremium) || 0, capex = Number(s.renoCapexPerUnit) || 0, cap = Number(s.units) || Infinity;
+  const H = holdMonths + 12, out = { res:new Array(H).fill(0), cost:new Array(H).fill(0), units:0 }; let done = 0;   /* 12 months past the hold: the terminal NOI looks forward a year */
+  for(let t = (start - 1) * 12 + 1; t <= Math.min(holdMonths, (start - 1 + years) * 12); t++){
+    const u = Math.min(perYear / 12, Math.max(0, cap - done)); if(!(u > 0)) break; done += u; out.cost[t - 1] += u * capex;
+    for(let m = t; m <= H; m++) out.res[m - 1] += m < t + down ? -u * (avgRentMo || 0) : u * prem; }
+  out.units = done; return out;
+};
 window.bkCapexByMonth = function(s, months){
   const out = new Array(months).fill(0), list = Array.isArray(s && s.capex) ? s.capex : [];
   /* leasing costs (TI and LC) from the commercial lease model are capital below NOI */
@@ -92,6 +103,7 @@ window.bkAnnualCF = function(){
   const stabMonths   = Math.max(0, Math.round(Number(s.leaseupMonths)||0));
   /* LEASE ROLLOVER (owner decision C, November 2026): the per-unit rent roll's expiries (renewal probability, downtime, market rent at renewal, TI and LC) feed the rent lines and the leasing capital. null = no unit has a lease end inside the hold, or the deal turns it off (rolloverInNoi false): every existing deal runs exactly as before. */
   const RO = (typeof window.bkRolloverAdj === 'function') ? window.bkRolloverAdj(s, holdMonths) : null;
+  const _resU = useRR ? bkRentRollStats(s.rentRoll).resUnits : Number(s.units), RN = window.bkRenoAdj(s, holdMonths, _resU > 0 ? (k_GPR/12) / _resU : 0);   /* the renovation programme */
 
   // CONVENTIONS (see bkConventions). 'month1' keeps the original continuous m/12 exponent exactly;
   // 'year2' holds Year 1 at the underwritten figures and steps growth once per operating year.
@@ -122,7 +134,7 @@ window.bkAnnualCF = function(){
   const LM = (typeof bkLeaseOn === 'function' && bkLeaseOn(s)) ? bkLeaseEval(s, holdMonths + 12, { tax:taxFactor, opex:opexF }, true) : null;
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
-    const _gB = k_GPR/12 + (RO ? RO.res[m-1] : 0), _cB = k_RetailAnn/12 + (RO ? RO.comm[m-1] : 0);
+    const _gB = k_GPR/12 + (RO ? RO.res[m-1] : 0) + (RN ? RN.res[m-1] : 0), _cB = k_RetailAnn/12 + (RO ? RO.comm[m-1] : 0);
     const resRev = _gB * resOcc * rentF(m);
     // CONVENTION cvBadDebtBasis: 'gross' charges gross potential rent; 'afterVacancy' and the legacy
     // monthly behavior charge rent after vacancy (the legacy expression is kept literally).
@@ -224,7 +236,7 @@ window.bkAnnualCF = function(){
      moved the unlevered multiple by 0.05-0.30%. Both flows keep the same modeled date, so
      the date-weighted IRR is mathematically unchanged; the multiple is now conventional
      (total inflows / total outflows). */
-  const capexM = bkCapexByMonth(s, holdMonths).map(function(v, i){ return v + (RO ? (RO.cost[i] || 0) : 0); });   /* rollover TI and LC are leasing capital below NOI, like the lease model's */
+  const capexM = bkCapexByMonth(s, holdMonths).map(function(v, i){ return v + (RO ? (RO.cost[i] || 0) : 0) + (RN ? (RN.cost[i] || 0) : 0); });   /* rollover TI and LC are leasing capital below NOI, like the lease model's */
   const values=[initial], dates=[new Date(acqDate)];
   for(let m=1; m<=holdMonths; m++){
     const r = monthNOI(m);

@@ -1015,6 +1015,11 @@
 "close": "</script>"
 },
 {
+"file": "192-bk-exit-year.js",
+"open": "\n<script id=\"bk-exit-year\">",
+"close": "</script>"
+},
+{
 "file": "188-bk-field-widths.js",
 "open": "\n<script id=\"bk-field-widths\">",
 "close": "</script>"
