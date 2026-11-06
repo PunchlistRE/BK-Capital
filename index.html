@@ -3854,12 +3854,10 @@ bkRefreshRailStatus();
 
 function bkEnsureV18(){
   const s = bkLoad(); let dirty=false;
-  const isRes = /resident|multifamily|apartment/i.test(String(s.propertyType||''));
   if(s.taxRate===undefined){ s.taxRate=0.37; dirty=true; }
   if(s.capGainsRate===undefined){ s.capGainsRate=0.20; dirty=true; }
   if(s.depRecaptureRate===undefined){ s.depRecaptureRate=0.25; dirty=true; }
   if(s.landValuePct===undefined){ s.landValuePct=0.20; dirty=true; }
-  if(s.deprLife===undefined){ s.deprLife=isRes?27.5:39; dirty=true; }
   if(dirty) bkSave(s);
   return s;
 }
@@ -3872,7 +3870,8 @@ function bkAfterTaxV18(){
   const totalBasis = Math.abs(u.initial);
   const landValue = totalBasis * Number(s.landValuePct||0);
   const deprBasis = Math.max(0, totalBasis - landValue);
-  const life = Number(s.deprLife||39);
+  const lifeInfo = (typeof bkRecoveryPeriod==='function') ? bkRecoveryPeriod(s) : { years:Number(s.deprLife||39), basis:'' };   /* one shared determination (src/077), recomputed with the inputs */
+  const life = lifeInfo.years;
   const annualDepr = life>0 ? deprBasis/life : 0;
 
   let accumDepr = 0, lossCF = 0;
@@ -3926,6 +3925,7 @@ const _dealV18 = sheetDealUnderwrite;
 sheetDealUnderwrite = function(){
   const o = _dealV18();
   o.main += `<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>After-Tax Assumptions</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('Ordinary Income Tax Rate','taxRate','%','pct')}${bkInput('Land Value (% of Basis)','landValuePct','%','pct')}${bkInput('Depreciable Life','deprLife','years')}${bkInput('Depreciation Recapture Rate','depRecaptureRate','% (Sec. 1250)','pct')}${bkInput('Long-Term Capital Gains Rate','capGainsRate','%','pct')}</tbody></table></div>`;
+  try { const li = bkRecoveryPeriod(s); o.main += '<div class="note-flag"><span>&#9432;</span><div><b>Recovery period: ' + li.years + ' years.</b> ' + li.basis + (li.override ? '' : '. It follows the rent mix and changes with the inputs; enter a period on the Depreciation page to fix it.') + '</div></div>'; } catch(e){}
   return o;
 };
 
@@ -9700,13 +9700,29 @@ var HARVARD_STUDY = {
 function deal(){
   try { return (typeof bkActiveDeal==='function') ? bkActiveDeal() : null; } catch(e){ return null; }
 }
+/* RECOVERY PERIOD. One determination for the whole app (the After-Tax sheet and this engine both read it). Residential rental property recovers over 27.5 years, anything else over 39. It is decided from the rent the model
+   actually has: residential gross rent >= 80% of total gross rent -> 27.5 years. It is recomputed whenever inputs change (never saved as an inferred value), a period entered on the Depreciation page is kept, and the basis of the
+   decision is returned so the After-Tax report can show it. With no rent to measure it falls back to the property-type wording. */
+window.bkRecoveryPeriod = function(s){
+  s = s || deal();
+  var raw = (s && s._depr && s._depr.settings) ? s._depr.settings : {}, entered = raw.baseLife;
+  if(entered !== null && entered !== undefined && isFinite(Number(entered)) && Number(entered) > 0) return { years:Number(entered), override:true, basis:'Entered on the Depreciation page: ' + Number(entered) + ' years' };
+  var legacy = s ? Number(s.deprLife) : NaN;   /* a custom period saved before this rule existed; the two values the old default wrote (27.5, 39) are inferred, not entered */
+  if(isFinite(legacy) && legacy > 0 && legacy !== 27.5 && legacy !== 39) return { years:legacy, override:true, basis:'Saved with the deal: ' + legacy + ' years' };
+  var res = 0, com = 0;
+  try { var arr = bkAnnualCF().arr || []; arr.forEach(function(a){ var L = a.lines || {}; res += Math.max(0, Number(L.gprGross) || 0); com += Math.max(0, Number(L.commGross) || 0); }); } catch(e){}
+  if(res + com > 0){
+    var share = res / (res + com), pct = (share * 100).toFixed(0) + '%';
+    return share >= 0.8 ? { years:27.5, override:false, basis:'Residential rental - ' + pct + ' residential gross rent -> 27.5 years' } : { years:39, override:false, basis:'Not residential rental - ' + pct + ' residential gross rent (80% needed) -> 39 years' };
+  }
+  var isRes = /resident|multifamily|apartment/i.test(String(s && s.propertyType || ''));
+  return { years:isRes ? 27.5 : 39, override:false, basis:(isRes ? 'Residential rental by property type' : 'Not residential rental by property type') + ' (no rent to measure yet) -> ' + (isRes ? 27.5 : 39) + ' years' };
+};
 function settings(){
   var s = deal();
   var raw = (s && s._depr && s._depr.settings) ? s._depr.settings : {};
   var out = Object.assign({}, DEF, raw);
-  if(out.baseLife === null || out.baseLife === undefined){
-    out.baseLife = /resident|multifamily|apartment/i.test(String(s && s.propertyType || '')) ? 27.5 : 39;
-  }
+  if(out.baseLife === null || out.baseLife === undefined) out.baseLife = window.bkRecoveryPeriod(s).years;
   return out;
 }
 function components(){

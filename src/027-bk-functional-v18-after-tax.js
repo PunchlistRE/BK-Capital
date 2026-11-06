@@ -20,12 +20,10 @@
 
 function bkEnsureV18(){
   const s = bkLoad(); let dirty=false;
-  const isRes = /resident|multifamily|apartment/i.test(String(s.propertyType||''));
   if(s.taxRate===undefined){ s.taxRate=0.37; dirty=true; }
   if(s.capGainsRate===undefined){ s.capGainsRate=0.20; dirty=true; }
   if(s.depRecaptureRate===undefined){ s.depRecaptureRate=0.25; dirty=true; }
   if(s.landValuePct===undefined){ s.landValuePct=0.20; dirty=true; }
-  if(s.deprLife===undefined){ s.deprLife=isRes?27.5:39; dirty=true; }
   if(dirty) bkSave(s);
   return s;
 }
@@ -38,7 +36,8 @@ function bkAfterTaxV18(){
   const totalBasis = Math.abs(u.initial);
   const landValue = totalBasis * Number(s.landValuePct||0);
   const deprBasis = Math.max(0, totalBasis - landValue);
-  const life = Number(s.deprLife||39);
+  const lifeInfo = (typeof bkRecoveryPeriod==='function') ? bkRecoveryPeriod(s) : { years:Number(s.deprLife||39), basis:'' };   /* one shared determination (src/077), recomputed with the inputs */
+  const life = lifeInfo.years;
   const annualDepr = life>0 ? deprBasis/life : 0;
 
   let accumDepr = 0, lossCF = 0;
@@ -92,6 +91,7 @@ const _dealV18 = sheetDealUnderwrite;
 sheetDealUnderwrite = function(){
   const o = _dealV18();
   o.main += `<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>After-Tax Assumptions</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>${bkInput('Ordinary Income Tax Rate','taxRate','%','pct')}${bkInput('Land Value (% of Basis)','landValuePct','%','pct')}${bkInput('Depreciable Life','deprLife','years')}${bkInput('Depreciation Recapture Rate','depRecaptureRate','% (Sec. 1250)','pct')}${bkInput('Long-Term Capital Gains Rate','capGainsRate','%','pct')}</tbody></table></div>`;
+  try { const li = bkRecoveryPeriod(s); o.main += '<div class="note-flag"><span>&#9432;</span><div><b>Recovery period: ' + li.years + ' years.</b> ' + li.basis + (li.override ? '' : '. It follows the rent mix and changes with the inputs; enter a period on the Depreciation page to fix it.') + '</div></div>'; } catch(e){}
   return o;
 };
 
