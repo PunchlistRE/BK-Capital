@@ -29,6 +29,13 @@ function P(sheet, panel, path){ return { sheet:sheet, panel:panel || null, path:
 var T = [];
 function add(title, k, a, go, o){ T.push(Object.assign({ title:title, k:k, a:a, go:go }, o || {})); }
 
+/* ---- the guide and the newer pages */
+add('Guide depth: Quick, Standard, Full', ['guide depth', 'quick start', 'full detail', 'standard steps', 'more detail guide', 'every figure'], 'The Guide has three depths. Quick is nine numbers and a first answer; Standard is the steps; Full adds each step\'s optional figures (other-income lines, renovation, extra expenses, loan details). Switch at the top of any step.', P('Guide', null, ['Guide', 'Depth']));
+add('Start from documents', ['start from documents', 'upload documents', 'drop documents', 'import package', 'documents first'], 'Start from your documents on the Guide\'s first screen: drop an OM, listing, T-12 or rent roll on the Import page and the Guide walks you through confirming what each figure came from.', P('Import', null, ['Property', 'Import']));
+add('Actuals and budget vs actual', ['actuals', 'budget vs actual', 'variance', 'reforecast', 't-12 actuals', 'asset management', 'monthly actuals'], 'Operations > Budget vs Actual. Paste monthly revenue, expenses, capex and debt service on the Enter actuals view; the page shows the variance by month, the reforecast of each year and the loan covenant tested on the actuals.', P('Budget vs Actual', null, ['Operations', 'Budget vs Actual']));
+add('After-tax report', ['after tax report', 'after-tax report', 'depreciation recovery', 'recovery period', 'tax report'], 'Reports > After-Tax Report: after-tax cash flow, sale-year tax and pre- versus after-tax returns, with the depreciation recovery period and why it was chosen.', P('After-Tax Report', null, ['Reports', 'After-Tax Report']));
+add('Full property report and PDF summaries', ['full report', 'compile report', 'pdf summary', 'property report', 'print everything', 'tab summary'], 'The ribbon\'s PDF summary prints the open page; Full report compiles a cover, contents, executive summary and every tab and page in menu order. The Reports pages carry a Compile full property report button.', P('Reports', null, ['Reports', 'Compile full property report']));
+
 /* ---- the deal */
 add('Purchase price', ['purchase price', 'price', 'what we pay', 'acquisition price', 'land price'], function(s){ return 'The purchase price is set on Investment > Acquisition.' + now('It is now', m0(Number(s.purchasePrice))); }, E('Investment', 'acq', 'ae-purchasePrice'));
 add('Closing costs', ['closing costs', 'diligence costs', 'legal title'], 'Closing and diligence costs are a percent of price on Investment > Acquisition.', E('Investment', 'acq', 'ae-closingCostsPct'));
