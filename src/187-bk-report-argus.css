@@ -45,6 +45,9 @@ html body #viewport .rp .rp-sec + .rp-tbl, html body #viewport .rp .rp-sec + div
 html body #viewport .rp .rp-sec + .rp-tbl tbody tr + tr td{ border-top:1px solid color-mix(in srgb, var(--ae-line) 55%, transparent) !important; }
 html body #viewport .rp .rp-sec + .rp-tbl thead tr:first-child th{ background:transparent !important; border-bottom:1px solid var(--ae-ink) !important; font-weight:600; }
 html body #viewport .rp .rp-sec + .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:10px; color:var(--ae-ink); }
+/* Lease Audit, Line by Line: the tenants under a line are indented and quieter than the line's name and total (the boxed-table rule above would otherwise set them flush) */
+html body #viewport .rp .rp-sec + .rp-tbl tbody tr.ten:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:24px; color:var(--ae-dim); }
+html body #viewport .rp .rp-tbl tbody tr.ten.nil td{ font-style:italic; color:var(--ae-dim); }
 
 /* dark theme: the slate section heading needs the lighter accent */
 html[data-theme="dark"] body #viewport .rp .rp-tbl tr.sec td{ color:#9fcdf5; }
@@ -61,6 +64,7 @@ html[data-theme="dark"] body #viewport .rp .rp-tbl tr.sec td{ color:#9fcdf5; }
 @media (max-width:760px){
   html body #viewport .rp .rp-tbl tbody td:first-child, html body #viewport .rp .rp-tbl thead th:first-child{ white-space:normal; min-width:120px; max-width:150px; }
   html body #viewport .rp .rp-tbl tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:14px; }
+  html body #viewport .rp .rp-sec + .rp-tbl tbody tr.ten:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:18px; }
 }
 /* Sources and Uses Report: the difference row under the totals is quiet when it is zero and red when it is not */
 html body #viewport .rp .rp-tbl tr.dim td{ font-size:11px; font-style:italic; color:var(--ae-dim); }

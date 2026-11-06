@@ -1,4 +1,6 @@
 // Reports > Lease Audit Report (src/156): Argus's Lease Audit and Supplemental, tenant by tenant, from the lease engine's own series.
+// Line by Line (Argus's orientation): every tenant under each line, then the line's total; the tenants must add up to it, the total is the schedule's own series and equals the same line under All Tenants,
+// a tenant with nothing on a line is left out of it, the leasing lines tie to the Cash Flow Report, and the CSV carries both orientations.
 // Checks the supplemental tables (area, dates, years remaining, rents to the cent, escalation and recovery words, the rollover terms each tenant is actually run with, overrides included),
 // every tenant block against the engine's monthly series (read independently of the report), that the tenants add up to the "All Tenants" block, that leasing costs tie to the Cash Flow Report's own
 // Tenant Improvements, Leasing Commissions and Total Leasing Costs rows, that the bridge ends on the retail revenue the engine counts in Effective Gross Revenue (summed from its monthly rows), and the pages a
@@ -30,12 +32,18 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
     const years = document.querySelectorAll('#rp-leaseaudit thead tr:not(.rp-fc):not(.rp-pe) th.r').length - 1;
     /* tenant blocks: a section row names the tenant, the rows after it (until the next section) are its lines */
     const blocks = []; let cur = null; grid('rp-leaseaudit').forEach(r => { if (r.cls === 'sec') { cur = { name: r.c[0], rows: {} }; blocks.push(cur); } else if (cur) cur.rows[r.c[0]] = { cls: r.cls, raw: r.c.slice(1), v: r.c.slice(1).map(num) }; });
+    /* line by line: a section row names the line, the tenant rows under it (class ten), then its total */
+    const LB = []; let lc = null; grid('rp-leaseline').forEach(r => { if (r.cls === 'sec') { lc = { name: r.c[0], ten: [], nil: false, total: null }; LB.push(lc); } else if (lc) { if (/\bten\b/.test(r.cls)) { if (/\bnil\b/.test(r.cls)) lc.nil = r.c[0]; else lc.ten.push({ name: r.c[0], v: r.c.slice(1).map(num) }); } else lc.total = { name: r.c[0], cls: r.cls, v: r.c.slice(1).map(num) }; } });
+    const cs = (sel) => { const e = document.querySelector(sel); return e ? { pl: parseFloat(getComputedStyle(e).paddingLeft), c: getComputedStyle(e).color, w: getComputedStyle(e).fontWeight } : null; };
+    const sty = { ten: cs('#rp-leaseline tbody tr.ten:not(.nil) td'), sec: cs('#rp-leaseline tbody tr.sec td'), sub: cs('#rp-leaseline tbody tr.sub td') };
+    const csvBtn = [...document.querySelectorAll('#viewport .rp-bar button')].map(x => x.getAttribute('onclick') || '').find(x => /bkRpCsv/.test(x));
+    const order = [...document.querySelectorAll('#viewport .rp .rp-sec')].map(x => x.textContent.trim());
     const s = bkLoad(), ac = bkAnnualCF(), LM = ac.lease, hm = ac.holdMonths, cf = bkRpCashFlow(), F = cf.f;
     const sumY = (a, y) => { let t = 0; for (let i = (y - 1) * 12; i < y * 12 && i < hm; i++) t += a[i]; return t; };
     const avgY = (a, y) => { let t = 0, c = 0; for (let i = (y - 1) * 12; i < y * 12 && i < hm; i++) { t += a[i]; c++; } return c ? t / c : 0; };
     const Y = (f) => ac.arr.map(a => f(a.y));
     const fresh = bkLeaseEval(s, hm + 12, null, true);   /* a second, separate evaluation of the same schedule (flat expense growth: only the series that do not depend on it are compared) */
-    return { years, n: ac.arr.length, blocks, terms: grid('rp-lterms'), roll: grid('rp-lroll'), rollHead: [...document.querySelectorAll('#rp-lroll thead th')].map(x => x.textContent.trim()), termsHead: [...document.querySelectorAll('#rp-lterms thead th')].map(x => x.textContent.trim()),
+    return { years, n: ac.arr.length, blocks, LB, sty, csvBtn, order, lineRows: document.querySelectorAll('#rp-leaseline tr').length, auditRows: document.querySelectorAll('#rp-leaseaudit tr').length, terms: grid('rp-lterms'), roll: grid('rp-lroll'), rollHead: [...document.querySelectorAll('#rp-lroll thead th')].map(x => x.textContent.trim()), termsHead: [...document.querySelectorAll('#rp-lterms thead th')].map(x => x.textContent.trim()),
       text: document.querySelector('#viewport').innerText, peRow: [...document.querySelectorAll('#rp-leaseaudit thead tr.rp-pe th')].map(x => x.textContent.trim()),
       eng: { tenants: LM.tenants.map(t => ({ i: t.i, name: t.name, sf: t.sf, p: t.p, roll: t.roll })), leases: s.leases, hold: hm,
         by: LM.byT.map(B => ({ rent: Y(y => sumY(B.rent, y)), free: Y(y => sumY(B.free, y)), rec: Y(y => sumY(B.rec, y)), ti: Y(y => sumY(B.ti, y)), lc: Y(y => sumY(B.lc, y)), cost: Y(y => sumY(B.cost, y)), occ: Y(y => avgY(B.occ, y)), costM: B.cost, tiM: B.ti, lcM: B.lc })),
@@ -95,13 +103,43 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
     check(tag + ': the same retail revenue follows from the tenant lines: (rent + recoveries - general vacancy) x (1 - credit loss)', sameArr(e.all.rent.map((v, i) => (v + e.all.rec[i] - e.gv[i]) * (1 - e.cl)), e.comm, 1.5));
     check(tag + ': per tenant, tenant improvements plus commissions are the engine\'s cost series every month, and a second evaluation of the schedule gives the same costs and rent', e.by.every((B, i) => B.costM.every((v, m) => Math.abs(v - (B.tiM[m] + B.lcM[m])) < 1e-6) && sameArr(B.cost, e.fresh.cost[i], 0.01)) && sameArr(e.all.rent, e.fresh.rentTot, 0.01));
   };
-  p = await open(A, deckA); const RA = await READ(p); checkBlocks('four tenants, general vacancy and credit loss', RA);
+  const NAMES = ['Base Rent Before Free Rent', 'Free Rent', 'Base Rent Collected', 'Expense Recoveries', 'Total Rent Revenue', 'Tenant Improvements', 'Leasing Commissions', 'Total Leasing Costs'];
+  const checkLines = (tag, R2) => {
+    const e = R2.eng, n = R2.n, nt = e.tenants.length, L = (k) => R2.LB.find(l => l.name === k) || { ten: [], total: { v: [] } };
+    check(tag + ': Line by Line has the eight lines in order, each closed by its total ("Total Free Rent", and "Total Rent Revenue" not "Total Total Rent Revenue")', JSON.stringify(R2.LB.map(l => l.name)) === JSON.stringify(NAMES) && R2.LB.every(l => l.total && l.total.name === (/^Total /.test(l.name) ? l.name : 'Total ' + l.name)), JSON.stringify(R2.LB.map(l => [l.name, l.total && l.total.name])));
+    let ok = true, bad = '';
+    R2.LB.forEach(l => { const sum = new Array(n + 1).fill(0); l.ten.forEach(t => t.v.forEach((v, j) => { sum[j] += v || 0; })); if (!sameArr(l.total.v.slice(0, n + 1), sum, l.ten.length * 0.5 + 1)) { ok = false; bad += ' ' + l.name + ' ' + JSON.stringify([l.total.v, sum]); } });
+    check(tag + ': under every line the tenants add up to the line total, year by year and in the Total column', ok, bad);
+    const A2 = R2.blocks[nt], Lall = lines(A2, e.all);
+    check(tag + ': each line total is the schedule\'s own series for that line, and is the same line under All Tenants in Tenant by Tenant, figure for figure', R2.LB.every(l => sameArr(l.total.v.slice(0, n), Lall[l.name], 1) && sameArr(l.total.v, rowOf(A2, l.name), 0)), JSON.stringify(R2.LB.map(l => [l.name, l.total.v.slice(0, 3), rowOf(A2, l.name).slice(0, 3)])));
+    let ok2 = true, bad2 = '';
+    R2.LB.forEach(l => { e.tenants.forEach((t, i) => { const want = lines(null, e.by[i])[l.name], shown = l.ten.filter(x => x.name === t.name), has = want.some(v => Math.abs(v) >= 0.5);
+      if (has !== (shown.length === 1) || (has && (!sameArr(shown[0].v.slice(0, n), want, 1) || !near(shown[0].v[n], want.reduce((a, v) => a + v, 0), 1.5)))) { ok2 = false; bad2 += ' ' + l.name + '/' + t.name; } });
+      if (l.ten.some(x => !e.tenants.some(t => t.name === x.name))) { ok2 = false; bad2 += ' ' + l.name + ': a row that is not a tenant'; } });
+    check(tag + ': every tenant with a figure on a line is listed under it once, with the engine\'s series for that tenant summed by year; a tenant with nothing on a line is left out of it', ok2, bad2);
+    check(tag + ': Tenant Improvements, Leasing Commissions and Total Leasing Costs equal the Cash Flow Report\'s own rows in every year', sameArr(L('Tenant Improvements').total.v.slice(0, n), e.cf.ti, 1) && sameArr(L('Leasing Commissions').total.v.slice(0, n), e.cf.lc, 1) && sameArr(L('Total Leasing Costs').total.v.slice(0, n), e.cf.leasing, 1));
+    check(tag + ': the two revenue and cost totals are totals, the other line totals subtotals; tenant rows are indented past the line name and quieter than the total', L('Total Rent Revenue').total.cls === 'tot' && L('Total Leasing Costs').total.cls === 'tot' && R2.LB.filter(l => !/^Total /.test(l.name)).every(l => l.total.cls === 'sub')
+      && R2.sty.ten && R2.sty.sec && R2.sty.sub && R2.sty.ten.pl >= R2.sty.sec.pl + 10 && R2.sty.ten.c !== R2.sty.sub.c && Number(R2.sty.ten.w) < Number(R2.sty.sub.w), JSON.stringify(R2.sty));
+  };
+  p = await open(A, deckA); const RA = await READ(p); checkBlocks('four tenants, general vacancy and credit loss', RA); checkLines('four tenants', RA);
+  check('Line by Line comes before Tenant by Tenant, after the supplemental tables', RA.order.indexOf('Line by Line') > RA.order.indexOf('Rollover Terms at Expiry') && RA.order.indexOf('Line by Line') === RA.order.indexOf('Tenant by Tenant') - 1, RA.order.join(' | '));
+  check('the Download CSV button takes both orientations, Line by Line first', RA.csvBtn === "bkRpCsv('rp-leaseline,rp-leaseaudit')", RA.csvBtn);
+  const csv = await p.evaluate(() => new Promise(res => { const keep = URL.createObjectURL; URL.createObjectURL = (bl) => { bl.text().then(t => { URL.createObjectURL = keep; res(t); }); return 'blob:x'; }; bkRpCsv('rp-leaseline,rp-leaseaudit'); }));
+  const csvL = csv.split('\n');
+  check('the CSV holds every row of both tables in page order, a blank line between them, and the one-table form still works for the other reports', csvL.length === RA.lineRows + 1 + RA.auditRows && csvL[RA.lineRows] === '' && csv.indexOf('"Total Base Rent Before Free Rent"') < csv.indexOf('"All Tenants"') && csv.indexOf('"All Tenants"') > 0,
+    JSON.stringify([csvL.length, RA.lineRows, RA.auditRows]));
+  check('the one-table CSV (every other report) is unchanged: one table, no blank line', await p.evaluate(() => new Promise(res => { showSheet('Cash Flow Report'); setTimeout(() => { const keep = URL.createObjectURL; URL.createObjectURL = (bl) => { bl.text().then(t => { URL.createObjectURL = keep; res(t.split('\n').length === document.querySelectorAll('#rp-cashflow tr').length && t.indexOf('\n\n') < 0); }); return 'blob:x'; }; bkRpCsv('rp-cashflow'); }, 500); })));
   check('the vacant suite\'s block shows the lease-up: no rent for its downtime and costs in the month it leases', RA.blocks[2].rows['Base Rent Collected'].v[0] < RA.blocks[2].rows['Base Rent Collected'].v[1] && RA.blocks[2].rows['Total Leasing Costs'].v[0] < 0, JSON.stringify(RA.blocks[2].rows['Base Rent Collected'].raw));
   check('the general vacancy allowance is a real line on this deal (8% floor above the schedule\'s own vacancy) and credit loss is charged', rowOf(RA.blocks[5], 'General Vacancy Allowance').slice(0, 5).some(v => v < -1000) && rowOf(RA.blocks[5], 'Credit Loss').slice(0, 5).every(v => v < 0), JSON.stringify([rowOf(RA.blocks[5], 'General Vacancy Allowance'), rowOf(RA.blocks[5], 'Credit Loss')]));
   await p.close();
 
   /* D. a ten-year deck with overrides, dated steps, CPI, an open-ended lease, a recovery cap, a fixed recovery, no allowance and no credit loss */
-  p = await open(A, deckB); const RB = await READ(p); checkBlocks('ten years, overrides, steps, CPI and a recovery cap', RB);
+  /* a schedule with no free rent anywhere: the Free Rent line says so and its total is zero, instead of an empty heading */
+  p = await open(A, Object.assign({}, deckA, { leaseMkt: Object.assign({}, MK.leaseMkt, { freeNew: 0, freeRenew: 0 }) })); const RC = await READ(p);
+  const fr = RC.LB.find(l => l.name === 'Free Rent') || {};
+  check('a line no tenant has a figure on (no free rent in the schedule) keeps its heading, says "No tenant has a figure on this line." and totals zero', fr.ten && fr.ten.length === 0 && fr.nil === 'No tenant has a figure on this line.' && fr.total && fr.total.v.every(v => v === 0) && RC.eng.all.free.every(v => Math.abs(v) < 0.5), JSON.stringify([fr, RC.eng.all.free]));
+  checkLines('no free rent', RC); await p.close();
+  p = await open(A, deckB); const RB = await READ(p); checkBlocks('ten years, overrides, steps, CPI and a recovery cap', RB); checkLines('ten years', RB);
   check('overrides reach the page: the anchor runs at a 90% renewal chance, 3 months of downtime, an 84-month renewal term, $8 renewal TI, a 5% commission and 4 months of free rent; the next tenant keeps the deal\'s terms',
     RB.roll[0].c[1] === '90.00%' && RB.roll[0].c[2] === '3 mo' && RB.roll[0].c[4] === '84 mo' && RB.roll[0].c[8] === '$8.00' && RB.roll[0].c[9] === '5.00%' && RB.roll[0].c[5] === '4 mo' && RB.roll[1].c[1] === '65.00%' && RB.roll[1].c[2] === '6 mo', JSON.stringify(RB.roll.slice(0, 2).map(r => r.c)));
   check('a tenant with dated rent steps reads "Dated steps (3)", a CPI lease reads its floor, a lease with no end date reads Open and runs to the end of the hold, a fixed recovery reads Fixed', RB.terms[0].c[9] === 'Dated steps (3)' && /^CPI, floor 2\.00%/.test(RB.terms[1].c[9]) && RB.terms[2].c[5] === 'Open' && RB.terms[2].c[6] === '10.0 yrs' && RB.terms[2].c[10] === 'Fixed', JSON.stringify(RB.terms.map(r => r.c.slice(5, 11))));
@@ -114,11 +152,11 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
   const off = await p.evaluate(async () => { showSheet('Lease Audit Report'); await new Promise(r => setTimeout(r, 400)); return { text: document.querySelector('#viewport').textContent, table: !!document.querySelector('#rp-leaseaudit'), btn: [...document.querySelectorAll('#viewport button')].map(x => x.textContent.trim()).join('|') }; });
   check('with the lease model off the page says so and offers the commercial leases, with no table', !off.table && /commercial lease model is off/.test(off.text) && /Open Commercial Leases/.test(off.btn), off.btn); await p.close();
   p = await open(V, { commLeaseModel: true, leases: [T({ tenant: 'Ground Floor Cafe', suite: 'G1', sf: 3000, start: '', end: '', rent: 0, status: 'Vacant', mkt: 44 }), T({ tenant: 'Pre-leased Clinic', suite: 'G2', sf: 5000, start: '2028-06-01', end: '2038-05-31', rent: 36, recType: 'NNN' })] });
-  const dv = await READ(p), de = dv.eng;
+  const dv = await READ(p), de = dv.eng; checkLines('development', dv);
   check('a development deal with a schedule gets the page too, and its tenant lines still add up to the schedule and its leasing costs still tie to the Cash Flow Report\'s own figures', dv.blocks.length === 4 && sameArr(rowOf(dv.blocks[2], 'Base Rent Collected').slice(0, dv.n), de.all.rent, 1) && e2sum(dv, de), JSON.stringify(dv.blocks.map(x => x.name)));
   function e2sum(R2, e) { const nt = e.tenants.length; return ['Base Rent Collected', 'Expense Recoveries', 'Total Leasing Costs'].every(k => sameArr(rowOf(R2.blocks[nt], k).slice(0, R2.n), e.tenants.map((t, i) => rowOf(R2.blocks[i], k).slice(0, R2.n)).reduce((a, r) => a.map((v, j) => v + r[j]), new Array(R2.n).fill(0)), nt + 1)); }
   await p.close();
-  p = await open(A, deckA, 390); const ph = await p.evaluate(async () => { showSheet('Lease Audit Report'); await new Promise(r => setTimeout(r, 600)); const W = document.documentElement.clientWidth; const t = document.querySelector('#rp-lterms'); const wrap = t.parentElement; return { over: document.documentElement.scrollWidth - W, tableW: t.getBoundingClientRect().width, W, contained: [...document.querySelectorAll('#rp-lterms, #rp-lroll, #rp-leaseaudit')].every(x => x.getBoundingClientRect().right <= W + 1 || (getComputedStyle(x.parentElement).overflowX !== 'visible')), cue: !!document.querySelector('#viewport .bk-scrollcue, #viewport [class*="scroll"]') }; });
+  p = await open(A, deckA, 390); const ph = await p.evaluate(async () => { showSheet('Lease Audit Report'); await new Promise(r => setTimeout(r, 600)); const W = document.documentElement.clientWidth; const t = document.querySelector('#rp-lterms'); const wrap = t.parentElement; return { over: document.documentElement.scrollWidth - W, tableW: t.getBoundingClientRect().width, W, contained: [...document.querySelectorAll('#rp-lterms, #rp-lroll, #rp-leaseline, #rp-leaseaudit')].every(x => x.getBoundingClientRect().right <= W + 1 || (getComputedStyle(x.parentElement).overflowX !== 'visible')), cue: !!document.querySelector('#viewport .bk-scrollcue, #viewport [class*="scroll"]') }; });
   check('phone: the page itself does not scroll sideways; a wide supplemental table scrolls inside its own box', ph.over <= 1 && ph.contained, JSON.stringify(ph));
   check('the year-by-year table can be downloaded as CSV like the other reports', await p.evaluate(() => { const t = document.getElementById('rp-leaseaudit'); return [...t.querySelectorAll('tr')].length > 40 && typeof bkRpCsv === 'function'; })); await p.close();
   p = await open(A, deckA); await p.evaluate(async () => { showSheet('Lease Audit Report'); await new Promise(r => setTimeout(r, 400)); await new Promise(r => setTimeout(r, 200)); });
