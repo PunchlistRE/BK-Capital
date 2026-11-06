@@ -54,6 +54,7 @@ echo "== Panel tabs (long sections open as tabs; nothing removed; print carries 
 echo "== NNN terms from a rent roll (structure, base year, stop, share kept in the lease)"; node audit/nnn_import_test.js index.html "$REF" | tail -1
 echo "== Tenant-level commercial leases in a development deal (lease clock after completion, retail replaces the growth-path retail, TI/LC capital)"; node audit/devleases_test.js index.html "$REF" | tail -1
 echo "== Ask the guide (plain-words questions: every topic lands on a real page, tab, panel and field; quoted figures are the engine's; nothing written)"; node audit/guideask_test.js index.html | tail -1
+echo "== Guide walkthrough (blank to Returns, acquisition and development, desktop and phone: each step opens at its top on its heading, the step reads what is typed, the IRR waits until the deal can run, no early tie alarm, units in the boxes, a key to the marks, one-row progress on a phone)"; node audit/guide_walk_test.js index.html | tail -1
 echo "== Day / night toggle (round header button, follows the device until chosen, whole app turns dark or light, sign-in card readable, fits a phone)"; node audit/theme_test.js index.html | tail -1
 echo "== Base / Upside / Downside (control, directions, non-destructive, every output page shows the selected case, Base-only pages say so)"; node audit/cases_test.js index.html | tail -1
 echo "== Readable in both themes (no text under 3:1 contrast on the sections that used to fail, day and night, desktop and phone)"; node audit/contrast_test.js index.html | tail -1
