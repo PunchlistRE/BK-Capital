@@ -26365,7 +26365,7 @@ function active(){ return typeof window.bkHasActiveDeal !== 'function' || window
 var PREF = 'bkcapital.guide.on';
 function prefOn(){ try { return localStorage.getItem(PREF) === '1'; } catch(e){ return false; } }
 function setPref(v){ try { localStorage.setItem(PREF, v ? '1' : '0'); } catch(e){} }
-var st = { step:null, draft:{}, screen:'', checked:{} };
+var st = { step:null, draft:{}, screen:'', checked:{}, q:null };
 
 /* ------------------------------------------------------------ what each step asks (essentials only; "add detail" opens the full sheet) */
 var Q = { pct:'pct', money:'money', int:'int', num:'num', text:'text', bool:'bool' };
@@ -26559,6 +26559,7 @@ function startScreen(){
   return '<div class="gd"><h1>Let\'s set up a deal</h1><p class="sub">Start from blank or from a document. Whichever you pick, nothing is changed until you confirm it, you can skip any step, and the guide reminds you what you skipped.</p>'
    + '<div class="gd-start"><button type="button" class="gd-opt" onclick="bkGuideBlank(\'Acquisition\')"><b>Start from blank: an acquisition</b><span>A building you would buy and operate. ' + stepCount('Acquisition') + ' short steps, in a logical order, then a review.</span></button>'
    + '<button type="button" class="gd-opt" onclick="bkGuideBlank(\'Development\')"><b>Start from blank: a development</b><span>Land, a construction budget and a timeline, then financing and exit. ' + stepCount('Development') + ' short steps, then a review.</span></button>'
+   + '<button type="button" class="gd-opt" onclick="bkGuideQuick()"><b>Quick start: nine numbers, a first answer</b><span>Price, units, rent, taxes, insurance and other expenses per unit, the loan and the exit cap on one page, with the levered IRR and both DSCRs as you type. Then carry on in the standard steps, or stop there.</span></button>'
    + '<button type="button" class="gd-opt" onclick="bkGuideDoc(\'Import OM\')"><b>Start from an offering memorandum</b><span>Upload the PDF. I read the price, units, rents and expenses, then walk you through confirming them and what is missing.</span></button>'
    + '<button type="button" class="gd-opt" onclick="bkGuideDoc(\'Import Deal\')"><b>Start from a T-12</b><span>Upload a Yardi operating statement. Income and expenses load; I ask for the rest.</span></button></div>'
    + '<div class="gd-act"><button type="button" class="gd-btn link" onclick="bkGuideOff()">Turn the guide off and use the full app</button></div></div>';
@@ -26685,8 +26686,41 @@ function whereScreen(secs, s, g){
   h += '<div class="gd-act"><button type="button" class="gd-btn" onclick="bkGuideGo(\'' + (first ? first.id : 'review') + '\')">' + (first ? 'Take me to ' + esc(first.title.toLowerCase()) : 'Go to the review') + '</button><button type="button" class="gd-btn ghost" onclick="bkGuideGo(\'' + secs[0].id + '\')">Walk me through from the start</button><button type="button" class="gd-btn link" onclick="bkGuideGo(\'review\')">Skip to the review</button><button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideNew()">Start a different deal</button></div></div>';
   return h;
 }
+/* QUICK DEPTH (1.9): one page, the figures that decide a first answer. The expenses are the deal's own per-unit lines (taxes, insurance, and the other operating lines as one scaled total); nothing is written until "Use these"; the result is the engine run on a copy (bkRunWith). */
+var QL = [['purchasePrice', 'Purchase price', 'money', '$'], ['units', 'Units', 'int', ''], ['avgRent', 'Average rent per unit, per month', 'money', '$'], ['qTaxes', 'Real estate taxes, per unit per year', 'money', '$'], ['qIns', 'Insurance, per unit per year', 'money', '$'], ['qOther', 'Other operating expenses, per unit per year', 'money', '$'], ['acqLTV', 'Loan-to-value', 'pct', ''], ['acqRate', 'Interest rate', 'pct', ''], ['exitCap', 'Exit cap rate', 'pct', '']];
+var OTHERX = ['utilities', 'rm', 'payroll', 'turnover', 'contract', 'marketing', 'ga'];
+var QDEF = ['holdYears', 'vacancy', 'mgmtPct', 'rentGrowth', 'opexGrowth'];   /* what a first answer needs beyond the nine numbers: the registry's own suggestions, recorded as assumptions the review lists */
+function qAssumed(s){ var out = {}; QDEF.forEach(function(k){ if(Number(s[k]) > 0) return; var f = window.BKReg && window.BKReg.field(k), sg = f && typeof f.sug === 'function' ? safe(function(){ return f.sug(s); }, null) : null; if(sg && sg.v != null) out[k] = { v:sg.v, why:sg.why || '', label:f.label }; }); return out; }
+function qNum(raw){ var n = parseFloat(String(raw).replace(/[$,%\s]/g, '')); return isFinite(n) ? n : null; }
+function qUnits(s, d){ var u = d.units != null ? Number(d.units) : Number(s.units); return u > 0 ? u : 0; }
+function qShow(s, k){ var d = st.q || {}; if(d[k] != null) return d[k]; var u = qUnits(s, d);
+  if(k === 'qTaxes') return u ? (Number(s.taxes) || 0) / u : 0; if(k === 'qIns') return u ? (Number(s.insurance) || 0) / u : 0;
+  if(k === 'qOther') return u ? OTHERX.reduce(function(t, x){ return t + (Number(s[x]) || 0); }, 0) / u : 0; return Number(s[k]) || 0; }
+function qOverrides(s){ var d = st.q || {}, o = {}, u = qUnits(s, d);
+  ['purchasePrice', 'units', 'avgRent', 'acqLTV', 'acqRate', 'exitCap'].forEach(function(k){ if(d[k] != null) o[k] = d[k]; });
+  if(u){ if(d.qTaxes != null) o.taxes = d.qTaxes * u; if(d.qIns != null) o.insurance = d.qIns * u;
+    if(d.qOther != null){ var tot = d.qOther * u, base = OTHERX.reduce(function(t, x){ return t + (Number(s[x]) || 0); }, 0);
+      if(base > 0) OTHERX.forEach(function(x){ o[x] = (Number(s[x]) || 0) * tot / base; }); else { OTHERX.forEach(function(x){ o[x] = 0; }); o.rm = tot; } } }
+  var as = qAssumed(s); Object.keys(as).forEach(function(k){ o[k] = as[k].v; });
+  return o; }
+function quickResult(s){ var o = qOverrides(s); return safe(function(){ return window.bkRunWith(o, function(){ var s2 = bkLoad(), k = window.bkProFormaKit && bkProFormaKit.build(), r = bkMonthlyReturns();
+  return '<div class="gd-res" style="font-size:14px"><span>Levered IRR <b>' + (isFinite(r.irr) ? (r.irr * 100).toFixed(2) + '%' : '—') + '</b></span><span>Multiple <b>' + (isFinite(r.moic) ? r.moic.toFixed(2) + 'x' : '—') + '</b></span>' + bothDscr(s2, true).html + '</div>'; }); }, '<span class="sub">Enter the price, units and rent to see a first answer.</span>'); }
+window.bkGuideQuick = function(){ window.bkGuideBlank('Acquisition'); st.screen = 'quick'; st.q = {}; show(); };
+window.bkGuideQ = function(k, v){ var n = qNum(v); if(n == null){ delete (st.q || {})[k]; } else { st.q = st.q || {}; var f = QL.filter(function(x){ return x[0] === k; })[0]; st.q[k] = f && f[2] === 'pct' ? n / 100 : n; }
+  var el = document.getElementById('gd-q-res'); if(el) el.innerHTML = quickResult(bkLoad()); };
+window.bkGuideQuickUse = function(){ var s = bkLoad(), o = qOverrides(s), as = qAssumed(s); Object.keys(o).forEach(function(k){ s[k] = o[k]; });
+  var g = s._guide = s._guide || { done:{}, skipped:{}, from:null, assumed:[], confirmed:{} }; g.assumed = g.assumed || []; Object.keys(as).forEach(function(k){ if(g.assumed.indexOf(k) < 0) g.assumed.push(k); }); bkSave(s); st.q = null; st.screen = ''; st.step = null; show(); };
+window.bkGuideQuickBack = function(){ st.q = null; st.screen = 'start'; show(); };
+function quickScreen(s){
+  var rows = QL.map(function(f){ var v = qShow(s, f[0]), disp = f[2] === 'pct' ? (v * 100).toFixed(2) : v ? Math.round(v * 100) / 100 : '';
+    return '<label class="gd-q"><span>' + esc(f[1]) + '</span><span class="gd-qi">' + (f[3] ? f[3] + ' ' : '') + '<input type="text" inputmode="decimal" value="' + esc(disp) + '" oninput="bkGuideQ(\'' + f[0] + '\', this.value)">' + (f[2] === 'pct' ? ' %' : '') + '</span></label>'; }).join('');
+  return '<div class="gd"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Quick start</div><h1>A first answer</h1><p class="sub">Nine numbers. Expenses are the deal\'s own per-unit lines: taxes, insurance and one total for the rest, which scales the other operating lines you already have. Nothing is saved until you press Use these.</p>'
+    + '<style>.gd-q{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line,#e1e7ee)}.gd-qi{white-space:nowrap}.gd-qi input{width:130px;text-align:right;padding:6px 8px;border:1px solid var(--line,#c9d1dc);border-radius:5px}</style><div class="gd-card">' + rows + '</div>'
+    + '<div class="gd-card"><b>The first answer</b><div id="gd-q-res" style="margin-top:8px">' + quickResult(s) + '</div>' + (function(){ var as = qAssumed(s), ks = Object.keys(as); return ks.length ? '<p class="sub" style="margin:10px 0 0">Assumed until you change them in the standard steps: ' + ks.map(function(k){ var v = as[k].v; return esc(as[k].label.toLowerCase()) + ' ' + (v < 1 && k !== 'holdYears' ? (v * 100).toFixed(1) + '%' : v); }).join(', ') + '.</p>' : ''; })() + '</div>'
+    + '<div class="gd-act"><button type="button" class="gd-btn" onclick="bkGuideQuickUse()">Use these and carry on</button><button type="button" class="gd-btn link" onclick="bkGuideQuickBack()">Back</button></div></div>'; }
 function render(){
   var s = safe(function(){ return bkLoad(); }, null), hdr = { title:'', crumbs:'', desc:'', meta:{}, sidebar:'' };
+  if(active() && s && st.screen === 'quick'){ hdr.main = css() + quickScreen(s); return hdr; }
   if(!active() || !s || !String(s.dealId || '').trim() || st.screen === 'start'){ hdr.main = css() + startScreen(); return hdr; }
   var secs = sections(s), g = gstate(s); if(st.screen === 'where'){ hdr.main = css() + whereScreen(secs, s, g); return hdr; } if(!st.step) st.step = firstOpen(secs, s, g);
   if(st.step === 'review'){ hdr.main = css() + reviewScreen(secs, s, g); return hdr; }
