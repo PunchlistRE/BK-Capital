@@ -59,8 +59,8 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
     const money0 = (t) => parseFloat(String(t).replace(/[$,M]/g, '')) * (/M$/.test(t) ? 1e6 : 1);
     check('web, Home: the equity tile is named Total contributed equity and shows that measure (no bare "Equity" tile)', r.tiles.every(([k]) => k.trim() !== 'Equity') && r.tiles.some(([k, v]) => /^Total contributed equity$/i.test(k.trim()) && Math.abs(money0(v.trim()) - r.F) / r.F < 0.006), JSON.stringify(r.tiles.filter(([k]) => /quity/i.test(k))) + ' ' + r.F);
     await show(p, 'Debt');
-    const h = await p.evaluate(() => { const cap = [...document.querySelectorAll('#viewport caption')].find(c => /Acquisition Loan Terms/.test(c.textContent)); return cap ? [...cap.closest('table').querySelectorAll('thead th')].map(x => x.textContent.trim()) : null; });
-    check('web, Debt: the "Acquisition Loan Terms" column of a rate type, rates and a payment is headed Value, not "Amount ($)"', !!h && h[1] === 'Value', JSON.stringify(h));
+    const h = await p.evaluate(() => { const cap = [...document.querySelectorAll('#viewport caption')].find(c => /Acquisition Loan Terms/.test(c.textContent)); if (!cap) return null; const t = cap.closest('table'), pay = [...t.querySelectorAll('tbody tr')].find(r => /Monthly Payment/.test(r.innerText)); return { head: [...t.querySelectorAll('thead th')].map(x => x.textContent.trim()), pay: pay ? pay.children[1].textContent.trim() : null }; });
+    check('web, Debt: the "Acquisition Loan Terms" column of a rate type, rates and a payment is headed Value, not "Amount ($)", and the payment keeps its dollar sign', !!h && h.head[1] === 'Value' && /^\$[\d,]+$/.test(h.pay || ''), JSON.stringify(h));
     await p.close(); }
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
