@@ -1,5 +1,13 @@
 name: audit
-on: [push, pull_request]
+# One audit per commit. A branch with an open pull request used to run it twice (the push and the pull_request trigger fire on the same commit, about 14 minutes each):
+# pushes to main are audited, every other branch is audited through its pull request, and a newer push to a pull request cancels the run it supersedes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   audit:
     runs-on: ubuntu-latest
