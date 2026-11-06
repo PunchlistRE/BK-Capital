@@ -567,9 +567,9 @@ extend('Covenant Monitor','w1Covenant', function(o){
     var bal=endK>=0?d.months[endK].balance:0;
     if(ds>0){
       tested++;
-      var dscr=u.arr[y].after/ds; obsDSCR.push(dscr);
-      if(bal>0){ var dy=u.arr[y].after/bal; obsDY.push(dy); obsLev.push(bal/(Number(s.purchasePrice)||1)); }
-      if((covDSCR&&dscr<covDSCR)||(covDY&&bal>0&&(u.arr[y].after/bal)<covDY)) watch++;
+      var ln=bkLenderNoi(u.arr[y], s), dscr=ln/ds; obsDSCR.push(dscr);   /* the lender NOI (the deal's basis), as the loan sizing */
+      if(bal>0){ var dy=ln/bal; obsDY.push(dy); obsLev.push(bal/(Number(s.purchasePrice)||1)); }
+      if((covDSCR&&dscr<covDSCR)||(covDY&&bal>0&&(ln/bal)<covDY)) watch++;
     }
   }
   var minD = obsDSCR.length?Math.min.apply(null,obsDSCR):NaN;

@@ -226,7 +226,7 @@ function resultStrip(s, sec){
   var c = safe(function(){ return bkCalc(); }, null), out = [];
   if(!c) return '';
   if(sec.id === 'income' || sec.id === 'expenses'){ if(c.egi) out.push('<span>Income <b>' + money0(c.egi) + '</b></span>'); if(c.noi) out.push('<span>Net operating income <b>' + money0(c.noi) + '</b></span>'); var p = /develop/i.test(String(s.dealType || '')) ? 0 : Number(s.purchasePrice) || 0; if(c.noi && p) out.push('<span>Cap rate on price <b>' + (c.noi / p * 100).toFixed(2) + '%</b></span>'); }
-  if(sec.id === 'debt'){ var d = safe(function(){ return bkDebt(); }, null); if(d && d.loan) out.push('<span>Loan <b>' + money0(d.loan) + '</b></span><span>Coverage <b>' + (d.dscr ? d.dscr.toFixed(2) + 'x' : '—') + '</b></span><span>Equity <b>' + money0(d.equity) + '</b></span>'); }
+  if(sec.id === 'debt'){ var d = safe(function(){ return bkDebt(); }, null); if(d && d.loan) out.push('<span>Loan <b>' + money0(d.loan) + '</b></span><span title="' + esc(bkNoiBasisLabel('dscr')) + ' over the year-1 debt service, as the loan is sized">DSCR <b>' + (d.dscr ? d.dscr.toFixed(2) + 'x' : '—') + '</b></span><span>Equity <b>' + money0(d.equity) + '</b></span>'); }
   return out.length ? '<div class="gd-res">' + out.join('') + '</div>' : '';
 }
 function stepScreen(secs, sec, s, g){
@@ -262,7 +262,7 @@ function reviewScreen(secs, s, g){
   var unconf = g.assumed.filter(function(k){ return !g.confirmed[k]; });
   var k = safe(function(){ return window.bkProFormaKit && bkProFormaKit.build(); }, null), gate = safe(function(){ return bkDealGate(); }, null), conf = safe(function(){ return window.bkConflicts ? window.bkConflicts().filter(function(c){ return c.level !== 'INFO' && !c.acknowledged; }) : []; }, []);
   var h = '<div class="gd"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Last step</div><h1>Review</h1><p class="sub">Here is where the deal stands and what is still open.</p>' + progress(secs, s, g);
-  if(k) h += '<div class="gd-card"><div class="gd-res" style="font-size:14px"><span>Levered IRR <b>' + (isFinite(k.irr) ? (k.irr * 100).toFixed(2) + '%' : '—') + '</b></span><span>Multiple <b>' + (isFinite(k.moic) ? k.moic.toFixed(2) + 'x' : '—') + '</b></span>' + (k.Y && k.Y[0] && k.Y[0].dscr ? '<span>Year-1 coverage <b>' + k.Y[0].dscr.toFixed(2) + 'x</b></span>' : '') + (gate ? '<span>Credit gate <b>' + esc(gate.verdict) + '</b></span>' : '') + '</div></div>';
+  if(k) h += '<div class="gd-card"><div class="gd-res" style="font-size:14px"><span>Levered IRR <b>' + (isFinite(k.irr) ? (k.irr * 100).toFixed(2) + '%' : '—') + '</b></span><span>Multiple <b>' + (isFinite(k.moic) ? k.moic.toFixed(2) + 'x' : '—') + '</b></span>' + (function(){ var dd = safe(function(){ return bkDebt(); }, null); return dd && dd.dscr ? '<span title="' + esc(bkNoiBasisLabel('dscr')) + ' over the year-1 debt service">DSCR <b>' + dd.dscr.toFixed(2) + 'x</b> <small>(' + esc(bkNoiBasisLabel('dscr')) + ')</small></span>' : ''; })() + (gate ? '<span>Credit gate <b>' + esc(gate.verdict) + '</b></span>' : '') + '</div></div>';
   var open = [];
   skipped.forEach(function(sec){ open.push('<li><b>' + esc(sec.title) + '</b> was skipped. <a href="#" onclick="bkGuideGo(\'' + sec.id + '\');return false">Go back</a></li>'); });
   todo.forEach(function(sec){ open.push('<li><b>' + esc(sec.title) + '</b> has not been done. <a href="#" onclick="bkGuideGo(\'' + sec.id + '\');return false">Do it</a></li>'); });
