@@ -34,36 +34,43 @@ function build(){
 }
 
 /* ------------------------------------------------------------------ charts (inline SVG, responsive) */
+/* On a phone the charts are drawn at the width they are shown at, so their 11-unit text is 11px (drawn at 760 units and shrunk into a 340px card it read 5 to 6px). The screen renderers
+   (wrap, below) set CW for a narrow screen only; desktop, print and the investor PDF keep 760. Labels thin out when the bars get tight. */
+var CW = null; function chartW(){ return CW || 760; }
+function every(bw){ return Math.max(1, Math.ceil(46 / bw)); }
+function yl(y){ return chartW() < 600 ? 'Y' + y : 'Year ' + y; }
 function svgOpen(w, h, label){ return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(label) + '" style="width:100%;height:auto;display:block;overflow:visible">'; }
 function niceMax(v){ if(!(v > 0)) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
 function axisLbl(v){ var a = Math.abs(v); var t = a >= 1e6 ? (a / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : a >= 1e3 ? Math.round(a / 1e3) + 'K' : String(Math.round(a)); return (v < 0 ? '-' : '') + '$' + t; }
 /* NOI after reserves (bars) against debt service (line), with the coverage ratio under each year */
 function chartCoverage(D){
-  var W = 760, Hh = 250, L = 52, R = 14, T = 16, B = 46, n = D.Y.length, mx = niceMax(Math.max.apply(null, D.Y.map(function(r){ return Math.max(r.noiAfter, -r.ds); })) * 1.08), bw = (W - L - R) / n, bh = Hh - T - B, g = '';
+  var W = chartW(), Hh = 250, L = 52, R = 14, T = 16, B = 46, n = D.Y.length, mx = niceMax(Math.max.apply(null, D.Y.map(function(r){ return Math.max(r.noiAfter, -r.ds); })) * 1.08), bw = (W - L - R) / n, bh = Hh - T - B, g = '';
   var Yp = function(v){ return T + bh - v / mx * bh; };
   for(var t = 0; t <= 4; t++){ var v = mx * t / 4, y = Yp(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="' + COL.grid + '"/><text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">' + axisLbl(v) + '</text>'; }
   var pts = [];
-  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.46, bx = x + (bw - w) / 2, top = Yp(r.noiAfter), ok = r.dscr == null || r.dscr >= (D.pol.minDSCR || 1.25);
+  var k = every(bw);
+  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.46, bx = x + (bw - w) / 2, top = Yp(r.noiAfter), ok = r.dscr == null || r.dscr >= (D.pol.minDSCR || 1.25), lab = i === n - 1 || (i % k === 0 && n - 1 - i >= k);   /* the first year, every k-th, and the last; never two side by side */
     g += '<rect x="' + bx + '" y="' + top + '" width="' + w + '" height="' + (T + bh - top) + '" rx="3" fill="' + COL.navy + '" opacity=".92"><title>Year ' + r.y + ': NOI after reserves ' + M(r.noiAfter) + '</title></rect>';
-    g += '<text x="' + (bx + w / 2) + '" y="' + (top - 6) + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">' + axisLbl(r.noiAfter) + '</text>';
-    g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 26) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".75">Year ' + r.y + '</text>';
-    g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 9) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">' + X(r.dscr) + '</text>'; pts.push([bx + w / 2, Yp(-r.ds)]); });
+    if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (top - 6) + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">' + axisLbl(r.noiAfter) + '</text>';
+    if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 26) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".75">' + yl(r.y) + '</text>';
+    if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 9) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">' + X(r.dscr) + '</text>'; pts.push([bx + w / 2, Yp(-r.ds)]); });
   if(pts.length > 1) g += '<polyline points="' + pts.map(function(p){ return p[0] + ',' + p[1]; }).join(' ') + '" fill="none" stroke="' + COL.gold + '" stroke-width="2.5"/>';
   pts.forEach(function(p){ g += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4.5" fill="' + COL.gold + '" stroke="#fff" stroke-width="1.5"/>'; });
   return svgOpen(W, Hh, 'NOI after reserves against debt service by year') + g + '</svg>';
 }
 /* equity cash flow by year (negative at close, then distributions and sale) with the running total */
 function chartCash(D){
-  var W = 760, Hh = 270, L = 58, R = 14, T = 22, B = 30, n = D.Y.length, vals = D.Y.map(function(r){ return r.cf; }).concat(D.Y.map(function(r){ return r.cum; }));
+  var W = chartW(), Hh = 270, L = 58, R = 14, T = 22, B = 30, n = D.Y.length, vals = D.Y.map(function(r){ return r.cf; }).concat(D.Y.map(function(r){ return r.cum; }));
   var mx = niceMax(Math.max.apply(null, vals.concat([1]))), mn = -niceMax(Math.max.apply(null, vals.map(function(v){ return Math.max(0, -v); }).concat([0])) || 1); if(Math.min.apply(null, vals) >= 0) mn = 0;
   var bw = (W - L - R) / n, bh = Hh - T - B, Yp = function(v){ return T + (mx - v) / (mx - mn) * bh; }, g = '';
   for(var t = 0; t <= 4; t++){ var v = mn + (mx - mn) * t / 4, y = Yp(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="' + COL.grid + '"/><text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">' + axisLbl(v) + '</text>'; }
   g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Yp(0) + '" y2="' + Yp(0) + '" stroke="currentColor" opacity=".5"/>';
   var pts = [];
-  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.5, bx = x + (bw - w) / 2, y0 = Yp(0), y1 = Yp(r.cf), top = Math.min(y0, y1), hh = Math.abs(y1 - y0);
+  var k = every(bw);
+  D.Y.forEach(function(r, i){ var x = L + i * bw, w = bw * 0.5, bx = x + (bw - w) / 2, y0 = Yp(0), y1 = Yp(r.cf), top = Math.min(y0, y1), hh = Math.abs(y1 - y0), lab = i === n - 1 || (i % k === 0 && n - 1 - i >= k);   /* the first year, every k-th, and the last; never two side by side */
     g += '<rect x="' + bx + '" y="' + top + '" width="' + w + '" height="' + Math.max(1, hh) + '" rx="3" fill="' + (r.cf < 0 ? COL.dn : COL.up) + '" opacity=".9"><title>Year ' + r.y + ': ' + M(r.cf) + '</title></rect>';
-    g += '<text x="' + (bx + w / 2) + '" y="' + (r.cf < 0 ? top + hh + 14 : top - 6) + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">' + axisLbl(r.cf) + '</text>';
-    g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 8) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".75">Year ' + r.y + '</text>'; pts.push([bx + w / 2, Yp(r.cum)]); });
+    if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (r.cf < 0 ? top + hh + 14 : top - 6) + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">' + axisLbl(r.cf) + '</text>';
+    if(lab) g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 8) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".75">' + yl(r.y) + '</text>'; pts.push([bx + w / 2, Yp(r.cum)]); });
   g += '<polyline points="' + pts.map(function(p){ return p[0] + ',' + p[1]; }).join(' ') + '" fill="none" stroke="' + COL.gold + '" stroke-width="2.5"/>';
   pts.forEach(function(p){ g += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4" fill="' + COL.gold + '" stroke="#fff" stroke-width="1.5"/>'; });
   var pb = null; for(var k = 0; k < D.Y.length; k++){ if(D.Y[k].cum >= 0){ pb = k; break; } }
@@ -72,7 +79,7 @@ function chartCash(D){
 }
 /* where the profit comes from: equity in, operating cash flow, the sale (net of the loan), profit */
 function chartBridge(D){
-  var steps = [['Total contributed equity', -D.tot.eqin, 'dn'], ['Operating cash flow', D.tot.op, 'up'], ['Sale and refinance, after debt', D.tot.events, 'up']], W = 760, Hh = 250, L = 20, R = 20, T = 26, B = 52, n = steps.length + 1, run = 0, bars = [];
+  var steps = [['Total contributed equity', -D.tot.eqin, 'dn'], ['Operating cash flow', D.tot.op, 'up'], ['Sale and refinance, after debt', D.tot.events, 'up']], W = chartW(), Hh = W < 600 ? 266 : 250, L = 20, R = 20, T = 26, B = W < 600 ? 68 : 52, n = steps.length + 1, run = 0, bars = [];
   steps.forEach(function(s_){ var from = run; run += s_[1]; bars.push({ l:s_[0], a:from, b:run, v:s_[1], k:s_[1] < 0 ? 'dn' : 'up' }); });
   bars.push({ l:'Equity profit', a:0, b:run, v:run, k:run >= 0 ? 'ok' : 'dn', total:true });
   var hi = Math.max.apply(null, bars.map(function(b){ return Math.max(b.a, b.b, 0); })), lo = Math.min.apply(null, bars.map(function(b){ return Math.min(b.a, b.b, 0); })), mx = niceMax(hi * 1.1), mn = lo < 0 ? -niceMax(-lo * 1.1) : 0;
@@ -80,7 +87,9 @@ function chartBridge(D){
   bars.forEach(function(b, i){ var x = L + i * bw, w = bw * 0.56, bx = x + (bw - w) / 2, y0 = Yp(b.a), y1 = Yp(b.b), top = Math.min(y0, y1), hh = Math.max(2, Math.abs(y1 - y0)), col = b.k === 'dn' ? COL.dn : b.k === 'ok' ? COL.ok : COL.up;
     g += '<rect x="' + bx + '" y="' + top + '" width="' + w + '" height="' + hh + '" rx="3" fill="' + col + '" opacity="' + (b.total ? 1 : .88) + '"/>';
     g += '<text x="' + (bx + w / 2) + '" y="' + (top - 7) + '" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">' + M(b.v) + '</text>';
-    var words = b.l.split(' '), half = Math.ceil(words.length / 2); g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - 30) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".8">' + esc(words.slice(0, half).join(' ')) + '</text><text x="' + (bx + w / 2) + '" y="' + (Hh - 16) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".8">' + esc(words.slice(half).join(' ')) + '</text>';
+    var words = b.l.split(' '), half = Math.ceil(words.length / 2), lines = [words.slice(0, half).join(' '), words.slice(half).join(' ')];
+    if(W < 600){ lines = []; words.forEach(function(wd){ var last = lines[lines.length - 1]; if(last != null && (last + ' ' + wd).length <= 11) lines[lines.length - 1] = last + ' ' + wd; else lines.push(wd); }); }   /* narrow bars: short lines, so neighbours never touch */
+    lines.forEach(function(t, li){ g += '<text x="' + (bx + w / 2) + '" y="' + (Hh - B + 22 + li * 14) + '" text-anchor="middle" font-size="11" fill="currentColor" opacity=".8">' + esc(t) + '</text>'; });
     if(i < bars.length - 1) g += '<line x1="' + (bx + w) + '" x2="' + (L + (i + 1) * bw + (bw - w) / 2) + '" y1="' + Yp(b.b) + '" y2="' + Yp(b.b) + '" stroke="currentColor" opacity=".35" stroke-dasharray="3 3"/>'; });
   return svgOpen(W, Hh, 'Equity profit bridge') + g + '</svg>';
 }
@@ -88,7 +97,7 @@ function chartBridge(D){
 function chartDollar(D){
   /* The bar shows the split; a key under it names every part with its dollars and share, laid out in rows that never overlap, so no label has to sit under a narrow segment. */
   var y = D.Y[0], egi = y.egi || 1, parts = [['Taxes', -y.taxes, '#7A8FA6'], ['Insurance', -y.ins, '#98AABD'], ['Operating costs', -y.ctrl, '#B5C2D0'], ['Management', -y.mgmt, '#D0D9E2'], ['Reserves', y.res * -1, '#E6D9B8'], ['Net cash after reserves', y.noiAfter, COL.navy]].filter(function(p){ return Math.max(0, p[1]) > 0; });
-  var W = 760, x = 0, g = '', cw = 6.1;
+  var W = chartW(), x = 0, g = '', cw = 6.1;
   parts.forEach(function(p){ var w = Math.max(0, p[1]) / egi * W; g += '<rect x="' + x + '" y="24" width="' + w + '" height="38" fill="' + p[2] + '"><title>' + p[0] + ' ' + M(p[1]) + ' (' + P(p[1] / egi, 2) + ' of EGI)</title></rect>';
     if(w >= 58) g += '<text x="' + (x + w / 2) + '" y="48" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (p[2] === COL.navy ? '#fff' : '#0e2a4a') + '">' + P(p[1] / egi, 2) + '</text>'; x += w; });
   g += '<text x="0" y="14" font-size="11" fill="currentColor" opacity=".7">Each $1 of Year-1 effective gross income (' + M(y.egi) + ')</text>';
@@ -103,10 +112,10 @@ function chartDollar(D){
   return svgOpen(W, Hh, 'Where each dollar of income goes, Year 1') + g + '</svg>';
 }
 function gauge(D){
-  var h = Number(D.pol.targetIRR) || 0.12, irr = D.irr, mx = Math.max(0.3, h * 1.6, (isFinite(irr) ? irr : 0) * 1.2), W = 760, Hh = 66, X_ = function(v){ return Math.max(0, Math.min(1, v / mx)) * (W - 8) + 4; }, ok = isFinite(irr) && irr >= h;
+  var h = Number(D.pol.targetIRR) || 0.12, irr = D.irr, mx = Math.max(0.3, h * 1.6, (isFinite(irr) ? irr : 0) * 1.2), W = chartW(), Hh = 66, edge = W < 600 ? 64 : 40, X_ = function(v){ return Math.max(0, Math.min(1, v / mx)) * (W - 8) + 4; }, ok = isFinite(irr) && irr >= h;
   return svgOpen(W, Hh, 'Levered IRR against the hurdle') + '<rect x="4" y="26" width="' + (W - 8) + '" height="14" rx="7" fill="rgba(120,120,120,.18)"/><rect x="4" y="26" width="' + Math.max(0, X_(isFinite(irr) ? Math.max(irr, 0) : 0) - 4) + '" height="14" rx="7" fill="' + (ok ? COL.ok : COL.dn) + '"/>'
-    + '<line x1="' + X_(h) + '" x2="' + X_(h) + '" y1="18" y2="48" stroke="currentColor" stroke-width="2"/><text x="' + X_(h) + '" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">hurdle ' + P(h, 1) + '</text>'
-    + '<text x="' + Math.min(W - 40, Math.max(40, X_(isFinite(irr) ? Math.max(irr, 0) : 0))) + '" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">levered IRR ' + P(irr, 1) + '</text></svg>';
+    + '<line x1="' + X_(h) + '" x2="' + X_(h) + '" y1="18" y2="48" stroke="currentColor" stroke-width="2"/><text x="' + Math.min(W - edge, Math.max(edge, X_(h))) + '" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">hurdle ' + P(h, 1) + '</text>'
+    + '<text x="' + Math.min(W - edge, Math.max(edge, X_(isFinite(irr) ? Math.max(irr, 0) : 0))) + '" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">levered IRR ' + P(irr, 1) + '</text></svg>';
 }
 
 /* ------------------------------------------------------------------ blocks */
@@ -178,7 +187,8 @@ function wrap(name, blockFn, needScen){
     var s = safe(function(){ return bkLoad(); }, null); if(!s || /develop/i.test(String(s.dealType || '')) || !(typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal())) return o;
     var D = safe(build, null); if(!D || !D.Y || !D.Y.length) return o;
     var scen = needScen ? safe(function(){ return bkRiskScenarios(); }, null) : null;
-    return Object.assign({}, o, { main: safe(function(){ return blockFn(D, scen); }, '') + o.main });
+    CW = window.innerWidth <= 560 ? Math.max(300, Math.min(480, Math.round(window.innerWidth - 48))) : null;
+    try { return Object.assign({}, o, { main: safe(function(){ return blockFn(D, scen); }, '') + o.main }); } finally { CW = null; }
   };
   if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer(name, RENDERERS[name]); } catch(e){}
 }

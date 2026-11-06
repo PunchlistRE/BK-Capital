@@ -73,6 +73,8 @@ window.bkRunIngestionQA=function(){
     t('Decision log de-duplicated',ids.length===new Set(ids).size,`${decisions.length} decision(s)`);
   }
   const pass=tests.filter(x=>x.pass).length;
+  /* nothing has been read: there is nothing to evaluate, so the suite reads N/A (not "1 / 2 Failing") until a source document is staged (owner's decision, November 2026) */
+  if(!pkg){ const why='Not evaluated: no source document has been read yet. Read a source file and these checks run on what it staged.'; if(out)out.innerHTML=`<div class="tbl-wrap"><table class="fin"><caption>Ingestion QA - N/A</caption><tbody><tr><td class="rowlabel">${esc(why)}</td></tr></tbody></table></div>`; return {na:true,reason:why,passed:pass,total:tests.length,tests}; }
   if(out)out.innerHTML=`<div class="tbl-wrap"><table class="fin"><caption>Ingestion QA - ${pass}/${tests.length} PASS</caption><thead><tr><th class="rowlabel-h">Test</th><th data-bk-align="left">Status</th><th data-bk-align="left">Detail</th></tr></thead><tbody>${tests.map(x=>`<tr><td class="rowlabel">${esc(x.name)}</td><td data-bk-align="left"><span class="status-chip ${x.pass?'pass':'fail'}">${x.pass?'PASS':'FAIL'}</span></td><td data-bk-align="left">${esc(x.detail)}</td></tr>`).join('')}</tbody></table></div>`;
   return {passed:pass,total:tests.length,tests};
 };
