@@ -47,7 +47,7 @@ function metricsOf(values, dates, closeDt, eq0){
 }
 function refiAt(y, inp, ctx){
   var u = ctx.u, d = ctx.d, r = ctx.r, n = ctx.n, rows = r.rows, last = rows.length - 1;
-  var noi = u.arr[y - 1].after, bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
+  var noi = bkLenderNoi(u.arr[y - 1]), bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
   /* the three ratio tests and the lowest of them: the shared sizing rule, applied as given (all three; the amortization in whole months, as this tool always has) */
   var z = window.bkSizeLoan({ noi:noi, value:value, rate:inp.rate, amortYears:inp.amort, roundMonths:true, maxLTV:inp.maxLTV, minDSCR:inp.minDSCR, minDY:inp.minDebtYield });
   var cLTV = z.caps[0].loan, cDSCR = z.caps[1].loan, cDY = z.caps[2].loan, loan = z.loan, binding = { ltv:'LTV', dscr:'DSCR', dy:'Debt yield' }[z.binding];
@@ -127,12 +127,12 @@ var render = function(){
   else {
     var vc = /^REFINANCE/.test(R.verdict) ? 'pass' : /^TRADE/.test(R.verdict) ? 'warn' : 'fail';
     main += '<div class="note-flag" style="margin-top:12px"><span>' + (vc === 'pass' ? '&#10003;' : '&#9888;') + '</span><div><b>' + R.verdict.replace(/&/g, '&amp;') + '</b></div></div>'
-      + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing NOI after reserves', $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
-      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('Lender DSCR constraint (NOI after reserves)', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
+      + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing ' + bkNoiBasisLabel('lender'), $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
+      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('Lender DSCR constraint (' + bkNoiBasisLabel('lender') + ')', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
         + '<tr class="grandtotal"><td class="rowlabel">New loan amount</td><td class="v">' + $(S.newLoan) + '</td><td data-bk-align="text">Binding: ' + (S.binding === 'DSCR' ? 'Lender DSCR' : S.binding) + '</td></tr>'
         + row3('Refinance costs', $(-S.costs)) + row3('Prepayment on existing loan', $(-S.prepay)) + row3('Gross cash-out', $(S.grossCashOut))
         + '<tr class="grandtotal"><td class="rowlabel">Net cash-out to equity</td><td class="v">' + $(S.netCashOut) + '</td><td data-bk-align="text">' + P(S.netCashOut / R.commonEquity) + ' of common equity</td></tr>'
-        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance lender DSCR (NOI after reserves)', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
+        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance lender DSCR (' + bkNoiBasisLabel('lender') + ')', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
         + row3('New loan balance at exit', $(S.newBalanceAtExit)) + row3('Exit prepayment on new loan', $(S.exitPenalty)));
   }
   var trows = R.timing.map(function(x){ var sel = S && x.year === S.year, peak = R.peak && x.year === R.peak.year;

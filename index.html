@@ -2511,7 +2511,7 @@ function bkPmtV11(rate,n,pv){if(!n)return 0;if(!rate)return pv/n;return pv*rate/
 // post-stabilization operating curve, so the sizing NOI and the cash-flow NOI are one consistent
 // source rather than two different proxies for the same thing.
 function bkDevForwardNOI(x){
-  const s=x.s, baseNOI=Math.max(0,Number(s.stabilizedNOI||0)||Number(bkCalc().noi||0));   // CV-DV1/D1: permanent sizing NOI BEFORE reserves
+  const s=x.s, cc=bkCalc(), resv=(s.lenderNoiBasis==='after'&&isFinite(cc.after)&&isFinite(cc.noi))?Math.max(0,cc.noi-cc.after):0, baseNOI=Math.max(0,(Number(s.stabilizedNOI||0)||Number(cc.noi||0))-resv);   // CV-DV1/D1: permanent sizing NOI BEFORE reserves unless the deal's lender NOI basis is 'after' (owner decision B: one lender NOI basis)
   const noiGrowth=Number(s.noiGrowth||s.rentGrowth||0);
   let fwdNOI=0;
   for(let mo=x.stab+1; mo<=x.stab+12; mo++){
@@ -7095,7 +7095,7 @@ try{implement(document);}catch(e){}
     const balloon=orig[Math.min(maturity,holdM)-1]?orig[Math.min(maturity,holdM)-1].balance:0;
     let refi=null;
     if(Number(s.refiAtMaturity||0)&&preExit&&!debtOff){
-      const arr=noiArrFn(),y=Math.min(arr.length-1,Math.max(0,Math.ceil(maturity/12)-1)),noi=Number(arr[y]?.noi||0),cap=Math.max(.0001,Number(s.refiCapRate||s.exitCap||.07)),val=noi/cap,
+      const arr=noiArrFn(),y=Math.min(arr.length-1,Math.max(0,Math.ceil(maturity/12)-1)),noi=Number(bkLenderNoi(arr[y],s)||0),cap=Math.max(.0001,Number(s.refiCapRate||s.exitCap||.07)),val=noi/cap,
         unit=bkPmt(Number(s.refiRate||0)/12,Math.max(1,Number(s.refiAmort||30)*12),1),byLTV=val*Number(s.refiLTV||0),
         byDSCR=(Number(s.refiDSCR)>0&&unit>0)?(noi/Number(s.refiDSCR))/(unit*12):Infinity,
         rl=Math.max(0,Math.floor(Math.min(byLTV,byDSCR)/1000)*1000),fee=rl*Number(s.refiOrigFee||0);
@@ -7138,7 +7138,7 @@ try{implement(document);}catch(e){}
        DSCR test uses, so adding a constraint never changes the debt engine's NOI basis.
        acqDebtYield is the ACQUISITION minimum and is deliberately a DIFFERENT field from
        minDebtYield, the ongoing Covenant Monitor threshold created by bkEnsureV17. */
-    const byDebtYield=Number(s.acqDebtYield)>0?op.noi/Number(s.acqDebtYield):Infinity;
+    const byDebtYield=Number(s.acqDebtYield)>0?dscrNoi/Number(s.acqDebtYield):Infinity;   /* OWNER DECISION B: the debt-yield test reads the same lender NOI basis as the DSCR test (it used NOI before reserves whatever the setting said) */
     /* debtEnabled is the ONLY way to model an unlevered deal. debtTerm=0 means term-equals-hold
        via a falsy-OR and must never be used to mean no debt. */
     const debtOff=(s.debtEnabled===false);
@@ -19014,7 +19014,7 @@ function headline(){
     var basis = Number(d.basis) || 0, dv = null, tce = null;
     try { tce = Number(bkFundingSummary().measures.totalContributedEquity.amount); } catch(e){}   /* the headline equity figure is the Total contributed equity measure, read from the shared funding summary */
     /* a development deal is financed by the construction facility, not the acquisition loan bkDebt() sizes: loan, equity, coverage and yield come from the development funding engine */
-    if(isDev(s)){ try { var t = bkDevTakeoutV11(), ds = t.conHeldToSale ? Number(t.conHeldBalance || 0) * Math.max(0, Number(s.conRate || 0)) : Number(t.permPmt || 0) * 12, bal = t.conHeldToSale ? Number(t.conHeldBalance || 0) : Number(t.permLoan || 0), stabNOI = Number(t.stabPointNOI || t.noi || 0);
+    if(isDev(s)){ try { var t = bkDevTakeoutV11(), ds = t.conHeldToSale ? Number(t.conHeldBalance || 0) * Math.max(0, Number(s.conRate || 0)) : Number(t.permPmt || 0) * 12, bal = t.conHeldToSale ? Number(t.conHeldBalance || 0) : Number(t.permLoan || 0), stabNOI = Number(t.stabPointNOI || t.noi || 0) - (function(){ if(bkLenderNoiBasis(s) !== 'after') return 0; var c = bkCalc(); return isFinite(c.after) && isFinite(c.noi) ? Math.max(0, c.noi - c.after) : 0; })();   /* owner decision B: the headline reads the deal's lender NOI basis */
       dv = { loan:Number(t.commit || 0), binding:'construction facility', equity:Number(t.equityTotal || 0), dscr:ds > 0 ? stabNOI / ds : NaN, yoc:Number(t.unlev) ? stabNOI / Number(t.unlev) : NaN, debtAtSale:bal, cost:Number(t.unlev || 0) }; } catch(e){ dv = null; } }
     return { c:c, s:s, levIRR:x.irr, levMOIC:x.moic, unlevIRR:x.u ? x.u.irr : NaN, unlevMOIC:x.u ? x.u.moic : NaN,
       lpIRR:w ? w.lpIRR : NaN, gpIRR:w ? w.gpIRR : NaN, lpMOIC:w ? w.lp.moic : NaN, gpMOIC:w ? w.gp.moic : NaN,
@@ -21091,7 +21091,7 @@ function metricsOf(values, dates, closeDt, eq0){
 }
 function refiAt(y, inp, ctx){
   var u = ctx.u, d = ctx.d, r = ctx.r, n = ctx.n, rows = r.rows, last = rows.length - 1;
-  var noi = u.arr[y - 1].after, bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
+  var noi = bkLenderNoi(u.arr[y - 1]), bal = (d.annual[y - 1] || {}).ending, value = noi / inp.appraisalCap;
   /* the three ratio tests and the lowest of them: the shared sizing rule, applied as given (all three; the amortization in whole months, as this tool always has) */
   var z = window.bkSizeLoan({ noi:noi, value:value, rate:inp.rate, amortYears:inp.amort, roundMonths:true, maxLTV:inp.maxLTV, minDSCR:inp.minDSCR, minDY:inp.minDebtYield });
   var cLTV = z.caps[0].loan, cDSCR = z.caps[1].loan, cDY = z.caps[2].loan, loan = z.loan, binding = { ltv:'LTV', dscr:'DSCR', dy:'Debt yield' }[z.binding];
@@ -21171,12 +21171,12 @@ var render = function(){
   else {
     var vc = /^REFINANCE/.test(R.verdict) ? 'pass' : /^TRADE/.test(R.verdict) ? 'warn' : 'fail';
     main += '<div class="note-flag" style="margin-top:12px"><span>' + (vc === 'pass' ? '&#10003;' : '&#9888;') + '</span><div><b>' + R.verdict.replace(/&/g, '&amp;') + '</b></div></div>'
-      + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing NOI after reserves', $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
-      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('Lender DSCR constraint (NOI after reserves)', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
+      + t('1. Position at Refinance', null, row3('Refinance year', S.year) + row3('Trailing ' + bkNoiBasisLabel('lender'), $(S.noi)) + row3('Existing senior balance', $(S.existingBalance)) + row3('Value at appraisal cap', $(S.value)) + row3('Existing LTV', P(S.existingLTV)))
+      + t('2. New Loan Sizing and Cash-Out', null, row3('LTV constraint', $(S.capLTV)) + row3('Lender DSCR constraint (' + bkNoiBasisLabel('lender') + ')', $(S.capDSCR)) + row3('Debt-yield constraint', $(S.capDY))
         + '<tr class="grandtotal"><td class="rowlabel">New loan amount</td><td class="v">' + $(S.newLoan) + '</td><td data-bk-align="text">Binding: ' + (S.binding === 'DSCR' ? 'Lender DSCR' : S.binding) + '</td></tr>'
         + row3('Refinance costs', $(-S.costs)) + row3('Prepayment on existing loan', $(-S.prepay)) + row3('Gross cash-out', $(S.grossCashOut))
         + '<tr class="grandtotal"><td class="rowlabel">Net cash-out to equity</td><td class="v">' + $(S.netCashOut) + '</td><td data-bk-align="text">' + P(S.netCashOut / R.commonEquity) + ' of common equity</td></tr>'
-        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance lender DSCR (NOI after reserves)', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
+        + row3('New annual debt service', $(S.newDS)) + row3('Post-refinance lender DSCR (' + bkNoiBasisLabel('lender') + ')', X(S.postDSCR), S.postDSCR >= I.minDSCR ? chip('pass', 'PASS') : chip('fail', 'BELOW MINIMUM')) + row3('Post-refinance debt yield', P(S.postDY)) + row3('Post-refinance LTV', P(S.postLTV))
         + row3('New loan balance at exit', $(S.newBalanceAtExit)) + row3('Exit prepayment on new loan', $(S.exitPenalty)));
   }
   var trows = R.timing.map(function(x){ var sel = S && x.year === S.year, peak = R.peak && x.year === R.peak.year;
@@ -31898,7 +31898,7 @@ window.bkDevDebtView = function(){
     /* the permanent loan repays the construction facility in the stabilization month; after that month only the permanent loan is outstanding */
     conEnd = (f.months && f.months[i] && !(takeout && m >= stab)) ? num(f.months[i].end) : 0;
     permEnd = pz ? num(pz.end) : 0; pay = pz ? num(pz.payment) : 0; prin = pz && pay > 0 ? num(pz.principal) : 0;
-    monthly.push({ m:m, y:r.y, noi:num(r.noi), ds:num(r.ds), principal:prin, interest:num(r.ds) - prin, perm:permEnd, con:conEnd, bal:conEnd + permEnd, pay:pay, hasDs:pay > 0 });
+    monthly.push({ m:m, y:r.y, noi:num(bkLenderNoi(r, s)), ds:num(r.ds), principal:prin, interest:num(r.ds) - prin, perm:permEnd, con:conEnd, bal:conEnd + permEnd, pay:pay, hasDs:pay > 0 });
   }
   var years = [], ny = n ? monthly[n - 1].y : 0, y, k, a;
   for(y = 1; y <= ny; y++){
@@ -31946,7 +31946,7 @@ window.bkDevCovenantSheet = function(s, dv){
   var main = '<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - Lender DSCR (NOI after reserves) &amp; Debt Yield, tested annually against the permanent loan after takeout</caption>'
     + '<thead><tr><th class="rowlabel-h">Line Item</th>' + rows.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
     + '<tr><td class="rowlabel">Months with Permanent Debt Service</td>' + rows.map(function(r){ return v(r, r.n); }).join('') + '</tr>'
-    + '<tr><td class="rowlabel">NOI After Reserves (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">' + bkNoiBasisLabel('lender', null) + ' (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Debt Service (those months)</td>' + rows.map(function(r){ return v(r, money(-r.ds)); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Ending Loan Balance</td>' + rows.map(function(r){ return v(r, money(r.ending)); }).join('') + '</tr>'
     + '<tr class="grandtotal"><td class="rowlabel">Lender DSCR (min ' + minDSCR.toFixed(2) + 'x)</td>' + rows.map(function(r){ return v(r, isFinite(r.dscr) ? r.dscr.toFixed(2) + 'x' : '-'); }).join('') + '</tr>'
