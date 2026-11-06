@@ -2797,6 +2797,10 @@ window.bkRentRollStats = bkRentRollStats;
 /* miscIncome: flat income lines (roof antenna, parking, storage...), each {name, amount, freq:'Annually'|'Monthly'}. Added to other income, so it grows with other-income growth and bears the management fee. */
 function bkMiscIncomeAnnual(s){ const a = Array.isArray(s && s.miscIncome) ? s.miscIncome : []; return a.reduce(function(t, l){ const v = Number(l && l.amount); return t + (isFinite(v) ? v * (l.freq === 'Monthly' ? 12 : 1) : 0); }, 0); }
 window.bkMiscIncomeAnnual = bkMiscIncomeAnnual;
+/* OTHER INCOME BY LINE (1.3): laundry, late fees, pet rent, pet fees, parking / garage and storage, each in $ per unit per year, and RUBS as the share of the utilities expense billed back to residents. They add to the single other-income line (otherIncomePerUnit) and the flat miscellaneous lines; a deal that sets none of them is unchanged. */
+window.BK_OI_LINES = [['oiLaundry', 'Laundry'], ['oiLateFees', 'Late fees'], ['oiPetRent', 'Pet rent'], ['oiPetFees', 'Pet fees'], ['oiParking', 'Parking / garage'], ['oiStorage', 'Storage']];
+window.bkOtherLinesAnnual = function(s){ s = s || bkLoad(); const u = Number(s.units) || 0; let t = 0; window.BK_OI_LINES.forEach(function(l){ t += (Number(s[l[0]]) || 0) * u; });
+  const p = Math.max(0, Math.min(1, Number(s.oiRubsPct) || 0)); return t + p * (Number(s.utilities) || 0); };
 window.bkCalc = function(){
   const s = bkEnsureV13();
   // V2.6 fix: a populated Rent Roll is always the canonical revenue source -- it must not require a
@@ -2824,7 +2828,7 @@ window.bkCalc = function(){
   const ltl = -gpr*(Number(s.lossToLeasePct)||0);
   const concess = -gpr*(Number(s.concessionPct)||0);
   const netRes = gpr+vacancy+bad+ltl+concess;
-  const other = Number(s.otherIncomePerUnit)*Number(s.units) + bkMiscIncomeAnnual(s);
+  const other = Number(s.otherIncomePerUnit)*Number(s.units) + bkMiscIncomeAnnual(s) + bkOtherLinesAnnual(s);
 
   /* with the commercial lease model on, retail income is the tenant schedule's first twelve months. Vacancy is explicit in
      the schedule; the commercial vacancy rate applies only where it exceeds that scheduled vacancy, and credit loss is a rate. */
@@ -3002,6 +3006,17 @@ showSheet(currentSheet||'Deal Underwrite');
 // zero residential revenue (100% commercial), so this choice doesn't affect any Havard-verified
 // figure -- it has not been checked against a residential-bearing deal.
 /* capex: dated one-off capital items below NOI, each {name, month:'YYYY-MM', amount}. Returns the amount falling in each operating month 1..months (month 1 is the closing month). */
+/* UNIT RENOVATION PROGRAMME (1.3): units renovated each year, the rent lost while a unit is down, the rent premium afterwards and the capex per unit, feeding the residential rent line and the capital below NOI. Units are renovated evenly through each programme year, never more than the residential units. null when no units are set (every existing deal). avgRentMo = the monthly rent per residential unit the base line carries. */
+window.bkRenoAdj = function(s, holdMonths, avgRentMo){
+  s = s || bkLoad(); const perYear = Number(s.renoUnitsPerYear) || 0; if(!(perYear > 0)) return null;
+  const start = Math.max(1, Math.round(Number(s.renoStartYear) || 1)), years = Math.max(1, Math.round(Number(s.renoYears) || 1)), down = Math.max(0, Math.round(Number(s.renoDownMonths) || 0));
+  const prem = Number(s.renoPremium) || 0, capex = Number(s.renoCapexPerUnit) || 0, cap = Number(s.units) || Infinity;
+  const H = holdMonths + 12, out = { res:new Array(H).fill(0), cost:new Array(H).fill(0), units:0 }; let done = 0;   /* 12 months past the hold: the terminal NOI looks forward a year */
+  for(let t = (start - 1) * 12 + 1; t <= Math.min(holdMonths, (start - 1 + years) * 12); t++){
+    const u = Math.min(perYear / 12, Math.max(0, cap - done)); if(!(u > 0)) break; done += u; out.cost[t - 1] += u * capex;
+    for(let m = t; m <= H; m++) out.res[m - 1] += m < t + down ? -u * (avgRentMo || 0) : u * prem; }
+  out.units = done; return out;
+};
 window.bkCapexByMonth = function(s, months){
   const out = new Array(months).fill(0), list = Array.isArray(s && s.capex) ? s.capex : [];
   /* leasing costs (TI and LC) from the commercial lease model are capital below NOI */
@@ -3055,6 +3070,7 @@ window.bkAnnualCF = function(){
   const stabMonths   = Math.max(0, Math.round(Number(s.leaseupMonths)||0));
   /* LEASE ROLLOVER (owner decision C, November 2026): the per-unit rent roll's expiries (renewal probability, downtime, market rent at renewal, TI and LC) feed the rent lines and the leasing capital. null = no unit has a lease end inside the hold, or the deal turns it off (rolloverInNoi false): every existing deal runs exactly as before. */
   const RO = (typeof window.bkRolloverAdj === 'function') ? window.bkRolloverAdj(s, holdMonths) : null;
+  const _resU = useRR ? bkRentRollStats(s.rentRoll).resUnits : Number(s.units), RN = window.bkRenoAdj(s, holdMonths, _resU > 0 ? (k_GPR/12) / _resU : 0);   /* the renovation programme */
 
   // CONVENTIONS (see bkConventions). 'month1' keeps the original continuous m/12 exponent exactly;
   // 'year2' holds Year 1 at the underwritten figures and steps growth once per operating year.
@@ -3085,7 +3101,7 @@ window.bkAnnualCF = function(){
   const LM = (typeof bkLeaseOn === 'function' && bkLeaseOn(s)) ? bkLeaseEval(s, holdMonths + 12, { tax:taxFactor, opex:opexF }, true) : null;
   function monthNOI(m){
     const opYear = Math.ceil(m/12);
-    const _gB = k_GPR/12 + (RO ? RO.res[m-1] : 0), _cB = k_RetailAnn/12 + (RO ? RO.comm[m-1] : 0);
+    const _gB = k_GPR/12 + (RO ? RO.res[m-1] : 0) + (RN ? RN.res[m-1] : 0), _cB = k_RetailAnn/12 + (RO ? RO.comm[m-1] : 0);
     const resRev = _gB * resOcc * rentF(m);
     // CONVENTION cvBadDebtBasis: 'gross' charges gross potential rent; 'afterVacancy' and the legacy
     // monthly behavior charge rent after vacancy (the legacy expression is kept literally).
@@ -3187,7 +3203,7 @@ window.bkAnnualCF = function(){
      moved the unlevered multiple by 0.05-0.30%. Both flows keep the same modeled date, so
      the date-weighted IRR is mathematically unchanged; the multiple is now conventional
      (total inflows / total outflows). */
-  const capexM = bkCapexByMonth(s, holdMonths).map(function(v, i){ return v + (RO ? (RO.cost[i] || 0) : 0); });   /* rollover TI and LC are leasing capital below NOI, like the lease model's */
+  const capexM = bkCapexByMonth(s, holdMonths).map(function(v, i){ return v + (RO ? (RO.cost[i] || 0) : 0) + (RN ? (RN.cost[i] || 0) : 0); });   /* rollover TI and LC are leasing capital below NOI, like the lease model's */
   const values=[initial], dates=[new Date(acqDate)];
   for(let m=1; m<=holdMonths; m++){
     const r = monthNOI(m);
@@ -4159,9 +4175,9 @@ window.bkRolloverAdj = function(s, holdMonths){
   const rr = Array.isArray(s.rentRoll) ? s.rentRoll : []; if(!rr.length) return null;
   const live = rr.filter(function(u){ if(u.status !== 'Occupied' || !u.leaseEnd) return false; const rm = bkLeaseRolloverMonth(u.leaseEnd, s.closing); return rm !== null && rm >= 1 && rm <= holdMonths; });
   if(!live.length) return null;
-  const z = function(){ return new Array(holdMonths).fill(0); }, out = { res:z(), comm:z(), cost:z(), units:live.length };
+  const H = holdMonths + 12, z = function(){ return new Array(H).fill(0); }, out = { res:z(), comm:z(), cost:z(), units:live.length };   /* the engine also looks 12 months past the hold for the terminal NOI */
   live.forEach(function(u){ const inPl = Number(u.inPlaceRent) || 0, tgt = u.tenantType === 'Commercial' ? out.comm : out.res;
-    for(let m = 1; m <= holdMonths; m++){ const e = bkCohortMonthEntry(u, m, s.closing, s); tgt[m-1] += e.rent - inPl; out.cost[m-1] += e.oneTime; } });
+    for(let m = 1; m <= H; m++){ const e = bkCohortMonthEntry(u, m, s.closing, s); tgt[m-1] += e.rent - inPl; out.cost[m-1] += e.oneTime; } });
   return out;
 };
 function bkLeaseCohortCFV20(){
@@ -22456,6 +22472,8 @@ window.BKReg.addFields([
   /* income */
   F('avgRent', 'Average rent per unit, per month', 'money', { help:'Total monthly scheduled rent divided by units.', ex:'$1,650' }),
   F('otherIncomePerUnit', 'Other income per unit, per year', 'money', { zeroOk:true, help:'Laundry, parking, fees, utility bill-back.' }),
+  F('oiLaundry', 'Laundry income per unit, per year', 'money', { zeroOk:true }), F('oiLateFees', 'Late fees per unit, per year', 'money', { zeroOk:true }), F('oiPetRent', 'Pet rent per unit, per year', 'money', { zeroOk:true }), F('oiPetFees', 'Pet fees per unit, per year', 'money', { zeroOk:true }), F('oiParking', 'Parking / garage income per unit, per year', 'money', { zeroOk:true }), F('oiStorage', 'Storage income per unit, per year', 'money', { zeroOk:true }), F('oiRubsPct', 'RUBS: share of utilities billed back', 'pct', { zeroOk:true }),
+  F('renoUnitsPerYear', 'Units renovated per year', 'num', { zeroOk:true, help:'The unit renovation programme.' }), F('renoDownMonths', 'Months a renovated unit is down', 'num', { zeroOk:true }), F('renoPremium', 'Rent premium after renovation, per unit per month', 'money', { zeroOk:true }), F('renoCapexPerUnit', 'Renovation capex per unit', 'money', { zeroOk:true }),
   F('vacancy', 'Vacancy', 'pct', { zeroOk:true, sug:sug(0.05, 'Stabilized multifamily is usually underwritten at 5%. Use more if the building is not full.') }),
   F('badDebtPct', 'Credit loss', 'pct', { zeroOk:true, sug:sug(0.01, 'About 1% of rent for a stabilized building.') }),
   F('concessionPct', 'Concessions', 'pct', { zeroOk:true }),
@@ -24446,7 +24464,7 @@ var TABS = [
   { id:'Revenues',   ic:'R', subs:[['res', 'Residential Rent'], ['com', 'Commercial'], ['oth', 'Other Income'], ['misc', 'Miscellaneous']] },
   { id:'Expenses',   ic:'E', subs:[['op', 'Operating'], ['nonop', 'Non-Operating'], ['cap', 'Capital'], ['grp', 'Expense Groups']] },
   { id:'Tenants',    ic:'T', subs:[['roll', 'Rent Roll'], ['lease', 'Commercial Leases'], ['abs', 'Space Absorption'], ['coh', 'Lease Cohort']] },
-  { id:'Investment', ic:'$', subs:[['acq', 'Acquisition'], ['fin', 'Financing'], ['dev', 'Development'], ['bud', 'Budget'], ['cont', 'Contingency'], ['res', 'Reserves'], ['jv', 'Partnership'], ['fees', 'Fees']] },
+  { id:'Investment', ic:'$', subs:[['acq', 'Acquisition'], ['fin', 'Financing'], ['dev', 'Development'], ['bud', 'Budget'], ['cont', 'Contingency'], ['res', 'Reserves'], ['reno', 'Renovation'], ['jv', 'Partnership'], ['fees', 'Fees']] },
   { id:'Valuation',  ic:'V', subs:[['exit', 'Exit'], ['sum', 'Value and Returns']] }
 ];
 var SUBKEY = 'bkcapital.ed.sub.v1', subs = (function(){ try { return JSON.parse(localStorage.getItem(SUBKEY) || '{}') || {}; } catch(e){ return {}; } })();
@@ -24587,7 +24605,9 @@ function pRes(s){ var gpr = num(s.units) * num(s.avgRent) * 12, rr = Array.isArr
 function pCom(s){ var a = num(s.commercialArea), base = a * num(s.commercialRent), rec = a * num(s.recovery);
   return form('Commercial / Retail', 'C', [R('Retail Area', ro(a ? Math.round(a).toLocaleString('en-US') : '-'), 'SF (set on Property > Area Measures)'), R('Base Rent', inp('commercialRent', 'num', { s:s }), '$ / SF / year'), R('Expense Recoveries', inp('recovery', 'num', { s:s }), '$ / SF / year (NNN)'), R('Retail Vacancy and Credit Loss', inp('commercialVacancy', 'pct', { s:s }), '%'),
     R('Annual Base Rent', ro(money(base))), R('Annual Recoveries', ro(money(rec))), NOTE(safe(function(){ return bkLeaseOn(s); }, false) ? 'Retail income now comes from the tenant schedule (Tenants > Commercial Leases), so the inputs above are not used.' : 'Retail growth is set on Market > Inflation. Retail operating costs you do not recover go in Expenses > Operating as "Other operating expense".')]); }
-function pOth(s){ return form('Other Income', 'O', [R('Other Income', inp('otherIncomePerUnit', 'num', { s:s }), '$ / unit / year'), R('Annual Total', ro(money(num(s.otherIncomePerUnit) * num(s.units))), 'units x amount'), NOTE('Laundry, parking, pet fees, RUBS and similar income per unit. Flat income that is not per unit (a roof antenna, a billboard) goes on the Miscellaneous tab.')]); }
+function pOth(s){ var u = num(s.units), rows = [R('Other Income (all other)', inp('otherIncomePerUnit', 'num', { s:s }), '$ / unit / year')]; BK_OI_LINES.forEach(function(l){ rows.push(R(l[1], inp(l[0], 'num', { s:s }), '$ / unit / year')); });
+  rows.push(R('RUBS (utility bill-back)', inp('oiRubsPct', 'pct', { s:s }), '% of the utilities expense billed back to residents'), R('Annual Total', ro(money(num(s.otherIncomePerUnit) * u + bkOtherLinesAnnual(s))), 'units x amounts, plus the bill-back'), NOTE('Each line is per unit per year; "all other" keeps what you entered before the lines existed. Flat income that is not per unit (a roof antenna, a billboard) goes on the Miscellaneous tab.')); return form('Other Income', 'O', rows); }
+function pReno(s){ var ra = bkRenoAdj(s, Math.max(12, Math.round(num(s.holdYears) || 10) * 12), 0), n = ra ? ra.units : 0; return form('Unit Renovation Programme', 'R', [R('Units renovated per year', inp('renoUnitsPerYear', 'num', { s:s }), 'units'), R('First year of the programme', inp('renoStartYear', 'num', { s:s, def:1 }), 'operating year'), R('Years the programme runs', inp('renoYears', 'num', { s:s, def:1 }), 'years'), R('Months a unit is down', inp('renoDownMonths', 'num', { s:s }), 'months (no rent while down)'), R('Rent premium afterwards', inp('renoPremium', 'num', { s:s }), '$ / unit / month'), R('Capex per unit', inp('renoCapexPerUnit', 'num', { s:s }), '$ / unit'), R('Units renovated over the hold', ro(String(Math.round(n))), 'never more than the residential units'), NOTE('Units are renovated evenly through each year of the programme. The rent lost while a unit is down and the premium afterwards move the residential rent line; the capex per unit is capital below NOI, in the month the unit goes down. Leave the units blank for no programme.')]); }
 window.bkEdMisc = function(i, field, raw){ var s = bkLoad(); s.miscIncome = Array.isArray(s.miscIncome) ? s.miscIncome : []; var l = s.miscIncome[i]; if(!l) return; if(field === 'amount'){ var v = parse('num', raw); if(v === undefined){ showSheet(cur()); return; } l.amount = v; } else l[field] = raw; bkSave(s); showSheet(cur()); };
 window.bkEdMiscAdd = function(){ var s = bkLoad(); s.miscIncome = Array.isArray(s.miscIncome) ? s.miscIncome : []; s.miscIncome.push({ name:'', amount:0, freq:'Annually' }); bkSave(s); showSheet(cur()); };
 window.bkEdMiscDel = function(i){ var s = bkLoad(); if(!Array.isArray(s.miscIncome)) return; s.miscIncome.splice(i, 1); if(!s.miscIncome.length) delete s.miscIncome; bkSave(s); showSheet(cur()); };
@@ -24853,14 +24873,14 @@ function pSum(s){ var dev = isDev(s), c = calc(), m = safe(function(){ return bk
 /* ---------- assembly ---------- */
 var PANELS = {
   Property: { desc:pDesc, loc:pLoc, area:pArea, analysis:pAnalysis, tpl:pTpl }, Market: { infl:pInfl, vac:pVac, credit:pCredit, lease:pLease, rent:pRent },
-  Revenues: { res:pRes, com:pCom, oth:pOth, misc:pMisc }, Expenses: { op:pOp, nonop:pNonop, cap:pCap, grp:pGrp }, Tenants: { roll:pRoll, lease:pLease, abs:pAbs, coh:pCoh }, Investment: { acq:pAcq, fin:pFin, dev:pDev, bud:pBudget, cont:pContingency, res:pReserves, jv:pJv, fees:pFees }, Valuation: { exit:pExit, sum:pSum } };
+  Revenues: { res:pRes, com:pCom, oth:pOth, misc:pMisc }, Expenses: { op:pOp, nonop:pNonop, cap:pCap, grp:pGrp }, Tenants: { roll:pRoll, lease:pLease, abs:pAbs, coh:pCoh }, Investment: { acq:pAcq, fin:pFin, dev:pDev, bud:pBudget, cont:pContingency, res:pReserves, reno:pReno, jv:pJv, fees:pFees }, Valuation: { exit:pExit, sum:pSum } };
 var EXTRA = { Revenues:revSummary, Expenses:expSummary };
 var HINTS = { bud:'The development budget: a rate per SF by category, or every cost line in dollars with its own timing. One budget feeds the hard and soft cost totals, the Gantt, the monthly draws, Sources & Uses and the returns.', desc:'Who the deal is. The Deal ID is fixed once the deal exists.', loc:'Where it is and how large the site is.', area:'Areas drive every amount you enter per unit or per GSF.', analysis:'When the analysis starts, how long it runs, and which case you are looking at.', tpl:'Save a deal\'s rates and structure and start the next one from it.',
   infl:'Rates by year. A blank year uses the Default; upside and downside cases shift the Default.', vac:'Vacancy and credit loss reduce income before expenses.', credit:'Credit loss is charged on rent; choose what it is charged on.', lease:'Concessions and loss to lease reduce rent before vacancy.', rent:'Market rent against what the rent roll says is in place.',
   res:'Residential rent is units times the average rent, unless a rent roll is loaded.', com:'Retail base rent and NNN recoveries per square foot.', oth:'Income per unit per year.', misc:'Flat income lines such as a roof antenna, parking or storage.',
   op:'Each line has its own basis and frequency; amounts are stored as annual totals. Inflation comes from the Market tab.', nonop:'Below NOI: replacement reserves and the asset management fee.', cap:'Dated one-off capital items below NOI. They reduce cash flow and returns, not NOI.', grp:'Operating expenses grouped as lenders and investors read them.',
   roll:'Unit-level income. A loaded rent roll replaces the average-rent calculation.', lease:'Each commercial tenant on its own lease: rent, bumps, expiry, recoveries, and what happens when it rolls.', abs:'How fast space leases up after completion.', coh:'Lease expirations by year.',
-  acq:'What it costs to get into the deal.', fin:'The loan, how it is sized, and what that leaves for equity.', dev:'Budget, schedule and cost ladder for a development.', cont:'The contingency in the budget: what is allocated, what change orders have used, and the forecast at completion.', res:'Cash set aside at closing or completion that pays the lease-up shortfall or interest and is released at the sale.', jv:'How profit splits between the sponsor and its investors.', fees:'Fees paid to the sponsor.', exit:'How the deal is sold and at what price.', sum:'What the deal is worth and what it returns, from the same engine as every other sheet.' };
+  acq:'What it costs to get into the deal.', fin:'The loan, how it is sized, and what that leaves for equity.', dev:'Budget, schedule and cost ladder for a development.', cont:'The contingency in the budget: what is allocated, what change orders have used, and the forecast at completion.', res:'Cash set aside at closing or completion that pays the lease-up shortfall or interest and is released at the sale.', reno:'Units renovated each year, the rent lost while down, the premium afterwards and the capex per unit.', jv:'How profit splits between the sponsor and its investors.', fees:'Fees paid to the sponsor.', exit:'How the deal is sold and at what price.', sum:'What the deal is worth and what it returns, from the same engine as every other sheet.' };
 function render(tab){ var s = bkLoad(), sub = subOf(tab), t = TABS.filter(function(x){ return x.id === tab; })[0];
   var strip = '<div class="ae-tabs" role="tablist">' + TABS.map(function(x){ return '<div class="ae-tab' + (x.id === tab ? ' on' : '') + '" role="tab" tabindex="0" onclick="showSheet(\'' + x.id + '\')" onkeydown="if(event.key===\'Enter\')showSheet(\'' + x.id + '\')"><i>' + x.ic + '</i>' + x.id + '</div>'; }).join('') + '</div>';
   var subStrip = '<div class="ae-subs" role="tablist">' + t.subs.map(function(a){ return '<div class="ae-sub' + (a[0] === sub ? ' on' : '') + '" role="tab" tabindex="0" onclick="bkEdSub(\'' + tab + '\',\'' + a[0] + '\')" onkeydown="if(event.key===\'Enter\')bkEdSub(\'' + tab + '\',\'' + a[0] + '\')">' + a[1] + '</div>'; }).join('') + '</div>';
@@ -31974,6 +31994,45 @@ window.bkDevCovenantSheet = function(s, dv){
     + '<div class="metric-row"><span class="k">Lender min DSCR</span><span class="v">' + minDSCR.toFixed(2) + 'x</span></div><div class="metric-row"><span class="k">Min Debt Yield</span><span class="v">' + bkPct(minDY) + '</span></div></div></div>');
   return { title:'Covenant Monitor', crumbs:'Debt', desc:desc, meta:meta, main:main, sidebar:sidebar };
 };
+})();
+</script>
+<script id="bk-exit-year">/* EXIT-YEAR RETURNS and INTEREST COVERAGE (1.3). Two read-only tables built from the existing engines; nothing is calculated here beyond a ratio.
+   Exit-year table (Returns, acquisitions): the levered IRR, equity multiple and equity profit if the deal were sold at the end of each year of the hold, each year run through the same monthly returns engine with the hold set to that year (bkRunWith).
+   Interest coverage (Covenant Monitor, acquisitions): the lender NOI over each year's interest, beside the lender DSCR. */
+(function(){
+'use strict';
+function isDev(s){ return /develop/i.test(String((s || {}).dealType || '')); }
+var M = function(v){ v = Math.round(Number(v) || 0); return (v < 0 ? '($' + Math.abs(v).toLocaleString('en-US') + ')' : '$' + v.toLocaleString('en-US')); };
+var P = function(v){ return isFinite(v) ? (v * 100).toFixed(2) + '%' : '-'; }, X = function(v){ return isFinite(v) ? v.toFixed(2) + 'x' : '-'; };
+window.bkExitYearTable = function(){
+  var s = bkLoad(); if(isDev(s)) return null;
+  var hold = Math.max(1, Math.min(15, Math.round(Number(s.holdYears) || 10))), rows = [];
+  for(var y = 1; y <= hold; y++){
+    var r = window.bkInCase(function(){ return bkRunWith({ holdYears:y }, function(){ var x = bkMonthlyReturns(); return { irr:x.irr, moic:x.moic, profit:x.profit }; }); }) || {};
+    rows.push({ y:y, irr:r.irr, moic:r.moic, profit:r.profit, sel:y === hold });
+  }
+  return rows;
+};
+window.bkInterestCoverage = function(){
+  var s = bkLoad(); if(isDev(s)) return null;
+  var u = bkAnnualCF(), d = bkDebt(); if(!d || !(d.loan > 0)) return null;
+  return u.arr.map(function(a, i){ var ds = (d.annual || [])[i] || {}, ln = bkLenderNoi(a, s), int = Number(ds.interest) || 0, pay = Number(ds.payment) || 0; return { y:a.y, noi:ln, interest:int, payment:pay, icr:int > 0 ? ln / int : NaN, dscr:pay > 0 ? ln / pay : NaN }; });
+};
+function card(title, head, rows){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>' + title + '</caption><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>'; }
+function wrap(sheet, build){ var prev = window.RENDERERS && RENDERERS[sheet]; if(typeof prev !== 'function') return;
+  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); try { var add = build(); if(add && o && typeof o.main === 'string') o.main += add; } catch(e){} return o; }; }
+wrap('Returns', function(){
+  var rows = window.bkExitYearTable(); if(!rows) return '';
+  return card('If Sold at the End of Each Year - levered returns by exit year', '<th class="rowlabel-h">Exit at the end of</th><th>Levered IRR</th><th>Equity Multiple</th><th>Equity Profit</th>',
+    rows.map(function(r){ return '<tr' + (r.sel ? ' class="subtotal"' : '') + '><td class="rowlabel">Year ' + r.y + (r.sel ? ' (the hold)' : '') + '</td><td>' + P(r.irr) + '</td><td>' + X(r.moic) + '</td><td>' + M(r.profit) + '</td></tr>'; }).join(''))
+    + '<div class="note-flag"><span>&#9432;</span><div>Each row sells the property at the end of that year (same exit cap and costs) and runs the monthly returns engine for that hold. The row marked (the hold) is the deal\'s own result.</div></div>';
+});
+wrap('Covenant Monitor', function(){
+  var rows = window.bkInterestCoverage(); if(!rows) return '';
+  return card('Interest Coverage by Year - beside the Lender DSCR', '<th class="rowlabel-h">Year</th><th>' + bkDscrShort('lender') + ' NOI</th><th>Interest</th><th>Interest coverage</th><th>' + bkDscrShort('lender') + '</th>',
+    rows.map(function(r){ return '<tr><td class="rowlabel">Year ' + r.y + '</td><td>' + M(r.noi) + '</td><td>' + M(r.interest) + '</td><td>' + X(r.icr) + '</td><td>' + X(r.dscr) + '</td></tr>'; }).join(''))
+    + '<div class="note-flag"><span>&#9432;</span><div>Interest coverage is the lender NOI (' + bkDscrBasis('lender') + ') over the year\'s interest; the DSCR is the same NOI over interest plus principal.</div></div>';
+});
 })();
 </script>
 <script id="bk-field-widths">/* FIELD WIDTHS. One width per kind of value box, on every page: every percent box is as wide as every other percent box, every dollar amount as wide as every other dollar amount (inputs, choices and calculated read-only values alike), text as text. A page that draws its own boxes gets the same treatment because the kind is read from the box itself: the handler that saves it, the unit written beside it, the heading above it, the value in it.

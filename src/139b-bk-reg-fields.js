@@ -28,6 +28,8 @@ window.BKReg.addFields([
   /* income */
   F('avgRent', 'Average rent per unit, per month', 'money', { help:'Total monthly scheduled rent divided by units.', ex:'$1,650' }),
   F('otherIncomePerUnit', 'Other income per unit, per year', 'money', { zeroOk:true, help:'Laundry, parking, fees, utility bill-back.' }),
+  F('oiLaundry', 'Laundry income per unit, per year', 'money', { zeroOk:true }), F('oiLateFees', 'Late fees per unit, per year', 'money', { zeroOk:true }), F('oiPetRent', 'Pet rent per unit, per year', 'money', { zeroOk:true }), F('oiPetFees', 'Pet fees per unit, per year', 'money', { zeroOk:true }), F('oiParking', 'Parking / garage income per unit, per year', 'money', { zeroOk:true }), F('oiStorage', 'Storage income per unit, per year', 'money', { zeroOk:true }), F('oiRubsPct', 'RUBS: share of utilities billed back', 'pct', { zeroOk:true }),
+  F('renoUnitsPerYear', 'Units renovated per year', 'num', { zeroOk:true, help:'The unit renovation programme.' }), F('renoDownMonths', 'Months a renovated unit is down', 'num', { zeroOk:true }), F('renoPremium', 'Rent premium after renovation, per unit per month', 'money', { zeroOk:true }), F('renoCapexPerUnit', 'Renovation capex per unit', 'money', { zeroOk:true }),
   F('vacancy', 'Vacancy', 'pct', { zeroOk:true, sug:sug(0.05, 'Stabilized multifamily is usually underwritten at 5%. Use more if the building is not full.') }),
   F('badDebtPct', 'Credit loss', 'pct', { zeroOk:true, sug:sug(0.01, 'About 1% of rent for a stabilized building.') }),
   F('concessionPct', 'Concessions', 'pct', { zeroOk:true }),

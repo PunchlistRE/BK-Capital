@@ -112,6 +112,10 @@ window.bkRentRollStats = bkRentRollStats;
 /* miscIncome: flat income lines (roof antenna, parking, storage...), each {name, amount, freq:'Annually'|'Monthly'}. Added to other income, so it grows with other-income growth and bears the management fee. */
 function bkMiscIncomeAnnual(s){ const a = Array.isArray(s && s.miscIncome) ? s.miscIncome : []; return a.reduce(function(t, l){ const v = Number(l && l.amount); return t + (isFinite(v) ? v * (l.freq === 'Monthly' ? 12 : 1) : 0); }, 0); }
 window.bkMiscIncomeAnnual = bkMiscIncomeAnnual;
+/* OTHER INCOME BY LINE (1.3): laundry, late fees, pet rent, pet fees, parking / garage and storage, each in $ per unit per year, and RUBS as the share of the utilities expense billed back to residents. They add to the single other-income line (otherIncomePerUnit) and the flat miscellaneous lines; a deal that sets none of them is unchanged. */
+window.BK_OI_LINES = [['oiLaundry', 'Laundry'], ['oiLateFees', 'Late fees'], ['oiPetRent', 'Pet rent'], ['oiPetFees', 'Pet fees'], ['oiParking', 'Parking / garage'], ['oiStorage', 'Storage']];
+window.bkOtherLinesAnnual = function(s){ s = s || bkLoad(); const u = Number(s.units) || 0; let t = 0; window.BK_OI_LINES.forEach(function(l){ t += (Number(s[l[0]]) || 0) * u; });
+  const p = Math.max(0, Math.min(1, Number(s.oiRubsPct) || 0)); return t + p * (Number(s.utilities) || 0); };
 window.bkCalc = function(){
   const s = bkEnsureV13();
   // V2.6 fix: a populated Rent Roll is always the canonical revenue source -- it must not require a
@@ -139,7 +143,7 @@ window.bkCalc = function(){
   const ltl = -gpr*(Number(s.lossToLeasePct)||0);
   const concess = -gpr*(Number(s.concessionPct)||0);
   const netRes = gpr+vacancy+bad+ltl+concess;
-  const other = Number(s.otherIncomePerUnit)*Number(s.units) + bkMiscIncomeAnnual(s);
+  const other = Number(s.otherIncomePerUnit)*Number(s.units) + bkMiscIncomeAnnual(s) + bkOtherLinesAnnual(s);
 
   /* with the commercial lease model on, retail income is the tenant schedule's first twelve months. Vacancy is explicit in
      the schedule; the commercial vacancy rate applies only where it exceeds that scheduled vacancy, and credit loss is a rate. */
