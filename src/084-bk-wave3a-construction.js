@@ -135,10 +135,10 @@ extend('Debt','w3aConstructionSizing', function(o){
       '<tr><th class="rowlabel-h">Constraint</th><th>Maximum Loan</th><th style="text-align:left">Basis</th><th>Test</th></tr>',
         '<tr>'+lbl('Forward NOI at Stabilization')+val(money(x.noi||x.stabPointNOI))+txt('Drives every constraint below')+'<td></td></tr>'
       + cRow('Maximum LTV', x.ltvCap, 'Against stabilized value '+money(x.stabVal), /LTV/i.test(binding))
-      + cRow('Minimum DSCR', x.dscrLoan, 'Forward NOI at the permanent coupon and amortization', /DSCR/i.test(binding))
+      + cRow('Lender Minimum DSCR', x.dscrLoan, 'Forward 12-month NOI before reserves, at the permanent coupon and amortization', /DSCR/i.test(binding))
       + cRow('Minimum Debt Yield', x.dyLoan, 'Forward NOI &divide; permanent debt yield '+pct(Number(s.permDebtYield)), /YIELD|DY/i.test(binding), Number(s.permDebtYield) > 0)
       + '<tr class="grandtotal">'+lbl('PERMANENT LOAN')+val(money(x.permLoan))+txt('Lowest capacity')
-        + '<td class="v">'+chip('pass', esc(binding||'-'))+'</td></tr>'
+        + '<td class="v">'+chip('pass', esc(bkBindingName(binding)||'-'))+'</td></tr>'
       + '<tr>'+lbl('Permanent Financing Fee')+val(money(x.permFee))+txt('On the permanent loan')+'<td></td></tr>'
       + '<tr>'+lbl('Monthly Payment')+val(money(x.permPmt))+txt('Debt service after takeout')+'<td></td></tr>'
       + '<tr>'+lbl('Construction Facility Payoff')+val(money(x.conPayoff))+txt('Balance retired at takeout')+'<td></td></tr>'

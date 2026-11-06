@@ -81,7 +81,7 @@ extend('Debt','w2cDebtConsolidate', function(o){
   })[0];
   if(!dup) return;
   // rows whose content is already presented by the two canonical tables
-  var REDUNDANT = /Max LTV|Max LTC|Min DSCR Constraint|ACQUISITION LOAN AMOUNT|Origination Fee|Going-In DSCR|Actual LTV/i;
+  var REDUNDANT = /Max LTV|Max LTC|Min DSCR Constraint|ACQUISITION LOAN AMOUNT|Origination Fee|Going-In DSCR|Lender DSCR, Going-In|Actual LTV/i;
   var kept = 0;
   [].slice.call(dup.querySelectorAll('tbody tr')).forEach(function(tr){
     var label = (tr.querySelector('td') || {}).textContent || '';

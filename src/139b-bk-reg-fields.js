@@ -46,7 +46,7 @@ window.BKReg.addFields([
   F('acqAmort', 'Amortization, years', 'int', { sug:sug(30, '30 years is standard.') }),
   F('acqIO', 'Interest-only years', 'num', { zeroOk:true, help:'0 if none.' }),
   F('acqOrigFee', 'Origination fee, %', 'pct', { zeroOk:true, sug:sug(0.01, '1% is typical.') }),
-  F('acqDSCR', 'Minimum DSCR', 'num'),
+  F('acqDSCR', 'Lender minimum DSCR', 'num'),
   /* hold and exit */
   F('holdYears', 'Hold period, years', 'int', { sug:sug(5, 'Five years is the usual base case.') }),
   F('exitCap', 'Exit cap rate', 'pct', { sug:function(s){ var c = safe(function(){ return bkCalc(); }, {}), p = Number(s.purchasePrice) || 0; return c.noi && p ? { v:Math.round((c.noi / p + 0.0025) * 10000) / 10000, why:'The going-in cap rate (' + (c.noi / p * 100).toFixed(2) + '%) plus 0.25%, so the sale is not assumed to be better than the purchase.' } : { v:0.06, why:'No price or income yet; 6% is a placeholder.' }; } }),

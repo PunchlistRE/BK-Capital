@@ -36,7 +36,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   /* ---- questions in plain words ---- */
   const top = async (q) => (await p.evaluate((q) => bkAsk(q), q)).map(x => x.title);
   const expect = [
-    ['Where do I change the exit cap?', 'Exit cap rate'], ['what is my DSCR', 'DSCR and debt yield'], ['how do I model NNN recoveries', 'Commercial leases and NNN recoveries'],
+    ['Where do I change the exit cap?', 'Exit cap rate'], ['what is my DSCR', 'Lender and house DSCR, and debt yield'], ['how do I model NNN recoveries', 'Commercial leases and NNN recoveries'],
     ['where is the waterfall', 'Equity waterfall'], ['where do I put the vacancy assumption', 'Vacancy'], ['how do I change the preferred return', 'Preferred return and hurdles'],
     ['what is the interest rate on the loan', 'Interest rate'], ['where can I import a rent roll', 'Import a rent roll'], ['show me the gantt chart', 'Development schedule (Gantt)'],
     ['what is the residual land value', 'Residual land value'], ['what price can I pay to hit a 15% IRR', 'Solve for a price or a rent'], ['which constraint limits the loan', 'Which loan constraint binds'],

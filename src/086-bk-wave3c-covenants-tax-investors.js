@@ -220,7 +220,7 @@ extend('Covenant Monitor','w3cT12', function(o){
   var t = bkCovenantMonthlyT12();
   if(!t){ return; }
   if(t.na){ return; }   /* a development with no permanent takeout: the annual page above says so */
-  var head = '<tr><th class="rowlabel-h">Mo</th><th>T-12 NOI</th><th>T-12 Debt Service</th><th>DSCR</th>'
+  var head = '<tr><th class="rowlabel-h">Mo</th><th>T-12 NOI</th><th>T-12 Debt Service</th><th>Lender DSCR</th>'
            + '<th>Debt Balance</th><th>Debt Yield</th><th>Leverage</th><th>Status</th></tr>';
   var body = t.rows.map(function(r){
     var cls = r.state==='WATCH' ? 'warn' : r.state==='PASS' ? 'pass' : '';
@@ -235,8 +235,8 @@ extend('Covenant Monitor','w3cT12', function(o){
 
   var summary = wrapTable('Monthly Covenant Period Summary - trailing-twelve basis',
     '<tr><th class="rowlabel-h">Metric</th><th>Value</th><th style="text-align:left">Basis</th></tr>',
-      '<tr>'+lbl('Minimum DSCR Observed')+val(isFinite(t.minDSCR)?mult(t.minDSCR):'-')
-        + txt('Covenant '+(t.covDSCR?mult(t.covDSCR):'not set')+', tested only inside the covenant period')+'</tr>'
+      '<tr>'+lbl('Minimum Lender DSCR Observed')+val(isFinite(t.minDSCR)?mult(t.minDSCR):'-')
+        + txt('Covenant '+(t.covDSCR?mult(t.covDSCR):'not set')+', tested only inside the covenant period; '+(t.isDev?bkDscrBasis('lender', null, 'NOI after reserves'):bkDscrBasis('lender')))+'</tr>'
     + '<tr>'+lbl('Minimum Debt Yield Observed')+val(isFinite(t.minDY)?pct(t.minDY):'-')
         + txt('Covenant '+(t.covDY?pct(t.covDY):'not set'))+'</tr>'
     + '<tr>'+lbl('Maximum Leverage Observed')+val(isFinite(t.maxLev)?pct(t.maxLev):'-')
@@ -254,7 +254,7 @@ extend('Covenant Monitor','w3cT12', function(o){
       + 'run; this is the workbook&rsquo;s monthly trailing-twelve test with its four states. They answer slightly different questions and '
       + 'can disagree - PRE-STAB and RAMP months are excluded here precisely so a lease-up period is not reported as a breach. '
       + 'Neither has been removed, so you can see both and decide which governs. '
-      + '<b>One thing to know about the DSCR line:</b> the DSCR you enter sizes the loan as well as testing it, so at close the test is '
+      + '<b>One thing to know about the lender DSCR line:</b> the lender minimum DSCR you enter sizes the loan as well as testing it, so at close the test is '
       + 'satisfied by construction - raising the covenant shrinks the loan rather than producing a breach. The debt-yield covenant is '
       + 'a genuinely independent ongoing test, which is why a breach normally shows up there first.');
 });

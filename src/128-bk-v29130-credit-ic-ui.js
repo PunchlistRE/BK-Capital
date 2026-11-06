@@ -34,7 +34,7 @@ function register(name, fn){ var g = gated(name, fn); if(typeof window.bkRegiste
 /* ---------------------------------------------------------- Credit Policy */
 var POLICY_ROWS = [
   ['targetIRR', 'Target gross levered IRR', 'pct'], ['targetEM', 'Target gross equity multiple', 'x'], ['targetLpIRR', 'Target net LP IRR', 'pct'], ['targetLpEM', 'Target net LP equity multiple', 'x'],
-  ['minDSCR', 'Minimum DSCR', 'x'], ['minDebtYield', 'Minimum debt yield', 'pct'], ['maxLTV', 'Maximum senior LTV', 'pct'], ['maxLTC', 'Maximum senior LTC', 'pct'],
+  ['minDSCR', 'House minimum DSCR', 'x'], ['minDebtYield', 'Minimum debt yield', 'pct'], ['maxLTV', 'Maximum senior LTV', 'pct'], ['maxLTC', 'Maximum senior LTC', 'pct'],
   ['stressBps', 'Stressed underwriting rate premium (bps)', 'n'], ['minGoingInCap', 'Minimum going-in cap rate', 'pct'], ['minDevSpreadBps', 'Minimum development spread (bps)', 'n'],
   ['maxBreakEvenOcc', 'Maximum break-even economic occupancy', 'pct'], ['minNOITolerance', 'Minimum stabilized NOI decline tolerance', 'pct'], ['minRentCushion', 'Minimum rent cushion vs. break-even', 'pct'],
   ['maxHighRisks', 'Maximum high or critical risks', 'n'], ['maxDebtOverage', 'Maximum debt overage vs. supportable debt ($)', 'usd'],
@@ -64,7 +64,7 @@ register('Credit Policy', function(){
       + table('Gate Weights and Severity', th(['Gate', 'Test', 'Severity', 'Weight']), gates + '<tr class="grandtotal"><td class="rowlabel">Total weight (must be 100%)</td><td></td><td></td><td class="v">' + (gw * 100).toFixed(1) + '% ' + (wOk ? chip('pass', 'OK') : chip('fail', 'FIX')) + '</td></tr>')
       + note('A HARD failure blocks APPROVE whatever the score. Gates that do not apply to a deal (the debt tests on a development deal, for example) are dropped and the remaining weights re-based. These limits test the deal; they never change a return or a loan.')
       + '<div style="margin-top:14px"><button type="button" class="status-chip" onclick="if(confirm(\'Reset this deal\\u2019s credit policy to the house defaults?\'))bkPolicyReset()">RESET TO HOUSE DEFAULTS</button></div>',
-    sidebar: side([['Gate weights', wOk ? 'Sum to 100%' : 'Not 100%'], ['Min DSCR', X(p.minDSCR)], ['Max LTV', P(p.maxLTV, 0)], ['Stress premium', p.stressBps + ' bps']], 'Policy') };
+    sidebar: side([['Gate weights', wOk ? 'Sum to 100%' : 'Not 100%'], ['House min DSCR', X(p.minDSCR)], ['Max LTV', P(p.maxLTV, 0)], ['Stress premium', p.stressBps + ' bps']], 'Policy') };
 });
 
 /* ----------------------------------------------------------- Debt Capacity */
@@ -74,27 +74,27 @@ register('Debt Capacity', function(){
   var p = c.policy, b = c.box;
   var box = [
     ['Loan-to-value (senior)', P(b.ltv), P(p.maxLTV), '≤', b.ltv <= p.maxLTV], ['Loan-to-cost (senior)', P(b.ltc), P(p.maxLTC), '≤', b.ltc <= p.maxLTC],
-    ['DSCR, first operating year (house test, NOI after reserves)', X(b.dscr), X(p.minDSCR), '≥', b.dscr >= p.minDSCR], ['Debt yield', P(b.debtYield), P(p.minDebtYield), '≥', b.debtYield >= p.minDebtYield],
-    ['Stressed DSCR (coupon + ' + p.stressBps + ' bps, amortizing; NOI after reserves)', X(b.stressedDscr), X(p.minDSCR), '≥', b.stressedDscr >= p.minDSCR],
+    ['House DSCR, first operating year (NOI after reserves)', X(b.dscr), X(p.minDSCR), '≥', b.dscr >= p.minDSCR], ['Debt yield', P(b.debtYield), P(p.minDebtYield), '≥', b.debtYield >= p.minDebtYield],
+    ['House DSCR, stressed (coupon + ' + p.stressBps + ' bps, amortizing; NOI after reserves)', X(b.stressedDscr), X(p.minDSCR), '≥', b.stressedDscr >= p.minDSCR],
     ['Senior loan vs. house capacity', $(c.requested), $(c.capacity + p.maxDebtOverage), '≤', c.overage <= p.maxDebtOverage]
   ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[3] + ' ' + r[2] + '</td><td>' + res(r[4] ? 'PASS' : 'FAIL') + '</td></tr>'; }).join('');
   var bridge = '<tr class="subtotal"><td class="rowlabel">Senior loan requested (sized by the engine)</td><td>Underwriting terms</td><td>' + $(c.requested) + '</td><td>' + P(c.requested / c.value) + '</td><td></td><td></td></tr>'
-    + c.rows.map(function(r){ var bind = r === c.binding; return '<tr' + (bind ? ' class="grandtotal"' : '') + '><td class="rowlabel">' + r.name + '</td><td data-bk-align="text">' + r.basis + '</td><td>' + $(r.max) + '</td><td>' + P(r.ltv) + '</td><td>' + $(r.vsRequest) + '</td><td>' + (bind ? chip('fail', 'BINDING') : '') + '</td></tr>'; }).join('')
+    + c.rows.map(function(r){ var bind = r === c.binding; return '<tr' + (bind ? ' class="grandtotal"' : '') + '><td class="rowlabel">' + (r.label || r.name) + '</td><td data-bk-align="text">' + r.basis + '</td><td>' + $(r.max) + '</td><td>' + P(r.ltv) + '</td><td>' + $(r.vsRequest) + '</td><td>' + (bind ? chip('fail', 'BINDING') : '') + '</td></tr>'; }).join('')
     + '<tr class="grandtotal"><td class="rowlabel">Maximum supportable senior debt</td><td data-bk-align="text">Lowest of the constraints</td><td>' + $(c.capacity) + '</td><td>' + P(c.capacity / c.value) + '</td><td>' + $(c.capacity - c.requested) + '</td><td>' + (c.overage > p.maxDebtOverage ? chip('fail', 'EXCEEDS CAPACITY') : chip('pass', 'WITHIN CAPACITY')) + '</td></tr>';
   var ladder = c.ladder.map(function(r){ return '<tr><td class="rowlabel">' + P(r.ltv, 0) + '</td><td>' + $(r.loan) + '</td><td>' + P(r.ltc) + '</td><td>' + $(r.ds) + '</td><td>' + X(r.dscr) + '</td><td>' + X(r.stabDscr) + '</td><td>' + (r.dscr >= p.minDSCR ? chip('pass', 'OK') : chip('fail', 'BELOW MIN')) + '</td></tr>'; }).join('');
   var rate = table('Interest Rate Headroom', null,
       '<tr><td class="rowlabel">All-in coupon in force</td><td class="v">' + P(c.coupon) + '</td></tr><tr><td class="rowlabel">Stressed underwriting rate</td><td class="v">' + P(c.stressedRate) + '</td></tr>'
-    + '<tr><td class="rowlabel">Highest coupon at which Year-1 DSCR holds the minimum</td><td class="v">' + P(c.maxCoupon) + '</td></tr><tr class="grandtotal"><td class="rowlabel">Cushion to that coupon</td><td class="v">' + B(c.couponCushionBps) + '</td></tr>');
+    + '<tr><td class="rowlabel">Highest coupon at which the year-1 house DSCR holds the minimum</td><td class="v">' + P(c.maxCoupon) + '</td></tr><tr class="grandtotal"><td class="rowlabel">Cushion to that coupon</td><td class="v">' + B(c.couponCushionBps) + '</td></tr>');
   return { title:'Debt Capacity', crumbs:'Credit & IC', desc:'The largest senior loan the property supports under each house constraint, and how the loan in force compares.',
-    meta:{ Property:s.name, Binding:c.binding.name, Capacity:$(c.capacity), Request:$(c.requested) },
+    meta:{ Property:s.name, Binding:c.binding.label || c.binding.name, Capacity:$(c.capacity), Request:$(c.requested) },
     main: table('Credit Box - Loan in Force vs. House Policy', th(['Metric', 'Underwritten', 'House limit', 'Status']), box)
       + table('Sizing Bridge - Requested Debt to Constraint Capacity', th(['Constraint', 'Basis', 'Maximum loan', 'Implied LTV', 'vs. requested', 'Binding']), bridge)
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Binding Capacity</caption><tbody>'
-      + '<tr><td class="rowlabel">Binding constraint</td><td class="v">' + c.binding.name + '</td></tr><tr><td class="rowlabel">Headroom to the next-tightest constraint</td><td class="v">' + $(c.headroom) + '</td></tr>'
+      + '<tr><td class="rowlabel">Binding constraint</td><td class="v">' + (c.binding.label || c.binding.name) + '</td></tr><tr><td class="rowlabel">Headroom to the next-tightest constraint</td><td class="v">' + $(c.headroom) + '</td></tr>'
       + '<tr class="grandtotal"><td class="rowlabel">Debt overage / (unused capacity) vs. request</td><td class="v">' + $(c.overage) + '</td></tr></tbody></table></div>'
-      + table('Proceeds Ladder - Tested Leverage Range', th(['Target LTV', 'Loan', 'LTC', 'Annual debt service', 'DSCR', 'Stabilized DSCR', 'vs. minimum']), ladder) + rate
+      + table('Proceeds Ladder - Tested Leverage Range', th(['Target LTV', 'Loan', 'LTC', 'Annual debt service', 'House DSCR', 'House DSCR, stabilized', 'vs. house minimum']), ladder) + rate
       + note('Capacity uses <b>house policy</b> limits (Credit Policy), which can be tighter than the loan terms the deal was underwritten with. The stressed-rate test sizes the loan as if the coupon were ' + p.stressBps + ' bps higher, so the loan still works if rates move. Year-3 NOI is the stabilized NOI.'),
-    sidebar: side([['Supportable debt', $(c.capacity)], ['Requested', $(c.requested)], ['Overage', $(c.overage)], ['Binding', c.binding.name]], 'Debt Capacity') };
+    sidebar: side([['Supportable debt', $(c.capacity)], ['Requested', $(c.requested)], ['Overage', $(c.overage)], ['Binding', c.binding.label || c.binding.name]], 'Debt Capacity') };
 });
 
 /* ---------------------------------------------------------------- IC Memo */
@@ -118,12 +118,12 @@ register('IC Memo', function(){
     ['Upside / downside IRR (exit cap ±' + (c ? c.stressBps : 75) + ' bps)', c ? P(c.irrUpside, 1) + ' / ' + P(c.irrDownside, 1) : 'n/a']
   ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>'; }).join('');
   var fin = cap ? [
-    ['Requested / supportable', $(cap.requested) + ' / ' + $(cap.capacity)], ['Binding constraint', cap.binding.name], ['Year-1 DSCR / debt yield / LTV', X(cap.box.dscr) + ' / ' + P(cap.box.debtYield) + ' / ' + P(cap.box.ltv)],
-    ['Stressed DSCR (+' + cap.policy.stressBps + ' bps)', X(cap.box.stressedDscr)], ['Highest coupon holding minimum DSCR', P(cap.maxCoupon) + ' (' + B(cap.couponCushionBps) + ' cushion)']
+    ['Requested / supportable', $(cap.requested) + ' / ' + $(cap.capacity)], ['Binding constraint', cap.binding.label || cap.binding.name], ['House DSCR (NOI after reserves) / debt yield / LTV, year 1', X(cap.box.dscr) + ' / ' + P(cap.box.debtYield) + ' / ' + P(cap.box.ltv)],
+    ['House DSCR, stressed (+' + cap.policy.stressBps + ' bps)', X(cap.box.stressedDscr)], ['Highest coupon holding the house minimum DSCR', P(cap.maxCoupon) + ' (' + B(cap.couponCushionBps) + ' cushion)']
   ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>'; }).join('') : '<tr><td class="rowlabel">Financing</td><td class="v">n/a for this deal</td></tr>';
   var cush = c ? [
     ['Year-1 break-even economic occupancy', P(c.breakEvenOccupancy), 'Occupancy at which NOI covers debt service'], ['Occupancy cushion', B(c.occupancyCushionBps), 'Underwritten occupancy over break-even'],
-    ['Year-1 / stabilized NOI decline tolerance', P(c.noiTolerance1, 1) + ' / ' + P(c.noiTolerance3, 1), 'NOI fall before DSCR reaches the minimum'], ['Break-even rent (per unit per month)', c.breakEvenRent ? $(c.breakEvenRent) : 'n/a', 'Rent at which DSCR equals the minimum'],
+    ['Year-1 / stabilized NOI decline tolerance', P(c.noiTolerance1, 1) + ' / ' + P(c.noiTolerance3, 1), 'NOI fall before the house DSCR reaches the minimum'], ['Break-even rent (per unit per month)', c.breakEvenRent ? $(c.breakEvenRent) : 'n/a', 'Rent at which the house DSCR equals the minimum'],
     ['Rent cushion vs. break-even', P(c.rentCushion, 1), 'Underwritten rent over break-even rent'],
     ['Break-even exit cap at target IRR', c.exitCapBreakeven == null ? (c.exitCapBound ? c.exitCapBound + ' ' + P(Number(s.exitCap) + c.exitCapCushionBps / 10000) : 'n/a') : P(c.exitCapBreakeven), 'Exit cap at which levered IRR equals the target'],
     ['Exit cap cushion', (c.exitCapBound ? c.exitCapBound + ' ' : '') + B(c.exitCapCushionBps), 'Positive: room for the cap rate to widen']

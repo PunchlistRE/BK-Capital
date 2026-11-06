@@ -138,7 +138,7 @@ rule('acct.statement-vs-cashflow', 'WARN', 'Reconciliation', 'Deal Underwrite', 
   if(cv.cvOpexVariablePct > 0) why.push(pc(cv.cvOpexVariablePct, 0) + ' of controllable expenses are treated as varying with occupancy in the cash flow but fixed in the statement');
   if(cv.cvBadDebtBasis === 'legacy') why.push('bad debt is charged on gross rent in the statement but on rent after vacancy in the cash flow');
   return { msg:'Year-1 NOI in the Operating Underwrite (' + $(stmt) + ') does not equal Year-1 NOI in the monthly cash flow (' + $(cf) + '): a gap of ' + $(gap) + ' (' + pc(gap / stmt, 1) + ').',
-    why:'The loan is sized, and DSCR and going-in yield are quoted, off one NOI; returns, the sale price and the waterfall run off the other. Reasons here: ' + (why.length ? why.join('; ') + '.' : 'rent-roll or lease timing differences between the statement and the monthly build.') + ' The two should agree in Year 1 unless you intend a difference - otherwise lenders, investors and your own return summary will quote different NOIs.',
+    why:'The loan is sized, and the lender DSCR and going-in yield are quoted, off one NOI; returns, the sale price and the waterfall run off the other. Reasons here: ' + (why.length ? why.join('; ') + '.' : 'rent-roll or lease timing differences between the statement and the monthly build.') + ' The two should agree in Year 1 unless you intend a difference - otherwise lenders, investors and your own return summary will quote different NOIs.',
     data:{ statement:stmt, cashflow:cf, gap:gap } };
 });
 rule('acct.ltv-on-value', 'WARN', 'Debt', 'Deal Underwrite', function(s){
@@ -229,7 +229,7 @@ rule('debt.loan-above-cost', 'ERROR', 'Debt', 'Debt', function(s){
 rule('debt.term-before-hold', 'WARN', 'Debt', 'Debt', function(s){
   if(isDev(s) || s.debtEnabled === false) return; var t = num(s.debtTerm), h = num(s.holdYears);
   if(t > 0 && h > t && !num(s.refiAtMaturity)) return { msg:'Loan term is ' + t + ' years but the hold is ' + h + ' years, with no refinance at maturity.',
-    why:'The balance falls due before the planned sale. The engine repays it from equity at maturity as a balloon; a real refinance would carry new fees, a new rate and its own DSCR test, none of which are modelled unless you turn on refinance at maturity.' };
+    why:'The balance falls due before the planned sale. The engine repays it from equity at maturity as a balloon; a real refinance would carry new fees, a new rate and its own lender DSCR test, none of which are modelled unless you turn on refinance at maturity.' };
 });
 rule('debt.floating-unhedged', 'WARN', 'Debt', 'Debt', function(s){
   if(isDev(s) || s.debtEnabled === false) return;
@@ -239,21 +239,21 @@ rule('debt.floating-unhedged', 'WARN', 'Debt', 'Debt', function(s){
 rule('debt.floating-zero-index', 'ERROR', 'Debt', 'Debt', function(s){
   if(isDev(s) || s.debtEnabled === false) return;
   if(/float/i.test(String(s.debtRateType || '')) && !(num(s.debtIndexRate) > 0) && !(num(s.debtSpread) > 0)) return { msg:'Floating-rate debt has a zero index and a zero spread.',
-    why:'The coupon would be 0% (or silently fall back to the fixed-rate input). Debt service, DSCR and returns are all wrong until an index rate and spread are entered.' };
+    why:'The coupon would be 0% (or silently fall back to the fixed-rate input). Debt service, the lender and house DSCRs and returns are all wrong until an index rate and spread are entered.' };
 });
 rule('debt.io-longer-than-term', 'WARN', 'Debt', 'Debt', function(s){
   if(isDev(s) || s.debtEnabled === false) return; var io = num(s.acqIO), t = num(s.debtTerm);
-  if(io > 0 && t > 0 && io > t + 1e-9) return { msg:'Interest-only period (' + io + ' years) is longer than the loan term (' + t + ' years).', why:'The interest-only period is entered in years. If it exceeds the term the loan never amortises, the balloon equals the full loan, and the amortization and DSCR you see are not what a lender would underwrite.' };
+  if(io > 0 && t > 0 && io > t + 1e-9) return { msg:'Interest-only period (' + io + ' years) is longer than the loan term (' + t + ' years).', why:'The interest-only period is entered in years. If it exceeds the term the loan never amortises, the balloon equals the full loan, and the amortization and the lender DSCR you see are not what a lender would underwrite.' };
 });
 rule('debt.dscr-below-one', 'WARN', 'Debt', 'Covenant Monitor', function(s){
   if(isDev(s) || s.debtEnabled === false) return; var u = safe(function(){ return bkAnnualCF(); }, null), d = safe(function(){ return bkDebt(); }, null);
   if(!u || !d || !d.annual || !d.annual[0] || !(d.annual[0].payment > 0)) return; var x = u.arr[0].after / d.annual[0].payment;
-  if(x < 1) return { msg:'Year-1 DSCR is ' + x.toFixed(2) + 'x - NOI does not cover debt service.', why:'The property does not pay its own debt. Equity funds the shortfall every period (an equity call in the waterfall), and any lender covenant would be in default from day one.' };
+  if(x < 1) return { msg:'House DSCR, year 1 (NOI after reserves) is ' + x.toFixed(2) + 'x - NOI after reserves does not cover debt service.', why:'The property does not pay its own debt. Equity funds the shortfall every period (an equity call in the waterfall), and any lender covenant would be in default from day one.' };
 });
 rule('debt.sizing-looser-than-policy', 'WARN', 'Debt', 'Debt Capacity', function(s){
   if(isDev(s) || s.debtEnabled === false || typeof window.bkDebtCapacity !== 'function') return; var c = safe(function(){ return window.bkDebtCapacity(); }, null);
-  if(c && c.overage > (c.policy.maxDebtOverage || 0)) return { msg:'The loan the engine sized (' + $(c.requested) + ') is ' + $(c.overage) + ' above what house credit policy supports (' + $(c.capacity) + ', binding: ' + c.binding.name + ').',
-    why:'Deal loan terms (LTV / DSCR at the actual coupon) are looser than the house policy tests (including a stressed coupon). The returns assume debt the credit committee would not approve; see Debt Capacity and the IC gate.' };
+  if(c && c.overage > (c.policy.maxDebtOverage || 0)) return { msg:'The loan the engine sized (' + $(c.requested) + ') is ' + $(c.overage) + ' above what house credit policy supports (' + $(c.capacity) + ', binding: ' + (c.binding.label || c.binding.name) + ').',
+    why:'Deal loan terms (LTV / lender DSCR at the actual coupon) are looser than the house policy tests (including a stressed coupon). The returns assume debt the credit committee would not approve; see Debt Capacity and the IC gate.' };
 });
 
 /* ====================================================== REFINANCE */
@@ -263,7 +263,7 @@ rule('refi.year-out-of-range', 'ERROR', 'Refinance', 'Refi / Recap', function(s)
 });
 rule('refi.post-dscr-below-policy', 'WARN', 'Refinance', 'Refi / Recap', function(s){
   if(!s._refi || isDev(s) || typeof window.bkRefi !== 'function' || typeof window.bkPolicy !== 'function') return; var R = safe(function(){ return window.bkRefi(); }, null), p = window.bkPolicy();
-  if(R && R.selected && R.selected.postDSCR < p.minDSCR - 1e-9) return { msg:'The refinanced loan covers debt service ' + R.selected.postDSCR.toFixed(2) + 'x, below the house policy minimum of ' + p.minDSCR.toFixed(2) + 'x.', why:'The refinance is sized to its own DSCR input (' + R.inputs.minDSCR.toFixed(2) + 'x), which is looser than house credit policy. The cash-out shown is more than the credit committee would approve, so the recap return is overstated relative to what could actually be financed.' };
+  if(R && R.selected && R.selected.postDSCR < p.minDSCR - 1e-9) return { msg:'The refinanced loan covers debt service ' + R.selected.postDSCR.toFixed(2) + 'x, below the house policy minimum of ' + p.minDSCR.toFixed(2) + 'x.', why:'The refinance is sized to its own lender minimum DSCR (NOI after reserves, ' + R.inputs.minDSCR.toFixed(2) + 'x), which is looser than house credit policy. The cash-out shown is more than the credit committee would approve, so the recap return is overstated relative to what could actually be financed.' };
 });
 rule('refi.cash-out-negative', 'WARN', 'Refinance', 'Refi / Recap', function(s){
   if(!s._refi || isDev(s) || typeof window.bkRefi !== 'function') return; var R = safe(function(){ return window.bkRefi(); }, null);
@@ -311,7 +311,7 @@ rule('pol.thresholds-inverted', 'ERROR', 'Credit Policy', 'Credit Policy', funct
 });
 rule('pol.dscr-below-one', 'ERROR', 'Credit Policy', 'Credit Policy', function(s){
   if(typeof window.bkPolicy !== 'function') return; var p = window.bkPolicy();
-  if(p.minDSCR < 1) return { msg:'Policy minimum DSCR is ' + p.minDSCR.toFixed(2) + 'x, below 1.00x.', why:'A minimum below 1.0x approves loans whose income does not cover payments, so the debt-capacity limit stops constraining anything.' };
+  if(p.minDSCR < 1) return { msg:'House minimum DSCR is ' + p.minDSCR.toFixed(2) + 'x, below 1.00x.', why:'A minimum below 1.0x approves loans whose income does not cover payments, so the debt-capacity limit stops constraining anything.' };
 });
 rule('pol.weights', 'WARN', 'Credit Policy', 'Credit Policy', function(s){
   var g = (s._policy && s._policy.gates) || null; if(!g || !window.BK_GATES) return;

@@ -53,7 +53,7 @@ window.bkDevCovenantSheet = function(s, dv){
   var meta = { Property:s.name, Loan:dv.takeout ? money(dv.permLoan) : 'None', Rate:dv.takeout ? bkPct(dv.permRate) : '-', Amort:dv.takeout ? dv.permAmort + ' yrs' : '-', Currency:'USD' };
   var sidebarOf = function(card){ return sidebarShell(card + modelInfoCard('<div class="metric-row"><span class="k">Tab Group</span><span class="v">Debt</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>') + colorKeyCard()); };
   var inputs = '<div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Covenant Inputs</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>' + bkInput('Minimum Debt Yield Covenant', 'minDebtYield', '%', 'pct') + '</tbody></table></div>';
-  var desc = 'Annual DSCR and Debt Yield covenant tests against the permanent loan after takeout.';
+  var desc = 'Annual lender DSCR and Debt Yield covenant tests against the permanent loan after takeout.';
   if(!dv.takeout) return { title:'Covenant Monitor', crumbs:'Debt', desc:desc, meta:meta,
     main:'<div class="note-flag"><span>&#9432;</span><div><b>Not applicable -</b> ' + dv.reason + '</div></div>' + inputs,
     sidebar:sidebarOf('<div class="card"><div class="card-head">Covenant Status</div><div class="metric-list"><div class="metric-row"><span class="k">Overall</span><span class="v">' + na + '</span></div></div></div>') };
@@ -63,21 +63,21 @@ window.bkDevCovenantSheet = function(s, dv){
   });
   var cell = function(r, ok){ return '<td class="' + (r.tested && !ok ? 'fail-cell' : '') + '">' + (!r.tested ? na : ok ? '<span class="status-chip pass">PASS</span>' : '<span class="status-chip fail">FAIL</span>') + '</td>'; };
   var v = function(r, x){ return '<td>' + (r.tested ? x : '-') + '</td>'; };
-  var main = '<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - DSCR &amp; Debt Yield, tested annually against the permanent loan after takeout</caption>'
+  var main = '<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - Lender DSCR (NOI after reserves) &amp; Debt Yield, tested annually against the permanent loan after takeout</caption>'
     + '<thead><tr><th class="rowlabel-h">Line Item</th>' + rows.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
     + '<tr><td class="rowlabel">Months with Permanent Debt Service</td>' + rows.map(function(r){ return v(r, r.n); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">NOI After Reserves (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Debt Service (those months)</td>' + rows.map(function(r){ return v(r, money(-r.ds)); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Ending Loan Balance</td>' + rows.map(function(r){ return v(r, money(r.ending)); }).join('') + '</tr>'
-    + '<tr class="grandtotal"><td class="rowlabel">DSCR (min ' + minDSCR.toFixed(2) + 'x)</td>' + rows.map(function(r){ return v(r, isFinite(r.dscr) ? r.dscr.toFixed(2) + 'x' : '-'); }).join('') + '</tr>'
-    + '<tr><td class="rowlabel">DSCR Test</td>' + rows.map(function(r){ return cell(r, r.dscrPass); }).join('') + '</tr>'
+    + '<tr class="grandtotal"><td class="rowlabel">Lender DSCR (min ' + minDSCR.toFixed(2) + 'x)</td>' + rows.map(function(r){ return v(r, isFinite(r.dscr) ? r.dscr.toFixed(2) + 'x' : '-'); }).join('') + '</tr>'
+    + '<tr><td class="rowlabel">Lender DSCR Test</td>' + rows.map(function(r){ return cell(r, r.dscrPass); }).join('') + '</tr>'
     + '<tr class="grandtotal"><td class="rowlabel">Debt Yield (min ' + bkPct(minDY) + ')</td>' + rows.map(function(r){ return v(r, isFinite(r.dy) ? bkPct(r.dy) : '-'); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">Debt Yield Test</td>' + rows.map(function(r){ return cell(r, r.dyPass); }).join('') + '</tr></tbody></table></div>' + inputs
     + '<div class="note-flag"><span>&#9432;</span><div><b>Tested against the permanent loan.</b> The permanent loan funds at the takeout (month ' + dv.takeoutMo + '). Before it the construction facility&rsquo;s interest is capitalized and there is no debt service to test, so those years read N/A, with no pass or fail. '
-    + 'The takeout year is tested on the months the permanent loan has payments, with NOI over the same months; the debt yield annualizes that NOI over the ending balance. Minimum DSCR is the permanent loan&rsquo;s underwriting DSCR. Debt service and NOI are the monthly cash-flow figures (<code>bkMonthlyReturns</code>) and the takeout schedule (<code>bkDevTakeoutV11</code>), the same ones the Debt Schedule and Returns pages use.</div></div>';
+    + 'The takeout year is tested on the months the permanent loan has payments, with NOI over the same months; the debt yield annualizes that NOI over the ending balance. The lender minimum DSCR is the permanent loan&rsquo;s underwriting minimum. Debt service and NOI are the monthly cash-flow figures (<code>bkMonthlyReturns</code>) and the takeout schedule (<code>bkDevTakeoutV11</code>), the same ones the Debt Schedule and Returns pages use.</div></div>';
   var tested = rows.filter(function(r){ return r.tested; }), allPass = tested.every(function(r){ return r.dscrPass && r.dyPass; });
   var sidebar = sidebarOf('<div class="card"><div class="card-head">Covenant Status</div><div class="metric-list"><div class="metric-row"><span class="k">Overall</span><span class="v">' + (!tested.length ? na : '<span class="status-chip ' + (allPass ? 'pass' : 'fail') + '">' + (allPass ? 'All Tested Years Pass' : 'Breach Detected') + '</span>') + '</span></div>'
-    + '<div class="metric-row"><span class="k">Min DSCR</span><span class="v">' + minDSCR.toFixed(2) + 'x</span></div><div class="metric-row"><span class="k">Min Debt Yield</span><span class="v">' + bkPct(minDY) + '</span></div></div></div>');
+    + '<div class="metric-row"><span class="k">Lender min DSCR</span><span class="v">' + minDSCR.toFixed(2) + 'x</span></div><div class="metric-row"><span class="k">Min Debt Yield</span><span class="v">' + bkPct(minDY) + '</span></div></div></div>');
   return { title:'Covenant Monitor', crumbs:'Debt', desc:desc, meta:meta, main:main, sidebar:sidebar };
 };
 })();
