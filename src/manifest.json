@@ -1030,6 +1030,11 @@
 "close": "</script>"
 },
 {
+"file": "195-bk-report-pack.js",
+"open": "\n<script id=\"bk-report-pack\">",
+"close": "</script>"
+},
+{
 "file": "188-bk-field-widths.js",
 "open": "\n<script id=\"bk-field-widths\">",
 "close": "</script>"

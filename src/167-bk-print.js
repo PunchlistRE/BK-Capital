@@ -37,7 +37,7 @@ var CSS = '#bk-print-head,#bk-print-foot{display:none}table.bk-print-clone{displ
  + 'table.fin td:has(input),table.fin td:has(select){box-shadow:none !important;background:transparent !important}'
  + 'table.fin.bk-m-scroll,table.fin.bk-scrollable{display:table !important;overflow:visible !important}'
  + '#viewport [style*="overflow-x"]{overflow:visible !important}.rp-tbl{width:100% !important;min-width:0 !important;border-collapse:collapse !important}.rp-tbl th,.rp-tbl td{padding:3px 6px !important}.bk-print-fit th,.bk-print-fit td{padding:2px 3px !important;white-space:nowrap}.bk-print-fit th:first-child,.bk-print-fit td:first-child{white-space:normal;min-width:120px}'
- + 'table.bk-print-orig{display:none !important}table.bk-print-clone{display:table !important;margin-bottom:10px;break-inside:auto}table.rp-tbl tr{break-inside:avoid;page-break-inside:avoid}'
+ + 'table.fin.bk-print-orig,table.rp-tbl.bk-print-orig,table.bk-print-orig{display:none !important}table.bk-print-clone{display:table !important;margin-bottom:10px;break-inside:auto}table.rp-tbl tr{break-inside:avoid;page-break-inside:avoid}'
  + '.bk-print-wide table.fin{font-size:7pt !important}.bk-print-wide table.fin th,.bk-print-wide table.fin td{padding:2px 4px !important}'
  + 'svg{max-width:100%;height:auto;break-inside:avoid}'
  + 'a{color:inherit !important;text-decoration:none !important}'
@@ -66,22 +66,26 @@ function headHtml(){
     + '<div class="ph-sec">' + esc(m.title) + (m.crumb && m.crumb.toLowerCase() !== m.title.toLowerCase() ? ' <span style="font-weight:500;color:#566a80;letter-spacing:.06em"> · ' + esc(m.crumb) + '</span>' : '') + '</div>' + (m.desc ? '<div class="ph-desc">' + esc(m.desc) + '</div>' : '');
 }
 function wide(){ var t = [].slice.call(document.querySelectorAll('#viewport table.fin, #viewport table.rp-tbl')).filter(function(x){ return !x.classList.contains('bk-print-orig'); }), mx = 0; t.forEach(function(x){ var r = x.rows[0] ? x.rows[0].cells.length : 0; if(x.tHead && x.tHead.rows[0]) r = Math.max(r, x.tHead.rows[0].cells.length); mx = Math.max(mx, r); }); return mx; }
-/* A schedule with a column per year has to fit the page whatever the hold: up to 12 year columns it is set on one page (landscape from 9 columns), the type sized to the
-   column count; a longer hold is split into pages of 10 years, the label column repeated and the totals on the last. Nothing is clipped, nothing is dropped. */
-var YEARS_PER_PAGE = 10, PAGE_PX = { land:973, port:733 };
+/* A schedule with a column per year has to fit the portrait page whatever the hold: up to 8 year columns it is set on one page, the type sized to the column count; a longer hold is split into pages of 8 years,
+   the label column repeated and the totals on the last. Every PDF is portrait (8.5 x 11 in). Nothing is clipped, nothing is dropped. */
+var YEARS_PER_PAGE = 8, PAGE_PX = { land:973, port:733 };
 function headCells(t){ var rs = t.tHead ? [].slice.call(t.tHead.rows) : [], hr = rs.filter(function(r){ return [].some.call(r.cells, function(c){ return /^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent); }); })[0] || rs[0] || t.rows[0]; return hr ? [].slice.call(hr.cells) : []; }   /* the row that names the years (a Forecast band may sit above it) */
-function splitYears(t){
-  var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
-  if(yr.length <= 12 || t.classList.contains('bk-print-clone')) return;
-  var rest = hc.map(function(c, q){ return q; }).filter(function(q){ return q !== 0 && yr.indexOf(q) < 0; }), chunks = [];
-  for(var a = 0; a < yr.length; a += YEARS_PER_PAGE) chunks.push(yr.slice(a, a + YEARS_PER_PAGE));
+/* a table cut into column groups: each group keeps the label column (column 0), the original is hidden and the groups follow it, each with the same caption and header rows */
+function splitKeep(t, groups){
   var anchor = t;
-  chunks.forEach(function(ch, n){
-    var keep = [0].concat(ch).concat(n === chunks.length - 1 ? rest : []), c = t.cloneNode(true); c.removeAttribute('id'); c.classList.add('bk-print-clone');
+  groups.forEach(function(keep){
+    var c = t.cloneNode(true); c.removeAttribute('id'); c.classList.add('bk-print-clone');
     [].forEach.call(c.rows, function(r){ var cells = [].slice.call(r.cells), pos = 0, map = []; cells.forEach(function(cell){ map.push(pos); pos += cell.colSpan || 1; });
       cells.forEach(function(cell, q){ var cs = cell.colSpan || 1; if(cs > 1){ var inside = keep.filter(function(k){ return k >= map[q] && k < map[q] + cs; }).length; if(inside) cell.colSpan = inside; else cell.remove(); } else if(keep.indexOf(map[q]) < 0) cell.remove(); }); });
     anchor.parentNode.insertBefore(c, anchor.nextSibling); anchor = c; });
   t.classList.add('bk-print-orig');
+}
+function splitYears(t){
+  var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
+  if(yr.length <= YEARS_PER_PAGE || t.classList.contains('bk-print-clone')) return;
+  var rest = hc.map(function(c, q){ return q; }).filter(function(q){ return q !== 0 && yr.indexOf(q) < 0; }), chunks = [];
+  for(var a = 0; a < yr.length; a += YEARS_PER_PAGE) chunks.push(yr.slice(a, a + YEARS_PER_PAGE));
+  splitKeep(t, chunks.map(function(ch, n){ return [0].concat(ch).concat(n === chunks.length - 1 ? rest : []); }));
 }
 function fitTables(land){
   var px = land ? PAGE_PX.land : PAGE_PX.port;
@@ -92,6 +96,8 @@ function fitTables(land){
 }
 function unfit(){ [].forEach.call(document.querySelectorAll('table.bk-print-clone'), function(c){ c.remove(); }); [].forEach.call(document.querySelectorAll('table.bk-print-orig'), function(t){ t.classList.remove('bk-print-orig'); });
   [].forEach.call(document.querySelectorAll('table.bk-print-fit'), function(t){ t.classList.remove('bk-print-fit'); t.style.removeProperty('font-size'); }); }
+/* the print rules and the year-splitter, shared with the report pack (src/195), which lays the same rules on pages of its own */
+window.BK_PRINT_RULES = CSS.slice(CSS.indexOf('@media print{') + 13, CSS.length - 1); window.bkPrintSplitYears = splitYears; window.bkPrintSplitCols = splitKeep;
 var pageStyle = null;
 function prepare(){
   if(document.documentElement.classList.contains('bk-sr-open')) return;   /* the schedule summary prints its own pages */
@@ -100,7 +106,7 @@ function prepare(){
   var head = document.createElement('div'); head.id = 'bk-print-head'; head.innerHTML = headHtml(); fr.insertBefore(head, fr.firstChild);
   var s = safe(function(){ return bkLoad(); }, {}) || {}, foot = document.createElement('div'); foot.id = 'bk-print-foot'; foot.textContent = 'Punchlist Capital · Beta · ' + (s.name || '') + ' · figures from the underwriting model; check against your own'; document.body.appendChild(foot);
   [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl'), splitYears);
-  var w = wide(), land = w >= 9; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land);
+  var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land);
   pageStyle = document.createElement('style'); pageStyle.id = 'bk-print-page'; pageStyle.textContent = '@page{size:letter ' + (land ? 'landscape' : 'portrait') + ';margin:12mm 11mm 14mm}'; document.head.appendChild(pageStyle);
   document.querySelectorAll('input[type=text],input[type=number],input:not([type])').forEach(function(i){ if(i.value !== i.getAttribute('value')) i.setAttribute('value', i.value); });
 }

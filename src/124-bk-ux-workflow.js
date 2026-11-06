@@ -583,7 +583,7 @@ function ribbon(frame, sheet){
     + '<button type="button" class="rb-nav rb-prev" aria-hidden="true" tabindex="-1" title="Earlier pages">' + chev('M15 6l-6 6 6 6') + '</button>'
     + '<div class="rb-tabs" role="navigation" aria-label="Pages">' + (gs.length > 1 || (gs[0] && gs[0].sheets.length > 1) ? sub : '') + '</div>'
     + '<button type="button" class="rb-nav rb-next" aria-hidden="true" tabindex="-1" title="More pages">' + chev('M9 6l6 6-6 6') + '</button></div>'
-    + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + '</div></div>';
+    + '<div class="rb-cmds">' + cmd('plus', 'New analysis', 'onclick="bkNewDealDialog()"') + cmd('up', 'Import', 'data-goto-sheet2="Import"') + cmd('print', 'Print / PDF', 'onclick="bkPrintSection()"') + (window.bkPackHas && window.bkPackHas(sheet) ? cmd('doc', 'PDF summary', 'onclick="bkPackOpen(\'page\')"') : '') + (window.bkPackOpen ? cmd('doc', 'Full report', 'onclick="bkPackOpen(\'full\')"') : '') + '</div></div>';
   nav.insertAdjacentHTML('afterend', h);
   ribbonScroll(nav.nextElementSibling, sec);
 }
