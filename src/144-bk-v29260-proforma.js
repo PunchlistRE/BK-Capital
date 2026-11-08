@@ -115,8 +115,9 @@ function chartDollar(D){
 function gauge(D){
   var h = Number(D.pol.targetIRR) || 0.12, irr = D.irr, mx = Math.max(0.3, h * 1.6, (isFinite(irr) ? irr : 0) * 1.2), W = chartW(), Hh = 66, edge = W < 600 ? 64 : 40, X_ = function(v){ return Math.max(0, Math.min(1, v / mx)) * (W - 8) + 4; }, ok = isFinite(irr) && irr >= h;
   return svgOpen(W, Hh, 'Levered IRR against the hurdle') + '<rect x="4" y="26" width="' + (W - 8) + '" height="14" rx="7" fill="rgba(120,120,120,.18)"/><rect x="4" y="26" width="' + Math.max(0, X_(isFinite(irr) ? Math.max(irr, 0) : 0) - 4) + '" height="14" rx="7" fill="' + (ok ? COL.ok : COL.dn) + '"/>'
+    + (isFinite(irr) && !ok ? '<rect x="' + X_(Math.max(irr, 0)) + '" y="26" width="' + Math.max(0, X_(h) - X_(Math.max(irr, 0))) + '" height="14" fill="' + COL.dn + '" fill-opacity=".16" stroke="' + COL.dn + '" stroke-dasharray="3 2"/>' : '')
     + '<line x1="' + X_(h) + '" x2="' + X_(h) + '" y1="18" y2="48" stroke="currentColor" stroke-width="2"/><text x="' + Math.min(W - edge, Math.max(edge, X_(h))) + '" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">hurdle ' + P(h, 1) + '</text>'
-    + '<text x="' + Math.min(W - edge, Math.max(edge, X_(isFinite(irr) ? Math.max(irr, 0) : 0))) + '" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">levered IRR ' + P(irr, 1) + '</text></svg>';
+    + '<text x="' + Math.min(W - edge, Math.max(edge, X_(isFinite(irr) ? Math.max(irr, 0) : 0))) + '" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">levered IRR ' + P(irr, 1) + (isFinite(irr) ? ' · ' + Math.abs((irr - h) * 100).toFixed(1) + ' pts ' + (ok ? 'above' : 'short') : '') + '</text></svg>';
 }
 
 /* ------------------------------------------------------------------ blocks */
