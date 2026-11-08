@@ -81,7 +81,7 @@ function harvest(){
 
 /* ---------- the report document ---------- */
 var NAVY = '#0e2a4a', BLUE = '#3E9AE6';
-var PACK_CSS = '@page{size:8.5in 11in;margin:0}'
+var PACK_CSS = '.pg-body .pl-acts,.pg-body .pl-h:has(+.pl-acts),.pg-body details.pl-detail{display:none !important}.pg-body td:has(>input),.pg-body td:has(>select),.pg-body td.v{background:transparent !important}.pg-body input,.pg-body select,.pg-body textarea{background:transparent !important;box-shadow:none !important}html body .pg-body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind^="input"]{background:transparent !important;box-shadow:none !important}html body .pg-body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind="input-text"],html body .pg-body #viewport td[data-bk-kind="input-text"],html body .pg-body #viewport table.fin td.v,html body .pg-body #viewport table.fin tr.input td.v,html body .pg-body #viewport table.fin td.v:hover{background:transparent !important;box-shadow:none !important}.pg-body td[data-bk-col="left"][style*="text-align:right"],html body .pg-body #viewport table.fin tbody td[data-bk-col="left"][style*="text-align:right"],.pg-body table.fin tr.grandtotal td:not(:first-child),.pg-body table.fin tr.total td:not(:first-child){text-align:right !important}html body .pg-body #viewport .main-col{padding-left:0 !important;padding-right:0 !important;overflow:visible !important}html body .pg-body #viewport .ae-panel,html body .pg-body #viewport .ae-body{max-width:none}.pl-deal{grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr)) 78px !important}.pl-deal>div{min-width:0}.pl-deal>div:last-child{visibility:hidden}@page{size:8.5in 11in;margin:0}'
  + 'html,body{height:auto !important;min-height:0 !important;overflow:visible !important;background:#c9d6e2 !important;margin:0 !important;padding:0 !important;display:block !important;font:11px/1.4 Inter,"Helvetica Neue",Arial,sans-serif;color:' + NAVY + '}'
  + '.pg{position:relative;width:8.5in;height:11in;margin:0 auto 16px;background:#fff;overflow:hidden;break-after:page;page-break-after:always;box-shadow:0 6px 30px rgba(0,0,0,.25);box-sizing:border-box}'
  + '@media print{html,body{background:#fff !important}.pg{margin:0;box-shadow:none}}'
@@ -173,6 +173,8 @@ function paginate(doc, secs, info){
     if(S.placed === 0){ c.appendChild(node); S.placed++; return; }   /* taller than a page and not splittable: what fits is shown */
     if(!nextPage()) return; place(node, depth);
   }
+  /* a zoomed table keeps its percentage widths (max-width / min-width 100%) in unzoomed units in some browsers, so it ends up 1 / zoom too wide: size it by the zoom instead */
+  function zoomWidth(t){ var z = parseFloat(t.style.zoom) || 1, pw = t.parentNode && t.parentNode.getBoundingClientRect().width; if(z >= 1 || !pw) return; if(t.getBoundingClientRect().width > pw + 1){ t.style.setProperty('max-width', (100 * z).toFixed(2) + '%', 'important'); t.style.setProperty('min-width', '0', 'important'); if(t.getBoundingClientRect().width > pw + 1) t.style.setProperty('width', (100 * z).toFixed(2) + '%', 'important'); } }
   function prepTables(node, sec){
     stage.appendChild(node);
     [].slice.call(node.querySelectorAll('table')).forEach(function(t){ if(typeof window.bkPrintSplitYears === 'function' && !t.classList.contains('bk-print-clone')) safe(function(){ window.bkPrintSplitYears(t); }); });
@@ -188,10 +190,12 @@ function paginate(doc, secs, info){
       if(groups.length > 1 && groups.length <= 5){ safe(function(){ window.bkPrintSplitCols(t, groups); });
         [].slice.call(t.parentNode.querySelectorAll('table.bk-print-clone')).forEach(function(c){ var f = 8.6; while(wid(c) > W + 1 && f > 6.4){ f -= 0.4; c.style.setProperty('font-size', f.toFixed(1) + 'pt', 'important'); c.classList.add('pk-tight'); } }); return; }
       /* a table that cannot be cut: set it smaller, not below half size */
-      for(var k = 0; k < 3 && wid(t) > W + 1; k++){ var z = parseFloat(t.style.zoom) || 1; t.style.zoom = Math.max(0.5, z * W / wid(t) - 0.005).toFixed(3); } });
+      for(var k = 0; k < 3 && wid(t) > W + 1; k++){ var z = parseFloat(t.style.zoom) || 1; t.style.zoom = Math.max(0.5, z * W / wid(t) - 0.005).toFixed(3); zoomWidth(t); } });
     /* a page summary is ONE page: its whole content is scaled to fit the page (never below 50%; what still does not fit is cut and says so) */
     if(sec && sec.max === 1 && sec.kind === 'page'){ var Hb = stage.ownerDocument.defaultView.innerHeight ? 9.5 * 96 - 6 : 906;
-      for(var it = 0; it < 4; it++){ var H = node.getBoundingClientRect().height; if(H <= Hb) break; var z0 = parseFloat(node.style.zoom) || 1, z1 = Math.max(0.5, z0 * Hb / H - 0.01); if(z1 >= z0 - 0.002) break; node.style.zoom = z1.toFixed(3); if(!sec.exec) node.style.width = (100 / z1).toFixed(2) + '%'; } }
+      for(var it = 0; it < 4; it++){ var H = node.getBoundingClientRect().height; if(H <= Hb) break; var z0 = parseFloat(node.style.zoom) || 1, z1 = Math.max(0.5, z0 * Hb / H - 0.01); if(z1 >= z0 - 0.002) break; node.style.zoom = z1.toFixed(3); if(!sec.exec){ node.style.width = (100 / z1).toFixed(2) + '%'; var pw = node.parentNode.getBoundingClientRect().width; if(pw && node.getBoundingClientRect().width > pw * 1.02) node.style.width = '100%'; /* browsers differ on how a percentage width resolves inside a zoomed box: if the first guess overflows, use 100% */ } } }
+    if(sec && !sec.exec){ /* nothing may stay wider than the page: tables that cannot shrink are scaled with the page */
+      for(var w = 0; w < 4; w++){ var pw2 = node.parentNode.getBoundingClientRect().width, nw = node.getBoundingClientRect().width; if(!pw2 || nw <= pw2 * 1.005) break; var zz = parseFloat(node.style.zoom) || 1; node.style.zoom = Math.max(0.4, zz * pw2 / nw - 0.005).toFixed(3); } }
     stage.removeChild(node);
   }
   secs.forEach(function(sec){
@@ -202,7 +206,11 @@ function paginate(doc, secs, info){
   /* a table inside nested panels has less room than the page body: scale any that still pass the right edge to fit what is left (never below 55%) */
   all.forEach(function(pg){ var body = pg.querySelector('.pg-body'); if(!body) return; var edge = body.getBoundingClientRect().right;
     [].forEach.call(body.querySelectorAll('table, svg'), function(t){ if(t.classList.contains('bk-print-orig') || t.offsetParent === null) return; var r = t.getBoundingClientRect(); if(r.right <= edge + 1 || r.width < 30) return;
-      var z = Math.max(0.55, (edge - r.left) / r.width); if(t.tagName === 'svg'){ t.style.maxWidth = '100%'; t.style.height = 'auto'; return; } t.style.zoom = ((parseFloat(t.style.zoom) || 1) * z - 0.005).toFixed(3); }); });
+      var z = Math.max(0.55, (edge - r.left) / r.width); if(t.tagName === 'svg'){ t.style.maxWidth = '100%'; t.style.height = 'auto'; return; } t.style.zoom = ((parseFloat(t.style.zoom) || 1) * z - 0.005).toFixed(3); zoomWidth(t); }); });
+  /* final check in the page itself (where the sizes are the ones that print): a scaled block must not be wider than its column; if the percentage width overshoots, use 100%, then scale the block to fit */
+  [].slice.call(doc.querySelectorAll('.pk-page')).forEach(function(k){ var pw = k.parentNode.getBoundingClientRect().width; if(!pw) return;
+    if(k.getBoundingClientRect().width > pw * 1.01 && !k.closest('.pk-exec')) k.style.width = '100%';
+    for(var q = 0; q < 4; q++){ var kw = k.getBoundingClientRect().width; if(kw <= pw * 1.005) break; var zk = parseFloat(k.style.zoom) || 1; k.style.zoom = Math.max(0.4, zk * pw / kw - 0.005).toFixed(3); } });
   all.forEach(function(pg, i){ var pn = pg.querySelector('.pn'); if(pn) pn.textContent = 'Page ' + (i + 1) + ' of ' + all.length; });
   [].forEach.call(doc.querySelectorAll('[data-pg]'), function(e){ e.textContent = starts[e.getAttribute('data-pg')] || ''; });
   return all.length;

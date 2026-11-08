@@ -1,6 +1,6 @@
 /* ACQUISITION RESERVE ACCOUNTS (1.3). Money set aside at closing for renovation, common-area capex and interest, and drawn as each is spent. A memo page: it shows how much is funded, what each account is drawn for, the balance
    by year, any spend the account does not cover, and Sources & Uses and equity "including reserves". Closing equity, the Sources & Uses and funding ties, the cash flow and the returns are NOT changed (owner's choice,
-   November 2026: reserve page now, returns unchanged); bringing the reserves into the engine is a separate step. The spend comes from the engines' own lines: the renovation programme (bkRenoAdj), the dated capex
+   November 2026: reserve page now, returns unchanged); bringing the reserves into the engine is a separate step. The spend comes from the engines' own lines: the renovation program (bkRenoAdj), the dated capex
    and leasing costs (bkCapexByMonth) and the loan's monthly interest (bkDebt). Only sums and a running balance are computed here. */
 (function(){
 'use strict';
@@ -8,7 +8,7 @@ if(typeof RENDERERS === 'undefined' || typeof bkLoad !== 'function') return;
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
 function M(v){ v = Math.round(Number(v) || 0); return v < 0 ? '($' + Math.abs(v).toLocaleString('en-US') + ')' : '$' + v.toLocaleString('en-US'); }
 function isDev(s){ return /develop/i.test(String((s || {}).dealType || '')); }
-var ACC = [['resReno', 'Renovation reserve', 'Drawn by the unit renovation programme’s capex.'], ['resCapex', 'Common-area capex reserve', 'Drawn by the dated capex list and leasing costs.'], ['resInterest', 'Interest reserve', 'Drawn by the loan’s monthly interest, from the first month, until it runs out.']];
+var ACC = [['resReno', 'Renovation reserve', 'Drawn by the unit renovation program’s capex.'], ['resCapex', 'Common-area capex reserve', 'Drawn by the dated capex list and leasing costs.'], ['resInterest', 'Interest reserve', 'Drawn by the loan’s monthly interest, from the first month, until it runs out.']];
 window.bkResSet = function(k, raw){ var v = parseFloat(String(raw).replace(/[^0-9.]/g, '')); var s = bkLoad(); s[k] = isFinite(v) && v > 0 ? v : 0; bkSave(s); if(typeof showSheet === 'function') showSheet('Reserve Accounts'); };
 /* the draws by operating month, from the engines' own lines */
 function spend(s){
@@ -29,7 +29,7 @@ RENDERERS['Reserve Accounts'] = function(){
   if(isDev(s)){ o.main = '<div class="note-flag"><span>&#9432;</span><div>Reserve accounts are for acquisitions. A development’s interest and cost funding is on Dev Draws and Sources & Uses.</div></div>'; return o; }
   var sch = schedule(s), tot = ACC.reduce(function(t, a){ return t + (Number(s[a[0]]) || 0); }, 0), d = sch.sp.d || {}, cap = Number(s.rateCapCost) || 0;
   var inputs = ACC.map(function(a){ var v = Number(s[a[0]]) || 0; return '<tr><td class="rowlabel">' + a[1] + '<span class="dim" style="display:block;font-size:11px">' + a[2] + '</span></td><td class="v" style="text-align:right;white-space:nowrap"><span style="color:#566a80;margin-right:6px">$</span><input type="text" value="' + (v ? Math.round(v).toLocaleString('en-US') : '') + '" placeholder="0" inputmode="decimal" style="text-align:right;width:140px !important;max-width:140px !important;min-width:0 !important" onchange="bkResSet(\'' + a[0] + '\',this.value)"></td></tr>'; }).join('');
-  var main = '<div class="tbl-wrap" style="max-width:none"><table class="fin"><caption>Reserves Funded at Closing</caption><thead><tr><th class="rowlabel-h">Account</th><th>Funded at closing</th></tr></thead><tbody>' + inputs + '<tr class="grandtotal"><td class="rowlabel">Total reserves</td><td style="text-align:right">' + M(tot) + '</td></tr></tbody></table></div>';
+  var main = '<div class="tbl-wrap" style="max-width:none"><table class="fin"><caption>Reserves Funded at Closing</caption><thead><tr><th class="rowlabel-h">Account</th><th>Funded at closing</th></tr></thead><tbody>' + inputs + '<tr class="grandtotal"><td class="rowlabel">Total reserves</td><td class="bk-a-num" style="text-align:right">' + M(tot) + '</td></tr></tbody></table></div>';
   if(!(tot > 0)){ o.main = main + '<div class="note-flag"><span>&#9432;</span><div>Enter the amount of each reserve to see its draws and balance by year.</div></div>'; return o; }
   var head = '<th class="rowlabel-h">Account</th>' + sch.rows.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('');
   var line = function(lbl, f, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + lbl + '</td>' + sch.rows.map(function(r){ return '<td>' + M(f(r)) + '</td>'; }).join('') + '</tr>'; };
