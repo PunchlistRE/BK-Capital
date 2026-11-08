@@ -102,8 +102,9 @@ function chartDollar(D){
     if(w >= 58) g += '<text x="' + (x + w / 2) + '" y="48" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (p[2] === COL.navy ? '#fff' : '#0e2a4a') + '">' + P(p[1] / egi, 2) + '</text>'; x += w; });
   g += '<text x="0" y="14" font-size="11" fill="currentColor" opacity=".7">Each $1 of Year-1 effective gross income (' + M(y.egi) + ')</text>';
   /* the key: swatch, name, then dollars and share, wrapped into rows */
-  var gx = 0, row = 0, gap = 26, rowH = 34, top = 84;
-  parts.forEach(function(p){ var l1 = p[0], l2 = M(p[1]) + ' · ' + P(p[1] / egi, 2), iw = 16 + Math.max(l1.length * cw + 2, l2.length * cw) + gap;
+  var gx = 0, row = 0, gap = 26, rowH = 34, top = 84, bx = 0;   /* each label starts under its own slice of the bar when there is room (else after the one before it) */
+  parts.forEach(function(p){ var l1 = p[0], l2 = M(p[1]) + ' · ' + P(p[1] / egi, 2), iw = 16 + Math.max(l1.length * cw + 2, l2.length * cw) + gap, sx = bx; bx += Math.max(0, p[1]) / egi * W;
+    if(sx > gx && sx + iw - gap <= W) gx = sx;
     if(gx > 0 && gx + iw - gap > W){ gx = 0; row++; }
     var yy = top + row * rowH;
     g += '<rect x="' + gx + '" y="' + (yy - 9) + '" width="10" height="10" rx="2" fill="' + p[2] + '"/><text x="' + (gx + 16) + '" y="' + yy + '" font-size="11" font-weight="600" fill="currentColor">' + esc(l1) + '</text><text x="' + (gx + 16) + '" y="' + (yy + 14) + '" font-size="10.5" fill="currentColor" opacity=".78">' + esc(l2) + '</text>';
