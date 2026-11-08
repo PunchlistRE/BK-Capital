@@ -24,7 +24,7 @@ R.addWorkflow('acquisition', [
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
   INCOME, EXPENSES,
   /* deal-type paths: a step that only some deals walk (value-add, commercial space); the guide shows it when its test passes */
-  S('valueadd', 'Value-add programme', 'A renovation programme: how many units a year, the rent lost while a unit is down, the premium afterwards and the capex per unit. Other income by line (laundry, parking, pet, storage, RUBS) is the other usual source of upside.', 'Revenues',
+  S('valueadd', 'Value-add program', 'A renovation program: how many units a year, the rent lost while a unit is down, the premium afterwards and the capex per unit. Other income by line (laundry, parking, pet, storage, RUBS) is the other usual source of upside.', 'Revenues',
     [q('renoUnitsPerYear'), q('renoDownMonths'), q('renoPremium'), q('renoCapexPerUnit'), q('oiLaundry'), q('oiLateFees'), q('oiPetRent'), q('oiPetFees'), q('oiParking'), q('oiStorage'), q('oiRubsPct')],
     { skippable:true, when:function(s){ return /value-add|opportunistic|redevelopment|lease-up/i.test(String(s.acqStrategy || '')) || Number(s.renoUnitsPerYear) > 0; } }),
   S('commercial', 'Commercial space', 'Retail or office space in the building: its area and suites here; tenant by tenant rent, bumps, expiry and rollover on the Tenants page.', 'Tenants',

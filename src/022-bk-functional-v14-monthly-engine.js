@@ -39,7 +39,7 @@
 // zero residential revenue (100% commercial), so this choice doesn't affect any Havard-verified
 // figure -- it has not been checked against a residential-bearing deal.
 /* capex: dated one-off capital items below NOI, each {name, month:'YYYY-MM', amount}. Returns the amount falling in each operating month 1..months (month 1 is the closing month). */
-/* UNIT RENOVATION PROGRAMME (1.3): units renovated each year, the rent lost while a unit is down, the rent premium afterwards and the capex per unit, feeding the residential rent line and the capital below NOI. Units are renovated evenly through each programme year, never more than the residential units. null when no units are set (every existing deal). avgRentMo = the monthly rent per residential unit the base line carries. */
+/* UNIT RENOVATION PROGRAM (1.3): units renovated each year, the rent lost while a unit is down, the rent premium afterwards and the capex per unit, feeding the residential rent line and the capital below NOI. Units are renovated evenly through each program year, never more than the residential units. null when no units are set (every existing deal). avgRentMo = the monthly rent per residential unit the base line carries. */
 window.bkRenoAdj = function(s, holdMonths, avgRentMo){
   s = s || bkLoad(); const perYear = Number(s.renoUnitsPerYear) || 0; if(!(perYear > 0)) return null;
   const start = Math.max(1, Math.round(Number(s.renoStartYear) || 1)), years = Math.max(1, Math.round(Number(s.renoYears) || 1)), down = Math.max(0, Math.round(Number(s.renoDownMonths) || 0));
@@ -103,7 +103,7 @@ window.bkAnnualCF = function(){
   const stabMonths   = Math.max(0, Math.round(Number(s.leaseupMonths)||0));
   /* LEASE ROLLOVER (owner decision C, November 2026): the per-unit rent roll's expiries (renewal probability, downtime, market rent at renewal, TI and LC) feed the rent lines and the leasing capital. null = no unit has a lease end inside the hold, or the deal turns it off (rolloverInNoi false): every existing deal runs exactly as before. */
   const RO = (typeof window.bkRolloverAdj === 'function') ? window.bkRolloverAdj(s, holdMonths) : null;
-  const _resU = useRR ? bkRentRollStats(s.rentRoll).resUnits : Number(s.units), RN = window.bkRenoAdj(s, holdMonths, _resU > 0 ? (k_GPR/12) / _resU : 0);   /* the renovation programme */
+  const _resU = useRR ? bkRentRollStats(s.rentRoll).resUnits : Number(s.units), RN = window.bkRenoAdj(s, holdMonths, _resU > 0 ? (k_GPR/12) / _resU : 0);   /* the renovation program */
 
   // CONVENTIONS (see bkConventions). 'month1' keeps the original continuous m/12 exponent exactly;
   // 'year2' holds Year 1 at the underwritten figures and steps growth once per operating year.
