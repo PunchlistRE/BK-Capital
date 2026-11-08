@@ -21,18 +21,29 @@ function parts(x){
   };
 }
 function tbl(head, rows){ return '<table><thead><tr>' + head.map(function(h, i){ return '<th' + (i ? '' : ' style="text-align:left"') + '>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table>'; }
+/* levered IRR by exit year as bars, with the equity multiple on each; the deal's own hold is the dark bar. Read from the rows of bkExitYearTable (src/192); drawn here only. */
+window.bkExitYearChart = function(rows, w){
+  rows = (rows || []).filter(function(r){ return isFinite(r.irr); }); if(!rows.length) return ''; w = w || 700; var h = 210, L = 44, R = 10, T = 22, B = 34, pw = w - L - R, ph = h - T - B, mx = Math.max.apply(null, rows.map(function(r){ return r.irr; }).concat([0.001])), mn = Math.min.apply(null, rows.map(function(r){ return r.irr; }).concat([0])), span = (mx - mn) || 1, bw = pw / rows.length;
+  var y = function(v){ return T + ph - (v - mn) / span * ph; }, g = '';
+  for(var k = 0; k <= 4; k++){ var v = mn + span * k / 4, yy = y(v); g += '<line x1="' + L + '" x2="' + (w - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="#d5dce3" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (yy + 3) + '" text-anchor="end" font-size="9" fill="#566a80">' + (v * 100).toFixed(1) + '%</text>'; }
+  if(mn < 0) g += '<line x1="' + L + '" x2="' + (w - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="#566a80" stroke-width="1.2"/>';
+  rows.forEach(function(r, i){ var x = L + i * bw + bw * 0.18, bwid = bw * 0.64, y0 = y(Math.max(0, mn)), yy = y(r.irr), top = Math.min(yy, y0), hh = Math.max(1, Math.abs(y0 - yy));
+    g += '<rect x="' + x.toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + bwid.toFixed(1) + '" height="' + hh.toFixed(1) + '" fill="' + (r.sel ? '#0e2a4a' : '#3E9AE6') + '"/><text x="' + (x + bwid / 2).toFixed(1) + '" y="' + (top - 5).toFixed(1) + '" text-anchor="middle" font-size="9" font-weight="700" fill="#0e2a4a">' + (r.irr * 100).toFixed(1) + '%</text>'
+      + '<text x="' + (x + bwid / 2).toFixed(1) + '" y="' + (h - 18) + '" text-anchor="middle" font-size="9" fill="#566a80">Yr ' + r.y + '</text><text x="' + (x + bwid / 2).toFixed(1) + '" y="' + (h - 6) + '" text-anchor="middle" font-size="8.5" fill="#566a80">' + (isFinite(r.moic) ? r.moic.toFixed(2) + 'x' : '') + '</text>'; });
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" role="img" aria-label="Levered IRR and equity multiple by exit year" style="display:block;max-width:100%;height:auto;font-family:Inter,Arial,sans-serif">' + g + '</svg>';
+};
 window.bkAfterTaxPdfHtml = function(){
   var x = data(); if(!x) return null; var p = parts(x), line = function(l, k, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="l">' + l + '</td>' + p.yrs.map(function(r){ return '<td>' + M(k(r)) + '</td>'; }).join('') + '</tr>'; };
-  var cf = tbl(['After-tax cash flow'].concat(p.yrs.map(function(r){ return 'Yr ' + r.y; })), [line('NOI after reserves', function(r){ return r.noi; }), line('Less: interest', function(r){ return -r.interest; }), line('Less: depreciation', function(r){ return -r.depr; }),
-    line('Taxable income', function(r){ return r.taxableIncome; }, 'tot'), line('Suspended loss carryforward', function(r){ return r.lossCF; }), line('Ordinary income tax', function(r){ return -r.taxDue; }, 'tot')]);
+  var cf = '<div style="font-size:8.2pt">' + tbl(['After-tax cash flow'].concat(p.yrs.map(function(r){ return 'Yr ' + r.y; })), [line('NOI after reserves', function(r){ return r.noi; }), line('Less: interest', function(r){ return -r.interest; }), line('Less: depreciation', function(r){ return -r.depr; }),
+    line('Taxable income', function(r){ return r.taxableIncome; }, 'tot'), line('Suspended loss carryforward', function(r){ return r.lossCF; }), line('Ordinary income tax', function(r){ return -r.taxDue; }, 'tot')]) + '</div>';
   var sale = '<table><tbody>' + p.sale.map(function(a){ return '<tr' + (a[2] ? ' class="' + a[2] + '"' : '') + '><td class="l">' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join('') + '</tbody></table>';
   var ret = tbl(['Levered, property level', 'Pre-tax', 'After-tax'], p.ret.map(function(a){ return '<tr><td class="l">' + a[0] + '</td><td>' + a[1] + '</td><td><b>' + a[2] + '</b></td></tr>'; }));
-  return '<h2>After-tax returns</h2>' + cf + '<div class="g2 mt" style="grid-template-columns:1.2fr .8fr"><div><h2>Sale-year tax</h2>' + sale + '</div><div><h2>Pre-tax and after-tax</h2>' + ret + '</div></div>'
+  return '<h2>After-tax returns</h2>' + cf + '<div class="g2 mt" style="grid-template-columns:1.15fr .85fr;gap:22px"><div><h2>Sale-year tax</h2>' + sale + '</div><div><h2>Pre-tax and after-tax</h2>' + ret + '</div></div>'
     + '<div class="note" style="margin-top:8px"><b>Depreciation basis.</b> ' + esc(p.basis) + '. Straight-line on a ' + M(x.deprBasis) + ' depreciable basis; passive losses carried forward and released at sale; Sec. 1250 recapture and long-term capital gains at the entered rates. Ordinary tax at ' + P(Number(x.s.taxRate)) + '.</div>';
 };
 window.bkExitYearPdfHtml = function(){
   var rows = safe(function(){ return window.bkExitYearTable ? window.bkExitYearTable() : null; }, null); if(!rows || !rows.length) return null;
-  return '<h2>Returns by exit year</h2>' + tbl(['If sold at the end of', 'Levered IRR', 'Equity multiple', 'Equity profit'], rows.map(function(r){ return '<tr' + (r.sel ? ' class="tot"' : '') + '><td class="l">Year ' + r.y + (r.sel ? ' (the hold)' : '') + '</td><td>' + P(r.irr) + '</td><td>' + X(r.moic) + '</td><td>' + M(r.profit) + '</td></tr>'; }))
+  return '<h2>Returns by exit year</h2><div style="margin:6px 0 14px">' + window.bkExitYearChart(rows, 700) + '<div style="font-size:9px;color:#566a80;margin-top:2px">Bars: levered IRR if sold at the end of each year. Under each bar: the equity multiple. The dark bar is the deal\'s own hold.</div></div>' + tbl(['If sold at the end of', 'Levered IRR', 'Equity multiple', 'Equity profit'], rows.map(function(r){ return '<tr' + (r.sel ? ' class="tot"' : '') + '><td class="l">Year ' + r.y + (r.sel ? ' (the hold)' : '') + '</td><td>' + P(r.irr) + '</td><td>' + X(r.moic) + '</td><td>' + M(r.profit) + '</td></tr>'; }))
     + '<div class="note" style="margin-top:8px">Each row sells the property at the end of that year, at the same exit cap rate and selling costs, and runs the monthly returns engine for that hold. The row marked (the hold) is the deal\'s own result.</div>';
 };
 /* the page in Reports */

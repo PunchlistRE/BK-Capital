@@ -25,7 +25,7 @@ function wrap(sheet, build){ var prev = window.RENDERERS && RENDERERS[sheet]; if
   RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); try { var add = build(); if(add && o && typeof o.main === 'string') o.main += add; } catch(e){} return o; }; }
 wrap('Returns', function(){
   var rows = window.bkExitYearTable(); if(!rows) return '';
-  return card('If Sold at the End of Each Year - levered returns by exit year', '<th class="rowlabel-h">Exit at the end of</th><th>Levered IRR</th><th>Equity Multiple</th><th>Equity Profit</th>',
+  return '<div class="tbl-wrap" style="margin-top:16px;padding:12px 14px"><div style="font:700 12px Inter,system-ui,sans-serif;margin-bottom:6px">Levered IRR by Exit Year</div>' + (window.bkExitYearChart ? window.bkExitYearChart(rows, 900) : '') + '</div>' + card('If Sold at the End of Each Year - levered returns by exit year', '<th class="rowlabel-h">Exit at the end of</th><th>Levered IRR</th><th>Equity Multiple</th><th>Equity Profit</th>',
     rows.map(function(r){ return '<tr' + (r.sel ? ' class="subtotal"' : '') + '><td class="rowlabel">Year ' + r.y + (r.sel ? ' (the hold)' : '') + '</td><td>' + P(r.irr) + '</td><td>' + X(r.moic) + '</td><td>' + M(r.profit) + '</td></tr>'; }).join(''))
     + '<div class="note-flag"><span>&#9432;</span><div>Each row sells the property at the end of that year (same exit cap and costs) and runs the monthly returns engine for that hold. The row marked (the hold) is the deal\'s own result.</div></div>';
 });

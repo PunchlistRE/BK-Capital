@@ -9,7 +9,7 @@ html body #viewport [data-bk-w="c"]{ width:var(--bk-w-c) !important; min-width:v
 html body #viewport .ae-form [data-bk-w]{ height:var(--bk-fh); }
 html body #viewport .ae-form input[data-bk-w], html body #viewport .ae-form select[data-bk-w]{ padding-top:0; padding-bottom:0; }
 html body #viewport .ae-form span.ae-ro[data-bk-w]{ display:inline-flex; align-items:center; justify-content:flex-end; padding:0 8px; white-space:nowrap; overflow:hidden; }
-html body #viewport .ae-form span.ae-ro[data-bk-w="l"]{ justify-content:flex-start; }
+html body #viewport .ae-form span.ae-ro[data-bk-w="l"]{ justify-content:flex-end; text-align:right; }
 /* text reads from the left in a box of its own kind */
 html body #viewport .ae-form input[data-bk-w="l"], html body #viewport table.ae-grid td input[data-bk-w="l"]{ text-align:left !important; }
 /* a percent box is narrower than a dollar box, but the unit written beside it starts in the same place */
