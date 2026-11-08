@@ -35,7 +35,7 @@ var CSS = '#bk-print-head,#bk-print-foot{display:none}table.bk-print-clone{displ
  + 'table.fin th,table.fin td{padding:3px 6px !important;position:static !important}'
  + 'table.fin td input,table.fin td select,.tbl-wrap input,.tbl-wrap select{border:0 !important;background:transparent !important;box-shadow:none !important;padding:0 !important;outline:0 !important;-webkit-appearance:none;appearance:none;color:inherit !important;font:inherit !important}'
  + 'table.fin td:has(input),table.fin td:has(select){box-shadow:none !important;background:transparent !important}'
- + 'table.fin.bk-m-scroll,table.fin.bk-scrollable{display:table !important;overflow:visible !important}'
+ + 'table.fin.bk-m-scroll,table.fin.bk-scrollable,table.rp-tbl,table.rp-tbl.bk-scrollable{display:table !important;overflow:visible !important}.bk-scrollable::before{display:none !important}table.rp-tbl{table-layout:auto !important}table.rp-tbl td,table.rp-tbl th{min-width:0 !important;white-space:nowrap}table.rp-tbl td:first-child,table.rp-tbl th:first-child{white-space:normal}'
  + '#viewport [style*="overflow-x"]{overflow:visible !important}.rp-tbl{width:100% !important;min-width:0 !important;border-collapse:collapse !important}.rp-tbl th,.rp-tbl td{padding:3px 6px !important}.bk-print-fit th,.bk-print-fit td{padding:2px 3px !important;white-space:nowrap}.bk-print-fit th:first-child,.bk-print-fit td:first-child{white-space:normal;min-width:120px}'
  + 'table.fin.bk-print-orig,table.rp-tbl.bk-print-orig,table.bk-print-orig{display:none !important}table.bk-print-clone{display:table !important;margin-bottom:10px;break-inside:auto}table.rp-tbl tr{break-inside:avoid;page-break-inside:avoid}'
  + '.bk-print-wide table.fin{font-size:7pt !important}.bk-print-wide table.fin th,.bk-print-wide table.fin td{padding:2px 4px !important}'
@@ -66,9 +66,9 @@ function headHtml(){
     + '<div class="ph-sec">' + esc(m.title) + (m.crumb && m.crumb.toLowerCase() !== m.title.toLowerCase() ? ' <span style="font-weight:500;color:#566a80;letter-spacing:.06em"> · ' + esc(m.crumb) + '</span>' : '') + '</div>' + (m.desc ? '<div class="ph-desc">' + esc(m.desc) + '</div>' : '');
 }
 function wide(){ var t = [].slice.call(document.querySelectorAll('#viewport table.fin, #viewport table.rp-tbl')).filter(function(x){ return !x.classList.contains('bk-print-orig'); }), mx = 0; t.forEach(function(x){ var r = x.rows[0] ? x.rows[0].cells.length : 0; if(x.tHead && x.tHead.rows[0]) r = Math.max(r, x.tHead.rows[0].cells.length); mx = Math.max(mx, r); }); return mx; }
-/* A schedule with a column per year has to fit the portrait page whatever the hold: up to 8 year columns it is set on one page, the type sized to the column count; a longer hold is split into pages of 8 years,
+/* A schedule with a column per year has to fit the portrait page whatever the hold: up to 10 year columns it is set on one page, the type sized to the column count; a longer hold is split into pages of 10 years,
    the label column repeated and the totals on the last. Every PDF is portrait (8.5 x 11 in). Nothing is clipped, nothing is dropped. */
-var YEARS_PER_PAGE = 8, PAGE_PX = { land:973, port:733 };
+var YEARS_PER_PAGE = 10, PAGE_PX = { land:973, port:733 };
 function headCells(t){ var rs = t.tHead ? [].slice.call(t.tHead.rows) : [], hr = rs.filter(function(r){ return [].some.call(r.cells, function(c){ return /^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent); }); })[0] || rs[0] || t.rows[0]; return hr ? [].slice.call(hr.cells) : []; }   /* the row that names the years (a Forecast band may sit above it) */
 /* a table cut into column groups: each group keeps the label column (column 0), the original is hidden and the groups follow it, each with the same caption and header rows */
 function splitKeep(t, groups){
