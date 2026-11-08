@@ -44,15 +44,15 @@ function tabPages(t){
 /* the sections of a report */
 function plan(scope, here){
   var secs = [], tabs = NAV_TABS.filter(function(t){ return !(window.bkNavTabHidden && window.bkNavTabHidden(t, '')); });
-  if(scope === 'page') return [{ kind:'page', id:'p-' + here, sheet:here, max:2 }];
-  if(scope === 'tab'){ var t = tabOfSheet(here); if(!t) return [{ kind:'page', id:'p-' + here, sheet:here, max:2 }];
-    var pg = tabPages(t); secs.push({ kind:'tab', id:'t-' + t.id, tab:t, pages:pg, max:2 });
-    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:2 }); }); return secs; }
+  if(scope === 'page') return [{ kind:'page', id:'p-' + here, sheet:here, max:1 }];
+  if(scope === 'tab'){ var t = tabOfSheet(here); if(!t) return [{ kind:'page', id:'p-' + here, sheet:here, max:1 }];
+    var pg = tabPages(t); secs.push({ kind:'tab', id:'t-' + t.id, tab:t, pages:pg, max:1 });
+    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:1 }); }); return secs; }
   secs.push({ kind:'cover', id:'cover' }, { kind:'toc', id:'toc', max:3 });
   secs.push({ kind:'page', id:'p-Home', sheet:'Home', exec:true, tab:tabOfSheet('Home'), max:1 });
   tabs.forEach(function(t){ if(t.id === 'overview' || NOT_IN_PROPERTY[t.id]) return; var pg = tabPages(t); if(!pg.length) return;
-    secs.push({ kind:'tab', id:'t-' + t.id, tab:t, pages:pg, max:2 });
-    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:2 }); }); });
+    secs.push({ kind:'tab', id:'t-' + t.id, tab:t, pages:pg, max:1 });
+    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:1 }); }); });
   return secs;
 }
 
@@ -173,7 +173,7 @@ function paginate(doc, secs, info){
     if(S.placed === 0){ c.appendChild(node); S.placed++; return; }   /* taller than a page and not splittable: what fits is shown */
     if(!nextPage()) return; place(node, depth);
   }
-  function prepTables(node){
+  function prepTables(node, sec){
     stage.appendChild(node);
     [].slice.call(node.querySelectorAll('table')).forEach(function(t){ if(typeof window.bkPrintSplitYears === 'function' && !t.classList.contains('bk-print-clone')) safe(function(){ window.bkPrintSplitYears(t); }); });
     var W = stage.clientWidth, wid = function(t){ return t.getBoundingClientRect().width; };
@@ -189,12 +189,15 @@ function paginate(doc, secs, info){
         [].slice.call(t.parentNode.querySelectorAll('table.bk-print-clone')).forEach(function(c){ var f = 8.6; while(wid(c) > W + 1 && f > 6.4){ f -= 0.4; c.style.setProperty('font-size', f.toFixed(1) + 'pt', 'important'); c.classList.add('pk-tight'); } }); return; }
       /* a table that cannot be cut: set it smaller, not below half size */
       for(var k = 0; k < 3 && wid(t) > W + 1; k++){ var z = parseFloat(t.style.zoom) || 1; t.style.zoom = Math.max(0.5, z * W / wid(t) - 0.005).toFixed(3); } });
+    /* a page summary is ONE page: its whole content is scaled to fit the page (never below 50%; what still does not fit is cut and says so) */
+    if(sec && sec.max === 1 && sec.kind === 'page'){ var Hb = stage.ownerDocument.defaultView.innerHeight ? 9.5 * 96 - 6 : 906;
+      for(var it = 0; it < 4; it++){ var H = node.getBoundingClientRect().height; if(H <= Hb) break; var z0 = parseFloat(node.style.zoom) || 1, z1 = Math.max(0.5, z0 * Hb / H - 0.01); if(z1 >= z0 - 0.002) break; node.style.zoom = z1.toFixed(3); node.style.width = (100 / z1).toFixed(2) + '%'; } }
     stage.removeChild(node);
   }
   secs.forEach(function(sec){
     if(sec.kind === 'cover'){ var cp = newPage(true); cp.innerHTML = sec.html; starts[sec.id] = S.count; return; }
     S.sec = sec; S.secPages = 1; S.stop = false; S.chain = []; newPage(false); starts[sec.id] = S.count;
-    var node = doc.importNode(sec.node, true); prepTables(node); place(node, 0);
+    var node = doc.importNode(sec.node, true); prepTables(node, sec); place(node, 0);
   });
   /* a table inside nested panels has less room than the page body: scale any that still pass the right edge to fit what is left (never below 55%) */
   all.forEach(function(pg){ var body = pg.querySelector('.pg-body'); if(!body) return; var edge = body.getBoundingClientRect().right;
@@ -244,7 +247,7 @@ window.bkPackOpen = function(scope){
             if(dd){ var hd = document.createElement('div'); hd.className = 'pk-pane'; hd.textContent = sb.label; var wrap = document.createElement('div'); wrap.appendChild(hd); wrap.appendChild(dd.node); parts.push(wrap); } }
           safe(function(){ window.bkEdSub(opened.tab, opened.id); });
           await sleep(320);
-          var holder = document.createElement('div'); holder.className = 'main-col'; parts.forEach(function(w){ holder.appendChild(w); }); d.node = holder; sec.max = 4;
+          var holder = document.createElement('div'); holder.className = 'main-col'; parts.forEach(function(w){ holder.appendChild(w); }); d.node = holder; sec.max = 1;
         }
         if(d){ data[sec.id] = d; byId[sec.id] = d; }
       }
