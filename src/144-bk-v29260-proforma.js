@@ -187,7 +187,7 @@ function wrap(name, blockFn, needScen){
     var s = safe(function(){ return bkLoad(); }, null); if(!s || /develop/i.test(String(s.dealType || '')) || !(typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal())) return o;
     var D = safe(build, null); if(!D || !D.Y || !D.Y.length) return o;
     var scen = needScen ? safe(function(){ return bkRiskScenarios(); }, null) : null;
-    CW = window.innerWidth <= 560 ? Math.max(300, Math.min(480, Math.round(window.innerWidth - 48))) : null;
+    CW = window.innerWidth <= 560 ? Math.max(300, Math.min(480, Math.round(window.innerWidth - 48))) : (function(){ var mc = document.querySelector('#viewport .main-col'); return mc && mc.clientWidth > 500 ? Math.max(600, Math.min(1800, Math.round(mc.clientWidth - (document.querySelector('#viewport .side-col') ? 70 : 370)))) : null; })();
     try { return Object.assign({}, o, { main: safe(function(){ return blockFn(D, scen); }, '') + o.main }); } finally { CW = null; }
   };
   if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer(name, RENDERERS[name]); } catch(e){}

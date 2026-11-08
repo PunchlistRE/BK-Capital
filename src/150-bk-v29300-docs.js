@@ -61,7 +61,7 @@ window.bkDocsExtract = function(fid){ if(typeof window.bkDocsExtractHook === 'fu
   RENDERERS['Home'] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; var id = dealId(); if(!id || !active()) return o;
     var u = window.bkDealPhotoURL(); if(cache[id] === undefined) window.bkDocsWarm().then(function(x){ if(x && document.querySelector('.pl-home') && typeof showSheet === 'function' && /Home|Overview/i.test(String(window.__bkSheet || 'Home'))) showSheet('Home'); });
     if(!u) return o; var tag = '<div class="pl-hero">'; if(o.main.indexOf(tag) < 0) return o;
-    return Object.assign({}, o, { main:o.main.replace(tag, '<div class="pl-hero" style="position:relative;min-height:150px;padding-right:220px"><img alt="" src="' + u + '" style="position:absolute;right:0;top:0;width:200px;height:150px;object-fit:cover;border-radius:10px;box-shadow:0 6px 18px rgba(14,42,74,.25)">') }); };
+    return Object.assign({}, o, { main:o.main.replace(tag, '<div class="pl-hero"><img alt="" src="' + u + '" style="display:block;width:100%;height:clamp(150px,22vw,260px);object-fit:cover;border-radius:12px;margin:0 0 16px;border:1px solid var(--line,#c9d1dc);box-shadow:0 4px 16px rgba(14,42,74,.18)">') }); };
   if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
 })();
 })();
