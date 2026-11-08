@@ -1050,6 +1050,11 @@
 "close": "</script>"
 },
 {
+"file": "201-bk-rentroll-report.js",
+"open": "\n<script id=\"bk-rentroll-report\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
