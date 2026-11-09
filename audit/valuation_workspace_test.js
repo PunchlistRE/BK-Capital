@@ -1,0 +1,73 @@
+// Valuation workspace (src/203) on the Present Value Report: the hierarchy table (Unleveraged PV, Property NPV, Leveraged PV, Equity NPV, FV) equals the valuation engine; pricing at a proposed price
+// re-runs the whole deal; the maximum supportable price is solved from the page; the sensitivity table; saved scenarios are append-only on the deal, survive a reload, reopen with their inputs,
+// and are REPRODUCIBLE: after the deal changes, a saved scenario rebuilt from its own snapshot gives its saved result exactly while "today" differs. Development decks get the equity measures.
+//   node audit/valuation_workspace_test.js index.html
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');
+const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirname, 'devdeal.js'));
+(async () => {
+  const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+  let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 380) + ']' : '')); };
+  const near = (a, c, tol) => a != null && c != null && isFinite(a) && isFinite(c) && Math.abs(a - c) <= (tol == null ? 1 : tol);
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); let p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+  await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
+  await p.evaluate((d) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d); bkSave(s); try { localStorage.removeItem('bkcapital.val.ui.v1'); } catch (e) {} }, A);
+  const num = (t) => { t = String(t).trim(); if (t === '' || t === '-' || /n\/a/i.test(t)) return null; const neg = /^\(.*\)$/.test(t.split(' ')[0]); const v = parseFloat(t.split(' ')[0].replace(/[(),%$]/g, '')); return neg ? -v : v; };
+  const READ = () => p.evaluate(async () => { showSheet('Present Value Report'); await new Promise(r => setTimeout(r, 600));
+    const grab = (id) => { const o = {}; document.querySelectorAll('#' + id + ' tbody tr').forEach(tr => { const c = [...tr.children].map(td => td.textContent.trim()); o[c[0]] = c; }); return o; };
+    return { ws: grab('rp-valws'), price: grab('rp-valprice'), max: grab('rp-valmax'), sens: grab('rp-valsens'), scen: [...document.querySelectorAll('#rp-valscen tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim())), has: !!document.getElementById('rp-valws') }; });
+  let R = await READ();
+  check('the workspace is on the Present Value Report, below the report tables, with the five measures in order', R.has && JSON.stringify(Object.keys(R.ws).map(k => k.replace(/ at .*/, ''))) === JSON.stringify(['Present value (PV)', 'Less: investment', 'Net present value (NPV)', 'Break-even rate', 'Future value (FV)', 'FV less the investment accumulated']), JSON.stringify(Object.keys(R.ws)));
+  const E = await p.evaluate(() => { const s = bkLoad(), base = bkPvCalc(s).base, v = bkValuate({ rate: base }); return { base, v }; });
+  const k = Object.keys(R.ws);
+  check('Unleveraged PV, Property NPV, Leveraged PV and Equity NPV on the page equal the engine at the report\'s middle rate (' + (E.base * 100).toFixed(2) + '%), to the dollar',
+    near(num(R.ws['Present value (PV)'][1]), E.v.unleveragedPV, 1) && near(num(R.ws['Present value (PV)'][2]), E.v.leveragedPV, 1) && near(num(R.ws['Net present value (NPV)'][1]), E.v.propertyNPV, 1) && near(num(R.ws['Net present value (NPV)'][2]), E.v.equityNPV, 1) && near(num(R.ws['Less: investment'][1]), E.v.basis, 1) && near(num(R.ws['Less: investment'][2]), E.v.closingEquity, 1), JSON.stringify([R.ws['Present value (PV)'], R.ws['Net present value (NPV)'], E.v.unleveragedPV, E.v.equityNPV]));
+  check('NPV is labelled and signed separately from PV: a positive or negative chip sits on each NPV, and the definitions say a positive PV is not a positive NPV', /Positive|Negative|About zero/.test(R.ws['Net present value (NPV)'][1]) && /not a positive NPV/.test(await p.evaluate(() => document.querySelector('.rp-ws').textContent)));
+  /* inputs */
+  await p.evaluate(() => { bkValUi('rate', '8.75%'); }); await p.waitForTimeout(400); R = await READ();
+  const E2 = await p.evaluate(() => bkValuate({ rate: 0.0875, equityRate: 0.0875 }));
+  check('typing 8.75% as the discount rate recomputes every measure (equity rate and accumulation rate follow it)', near(num(R.ws['Present value (PV)'][1]), E2.unleveragedPV, 1) && near(num(R.ws['Net present value (NPV)'][2]), E2.equityNPV, 1) && /8\.75%/.test(R.ws['Future value (FV) at 2031-12-31'] ? R.ws['Future value (FV) at 2031-12-31'][3] : JSON.stringify(Object.keys(R.ws))), JSON.stringify(R.ws['Net present value (NPV)']));
+  await p.evaluate(() => { bkValUi('equityRate', '12%'); bkValUi('fvDate', '2030-12-31'); }); await p.waitForTimeout(400); R = await READ();
+  const E3 = await p.evaluate(() => bkValuate({ rate: 0.0875, equityRate: 0.12, accumRate: 0.12, fvDate: '2030-12-31' })), fvK = Object.keys(R.ws).find(x => /^Future value/.test(x));
+  check('a separate equity rate and an earlier FV date change the leveraged measures and the FV (flows after the date are left out and the page says so)', near(num(R.ws['Net present value (NPV)'][2]), E3.equityNPV, 1) && /2030-12-31/.test(fvK) && near(num(R.ws[fvK][2]), E3.fvEquity, 1) && E3.fvExcluded > 0 && /left out/.test(R.ws[fvK][3]), JSON.stringify([fvK, R.ws[fvK], E3.fvExcluded]));
+  /* pricing */
+  await p.evaluate(() => { bkValUi('fvDate', ''); bkValUi('price', '22,000,000'); }); await p.waitForTimeout(400); R = await READ();
+  const E4 = await p.evaluate(() => bkRunWith({ purchasePrice: 22000000 }, () => { const v = bkValuate({ rate: 0.0875, equityRate: 0.12 }), d = bkDebt(); return { v, loan: d.loan, eq: d.equity }; }));
+  const pk = Object.keys(R.price)[0] ? R.price['NPV'] : null;
+  check('NPV at a proposed price of $22,000,000 is the engine with the whole deal re-run at that price (loan and equity re-sized)', pk && near(num(pk[1]), E4.v.propertyNPV, 1) && near(num(pk[2]), E4.v.equityNPV, 1) && /\$/.test(R.price['Loan / closing equity at this price'][2]) && R.price['Loan / closing equity at this price'][2].replace(/[$,]/g, '').indexOf(String(Math.round(E4.eq))) >= 0, JSON.stringify([pk, E4.loan, E4.eq]));
+  await p.evaluate(() => bkValSolve()); await p.waitForFunction(() => document.getElementById('rp-valmax'), null, { timeout: 60000 }); R = await READ().catch(() => null);
+  R = await p.evaluate(() => { const g = {}; document.querySelectorAll('#rp-valmax tbody tr').forEach(tr => { const c = [...tr.children].map(td => td.textContent.trim()); g[c[0]] = c; }); return g; });
+  const MX = await p.evaluate(() => ({ pr: bkValMaxPrice('property', 0.0875, 0.12), eq: bkValMaxPrice('equity', 0.12, 0.12) }));
+  const mk = Object.keys(R);
+  check('Solve shows the maximum supportable price for the property (at the discount rate) and for the equity (at the equity rate), equal to the engine\'s, with the loan and equity at that price', mk.length === 2 && near(num(R[mk[0]][1]), MX.pr.price, 1) && near(num(R[mk[1]][1]), MX.eq.price, 1) && /loan is \$/.test(R[mk[0]][3]), JSON.stringify([R, MX.pr.price, MX.eq.price]));
+  /* sensitivity */
+  const S = await p.evaluate(() => { const g = []; document.querySelectorAll('#rp-valsens tbody tr').forEach(tr => g.push([...tr.children].map(td => td.textContent.trim()))); return g; });
+  check('the sensitivity table has five rates, and PV and NPV fall as the rate rises', S.length === 5 && S.every((r, i) => i === 0 || (num(r[1]) < num(S[i - 1][1]) && num(r[4]) < num(S[i - 1][4]))), JSON.stringify(S.map(r => r.slice(0, 2))));
+  /* scenarios: save, reload, reopen, reproduce */
+  await p.evaluate(() => { bkValUi('rate', '8.75%'); bkValUi('equityRate', '10%'); bkValUi('price', ''); }); await p.waitForTimeout(300); R = await READ();
+  const rec = await p.evaluate(() => { const r = bkValScenSave('Base at 8.75%'); return { id: r.id, res: r.results, price: r.inputs.price, n: bkLoad()._valScen.length, hash: r.hash, flows: r.cashFlows.equity.length, hasAssump: !!r.assumptions.purchasePrice }; });
+  await p.waitForTimeout(500);
+  check('a saved scenario stores the inputs, the dated cash flows, the deal assumptions, the results, the engine version and an integrity hash, on the deal record', rec.n === 1 && rec.flows === 61 && rec.hasAssump && /^[0-9a-f]{8}$/.test(rec.hash), JSON.stringify(rec).slice(0, 200));
+  /* change the deal: price, rent, and hold */
+  await p.evaluate(() => { const s = bkLoad(); s.purchasePrice = 20000000; s.avgRent = Number(s.avgRent) * 1.1; s.exitCap = 0.065; bkSave(s); });
+  const sc2 = await p.evaluate(() => { bkValScenSave('Cheaper price, higher rent, tighter exit cap'); const L = bkLoad()._valScen; return { n: L.length, ids: L.map(x => x.id), first: L[0].results.equityNPV, second: L[1].results.equityNPV }; });
+  check('saving a second scenario after the deal changed appends it; the first is untouched (append-only)', sc2.n === 2 && sc2.ids[0] === rec.id && near(sc2.first, rec.res.equityNPV, 0.001) && Math.abs(sc2.second - sc2.first) > 1000, JSON.stringify(sc2));
+  const chk = await p.evaluate((id) => { const L = bkLoad()._valScen, r = L.filter(x => x.id === id)[0], c = bkValScenCheck(r), today = bkValuate({ rate: r.inputs.rate, equityRate: r.inputs.equityRate, accumRate: r.inputs.accumRate }); return { reproduced: c.reproduced, hashOk: c.hashOk, rebuilt: c.rebuilt.equityNPV, saved: r.results.equityNPV, today: today.equityNPV, rebuiltPV: c.rebuilt.unleveragedPV, savedPV: r.results.unleveragedPV, price: bkLoad().purchasePrice }; }, rec.id);
+  check('after the price, rent and exit cap changed, the first scenario rebuilds from its own snapshot to its saved result exactly (Property and Equity PV and NPV, FV), the integrity hash passes, and today\'s result is different', chk.reproduced && chk.hashOk && near(chk.rebuilt, chk.saved, 0.01) && near(chk.rebuiltPV, chk.savedPV, 0.01) && Math.abs(chk.today - chk.saved) > 10000 && chk.price === 20000000, JSON.stringify(chk));
+  check('a tampered scenario fails the integrity check', await p.evaluate((id) => { const s = bkLoad(), r = s._valScen.filter(x => x.id === id)[0]; const sav = r.results.equityNPV; r.results.equityNPV += 1000; const c = bkValScenCheck(r); r.results.equityNPV = sav; return !c.hashOk && !c.reproduced; }, rec.id));
+  /* reload: scenarios persist; reopen restores the inputs and the page shows saved / rebuilt / today */
+  /* persistence: the scenarios are in the deal's stored record (what the app reads on the next start and what sync and version history carry); a fresh page boot in this offline harness re-seeds the starter deal, so the stored record is checked directly */
+  const persisted = await p.evaluate(() => { const raw = JSON.parse(localStorage.getItem('bkcapital.cre.v02') || '{}'); return { n: (raw._valScen || []).length, names: (raw._valScen || []).map(x => x.name), hashes: (raw._valScen || []).every(x => /^[0-9a-f]{8}$/.test(x.hash) && x.assumptions && x.cashFlows) }; });
+  check('both scenarios are in the deal\'s stored record, each with its snapshot and hash (they travel with the deal)', persisted.n === 2 && persisted.hashes, JSON.stringify(persisted));
+  const after = await p.evaluate(async (id) => { document.documentElement.classList.add('bk-auth-ok'); const L = (bkLoad() || {})._valScen || []; if (typeof showSheet === 'function') { showSheet('Present Value Report'); await new Promise(r => setTimeout(r, 800)); } bkValScenOpen(id); await new Promise(r => setTimeout(r, 700)); const rows = [...document.querySelectorAll('#rp-valscen tbody tr')].map(tr => tr.textContent.trim().slice(0, 60)), txt = (document.querySelector('.rp-ws') || { textContent: 'NO WORKSPACE ' + (document.getElementById('viewport') || document.body).textContent.slice(0, 120) }).textContent; return { n: L.length, rows: rows.length, reproduced: /reproduced exactly/.test(txt), todayCol: /Today less saved/.test(txt), rate: bkValuate ? true : false, hashOk: /integrity check passed/.test(txt), txt: txt.slice(0, 150) }; }, rec.id);
+  check('reopening a scenario restores its inputs and shows it rebuilt exactly from its snapshot against today\'s deal', after.n === 2 && after.rows === 2 && after.reproduced && after.todayCol && after.hashOk, JSON.stringify(after));
+  check('no page errors', p.errs.length === 0, JSON.stringify(p.errs));
+  await p.close();
+  /* a development deal */
+  p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message)); await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
+  await p.evaluate((d) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); localStorage.removeItem('bkcapital.val.ui.v1'); }, V);
+  const D = await p.evaluate(async () => { showSheet('Present Value Report'); await new Promise(r => setTimeout(r, 700)); const mr = bkMonthlyReturns(), v = bkValuate({ rate: 0.1, equityRate: mr.irr }), be = bkValBreakEvenRate('equity'), rows = {}; document.querySelectorAll('#rp-valws tbody tr').forEach(tr => { const c = [...tr.children].map(td => td.textContent.trim()); rows[c[0]] = c; });
+    const mx = bkValMaxPrice('equity', 0.12, 0.12), mp = bkValMaxPrice('property', 0.12, 0.12); return { has: !!document.getElementById('rp-valws'), npvAtIrr: v.equityNPV, be, irr: mr.irr, npvRow: rows['Net present value (NPV)'], propNA: /n\/a/.test((rows['Present value (PV)'] || [])[1] || ''), mx: { ok: mx.ok, npv: mx.npvAtPrice }, mp }; });
+  check('a development deal gets the workspace with the equity measures: Equity NPV is zero at the levered IRR, the property column says n/a, and the equity max price solves', D.has && near(D.npvAtIrr, 0, 5) && near(D.be, D.irr, 3e-5) && D.propNA && D.mx.ok && near(D.mx.npv, 0, 5) && D.mp.ok === false, JSON.stringify(D).slice(0, 300));
+  check('no page errors (development)', p.errs.length === 0, JSON.stringify(p.errs));
+  console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
+})();

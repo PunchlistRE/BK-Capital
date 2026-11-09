@@ -46,7 +46,12 @@ window.bkValBisect = function(f, lo, hi, tol, maxIt){
 
 /* ---------- the deal's own dated cash flows (current deal, or inside bkRunWith) ---------- */
 window.bkValDealFlows = function(){
-  var s = bkLoad(), c = window.bkPvCalc(s, 0.1), hm = c.ac.holdMonths, d0 = c.d0, U = [], L = [], end = window.bkMonthEnd(d0, hm);
+  var s = bkLoad();
+  /* a development: the equity series the engine's own levered IRR uses (contributions through construction as negatives, distributions and the sale as positives), the first flow dated at closing and the rest month-end (the engine's own IRR dates), valued at the closing date. The property-level series is not published by the development engine, so the unleveraged measures are not offered. */
+  if(/develop/i.test(String(s.dealType || ''))){ var mr = window.bkMonthlyReturns(), E = []; for(var q = 0; q < mr.values.length; q++) E.push({ date:iso(q === 0 && mr.closeDt ? mr.closeDt : mr.dates[q]), amount:num(mr.values[q]) });   /* the engine dates the first (closing) flow at the closing date, the rest month-end: the same dates its own IRR uses */
+    var pos = 0, neg = 0; E.forEach(function(x){ if(x.amount < 0) neg += -x.amount; else pos += x.amount; });
+    return { engineVersion:VER, development:true, valuationDate:E[0].date, saleDate:E[E.length - 1].date, holdMonths:E.length, unlevered:null, equity:E, basis:null, closingEquity:neg, loan:0, price:num(s.purchasePrice), distributions:pos, contributions:neg }; }
+  var c = window.bkPvCalc(s, 0.1), hm = c.ac.holdMonths, d0 = c.d0, U = [], L = [], end = window.bkMonthEnd(d0, hm);
   for(var j = 0; j < hm; j++){ var dt = iso(window.bkMonthEnd(d0, j + 1)); U.push({ date:dt, amount:num(c.opsU[j]) }); L.push({ date:dt, amount:num(c.opsL[j]) }); }
   U.push({ date:iso(end), amount:num(c.netU) }); L.push({ date:iso(end), amount:num(c.saleL) });
   return { engineVersion:VER, valuationDate:iso(d0), saleDate:iso(end), holdMonths:hm, unlevered:U, equity:L, basis:-num(c.ac.initial), closingEquity:num(c.eq0), loan:num(c.debt0), netSale:num(c.netU), equitySale:num(c.saleL), price:num(s.purchasePrice) };
@@ -56,7 +61,13 @@ window.bkValDealFlows = function(){
 /* o: { rate (property discount rate), equityRate, accumRate, fvDate }. Equity rate defaults to the property rate. */
 window.bkValuate = function(o){
   o = o || {}; var f = window.bkValDealFlows(), d0 = f.valuationDate, r = Number(o.rate), re = o.equityRate != null && o.equityRate !== '' ? Number(o.equityRate) : r, ra = o.accumRate != null && o.accumRate !== '' ? Number(o.accumRate) : re;
-  var T = o.fvDate || f.saleDate, pvU = window.bkValPV(f.unlevered, d0, r), pvL = window.bkValPV(f.equity, d0, re);
+  var T = o.fvDate || f.saleDate;
+  if(f.development){ /* equity only: PV of the distributions, PV of every contribution, NPV = their difference (= the XNPV of the whole series) */
+    var dist = f.equity.filter(function(x){ return x.amount > 0; }), cont = f.equity.filter(function(x){ return x.amount < 0; }).map(function(x){ return { date:x.date, amount:-x.amount }; });
+    var pvD = window.bkValPV(dist, d0, re), pvC = window.bkValPV(cont, d0, re), fvD = window.bkValFV(dist, d0, T, ra, 0), fvC = window.bkValFV(cont, d0, T, ra, 0);
+    return { engineVersion:VER, development:true, valuationDate:d0, rate:r, equityRate:re, accumRate:ra, fvDate:iso(T), basis:null, closingEquity:f.contributions, loan:0,
+      unleveragedPV:null, propertyNPV:null, leveragedPV:pvD, equityInvestmentPV:pvC, equityNPV:pvD - pvC, fvUnlevered:null, fvUnleveredNet:null, fvEquity:fvD.fv, fvEquityNet:fvD.fv - fvC.fv, fvExcluded:fvD.excluded + fvC.excluded }; }
+  var pvU = window.bkValPV(f.unlevered, d0, r), pvL = window.bkValPV(f.equity, d0, re);
   var fvU = window.bkValFV(f.unlevered, d0, T, ra, f.basis), fvL = window.bkValFV(f.equity, d0, T, ra, f.closingEquity);
   return { engineVersion:VER, valuationDate:d0, rate:r, equityRate:re, accumRate:ra, fvDate:iso(T), basis:f.basis, closingEquity:f.closingEquity, loan:f.loan,
     unleveragedPV:pvU, propertyNPV:pvU - f.basis, leveragedPV:pvL, equityNPV:pvL - f.closingEquity,
@@ -64,8 +75,8 @@ window.bkValuate = function(o){
 };
 /* the discount rate at which an NPV is zero (the IRR of that cash flow series), or null when none in -50%..200% */
 window.bkValBreakEvenRate = function(kind){
-  var f = window.bkValDealFlows(), d0 = f.valuationDate, series = kind === 'equity' ? f.equity : f.unlevered, init = kind === 'equity' ? f.closingEquity : f.basis;
-  var x = window.bkValBisect(function(r){ return window.bkValNPV(series, d0, r, init); }, -0.5, 2, 0.01); return x.ok ? x.x : null;
+  var f = window.bkValDealFlows(), d0 = f.valuationDate; if(kind !== 'equity' && f.development) return null;
+  var x = window.bkValBisect(function(r){ if(f.development) return window.bkValNPV(f.equity, d0, r, 0); return window.bkValNPV(kind === 'equity' ? f.equity : f.unlevered, d0, r, kind === 'equity' ? f.closingEquity : f.basis); }, -0.5, 2, 0.01); return x.ok ? x.x : null;
 };
 
 /* ---------- maximum supportable purchase price ----------
@@ -75,6 +86,7 @@ window.bkValBreakEvenRate = function(kind){
    highest price whose NPV is still >= 0, then bisects between it and the next price up. */
 window.bkValMaxPrice = function(kind, rate, equityRate){
   var s = bkLoad(), p0 = num(s.purchasePrice); if(!(p0 > 0)) return { ok:false, reason:'enter a purchase price first' };
+  if(/develop/i.test(String(s.dealType || '')) && kind !== 'equity') return { ok:false, reason:'a development has no property-level cash flow series: solve the equity price' };
   var npvAt = function(P){ return window.bkRunWith({ purchasePrice:P }, function(){ var v = window.bkValuate({ rate:rate, equityRate:equityRate != null ? equityRate : rate }); return kind === 'equity' ? v.equityNPV : v.propertyNPV; }); };
   var grid = [], lo = 0.25, hi = 3, N = 24; for(var i = 0; i <= N; i++) grid.push(p0 * lo * Math.pow(hi / lo, i / N));
   var vals = grid.map(npvAt), k = -1; for(var j = grid.length - 1; j >= 0; j--){ if(isFinite(vals[j]) && vals[j] >= 0){ k = j; break; } }

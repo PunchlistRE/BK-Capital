@@ -1060,6 +1060,11 @@
 "close": "</script>"
 },
 {
+"file": "203-bk-valuation-workspace.js",
+"open": "\n<script id=\"bk-valuation-workspace\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
