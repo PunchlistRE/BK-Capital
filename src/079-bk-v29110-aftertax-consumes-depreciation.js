@@ -158,7 +158,7 @@ if(typeof RENDERERS !== 'undefined' && typeof RENDERERS['After-Tax'] === 'functi
       };
 
       if(x.deprSource === 'canonical-depreciation-engine'){
-        var shown = x.rows.slice(0,10);
+        var shown = x.rows;
         var heads = shown.map(function(r){ return '<th>Year '+r.y+'</th>'; }).join('');
         var split = '<div class="tbl-wrap" style="margin-top:16px;"><table class="fin">'
           + '<caption>Depreciation Detail - From the Canonical Depreciation Engine</caption>'

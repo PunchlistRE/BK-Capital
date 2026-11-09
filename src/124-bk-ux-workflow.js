@@ -621,9 +621,9 @@ function kpiBar(sheet){
     var R = window.BKReg, sm = R.summarize(bkLoad()), all = [sm.primary].concat(sm.metrics), f = function(m){ var v = m.value; if(v === null || v === undefined || !isFinite(v)) return '—'; return m.fmt === 'pct' ? pct(v) : m.fmt === 'x' ? v.toFixed(2) + 'x' : money(v); };
     html = R.tiles(sm.analysis.id).map(function(id){ var m = all.filter(function(x){ return x.id === id; })[0]; return m ? cell(esc(m.label), f(m)) : ''; }).join(''); }
   else { var h; try { h = headline(); } catch(e){ h = null; }
-    html = h ? cell('Equity contributed', money(h.tce))
+    html = h ? cell('Total Equity', money(h.tce)) + cell('Loan Amount', money(h.loan))
       + cell('<span title="' + esc(dscrTitle()) + '">Lender DSCR</span>', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '\u2014') + cell('Yield on Cost', pct(h.yoc))
-      + cell('Levered IRR', pct(h.levIRR)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Equity Multiple', mult(h.levMOIC)) + cell('Loan', money(h.loan), h.binding ? esc(bkBindingName(h.binding)) : '')
+      + cell('Levered IRR', pct(h.levIRR)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Equity Multiple', mult(h.levMOIC))
       + cell('Net Profit', money(h.profit)) + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
   /* the inputs-tie chip sits to the right of the last top tab */

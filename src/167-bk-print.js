@@ -36,7 +36,7 @@ var CSS = '#bk-print-head,#bk-print-foot{display:none}table.bk-print-clone{displ
  + 'table.fin td input,table.fin td select,.tbl-wrap input,.tbl-wrap select{border:0 !important;background:transparent !important;box-shadow:none !important;padding:0 !important;outline:0 !important;-webkit-appearance:none;appearance:none;color:inherit !important;font:inherit !important}'
  + 'table.fin td:has(input),table.fin td:has(select){box-shadow:none !important;background:transparent !important}'
  + 'table.fin.bk-m-scroll,table.fin.bk-scrollable,table.rp-tbl,table.rp-tbl.bk-scrollable{display:table !important;overflow:visible !important}.bk-scrollable::before{display:none !important}table.rp-tbl{table-layout:auto !important}table.rp-tbl td,table.rp-tbl th{min-width:0 !important;white-space:nowrap}table.rp-tbl td:first-child,table.rp-tbl th:first-child{white-space:normal}'
- + '#viewport [style*="overflow-x"]{overflow:visible !important}.rp-tbl{width:100% !important;min-width:0 !important;border-collapse:collapse !important}.rp-tbl th,.rp-tbl td{padding:3px 6px !important}.bk-print-fit th,.bk-print-fit td{padding:2px 3px !important;white-space:nowrap}.bk-print-fit th:first-child,.bk-print-fit td:first-child{white-space:normal;min-width:120px}'
+ + '#viewport [style*="overflow-x"]{overflow:visible !important}.rp-tbl{width:100% !important;min-width:0 !important;border-collapse:collapse !important}.rp-tbl th,.rp-tbl td{padding:3px 6px !important}.bk-print-fit th,.bk-print-fit td{padding:2px 3px !important;white-space:nowrap;font-size:inherit !important}.bk-print-fit th:first-child,.bk-print-fit td:first-child{white-space:normal;min-width:120px}html body #viewport table.bk-print-fit.bk-print-fit th,html body #viewport table.bk-print-fit.bk-print-fit td{font-size:inherit !important;padding:2px 3px !important}'
  + 'table.fin.bk-print-orig,table.rp-tbl.bk-print-orig,table.bk-print-orig{display:none !important}table.bk-print-clone{display:table !important;margin-bottom:10px;break-inside:auto}table.rp-tbl tr{break-inside:avoid;page-break-inside:avoid}'
  + '.bk-print-wide table.fin{font-size:7pt !important}.bk-print-wide table.fin th,.bk-print-wide table.fin td{padding:2px 4px !important}'
  + 'svg{max-width:100%;height:auto;break-inside:avoid}'
@@ -102,15 +102,17 @@ var pageStyle = null;
 function prepare(){
   if(document.documentElement.classList.contains('bk-sr-open')) return;   /* the schedule summary prints its own pages */
   cleanup();
+  /* a printout is always the light theme, whatever theme is on screen: switch the theme for the print and put it back after */
+  var de = document.documentElement; window.__bkPrintPrev = { had:de.hasAttribute('data-theme'), val:de.getAttribute('data-theme'), cs:de.style.colorScheme }; de.setAttribute('data-theme', 'light'); de.style.colorScheme = 'light';
   var fr = document.querySelector('#viewport .sheet-frame') || document.getElementById('viewport'); if(!fr) return;
   var head = document.createElement('div'); head.id = 'bk-print-head'; head.innerHTML = headHtml(); fr.insertBefore(head, fr.firstChild);
   var s = safe(function(){ return bkLoad(); }, {}) || {}, foot = document.createElement('div'); foot.id = 'bk-print-foot'; foot.textContent = 'Punchlist Capital · Beta · ' + (s.name || '') + ' · figures from the underwriting model; check against your own'; document.body.appendChild(foot);
-  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl'), splitYears);
+  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl, #viewport table.fin'), splitYears);
   var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land);
   pageStyle = document.createElement('style'); pageStyle.id = 'bk-print-page'; pageStyle.textContent = '@page{size:letter ' + (land ? 'landscape' : 'portrait') + ';margin:12mm 11mm 14mm}'; document.head.appendChild(pageStyle);
   document.querySelectorAll('input[type=text],input[type=number],input:not([type])').forEach(function(i){ if(i.value !== i.getAttribute('value')) i.setAttribute('value', i.value); });
 }
-function cleanup(){ unfit(); ['bk-print-head', 'bk-print-foot', 'bk-print-page'].forEach(function(id){ var e = document.getElementById(id); if(e) e.remove(); }); document.documentElement.classList.remove('bk-print-wide'); }
+function cleanup(){ if(window.__bkPrintPrev){ var de = document.documentElement; if(window.__bkPrintPrev.had) de.setAttribute('data-theme', window.__bkPrintPrev.val); else de.removeAttribute('data-theme'); de.style.colorScheme = window.__bkPrintPrev.cs || ''; window.__bkPrintPrev = null; } unfit(); ['bk-print-head', 'bk-print-foot', 'bk-print-page'].forEach(function(id){ var e = document.getElementById(id); if(e) e.remove(); }); document.documentElement.classList.remove('bk-print-wide'); }
 window.bkPrintPrepare = prepare; window.bkPrintCleanup = cleanup;
 window.bkPrintSection = function(){ prepare(); setTimeout(function(){ window.print(); }, 60); };
 window.addEventListener('beforeprint', function(){ if(!document.getElementById('bk-print-head')) prepare(); });
