@@ -15,6 +15,7 @@ function fcRow(nYears, nAfter){ var h = '<tr class="rp-fc"><th></th>'; for(var i
 function zeroLine(r, ys){ if(r.sec || r.cls) return false; for(var i = 0; i < ys.length; i++) if(Math.abs(num(r.f(ys[i]))) >= 0.5) return false; return true; }
 var OPT = (function(){ try { return JSON.parse(localStorage.getItem('bkcapital.rp.opt.v1') || '{}') || {}; } catch(e){ return {}; } })();
 function saveOpt(){ try { localStorage.setItem('bkcapital.rp.opt.v1', JSON.stringify(OPT)); } catch(e){} }
+window.bkRpOptGet = function(k){ return OPT[k]; };
 window.bkRpOpt = function(k, v){ OPT[k] = v; saveOpt(); showSheet(typeof currentSheet !== 'undefined' ? currentSheet : 'Cash Flow Report'); };
 function isDev(s){ return /develop/i.test(String(s.dealType || '')); }
 function bar(id, extra){ return '<div class="rp-bar">' + (extra || '') + '<span class="rp-sp"></span><button type="button" class="ae-btn" onclick="bkRpCsv(\'' + id + '\')">Download CSV</button><button type="button" class="ae-btn" onclick="window.print()">Print</button></div>'; }
