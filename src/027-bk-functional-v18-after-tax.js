@@ -98,7 +98,7 @@ sheetDealUnderwrite = function(){
 RENDERERS['After-Tax'] = function(){
   const x = bkAfterTaxV18(), s = x.s;
   const money = n => n<0 ? '($'+bkFmt(-n)+')' : '$'+bkFmt(n);
-  const shown = x.rows.slice(0,10), heads = shown.map(r=>`<th>Year ${r.y}</th>`).join('');
+  const shown = x.rows, heads = shown.map(r=>`<th>Year ${r.y}</th>`).join('');
   const cell = k => shown.map(r=>`<td>${money(r[k])}</td>`).join('');
   const main = `<div class="tbl-wrap"><table class="fin"><caption>After-Tax Cash Flow - Depreciation, Taxable Income &amp; Ordinary Tax</caption>
     <thead><tr><th class="rowlabel-h">Line Item</th>${heads}</tr></thead><tbody>

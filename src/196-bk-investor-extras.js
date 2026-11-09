@@ -10,8 +10,8 @@ function X(v){ return isFinite(v) ? v.toFixed(2) + 'x' : '\u2014'; }
 function isDev(s){ return /develop/i.test(String((s || {}).dealType || '')); }
 function data(){ var s = safe(function(){ return bkLoad(); }, null); if(!s || isDev(s)) return null; var x = safe(function(){ return bkAfterTaxV18(); }, null); if(!x || !x.rows || !x.rows.length) return null; x.life2 = safe(function(){ return bkRecoveryPeriod(s); }, null); return x; }
 /* the figures, as rows: [label, value, class] */
-function parts(x){
-  var yrs = x.rows.slice(0, 10), life = x.life2;
+function parts(x, all){
+  var yrs = all ? x.rows : x.rows.slice(0, 10), life = x.life2;   /* the investor PDF page has room for ten years; the report page and its print show every year of the hold */
   return {
     yrs: yrs,
     sale: [['Total acquisition basis', M(x.totalBasis)], ['Land value', M(x.landValue)], ['Accumulated depreciation', M(x.accumDepr)], ['Adjusted basis at sale', M(x.adjustedBasis)], ['Net sale proceeds', M(x.u.netSale)], ['Total taxable gain', M(x.totalGain), 'tot'],
@@ -51,7 +51,7 @@ function reportTable(cap, head, rows){ return '<div class="tbl-wrap" style="marg
 if(typeof RENDERERS !== 'undefined') RENDERERS['After-Tax Report'] = function(){
   var x = data(), s = safe(function(){ return bkLoad(); }, {}) || {};
   if(!x) return { title:'After-Tax Report', crumbs:'Reports', desc:'Depreciation, ordinary income tax and the sale-year tax on the levered cash flow.', meta:{ Property:s.name || '' }, sidebar:'', main:'<div class="note-flag"><span>&#9432;</span><div>The after-tax report applies to acquisitions with a deal entered. Open or create one first.</div></div>' };
-  var p = parts(x), r0 = function(l, k, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + l + '</td>' + p.yrs.map(function(r){ return '<td>' + M(k(r)) + '</td>'; }).join('') + '</tr>'; };
+  var p = parts(x, true), r0 = function(l, k, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + l + '</td>' + p.yrs.map(function(r){ return '<td>' + M(k(r)) + '</td>'; }).join('') + '</tr>'; };
   var main = reportTable('After-Tax Cash Flow', '<th class="rowlabel-h">Line Item</th>' + p.yrs.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join(''),
       r0('NOI After Reserves', function(r){ return r.noi; }) + r0('Less: Interest Expense', function(r){ return -r.interest; }) + r0('Less: Depreciation', function(r){ return -r.depr; }) + r0('Taxable Income', function(r){ return r.taxableIncome; }, 'grandtotal') + r0('Suspended Loss Carryforward', function(r){ return r.lossCF; }) + r0('Ordinary Income Tax', function(r){ return -r.taxDue; }, 'grandtotal'))
     + reportTable('Sale-Year Tax', '<th class="rowlabel-h">Line Item</th><th>Amount</th>', p.sale.map(function(a){ return '<tr' + (a[2] ? ' class="grandtotal"' : '') + '><td class="rowlabel">' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join(''))

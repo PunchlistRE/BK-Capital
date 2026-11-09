@@ -81,7 +81,7 @@ function bkLeaseCohortCFV20(){
 RENDERERS['Lease Cohort CF'] = function(){
   const x = bkLeaseCohortCFV20(), s = x.s, money = n=>n<0?'('+bkFmt(-n)+')':bkFmt(n);
   const unitRows = x.perUnit.map(({u,rollMonth,eff,overridden})=>`<tr><td class="rowlabel">${bkEsc(u.unitId||'-')}</td><td>${u.sf||0}</td><td>${u.leaseEnd||(u.leaseStart?'-':'Vacant at acq.')}</td><td>${rollMonth!==null?rollMonth:'-'}</td><td>${bkPct(Number(eff.renewalProbability)||0)}</td><td>${Number(eff.downtimeMonths)||0} mo</td><td>${overridden?'<span class="status-chip warn">Override</span>':'Global'}</td></tr>`).join('');
-  const shown = x.annual.slice(0,10), heads = shown.map(r=>`<th>Year ${r.y}</th>`).join('');
+  const shown = x.annual, heads = shown.map(r=>`<th>Year ${r.y}</th>`).join('');
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Per-Unit Rollover Summary</caption><thead><tr><th class="rowlabel-h">Unit</th><th>SF</th><th>Lease End</th><th>Rollover Mo.</th><th>Renewal Prob.</th><th>Downtime</th><th>Assumptions</th></tr></thead><tbody>${unitRows||'<tr><td class="rowlabel" colspan="7">No rent roll units.</td></tr>'}</tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Blended Annual Lease Cohort Cash Flow - Projection</caption><thead><tr><th class="rowlabel-h">Line Item</th>${heads}</tr></thead><tbody>
     <tr><td class="rowlabel">Blended Rent (renewal/re-lease probability-weighted)</td>${shown.map(r=>`<td>${money(r.rent)}</td>`).join('')}</tr>
