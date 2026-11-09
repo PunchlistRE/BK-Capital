@@ -21,7 +21,7 @@ window.BK_NAV = [
       { label:'Capital stack', sheets:['Sources & Uses', 'Reserve Accounts'] },
       { label:'Loan', sheets:['Debt', 'Debt Schedule', 'Covenant Monitor'] },
       { label:'Refinance', sheets:['Refinancing', 'Refi / Recap'] },
-      { label:'Compare', sheets:['Financing Lab', 'Financing Compare'] } ] },
+      { label:'Compare', sheets:['Financing Lab', 'Financing Compare', 'Investment Target'] } ] },
   { id:'returns', label:'Returns', q:'What do the investors earn?', color:'#3F6B4A', groups:[
       { label:'Returns', sheets:['Returns', 'Equity Waterfall', 'Waterfall (M)', 'Sponsor CF', 'After-Tax'] },
       { label:'Investors', sheets:['Investors', 'Investor Schedules', 'Liquidity'] },
@@ -69,7 +69,7 @@ window.BK_NAV_FOLDED = FOLDED;
 window.bkNavVisible = function(g){ return g.sheets.filter(function(n){ return !FOLDED[n]; }); };
 window.bkNavHostOf = function(n){ return FOLDED[n] || n; };
 /* the sub-tab row: at most two words a tab (the full name stays in the page title, the menus and the tooltip) */
-window.BK_NAV_SHORT = { 'Sources & Uses':'Sources/Uses', 'Refi / Recap':'Refi/Recap', 'Valuation Report':'Summary', 'Property Valuation Report':'Property Value', 'Sources and Uses Report':'S&U Report', 'Cash Flow Report':'Cash Flow',
+window.BK_NAV_SHORT = { 'Investment Target':'Target', 'Sources & Uses':'Sources/Uses', 'Refi / Recap':'Refi/Recap', 'Valuation Report':'Summary', 'Property Valuation Report':'Property Value', 'Sources and Uses Report':'S&U Report', 'Cash Flow Report':'Cash Flow',
   'Present Value Report':'Present Value', 'Lease Audit Report':'Lease Audit', 'Audit Report':'Input Audit', 'Budget vs Actual':'Budget/Actual', 'Deal Vectors (M)':'Vectors (M)', 'Lease Cohort CF':'Lease Cohorts', 'Sell vs Hold':'Sell/Hold', 'Benchmarks':'Deal Targets', 'Probability-Weighted':'Probability', 'Market Benchmarks':'Benchmarks', 'After-Tax Report':'After-Tax', 'Business Valuation':'Biz Value', 'Refinance Report':'Refi Report', 'Capital Allocation':'Allocation', 'Storage Lifecycle':'Storage', 'Source Ingestion':'Ingestion', 'Investor Schedules':'Schedules', 'Portfolio Dashboard':'Dashboard', 'Portfolio Rollup':'Rollup', 'Financing Compare':'Compare', 'Covenant Monitor':'Covenants', 'Operating Underwrite':'Op. Underwrite', 'Probability-Weighted':'Probability', 'Property Valuation':'Prop. Value', 'Dev Lease-Up':'Lease-Up', 'Refinancing':'Refinance', 'Reserve Accounts':'Reserves' };
 var label = function(s){ return window.BK_NAV_LABELS[s] || s; };
 window.bkNavLabel = label;

@@ -1065,6 +1065,11 @@
 "close": "</script>"
 },
 {
+"file": "204-bk-investment-target.js",
+"open": "\n<script id=\"bk-investment-target\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
