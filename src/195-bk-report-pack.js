@@ -295,7 +295,7 @@ window.bkPackOpen = function(scope){
       var doc = f.contentDocument, run = function(){ try {
           var n = paginate(doc, keep, info); f.style.height = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight) + 'px';
           var el = document.getElementById('pl-pack-n'); if(el) el.textContent = name + ' · ' + n + ' page' + (n === 1 ? '' : 's');
-          var w = f.parentNode.clientWidth, sc = Math.min(1, (w - 24) / 816); if(sc < 1){ f.style.zoom = sc; } } catch(e){ var el2 = document.getElementById('pl-pack-n'); if(el2) el2.textContent = 'The report could not be laid out: ' + (e && e.message || e); } };
+          var w = f.parentNode.clientWidth, sc = Math.min(1, (w - 24) / 816); if(sc < 1){ var fh = parseFloat(f.style.height) || 0; f.parentNode.style.overflowX = 'hidden'; f.style.transformOrigin = '0 0'; f.style.transform = 'scale(' + sc.toFixed(4) + ')'; f.style.margin = '0 0 ' + (-(fh * (1 - sc))).toFixed(1) + 'px ' + Math.max(0, (w - 816 * sc) / 2).toFixed(1) + 'px'; }   /* a transform with the height taken back, not CSS zoom: the same on every phone browser, and no blank space after the last page */ } catch(e){ var el2 = document.getElementById('pl-pack-n'); if(el2) el2.textContent = 'The report could not be laid out: ' + (e && e.message || e); } };
       (doc.fonts && doc.fonts.ready ? Promise.race([doc.fonts.ready, sleep(1500)]) : Promise.resolve()).then(run, run); });
     f.srcdoc = html; busy = false;
   })().catch(function(e){ busy = false; window.bkPackClose(); modal('The report could not be built: ' + esc(e && e.message || e)); });
@@ -309,5 +309,19 @@ function cta(){
   if(!t || t.id !== 'reports') return; var tb = document.querySelector('#viewport .title-block'); if(!tb) return;
   tb.insertAdjacentHTML('afterend', '<div class="bk-pack-cta no-print" style="display:flex;justify-content:flex-end;padding:0 22px 10px"><button type="button" class="bk-btn" onclick="bkPackOpen(\'full\')" title="Cover, contents, executive summary, then every tab and page in the order of the menus">Compile full property report</button></div>');
 }
-var css = document.createElement('style'); css.id = 'bk-pack-css'; css.textContent = '@media print{.bk-pack-cta,#pl-pack,#pl-pack-prog{display:none !important}}'; document.head.appendChild(css);
+var css = document.createElement('style'); css.id = 'bk-pack-css'; css.textContent = '@media print{.bk-pack-cta,#pl-pack,#pl-pack-prog,.bk-prev-x{display:none !important}}'
+  /* PDF previews (full report, PDF summary, investment summary, waterfall): the header never leaves the screen, and on a phone there is always a close button in reach */
+  + '#pl-pack,#pl-report{height:100vh;height:100dvh;width:100vw;max-width:100vw;overflow:hidden;box-sizing:border-box;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);touch-action:pan-x pan-y}'
+  + '#pl-pack>div:first-child,#pl-report>div:first-child{flex:0 0 auto;flex-wrap:wrap;position:relative;z-index:2}#pl-pack>div:last-child{min-height:0;-webkit-overflow-scrolling:touch}#pl-report>iframe{min-height:0}'
+  + '.bk-prev-x{display:none}@media(max-width:820px){.bk-prev-x{display:flex;position:fixed;right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 8px);z-index:100001;width:44px;height:44px;border-radius:50%;border:2px solid #fff;background:#0e2a4a;color:#fff;font:700 20px/1 Inter,system-ui,sans-serif;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.45);cursor:pointer;padding:0}'
+  + '#pl-pack>div:first-child,#pl-report>div:first-child{padding-right:64px !important;gap:8px 8px !important}#pl-pack>div:first-child button,#pl-report>div:first-child button{min-height:36px}}';
+document.head.appendChild(css);
+/* a close button that is fixed to the screen, the Escape key, and the phone's back gesture all close a preview */
+function closeAny(){ if(window.bkPackClose) window.bkPackClose(); if(window.bkReportClose) window.bkReportClose(); var x = document.querySelector('.bk-prev-x'); if(x) x.remove(); }
+function dress(o){ if(!o || o._bkx) return; o._bkx = 1; var old = document.querySelector('.bk-prev-x'); if(old) old.remove();
+  var x = document.createElement('button'); x.type = 'button'; x.className = 'bk-prev-x'; x.setAttribute('aria-label', 'Close preview'); x.textContent = '✕'; x.onclick = function(){ closeAny(); }; document.body.appendChild(x);
+  try { if(!(history.state && history.state.bkPrev)) history.pushState({ bkPrev:1 }, ''); } catch(e){} }
+try { new MutationObserver(function(){ var o = document.getElementById('pl-pack') || document.getElementById('pl-report'); if(o) dress(o); else { var x = document.querySelector('.bk-prev-x'); if(x) x.remove(); } }).observe(document.body, { childList:true }); } catch(e){}
+window.addEventListener('popstate', function(){ if(document.getElementById('pl-pack') || document.getElementById('pl-report')) closeAny(); });
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && (document.getElementById('pl-pack') || document.getElementById('pl-report'))) closeAny(); });
 })();
