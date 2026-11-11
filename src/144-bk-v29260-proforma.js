@@ -59,8 +59,8 @@ function chartCoverage(D){
   return svgOpen(W, Hh, bkNoiBasisLabel('dscr') + ' against debt service by year') + g + '</svg>';
 }
 /* equity cash flow by year (negative at close, then distributions and sale) with the running total */
-function chartCash(D){
-  var W = chartW(), Hh = 270, L = 58, R = 14, T = 22, B = 30, n = D.Y.length, vals = D.Y.map(function(r){ return r.cf; }).concat(D.Y.map(function(r){ return r.cum; }));
+function chartCash(D, hh){
+  var W = chartW(), Hh = hh || 270, L = 58, R = 14, T = 22, B = 30, n = D.Y.length, vals = D.Y.map(function(r){ return r.cf; }).concat(D.Y.map(function(r){ return r.cum; }));
   var mx = niceMax(Math.max.apply(null, vals.concat([1]))), mn = -niceMax(Math.max.apply(null, vals.map(function(v){ return Math.max(0, -v); }).concat([0])) || 1); if(Math.min.apply(null, vals) >= 0) mn = 0;
   var bw = (W - L - R) / n, bh = Hh - T - B, Yp = function(v){ return T + (mx - v) / (mx - mn) * bh; }, g = '';
   for(var t = 0; t <= 4; t++){ var v = mn + (mx - mn) * t / 4, y = Yp(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="' + COL.grid + '"/><text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">' + axisLbl(v) + '</text>'; }
