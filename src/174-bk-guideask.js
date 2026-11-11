@@ -129,6 +129,25 @@ add('The hidden SYS_ sheets', ['sys', 'sys engine', 'backend', 'engine sheets', 
 /* ------------------------------------------------------------ generated topics (1.9.5)
    Every input in the field registry (src/139b), every figure in the metric registry and every page in the sheet list is answerable without a hand-written entry: "where do I change X", "what is my Y" (the live value, from the deal), "what is Z". The answer reads the open deal; nothing is calculated here.
    A hand-written topic that matches as well always comes first. */
+
+/* valuation and return measures (src/202 to 204): answers read live figures from the valuation engine */
+function vr(){ return safe(function(){ return window.bkValReturns(); }, null); }
+function vm(){ return safe(function(){ var s = deal(), c = window.bkPvCalc(s, typeof window.bkRpOptGet === 'function' ? window.bkRpOptGet('pvRate') : undefined); return window.bkValuate({ rate:c.base, equityRate:c.base }); }, null); }
+var PVR = P('Present Value Report', null, ['Reports', 'Present Value Report']);
+add('IRR: internal rate of return', ['irr', 'internal rate of return', 'levered irr', 'unlevered irr', 'unleveraged irr', 'xirr', 'what is irr', 'what is the irr'], function(){ var r = vr(); return 'IRR is the rate at which the dated cash flows have an NPV of zero, so it uses <b>when</b> each dollar arrives. The levered IRR is the equity\'s; the unleveraged IRR is the property\'s.' + (r && isFinite(r.levIRR) ? ' Here the levered IRR is <b>' + pc(r.levIRR, 2) + '</b>' + (r.unlevIRR != null && isFinite(r.unlevIRR) ? ' and the unleveraged IRR <b>' + pc(r.unlevIRR, 2) + '</b>' : '') + '. The Present Value Report sets it beside the CAGR.' : ''); }, PVR);
+add('CAGR: compound annual growth rate', ['cagr', 'compound annual growth', 'compound growth', 'annualized return', 'required annual return', 'what is cagr', 'growth rate target'], function(){ var r = vr(); return 'CAGR is (end value / start value)^(1 / years) - 1 for <b>one</b> amount in and <b>one</b> amount out, with no interim cash. Use it to plan a target (Investment Target); use IRR to judge a deal.' + (r && r.impliedCagr != null ? ' This deal\'s equity multiple implies a CAGR of <b>' + pc(r.impliedCagr, 2) + '</b> over ' + r.holdYears.toFixed(1) + ' years.' : ''); }, P('Investment Target', null, ['Debt', 'Compare', 'Investment Target']));
+add('IRR versus CAGR', ['irr cagr', 'irr vs cagr', 'irr versus cagr', 'difference between irr and cagr', 'cagr irr difference', 'why is irr different from cagr'], function(){ var r = vr(); return 'They agree only for one payment in and one out. A deal with interim cash has an IRR above or below its implied CAGR depending on when cash returns.' + (r && isFinite(r.levIRR) && r.impliedCagr != null ? ' Here: levered IRR <b>' + pc(r.levIRR, 2) + '</b> against an implied CAGR of <b>' + pc(r.impliedCagr, 2) + '</b>. The Return measures table explains the gap.' : ''); }, PVR);
+add('Present value (PV)', ['present value', 'pv', 'discount rate', 'discounted cash flow', 'dcf', 'what is present value'], function(){ var v = vm(); return 'Present value discounts each dated cash flow back to the valuation date at a rate. Unleveraged PV is the property\'s; leveraged PV is the equity\'s (the loan is never added).' + (v ? ' At the report\'s middle rate of <b>' + pc(v.rate, 2) + '</b>: unleveraged PV <b>' + m0(v.unleveragedPV) + '</b>, leveraged PV <b>' + m0(v.leveragedPV) + '</b>.' : ''); }, PVR);
+add('NPV: net present value', ['npv', 'net present value', 'property npv', 'equity npv', 'is the price too high', 'is this a good price'], function(){ var v = vm(); return 'NPV is present value less what you pay. Property NPV compares the unleveraged PV with the acquisition basis; equity NPV compares the leveraged PV with the closing equity. A positive PV alone is not a positive NPV.' + (v ? ' At <b>' + pc(v.rate, 2) + '</b>: property NPV <b>' + m0(v.propertyNPV) + '</b>, equity NPV <b>' + m0(v.equityNPV) + '</b>.' : ''); }, PVR);
+add('Future value (FV)', ['future value', 'fv', 'accumulated value', 'accumulate', 'what will it be worth', 'what is future value'], function(){ var v = vm(); return 'Future value accumulates each dated cash flow to a chosen date at an accumulation rate. Set the rate and the date in the valuation workspace.' + (v ? ' At <b>' + pc(v.accumRate, 2) + '</b> to ' + esc(v.fvDate) + ': equity FV <b>' + m0(v.fvEquity) + '</b>.' : ''); }, PVR);
+add('Maximum purchase price', ['maximum price', 'max price', 'maximum supportable price', 'how much can i pay', 'what should i pay', 'highest price', 'offer price', 'walk away price'], 'Solve it in the valuation workspace: it finds the price at which NPV is zero with the whole deal re-run at each trial price (the loan, closing equity, costs and exit all move with the price). Pre-Offer Bid is the older bid tool for a target return.', PVR);
+add('Save a valuation scenario', ['valuation scenario', 'save scenario', 'saved scenario', 'scenarios', 'compare scenarios', 'reopen scenario'], 'Name and save a scenario at the bottom of the valuation workspace. It keeps its rates, price, cash flows and the deal\'s assumptions, so it can be reopened and rebuilt exactly later; scenarios are never overwritten.', PVR);
+add('Investment Target calculator', ['investment target', 'target calculator', 'reverse investment lab', 'grow to', 'turn into', 'how much return do i need', 'required return to reach'], 'Enter a starting amount, a target and a period; it gives the compound annual return needed and a growth path. It is on Debt > Compare.', P('Investment Target', null, ['Debt', 'Compare', 'Investment Target']));
+add('Waterfall summary (one page)', ['waterfall summary', 'one page waterfall', 'waterfall pdf', 'print waterfall', 'promote summary', 'lp gp split'], 'Open Equity Waterfall and use <b>Waterfall summary (1 page PDF)</b>: the structure, what each tier paid each partner, and the partners\' cash flow by year on one Letter page.', P('Equity Waterfall', null, ['Returns', 'Equity Waterfall']));
+add('Print or save as PDF', ['print', 'pdf', 'save as pdf', 'export pdf', 'full report', 'compile report', 'summary pdf', 'download report'], 'Every page has Print / PDF (always light, US Letter). <b>Create PDF summary</b> on Home builds the investor summary; <b>Compile full property report</b> on Reports builds every page in order.', P('Reports', null, ['Reports']));
+add('Bottom band: key figures', ['bottom band', 'footer', 'bottom bar', 'key figures', 'total equity', 'loan amount'], 'The bar at the bottom shows Total Equity, Loan Amount, Lender DSCR, Yield on Cost, Levered and Unlevered IRR, Equity Multiple, Net Profit and the Case, for the deal and case in view.', P('Home', null, ['Overview', 'Home']));
+
+T.slice(-12).forEach(function(t){ t.boost = 3; });   /* the newer, more specific topics win a tie with an older general one */
 var GEN = null;
 function kindFmt(f, v){
   if(v == null || v === '') return null;
@@ -174,9 +193,13 @@ function scoreTopic(t, q){
   var tt = toks(t.title), th = tt.filter(function(w){ return qs[w]; }).length; if(th) best += th * 2;
   return best;
 }
+var VOC = null;
+function vocab(){ if(VOC) return VOC; VOC = {}; T.concat(generated()).forEach(function(t){ t.k.forEach(function(ph){ toks(ph).forEach(function(w){ if(w.length >= 5) VOC[w] = 1; }); }); toks(t.title).forEach(function(w){ if(w.length >= 5) VOC[w] = 1; }); }); return VOC; }
+function ed1(a, b){ if(a === b) return true; var la = a.length, lb = b.length; if(Math.abs(la - lb) > 1) return false; var i = 0, j = 0, e = 0; while(i < la && j < lb){ if(a[i] === b[j]){ i++; j++; continue; } if(++e > 1) return false; if(la > lb) i++; else if(lb > la) j++; else { i++; j++; } } return e + (la - i) + (lb - j) <= 1; }
+function fuzzy(q){ var V = vocab(), out = q.slice(); q.forEach(function(w){ if(w.length < 5 || V[w]) return; Object.keys(V).forEach(function(v){ if(out.indexOf(v) < 0 && ed1(w, v)) out.push(v); }); }); return out; }   /* one-letter typos: "vacany", "waterfal" */
 function ask(question){
-  var q = toks(question); if(!q.length) return [];
-  return T.concat(generated()).map(function(t){ return { t:t, s:scoreTopic(t, q) - (t.gen ? 1 : 0) }; }).filter(function(z){ return z.s >= 8; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 3).map(function(z){ return z.t; });
+  var q = fuzzy(toks(question)); if(!q.length) return [];
+  return T.concat(generated()).map(function(t){ return { t:t, s:scoreTopic(t, q) - (t.gen ? 1 : 0) + (t.boost || 0) }; }).filter(function(z){ return z.s >= 8; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 3).map(function(z){ return z.t; });
 }
 function answerOf(t){ var s = deal(), a = typeof t.a === 'function' ? safe(function(){ return t.a(s); }, '') : t.a; var note = ''; if(t.dev && !isDev(s)) note = ' <i>(This is a development-deal page; the open deal is an acquisition.)</i>'; return a + note; }
 
@@ -203,9 +226,11 @@ function take(i){
 
 /* ------------------------------------------------------------ the box */
 var EXAMPLES = ['Where do I change the exit cap?', 'What is my lender DSCR?', 'How do I model NNN recoveries?', 'Where is the waterfall?'];
+function suggest(question){ var q = fuzzy(toks(question)); if(!q.length) return []; return T.concat(generated()).map(function(t){ return { t:t, s:scoreTopic(t, q) }; }).filter(function(z){ return z.s >= 3; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 3).map(function(z){ return z.t; }); }
 function resultsHtml(q){
   var hits = ask(q); window.__bkAskLast = hits;
   if(!String(q || '').trim()) return '';
+  if(!hits.length){ var sg = suggest(q); if(sg.length){ window.__bkAskLast = sg; return '<div class="bk-ask-card"><b>Closest matches</b> (I was not sure, so check these)</div>' + sg.map(function(t, i){ return '<div class="bk-ask-card"><div class="bk-ask-t">' + esc(t.title) + '</div><div class="bk-ask-a">' + answerOf(t) + '</div><div class="bk-ask-p">' + t.go.path.map(esc).join(' › ') + '</div><button type="button" class="bk-ask-go" data-i="' + i + '">Take me there</button></div>'; }).join(''); } }
   if(!hits.length) return '<div class="bk-ask-card"><b>I couldn’t match that</b> to an input, a figure or a page. Try the name of what you are after: <i>exit cap</i>, <i>vacancy</i>, <i>purchase price</i>, <i>levered IRR</i>, <i>waterfall</i> or <i>rent roll</i>.</div>';
   return hits.map(function(t, i){ return '<div class="bk-ask-card"><div class="bk-ask-t">' + esc(t.title) + '</div><div class="bk-ask-a">' + answerOf(t) + '</div><div class="bk-ask-p">' + t.go.path.map(esc).join(' › ') + '</div><button type="button" class="bk-ask-go" data-i="' + i + '">Take me there</button></div>'; }).join('');
 }
