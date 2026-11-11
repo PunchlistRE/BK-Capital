@@ -44,15 +44,15 @@ function tabPages(t){
 /* the sections of a report */
 function plan(scope, here){
   var secs = [], tabs = NAV_TABS.filter(function(t){ return !(window.bkNavTabHidden && window.bkNavTabHidden(t, '')); });
-  if(scope === 'page') return [{ kind:'page', id:'p-' + here, sheet:here, max:1 }];
-  if(scope === 'tab'){ var t = tabOfSheet(here); if(!t) return [{ kind:'page', id:'p-' + here, sheet:here, max:1 }];
+  if(scope === 'page') return [{ kind:'page', id:'p-' + here, sheet:here, max:1, cont:8 }];
+  if(scope === 'tab'){ var t = tabOfSheet(here); if(!t) return [{ kind:'page', id:'p-' + here, sheet:here, max:1, cont:8 }];
     var pg = tabPages(t); secs.push({ kind:'tab', id:'t-' + t.id, tab:t, pages:pg, max:1 });
-    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:1 }); }); return secs; }
+    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:1, cont:8 }); }); return secs; }
   secs.push({ kind:'cover', id:'cover' }, { kind:'toc', id:'toc', max:3 });
   secs.push({ kind:'page', id:'p-Home', sheet:'Home', exec:true, tab:tabOfSheet('Home'), max:1 });
   tabs.forEach(function(t){ if(t.id === 'overview' || NOT_IN_PROPERTY[t.id]) return; var pg = tabPages(t); if(!pg.length) return;
     secs.push({ kind:'tab', id:'t-' + t.id, tab:t, pages:pg, max:1 });
-    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:1 }); }); });
+    pg.forEach(function(p){ secs.push({ kind:'page', id:'p-' + p.sheet, sheet:p.sheet, tab:t, group:p.group, max:1, cont:8 }); }); });
   return secs;
 }
 
@@ -150,7 +150,7 @@ function paginate(doc, secs, info){
     return pg;
   }
   function nextPage(){
-    if(S.secPages >= (S.sec.max || 2)){ S.stop = true; var n = S.pg && S.pg.querySelector('.pf-note'); if(n) n.textContent = 'Summary: the page itself has more (Print / PDF on the page)'; return false; }
+    if(S.secPages >= (S.sec.cont || S.sec.max || 2)){ S.stop = true; var n = S.pg && S.pg.querySelector('.pf-note'); if(n) n.textContent = 'Summary: the page itself has more (Print / PDF on the page)'; return false; }
     S.secPages++; newPage(false);
     var c = mk('div', 'pk-cont'); c.textContent = S.sec.headRight + ' (continued)'; S.root.insertBefore(c, S.root.firstChild); return true;
   }
@@ -193,7 +193,7 @@ function paginate(doc, secs, info){
       for(var k = 0; k < 3 && wid(t) > W + 1; k++){ var z = parseFloat(t.style.zoom) || 1; t.style.zoom = Math.max(0.5, z * W / wid(t) - 0.005).toFixed(3); zoomWidth(t); } });
     /* a page summary is ONE page: its whole content is scaled to fit the page (never below 50%; what still does not fit is cut and says so) */
     if(sec && sec.max === 1 && sec.kind === 'page'){ var Hb = stage.ownerDocument.defaultView.innerHeight ? 9.5 * 96 - 6 : 906;
-      for(var it = 0; it < 4; it++){ var H = node.getBoundingClientRect().height; if(H <= Hb) break; var z0 = parseFloat(node.style.zoom) || 1, z1 = Math.max(0.5, z0 * Hb / H - 0.01); if(z1 >= z0 - 0.002) break; node.style.zoom = z1.toFixed(3); if(!sec.exec){ node.style.width = (100 / z1).toFixed(2) + '%'; var pw = node.parentNode.getBoundingClientRect().width; if(pw && node.getBoundingClientRect().width > pw * 1.02) node.style.width = '100%'; /* browsers differ on how a percentage width resolves inside a zoomed box: if the first guess overflows, use 100% */ } } }
+      for(var it = 0; it < 4; it++){ var H = node.getBoundingClientRect().height; if(H <= Hb) break; var z0 = parseFloat(node.style.zoom) || 1, z1 = Math.max(0.6, z0 * Hb / H - 0.01); if(z1 >= z0 - 0.002) break; node.style.zoom = z1.toFixed(3); if(!sec.exec){ node.style.width = (100 / z1).toFixed(2) + '%'; var pw = node.parentNode.getBoundingClientRect().width; if(pw && node.getBoundingClientRect().width > pw * 1.02) node.style.width = '100%'; /* browsers differ on how a percentage width resolves inside a zoomed box: if the first guess overflows, use 100% */ } } }
     if(sec && !sec.exec){ /* nothing may stay wider than the page: tables that cannot shrink are scaled with the page */
       for(var w = 0; w < 4; w++){ var pw2 = node.parentNode.getBoundingClientRect().width, nw = node.getBoundingClientRect().width; if(!pw2 || nw <= pw2 * 1.005) break; var zz = parseFloat(node.style.zoom) || 1; node.style.zoom = Math.max(0.4, zz * pw2 / nw - 0.005).toFixed(3); } }
     stage.removeChild(node);
