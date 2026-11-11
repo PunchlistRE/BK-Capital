@@ -74,7 +74,7 @@ function chartCash(D){
   g += '<polyline points="' + pts.map(function(p){ return p[0] + ',' + p[1]; }).join(' ') + '" fill="none" stroke="' + COL.gold + '" stroke-width="2.5"/>';
   pts.forEach(function(p){ g += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4" fill="' + COL.gold + '" stroke="#fff" stroke-width="1.5"/>'; });
   var pb = null; for(var k = 0; k < D.Y.length; k++){ if(D.Y[k].cum >= 0){ pb = k; break; } }
-  if(pb != null) g += '<text x="' + (pts[pb][0] - 8) + '" y="' + (pts[pb][1] - 14) + '" text-anchor="end" font-size="10.5" font-weight="700" fill="' + COL.ok + '">money back</text>';
+  if(pb != null) g += '<text x="' + (pts[pb][0] - 34) + '" y="' + (pts[pb][1] - 14) + '" text-anchor="end" font-size="10.5" font-weight="700" fill="' + COL.ok + '">money back</text>';
   return svgOpen(W, Hh, 'Equity cash flow by year with running total') + g + '</svg>';
 }
 /* where the profit comes from: equity in, operating cash flow, the sale (net of the loan), profit */
@@ -113,11 +113,11 @@ function chartDollar(D){
   return svgOpen(W, Hh, 'Where each dollar of income goes, Year 1') + g + '</svg>';
 }
 function gauge(D){
-  var h = Number(D.pol.targetIRR) || 0.12, irr = D.irr, mx = Math.max(0.3, h * 1.6, (isFinite(irr) ? irr : 0) * 1.2), W = chartW(), Hh = 66, edge = W < 600 ? 64 : 40, X_ = function(v){ return Math.max(0, Math.min(1, v / mx)) * (W - 8) + 4; }, ok = isFinite(irr) && irr >= h;
+  var h = Number(D.pol.targetIRR) || 0.12, irr = D.irr, mx = Math.max(0.3, h * 1.6, (isFinite(irr) ? irr : 0) * 1.2), W = chartW(), Hh = 66, lw = 8 * ('levered IRR ' + P(irr, 1) + ' · ' + Math.abs((irr - h) * 100).toFixed(1) + ' pts short').length, edge = W < 600 ? 64 : 40, X_ = function(v){ return Math.max(0, Math.min(1, v / mx)) * (W - 8) + 4; }, ok = isFinite(irr) && irr >= h;
   return svgOpen(W, Hh, 'Levered IRR against the hurdle') + '<rect x="4" y="26" width="' + (W - 8) + '" height="14" rx="7" fill="rgba(120,120,120,.18)"/><rect x="4" y="26" width="' + Math.max(0, X_(isFinite(irr) ? Math.max(irr, 0) : 0) - 4) + '" height="14" rx="7" fill="' + (ok ? COL.ok : COL.dn) + '"/>'
     + (isFinite(irr) && !ok ? '<rect x="' + X_(Math.max(irr, 0)) + '" y="26" width="' + Math.max(0, X_(h) - X_(Math.max(irr, 0))) + '" height="14" fill="' + COL.dn + '" fill-opacity=".16" stroke="' + COL.dn + '" stroke-dasharray="3 2"/>' : '')
     + '<line x1="' + X_(h) + '" x2="' + X_(h) + '" y1="18" y2="48" stroke="currentColor" stroke-width="2"/><text x="' + Math.min(W - edge, Math.max(edge, X_(h))) + '" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">hurdle ' + P(h, 1) + '</text>'
-    + '<text x="' + Math.min(W - edge, Math.max(edge, X_(isFinite(irr) ? Math.max(irr, 0) : 0))) + '" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">levered IRR ' + P(irr, 1) + (isFinite(irr) ? ' · ' + Math.abs((irr - h) * 100).toFixed(1) + ' pts ' + (ok ? 'above' : 'short') : '') + '</text></svg>';
+    + '<text x="' + Math.min(W - 4 - lw / 2, Math.max(4 + lw / 2, X_(isFinite(irr) ? Math.max(irr, 0) : 0))) + '" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="' + (ok ? COL.ok : COL.dn) + '">levered IRR ' + P(irr, 1) + (isFinite(irr) ? ' · ' + Math.abs((irr - h) * 100).toFixed(1) + ' pts ' + (ok ? 'above' : 'short') : '') + '</text></svg>';
 }
 
 /* ------------------------------------------------------------------ blocks */

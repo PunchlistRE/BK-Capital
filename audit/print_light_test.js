@@ -13,7 +13,7 @@ const ppm = (pdf, page) => { const r = cp.spawnSync('pdftoppm', ['-r', '50', '-f
   for (const years of [3, 10, 15]) for (const sheet of SHEETS) {
     const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' }); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
     await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(600);
-    await p.evaluate(([d, y, sh]) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d, { holdYears: y }); bkSave(s); document.documentElement.setAttribute('data-theme', 'dark'); showSheet(sh); }, [A, years, sheet]); await p.waitForTimeout(800);
+    await p.evaluate(([d, y, sh]) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d, { holdYears: y }); bkSave(s); window.bkTheme.set('dark'); showSheet(sh); }, [A, years, sheet]); await p.waitForTimeout(800);
     await p.emulateMedia({ media: 'print', colorScheme: 'dark' }); await p.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await p.waitForTimeout(400);
     const pdf = path.join(tmp, (sheet + years).replace(/\W+/g, '_') + '.pdf'); await p.pdf({ path: pdf, preferCSSPageSize: true, printBackground: true });
     const info = cp.spawnSync('pdfinfo', [pdf]).stdout.toString(), pages = +(/Pages:\s+(\d+)/.exec(info) || [0, 0])[1], size = (/Page size:\s+(.*)/.exec(info) || [0, ''])[1];
