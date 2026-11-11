@@ -1070,6 +1070,11 @@
 "close": "</script>"
 },
 {
+"file": "205-bk-waterfall-summary.js",
+"open": "\n<script id=\"bk-waterfall-summary\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"

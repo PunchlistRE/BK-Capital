@@ -80,11 +80,12 @@ function splitKeep(t, groups){
     anchor.parentNode.insertBefore(c, anchor.nextSibling); anchor = c; });
   t.classList.add('bk-print-orig'); t.classList.remove('bk-print-clone');   /* a piece that is cut again is hidden like any original */
 }
-function splitYears(t){
+function splitYears(t, per){ per = per || YEARS_PER_PAGE;
   var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
-  if(yr.length <= YEARS_PER_PAGE || t.classList.contains('bk-print-clone')) return;
+  if(yr.length <= per || t.classList.contains('bk-print-clone')) return;
   var rest = hc.map(function(c, q){ return q; }).filter(function(q){ return q !== 0 && yr.indexOf(q) < 0; }), chunks = [];
-  for(var a = 0; a < yr.length; a += YEARS_PER_PAGE) chunks.push(yr.slice(a, a + YEARS_PER_PAGE));
+  var nPieces = Math.ceil(yr.length / per), size = Math.ceil(yr.length / nPieces);   /* equal pieces: 15 years is 3 x 5, not 6 + 6 + 3 */
+  for(var a = 0; a < yr.length; a += size) chunks.push(yr.slice(a, a + size));
   splitKeep(t, chunks.map(function(ch, n){ return [0].concat(ch).concat(n === chunks.length - 1 ? rest : []); }));
 }
 function fitTables(land){
@@ -109,7 +110,7 @@ function prepare(){
   var s = safe(function(){ return bkLoad(); }, {}) || {}, foot = document.createElement('div'); foot.id = 'bk-print-foot'; foot.textContent = 'Punchlist Capital · Beta · ' + (s.name || '') + ' · figures from the underwriting model; check against your own'; document.body.appendChild(foot);
   /* a chosen option prints as text (a drop-down prints blank) */
   [].forEach.call(document.querySelectorAll('#viewport select'), function(sel){ var o = sel.options[sel.selectedIndex]; if(!o) return; var sp = document.createElement('span'); sp.className = 'bk-print-sel'; sp.textContent = o.text; sel.classList.add('bk-print-hasval'); sel.parentNode.insertBefore(sp, sel.nextSibling); });
-  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl, #viewport table.fin'), splitYears);
+  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl, #viewport table.fin'), function(t){ splitYears(t, t.classList.contains('rp-tbl') ? YEARS_PER_PAGE : 6); });
   var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land);
   pageStyle = document.createElement('style'); pageStyle.id = 'bk-print-page'; pageStyle.textContent = '@page{size:letter ' + (land ? 'landscape' : 'portrait') + ';margin:12mm 11mm 14mm}'; document.head.appendChild(pageStyle);
   document.querySelectorAll('input[type=text],input[type=number],input:not([type])').forEach(function(i){ if(i.value !== i.getAttribute('value')) i.setAttribute('value', i.value); });
