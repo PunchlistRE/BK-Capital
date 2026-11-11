@@ -16,7 +16,7 @@
    Discounting: actual days / 365 from the valuation date (the engine's XNPV, bkXnpv).
    ============================================================================================ */
 (function(){
-var VER = 'val-1.0';
+var VER = 'val-1.1';
 window.bkValEngineVersion = VER;
 function num(v){ v = Number(v); return isFinite(v) ? v : 0; }
 function iso(d){ d = new Date(d); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
@@ -79,6 +79,34 @@ window.bkValBreakEvenRate = function(kind){
   var x = window.bkValBisect(function(r){ if(f.development) return window.bkValNPV(f.equity, d0, r, 0); return window.bkValNPV(kind === 'equity' ? f.equity : f.unlevered, d0, r, kind === 'equity' ? f.closingEquity : f.basis); }, -0.5, 2, 0.01); return x.ok ? x.x : null;
 };
 
+/* ---------- IRR and CAGR, told apart ----------
+   IRR   the rate at which the NPV of the DATED cash flows is zero (money-weighted: when cash arrives matters).
+   CAGR  (end / start)^(1 / years) - 1 for ONE start amount and ONE end amount, no interim flows.
+   The deal's headline IRRs are the engine's own (ac.irr, mr.irr); the implied CAGR is the CAGR the same equity in and the same
+   multiple out would give if every dollar went in at the start and came back at the end. The gap between the two is the timing effect. */
+window.bkValReturns = function(){
+  var s = bkLoad(), f = window.bkValDealFlows(), mr = window.bkMonthlyReturns(), dev = !!f.development, years = f.holdMonths / 12, d0 = f.valuationDate, sale = f.saleDate;
+  var ac = dev ? null : window.bkAnnualCF(), pos = f.equity.filter(function(x){ return x.amount > 0; }), tot = pos.reduce(function(t, x){ return t + x.amount; }, 0);
+  var early = pos.filter(function(x){ return x.date < sale; }).reduce(function(t, x){ return t + x.amount; }, 0);
+  var avgYear = tot > 0 ? pos.reduce(function(t, x){ return t + x.amount * days(d0, x.date) / 365; }, 0) / tot : null;
+  var moic = num(mr.moic), levIRR = num(mr.irr), unIRR = dev ? null : num(ac.irr), contrib = dev ? f.contributions : f.closingEquity;
+  return { engineVersion:VER, development:dev, holdYears:years, levIRR:levIRR, unlevIRR:unIRR, multiple:moic, impliedCagr:moic > 0 && years > 0 ? Math.pow(moic, 1 / years) - 1 : null,
+    contributed:contrib, distributed:tot, earlyShare:tot > 0 ? early / tot : null, avgArrivalYear:avgYear, cashYieldPerYear:contrib > 0 ? early / years / contrib : null,
+    breakEvenLev:window.bkValBreakEvenRate('equity'), breakEvenUnlev:dev ? null : window.bkValBreakEvenRate('property') };
+};
+/* the same start and end amounts as ONE payment: the IRR of a two-flow dated series equals the CAGR (shown beside the deal, where it does not) */
+window.bkValSinglePaymentIrr = function(capital, target, years){
+  if(!(capital > 0) || !(target > 0) || !(years > 0)) return NaN; var d0 = '2027-01-01', d1 = iso(new Date(Date.UTC(2027, 0, 1) + Math.round(years * 365) * 86400000));
+  var r = window.bkValBisect(function(x){ return window.bkValNPV([{ date:d1, amount:target }], d0, x, capital); }, -0.99, 10, 1e-9, 200); return r.ok ? r.x : NaN;
+};
+/* the exit-cap widening (in points) that takes the levered IRR down to a required return; null when it is already short, or none up to 6 points */
+window.bkValCapCushion = function(required){
+  var s = bkLoad(), cap0 = num(s.exitCap); if(!(cap0 > 0)) return null;
+  var irrAt = function(d){ return window.bkRunWith({ exitCap:cap0 + d }, function(){ return num(window.bkMonthlyReturns().irr); }); };
+  if(irrAt(0) < required) return { already:true };
+  if(irrAt(0.06) > required) return { none:true, upTo:0.06 };
+  var r = window.bkValBisect(function(d){ return irrAt(d) - required; }, 0, 0.06, 1e-7, 40); return r.ok ? { points:r.x * 100, capFrom:cap0, capTo:cap0 + r.x } : null;
+};
 /* ---------- maximum supportable purchase price ----------
    The price P at which the chosen NPV is zero, with the WHOLE deal re-run at every trial price (bkRunWith): closing costs and fees, the loan
    (LTV, LTC, DSCR and debt-yield sizing), the closing equity, debt service and the exit all respond to P. Never "PV minus a fixed number".

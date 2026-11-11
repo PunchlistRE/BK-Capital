@@ -32586,7 +32586,7 @@ RENDERERS['Rent Roll Report'] = function(){
    Discounting: actual days / 365 from the valuation date (the engine's XNPV, bkXnpv).
    ============================================================================================ */
 (function(){
-var VER = 'val-1.0';
+var VER = 'val-1.1';
 window.bkValEngineVersion = VER;
 function num(v){ v = Number(v); return isFinite(v) ? v : 0; }
 function iso(d){ d = new Date(d); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
@@ -32649,6 +32649,34 @@ window.bkValBreakEvenRate = function(kind){
   var x = window.bkValBisect(function(r){ if(f.development) return window.bkValNPV(f.equity, d0, r, 0); return window.bkValNPV(kind === 'equity' ? f.equity : f.unlevered, d0, r, kind === 'equity' ? f.closingEquity : f.basis); }, -0.5, 2, 0.01); return x.ok ? x.x : null;
 };
 
+/* ---------- IRR and CAGR, told apart ----------
+   IRR   the rate at which the NPV of the DATED cash flows is zero (money-weighted: when cash arrives matters).
+   CAGR  (end / start)^(1 / years) - 1 for ONE start amount and ONE end amount, no interim flows.
+   The deal's headline IRRs are the engine's own (ac.irr, mr.irr); the implied CAGR is the CAGR the same equity in and the same
+   multiple out would give if every dollar went in at the start and came back at the end. The gap between the two is the timing effect. */
+window.bkValReturns = function(){
+  var s = bkLoad(), f = window.bkValDealFlows(), mr = window.bkMonthlyReturns(), dev = !!f.development, years = f.holdMonths / 12, d0 = f.valuationDate, sale = f.saleDate;
+  var ac = dev ? null : window.bkAnnualCF(), pos = f.equity.filter(function(x){ return x.amount > 0; }), tot = pos.reduce(function(t, x){ return t + x.amount; }, 0);
+  var early = pos.filter(function(x){ return x.date < sale; }).reduce(function(t, x){ return t + x.amount; }, 0);
+  var avgYear = tot > 0 ? pos.reduce(function(t, x){ return t + x.amount * days(d0, x.date) / 365; }, 0) / tot : null;
+  var moic = num(mr.moic), levIRR = num(mr.irr), unIRR = dev ? null : num(ac.irr), contrib = dev ? f.contributions : f.closingEquity;
+  return { engineVersion:VER, development:dev, holdYears:years, levIRR:levIRR, unlevIRR:unIRR, multiple:moic, impliedCagr:moic > 0 && years > 0 ? Math.pow(moic, 1 / years) - 1 : null,
+    contributed:contrib, distributed:tot, earlyShare:tot > 0 ? early / tot : null, avgArrivalYear:avgYear, cashYieldPerYear:contrib > 0 ? early / years / contrib : null,
+    breakEvenLev:window.bkValBreakEvenRate('equity'), breakEvenUnlev:dev ? null : window.bkValBreakEvenRate('property') };
+};
+/* the same start and end amounts as ONE payment: the IRR of a two-flow dated series equals the CAGR (shown beside the deal, where it does not) */
+window.bkValSinglePaymentIrr = function(capital, target, years){
+  if(!(capital > 0) || !(target > 0) || !(years > 0)) return NaN; var d0 = '2027-01-01', d1 = iso(new Date(Date.UTC(2027, 0, 1) + Math.round(years * 365) * 86400000));
+  var r = window.bkValBisect(function(x){ return window.bkValNPV([{ date:d1, amount:target }], d0, x, capital); }, -0.99, 10, 1e-9, 200); return r.ok ? r.x : NaN;
+};
+/* the exit-cap widening (in points) that takes the levered IRR down to a required return; null when it is already short, or none up to 6 points */
+window.bkValCapCushion = function(required){
+  var s = bkLoad(), cap0 = num(s.exitCap); if(!(cap0 > 0)) return null;
+  var irrAt = function(d){ return window.bkRunWith({ exitCap:cap0 + d }, function(){ return num(window.bkMonthlyReturns().irr); }); };
+  if(irrAt(0) < required) return { already:true };
+  if(irrAt(0.06) > required) return { none:true, upTo:0.06 };
+  var r = window.bkValBisect(function(d){ return irrAt(d) - required; }, 0, 0.06, 1e-7, 40); return r.ok ? { points:r.x * 100, capFrom:cap0, capTo:cap0 + r.x } : null;
+};
 /* ---------- maximum supportable purchase price ----------
    The price P at which the chosen NPV is zero, with the WHOLE deal re-run at every trial price (bkRunWith): closing costs and fees, the loan
    (LTV, LTC, DSCR and debt-yield sizing), the closing equity, debt service and the exit all respond to P. Never "PV minus a fixed number".
@@ -32718,13 +32746,15 @@ window.bkValCsv = function(){
 
 /* ---------- scenarios: append-only, reproducible ---------- */
 function fnv(str){ var h = 0x811c9dc5; for(var k = 0; k < str.length; k++){ h ^= str.charCodeAt(k); h = (h * 0x01000193) >>> 0; } return ('00000000' + h.toString(16)).slice(-8); }
+function hashOf(rec){ var a = [rec.inputs, rec.cashFlows, rec.results, rec.engineVersion]; if(rec.returns) a.push(rec.returns); return fnv(JSON.stringify(a)); }
 function assumptionsOf(s){ var o = {}; Object.keys(s).forEach(function(k){ if(k.charAt(0) !== '_' && k !== 'photo') o[k] = s[k]; }); return JSON.parse(JSON.stringify(o)); }
 function dealScen(s){ return Array.isArray(s._valScen) ? s._valScen : []; }
 window.bkValScenSave = function(name){
   var s = bkLoad(), i = inputs(s), res = valuate(i), flows = window.bkValDealFlows();
   var rec = { id:'vs_' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name:String(name || '').trim() || ('Scenario ' + (dealScen(s).length + 1)), createdAt:new Date().toISOString(), stage:String(s.status || 'Pipeline'),
     engineVersion:window.bkValEngineVersion, inputs:{ rate:i.rate, equityRate:i.equityRate, accumRate:i.accumRate, fvDate:i.fvDate, price:i.price }, assumptions:assumptionsOf(s), cashFlows:{ unlevered:flows.unlevered, equity:flows.equity, valuationDate:flows.valuationDate, saleDate:flows.saleDate }, results:res };
-  rec.hash = fnv(JSON.stringify([rec.inputs, rec.cashFlows, rec.results, rec.engineVersion]));
+  try { rec.returns = window.bkValReturns(); } catch(e){}
+  rec.hash = hashOf(rec);
   if(solved && !solved.error && solved.forInputs === JSON.stringify([i.rate, i.equityRate])) rec.maxPrice = { property:solved.property, equity:solved.equity };
   var s2 = bkLoad(); s2._valScen = dealScen(s2).concat([rec]); bkSave(s2); openId = rec.id; rerender(); return rec;
 };
@@ -32736,12 +32766,43 @@ window.bkValScenRebuild = function(rec){
 window.bkValScenCheck = function(rec){
   var re = window.bkValScenRebuild(rec), keys = ['unleveragedPV', 'propertyNPV', 'leveragedPV', 'equityNPV', 'fvEquity', 'fvUnlevered'], bad = [];
   keys.forEach(function(k){ var a = rec.results[k], b = re[k]; if((a == null) !== (b == null) || (a != null && Math.abs(a - b) > 0.5)) bad.push(k); });
-  var hashOk = fnv(JSON.stringify([rec.inputs, rec.cashFlows, rec.results, rec.engineVersion])) === rec.hash;
+  var hashOk = hashOf(rec) === rec.hash;
+  if(rec.returns){ var rr = window.bkRunWith(Object.assign({}, rec.assumptions, { purchasePrice:rec.inputs.price }), function(){ return window.bkValReturns(); }); ['levIRR', 'unlevIRR', 'multiple', 'impliedCagr'].forEach(function(k){ var a = rec.returns[k], b = rr[k]; if((a == null) !== (b == null) || (a != null && Math.abs(a - b) > 1e-6)) bad.push(k); }); }
   return { reproduced:bad.length === 0, differs:bad, hashOk:hashOk, rebuilt:re };
 };
 window.bkValScenOpen = function(id){ var s = bkLoad(), rec = dealScen(s).filter(function(r){ return r.id === id; })[0]; if(!rec) return; openId = id; ui.rate = rec.inputs.rate; ui.equityRate = rec.inputs.equityRate; ui.accumRate = rec.inputs.accumRate; ui.fvDate = rec.inputs.fvDate; ui.price = rec.inputs.price; saveUi(); rerender(); };
 window.bkValScenSaveForm = function(){ var el = document.getElementById('bk-val-name'); window.bkValScenSave(el ? el.value : ''); };
 
+/* ---------- IRR and CAGR, told apart, with analysis ---------- */
+var cushion = null;
+window.bkValCushion = function(){ var i = inputs(bkLoad()); cushion = { forRate:i.equityRate, r:window.bkValCapCushion(i.equityRate) }; rerender(); };
+function returnsPanel(i, dev){
+  var R; try { R = window.bkValReturns(); } catch(e){ return ''; }
+  var req = i.equityRate, P = function(x){ return x == null || !isFinite(x) ? '-' : pct(x); }, pts = function(x){ return Math.abs(x * 100).toFixed(2) + ' pts'; }, na = '<span class="dim">n/a</span>';
+  var tag = function(ok, a, b){ return '<span class="status-chip ' + (ok ? 'pass' : 'fail') + '">' + (ok ? a : b) + '</span>'; };
+  var row = function(a, b, c, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + a + '</td><td class="r">' + b + '</td><td class="dim" style="white-space:normal;min-width:260px">' + c + '</td></tr>'; };
+  var tbl = '<table class="rp-tbl" id="rp-valret"><thead><tr><th>Return measure</th><th class="r">Value</th><th>What it is, and what it ignores</th></tr></thead><tbody>'
+    + row('IRR: unleveraged (property)', dev ? na : P(R.unlevIRR), dev ? 'A development has no property-level cash flow series.' : 'The rate at which the property cash flows, dated, have an NPV of zero (the rate at which Property NPV is zero). Uses when each dollar arrives.')
+    + row('IRR: levered (equity)', P(R.levIRR), 'The rate at which the equity cash flows, dated, have an NPV of zero (Equity NPV is zero). Money-weighted: cash that comes back sooner raises it.', 'sub')
+    + row('Equity multiple', R.multiple > 0 ? R.multiple.toFixed(2) + 'x' : '-', 'Total distributions over total equity contributed. Not time-weighted: ' + (R.holdYears ? R.holdYears.toFixed(1) : '-') + ' years or one year gives the same multiple.')
+    + row('Implied CAGR (equity)', P(R.impliedCagr), 'The multiple compounded over the hold: (multiple)^(1 / ' + (R.holdYears ? R.holdYears.toFixed(1) : '-') + ' years) - 1. It treats all equity as going in on day one and all cash as coming back at the end, so it ignores interim cash and when equity was called.', 'sub')
+    + row('Required return (equity rate above)', P(req), 'The hurdle both measures are tested against.')
+    + '</tbody></table>';
+  var L = [], diff = R.levIRR - R.impliedCagr;
+  if(isFinite(diff)){
+    var when = R.earlyShare != null && R.avgArrivalYear != null ? Math.round(R.earlyShare * 100) + '% of the distributions arrive before the sale month, and on average cash arrives in year ' + R.avgArrivalYear.toFixed(1) + ' of ' + R.holdYears.toFixed(1) : '';
+    L.push('<b>Timing effect.</b> ' + (diff > 0.0025 ? 'The levered IRR is ' + pts(diff) + ' above the implied CAGR because cash comes back before the end: ' + when + '. Earlier cash raises the IRR; the CAGR ignores when it arrives.'
+      : diff < -0.0025 ? 'The levered IRR is ' + pts(diff) + ' below the implied CAGR because equity goes in after the start or cash comes back later than the one-in, one-out picture assumes: ' + when + '.'
+      : 'The levered IRR and the implied CAGR are within ' + pts(0.0025) + ' of each other: almost all the cash arrives with the sale (' + when + '), so timing adds little.'));
+    var okI = R.levIRR >= req, okC = R.impliedCagr >= req;
+    L.push('<b>Against the ' + pct(req) + ' required return.</b> Levered IRR ' + P(R.levIRR) + ' ' + tag(okI, 'Meets by ' + pts(R.levIRR - req), 'Short by ' + pts(req - R.levIRR)) + ' Implied CAGR ' + P(R.impliedCagr) + ' ' + tag(okC, 'Meets by ' + pts(R.impliedCagr - req), 'Short by ' + pts(req - R.impliedCagr)) + (okI !== okC ? ' The two disagree: trust the IRR, which respects timing; a CAGR is only right for one amount in and one amount out.' : ''));
+  }
+  if(!dev && isFinite(R.unlevIRR) && isFinite(R.levIRR)){ var lev = R.levIRR - R.unlevIRR; L.push('<b>Leverage effect.</b> ' + (Math.abs(lev) < 0.0005 ? 'Financing adds almost nothing' : lev > 0 ? 'Financing adds ' + pts(lev) + ' (positive leverage)' : 'Financing costs ' + pts(lev) + ' (negative leverage: the loan costs more than the property earns)') + ': levered IRR ' + P(R.levIRR) + ' against unleveraged ' + P(R.unlevIRR) + '.'); }
+  if(R.earlyShare != null && R.cashYieldPerYear != null) L.push('<b>Cash and growth.</b> Operations return about ' + P(R.cashYieldPerYear) + ' of the equity a year in cash and ' + Math.round(R.earlyShare * 100) + '% of all distributions; the sale returns the other ' + Math.round((1 - R.earlyShare) * 100) + '%.');
+  var cu = cushion && Math.abs(cushion.forRate - req) < 1e-9 ? cushion.r : undefined, cs = cu === undefined ? '<button type="button" class="ae-btn" onclick="bkValCushion()">How much exit-cap room?</button>' : cu == null ? 'not computable.' : cu.already ? 'The levered IRR is already below the required return at the entered exit cap.' : cu.none ? 'The levered IRR stays above the required return even with the exit cap up ' + (cu.upTo * 100).toFixed(0) + ' points.' : 'The exit cap can widen from ' + pct(cu.capFrom) + ' to ' + pct(cu.capTo) + ' (' + cu.points.toFixed(2) + ' pts) before the levered IRR falls to the required return.';
+  L.push('<b>Cushion.</b> ' + cs);
+  return '<div class="rp-sec">Return measures: IRR and CAGR</div>' + tbl + '<ul class="rp-ul">' + L.map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ul><div class="ae-hint"><b>IRR is not CAGR.</b> IRR solves for the rate that makes the dated cash flows worth zero and uses the timing of every flow. CAGR takes one starting amount and one ending amount and compounds between them. They agree only when there is a single payment in and a single payment out; a deal with interim cash needs the IRR.</div>';
+}
 /* ---------- the panel ---------- */
 function panel(s){
   var dev = isDev(s), i = inputs(s), v, f, err = '';
@@ -32780,7 +32841,7 @@ function panel(s){
   var scen = '<div class="ae-row" style="flex-wrap:wrap;gap:10px"><input id="bk-val-name" class="ae-in" style="width:280px !important;max-width:100% !important" placeholder="Name this scenario, e.g. Base at 8.75%"><button type="button" class="ae-btn pri" onclick="bkValScenSaveForm()">Save scenario to this deal</button></div><div class="ae-hint">A saved scenario keeps its rates, the price, the cash flows and the deal assumptions it was built on, so it can be reopened and rebuilt exactly later even after the deal changes. Scenarios are never overwritten or deleted.</div>'
     + (list.length ? '<table class="rp-tbl" id="rp-valscen"><thead><tr><th>Scenario</th><th>Saved</th><th>Deal stage</th><th class="r">Property / equity rate</th><th class="r">Price</th><th class="r">Property NPV</th><th class="r">Equity NPV</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>' : '<div class="ae-hint">No scenarios saved yet.</div>') + detail;
   var def = '<div class="ae-hint"><b>Reading these:</b> Unleveraged PV is the value of the property-level cash flows. Property NPV is that value less what was paid for the property. Leveraged PV is the value of what equity receives. Equity NPV is that value less the equity invested. FV accumulates the dated cash flows to a chosen date. Positive NPV, not a large PV, is what says the price is below value at the required return.</div>';
-  return '<div class="rp-sec">Valuation workspace: PV, NPV and FV</div>' + ctl + tbl + def + '<div class="rp-sec">Pricing: what can be paid for these cash flows</div>' + pricing + '<div class="rp-sec">Sensitivity to the discount rate</div>' + sens + '<div class="rp-sec">Saved valuation scenarios</div>' + scen;
+  return '<div class="rp-sec">Valuation workspace: PV, NPV and FV</div>' + ctl + tbl + def + returnsPanel(i, dev) + '<div class="rp-sec">Pricing: what can be paid for these cash flows</div>' + pricing + '<div class="rp-sec">Sensitivity to the discount rate</div>' + sens + '<div class="rp-sec">Saved valuation scenarios</div>' + scen;
 }
 
 var prev = RENDERERS[SHEET];
@@ -32839,6 +32900,10 @@ window.bkTargetPaint = function(){
   g('bk-tg-rate').textContent = r.ok ? pct(r.rate) : '-'; g('bk-tg-mult').textContent = r.ok ? r.multiple.toFixed(2) + 'x' : '-'; g('bk-tg-gain').textContent = r.ok ? money(r.perYear) : '-';
   g('bk-tg-explain').textContent = r.ok ? 'To grow ' + money(ui.capital) + ' to ' + money(ui.target) + ' over ' + ui.years + ' year' + (ui.years === 1 ? '' : 's') + ', the capital must compound at about ' + pct(r.rate) + ' a year, with no interim contributions or distributions.' : r.msg;
   g('bk-tg-path').innerHTML = r.ok ? r.path.map(function(p){ return '<tr><td>' + 'Year ' + p.year + '</td><td class="r">' + money(p.value) + '</td><td class="r">' + (p.year ? money(p.value - ui.capital) : '-') + '</td></tr>'; }).join('') : '';
+  var irrT = g('bk-tg-irr'); if(irrT){ var sp = r.ok ? window.bkValSinglePaymentIrr(ui.capital, ui.target, ui.years) : NaN, RR = null; try { RR = ref.has ? window.bkValReturns() : null; } catch(e){}
+    irrT.innerHTML = r.ok ? '<tr><td>Your inputs as ONE payment in and ONE payment out</td><td class="r">' + pct(sp) + '</td><td class="r">' + pct(r.rate) + '</td><td class="r">' + (Math.abs(sp - r.rate) < 1e-6 ? 'equal' : pct(sp - r.rate)) + '</td><td class="dim">With one flow in and one flow out the IRR is the CAGR.</td></tr>'
+      + (RR && isFinite(RR.levIRR) ? '<tr><td>This deal\'s equity cash flows, dated</td><td class="r">' + pct(RR.levIRR) + '</td><td class="r">' + pct(RR.impliedCagr) + '</td><td class="r">' + ((RR.levIRR - RR.impliedCagr) >= 0 ? '+' : '-') + Math.abs((RR.levIRR - RR.impliedCagr) * 100).toFixed(2) + ' pts</td><td class="dim">Interim cash and the timing of equity make the IRR differ from the CAGR of the same multiple; the IRR is the one that counts for a deal.</td></tr>' : '') : '';
+  }
   var cmp = g('bk-tg-cmp'); if(cmp) cmp.innerHTML = r.ok && ref.has && isFinite(ref.irr) ? 'This deal\'s levered IRR is <b>' + pct(ref.irr) + '</b> (' + ref.moic.toFixed(2) + 'x over ' + ref.years + ' years). ' + (r.rate <= ref.irr ? 'It clears the required ' + pct(r.rate) + ' on these figures' : 'It is below the required ' + pct(r.rate)) + ', but an IRR measures dated cash flows and this calculator compounds one amount, so the two are a guide, not an equivalence.' : '';
 };
 window.bkTargetUseDeal = function(what){
@@ -32860,11 +32925,11 @@ RENDERERS[SHEET] = function(){
   var s = bkLoad() || {}, ref = dealRef(), saved = Array.isArray(s._targets) ? s._targets : [];
   var o = { title:'Investment Target', crumbs:'Debt', desc:'Work backward from a capital target to the annual return it requires.', meta:{ Property:s.name || '' }, sidebar:'' };
   var rows = saved.map(function(t){ return '<tr><td>' + esc(t.name) + '</td><td>' + esc(new Date(t.createdAt).toLocaleDateString('en-US')) + '</td><td class="r">' + money(t.inputs.capital) + '</td><td class="r">' + money(t.inputs.target) + '</td><td class="r">' + t.inputs.years + '</td><td class="r">' + pct(t.results.rate) + '</td><td><button type="button" class="ae-btn" onclick="bkTargetLoad(\'' + t.id + '\')">Load</button></td></tr>'; }).join('');
-  o.main = '<div class="ae"><div class="ae-panel"><div class="ae-ph"><i>T</i>Reverse investment lab</div><div style="padding:6px 14px 14px">'
+  o.main = '<div class="ae"><div class="ae-panel"><div class="ae-ph"><i>T</i>Reverse investment lab: required CAGR (not IRR)</div><div style="padding:6px 14px 14px">'
     + inp('capital', 'Starting capital', 10000, 2000000, 5000) + inp('target', 'Target value', 50000, 10000000, 25000) + inp('years', 'Investment period (years)', 1, 30, 1)
     + '<div class="ae-row" style="flex-wrap:wrap;gap:8px">' + (ref.has && ref.equity > 0 ? '<button type="button" class="ae-btn" onclick="bkTargetUseDeal(\'equity\')">Use this deal\'s closing equity (' + money(ref.equity) + ')</button>' : '') + (ref.has && ref.dist > 0 ? '<button type="button" class="ae-btn" onclick="bkTargetUseDeal(\'distributions\')">Use this deal\'s total distributions and hold (' + money(ref.dist) + ', ' + ref.years + ' years)</button>' : '') + '<button type="button" class="ae-btn" onclick="bkTargetReset()">Reset</button></div></div></div>'
     + '<div class="ae-panel"><div class="ae-ph"><i>R</i>What it takes</div><div style="overflow-x:auto"><table class="rp-tbl" id="rp-target"><tbody><tr><td>Required annual return</td><td class="r"><b id="bk-tg-rate">-</b></td><td class="dim">(target / starting capital) ^ (1 / years) - 1</td></tr><tr><td>Growth multiple</td><td class="r" id="bk-tg-mult">-</td><td class="dim">target / starting capital</td></tr><tr><td>Average gain per year</td><td class="r" id="bk-tg-gain">-</td><td class="dim">(target - capital) / years, simple, not compounded</td></tr></tbody></table></div><div class="ae-hint" id="bk-tg-explain"></div><div class="ae-hint" id="bk-tg-cmp"></div></div>'
-    + '<div class="ae-panel"><div class="ae-ph"><i>P</i>Growth path at the required return</div><div style="overflow-x:auto"><table class="rp-tbl" id="rp-target-path"><thead><tr><th>Period</th><th class="r">Value</th><th class="r">Gain to date</th></tr></thead><tbody id="bk-tg-path"></tbody></table></div></div>'
+    + '<div class="ae-panel"><div class="ae-ph"><i>I</i>Why IRR and CAGR differ</div><div style="overflow-x:auto"><table class="rp-tbl" id="rp-target-irr"><thead><tr><th>Cash flows</th><th class="r">IRR</th><th class="r">CAGR</th><th class="r">IRR less CAGR</th><th>Why</th></tr></thead><tbody id="bk-tg-irr"></tbody></table></div><div class="ae-hint">CAGR compounds one starting amount to one ending amount. IRR is the rate that makes dated cash flows worth zero, so it responds to when cash arrives. Use CAGR to plan a target; use IRR to judge a deal.</div></div><div class="ae-panel"><div class="ae-ph"><i>P</i>Growth path at the required return</div><div style="overflow-x:auto"><table class="rp-tbl" id="rp-target-path"><thead><tr><th>Period</th><th class="r">Value</th><th class="r">Gain to date</th></tr></thead><tbody id="bk-tg-path"></tbody></table></div></div>'
     + '<div class="ae-panel"><div class="ae-ph"><i>S</i>Save to this deal</div><div class="ae-row" style="flex-wrap:wrap;gap:10px;padding:8px 14px"><input id="bk-tg-name" class="ae-in" style="width:260px !important;max-width:100% !important" placeholder="Name this target"><button type="button" class="ae-btn pri" onclick="bkTargetSave()">Save target to this deal</button></div>' + (saved.length ? '<div style="overflow-x:auto"><table class="rp-tbl" id="rp-target-saved"><thead><tr><th>Target</th><th>Saved</th><th class="r">Capital</th><th class="r">Target value</th><th class="r">Years</th><th class="r">Required return</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="ae-hint">Nothing saved on this deal yet. Your inputs above are yours until you save them to a deal; saved targets are never overwritten.</div>') + '</div>'
     + '<div class="ae-hint">This is a compound-growth target calculator, not an underwriting model. It assumes one starting amount growing to one target value with no interim contributions, distributions, taxes, fees or volatility. For a deal with periodic cash flows use the IRR (Returns), and for what to pay for a deal\'s cash flows use the Pricing panel on the Present Value Report.</div></div>';
   setTimeout(function(){ window.bkTargetPaint(); }, 0);
