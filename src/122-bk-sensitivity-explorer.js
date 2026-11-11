@@ -252,7 +252,7 @@ function explorer(s){
     + ks.map(function(kx){ return '<th>'+esc(gx.show(kx*sx))+'</th>'; }).join('') + '</tr></thead><tbody>'
     + ks.map(function(ky, i){ return '<tr><th class="rh">'+esc(gy.show(ky*sy))+'</th>' + ks.map(function(kx, j){
         var v = cells[i][j], t = maxDev > 0 && isFinite(v) ? Math.min(1, Math.abs(v-base)/maxDev) : 0;
-        var c = !isFinite(v) ? null : mix('#eef2f6', v >= base ? '#2a78d6' : '#e34948', t*0.85);
+        var c = !isFinite(v) ? null : mix('#eef2f6', v >= base ? '#1b8a7d' : '#d0691f', t*0.85);
         var isBase = kx === 0 && ky === 0;
         return '<td class="'+(isBase?'base ':'')+(c && c.lum < 0.55 ? 'dark' : '')+'"'+(c?' style="background:'+c.css+'"':'')
           + tip('<b>'+esc(gy.label)+' '+esc(gy.show(ky*sy))+' &middot; '+esc(gx.label)+' '+esc(gx.show(kx*sx))+'</b><br>'+esc(M.label)+' '+esc(M.fmt(v))
@@ -260,7 +260,7 @@ function explorer(s){
           + '>'+esc(M.fmt(v))+'</td>'; }).join('') + '</tr>'; }).join('')
     + '</tbody></table>';
   var heatCard = '<div class="bk-sx-card"><p class="bk-sx-title">Heat map - '+esc(gy.label)+' &times; '+esc(gx.label)+' &rarr; '+esc(M.label)+'</p>'
-    + '<p class="bk-sx-sub">Pick any two drivers above. The outlined cell is base; blue is better than base, red is worse.</p>'
+    + '<p class="bk-sx-sub">Pick any two drivers above. The outlined cell is base; teal is better than base, amber is worse.</p>'
     + heat + '<div class="bk-sx-scale">Worse <b></b> Better</div></div>';
 
   // ---- break-evens: how far each driver can move before levered IRR falls to the chosen target
