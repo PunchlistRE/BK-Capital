@@ -13,8 +13,8 @@ function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
 function P2(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 
-var CSS = '#bk-print-head,#bk-print-foot{display:none}table.bk-print-clone{display:none}.title-block{position:relative}.title-block .bk-print-btn{position:absolute;top:12px;right:128px;z-index:2}.title-block:not(:has(.bk-key-wrap)) .bk-print-btn{right:18px}@media (max-width:760px){.title-block .bk-print-btn{position:static;margin:6px 0 0}}'
- + '@media print{'
+var CSS = '#bk-print-head,#bk-print-foot,.bk-print-sel{display:none}table.bk-print-clone{display:none}.title-block{position:relative}.title-block .bk-print-btn{position:absolute;top:12px;right:128px;z-index:2}.title-block:not(:has(.bk-key-wrap)) .bk-print-btn{right:18px}@media (max-width:760px){.title-block .bk-print-btn{position:static;margin:6px 0 0}}'
+ + '@media print{#viewport select.bk-print-hasval{display:none !important}#viewport .bk-print-sel{display:inline !important;font-weight:600}'
  + 'html,body{background:#fff !important;color:#14202b !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
  + '.rail,.brand-bar,.tabnav,.tabnav-primary,.bk-flow,.bk-stepnav,.bk-case,.side-col,.title-block,.bk-dui,.pf-bar,.rp-bar,.bk-rail-toggle,#bk-sync-status,#bk-auth-gate,#pl-palette,#pl-modal,#pl-tip,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,#bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,select{display:none !important}'
  + '.shell{display:block !important;height:auto !important}.sheet-viewport,#viewport,.sheet-frame,.body-grid{display:block !important;overflow:visible !important;height:auto !important;width:auto !important;max-width:none !important;margin:0 !important;padding:0 !important;position:static !important}'
@@ -103,16 +103,18 @@ function prepare(){
   if(document.documentElement.classList.contains('bk-sr-open')) return;   /* the schedule summary prints its own pages */
   cleanup();
   /* a printout is always the light theme, whatever theme is on screen: switch the theme for the print and put it back after */
-  var de = document.documentElement; window.__bkPrintPrev = { had:de.hasAttribute('data-theme'), val:de.getAttribute('data-theme'), cs:de.style.colorScheme }; de.setAttribute('data-theme', 'light'); de.style.colorScheme = 'light';
+  var de = document.documentElement; if(window.bkTheme && window.bkTheme.forPrint) window.bkTheme.forPrint(true); window.__bkPrintPrev = { had:de.hasAttribute('data-theme'), val:de.getAttribute('data-theme'), cs:de.style.colorScheme }; de.setAttribute('data-theme', 'light'); de.style.colorScheme = 'light';
   var fr = document.querySelector('#viewport .sheet-frame') || document.getElementById('viewport'); if(!fr) return;
   var head = document.createElement('div'); head.id = 'bk-print-head'; head.innerHTML = headHtml(); fr.insertBefore(head, fr.firstChild);
   var s = safe(function(){ return bkLoad(); }, {}) || {}, foot = document.createElement('div'); foot.id = 'bk-print-foot'; foot.textContent = 'Punchlist Capital · Beta · ' + (s.name || '') + ' · figures from the underwriting model; check against your own'; document.body.appendChild(foot);
+  /* a chosen option prints as text (a drop-down prints blank) */
+  [].forEach.call(document.querySelectorAll('#viewport select'), function(sel){ var o = sel.options[sel.selectedIndex]; if(!o) return; var sp = document.createElement('span'); sp.className = 'bk-print-sel'; sp.textContent = o.text; sel.classList.add('bk-print-hasval'); sel.parentNode.insertBefore(sp, sel.nextSibling); });
   [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl, #viewport table.fin'), splitYears);
   var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land);
   pageStyle = document.createElement('style'); pageStyle.id = 'bk-print-page'; pageStyle.textContent = '@page{size:letter ' + (land ? 'landscape' : 'portrait') + ';margin:12mm 11mm 14mm}'; document.head.appendChild(pageStyle);
   document.querySelectorAll('input[type=text],input[type=number],input:not([type])').forEach(function(i){ if(i.value !== i.getAttribute('value')) i.setAttribute('value', i.value); });
 }
-function cleanup(){ if(window.__bkPrintPrev){ var de = document.documentElement; if(window.__bkPrintPrev.had) de.setAttribute('data-theme', window.__bkPrintPrev.val); else de.removeAttribute('data-theme'); de.style.colorScheme = window.__bkPrintPrev.cs || ''; window.__bkPrintPrev = null; } unfit(); ['bk-print-head', 'bk-print-foot', 'bk-print-page'].forEach(function(id){ var e = document.getElementById(id); if(e) e.remove(); }); document.documentElement.classList.remove('bk-print-wide'); }
+function cleanup(){ [].forEach.call(document.querySelectorAll('.bk-print-sel'), function(e){ e.remove(); }); [].forEach.call(document.querySelectorAll('select.bk-print-hasval'), function(e){ e.classList.remove('bk-print-hasval'); }); if(window.__bkPrintPrev){ var de = document.documentElement; if(window.bkTheme && window.bkTheme.forPrint) window.bkTheme.forPrint(false); else { if(window.__bkPrintPrev.had) de.setAttribute('data-theme', window.__bkPrintPrev.val); else de.removeAttribute('data-theme'); de.style.colorScheme = window.__bkPrintPrev.cs || ''; } window.__bkPrintPrev = null; } unfit(); ['bk-print-head', 'bk-print-foot', 'bk-print-page'].forEach(function(id){ var e = document.getElementById(id); if(e) e.remove(); }); document.documentElement.classList.remove('bk-print-wide'); }
 window.bkPrintPrepare = prepare; window.bkPrintCleanup = cleanup;
 window.bkPrintSection = function(){ prepare(); setTimeout(function(){ window.print(); }, 60); };
 window.addEventListener('beforeprint', function(){ if(!document.getElementById('bk-print-head')) prepare(); });

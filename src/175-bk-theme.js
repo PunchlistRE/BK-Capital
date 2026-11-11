@@ -43,7 +43,9 @@ window.bkTheme = {
   stored: stored,
   set: function(mode){ if(mode === 'dark' || mode === 'light'){ safe(function(){ localStorage.setItem(KEY, mode); }); apply(mode); } else { safe(function(){ localStorage.removeItem(KEY); }); apply(null); }
     paint(); setTimeout(redraw, 0); },
-  toggle: function(){ window.bkTheme.set(effective() === 'dark' ? 'light' : 'dark'); }
+  toggle: function(){ window.bkTheme.set(effective() === 'dark' ? 'light' : 'dark'); },
+  /* a printout is always the light theme: switch every theme rule to light for the print without touching the saved choice, and put it back after */
+  forPrint: function(on){ if(on){ if(!rules) collect(); rules.forEach(function(x){ var t = x.kind === 'dark' ? 'not all' : 'all'; safe(function(){ if(x.r.media.mediaText !== t) x.r.media.mediaText = t; }); }); root.setAttribute('data-theme', 'light'); root.style.colorScheme = 'light'; } else apply(stored() || null); }
 };
 var css = '#bk-theme-btn{flex:0 0 auto;width:38px;height:38px;margin-left:10px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:inherit;border:1px solid rgba(128,128,128,.5);border-color:color-mix(in srgb,currentColor 30%,transparent);cursor:pointer;transition:background .15s,border-color .15s}'
  + '#bk-theme-btn:hover{background:rgba(128,128,128,.16);border-color:color-mix(in srgb,currentColor 55%,transparent)}#bk-theme-btn:focus-visible{outline:2px solid #4aa3ee;outline-offset:2px}'
