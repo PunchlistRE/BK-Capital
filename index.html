@@ -32377,9 +32377,12 @@ window.bkExitYearChart = function(rows, w){
   return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" role="img" aria-label="Levered IRR and equity multiple by exit year" style="display:block;max-width:100%;height:auto;font-family:Inter,Arial,sans-serif">' + g + '</svg>';
 };
 window.bkAfterTaxPdfHtml = function(){
-  var x = data(); if(!x) return null; var p = parts(x), line = function(l, k, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="l">' + l + '</td>' + p.yrs.map(function(r){ return '<td>' + M(k(r)) + '</td>'; }).join('') + '</tr>'; };
-  var cf = '<div style="font-size:8.2pt">' + tbl(['After-tax cash flow'].concat(p.yrs.map(function(r){ return 'Yr ' + r.y; })), [line('NOI after reserves', function(r){ return r.noi; }), line('Less: interest', function(r){ return -r.interest; }), line('Less: depreciation', function(r){ return -r.depr; }),
-    line('Taxable income', function(r){ return r.taxableIncome; }, 'tot'), line('Suspended loss carryforward', function(r){ return r.lossCF; }), line('Ordinary income tax', function(r){ return -r.taxDue; }, 'tot')]) + '</div>';
+  var x = data(); if(!x) return null; var p = parts(x), allYrs = p.yrs;
+  var cf = '';   /* five years per table keeps every figure readable at any hold up to ten years */
+  for(var a = 0; a < allYrs.length; a += 5){ p.yrs = allYrs.slice(a, a + 5); var line = function(l, k, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="l">' + l + '</td>' + p.yrs.map(function(r){ return '<td>' + M(k(r)) + '</td>'; }).join('') + '</tr>'; };
+    cf += '<div style="font-size:8.2pt;margin-bottom:6px">' + tbl(['After-tax cash flow'].concat(p.yrs.map(function(r){ return 'Yr ' + r.y; })), [line('NOI after reserves', function(r){ return r.noi; }), line('Less: interest', function(r){ return -r.interest; }), line('Less: depreciation', function(r){ return -r.depr; }),
+      line('Taxable income', function(r){ return r.taxableIncome; }, 'tot'), line('Suspended loss carryforward', function(r){ return r.lossCF; }), line('Ordinary income tax', function(r){ return -r.taxDue; }, 'tot')]) + '</div>'; }
+  p.yrs = allYrs;
   var sale = '<table><tbody>' + p.sale.map(function(a){ return '<tr' + (a[2] ? ' class="' + a[2] + '"' : '') + '><td class="l">' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join('') + '</tbody></table>';
   var ret = tbl(['Levered, property level', 'Pre-tax', 'After-tax'], p.ret.map(function(a){ return '<tr><td class="l">' + a[0] + '</td><td>' + a[1] + '</td><td><b>' + a[2] + '</b></td></tr>'; }));
   return '<h2>After-tax returns</h2>' + cf + '<div class="g2 mt" style="grid-template-columns:1.15fr .85fr;gap:22px"><div><h2>Sale-year tax</h2>' + sale + '</div><div><h2>Pre-tax and after-tax</h2>' + ret + '</div></div>'
