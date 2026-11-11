@@ -13,8 +13,8 @@ function num(x){ var v = Number(x); return isFinite(v) ? v : NaN; }
 function M(v){ return !isFinite(v) ? '—' : (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US'); }
 function P2(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 
-var CSS = '#bk-print-head,#bk-print-foot,.bk-print-sel{display:none}table.bk-print-clone{display:none}.title-block{position:relative}.title-block .bk-print-btn{position:absolute;top:12px;right:128px;z-index:2}.title-block:not(:has(.bk-key-wrap)) .bk-print-btn{right:18px}@media (max-width:760px){.title-block .bk-print-btn{position:static;margin:6px 0 0}}'
- + '@media print{#viewport select.bk-print-hasval{display:none !important}#viewport .bk-print-sel{display:inline !important;font-weight:600}'
+var CSS = 'table.bk-measure-wrap td,table.bk-measure-wrap th{white-space:normal !important}table.bk-measure-wrap .status-chip{white-space:nowrap !important}#bk-print-head,#bk-print-foot,.bk-print-sel{display:none}table.bk-print-clone{display:none}.title-block{position:relative}.title-block .bk-print-btn{position:absolute;top:12px;right:128px;z-index:2}.title-block:not(:has(.bk-key-wrap)) .bk-print-btn{right:18px}@media (max-width:760px){.title-block .bk-print-btn{position:static;margin:6px 0 0}}'
+ + '@media print{#viewport table.fin td,#viewport table.fin th,#viewport table.rp-tbl td{white-space:normal !important;overflow-wrap:break-word}#viewport table .status-chip{white-space:nowrap !important}#viewport .tbl-wrap{overflow:visible !important}#viewport select.bk-print-hasval{display:none !important}#viewport .bk-print-sel{display:inline !important;font-weight:600}'
  + 'html,body{background:#fff !important;color:#14202b !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
  + '.rail,.brand-bar,.tabnav,.tabnav-primary,.bk-flow,.bk-stepnav,.bk-case,.side-col,.title-block,.bk-dui,.pf-bar,.rp-bar,.bk-rail-toggle,#bk-sync-status,#bk-auth-gate,#pl-palette,#pl-modal,#pl-tip,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,#bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,select{display:none !important}'
  + '.shell{display:block !important;height:auto !important}.sheet-viewport,#viewport,.sheet-frame,.body-grid{display:block !important;overflow:visible !important;height:auto !important;width:auto !important;max-width:none !important;margin:0 !important;padding:0 !important;position:static !important}'
@@ -95,7 +95,24 @@ function fitTables(land){
     var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / 6.6, cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * 0.75));
     t.classList.add('bk-print-fit'); t.style.setProperty('font-size', fs.toFixed(2) + 'pt', 'important'); });
 }
-function unfit(){ [].forEach.call(document.querySelectorAll('table.bk-print-clone'), function(c){ c.remove(); }); [].forEach.call(document.querySelectorAll('table.bk-print-orig'), function(t){ t.classList.remove('bk-print-orig'); });
+/* any table still wider than the printable page (wide text tables, input grids, tables with a chip in every cell) is scaled to fit: its narrowest possible width is measured with wrapping allowed,
+   and the table is zoomed so that width is the page width. Nothing printed is ever cut off at the right edge. */
+function fitWide(land){
+  var px = (land ? PAGE_PX.land : PAGE_PX.port) - 6;
+  [].forEach.call(document.querySelectorAll('#viewport table'), function(t){ if(t.classList.contains('bk-print-orig')) return; var clone = t.classList.contains('bk-print-clone');   /* the year pieces are hidden on screen: shown for the measurement only */
+    if(!clone && !t.offsetWidth) return; if(t.parentElement && t.parentElement.closest('table')) return;
+    var w0 = t.style.cssText; if(clone) t.style.setProperty('display', 'table', 'important'); if(t.classList.contains('fin') || t.classList.contains('rp-tbl')) t.classList.add('bk-measure-wrap');   /* only these wrap in print; every other table is measured as it prints */ t.style.setProperty('width', '1px', 'important'); t.style.setProperty('min-width', '0', 'important'); t.style.setProperty('table-layout', 'auto', 'important');
+    var m = t.offsetWidth; t.classList.remove('bk-measure-wrap'); t.style.cssText = w0;
+    /* the room the table really has: the page width less the side padding and borders of the cards it sits in */
+    var pad = 0, e = t.parentElement, stop = document.getElementById('viewport'); while(e && e !== stop){ var c = getComputedStyle(e); pad += (parseFloat(c.paddingLeft) || 0) + (parseFloat(c.paddingRight) || 0) + (parseFloat(c.borderLeftWidth) || 0) + (parseFloat(c.borderRightWidth) || 0); e = e.parentElement; }
+    var room = px - Math.min(120, pad) - 4; if(m <= room) return; var z = Math.max(0.42, room / m);
+    t.classList.add('bk-print-zoom'); t.setAttribute('data-bk-pz', z.toFixed(3)); });
+  /* the zoom itself lives in a print-only rule, so the screen is never touched */
+  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:auto !important;max-width:none !important;min-width:0 !important}'; });
+  if(css){ var st = document.createElement('style'); st.id = 'bk-print-zoomcss'; st.textContent = '@media print{' + css + '}'; document.head.appendChild(st); }
+}
+function unfit(){ var zc = document.getElementById('bk-print-zoomcss'); if(zc) zc.remove(); [].forEach.call(document.querySelectorAll('table.bk-print-zoom'), function(t){ t.classList.remove('bk-print-zoom'); t.removeAttribute('data-bk-pz'); t.removeAttribute('data-bk-pzi'); });
+   [].forEach.call(document.querySelectorAll('table.bk-print-clone'), function(c){ c.remove(); }); [].forEach.call(document.querySelectorAll('table.bk-print-orig'), function(t){ t.classList.remove('bk-print-orig'); });
   [].forEach.call(document.querySelectorAll('table.bk-print-fit'), function(t){ t.classList.remove('bk-print-fit'); t.style.removeProperty('font-size'); }); }
 /* the print rules and the year-splitter, shared with the report pack (src/195), which lays the same rules on pages of its own */
 window.BK_PRINT_RULES = CSS.slice(CSS.indexOf('@media print{') + 13, CSS.length - 1); window.bkPrintSplitYears = splitYears; window.bkPrintSplitCols = splitKeep;
@@ -110,8 +127,8 @@ function prepare(){
   var s = safe(function(){ return bkLoad(); }, {}) || {}, foot = document.createElement('div'); foot.id = 'bk-print-foot'; foot.textContent = 'Punchlist Capital · Beta · ' + (s.name || '') + ' · figures from the underwriting model; check against your own'; document.body.appendChild(foot);
   /* a chosen option prints as text (a drop-down prints blank) */
   [].forEach.call(document.querySelectorAll('#viewport select'), function(sel){ var o = sel.options[sel.selectedIndex]; if(!o) return; var sp = document.createElement('span'); sp.className = 'bk-print-sel'; sp.textContent = o.text; sel.classList.add('bk-print-hasval'); sel.parentNode.insertBefore(sp, sel.nextSibling); });
-  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl, #viewport table.fin'), function(t){ splitYears(t, t.classList.contains('rp-tbl') ? YEARS_PER_PAGE : 6); });
-  var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land);
+  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl, #viewport table.fin, #viewport table.pf-tbl'), function(t){ splitYears(t, t.classList.contains('rp-tbl') ? YEARS_PER_PAGE : (t.querySelector('.status-chip') || t.classList.contains('pf-tbl') ? 6 : 8));   /* a table with a status chip in every year cell needs wider columns */ });
+  var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land); fitWide(land);
   pageStyle = document.createElement('style'); pageStyle.id = 'bk-print-page'; pageStyle.textContent = '@page{size:letter ' + (land ? 'landscape' : 'portrait') + ';margin:12mm 11mm 14mm}'; document.head.appendChild(pageStyle);
   document.querySelectorAll('input[type=text],input[type=number],input:not([type])').forEach(function(i){ if(i.value !== i.getAttribute('value')) i.setAttribute('value', i.value); });
 }
