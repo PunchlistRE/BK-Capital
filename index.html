@@ -4074,7 +4074,7 @@ RENDERERS['Portfolio'] = function(){
   const ok = computed.filter(r=>r.m.ok);
   const totalEquity = ok.reduce((z,r)=>z+r.m.equity,0), totalPrice = ok.reduce((z,r)=>z+r.m.purchasePrice,0);
   const PC = bkPortfolioConsolidated(saved);
-  const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio - Saved Deals (${saved.length})</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Type</th><th>Property</th><th>Purchase Price</th><th>Closing / initial funding equity</th><th>Levered IRR</th><th>MOIC</th><th>Actions</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="8">No deals saved to the portfolio yet.</td></tr>'}<tr class="grandtotal"><td class="rowlabel">Portfolio Total (IRR and multiple on the combined dated cash flow)</td><td></td><td></td><td>${money(totalPrice)}</td><td>${money(totalEquity)}</td><td>${bkPortfolioIRRText(PC)}</td><td>${PC.available&&isFinite(PC.moic)?PC.moic.toFixed(2)+'x':'-'}</td><td></td></tr></tbody></table></div>${bkPortfolioIRRNote(PC)}
+  const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio - Saved Deals (${saved.length})</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Type</th><th>Property</th><th>Purchase Price</th><th>Closing / initial funding equity</th><th>Levered IRR</th><th>MOIC</th><th>Actions</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="8">No deals saved to the portfolio yet.</td></tr>'}<tr class="grandtotal"><td class="rowlabel">Portfolio total</td><td></td><td></td><td>${money(totalPrice)}</td><td>${money(totalEquity)}</td><td>${bkPortfolioIRRText(PC)}</td><td>${PC.available&&isFinite(PC.moic)?PC.moic.toFixed(2)+'x':'-'}</td><td></td></tr></tbody></table></div>${bkPortfolioIRRNote(PC)}
     ${hasDeal?`<div style="margin-top:12px;"><button type="button" class="status-chip pass" data-portfolio-add="1">+ Save Active Deal (${bkEsc(cur.name||'Untitled')}) to Portfolio</button></div>`:`<div class="note-flag" style="margin-top:12px;"><span>&#9432;</span><div>No deal is active, so there is nothing to add. Create or load a deal first.</div></div>`}
     <div class="note-flag"><span>&#10003;</span><div><b>Live portfolio -</b> each row re-runs the real, already-verified engine (<code>bkAnnualCF</code>/<code>bkDebt</code>/<code>bkMonthlyReturns</code>) against that deal's own saved snapshot, the same safe scratch-copy swap Sensitivity uses -- not a static copy of numbers. "Load" swaps a saved deal into the active slot (this app holds one active deal at a time); "Save Active Deal" snapshots whatever's currently loaded. The equity-weighted total only includes deals whose engine run succeeded.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Portfolio Summary</div><div class="metric-list">
@@ -21011,18 +21011,18 @@ var render = function(){
     var cls = c.level === 'ERROR' ? 'fail' : c.level === 'WARN' ? 'warn' : '';
     var act = (c.level !== 'ERROR')
       ? (c.acknowledged ? '<button type="button" class="status-chip" onclick="bkAckConflict(\'' + c.id + '\',false)">UNDO ACK</button>' : '<button type="button" class="status-chip" onclick="bkAckConflict(\'' + c.id + '\')">ACKNOWLEDGE</button>') : '';
-    return '<tr' + (c.acknowledged ? ' style="opacity:.6"' : '') + '><td class="rowlabel" style="vertical-align:top">' + chip(cls, c.level) + '<div style="margin-top:4px;font-size:11px">' + esc(c.area) + '</div></td>'
-      + '<td data-bk-align="text" style="vertical-align:top"><b>' + esc(c.message) + '</b><div style="margin-top:6px;font-size:12px;color:#555"><b>Why it matters.</b> ' + esc(c.why) + '</div></td>'
-      + '<td style="vertical-align:top"><a href="#" onclick="showSheet(\'' + c.sheet + '\');return false">' + esc(c.sheet) + '</a></td><td style="vertical-align:top">' + act + (c.acknowledged ? '<div style="font-size:11px">acknowledged</div>' : '') + '</td></tr>';
+    return '<tr' + (c.acknowledged ? ' style="opacity:.6"' : '') + '><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.message) + '</b><div style="margin-top:6px;font-size:12px;color:#555"><b>Why it matters.</b> ' + esc(c.why) + '</div><div style="margin-top:4px;font-size:11px;color:#555">' + esc(c.area) + '</div></td>'
+      + '<td style="vertical-align:middle"><a href="#" onclick="showSheet(\'' + c.sheet + '\');return false">' + esc(c.sheet) + '</a></td><td style="vertical-align:middle;text-align:center">' + act + (c.acknowledged ? '<div style="font-size:11px">acknowledged</div>' : '') + '</td>'
+      + '<td class="bk-col-chip" style="vertical-align:middle;text-align:center">' + chip(cls, c.level) + '</td></tr>';
   }).join('') || '<tr><td class="rowlabel" colspan="4">No conflicting inputs found.</td></tr>';
-  var main = '<div class="tbl-wrap"><table class="fin bk-mc"><caption>Conflicting Inputs and Their Consequences</caption><thead><tr><th class="rowlabel-h">Severity</th><th style="text-align:left">Finding and why it matters</th><th>Fix on</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+  var main = '<div class="tbl-wrap"><table class="fin bk-mc"><caption>Conflicting Inputs and Their Consequences</caption><thead><tr><th class="rowlabel-h">Finding and why it matters</th><th style="text-align:left">Fix on</th><th style="text-align:center">Action</th><th style="text-align:center">Severity</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
     + '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div><b>How to read this.</b> <b>ERROR</b>: the inputs contradict each other or are impossible, so results are wrong; the deal is not decision-grade until fixed. <b>WARN</b>: calculable, but likely to disagree with a lender, a tax return, a JV agreement or another figure in the model - acknowledge it once you have decided it is intended. <b>INFO</b>: an assumption worth stating. These checks compare inputs and engine outputs; they never change a number. A card appears whenever an edit creates a new ERROR or WARN.</div></div>';
   /* the engine's own arithmetic, recomputed independently (src/178): failed checks, warnings and checks that do not apply are kept apart */
   var ig = typeof window.bkIntegrity === 'function' ? window.bkIntegrity() : null;
   if(ig){
     var irow = ig.checks.map(function(c){ var k = c.status === 'hard' ? 'fail' : c.status === 'warn' ? 'warn' : c.status === 'pass' ? 'pass' : '', lab = c.status === 'hard' ? 'FAILED' : c.status === 'warn' ? 'WARNING' : c.status === 'na' ? 'N/A' : 'PASS';
-      return '<tr' + (c.status === 'na' ? ' style="opacity:.6"' : '') + '><td class="rowlabel" style="vertical-align:top">' + chip(k, lab) + '<div style="margin-top:4px;font-size:11px">' + esc(c.group) + '</div></td><td data-bk-align="text" style="vertical-align:top"><b>' + esc(c.label) + '</b><div style="margin-top:4px;font-size:12px;color:#555">' + esc(c.detail) + '</div></td></tr>'; }).join('');
-    main += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-mc"><caption>Calculation Integrity - recomputed independently (' + esc(ig.text) + ')</caption><thead><tr><th class="rowlabel-h">Result</th><th style="text-align:left">Check and what it found</th></tr></thead><tbody>' + irow + '</tbody></table></div>'
+      return '<tr' + (c.status === 'na' ? ' style="opacity:.6"' : '') + '><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.label) + '</b><div style="margin-top:4px;font-size:12px;color:#555">' + esc(c.detail) + '</div><div style="margin-top:3px;font-size:11px;color:#777">' + esc(c.group) + '</div></td><td class="bk-col-chip" style="vertical-align:middle;text-align:center">' + chip(k, lab) + '</td></tr>'; }).join('');
+    main += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-mc"><caption>Calculation Integrity - recomputed independently (' + esc(ig.text) + ')</caption><thead><tr><th class="rowlabel-h">Check and what it found</th><th style="text-align:center">Result</th></tr></thead><tbody>' + irow + '</tbody></table></div>'
       + '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div><b>How to read this.</b> <b>FAILED</b>: a result does not tie to its inputs, so it must not be relied on and the credit gate is held. <b>WARNING</b>: the figures tie, but something material is true that a reader must know. <b>N/A</b>: the check does not apply to this deal. These checks never change a number.</div></div>';
     n.ERROR += ig.hard.length; n.WARN += ig.warn.length;
   }
@@ -27883,6 +27883,14 @@ function sfxSlots(root){
    Columns that are already centered on purpose (heat grids, hurdle columns) are left alone; what is changed is a lone chip that is not centered and a value that is left aligned. */
 function colNum(t, i){ var n = 0, k = 0; [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(!c || r.parentNode === t.tHead || c.colSpan !== 1) return; var x = c.textContent.replace(/\s+/g, ' ').trim(); if(!x) return; k++; if(/^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i.test(x)) n++; }); return k >= 2 && n / k >= 0.7; }
 function colChip(t, i){ var n = 0, k = 0; [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(!c || r.parentNode === t.tHead || c.colSpan !== 1) return; if(!c.textContent.trim()) return; k++; if(c.querySelector('.status-chip')) n++; }); return k >= 2 && n / k >= 0.5; }
+/* a column headed Units whose cells are sentences is Notes; a date is always left aligned; the Lease End and Assumptions text columns sit right, as the owner asked */
+function alignText(root){
+  var DATE = /^(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2,8}\.? \d{1,2},? \d{4}|[A-Z][a-z]{2} \d{4}|Dec-\d{4}|\d{1,2}\/\d{4})$/;
+  [].forEach.call(root.querySelectorAll('table'), function(t){ if(t.classList.contains('bk-sx-heat')) return; var hr = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : null;
+    [].forEach.call(t.rows, function(r){ if(r.parentNode === t.tHead) return; [].forEach.call(r.cells, function(c){ if(c.colSpan !== 1) return; var x = c.textContent.replace(/\s+/g, ' ').trim(); if(x && DATE.test(x) && c.getAttribute('data-bk-dl') !== '1'){ c.style.setProperty('text-align', 'left', 'important'); c.setAttribute('data-bk-dl', '1'); if(hr && hr.cells[c.cellIndex]) hr.cells[c.cellIndex].style.setProperty('text-align', 'left', 'important'); } }); });
+    if(!hr) return; [].forEach.call(hr.cells, function(h, i){ var tx = h.textContent.replace(/\s+/g, ' ').trim();
+      if(/^Units$/i.test(tx)){ var cells = [].filter.call(t.rows, function(r){ return r.parentNode !== t.tHead && r.cells[i]; }).map(function(r){ return r.cells[i].textContent.trim(); }).filter(Boolean); if(cells.length && cells.filter(function(v){ return v.length > 13 || /\s\w+\s\w+/.test(v); }).length / cells.length > 0.5) h.textContent = 'Notes'; }
+      if(/^(Lease End|Assumptions)$/i.test(tx)){ [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(c && r.parentNode !== t.tHead && !DATE.test(c.textContent.trim())) c.style.setProperty('text-align', 'right', 'important'); }); h.style.setProperty('text-align', 'right', 'important'); } }); }); }
 function alignRules(root){
   var NUM = /^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i;
   [].forEach.call(root.querySelectorAll('table'), function(t){ if(t.classList.contains('bk-sx-heat')) return;
@@ -27933,7 +27941,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
@@ -34124,6 +34132,27 @@ html body #viewport .pl-acts .pl-act span{ font-size:12px; line-height:1.4; disp
 /* Sources and Uses has the same ruled-off label column as the Cash Flow Report */
 html body #viewport .rp #rp-su tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px }
 @media print{ html body .rp #rp-su tr > :first-child{ border-right:1px solid #000 !important } }
+/* ---- 13 Nov owner review, batch 3 ---- */
+/* Model Checks tables: the finding gets the room, status columns stay narrow */
+html body #viewport table.bk-mc td:first-child, html body #viewport table.bk-mc th:first-child{ width:auto !important; min-width:0 }
+html body #viewport table.bk-mc th:not(:first-child), html body #viewport table.bk-mc td:not(:first-child){ width:130px }
+html body #viewport table.bk-mc td[data-bk-align="text"]{ overflow-wrap:normal; word-break:normal }
+/* a number input in a table cell is a box of its own beside its unit, not a yellow field filling the column */
+html body #viewport table.fin td:has(> input.bk-sfx-in), html body #viewport table.fin td.bk-has-sfx{ width:150px; text-align:right }
+/* the cards of one row all reach the same right edge: IC Memo snapshot / returns / financing as three equal columns */
+html body #viewport .main-col > div[style*="grid-template-columns:repeat(auto-fit,minmax(380px"]{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:0 16px !important; align-items:start }
+@media (max-width:1100px){ html body #viewport .main-col > div[style*="grid-template-columns:repeat(auto-fit,minmax(380px"]{ grid-template-columns:1fr !important } }
+/* KPI tiles: every title on one plane, figures and notes centered */
+html body #viewport .bk-kpi{ align-items:stretch }
+html body #viewport .bk-kpi > .k{ display:flex; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center }
+html body #viewport .bk-kpi > .k > .l{ min-height:2.6em; display:flex; align-items:flex-start; justify-content:center; text-align:center }
+html body #viewport .bk-kpi > .k > *{ text-align:center }
+/* Model Checks: finding gets the width, the other three are compact */
+html body #viewport table.bk-mc{ table-layout:fixed; width:100% }
+html body #viewport table.bk-mc th:nth-child(1), html body #viewport table.bk-mc td:nth-child(1){ width:auto !important; text-align:left !important; word-break:normal !important; overflow-wrap:break-word !important }
+html body #viewport table.bk-mc th:nth-child(2), html body #viewport table.bk-mc td:nth-child(2){ width:130px !important; text-align:left !important }
+html body #viewport table.bk-mc th:nth-child(3), html body #viewport table.bk-mc td:nth-child(3),
+html body #viewport table.bk-mc th:nth-child(4), html body #viewport table.bk-mc td:nth-child(4){ width:120px !important; text-align:center !important }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):
