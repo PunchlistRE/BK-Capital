@@ -22488,6 +22488,9 @@ window.BKReg.addFields([
   F('gla', 'Leasable area (GLA / NRA), SF', 'int', { help:'The area tenants pay rent on. Always the same as or smaller than the gross building area; the difference is the building\'s inefficiency. Rent per SF and efficiency use it. Leave blank if unknown: nothing is estimated.', ex:'96,000' }),
   F('commercialArea', 'Commercial area, SF', 'int', { help:'Retail or office space, if any.' }),
   F('commercialUnits', 'Commercial units (suites)', 'int', { help:'The retail or office suites in a mixed-use building. Shown with the commercial area and added to the residential units for the total; per-unit figures still divide by the residential units. Leave blank if there are none.', ex:'6' }),
+  F('commercialRent', 'Commercial base rent, $ per SF a year', 'money', { help:'What the shops or offices pay per square foot per year before recoveries. Tenant by tenant rent, bumps and expiry go on the Tenants page.', ex:'$24' }),
+  F('recovery', 'Commercial expense recoveries, $ per SF a year', 'money', { help:'What tenants repay toward taxes, insurance and common-area costs (NNN). Leave blank if the leases are gross.', ex:'$6' }),
+  F('commercialVacancy', 'Commercial vacancy and credit loss', 'pct', { help:'The share of commercial rent not collected. Retail and office usually run higher than apartments.', ex:'10%', sug:function(){ return { v:0.10, why:'Small-shop retail and office are usually underwritten at about 10% vacancy and credit loss, more than apartments.' }; } }),
   F('rentRoll', 'Rent roll', 'table', { help:'Unit by unit: rent in place, market rent, lease dates. Import it or enter it on the Rent Roll sheet.', sheet:'Rent Roll' }),
   F('leases', 'Commercial tenant schedule', 'table', { help:'Tenant by tenant: rent, bumps, expiry and recoveries.', sheet:'Tenants' }),
   /* acquisition */
@@ -22638,6 +22641,8 @@ var EXPENSES = S('expenses', 'Operating expenses', 'Use the last twelve months w
 var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume it sells for. The exit cap rate moves the answer more than anything else here.', 'Deal Underwrite',
   [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
 
+var COMMERCIAL = S('commercial', 'Commercial space (shops or offices)', 'Does the building have any retail or office space? Enter its area and suites here, and the base rent, recoveries and vacancy that size its income. Tenant by tenant rent, bumps, expiry and rollover go on the Tenants page. No commercial space: skip this step.', 'Tenants',
+    [q('commercialUnits'), q('commercialArea'), q('commercialRent'), q('recovery'), q('commercialVacancy')], { skippable:true });
 R.addWorkflow('acquisition', [
   S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('propertyType'), q('acqStrategy'), q('units', 'required'), q('gsf'), q('gla')]),
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
@@ -22646,8 +22651,7 @@ R.addWorkflow('acquisition', [
   S('valueadd', 'Value-add program', 'A renovation program: how many units a year, the rent lost while a unit is down, the premium afterwards and the capex per unit. Other income by line (laundry, parking, pet, storage, RUBS) is the other usual source of upside.', 'Revenues',
     [q('renoUnitsPerYear'), q('renoDownMonths'), q('renoPremium'), q('renoCapexPerUnit'), q('oiLaundry'), q('oiLateFees'), q('oiPetRent'), q('oiPetFees'), q('oiParking'), q('oiStorage'), q('oiRubsPct')],
     { skippable:true, when:function(s){ return /value-add|opportunistic|redevelopment|lease-up/i.test(String(s.acqStrategy || '')) || Number(s.renoUnitsPerYear) > 0; } }),
-  S('commercial', 'Commercial space', 'Retail or office space in the building: its area and suites here; tenant by tenant rent, bumps, expiry and rollover on the Tenants page.', 'Tenants',
-    [q('commercialArea'), q('commercialUnits')], { skippable:true, when:function(s){ return Number(s.commercialArea) > 0 || Number(s.commercialUnits) > 0 || /mixed|retail|office|industrial/i.test(String(s.propertyType || '')); } }),
+  COMMERCIAL,
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
   S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Everything on this step is read from the model and shown for checking; nothing is entered here.', 'Sources & Uses', [], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
@@ -22659,7 +22663,7 @@ R.addWorkflow('development', [
   S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' }), q('gla')]),
   S('land', 'Land and budget', 'The two big costs. Land is the price; the construction budget is hard and soft costs together.', 'Deal Underwrite',
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
-  INCOME, EXPENSES,
+  INCOME, EXPENSES, COMMERCIAL,
   S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilized.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
   S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Everything on this step is read from the model and shown for checking; nothing is entered here.', 'Sources & Uses', [], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
@@ -26674,6 +26678,13 @@ function startScreen(){
    + '<button type="button" class="gd-opt" onclick="bkGuideDoc(\'Import Deal\')"><b>Start from a T-12</b><span>Upload a Yardi operating statement. Income and expenses load; I ask for the rest.</span></button></div>'
    + '<div class="gd-act"><button type="button" class="gd-btn link" onclick="bkGuideOff()">Turn the guide off and use the full app</button></div></div>';
 }
+/* what I would suggest for a field: the registry's own suggestion for a number, or, for a choice, the option the other entries point to */
+function choiceSug(k, s){ var n = function(x){ return Number(s[x]) || 0; };
+  if(k === 'propertyType' && (n('commercialArea') > 0 || n('commercialUnits') > 0) && /^(multifamily)?$/i.test(String(s.propertyType || ''))) return { v:'Mixed-Use', why:'There is commercial space entered (' + (n('commercialArea') ? n('commercialArea').toLocaleString('en-US') + ' SF' : n('commercialUnits') + ' suites') + '), so the building is mixed-use. That adds the commercial steps and sets the market benchmarks aside.' };
+  if(k === 'acqStrategy' && (n('renoUnitsPerYear') > 0 || n('renoPremium') > 0) && /^(stabilized)?$/i.test(String(s.acqStrategy || ''))) return { v:'Value-add', why:'A renovation program is entered (' + (n('renoUnitsPerYear') || '') + ' units a year), so this is a value-add plan, not buy and hold.' };
+  return null; }
+function sugOf(fl, s){ var d = Object.assign({}, s, st.draft); if(fl.opts) return safe(function(){ return choiceSug(fl.k, d); }, null); return fl.sug ? safe(function(){ return fl.sug(d); }, null) : null; }
+window.bkGuideKeep = function(k){ st.kept = st.kept || {}; st.kept[k] = 1; show(); };
 function fieldRow(fl, s, g){
   var v = cur(s, fl), tag = '', changed = Object.prototype.hasOwnProperty.call(st.draft, fl.k), id = 'gdf-' + fl.k;
   if(g.from && g.from.keys.indexOf(fl.k) >= 0 && g.assumed.indexOf(fl.k) < 0){ var pg = srcPage(g, fl.k); tag = '<span class="gd-tag from">from the ' + esc(g.from.label) + (pg ? ', p.' + pg : '') + '</span>' + (pg && g.from.label === 'OM' ? '<a href="#" class="gd-view" onclick="bkGuideViewSource(' + pg + ');return false">view</a>' : ''); }
@@ -26685,8 +26696,11 @@ function fieldRow(fl, s, g){
   if(fl.opts){ var cv = String(v == null ? '' : v); input = '<select id="' + id + '" class="' + (changed ? 'chg' : '') + '" onchange="bkGuideDraft(\'' + fl.k + '\',this.value);bkGuideOptHint(\'' + fl.k + '\',this)"><option value="">Choose\u2026</option>' + fl.opts.map(function(o){ return '<option' + (o === cv ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>'; }
   else if(fl.t === 'bool') input = '<label style="display:flex;gap:8px;justify-content:flex-end;font-weight:400"><input type="checkbox" id="' + id + '"' + (v !== false && v !== 0 ? ' checked' : '') + ' onchange="bkGuideDraft(\'' + fl.k + '\',this.checked)"> Yes</label>';
   else input = '<span class="gd-iw' + (fl.t === 'money' ? ' pre' : fl.t === 'pct' ? ' suf' : '') + '">' + (fl.t === 'money' ? '<i aria-hidden="true">$</i>' : '') + '<input type="text" id="' + id + '" value="' + esc(fmt(fl, v)) + '" class="' + (changed ? 'chg' : '') + '" inputmode="' + (fl.t === 'text' ? 'text' : 'decimal') + '" onfocus="bkGuideWhat(\'' + fl.k + '\')" onchange="bkGuideDraft(\'' + fl.k + '\',this.value)" autocomplete="off">' + (fl.t === 'pct' ? '<i aria-hidden="true">%</i>' : '') + '</span>';   /* the unit sits in the box: $ before an amount, % after a percentage */
-  var sug = fl.sug ? safe(function(){ return fl.sug(Object.assign({}, s, st.draft)); }, null) : null, empty = fl.t === 'text' ? !String(v || '').trim() : !(Number(v) > 0), same = sug && Math.abs(Number(v) - sug.v) < 1e-9;
-  var sugRow = sug && !same && (empty || (g.assumed.indexOf(fl.k) >= 0 && !g.confirmed[fl.k])) ? '<div class="gd-sug" data-k="' + fl.k + '" data-v="' + esc(String(sug.v)) + '"><span>I suggest <b>' + esc(fmt(fl, sug.v)) + (fl.t === 'pct' ? '%' : '') + '</b>. ' + esc(sug.why) + '</span><button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideUse(\'' + fl.k + '\')">Use this</button></div>' : '';
+  var sug = sugOf(fl, s), isOpt = !!fl.opts, empty = (fl.t === 'text' || isOpt) ? !String(v || '').trim() : !(Number(v) > 0);
+  var same = sug && (isOpt ? String(v) === String(sug.v) : Math.abs(Number(v) - sug.v) < 1e-9);
+  /* a different option is offered when the field is blank, is my assumption, or differs a lot from what I would suggest; "Keep mine" closes it and counts as confirmed */
+  var apart = sug && !empty && !isOpt && Math.abs(Number(v) - sug.v) > Math.max(Math.abs(sug.v) * 0.2, fl.t === 'pct' ? 0.005 : 0.5), kept = (st.kept || {})[fl.k] || g.confirmed[fl.k];
+  var sugRow = sug && !same && !kept && (empty || (g.assumed.indexOf(fl.k) >= 0) || apart || isOpt) ? '<div class="gd-sug" data-k="' + fl.k + '" data-v="' + esc(String(sug.v)) + '"><span>' + (empty || g.assumed.indexOf(fl.k) >= 0 ? 'I suggest ' : 'A different option: ') + '<b>' + esc(isOpt ? String(sug.v) : fmt(fl, sug.v) + (fl.t === 'pct' ? '%' : '')) + '</b>. ' + esc(sug.why) + '</span><button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideUse(\'' + fl.k + '\')">Use this</button>' + (empty ? '' : '<button type="button" class="gd-btn link" style="padding:6px 10px" onclick="bkGuideKeep(\'' + fl.k + '\')">Keep mine</button>') + '</div>' : '';
   var chk = unchecked || flagged ? (flagged ? '<div style="font-size:12px;margin:0 0 4px">' + esc(imp.why) + '</div>' : '') + '<label class="gd-chk"><input type="checkbox" onchange="bkGuideCheck(\'' + fl.k + '\',this.checked)"> I have checked this figure</label>' : '';
   return '<div class="gd-f"><label for="' + id + '">' + esc(fl.label + (fl.t === 'pct' && fl.label.indexOf('%') < 0 ? ' (%)' : '')) + (fl.req ? ' <span style="color:#b23a2c">*</span>' : '') + tag + (fl.help ? '<span class="h">' + esc(fl.help) + '</span>' : '') + '</label>' + input + '<div class="gd-m" id="gdm-' + fl.k + '">' + msgHtml((st.msgs || {})[fl.k]) + '</div><div class="gd-what" id="gdw-' + fl.k + '"></div>' + (fl.optHelp ? '<div class="gd-mk">' + esc(fl.optHelp[String(v || '')] || 'Pick the closest fit; you can change it later.') + '</div>' : '') + mktLine(fl.k) + sugRow + (chk ? '<div style="grid-column:1/-1">' + chk + '</div>' : '') + '</div>';
 }
@@ -26721,7 +26735,7 @@ function stepScreen(secs, sec, s, g){
   var strip = resultStrip(s, sec), inner = sec.fields.map(function(fl){ return fieldRow(fl, s, g); }).join('') + rr;
   body += fromNote + advBox + '<div id="gd-imp"></div>' + (inner || strip ? '<div class="gd-card">' + inner + '<div id="gd-resw">' + strip + '</div></div>' : '') + (sec.id === 'debt' && !/develop/i.test(String(s.dealType || '')) ? '<div id="gd-dbt"></div>' : '');
   body += (sec.id === 'sources' ? '<div id="gd-su">' + suInner(s) + '</div>' : '') + '<div id="gd-chg"></div>';
-  body += '<div class="gd-act"><button type="button" class="gd-btn" id="gd-next" onclick="bkGuideNext()">Looks right, continue</button><button type="button" class="gd-btn ghost" onclick="bkGuideSkip()">Skip for now</button>' + (i > 0 ? '<button type="button" class="gd-btn link" onclick="bkGuideBack()">Back</button>' : '') + '<button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideDetail(\'' + sec.sheet + '\')">Add more detail on the full sheet</button></div><div style="margin-top:6px"><button type="button" class="gd-btn link" onclick="bkGuideNew()">Start a different deal</button></div>';
+  body += '<div class="gd-act"><button type="button" class="gd-btn" id="gd-confirm" onclick="bkGuideConfirm()">Confirm this step and continue</button><button type="button" class="gd-btn ghost" id="gd-next" onclick="bkGuideNext()">Continue without confirming</button><button type="button" class="gd-btn ghost" onclick="bkGuideSkip()">Skip for now</button>' + (i > 0 ? '<button type="button" class="gd-btn link" onclick="bkGuideBack()">Back</button>' : '') + '<button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideDetail(\'' + sec.sheet + '\')">Add more detail on the full sheet</button></div><div style="margin-top:6px"><button type="button" class="gd-btn link" onclick="bkGuideNew()">Start a different deal</button></div>';
   body += '<p class="sub" id="gd-still" style="margin-top:10px">' + stillHtml(miss) + '</p></div>';
   return body;
 }
@@ -26764,7 +26778,7 @@ function decisionCard(s, gate){
   var h = '<div class="gd-card"><b>The decision</b><p style="margin:6px 0 0">' + (v ? 'Against house policy this deal is <b style="color:' + (bad ? '#b42318' : /APPROVE|PASS/i.test(v) ? '#1a7f37' : '#b26a00') + '">' + esc(v) + '</b>' + (gate.action ? '. ' + esc(gate.action) : '.') : 'The credit gate has no verdict yet: enter the missing inputs above.') + '</p>'
     + '<p class="sub" style="margin:8px 0 0"><b>Two DSCRs, two questions.</b> The Lender DSCR is the coverage as the lender tests it (the lender NOI, against the loan\'s own minimum). The House DSCR is the firm\'s own credit test (NOI after reserves, against the house minimum). They can differ; neither is wrong.</p>'
     + '<div style="margin-top:10px"><b style="font-size:12.5px">The three drivers of the result</b><div id="gd-drv"><span class="sub">Working them out…</span></div></div>';
-  if(!dev && bad){ h += '<div style="margin-top:10px"><b style="font-size:12.5px">What would fix it</b>' + (REM && REM.key === dealKeyG() ? fixList(s) : '<p class="sub" style="margin:6px 0 0">Resize the debt, cut the price, raise rents or fill the building: <button type="button" class="gd-btn ghost" onclick="bkGuideFix()">Work out each fix</button> <span id="bk-rem-prog" class="sub"></span></p>') + '</div>'; }
+  if(!dev){ h += '<div style="margin-top:10px"><b style="font-size:12.5px">' + (bad ? 'What would fix it' : 'Other options to compare') + '</b>' + (REM && REM.key === dealKeyG() ? fixList(s) : '<p class="sub" style="margin:6px 0 0">Resize the debt, cut the price, raise rents or fill the building: <button type="button" class="gd-btn ghost" onclick="bkGuideFix()">Work out each fix</button> <span id="bk-rem-prog" class="sub"></span></p>') + '</div>'; }
   setTimeout(window.bkGuideDrivers, 0);
   return h + '</div>'; }
 function reviewScreen(secs, s, g){
@@ -26870,10 +26884,11 @@ window.bkGuideCheck = function(k, on){ if(on) st.checked[k] = 1; else delete st.
 window.bkGuideProp = function(k, v){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0]; if(!sec) return; st.step = sec.id; st.screen = ''; st.draft = {}; st.draft[k] = v; show(); setTimeout(function(){ refreshChanges(sec); }, 0); };
 window.bkGuideWhere = function(){ st.screen = 'where'; st.draft = {}; show(); };
 window.bkGuideViewSource = function(page){ window.bkDocsList().then(function(a){ var o = a.filter(function(f){ return f.slot === 'om'; })[0]; if(!o) return; var u = URL.createObjectURL(o.blob) + '#page=' + page; window.open(u, '_blank'); }); };
-window.bkGuideUse = function(k){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0], fl = sec.fields.filter(function(x){ return x.k === k; })[0], sug = fl.sug(Object.assign({}, s, st.draft)); if(!sug) return; st.draft[k] = sug.v; var g = gstate(s); if(g.assumed.indexOf(k) >= 0){ /* using the suggestion is a confirmation */ } show(); setTimeout(function(){ refreshChanges(sec); }, 0); };
+window.bkGuideUse = function(k){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0]; if(!sec) return; var fl = sec.fields.filter(function(x){ return x.k === k; })[0], sug = sugOf(fl, s); if(!sug) return; st.draft[k] = sug.v; show(); setTimeout(function(){ refreshChanges(sec); }, 0); };
 function apply(sec){ var s = bkLoad(), g = gstate(s), ch = st.draft, keys = Object.keys(ch); keys.forEach(function(k){ var im = s._imp && s._imp.fields && s._imp.fields[k]; if(im && window.bkLearn) window.bkLearn.log({ kind:'fix', field:k, was:s[k], now:ch[k], why:im.why, source:s._imp.source }); s[k] = ch[k]; });
   if('vacancy' in ch){ s.occupancy = 1 - ch.vacancy; if(s.commercialVacancy != null) s.commercialVacancy = ch.vacancy; }
   sec.fields.forEach(function(fl){ if(g.assumed.indexOf(fl.k) >= 0 && (st.checked[fl.k] || fl.k in ch)) g.confirmed[fl.k] = 1; });
+  sec.fields.forEach(function(fl){ if((st.kept || {})[fl.k]) g.confirmed[fl.k] = 1; }); st.kept = {};
   if(s._imp && s._imp.fields) sec.fields.forEach(function(fl){ if(st.checked[fl.k] || fl.k in ch) delete s._imp.fields[fl.k]; });
   g.done[sec.id] = 1; delete g.skipped[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.checked = {}; }
 function nextId(secs, cur){ var i = secs.findIndex(function(x){ return x.id === cur; }); return i + 1 < secs.length ? secs[i + 1].id : 'review'; }
@@ -26891,6 +26906,8 @@ window.bkGuideDepth = function(d){ if(d === 'quick'){ window.bkGuideQuick(); ret
 window.bkGuideQ2 = function(d){ st.fi = Math.max(0, (st.fi || 0) + d); show(); };
 function depthPicker(inStep){ var d = depth(); return '<div class="gd-depth" role="group" aria-label="Depth">' + [['quick', 'Quick', 'nine numbers'], ['standard', 'Standard', 'the steps'], ['full', 'Full', 'every figure']].filter(function(x){ return !(inStep && x[0] === 'quick'); }).map(function(x){ return '<button type="button" class="' + (d === x[0] ? 'on' : '') + '" onclick="bkGuideDepth(\'' + x[0] + '\')"><b>' + x[1] + '</b><span>' + x[2] + '</span></button>'; }).join('') + '</div>'; }
 window.bkGuideNext = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var bad = errorsOf(sec, s); if(bad.length){ paintMsgs(sec); var first = document.getElementById('gdf-' + bad[0].k); if(first && first.focus) first.focus(); return; } apply(sec); st.step = nextId(secs, sec.id); show(); };
+/* one click confirms everything on the step: my assumptions count as checked, then the step is saved and the next one opens */
+window.bkGuideConfirm = function(){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.id === st.step; })[0]; if(sec){ var g = gstate(s); sec.fields.forEach(function(fl){ if(g.assumed.indexOf(fl.k) >= 0) st.checked[fl.k] = 1; st.kept = st.kept || {}; if(!(fl.k in st.draft)) st.kept[fl.k] = 1; }); } window.bkGuideNext(); };
 window.bkGuideSkip = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var g = gstate(s); g.skipped[sec.id] = 1; delete g.done[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.step = nextId(secs, sec.id); show(); };
 window.bkGuideBack = function(){ var s = bkLoad(), secs = sections(s), i = st.step === 'review' ? secs.length : secs.findIndex(function(x){ return x.id === st.step; }); st.draft = {}; st.step = i > 0 ? secs[i - 1].id : secs[0].id; show(); };
 window.bkGuideDetail = function(sheet){ document.documentElement.classList.remove('bk-guide'); if(typeof showSheet === 'function') showSheet(sheet); };
@@ -33052,7 +33069,7 @@ RENDERERS[SHEET] = function(){
 function wrap(sheet){
   var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
   RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
-    o.main = '<div class="ae-row" style="margin:0 0 10px"><button type="button" class="ae-btn pri" onclick="bkWaterfallSummaryOpen(true)">Waterfall report (full tier breakdown)</button><button type="button" class="ae-btn" onclick="bkWaterfallSummaryOpen()">Waterfall summary (1 page)</button><span class="ae-unit">The report shows every tier by year: balance, return required, distributions to LP and GP, total and cash flow remaining. The summary is one Letter page.</span></div>' + o.main; return o; };
+    o.main = '<div class="ae-row" style="margin:0 0 10px"><button type="button" class="ae-btn pri" onclick="bkWaterfallSummaryOpen()">Waterfall summary (1 page)</button><button type="button" class="ae-btn" onclick="bkWaterfallSummaryOpen(true)">Waterfall report (every tier, by year)</button><span class="ae-unit">The report shows every tier by year: balance, return required, distributions to LP and GP, total and cash flow remaining. The summary is one Letter page.</span></div>' + o.main; return o; };
 }
 wrap('Equity Waterfall'); wrap('Waterfall (M)');
 })();
@@ -33448,7 +33465,10 @@ window.bkPackOpen = function(scope){
   if(busy) return; scope = scope || 'page';
   var s = safe(function(){ return bkLoad(); }, null);
   if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())){ modal('Open or create a deal first.'); return; }
-  var here = cur(); if(scope === 'page' && !window.bkPackHas(here)){ modal('This page has no PDF summary.'); return; }
+  var here = cur();
+  /* the waterfall pages' PDF summary is the one-page waterfall summary (src/145), not the long monthly page */
+  if(scope === 'page' && (here === 'Equity Waterfall' || here === 'Waterfall (M)') && typeof window.bkWaterfallSummaryOpen === 'function'){ window.bkWaterfallSummaryOpen(); return; }
+  if(scope === 'page' && !window.bkPackHas(here)){ modal('This page has no PDF summary.'); return; }
   busy = true; var canceled = false, secs = plan(scope, here), info = dealInfo(), data = {}, byId = {};
   window.bkPackClose(); var prog = progress(), pt = document.getElementById('pl-pack-prog-t'); document.getElementById('pl-pack-cancel').onclick = function(){ canceled = true; };
   var work = secs.filter(function(x){ return x.kind === 'page'; }), scroll = window.scrollY || 0;

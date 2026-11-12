@@ -18,6 +18,9 @@ window.BKReg.addFields([
   F('gla', 'Leasable area (GLA / NRA), SF', 'int', { help:'The area tenants pay rent on. Always the same as or smaller than the gross building area; the difference is the building\'s inefficiency. Rent per SF and efficiency use it. Leave blank if unknown: nothing is estimated.', ex:'96,000' }),
   F('commercialArea', 'Commercial area, SF', 'int', { help:'Retail or office space, if any.' }),
   F('commercialUnits', 'Commercial units (suites)', 'int', { help:'The retail or office suites in a mixed-use building. Shown with the commercial area and added to the residential units for the total; per-unit figures still divide by the residential units. Leave blank if there are none.', ex:'6' }),
+  F('commercialRent', 'Commercial base rent, $ per SF a year', 'money', { help:'What the shops or offices pay per square foot per year before recoveries. Tenant by tenant rent, bumps and expiry go on the Tenants page.', ex:'$24' }),
+  F('recovery', 'Commercial expense recoveries, $ per SF a year', 'money', { help:'What tenants repay toward taxes, insurance and common-area costs (NNN). Leave blank if the leases are gross.', ex:'$6' }),
+  F('commercialVacancy', 'Commercial vacancy and credit loss', 'pct', { help:'The share of commercial rent not collected. Retail and office usually run higher than apartments.', ex:'10%', sug:function(){ return { v:0.10, why:'Small-shop retail and office are usually underwritten at about 10% vacancy and credit loss, more than apartments.' }; } }),
   F('rentRoll', 'Rent roll', 'table', { help:'Unit by unit: rent in place, market rent, lease dates. Import it or enter it on the Rent Roll sheet.', sheet:'Rent Roll' }),
   F('leases', 'Commercial tenant schedule', 'table', { help:'Tenant by tenant: rent, bumps, expiry and recoveries.', sheet:'Tenants' }),
   /* acquisition */
