@@ -18433,11 +18433,11 @@ schedule();
 <style id="bk-sensitivity-explorer-css">
 /* SENSITIVITY EXPLORER - charts + view toggles. Light/dark tokens follow the app's own scheme. */
 .bk-sx{ --sx-surface:var(--surface,#fff); --sx-ink:var(--ink-900,#10233a); --sx-ink2:var(--ink-500,#566a80); --sx-line:var(--line,#dbe4ec);
-  --sx-grid:rgba(23,48,73,.10); --sx-up:#12609f; --sx-dn:#9fb0c2; --sx-mid:#eef2f6;
+  --sx-grid:rgba(23,48,73,.10); --sx-up:#2f8f5b; --sx-dn:#c24a3f; --sx-mid:#eef2f6;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948; --s9:#566a80; }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#4f9be0; --sx-dn:#7d8fa5; --sx-mid:#383835;
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#3fb27a; --sx-dn:#e0675c; --sx-mid:#383835;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#9aabbd; } }
-:root[data-theme="dark"] .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#4f9be0; --sx-dn:#7d8fa5; --sx-mid:#383835;
+:root[data-theme="dark"] .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#3fb27a; --sx-dn:#e0675c; --sx-mid:#383835;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#9aabbd; }
 .bk-sx-card{ background:var(--sx-surface); border:1px solid var(--sx-line); border-radius:8px; padding:14px 16px 16px; margin-top:16px; box-shadow:var(--shadow-card,none); }
 .bk-sx-card:first-child{ margin-top:0; }
@@ -18479,7 +18479,7 @@ schedule();
 .bk-sx-heat td.base{ outline:2px solid var(--sx-ink); outline-offset:-2px; font-weight:700; }
 .bk-sx-heat .corner{ font-size:10px; text-align:right; }
 .bk-sx-scale{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--sx-ink2); margin-top:8px; }
-.bk-sx-scale b{ display:inline-block; width:140px; height:8px; border-radius:4px; background:linear-gradient(90deg,var(--sx-mid),var(--sx-up)); }
+.bk-sx-scale b{ display:inline-block; width:140px; height:8px; border-radius:4px; background:linear-gradient(90deg,var(--sx-dn),var(--sx-mid),var(--sx-up)); }
 .bk-sx details{ margin-top:8px; font-size:12px; }
 .bk-sx details summary{ cursor:pointer; color:var(--sx-ink2); font-size:11.5px; }
 .bk-sx details table{ width:100%; border-collapse:collapse; margin-top:6px; font-size:11.5px; }
@@ -18756,8 +18756,8 @@ function explorer(s){
   var heat = '<table class="bk-sx-heat"><thead><tr><th class="corner">'+esc(gx.label)+' &rarr;<br>'+esc(gy.label)+' &darr;</th>'
     + ks.map(function(kx){ return '<th>'+esc(gx.show(kx*sx))+'</th>'; }).join('') + '</tr></thead><tbody>'
     + ks.map(function(ky, i){ return '<tr><th class="rh">'+esc(gy.show(ky*sy))+'</th>' + ks.map(function(kx, j){
-        var v = cells[i][j], t = hiV > loV && isFinite(v) ? (v-loV)/(hiV-loV) : 0;
-        var night = document.documentElement.getAttribute('data-theme') === 'dark', c = !isFinite(v) ? null : mix(night ? '#2b3646' : '#eef2f6', night ? '#3f86d0' : '#12609f', t*0.92);   /* one blue ramp from the grid's lowest to its highest value */
+        var v = cells[i][j], t = maxDev > 0 && isFinite(v) ? Math.min(1, Math.abs(v-base)/maxDev) : 0;
+        var night = document.documentElement.getAttribute('data-theme') === 'dark', c = !isFinite(v) ? null : mix(night ? '#2b3646' : '#eef2f6', v >= base ? (night ? '#3fb27a' : '#2f8f5b') : (night ? '#e0675c' : '#c24a3f'), t*0.88);   /* green above base, red below, deeper the further from base */
         var isBase = kx === 0 && ky === 0;
         return '<td class="'+(isBase?'base ':'')+(c && c.lum < 0.55 ? 'dark' : '')+'"'+(c?' style="background:'+c.css+'"':'')
           + tip('<b>'+esc(gy.label)+' '+esc(gy.show(ky*sy))+' &middot; '+esc(gx.label)+' '+esc(gx.show(kx*sx))+'</b><br>'+esc(M.label)+' '+esc(M.fmt(v))
@@ -18765,8 +18765,8 @@ function explorer(s){
           + '>'+esc(M.fmt(v))+'</td>'; }).join('') + '</tr>'; }).join('')
     + '</tbody></table>';
   var heatCard = '<div class="bk-sx-card"><p class="bk-sx-title">Heat map - '+esc(gy.label)+' &times; '+esc(gx.label)+' &rarr; '+esc(M.label)+'</p>'
-    + '<p class="bk-sx-sub">Pick any two drivers above. The outlined cell is base; the deeper the blue, the higher the value.</p>'
-    + heat + '<div class="bk-sx-scale">Lower <b></b> Higher</div></div>';
+    + '<p class="bk-sx-sub">Pick any two drivers above. The outlined cell is base; green is better than base, red is worse.</p>'
+    + heat + '<div class="bk-sx-scale">Worse <b></b> Better</div></div>';
 
   // ---- break-evens: how far each driver can move before levered IRR falls to the chosen target
   var target = p.beTarget === 'zero' ? 0 : p.beTarget === 'hurdle2' ? N(s.hurdle2) : N(s.pref);
@@ -23621,14 +23621,14 @@ function sensitivity(){
    (deepest), so the grid always shows how far the answer moves, even when every cell beats the hurdle (centred on the hurdle, a grid that all beats it was one green). A cell below the
    hurdle carries its own marker; the base case is outlined. Display only: the figures are the model rerun for each cell (sensitivity()). */
 function sensGrid(sens, hurdle){
-  var all = [].concat.apply([], sens.v).filter(isFinite), mn = Math.min.apply(null, all), mx = Math.max.apply(null, all), lo = [235, 243, 252], hi = [31, 78, 140], below = 0;
+  var all = [].concat.apply([], sens.v).filter(isFinite), mn = Math.min.apply(null, all), mx = Math.max.apply(null, all), lo = [194, 74, 63], md = [243, 241, 236], hi = [47, 143, 91], below = 0;   /* red (lowest) through neutral to green (highest) */
   var nBelow = isFinite(hurdle) ? all.filter(function(v){ return v < hurdle; }).length : 0, mark = nBelow > 0 && nBelow < all.length;   /* the marker separates the cells that miss the hurdle from those that meet it; when none or all miss it, one sentence says so */
-  var tOf = function(v){ return mx - mn > 1e-9 ? (v - mn) / (mx - mn) : 0.5; }, bg = function(v){ var t = tOf(v); return 'rgb(' + [0, 1, 2].map(function(q){ return Math.round(lo[q] + (hi[q] - lo[q]) * t); }).join(',') + ')'; };
+  var tOf = function(v){ return mx - mn > 1e-9 ? (v - mn) / (mx - mn) : 0.5; }, bg = function(v){ var t = tOf(v), e = t < 0.5 ? lo : hi, k = Math.abs(t - 0.5) * 2 * 0.88; return 'rgb(' + [0, 1, 2].map(function(q){ return Math.round(md[q] + (e[q] - md[q]) * k); }).join(',') + ')'; };
   var cell = function(v, base){ if(!isFinite(v)) return '<td style="background:#EEF1F4">—</td>'; var t = tOf(v), under = mark && v < hurdle; if(under) below++;
     return '<td class="' + (base ? 'base' : '') + (under ? ' under' : '') + '" style="background:' + bg(v) + ';color:' + (Math.abs(t - 0.5) > 0.36 ? '#fff' : '#0e2a4a') + '">' + (under ? '<i>&#9660;</i>' : '') + P(v, 1) + '</td>'; };
   var html = '<table class="hm"><tr><th></th>' + sens.ec.map(function(c){ return '<th>' + P(c, 2) + '</th>'; }).join('') + '</tr>' + sens.rg.map(function(g, i){ return '<tr><td class="row">' + P(g, 1) + '</td>' + sens.v[i].map(function(v, j){ return cell(v, i === 2 && j === 2); }).join('') + '</tr>'; }).join('') + '</table>';
   var legend = '<div class="hm-key"><span>' + P(mn, 1) + '</span><i></i><span>' + P(mx, 1) + '</span></div>';
-  return html + legend + '<div class="note" style="margin-top:2px">Levered IRR by exit cap (columns) and rent growth (rows); deeper blue is higher, lowest to highest cell. ' + (mark ? '&#9660; marks the ' + below + ' cell' + (below === 1 ? '' : 's') + ' below the ' + P(hurdle, 1) + ' hurdle. ' : nBelow ? 'No cell reaches the ' + P(hurdle, 1) + ' hurdle. ' : 'Every cell meets the ' + P(hurdle, 1) + ' hurdle. ') + 'Outlined: the base case.</div>';
+  return html + legend + '<div class="note" style="margin-top:2px">Levered IRR by exit cap (columns) and rent growth (rows); green is higher and red is lower, lowest to highest cell. ' + (mark ? '&#9660; marks the ' + below + ' cell' + (below === 1 ? '' : 's') + ' below the ' + P(hurdle, 1) + ' hurdle. ' : nBelow ? 'No cell reaches the ' + P(hurdle, 1) + ' hurdle. ' : 'Every cell meets the ' + P(hurdle, 1) + ' hurdle. ') + 'Outlined: the base case.</div>';
 }
 
 function gateWhy(g){ var rows = (g && g.rows || []).filter(function(r){ return r.applicable !== false && !r.pass; }); if(!rows.length) return ''; return rows.slice(0, 3).map(function(r){ return esc(r.label.replace(/ \(.*\)$/, '')); }).join(', ') + (rows.length > 3 ? ' and ' + (rows.length - 3) + ' more' : ''); }
@@ -23655,7 +23655,7 @@ var CSS = '@page{size:8.5in 11in;margin:0}*{box-sizing:border-box}html,body{marg
  + 'table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th{background:#0e2a4a;color:#fff;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:6px 7px;text-align:right}th:first-child,td:first-child{text-align:left}td{padding:4px 7px;border-top:1px solid #e6edf3;text-align:right;font-size:10.5px}tr.sec td{background:#F5EFE0;font-weight:700;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#12609f}tr.sub td{font-weight:700;background:#EEF3F8}tr.tot td{font-weight:700;background:#0e2a4a;color:#fff}td.l{padding-left:15px}.neg{color:#B23A2C}tr.tot .neg{color:#FFB3A8}'
  + '.su{display:grid;grid-template-columns:1fr 1fr;gap:12px}.su table td{font-size:10.5px}.bar{height:8px;border-radius:4px;background:#e6edf3;overflow:hidden;display:flex}.bar i{display:block;height:100%}'
  + '.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:8.5px;font-weight:700;letter-spacing:.08em}.pass{background:#E3F3EA;color:#1F7A4C}.fail{background:#FBE5E2;color:#B23A2C}.warn{background:#FBF1D9;color:#8A6410}.na{background:#EEF1F4;color:#566a80}'
- + '.hm{border-collapse:separate;border-spacing:3px}.hm td{font-weight:600;position:relative;padding-top:3.5px !important;padding-bottom:3.5px !important}.hm td.base{font-weight:800;outline:2px solid #0e2a4a;outline-offset:1px}.hm td i{font-style:normal;font-size:6px;line-height:1;color:#B23A2C;position:absolute;top:2px;left:2px}.hm td.under{box-shadow:inset 0 0 0 1px #B23A2C}.hm-key{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:8px;line-height:1;color:#566a80}.hm-key i{flex:1;height:5px;border-radius:3px;background:linear-gradient(90deg,rgb(235,243,252),rgb(31,78,140))}.hm td,.hm th{border:0;text-align:center;padding:5px 4px;font-size:10px;border-radius:5px}.hm th{background:none;color:#566a80;font-size:8.5px;letter-spacing:.06em}.hm td.row{background:none;color:#566a80;font-size:8.5px;font-weight:700;text-align:right;letter-spacing:.04em}'
+ + '.hm{border-collapse:separate;border-spacing:3px}.hm td{font-weight:600;position:relative;padding-top:3.5px !important;padding-bottom:3.5px !important}.hm td.base{font-weight:800;outline:2px solid #0e2a4a;outline-offset:1px}.hm td i{font-style:normal;font-size:6px;line-height:1;color:#B23A2C;position:absolute;top:2px;left:2px}.hm td.under{box-shadow:inset 0 0 0 1px #B23A2C}.hm-key{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:8px;line-height:1;color:#566a80}.hm-key i{flex:1;height:5px;border-radius:3px;background:linear-gradient(90deg,rgb(194,74,63),rgb(243,241,236),rgb(47,143,91))}.hm td,.hm th{border:0;text-align:center;padding:5px 4px;font-size:10px;border-radius:5px}.hm th{background:none;color:#566a80;font-size:8.5px;letter-spacing:.06em}.hm td.row{background:none;color:#566a80;font-size:8.5px;font-weight:700;text-align:right;letter-spacing:.04em}'
  + '.note{font-size:9.4px;color:#7A8797;line-height:1.5;margin-bottom:4px}.note + h2,.note + .h2{margin-top:16px}.rng{position:relative;height:8px;background:#e6edf3;border-radius:4px}.rng i{position:absolute;top:0;bottom:0;background:#BFD7EA;border-radius:4px}.rng b{position:absolute;top:-3px;width:4px;height:14px;border-radius:2px;margin-left:-2px}'
  + '.cover{background:#14283d}.cover:before,.cover:after{display:none}.cover .kick{color:#6fb4f2}.chip{border-radius:2px;border-color:rgba(255,255,255,.3)}.verdict{border-radius:2px;background:rgba(255,255,255,.06)}.verdict .dot{border-radius:2px}.ck{border-top:2px solid rgba(255,255,255,.4)}'
  + '.bd:has(>i.p2){display:flex;flex-direction:column;height:9.3in;box-sizing:border-box}.bd:has(>i.p2)>*{flex:0 0 auto}.bd:has(>i.p2)>i.p2{display:none}.bd:has(>i.p2)>.g1:has(.fitc){flex:0 1 auto;min-height:.9in;display:flex;flex-direction:column}.bd:has(>i.p2) .fitc{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}.bd:has(>i.p2) .fitc>*{flex:0 0 auto}.bd:has(>i.p2) .fitc>.cc,.bd:has(>i.p2) .fitc>svg{flex:1 1 auto;min-height:0}.bd:has(>i.p2) .fitc svg{height:100% !important;max-height:100%;width:100% !important}.kp{gap:7px}.kp .c{padding:6px 10px}.kp .v{font-size:19px;margin-top:1px}.sc .c{padding:6px 10px}.sc .v{font-size:19px;margin:1px 0}.hd{border-bottom:2px solid #14283d}.hd .r .th{border-radius:2px;box-shadow:none}h2{color:#25313d}h2:after{background:#aeb7c0}'
@@ -24254,7 +24254,7 @@ window.bkFinLabData = function(){
 function cellColor(metric, v, L){
   if(v == null || !isFinite(v)) return '#eef1f4';
   var t; if(metric === 'irr') t = (v - L.u.irr) / 0.06; else if(metric === 'dscr') t = (v - L.minDSCR) / 0.5; else if(metric === 'coc') t = (v - 0.04) / 0.08; else t = (v - L.u.moic) / 0.5;
-  t = Math.max(-1, Math.min(1, t)); var c0 = [205, 197, 186], c1 = [244, 243, 240], c2 = [86, 142, 200]   /* amber-rust to neutral to teal: the Sensitivity page's scale */, a = t < 0 ? c0 : c1, b = t < 0 ? c1 : c2, u = t < 0 ? 1 + t : t;
+  t = Math.max(-1, Math.min(1, t)); var c0 = [214, 96, 84], c1 = [248, 244, 232], c2 = [70, 160, 110]   /* amber-rust to neutral to teal: the Sensitivity page's scale */, a = t < 0 ? c0 : c1, b = t < 0 ? c1 : c2, u = t < 0 ? 1 + t : t;
   if(t >= 0){ a = c1; b = c2; u = t; } else { a = c0; b = c1; u = 1 + t; }
   return 'rgb(' + [0, 1, 2].map(function(i){ return Math.round(a[i] + (b[i] - a[i]) * u); }).join(',') + ')';
 }
@@ -24271,7 +24271,7 @@ function render(){
   var main = box('<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">' + inp('Purchase cap rate %', 'cap', B.cap) + inp('Exit cap rate %', 'exit', B.exit) + inp('Rent growth %', 'rg', B.rg) + inp('Expense growth %', 'og', B.og) + '<div style="font-size:13px;padding-bottom:6px">Price = Year-1 NOI ' + M(B.noi) + ' ÷ ' + P(B.cap, 2) + ' = <b>' + M(B.noi / B.cap) + '</b>' + (Number(B.s.units) ? ' (' + K.F(B.noi / B.cap / Number(B.s.units)) + ' per unit)' : '') + '</div><button type="button" class="pl-hbtn" onclick="bkFinLabReset()">Reset to the deal</button></div><div style="font-size:12px;opacity:.7;margin-top:8px">The deal itself is priced at ' + P(B.cap0, 2) + ' on its entered price. Unlevered, this purchase returns <b>' + P(L.u.irr, 1) + '</b> (' + X(L.u.moic) + ').</div>');
   var head = '<tr><th style="text-align:left;padding:6px 8px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase">LTV \\ Rate</th>' + RATES.map(function(r){ return '<th style="padding:6px 8px;font-size:11px;text-align:center;border-bottom:2px solid #0e2a4a">' + P(r, 2) + '</th>'; }).join('') + '</tr>';
   var rows = L.grid.map(function(row, i){ return '<tr><td style="padding:6px 8px;font-weight:700;border-right:2px solid #0e2a4a">' + P(LTVS[i], 0) + '</td>' + row.map(function(c){ var warn = c && c.dscr < L.minDSCR; return '<td style="padding:9px 6px;text-align:center;font-weight:600;color:#14283d;background:' + cellColor(m, c && c[m], L) + ';border:2px solid #fff;border-radius:6px;' + (warn && m !== 'dscr' ? 'outline:1.5px dashed #b23a2c;outline-offset:-4px' : '') + '" title="' + (c ? 'Loan ' + M(c.loan) + ' · equity ' + M(c.eq) + ' · lender DSCR ' + X(c.dscr) + ' · IRR ' + P(c.irr, 1) : '') + '">' + fmt(m, c) + '</td>'; }).join('') + '</tr>'; }).join('');
-  main += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b style="margin-right:6px">Show</b>' + btn('irr', 'Levered IRR') + btn('dscr', 'Lender DSCR, year 1') + btn('coc', 'Year-1 cash-on-cash') + btn('moic', 'Equity multiple') + '</div><div style="overflow-x:auto"><table style="' + T + ';min-width:520px">' + head + rows + '</table></div><div style="font-size:12px;opacity:.75;margin-top:8px">Rows: loan-to-value on price. Columns: fixed interest rate, 30-year amortization unless the deal says otherwise. Blue beats the unlevered return (or the ' + X(L.minDSCR) + ' loan\'s minimum DSCR), stone grey falls short. A dashed red outline marks loans whose year-1 lender DSCR (' + bkDscrBasis('lender') + ') is below the ' + X(L.minDSCR) + ' house minimum. Hover a cell for the loan and equity.</div>');
+  main += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b style="margin-right:6px">Show</b>' + btn('irr', 'Levered IRR') + btn('dscr', 'Lender DSCR, year 1') + btn('coc', 'Year-1 cash-on-cash') + btn('moic', 'Equity multiple') + '</div><div style="overflow-x:auto"><table style="' + T + ';min-width:520px">' + head + rows + '</table></div><div style="font-size:12px;opacity:.75;margin-top:8px">Rows: loan-to-value on price. Columns: fixed interest rate, 30-year amortization unless the deal says otherwise. Green beats the unlevered return (or the ' + X(L.minDSCR) + ' loan\'s minimum DSCR), red falls short. A dashed red outline marks loans whose year-1 lender DSCR (' + bkDscrBasis('lender') + ') is below the ' + X(L.minDSCR) + ' house minimum. Hover a cell for the loan and equity.</div>');
   /* where does leverage stop helping */
   var lt = st.ltv, be = null, prev = null;
   for(var r = 0.04; r <= 0.1001; r += 0.0025){ var c = lev(B, lt, r); if(!c) continue; var d = c.irr - L.u.irr; if(prev && prev.d > 0 && d <= 0){ be = prev.r + (r - prev.r) * prev.d / (prev.d - d); break; } prev = { r:r, d:d }; }

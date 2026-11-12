@@ -18,23 +18,28 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
       const flat = [].concat.apply([], cells); return { flat: flat.map(c => Object.assign(c, { L: lum(c.bg) })), key: (t.nextElementSibling && t.nextElementSibling.classList.contains('hm-key')) ? t.nextElementSibling.innerText.replace(/\s+/g, ' ') : '', note: (t.parentElement.querySelector('.note') || {}).textContent || '' }; });
     await q.close(); return Object.assign(r, { g }); };
   const shades = (g) => new Set(g.flat.map(c => c.bg)).size;
-  const ordered = (g) => { const s = g.flat.slice().sort((x, y) => x.v - y.v); for (let i = 1; i < s.length; i++) if (s[i].v > s[i - 1].v + 1e-9 && s[i].L > s[i - 1].L + 0.5) return false; return true; };   /* a higher IRR is never a lighter cell */
+  /* owner request 12 Nov: the sensitivity charts are red (low) through neutral to green (high). Green minus red rises with the value on that scale, so "a higher IRR is never a lighter cell"
+     becomes "a higher IRR is never further toward red". */
+  const gr = (c) => { const m = c.bg.match(/\d+/g).map(Number); return m[1] - m[0]; };
+  const ordered = (g) => { const s = g.flat.slice().sort((x, y) => x.v - y.v); for (let i = 1; i < s.length; i++) if (s[i].v > s[i - 1].v + 1e-9 && gr(s[i]) < gr(s[i - 1]) - 1) return false; return true; };
+  const LO = [194, 74, 63], MD = [243, 241, 236], HI = [47, 143, 91];
+  const onScale = (c) => { const m = c.bg.match(/\d+/g).map(Number); const seg = (a, b) => { let best = 1e9; for (let t = 0; t <= 1.0001; t += 0.01) { const d = Math.hypot(a[0] + (b[0] - a[0]) * t - m[0], a[1] + (b[1] - a[1]) * t - m[1], a[2] + (b[2] - a[2]) * t - m[2]); if (d < best) best = d; } return best; }; return Math.min(seg(LO, MD), seg(MD, HI)) < 6; };
   const base = (r) => { const c = r.g.flat.filter(x => x.base); return c.length === 1 && Math.abs(c[0].v - Math.round(r.irr * 1000) / 10) < 0.051 && c[0].outline !== 'none'; };
 
   /* every cell above the hurdle: the case the hurdle-centred scale painted one green */
   const hi = await grid(A, { exitCap: 0.035 });
-  check('every cell beats the hurdle, and the grid still shows its spread: at least 15 shades over the 25 cells, a higher IRR never lighter, no hurdle markers, the key gives the lowest and highest IRR', hi.g && hi.g.flat.every(c => c.v / 100 >= hi.hurdle) && shades(hi.g) >= 15 && ordered(hi.g) && hi.g.flat.every(c => !c.under && !c.mark) && /Every cell meets/.test(hi.g.note) && hi.g.key.indexOf(Math.min(...hi.g.flat.map(c => c.v)).toFixed(2) + '%') >= 0 && hi.g.key.indexOf(Math.max(...hi.g.flat.map(c => c.v)).toFixed(2) + '%') >= 0, JSON.stringify({ n: shades(hi.g), key: hi.g.key }));
+  check('every cell beats the hurdle, and the grid still shows its spread: at least 15 shades over the 25 cells, a higher IRR never further toward red, no hurdle markers, the key gives the lowest and highest IRR', hi.g && hi.g.flat.every(c => c.v / 100 >= hi.hurdle) && shades(hi.g) >= 15 && ordered(hi.g) && hi.g.flat.every(c => !c.under && !c.mark) && /Every cell meets/.test(hi.g.note) && hi.g.key.indexOf(Math.min(...hi.g.flat.map(c => c.v)).toFixed(2) + '%') >= 0 && hi.g.key.indexOf(Math.max(...hi.g.flat.map(c => c.v)).toFixed(2) + '%') >= 0, JSON.stringify({ n: shades(hi.g), key: hi.g.key }));
   check('the base cell is outlined and is the engine\'s levered IRR', base(hi), JSON.stringify(hi.g.flat.filter(x => x.base)));
   /* every cell below the hurdle */
   const lo = await grid(A, {});
-  check('every cell misses the hurdle: the same spread of blues, no markers, and one sentence saying no cell reaches it', lo.g.flat.every(c => c.v / 100 < lo.hurdle) && shades(lo.g) >= 15 && ordered(lo.g) && lo.g.flat.every(c => !c.mark) && /No cell reaches/.test(lo.g.note) && base(lo), JSON.stringify({ n: shades(lo.g), note: lo.g.note.slice(0, 160) }));
+  check('every cell misses the hurdle: the same spread of shades, no markers, and one sentence saying no cell reaches it', lo.g.flat.every(c => c.v / 100 < lo.hurdle) && shades(lo.g) >= 15 && ordered(lo.g) && lo.g.flat.every(c => !c.mark) && /No cell reaches/.test(lo.g.note) && base(lo), JSON.stringify({ n: shades(lo.g), note: lo.g.note.slice(0, 160) }));
   /* a grid that straddles the hurdle */
   let mx = null; for (const ec of [0.04, 0.0425, 0.045, 0.0475, 0.05, 0.0525]) { const r = await grid(A, { exitCap: ec }); const below = r.g.flat.filter(c => c.v / 100 < r.hurdle).length; if (below > 0 && below < 25) { mx = r; break; } }
   check('a grid that straddles the hurdle marks exactly the cells below it, and the note counts them', !!mx && mx.g.flat.every(c => c.mark === (c.v / 100 < mx.hurdle)) && mx.g.note.indexOf('marks the ' + mx.g.flat.filter(c => c.mark).length + ' cell') >= 0 && ordered(mx.g) && base(mx), mx ? JSON.stringify({ marked: mx.g.flat.filter(c => c.mark).length, note: mx.g.note.slice(0, 160) }) : 'no straddling case');
   /* development summary */
   const dv = await grid(V, {});
-  check('the development summary uses the same grid: blue spread, key, base cell outlined', dv.g && shades(dv.g) >= 15 && ordered(dv.g) && !!dv.g.key && base(dv), dv.g ? JSON.stringify({ n: shades(dv.g), key: dv.g.key }) : 'no grid');
-  check('no green or red fills are left in the grid (two blues and a small marker only)', [hi, lo, mx, dv].filter(Boolean).every(r => r.g.flat.every(c => { const m = c.bg.match(/\d+/g).map(Number); return m[2] >= m[0] && m[2] >= m[1]; })));
+  check('the development summary uses the same grid: shade spread, key, base cell outlined', dv.g && shades(dv.g) >= 15 && ordered(dv.g) && !!dv.g.key && base(dv), dv.g ? JSON.stringify({ n: shades(dv.g), key: dv.g.key }) : 'no grid');
+  check('every fill is on the one red-to-neutral-to-green scale (no other colors, and a small marker only)', [hi, lo, mx, dv].filter(Boolean).every(r => r.g.flat.every(onScale)));
   check('no page errors', errs.length === 0, errs.join(' | '));
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
