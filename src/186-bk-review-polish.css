@@ -42,5 +42,5 @@ html body #viewport table.fin.bk-conv.bk-conv td .status-chip{ width:auto !impor
 /* a page with no side panel gives its whole width to the main column: no reserved, empty 300px strip on the right */
 html body #viewport .body-grid:not(:has(> .side-col)):not(.source-lease-grid){ grid-template-columns:minmax(0,1fr) !important; }
 /* a plain drop-down in a table cell (Financing Compare) follows the night theme instead of showing as a white box */
-:root[data-theme="dark"] body #viewport td > select:not([class]){ background-color:#1b2430 !important; color:#e8edf3 !important; border-color:#3a4656 !important; }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport td > select:not([class]){ background-color:#1b2430 !important; color:#e8edf3 !important; border-color:#3a4656 !important; } }
+:root[data-theme="dark"] body #viewport td > select[onchange^="bkFC"]{ background-color:#1b2430 !important; color:#e8edf3 !important; border-color:#3a4656 !important; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport td > select[onchange^="bkFC"]{ background-color:#1b2430 !important; color:#e8edf3 !important; border-color:#3a4656 !important; } }
