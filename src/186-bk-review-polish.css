@@ -116,7 +116,7 @@ html body #viewport table.bk-mc th:nth-child(4), html body #viewport table.bk-mc
 /* Year 0 block: header label never cut, figures fit their column */
 #rp-year0 th, #rp-year0 td{ white-space:nowrap; overflow:visible; text-overflow:clip; padding-left:3px; padding-right:3px }
 #rp-year0 th:nth-child(2), #rp-year0 td:nth-child(2){ min-width:96px }
-html body #viewport #rp-year0 th, html body #viewport #rp-year0 td{ padding-left:3px !important; padding-right:3px !important; font-size:11.5px !important }
+@media screen{ html body #viewport #rp-year0 th, html body #viewport #rp-year0 td{ padding-left:3px !important; padding-right:3px !important; font-size:11.5px !important } }
 /* holds over ten years: whole dollars at a readable width, the statement scrolls sideways with the label column held */
 html body #viewport .bk-scrollyrs{ overflow-x:auto; max-width:100% }
 html body #viewport .bk-scrollyrs table.rp-tbl{ table-layout:fixed; width:calc(210px + (var(--yrs) + 2) * 100px); min-width:100% }
