@@ -18433,11 +18433,11 @@ schedule();
 <style id="bk-sensitivity-explorer-css">
 /* SENSITIVITY EXPLORER - charts + view toggles. Light/dark tokens follow the app's own scheme. */
 .bk-sx{ --sx-surface:var(--surface,#fff); --sx-ink:var(--ink-900,#10233a); --sx-ink2:var(--ink-500,#566a80); --sx-line:var(--line,#dbe4ec);
-  --sx-grid:rgba(23,48,73,.10); --sx-up:#2f8f5b; --sx-dn:#c24a3f; --sx-mid:#eef2f6;
+  --sx-grid:rgba(23,48,73,.10); --sx-up:#12609f; --sx-dn:#9fb0c2; --sx-mid:#eef2f6;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948; --s9:#566a80; }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#3fb27a; --sx-dn:#e0675c; --sx-mid:#383835;
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#4f9be0; --sx-dn:#7d8fa5; --sx-mid:#383835;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#9aabbd; } }
-:root[data-theme="dark"] .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#3fb27a; --sx-dn:#e0675c; --sx-mid:#383835;
+:root[data-theme="dark"] .bk-sx{ --sx-grid:rgba(237,234,226,.12); --sx-up:#4f9be0; --sx-dn:#7d8fa5; --sx-mid:#383835;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#9aabbd; }
 .bk-sx-card{ background:var(--sx-surface); border:1px solid var(--sx-line); border-radius:8px; padding:14px 16px 16px; margin-top:16px; box-shadow:var(--shadow-card,none); }
 .bk-sx-card:first-child{ margin-top:0; }
@@ -18479,7 +18479,7 @@ schedule();
 .bk-sx-heat td.base{ outline:2px solid var(--sx-ink); outline-offset:-2px; font-weight:700; }
 .bk-sx-heat .corner{ font-size:10px; text-align:right; }
 .bk-sx-scale{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--sx-ink2); margin-top:8px; }
-.bk-sx-scale b{ display:inline-block; width:140px; height:8px; border-radius:4px; background:linear-gradient(90deg,var(--sx-dn),var(--sx-mid),var(--sx-up)); }
+.bk-sx-scale b{ display:inline-block; width:140px; height:8px; border-radius:4px; background:linear-gradient(90deg,#c24a3f,var(--sx-mid),#2f8f5b); }
 .bk-sx details{ margin-top:8px; font-size:12px; }
 .bk-sx details summary{ cursor:pointer; color:var(--sx-ink2); font-size:11.5px; }
 .bk-sx details table{ width:100%; border-collapse:collapse; margin-top:6px; font-size:11.5px; }
