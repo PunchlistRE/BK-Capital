@@ -247,12 +247,13 @@ function explorer(s){
   // ---- heat map: any two drivers, diverging around base
   var gx = byId[p.gx], gy = byId[p.gy], sx = stepOf(gx, p), sy = stepOf(gy, p), ks = [-2,-1,0,1,2];
   var cells = ks.map(function(ky){ return ks.map(function(kx){ return (kx === 0 && ky === 0) ? base : run(Object.assign({}, gy.ov(ky*sy), gx.ov(kx*sx))); }); });
+  var loV = Infinity, hiV = -Infinity; cells.forEach(function(r){ r.forEach(function(v){ if(isFinite(v)){ loV = Math.min(loV, v); hiV = Math.max(hiV, v); } }); });
   var maxDev = 0; cells.forEach(function(r){ r.forEach(function(v){ if(isFinite(v)) maxDev = Math.max(maxDev, Math.abs(v-base)); }); });
   var heat = '<table class="bk-sx-heat"><thead><tr><th class="corner">'+esc(gx.label)+' &rarr;<br>'+esc(gy.label)+' &darr;</th>'
     + ks.map(function(kx){ return '<th>'+esc(gx.show(kx*sx))+'</th>'; }).join('') + '</tr></thead><tbody>'
     + ks.map(function(ky, i){ return '<tr><th class="rh">'+esc(gy.show(ky*sy))+'</th>' + ks.map(function(kx, j){
-        var v = cells[i][j], t = maxDev > 0 && isFinite(v) ? Math.min(1, Math.abs(v-base)/maxDev) : 0;
-        var c = !isFinite(v) ? null : mix('#eef2f6', v >= base ? '#1b8a7d' : '#d0691f', t*0.85);
+        var v = cells[i][j], t = hiV > loV && isFinite(v) ? (v-loV)/(hiV-loV) : 0;
+        var night = document.documentElement.getAttribute('data-theme') === 'dark', c = !isFinite(v) ? null : mix(night ? '#2b3646' : '#eef2f6', night ? '#3f86d0' : '#12609f', t*0.92);   /* one blue ramp from the grid's lowest to its highest value */
         var isBase = kx === 0 && ky === 0;
         return '<td class="'+(isBase?'base ':'')+(c && c.lum < 0.55 ? 'dark' : '')+'"'+(c?' style="background:'+c.css+'"':'')
           + tip('<b>'+esc(gy.label)+' '+esc(gy.show(ky*sy))+' &middot; '+esc(gx.label)+' '+esc(gx.show(kx*sx))+'</b><br>'+esc(M.label)+' '+esc(M.fmt(v))
@@ -260,8 +261,8 @@ function explorer(s){
           + '>'+esc(M.fmt(v))+'</td>'; }).join('') + '</tr>'; }).join('')
     + '</tbody></table>';
   var heatCard = '<div class="bk-sx-card"><p class="bk-sx-title">Heat map - '+esc(gy.label)+' &times; '+esc(gx.label)+' &rarr; '+esc(M.label)+'</p>'
-    + '<p class="bk-sx-sub">Pick any two drivers above. The outlined cell is base; teal is better than base, amber is worse.</p>'
-    + heat + '<div class="bk-sx-scale">Worse <b></b> Better</div></div>';
+    + '<p class="bk-sx-sub">Pick any two drivers above. The outlined cell is base; the deeper the blue, the higher the value.</p>'
+    + heat + '<div class="bk-sx-scale">Lower <b></b> Higher</div></div>';
 
   // ---- break-evens: how far each driver can move before levered IRR falls to the chosen target
   var target = p.beTarget === 'zero' ? 0 : p.beTarget === 'hurdle2' ? N(s.hurdle2) : N(s.pref);
