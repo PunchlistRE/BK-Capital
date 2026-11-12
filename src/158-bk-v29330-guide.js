@@ -489,7 +489,7 @@ document.addEventListener('keydown', function(e){ if(e.key !== 'Enter' || !e.tar
 var lastKey = '';
 /* a phone: one question to a screen (the step form stays whole on a wider window) */
 function phoneQ(){
-  if(window.innerWidth > 760 || st.screen || !st.step || st.step === 'review') return; var fs = [].slice.call(document.querySelectorAll('#viewport .gd-card > .gd-f')); if(fs.length < 2) return;
+  if((window.innerWidth > 760 && depth() !== 'full') || st.screen || !st.step || st.step === 'review') return; var fs = [].slice.call(document.querySelectorAll('#viewport .gd-card > .gd-f')); if(fs.length < 2) return;
   var i = Math.min(st.fi || 0, fs.length - 1); st.fi = i; fs.forEach(function(f, j){ f.style.display = j === i ? '' : 'none'; });
   var bar = document.createElement('div'); bar.className = 'gd-qbar'; bar.innerHTML = '<span>Question ' + (i + 1) + ' of ' + fs.length + '</span><i style="width:' + Math.round((i + 1) / fs.length * 100) + '%"></i>' + (i > 0 ? '<button type="button" class="gd-btn link" onclick="bkGuideQ2(-1)">Previous</button>' : '') + (i < fs.length - 1 ? '<button type="button" class="gd-btn" onclick="bkGuideQ2(1)">Next question</button>' : '');
   fs[0].parentNode.insertBefore(bar, fs[0]); if(i < fs.length - 1){ var nb = document.getElementById('gd-next'); if(nb) nb.style.display = 'none'; }
