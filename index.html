@@ -26004,7 +26004,7 @@ function buildDeal(om0, basis, fileName){
     var multi = (om.buildings || []).length > 1;
     d.rentRoll = om.rr.map(function(r){ return { unitId:(multi && r.building ? r.building.replace(/\s+(AV|AVE|AVENUE|ST|STREET|RD|ROAD)$/i, '') + ' ' : '') + r.unitId, tenantType:r.tenantType, unitType:r.unitType, tenant:r.tenant, sf:r.sf, status:r.status, inPlaceRent:r.inPlaceRent, marketRent:r.marketRent, recovery:0, leaseStart:r.leaseStart, leaseEnd:r.leaseEnd }; });
     d.miscIncome = (om.misc || []).map(function(x){ return { name:x.name, amount:x.amount, freq:x.freq }; });
-    d.otherIncomePerUnit = 0; d.vacancy = 0; d.occupancy = 1; d.commercialVacancy = 0; d.commercialArea = om.commSF || 0; d.commLeaseModel = false; d.leases = [];
+    d.otherIncomePerUnit = 0; d.vacancy = 0; d.occupancy = 1; d.commercialVacancy = 0; d.commercialArea = om.commSF || 0; d.commercialUnits = om.commSpaces || 0; d.commLeaseModel = false; d.leases = [];
     d.lossToLeasePct = 0; d.concessionPct = 0; d.rentAppliedBasis = 'In-Place';
     if(om.commSpaces) d.propertyType = 'Mixed-Use';
     var nRes = om.rr.filter(function(r){ return r.tenantType === 'Residential'; }).length, vacR = om.rr.filter(function(r){ return r.status === 'Vacant'; });
