@@ -15345,7 +15345,7 @@ extend('Portfolio CF','fbChecks', function(o){
             + 'or the permanent loan where the deal is a development')
     + '<tr>'+lbl('Going-in value at each deal&rsquo;s exit cap')+val(money(sumValue))+val(money(sumValue))+val(money(0))
       + '<td class="v">'+chip('pass','PASS')+'</td>'+txt('Year-1 NOI &divide; exit cap, deal by deal')+'</tr>'
-    + '<tr class="grandtotal">'+lbl('PORTFOLIO CAPITALISATION')+val(money(sumPrice))
+    + '<tr class="grandtotal">'+lbl('PORTFOLIO CAPITALIZATION')+val(money(sumPrice))
       + val(money(sumEquity + sumLoan))+val(money(sumPrice - (sumEquity + sumLoan)))
       + '<td class="v">'+chip(Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'pass' : 'warn',
           Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'IN LINE' : 'REVIEW')+'</td>'
@@ -21088,7 +21088,7 @@ window.bkSizeLoan = function(o){
 
 <script id="bk-v29150-refi">
 /* ===========================================================================
-   V29.15.0 - REFINANCE / RECAPITALISATION (ported from the Capital Markets model, 24_REFI RECAP)
+   V29.15.0 - REFINANCE / RECAPITALIZATION (ported from the Capital Markets model, 24_REFI RECAP)
    ===========================================================================
    For a chosen refinance year, and for every possible year:
      position      trailing NOI, value at the appraisal cap, the existing balance
@@ -22156,9 +22156,9 @@ function render(){
   var sdRows = ORDER.filter(function(id){ return by[id]; }).map(function(id){ var d = by[id], sd = r.sd[id], isRel = UNIT[id] === 'rel';
     return '<tr><td class="rowlabel">' + LABEL[id] + '</td><td>' + d.show(0) + '</td><td>' + numIn('sd.' + id, sd, true, 56) + '</td><td>' + d.show(-2 * sd) + ' to ' + d.show(2 * sd) + '</td></tr>'; }).join('');
   main += '<div class="tbl-wrap" style="margin-top:24px"><table class="fin"><caption>Monte Carlo - How Far Each Driver Can Move</caption><thead><tr><th class="rowlabel-h">Driver</th><th>Base</th><th>Std deviation</th><th>About 95% of draws fall in</th></tr></thead><tbody>' + sdRows
-    + '<tr><td class="rowlabel">Correlation: rent growth vs exit cap</td><td colspan="3" style="text-align:left">' + numIn('corr', r.corr, false, 56) + ' <span style="font-size:11px">(−1 to 1; a negative number means faster rent growth tends to come with a lower exit cap)</span></td></tr>'
-    + '<tr><td class="rowlabel">Number of draws</td><td colspan="3" style="text-align:left">' + numIn('n', r.n, false, 64) + '</td></tr>'
-    + '<tr><td class="rowlabel">Random seed</td><td colspan="3" style="text-align:left">' + numIn('seed', r.seed, false, 90) + '</td></tr></tbody></table></div>'
+    + '<tr><td class="rowlabel">Correlation: rent growth vs exit cap</td><td></td><td>' + numIn('corr', r.corr, false, 56) + '</td><td style="text-align:left">&minus;1 to 1; negative: faster rent growth comes with a lower exit cap</td></tr>'
+    + '<tr><td class="rowlabel">Number of draws</td><td></td><td>' + numIn('n', r.n, false, 64) + '</td><td></td></tr>'
+    + '<tr><td class="rowlabel">Random seed</td><td></td><td>' + numIn('seed', r.seed, false, 90) + '</td><td></td></tr></tbody></table></div>'
     + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="status-chip pass" onclick="bkRiskRun()"' + (MC.running ? ' disabled' : '') + '>RUN ' + r.n + ' DRAWS</button><span id="bkRiskProg" style="font-size:12px">' + (MC.running ? 'Running: ' + MC.done + ' of ' + MC.total + ' draws' : '') + '</span></div>'
     + '<div style="margin-top:6px;font-size:11px;opacity:.75;max-width:1000px">Correlation runs from \u22121 to 1: a negative number means faster rent growth tends to come with a lower exit cap. Each draw re-runs the full engine (about 10 ms). The same seed and inputs always give the same answer.</div>';
   var sig = sigOf(s), stale = MC.runs && MC.sig !== sig;
@@ -29136,7 +29136,7 @@ function parsePreds(raw, T, selfId){
    pre-development tasks and of the construction tasks is exactly the phase months already in the deal: switching to tasks moves nothing in the engine. The sequencing is a conventional one for mid-rise multifamily and is an
    ASSUMPTION to edit (it is not read from any document); the engine times costs on its own draw curves, not on these dates. */
 var DETAIL_PRE = [['Site assessment and due diligence', 0, .25, null], ['Entitlements and approvals', .10, .70, 0], ['Design development', .20, .65, 0], ['Construction documents', .50, .90, 2], ['Permits and GMP pricing', .70, 1, 3]];
-var DETAIL_CON = [['Mobilisation and site clearing', 0, .06, null], ['Excavation and shoring', .04, .20, 0], ['Foundations', .15, .32, 1], ['Structure: podium and frame', .28, .62, 2], ['Envelope, glazing and roofing', .45, .75, 3], ['MEP rough-in', .42, .78, 3],
+var DETAIL_CON = [['Mobilization and site clearing', 0, .06, null], ['Excavation and shoring', .04, .20, 0], ['Foundations', .15, .32, 1], ['Structure: podium and frame', .28, .62, 2], ['Envelope, glazing and roofing', .45, .75, 3], ['MEP rough-in', .42, .78, 3],
   ['Partitions and drywall', .55, .82, 4], ['Unit interiors: cabinets and fixtures', .68, .92, 6], ['Amenity fit-out', .80, .96, 6], ['Landscape and site finishes', .82, .98, 4], ['Testing, commissioning and inspections', .92, 1, 7]];
 function detailTasks(pre, con){
   var T = [], idOf = function(){ return 't' + (T.length + 1); };
@@ -34071,6 +34071,9 @@ html body #viewport table.fin tbody tr > td.v, html body #viewport table.fin tbo
 html body #viewport .tbl-wrap > table.fin:only-child{ margin-bottom:0 }
 html body #viewport table.fin.bk-kv tbody td:last-child, html body #viewport table.fin.bk-kv tbody td.v{ text-align:right !important }
 html body #viewport table.fin.bk-kv tbody td:first-child{ width:42% }
+/* a row label never breaks inside a word */
+html body #viewport table.fin td.rowlabel, html body #viewport table.fin td:first-child{ overflow-wrap:normal; word-break:normal; hyphens:none }
+@media (min-width:761px){ html body #viewport table.fin tr.grandtotal td.rowlabel, html body #viewport table.fin tr.total td.rowlabel{ min-width:190px } }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):

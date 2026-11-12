@@ -105,7 +105,7 @@ function parsePreds(raw, T, selfId){
    pre-development tasks and of the construction tasks is exactly the phase months already in the deal: switching to tasks moves nothing in the engine. The sequencing is a conventional one for mid-rise multifamily and is an
    ASSUMPTION to edit (it is not read from any document); the engine times costs on its own draw curves, not on these dates. */
 var DETAIL_PRE = [['Site assessment and due diligence', 0, .25, null], ['Entitlements and approvals', .10, .70, 0], ['Design development', .20, .65, 0], ['Construction documents', .50, .90, 2], ['Permits and GMP pricing', .70, 1, 3]];
-var DETAIL_CON = [['Mobilisation and site clearing', 0, .06, null], ['Excavation and shoring', .04, .20, 0], ['Foundations', .15, .32, 1], ['Structure: podium and frame', .28, .62, 2], ['Envelope, glazing and roofing', .45, .75, 3], ['MEP rough-in', .42, .78, 3],
+var DETAIL_CON = [['Mobilization and site clearing', 0, .06, null], ['Excavation and shoring', .04, .20, 0], ['Foundations', .15, .32, 1], ['Structure: podium and frame', .28, .62, 2], ['Envelope, glazing and roofing', .45, .75, 3], ['MEP rough-in', .42, .78, 3],
   ['Partitions and drywall', .55, .82, 4], ['Unit interiors: cabinets and fixtures', .68, .92, 6], ['Amenity fit-out', .80, .96, 6], ['Landscape and site finishes', .82, .98, 4], ['Testing, commissioning and inspections', .92, 1, 7]];
 function detailTasks(pre, con){
   var T = [], idOf = function(){ return 't' + (T.length + 1); };
