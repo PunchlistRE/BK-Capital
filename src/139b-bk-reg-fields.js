@@ -54,7 +54,7 @@ window.BKReg.addFields([
   F('acqDSCR', 'Lender minimum DSCR', 'num'),
   /* hold and exit */
   F('holdYears', 'Hold period, years', 'int', { sug:sug(5, 'Five years is the usual base case.') }),
-  F('exitCap', 'Exit cap rate', 'pct', { sug:function(s){ var c = safe(function(){ return bkCalc(); }, {}), p = Number(s.purchasePrice) || 0; return c.noi && p ? { v:Math.round((c.noi / p + 0.0025) * 10000) / 10000, why:'The going-in cap rate (' + (c.noi / p * 100).toFixed(2) + '%) plus 0.25%, so the sale is not assumed to be better than the purchase.' } : { v:0.06, why:'No price or income yet; 6% is a placeholder.' }; } }),
+  F('exitCap', 'Exit cap rate', 'pct', { help:'The cap rate a buyer pays when you sell, applied to next year\'s income. Compare it with the going-in cap rate (year-1 NOI divided by the purchase price): an exit cap below the going-in cap assumes the market improves; above it is the cautious case.', sug:function(s){ var c = safe(function(){ return bkCalc(); }, {}), p = Number(s.purchasePrice) || 0; return c.noi && p ? { v:Math.round((c.noi / p + 0.0025) * 10000) / 10000, why:'The going-in cap rate (' + (c.noi / p * 100).toFixed(2) + '%) plus 0.25%, so the sale is not assumed to be better than the purchase.' } : { v:0.06, why:'No price or income yet; 6% is a placeholder.' }; } }),
   F('rentGrowth', 'Annual rent growth', 'pct', { zeroOk:true, sug:sug(0.03, '3% is a common long-run assumption; use less in a soft market.') }),
   F('opexGrowth', 'Annual expense growth', 'pct', { zeroOk:true, sug:sug(0.03, 'Expenses usually grow at about 3% a year.') }),
   F('saleCostPct', 'Cost of sale, % of price', 'pct', { zeroOk:true, sug:sug(0.02, 'Broker and closing costs on a sale are about 2%.') }),
