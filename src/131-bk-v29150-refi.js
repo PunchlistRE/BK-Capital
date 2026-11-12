@@ -1,6 +1,6 @@
 
 /* ===========================================================================
-   V29.15.0 - REFINANCE / RECAPITALISATION (ported from the Capital Markets model, 24_REFI RECAP)
+   V29.15.0 - REFINANCE / RECAPITALIZATION (ported from the Capital Markets model, 24_REFI RECAP)
    ===========================================================================
    For a chosen refinance year, and for every possible year:
      position      trailing NOI, value at the appraisal cap, the existing balance

@@ -165,7 +165,7 @@ extend('Portfolio CF','fbChecks', function(o){
             + 'or the permanent loan where the deal is a development')
     + '<tr>'+lbl('Going-in value at each deal&rsquo;s exit cap')+val(money(sumValue))+val(money(sumValue))+val(money(0))
       + '<td class="v">'+chip('pass','PASS')+'</td>'+txt('Year-1 NOI &divide; exit cap, deal by deal')+'</tr>'
-    + '<tr class="grandtotal">'+lbl('PORTFOLIO CAPITALISATION')+val(money(sumPrice))
+    + '<tr class="grandtotal">'+lbl('PORTFOLIO CAPITALIZATION')+val(money(sumPrice))
       + val(money(sumEquity + sumLoan))+val(money(sumPrice - (sumEquity + sumLoan)))
       + '<td class="v">'+chip(Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'pass' : 'warn',
           Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'IN LINE' : 'REVIEW')+'</td>'

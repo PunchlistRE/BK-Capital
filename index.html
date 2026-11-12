@@ -8824,7 +8824,7 @@ function sheetStorageLifecycle(){
            main:main,
            sidebar: shell(card('Storage Keys In Use',
              '<div class="metric-list">'
-             + Object.keys(localStorage).sort().map(function(k){
+             + Object.keys(localStorage).filter(function(k){ return !/^bk-(pt|du)/.test(k); }).sort().map(function(k){   /* page-tab memory is housekeeping, not storage worth showing */
                  return '<div class="metric-row"><span class="k">'+esc(k.replace('bkcapital.',''))
                       + '</span><span class="v">'+((localStorage.getItem(k)||'').length).toLocaleString()+' B</span></div>';
                }).join('')
@@ -15345,7 +15345,7 @@ extend('Portfolio CF','fbChecks', function(o){
             + 'or the permanent loan where the deal is a development')
     + '<tr>'+lbl('Going-in value at each deal&rsquo;s exit cap')+val(money(sumValue))+val(money(sumValue))+val(money(0))
       + '<td class="v">'+chip('pass','PASS')+'</td>'+txt('Year-1 NOI &divide; exit cap, deal by deal')+'</tr>'
-    + '<tr class="grandtotal">'+lbl('PORTFOLIO CAPITALISATION')+val(money(sumPrice))
+    + '<tr class="grandtotal">'+lbl('PORTFOLIO CAPITALIZATION')+val(money(sumPrice))
       + val(money(sumEquity + sumLoan))+val(money(sumPrice - (sumEquity + sumLoan)))
       + '<td class="v">'+chip(Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'pass' : 'warn',
           Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'IN LINE' : 'REVIEW')+'</td>'
@@ -20521,7 +20521,7 @@ register('IC Memo', function(){
   var dealRows = [
     ['Asset', esc(s.name) + ' · ' + esc(s.propertyType) + ' · ' + esc(s.location || '')], ['Deal type', esc(s.dealType)], ['Price / basis', $(s.purchasePrice) + (cap ? ' / ' + $(cap.cost) : '')],
     ['Year-1 NOI after reserves / going-in yield', cap ? $(cap.noi) + ' · ' + P(cap.noi / s.purchasePrice) : 'n/a'], ['Hold / exit cap', (Number(s.holdYears) || '') + ' years · ' + P(Number(s.exitCap))]
-  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td data-bk-align="text">' + r[1] + '</td></tr>'; }).join('');
+  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>'; }).join('');   /* values right-aligned in every two-column table */
   var retRows = [
     ['Unlevered IRR / multiple', ret.u ? P(ret.u.irr) + ' / ' + X(ret.u.moic) : 'n/a'], ['Gross levered IRR / multiple', P(ret.irr) + ' / ' + X(ret.moic)],
     ['Net LP IRR / multiple', w ? P(w.lpIRR) + ' / ' + X(w.lp && w.lp.contrib > 0 ? w.lp.dist / w.lp.contrib : null) : 'n/a'], ['GP IRR / promote', w ? P(w.gpIRR) + ' / ' + $(w.promote) : 'n/a'],
@@ -20561,7 +20561,7 @@ register('IC Memo', function(){
     meta:{ Property:s.name, Verdict:g.verdict, Score:(g.score * 100).toFixed(0) + '%', Exceptions:g.hard + ' hard / ' + g.soft + ' soft' },
     main: banner
       + table('Investment Thesis', null, thesisHtml)
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows) + table('Returns', null, retRows) + table('Financing', null, fin) + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows, 'bk-kv') + table('Returns', null, retRows, 'bk-kv') + table('Financing', null, fin, 'bk-kv') + '</div>'
       + table('Policy Test Table - Every Gate in One Place', th(['Gate', 'Underwritten', 'Threshold', 'Test', 'Result', 'Severity', 'Weight', 'Score']), gateRows)
       + table('Ranked Exceptions', th(['#', 'Exception', 'Severity']), exc)
       + table('Break-Even and Stress Cushions', th(['Metric', 'Value', 'Meaning']), cush)
@@ -21088,7 +21088,7 @@ window.bkSizeLoan = function(o){
 
 <script id="bk-v29150-refi">
 /* ===========================================================================
-   V29.15.0 - REFINANCE / RECAPITALISATION (ported from the Capital Markets model, 24_REFI RECAP)
+   V29.15.0 - REFINANCE / RECAPITALIZATION (ported from the Capital Markets model, 24_REFI RECAP)
    ===========================================================================
    For a chosen refinance year, and for every possible year:
      position      trailing NOI, value at the appraisal cap, the existing balance
@@ -22156,9 +22156,9 @@ function render(){
   var sdRows = ORDER.filter(function(id){ return by[id]; }).map(function(id){ var d = by[id], sd = r.sd[id], isRel = UNIT[id] === 'rel';
     return '<tr><td class="rowlabel">' + LABEL[id] + '</td><td>' + d.show(0) + '</td><td>' + numIn('sd.' + id, sd, true, 56) + '</td><td>' + d.show(-2 * sd) + ' to ' + d.show(2 * sd) + '</td></tr>'; }).join('');
   main += '<div class="tbl-wrap" style="margin-top:24px"><table class="fin"><caption>Monte Carlo - How Far Each Driver Can Move</caption><thead><tr><th class="rowlabel-h">Driver</th><th>Base</th><th>Std deviation</th><th>About 95% of draws fall in</th></tr></thead><tbody>' + sdRows
-    + '<tr><td class="rowlabel">Correlation: rent growth vs exit cap</td><td colspan="3" style="text-align:left">' + numIn('corr', r.corr, false, 56) + ' <span style="font-size:11px">(−1 to 1; a negative number means faster rent growth tends to come with a lower exit cap)</span></td></tr>'
-    + '<tr><td class="rowlabel">Number of draws</td><td colspan="3" style="text-align:left">' + numIn('n', r.n, false, 64) + '</td></tr>'
-    + '<tr><td class="rowlabel">Random seed</td><td colspan="3" style="text-align:left">' + numIn('seed', r.seed, false, 90) + '</td></tr></tbody></table></div>'
+    + '<tr><td class="rowlabel">Correlation: rent growth vs exit cap</td><td></td><td>' + numIn('corr', r.corr, false, 56) + '</td><td style="text-align:left">&minus;1 to 1; negative: faster rent growth comes with a lower exit cap</td></tr>'
+    + '<tr><td class="rowlabel">Number of draws</td><td></td><td>' + numIn('n', r.n, false, 64) + '</td><td></td></tr>'
+    + '<tr><td class="rowlabel">Random seed</td><td></td><td>' + numIn('seed', r.seed, false, 90) + '</td><td></td></tr></tbody></table></div>'
     + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="status-chip pass" onclick="bkRiskRun()"' + (MC.running ? ' disabled' : '') + '>RUN ' + r.n + ' DRAWS</button><span id="bkRiskProg" style="font-size:12px">' + (MC.running ? 'Running: ' + MC.done + ' of ' + MC.total + ' draws' : '') + '</span></div>'
     + '<div style="margin-top:6px;font-size:11px;opacity:.75;max-width:1000px">Correlation runs from \u22121 to 1: a negative number means faster rent growth tends to come with a lower exit cap. Each draw re-runs the full engine (about 10 ms). The same seed and inputs always give the same answer.</div>';
   var sig = sigOf(s), stale = MC.runs && MC.sig !== sig;
@@ -23929,7 +23929,7 @@ function build(){
     '<div>' + (opShare == null ? '' : 'About <b>' + Math.round(opShare * 100) + '%</b> of what equity gets back comes from running the property; <b>' + Math.round((1 - opShare) * 100) + '%</b> comes from the sale and refinancing, after repaying the loan.') + '</div>',
     '<div>Year 1 NOI after reserves is <b>' + M(y1.noiAfter) + '</b> (' + P(goingIn, 2) + ' on price), ; the lender DSCR (' + bkDscrBasis('lender') + ') is <b>' + X(y1.dscr) + '</b> against the loan\'s ' + X(bkLenderDscrMin()) + ' minimum.</div>'].filter(function(x){ return x.length > 12; }).join('');
   var scSame = scen && scen.cases && scen.cases.length > 1 && scen.cases.every(function(c){ return Math.abs(c.irr - scen.cases[0].irr) < 1e-9 && Math.abs(c.profit - scen.cases[0].profit) < 1; });
-  var scenHtml = scen && scen.cases ? (scSame ? '<div class="note" style="color:#B23A2C"><b>Downside, Base and Upside are identical.</b> No scenario driver changes this deal, so the three cases are not a range. Set the scenario drivers before relying on these cards.</div>' : '') + '<div class="sc mt">' + scen.cases.map(function(c){ return '<div class="c' + (c.name === caseName ? ' cur' : '') + '"><div class="n">' + esc(c.name) + ' · ' + Math.round((c.p || 0) * 100) + '% likely</div><div class="v" style="color:' + (c.irr >= hurdle ? '#1F7A4C' : c.irr < 0 ? '#B23A2C' : '#0e2a4a') + '">' + P(c.irr, 1) + '</div><div class="d">' + X(c.moic) + ' multiple · ' + M(c.profit) + ' profit</div></div>'; }).join('') + '</div>'
+  var scenHtml = scen && scen.cases && scSame ? '<div class="note"><b>Scenario range not set.</b> No scenario driver (exit cap, rent growth, vacancy, expenses) moves this deal, so Downside, Base and Upside would all read ' + P(scen.cases[0].irr, 1) + '. Set the drivers on Market &gt; Scenario settings to show a range; until then only the base case is shown.</div><div class="sc mt" style="grid-template-columns:1fr"><div class="c cur"><div class="n">Base case</div><div class="v" style="color:' + (scen.cases[0].irr >= hurdle ? '#1F7A4C' : scen.cases[0].irr < 0 ? '#B23A2C' : '#0e2a4a') + '">' + P(scen.cases[0].irr, 1) + '</div><div class="d">' + X(scen.cases[0].moic) + ' multiple · ' + M(scen.cases[0].profit) + ' profit</div></div></div>' : scen && scen.cases ? '<div class="sc mt">' + scen.cases.map(function(c){ return '<div class="c' + (c.name === caseName ? ' cur' : '') + '"><div class="n">' + esc(c.name) + ' · ' + Math.round((c.p || 0) * 100) + '% likely</div><div class="v" style="color:' + (c.irr >= hurdle ? '#1F7A4C' : c.irr < 0 ? '#B23A2C' : '#0e2a4a') + '">' + P(c.irr, 1) + '</div><div class="d">' + X(c.moic) + ' multiple · ' + M(c.profit) + ' profit</div></div>'; }).join('') + '</div>'
     + '<div class="note" style="margin-top:6px">Probability-weighted: expected profit <b>' + M(scen.expProfit) + '</b>, expected multiple <b>' + X(scen.expMoic) + '</b>, IRR of expected cash flow <b>' + P(scen.irrOfExpectedCF, 1) + '</b>; chance of missing the hurdle <b>' + Math.round((scen.pMiss || 0) * 100) + '%</b>, of losing money <b>' + Math.round((scen.pLoss || 0) * 100) + '%</b>.</div>' : '';
   var cuA = gate.cushions || {}, narrA = investSummary({ dev:false, name:s.name, type:s.propertyType, location:s.location, units:D.units, sf:Number(s.gsf), price:price, holdYears:Number(s.holdYears), exitCap:Number(s.exitCap), goingIn:goingIn, cost:basis, equity:D.eq, loan:Number(d.loan) || 0, rate:Number(d.coupon), ltc:Number(d.ltc), irr:D.irr, moic:D.moic, profit:D.tot.profit, hurdle:hurdle, uirr:safe(function(){ return D.u.irr; }, null), yoc:yoc, rentGrowth:Number(s.rentGrowth), saleShare:opShare == null ? null : 1 - opShare, capBps:cuA.exitCapCushionBps, rentPct:cuA.rentCushion == null ? null : -Math.abs(cuA.rentCushion), caseName:caseName, integrity:gate.integrity, gateWhy:gateWhy(gate), verdict:gate.verdict });
   pages.push(page('<i class="p2"></i><h2>Dashboard</h2><div class="kp"><div class="c hl"><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 2) + '</div><div class="d">' + esc(caseName) + ' case</div></div><div class="c hl"><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(D.tot.profit) + ' profit</div></div><div class="c"><div class="k">Unlevered IRR</div><div class="v">' + P(D.u.irr, 2) + '</div><div class="d">' + X(D.u.moic) + ' multiple</div></div><div class="c"><div class="k">Net LP IRR</div><div class="v">' + (lp ? P(lp.value, 2) : '—') + '</div><div class="d">after promote</div></div>'
@@ -24200,7 +24200,7 @@ function render(){
   flush();
   var s = safe(function(){ return bkLoad(); }, null), h = hist(s), cur = headline(), hdr = { title:'Version History', crumbs:'QA', desc:'Every input change on this deal, and named versions you can compare and restore.', meta:{ Property:s && s.name, Versions:h.versions.length, Changes:h.log.length }, sidebar:'' };
   var T = 'width:100%;border-collapse:collapse;font-size:12.5px', TH = 'text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-bottom:2px solid #0e2a4a;opacity:.75', TD = 'padding:6px 8px;border-bottom:1px solid var(--line,#dbe4ec);vertical-align:top';
-  var main = box('<div style="font-weight:700;margin-bottom:6px">Save a version</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="bk-ver-name" type="text" maxlength="80" placeholder="Name this version, e.g. Sent to lender, or After rent-roll import" style="flex:1;min-width:240px;padding:8px 10px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;text-align:left !important"><button type="button" class="pl-hbtn primary" onclick="bkHistorySaveFromForm()">Save version</button></div><div style="font-size:12px;opacity:.7;margin-top:6px">A version stores every input and the returns at that moment (' + (cur.irr == null ? 'n/a' : (cur.irr * 100).toFixed(2) + '% IRR, ' + (cur.moic || 0).toFixed(2) + 'x') + ' now). Creating a PDF summary saves one automatically.</div>');
+  var main = box('<div style="font-weight:700;margin-bottom:6px">Save a version</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="bk-ver-name" type="text" maxlength="80" placeholder="Name this version, e.g. Sent to lender" style="flex:0 1 380px;min-width:220px;padding:8px 10px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;text-align:left !important"><button type="button" class="pl-hbtn primary" onclick="bkHistorySaveFromForm()">Save version</button></div><div style="font-size:12px;opacity:.7;margin-top:6px">A version stores every input and the returns at that moment (' + (cur.irr == null ? 'n/a' : (cur.irr * 100).toFixed(2) + '% IRR, ' + (cur.moic || 0).toFixed(2) + 'x') + ' now). Creating a PDF summary saves one automatically.</div>');
   var vs = h.versions.slice().reverse();
   main += box('<div style="font-weight:700;margin-bottom:6px">Versions</div>' + (vs.length ? '<table style="' + T + '"><thead><tr><th style="' + TH + '">Version</th><th style="' + TH + '">Saved</th><th style="' + TH + ';text-align:right">IRR</th><th style="' + TH + ';text-align:right">Multiple</th><th style="' + TH + '"></th></tr></thead><tbody>' + vs.map(function(v){
     return '<tr' + (sel === v.id ? ' style="background:rgba(62,154,230,.12)"' : '') + '><td style="' + TD + '"><b>' + esc(v.note) + '</b>' + (v.auto ? ' <span style="font-size:10px;opacity:.6">auto</span>' : '') + '</td><td style="' + TD + '">' + when(v.t) + '</td><td style="' + TD + ';text-align:right">' + (v.irr == null ? '—' : (v.irr * 100).toFixed(2) + '%') + '</td><td style="' + TD + ';text-align:right">' + (v.moic == null ? '—' : v.moic.toFixed(2) + 'x') + '</td><td style="' + TD + ';text-align:right;white-space:nowrap"><button type="button" class="pl-hbtn" onclick="bkHistoryCompare(\'' + v.id + '\')">' + (sel === v.id ? 'Hide' : 'Compare') + '</button> <button type="button" class="pl-hbtn" onclick="bkHistoryRestoreAsk(\'' + v.id + '\')">Restore</button></td></tr>'; }).join('') + '</tbody></table>' : '<div style="opacity:.7">No versions yet. Save one before a big change.</div>'));
@@ -26004,7 +26004,7 @@ function buildDeal(om0, basis, fileName){
     var multi = (om.buildings || []).length > 1;
     d.rentRoll = om.rr.map(function(r){ return { unitId:(multi && r.building ? r.building.replace(/\s+(AV|AVE|AVENUE|ST|STREET|RD|ROAD)$/i, '') + ' ' : '') + r.unitId, tenantType:r.tenantType, unitType:r.unitType, tenant:r.tenant, sf:r.sf, status:r.status, inPlaceRent:r.inPlaceRent, marketRent:r.marketRent, recovery:0, leaseStart:r.leaseStart, leaseEnd:r.leaseEnd }; });
     d.miscIncome = (om.misc || []).map(function(x){ return { name:x.name, amount:x.amount, freq:x.freq }; });
-    d.otherIncomePerUnit = 0; d.vacancy = 0; d.occupancy = 1; d.commercialVacancy = 0; d.commercialArea = om.commSF || 0; d.commLeaseModel = false; d.leases = [];
+    d.otherIncomePerUnit = 0; d.vacancy = 0; d.occupancy = 1; d.commercialVacancy = 0; d.commercialArea = om.commSF || 0; d.commercialUnits = om.commSpaces || 0; d.commLeaseModel = false; d.leases = [];
     d.lossToLeasePct = 0; d.concessionPct = 0; d.rentAppliedBasis = 'In-Place';
     if(om.commSpaces) d.propertyType = 'Mixed-Use';
     var nRes = om.rr.filter(function(r){ return r.tenantType === 'Residential'; }).length, vacR = om.rr.filter(function(r){ return r.status === 'Vacant'; });
@@ -27874,6 +27874,22 @@ function sfxSlots(root){
   });
 }
 /* every column header takes the alignment of the cells under it: the dominant computed alignment of the column's body cells */
+/* ALIGNMENT RULES, one set for every table: the metric name on the left, a value (number, money, percent, multiple) on the right, a status chip in the middle, notes and units on the left.
+   Columns that are already centered on purpose (heat grids, hurdle columns) are left alone; what is changed is a lone chip that is not centered and a value that is left aligned. */
+function colNum(t, i){ var n = 0, k = 0; [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(!c || r.parentNode === t.tHead || c.colSpan !== 1) return; var x = c.textContent.replace(/\s+/g, ' ').trim(); if(!x) return; k++; if(/^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i.test(x)) n++; }); return k >= 2 && n / k >= 0.7; }
+function colChip(t, i){ var n = 0, k = 0; [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(!c || r.parentNode === t.tHead || c.colSpan !== 1) return; if(!c.textContent.trim()) return; k++; if(c.querySelector('.status-chip')) n++; }); return k >= 2 && n / k >= 0.5; }
+function alignRules(root){
+  var NUM = /^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i;
+  [].forEach.call(root.querySelectorAll('table'), function(t){ if(t.classList.contains('bk-sx-heat')) return;
+    [].forEach.call(t.rows, function(r){ [].forEach.call(r.cells, function(c){ if(c.tagName === 'TH' || c.colSpan !== 1 || !c.offsetWidth) return;
+      var tx = c.textContent.replace(/\s+/g, ' ').trim(); if(!tx) return; var ch = c.querySelector('.status-chip'), al = getComputedStyle(c).textAlign; if(c.cellIndex === 0 && !(ch && tx.length < 30)) return;
+      if(ch && (tx === ch.textContent.replace(/\s+/g, ' ').trim() || tx.length < 30) && colChip(t, c.cellIndex)){ if(!/center/.test(al)){ c.classList.add('bk-col-chip'); c.style.setProperty('text-align', 'center', 'important'); } }
+      else if(!ch && NUM.test(tx) && /left|start/.test(al) && colNum(t, c.cellIndex)){ c.style.setProperty('text-align', 'right', 'important'); } }); });
+    /* a column header sits the way its figures sit */
+    var hr = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : null; if(!hr) return;
+    [].forEach.call(hr.cells, function(h, i){ if(i === 0 || h.colSpan !== 1) return; var body = [].filter.call(t.rows, function(r){ return r.parentNode !== t.tHead && r.cells[i] && r.cells[i].colSpan === 1 && r.cells[i].textContent.trim(); }); if(body.length < 2) return;
+      var nums = body.filter(function(r){ var x = r.cells[i].textContent.replace(/\s+/g, ' ').trim(); return NUM.test(x); }).length, want = nums / body.length > 0.7 ? 'right' : null; if(!want) return;
+      var got = getComputedStyle(h).textAlign; if(!/right|end/.test(got) && /right|end/.test(getComputedStyle(body[0].cells[i]).textAlign)) h.style.setProperty('text-align', 'right', 'important'); }); }); }
 function alignHeads(root){
   [].forEach.call(root.querySelectorAll('table.fin'), function(t){
     var heads = [].filter.call(t.rows, function(r){ return r.parentNode.tagName === 'THEAD' || (r.cells.length && [].every.call(r.cells, function(c){ return c.tagName === 'TH'; })); }); if(!heads.length) return;
@@ -27912,7 +27928,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
@@ -29120,7 +29136,7 @@ function parsePreds(raw, T, selfId){
    pre-development tasks and of the construction tasks is exactly the phase months already in the deal: switching to tasks moves nothing in the engine. The sequencing is a conventional one for mid-rise multifamily and is an
    ASSUMPTION to edit (it is not read from any document); the engine times costs on its own draw curves, not on these dates. */
 var DETAIL_PRE = [['Site assessment and due diligence', 0, .25, null], ['Entitlements and approvals', .10, .70, 0], ['Design development', .20, .65, 0], ['Construction documents', .50, .90, 2], ['Permits and GMP pricing', .70, 1, 3]];
-var DETAIL_CON = [['Mobilisation and site clearing', 0, .06, null], ['Excavation and shoring', .04, .20, 0], ['Foundations', .15, .32, 1], ['Structure: podium and frame', .28, .62, 2], ['Envelope, glazing and roofing', .45, .75, 3], ['MEP rough-in', .42, .78, 3],
+var DETAIL_CON = [['Mobilization and site clearing', 0, .06, null], ['Excavation and shoring', .04, .20, 0], ['Foundations', .15, .32, 1], ['Structure: podium and frame', .28, .62, 2], ['Envelope, glazing and roofing', .45, .75, 3], ['MEP rough-in', .42, .78, 3],
   ['Partitions and drywall', .55, .82, 4], ['Unit interiors: cabinets and fixtures', .68, .92, 6], ['Amenity fit-out', .80, .96, 6], ['Landscape and site finishes', .82, .98, 4], ['Testing, commissioning and inspections', .92, 1, 7]];
 function detailTasks(pre, con){
   var T = [], idOf = function(){ return 't' + (T.length + 1); };
@@ -33087,6 +33103,26 @@ wrap('Equity Waterfall'); wrap('Waterfall (M)');
 (function(){
 function wrap(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
   RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; o.main = '<div class="rp-stmt">' + o.main + '</div>'; return o; }; }
+/* Cash Flow Report: the equity actually invested at close (Year 0) and what the levered IRR is calculated on */
+(function(){ var prev = RENDERERS['Cash Flow Report']; if(typeof prev !== 'function') return;
+  RENDERERS['Cash Flow Report'] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
+    try { var K = window.bkProFormaKit, D = K && K.build && K.build(); if(!D || !D.Y || !D.Y.length) return o;
+      var M = function(v){ var a = Math.abs(v || 0), t = '$' + Math.round(a).toLocaleString('en-US'); return v < -0.5 ? '(' + t + ')' : t; }, close = -(Number(D.eq) || 0), yv = function(r, i){ return (r.cf || 0) + (i === 0 ? (Number(D.eq) || 0) : 0); }, tot = D.Y.reduce(function(t, r){ return t + (r.cf || 0); }, 0);   /* the kit's Year 1 carries the closing equity, shown here as Year 0 */
+      var head = '<th class="r">Year 0 (close)</th>' + D.Y.map(function(r){ return '<th class="r">Year ' + r.y + '</th>'; }).join('') + '<th class="r">Total</th>';
+      var row = '<td>Net cash flow to equity</td><td class="r">' + M(close) + '</td>' + D.Y.map(function(r, i){ return '<td class="r">' + M(yv(r, i)) + '</td>'; }).join('') + '<td class="r">' + M(tot) + '</td>';
+      var irr = isFinite(D.irr) ? (D.irr * 100).toFixed(2) + '%' : 'n/a';
+      o.main += '<div class="ae rp"><div class="rp-sec">Year 0 and the levered IRR</div><table class="rp-tbl" id="rp-year0"><thead><tr><th>Equity cash flow</th>' + head + '</tr></thead><tbody><tr class="tot">' + row + '</tr></tbody></table>'
+        + '<div class="note" style="margin-top:6px">Year 0 is the equity paid at closing (price, closing costs and fees less the loan). The levered IRR (' + irr + ') is the XIRR of the dated monthly equity cash flows <b>including that Year 0 outflow on the closing date</b>; the years above are those months added up.</div></div>';
+    } catch(e){}
+    return o; }; })();
+/* when the widest figure (ten-million-dollar amounts on a long hold) cannot fit its year column, the statement is shown in thousands of dollars (a note says so) so every figure fits */
+function thousands(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
+  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; var first = o.main.slice(0, o.main.indexOf('</table>') + 8), yrs = (first.match(/<th class="r">Year \d+<\/th>/g) || []).length, wid = 0; (o.main.match(/<td[^>]*class="[^"]*\br\b[^"]*"[^>]*>[($\-\d,)]+<\/td>/g) || []).forEach(function(t){ var x = t.replace(/<[^>]*>/g, ''); if(x.length > wid) wid = x.length; });
+    if(!yrs || wid * 6.3 + 9 <= (1124 - 210) / (yrs + 2)) return o;   /* the widest figure fits its column: leave whole dollars */
+    o.main = '<div class="bk-wideyrs">' + o.main.replace(/(<td[^>]*class="[^"]*\br\b[^"]*"[^>]*>)(\(?-?\$?)([\d,]{5,})(\)?)(<\/td>)/g, function(m, a, pre, num, post, z){ var k = Math.round(Number(num.replace(/,/g, '')) / 1000); return a + pre + k.toLocaleString('en-US') + post + z; })
+      .replace(/>Dollars</, '>Dollars (thousands)<').replace(/(<div class="rp-s">)/, '$1<b>Figures in thousands of dollars.</b> ') + '</div>';
+    return o; }; }
+thousands('Cash Flow Report'); thousands('Sources and Uses Report');
 wrap('After-Tax Report'); wrap('Refinance Report');
 })();
 </script>
@@ -34035,6 +34071,36 @@ html body #viewport .rp-stmt table.fin tbody td:not(:first-child), html body #vi
 html body #viewport .rp-stmt table.fin tr.grandtotal td, html body #viewport .rp-stmt table.fin tr.subtotal td, html body #viewport .rp-stmt table.fin tr.total td{font-weight:700;border-top:1.5px solid var(--ae-ink,#14283d) !important}
 html body #viewport .rp-stmt table.fin tbody tr:nth-child(even) td{background:transparent !important}
 html body #viewport .rp-stmt table.fin td:first-child{width:auto}
+/* ---- 12 Nov owner review: small consistency fixes ---- */
+/* an action chip never wraps (Export CSV, Import master data) and file pickers sit centered like status chips */
+html body #viewport .status-chip, html body #viewport button.status-chip{ white-space:nowrap !important }
+html body #viewport td:has(> input[type="file"]), html body #viewport td:has(> label > input[type="file"]){ text-align:center !important }
+html body #viewport td > input[type="file"]{ display:inline-block; max-width:100% }
+/* the Save a version name box is a normal-width field, not the full row */
+html body #viewport #bk-ver-name{ max-width:420px }
+/* collapsed side navigation: only the group boxes, no text, no per-page dots with text */
+html.bk-rail-collapsed .rail .rail-group-label, html.bk-rail-collapsed .rail .rail-group-label *{ font-size:0 !important; letter-spacing:0 !important }
+html.bk-rail-collapsed .rail .rail-group-label::before{ font-size:12px !important }
+html.bk-rail-collapsed .rail .rail-sub, html.bk-rail-collapsed .rail .rail-sublabel, html.bk-rail-collapsed .rail .rail-section-label, html.bk-rail-collapsed .rail [class*="rail-cap"]{ display:none !important }
+html.bk-rail-collapsed .rail .rail-group > :not(.rail-group-label){ display:none !important }
+/* header sub-tabs: one gap between every tab */
+html body .rb-tabs{ gap:6px }
+html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ margin:0 2px }
+/* two-column metric tables (label left, value right) on every page, no stray bottom border under the last row of a grid cell */
+html body #viewport table.fin tbody tr > td.v, html body #viewport table.fin tbody tr > td[data-bk-align="text"]:last-child{ text-align:right !important }
+html body #viewport .tbl-wrap > table.fin:only-child{ margin-bottom:0 }
+html body #viewport table.fin.bk-kv tbody td:last-child, html body #viewport table.fin.bk-kv tbody td.v{ text-align:right !important }
+html body #viewport table.fin.bk-kv tbody td:first-child{ width:42% }
+/* a row label never breaks inside a word */
+html body #viewport table.fin td.rowlabel, html body #viewport table.fin td:first-child{ overflow-wrap:normal; word-break:normal; hyphens:none }
+@media (min-width:761px){ html body #viewport table.fin tr.grandtotal td.rowlabel, html body #viewport table.fin tr.total td.rowlabel{ min-width:190px } }
+/* statement tables with many years: a fixed label column and equal figure columns, so a 10-year hold fits the page without scrolling */
+html body #viewport .rp #rp-cashflow th:first-child, html body #viewport .rp #rp-cashflow td:first-child, html body #viewport .rp #rp-su th:first-child, html body #viewport .rp #rp-su td:first-child{ width:210px !important; min-width:0 }
+html body #viewport .rp #rp-cashflow td, html body #viewport .rp #rp-cashflow th, html body #viewport .rp #rp-su td, html body #viewport .rp #rp-su th{ padding-left:3px !important; padding-right:5px !important; font-size:11.5px }
+html body #viewport .rp #rp-cashflow td:first-child, html body #viewport .rp #rp-su td:first-child{ padding-left:10px !important; white-space:normal }
+html body #viewport .bk-wideyrs .rp #rp-cashflow th:first-child, html body #viewport .bk-wideyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-wideyrs .rp #rp-su th:first-child, html body #viewport .bk-wideyrs .rp #rp-su td:first-child{ width:170px !important }
+html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:10.5px; padding-left:2px !important; padding-right:4px !important }
+html body #viewport .rp #rp-cashflow thead th, html body #viewport .rp #rp-su thead th{ white-space:normal }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):

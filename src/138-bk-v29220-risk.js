@@ -121,9 +121,9 @@ function render(){
   var sdRows = ORDER.filter(function(id){ return by[id]; }).map(function(id){ var d = by[id], sd = r.sd[id], isRel = UNIT[id] === 'rel';
     return '<tr><td class="rowlabel">' + LABEL[id] + '</td><td>' + d.show(0) + '</td><td>' + numIn('sd.' + id, sd, true, 56) + '</td><td>' + d.show(-2 * sd) + ' to ' + d.show(2 * sd) + '</td></tr>'; }).join('');
   main += '<div class="tbl-wrap" style="margin-top:24px"><table class="fin"><caption>Monte Carlo - How Far Each Driver Can Move</caption><thead><tr><th class="rowlabel-h">Driver</th><th>Base</th><th>Std deviation</th><th>About 95% of draws fall in</th></tr></thead><tbody>' + sdRows
-    + '<tr><td class="rowlabel">Correlation: rent growth vs exit cap</td><td colspan="3" style="text-align:left">' + numIn('corr', r.corr, false, 56) + ' <span style="font-size:11px">(−1 to 1; a negative number means faster rent growth tends to come with a lower exit cap)</span></td></tr>'
-    + '<tr><td class="rowlabel">Number of draws</td><td colspan="3" style="text-align:left">' + numIn('n', r.n, false, 64) + '</td></tr>'
-    + '<tr><td class="rowlabel">Random seed</td><td colspan="3" style="text-align:left">' + numIn('seed', r.seed, false, 90) + '</td></tr></tbody></table></div>'
+    + '<tr><td class="rowlabel">Correlation: rent growth vs exit cap</td><td></td><td>' + numIn('corr', r.corr, false, 56) + '</td><td style="text-align:left">&minus;1 to 1; negative: faster rent growth comes with a lower exit cap</td></tr>'
+    + '<tr><td class="rowlabel">Number of draws</td><td></td><td>' + numIn('n', r.n, false, 64) + '</td><td></td></tr>'
+    + '<tr><td class="rowlabel">Random seed</td><td></td><td>' + numIn('seed', r.seed, false, 90) + '</td><td></td></tr></tbody></table></div>'
     + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="status-chip pass" onclick="bkRiskRun()"' + (MC.running ? ' disabled' : '') + '>RUN ' + r.n + ' DRAWS</button><span id="bkRiskProg" style="font-size:12px">' + (MC.running ? 'Running: ' + MC.done + ' of ' + MC.total + ' draws' : '') + '</span></div>'
     + '<div style="margin-top:6px;font-size:11px;opacity:.75;max-width:1000px">Correlation runs from \u22121 to 1: a negative number means faster rent growth tends to come with a lower exit cap. Each draw re-runs the full engine (about 10 ms). The same seed and inputs always give the same answer.</div>';
   var sig = sigOf(s), stale = MC.runs && MC.sig !== sig;

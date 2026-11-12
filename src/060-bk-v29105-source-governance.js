@@ -91,7 +91,7 @@ function sheetStorageLifecycle(){
            main:main,
            sidebar: shell(card('Storage Keys In Use',
              '<div class="metric-list">'
-             + Object.keys(localStorage).sort().map(function(k){
+             + Object.keys(localStorage).filter(function(k){ return !/^bk-(pt|du)/.test(k); }).sort().map(function(k){   /* page-tab memory is housekeeping, not storage worth showing */
                  return '<div class="metric-row"><span class="k">'+esc(k.replace('bkcapital.',''))
                       + '</span><span class="v">'+((localStorage.getItem(k)||'').length).toLocaleString()+' B</span></div>';
                }).join('')
