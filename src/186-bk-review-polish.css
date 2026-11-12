@@ -84,3 +84,11 @@ html body #viewport .rp #rp-cashflow td:first-child, html body #viewport .rp #rp
 html body #viewport .bk-wideyrs .rp #rp-cashflow th:first-child, html body #viewport .bk-wideyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-wideyrs .rp #rp-su th:first-child, html body #viewport .bk-wideyrs .rp #rp-su td:first-child{ width:170px !important }
 html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:10.5px; padding-left:2px !important; padding-right:4px !important }
 html body #viewport .rp #rp-cashflow thead th, html body #viewport .rp #rp-su thead th{ white-space:normal }
+/* Home "Go to" shortcuts: one grid, equal-height cards, left-aligned title and a short description */
+html body #viewport .pl-acts{ display:grid !important; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px }
+html body #viewport .pl-acts .pl-act{ display:flex !important; flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:6px; min-height:96px; padding:14px 16px; text-align:left !important; width:auto; margin:0 }
+html body #viewport .pl-acts .pl-act b{ font-size:14px; line-height:1.25 }
+html body #viewport .pl-acts .pl-act span{ font-size:12px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+/* Sources and Uses has the same ruled-off label column as the Cash Flow Report */
+html body #viewport .rp #rp-su tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px }
+@media print{ html body .rp #rp-su tr > :first-child{ border-right:1px solid #000 !important } }

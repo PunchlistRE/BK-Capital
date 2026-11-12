@@ -12,15 +12,13 @@ function S(id, title, why, sheet, fields, o){ return Object.assign({ id:id, titl
 var isDevSug = function(v, why){ return function(){ return { v:v, why:why }; }; };
 
 /* shared step blocks (the same objects are used, so the two analyses that share a step cannot drift apart) */
-var INCOME = S('income', 'Rents and other income', 'Income is what everything else rests on. Use the rent the units earn today; add the upside later, on purpose.', 'Deal Underwrite',
-  [q('avgRent', 'required'), q('otherIncomePerUnit'), q('vacancy', 'required')]);
+var INCOME = S('income', 'Rents and other income', 'Income is what everything else rests on. Use the rent the units earn today; add the upside later, on purpose. If the building has shops or offices, enter their suites, area, rent, recoveries and vacancy here too; tenant by tenant detail is on the Tenants page.', 'Deal Underwrite',
+  [q('avgRent', 'required'), q('otherIncomePerUnit'), q('vacancy', 'required'), q('commercialUnits'), q('commercialArea'), q('commercialRent'), q('recovery'), q('commercialVacancy')]);
 var EXPENSES = S('expenses', 'Operating expenses', 'Use the last twelve months where you have them. A missing line (management, repairs, reserves) is the most common way an NOI looks better than it is.', 'Deal Underwrite',
   [q('taxes', 'required'), q('insurance', 'required'), q('utilities'), q('rm', 'required'), q('mgmtPct', 'required'), q('payroll'), q('contract'), q('ga'), q('reserves')]);
 var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume it sells for. The exit cap rate moves the answer more than anything else here.', 'Deal Underwrite',
   [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
 
-var COMMERCIAL = S('commercial', 'Commercial space (shops or offices)', 'Does the building have any retail or office space? Enter its area and suites here, and the base rent, recoveries and vacancy that size its income. Tenant by tenant rent, bumps, expiry and rollover go on the Tenants page. No commercial space: skip this step.', 'Tenants',
-    [q('commercialUnits'), q('commercialArea'), q('commercialRent'), q('recovery'), q('commercialVacancy')], { skippable:true });
 R.addWorkflow('acquisition', [
   S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('propertyType'), q('acqStrategy'), q('units', 'required'), q('gsf'), q('gla')]),
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
@@ -29,9 +27,7 @@ R.addWorkflow('acquisition', [
   S('valueadd', 'Value-add program', 'A renovation program: how many units a year, the rent lost while a unit is down, the premium afterwards and the capex per unit. Other income by line (laundry, parking, pet, storage, RUBS) is the other usual source of upside.', 'Revenues',
     [q('renoUnitsPerYear'), q('renoDownMonths'), q('renoPremium'), q('renoCapexPerUnit'), q('oiLaundry'), q('oiLateFees'), q('oiPetRent'), q('oiPetFees'), q('oiParking'), q('oiStorage'), q('oiRubsPct')],
     { skippable:true, when:function(s){ return /value-add|opportunistic|redevelopment|lease-up/i.test(String(s.acqStrategy || '')) || Number(s.renoUnitsPerYear) > 0; } }),
-  COMMERCIAL,
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort'), q('acqIO'), q('acqOrigFee')], { skippable:true }),
-  S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Everything on this step is read from the model and shown for checking; nothing is entered here.', 'Sources & Uses', [], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
     [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT,
@@ -41,9 +37,8 @@ R.addWorkflow('development', [
   S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' }), q('gla')]),
   S('land', 'Land and budget', 'The two big costs. Land is the price; the construction budget is hard and soft costs together.', 'Deal Underwrite',
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
-  INCOME, EXPENSES, COMMERCIAL,
+  INCOME, EXPENSES,
   S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilized.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
-  S('sources', 'Sources and uses', 'What the deal costs, what the loan covers, and how much equity the GP and the LPs put up. Everything on this step is read from the model and shown for checking; nothing is entered here.', 'Sources & Uses', [], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
     [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT ]);
