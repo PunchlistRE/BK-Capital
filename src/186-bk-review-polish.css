@@ -81,3 +81,6 @@ html body #viewport table.fin td.rowlabel, html body #viewport table.fin td:firs
 html body #viewport .rp #rp-cashflow th:first-child, html body #viewport .rp #rp-cashflow td:first-child, html body #viewport .rp #rp-su th:first-child, html body #viewport .rp #rp-su td:first-child{ width:210px !important; min-width:0 }
 html body #viewport .rp #rp-cashflow td, html body #viewport .rp #rp-cashflow th, html body #viewport .rp #rp-su td, html body #viewport .rp #rp-su th{ padding-left:3px !important; padding-right:5px !important; font-size:11.5px }
 html body #viewport .rp #rp-cashflow td:first-child, html body #viewport .rp #rp-su td:first-child{ padding-left:10px !important; white-space:normal }
+html body #viewport .bk-wideyrs .rp #rp-cashflow th:first-child, html body #viewport .bk-wideyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-wideyrs .rp #rp-su th:first-child, html body #viewport .bk-wideyrs .rp #rp-su td:first-child{ width:170px !important }
+html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:10.5px; padding-left:2px !important; padding-right:4px !important }
+html body #viewport .rp #rp-cashflow thead th, html body #viewport .rp #rp-su thead th{ white-space:normal }
