@@ -88,6 +88,14 @@ function sfxSlots(root){
    Columns that are already centered on purpose (heat grids, hurdle columns) are left alone; what is changed is a lone chip that is not centered and a value that is left aligned. */
 function colNum(t, i){ var n = 0, k = 0; [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(!c || r.parentNode === t.tHead || c.colSpan !== 1) return; var x = c.textContent.replace(/\s+/g, ' ').trim(); if(!x) return; k++; if(/^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i.test(x)) n++; }); return k >= 2 && n / k >= 0.7; }
 function colChip(t, i){ var n = 0, k = 0; [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(!c || r.parentNode === t.tHead || c.colSpan !== 1) return; if(!c.textContent.trim()) return; k++; if(c.querySelector('.status-chip')) n++; }); return k >= 2 && n / k >= 0.5; }
+/* a column headed Units whose cells are sentences is Notes; a date is always left aligned; the Lease End and Assumptions text columns sit right, as the owner asked */
+function alignText(root){
+  var DATE = /^(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2,8}\.? \d{1,2},? \d{4}|[A-Z][a-z]{2} \d{4}|Dec-\d{4}|\d{1,2}\/\d{4})$/;
+  [].forEach.call(root.querySelectorAll('table'), function(t){ if(t.classList.contains('bk-sx-heat')) return; var hr = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : null;
+    [].forEach.call(t.rows, function(r){ if(r.parentNode === t.tHead) return; [].forEach.call(r.cells, function(c){ if(c.colSpan !== 1) return; var x = c.textContent.replace(/\s+/g, ' ').trim(); if(x && DATE.test(x) && c.getAttribute('data-bk-dl') !== '1'){ c.style.setProperty('text-align', 'left', 'important'); c.setAttribute('data-bk-dl', '1'); if(hr && hr.cells[c.cellIndex]) hr.cells[c.cellIndex].style.setProperty('text-align', 'left', 'important'); } }); });
+    if(!hr) return; [].forEach.call(hr.cells, function(h, i){ var tx = h.textContent.replace(/\s+/g, ' ').trim();
+      if(/^Units$/i.test(tx)){ var cells = [].filter.call(t.rows, function(r){ return r.parentNode !== t.tHead && r.cells[i]; }).map(function(r){ return r.cells[i].textContent.trim(); }).filter(Boolean); if(cells.length && cells.filter(function(v){ return v.length > 13 || /\s\w+\s\w+/.test(v); }).length / cells.length > 0.5) h.textContent = 'Notes'; }
+      if(/^(Lease End|Assumptions)$/i.test(tx)){ [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(c && r.parentNode !== t.tHead && !DATE.test(c.textContent.trim())) c.style.setProperty('text-align', 'right', 'important'); }); h.style.setProperty('text-align', 'right', 'important'); } }); }); }
 function alignRules(root){
   var NUM = /^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i;
   [].forEach.call(root.querySelectorAll('table'), function(t){ if(t.classList.contains('bk-sx-heat')) return;
@@ -138,7 +146,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
