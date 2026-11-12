@@ -54,3 +54,18 @@ html body #viewport .rp-stmt table.fin tbody td:not(:first-child), html body #vi
 html body #viewport .rp-stmt table.fin tr.grandtotal td, html body #viewport .rp-stmt table.fin tr.subtotal td, html body #viewport .rp-stmt table.fin tr.total td{font-weight:700;border-top:1.5px solid var(--ae-ink,#14283d) !important}
 html body #viewport .rp-stmt table.fin tbody tr:nth-child(even) td{background:transparent !important}
 html body #viewport .rp-stmt table.fin td:first-child{width:auto}
+/* ---- 12 Nov owner review: small consistency fixes ---- */
+/* an action chip never wraps (Export CSV, Import master data) and file pickers sit centered like status chips */
+html body #viewport .status-chip, html body #viewport button.status-chip{ white-space:nowrap !important }
+html body #viewport td:has(> input[type="file"]), html body #viewport td:has(> label > input[type="file"]){ text-align:center !important }
+html body #viewport td > input[type="file"]{ display:inline-block; max-width:100% }
+/* the Save a version name box is a normal-width field, not the full row */
+html body #viewport #bk-ver-name{ max-width:420px }
+/* collapsed side navigation: only the group boxes, no text, no per-page dots with text */
+html.bk-rail-collapsed .rail .rail-group-label, html.bk-rail-collapsed .rail .rail-group-label *{ font-size:0 !important; letter-spacing:0 !important }
+html.bk-rail-collapsed .rail .rail-group-label::before{ font-size:12px !important }
+html.bk-rail-collapsed .rail .rail-sub, html.bk-rail-collapsed .rail .rail-sublabel, html.bk-rail-collapsed .rail .rail-section-label, html.bk-rail-collapsed .rail [class*="rail-cap"]{ display:none !important }
+html.bk-rail-collapsed .rail .rail-group > :not(.rail-group-label){ display:none !important }
+/* header sub-tabs: one gap between every tab */
+html body .rb-tabs{ gap:6px }
+html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ margin:0 2px }

@@ -86,13 +86,15 @@ function sfxSlots(root){
 /* every column header takes the alignment of the cells under it: the dominant computed alignment of the column's body cells */
 /* ALIGNMENT RULES, one set for every table: the metric name on the left, a value (number, money, percent, multiple) on the right, a status chip in the middle, notes and units on the left.
    Columns that are already centered on purpose (heat grids, hurdle columns) are left alone; what is changed is a lone chip that is not centered and a value that is left aligned. */
+function colNum(t, i){ var n = 0, k = 0; [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(!c || r.parentNode === t.tHead || c.colSpan !== 1) return; var x = c.textContent.replace(/\s+/g, ' ').trim(); if(!x) return; k++; if(/^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i.test(x)) n++; }); return k >= 2 && n / k >= 0.7; }
+function colChip(t, i){ var n = 0, k = 0; [].forEach.call(t.rows, function(r){ var c = r.cells[i]; if(!c || r.parentNode === t.tHead || c.colSpan !== 1) return; if(!c.textContent.trim()) return; k++; if(c.querySelector('.status-chip')) n++; }); return k >= 2 && n / k >= 0.5; }
 function alignRules(root){
   var NUM = /^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i;
   [].forEach.call(root.querySelectorAll('table'), function(t){ if(t.classList.contains('bk-sx-heat')) return;
     [].forEach.call(t.rows, function(r){ [].forEach.call(r.cells, function(c){ if(c.tagName === 'TH' || c.colSpan !== 1 || !c.offsetWidth) return;
       var tx = c.textContent.replace(/\s+/g, ' ').trim(); if(!tx) return; var ch = c.querySelector('.status-chip'), al = getComputedStyle(c).textAlign; if(c.cellIndex === 0 && !(ch && tx.length < 30)) return;
-      if(ch && (tx === ch.textContent.replace(/\s+/g, ' ').trim() || tx.length < 30)){ if(!/center/.test(al)){ c.classList.add('bk-col-chip'); c.style.setProperty('text-align', 'center', 'important'); } }
-      else if(!ch && NUM.test(tx) && /left|start/.test(al)){ c.style.setProperty('text-align', 'right', 'important'); } }); });
+      if(ch && (tx === ch.textContent.replace(/\s+/g, ' ').trim() || tx.length < 30) && colChip(t, c.cellIndex)){ if(!/center/.test(al)){ c.classList.add('bk-col-chip'); c.style.setProperty('text-align', 'center', 'important'); } }
+      else if(!ch && NUM.test(tx) && /left|start/.test(al) && colNum(t, c.cellIndex)){ c.style.setProperty('text-align', 'right', 'important'); } }); });
     /* a column header sits the way its figures sit */
     var hr = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : null; if(!hr) return;
     [].forEach.call(hr.cells, function(h, i){ if(i === 0 || h.colSpan !== 1) return; var body = [].filter.call(t.rows, function(r){ return r.parentNode !== t.tHead && r.cells[i] && r.cells[i].colSpan === 1 && r.cells[i].textContent.trim(); }); if(body.length < 2) return;
