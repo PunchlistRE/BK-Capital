@@ -254,7 +254,7 @@ window.bkPackOpen = function(scope){
   if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())){ modal('Open or create a deal first.'); return; }
   var here = cur();
   /* the waterfall pages' PDF summary is the one-page waterfall summary (src/145), not the long monthly page */
-  if(scope === 'page' && (here === 'Equity Waterfall' || here === 'Waterfall (M)') && typeof window.bkWaterfallSummaryOpen === 'function'){ window.bkWaterfallSummaryOpen(); return; }
+  if(scope === 'page' && (here === 'Equity Waterfall' || here === 'Waterfall (M)' || here === 'Waterfall Report') && typeof window.bkWaterfallSummaryOpen === 'function'){ window.bkWaterfallSummaryOpen(); return; }
   if(scope === 'page' && !window.bkPackHas(here)){ modal('This page has no PDF summary.'); return; }
   busy = true; var canceled = false, secs = plan(scope, here), info = dealInfo(), data = {}, byId = {};
   window.bkPackClose(); var prog = progress(), pt = document.getElementById('pl-pack-prog-t'); document.getElementById('pl-pack-cancel').onclick = function(){ canceled = true; };
