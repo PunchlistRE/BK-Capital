@@ -84,6 +84,20 @@ function sfxSlots(root){
   });
 }
 /* every column header takes the alignment of the cells under it: the dominant computed alignment of the column's body cells */
+/* ALIGNMENT RULES, one set for every table: the metric name on the left, a value (number, money, percent, multiple) on the right, a status chip in the middle, notes and units on the left.
+   Columns that are already centered on purpose (heat grids, hurdle columns) are left alone; what is changed is a lone chip that is not centered and a value that is left aligned. */
+function alignRules(root){
+  var NUM = /^\(?[-\u2212+]?\$?\(?[\d,]+(\.\d+)?\)?\s?(%|x|bps|M|K|yrs?|years|mo|SF)?\)?$/i;
+  [].forEach.call(root.querySelectorAll('table'), function(t){ if(t.classList.contains('bk-sx-heat')) return;
+    [].forEach.call(t.rows, function(r){ [].forEach.call(r.cells, function(c){ if(c.tagName === 'TH' || c.colSpan !== 1 || !c.offsetWidth) return;
+      var tx = c.textContent.replace(/\s+/g, ' ').trim(); if(!tx) return; var ch = c.querySelector('.status-chip'), al = getComputedStyle(c).textAlign; if(c.cellIndex === 0 && !(ch && tx.length < 30)) return;
+      if(ch && (tx === ch.textContent.replace(/\s+/g, ' ').trim() || tx.length < 30)){ if(!/center/.test(al)){ c.classList.add('bk-col-chip'); c.style.setProperty('text-align', 'center', 'important'); } }
+      else if(!ch && NUM.test(tx) && /left|start/.test(al)){ c.style.setProperty('text-align', 'right', 'important'); } }); });
+    /* a column header sits the way its figures sit */
+    var hr = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : null; if(!hr) return;
+    [].forEach.call(hr.cells, function(h, i){ if(i === 0 || h.colSpan !== 1) return; var body = [].filter.call(t.rows, function(r){ return r.parentNode !== t.tHead && r.cells[i] && r.cells[i].colSpan === 1 && r.cells[i].textContent.trim(); }); if(body.length < 2) return;
+      var nums = body.filter(function(r){ var x = r.cells[i].textContent.replace(/\s+/g, ' ').trim(); return NUM.test(x); }).length, want = nums / body.length > 0.7 ? 'right' : null; if(!want) return;
+      var got = getComputedStyle(h).textAlign; if(!/right|end/.test(got) && /right|end/.test(getComputedStyle(body[0].cells[i]).textAlign)) h.style.setProperty('text-align', 'right', 'important'); }); }); }
 function alignHeads(root){
   [].forEach.call(root.querySelectorAll('table.fin'), function(t){
     var heads = [].filter.call(t.rows, function(r){ return r.parentNode.tagName === 'THEAD' || (r.cells.length && [].every.call(r.cells, function(c){ return c.tagName === 'TH'; })); }); if(!heads.length) return;
@@ -122,7 +136,7 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
