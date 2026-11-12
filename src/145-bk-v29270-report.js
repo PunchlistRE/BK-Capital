@@ -301,6 +301,12 @@ function buildDev(){
     if(XP.portfolio && !/First deal in the portfolio/.test(XP.portfolio)) pages.push(pgx(XP.portfolio)); pages.push(pgx(XP.integrity)); pages.splice(5, 0, pgx(XP.risk), pgx(XP.sens)); pages.splice(4, 0, pgx(XP.ops), pgx(XP.finance), pgx(XP.budget)); pages.splice(2, 0, pgx(XP.returns));
     pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); }
   if(ONLY === 'wf'){ var one2 = waterfallPages(D, 1, 1, true); if(one2.length) pages = one2; }
+  /* reading order (owner request 11 Nov: summaries follow a logical flow): the headline, what the return rests on, funding, operations, the debt and the budget detail (kept after Financing, as audit/harbor_budget_test requires), who gets paid, then the risks and the credit decision.
+     Pages are placed by their own heading, so the numbers in the footers are rewritten to match. */
+  (function(){ var ORDER = ['Dashboard', 'Returns and what they rest on', 'Budget and funding', 'Construction funding', 'Unit economics', 'Financing and debt metrics', 'Development budget', 'Distribution waterfall', 'Performance and sensitivity', 'What breaks the deal', 'Single-variable sensitivities', 'Credit decision'];
+    var rank = function(h, i){ if(i === 0) return -1; var m = /<h2[^>]*>([^<]*)/.exec(h), t = m ? m[1] : ''; for(var k = 0; k < ORDER.length; k++) if(t.indexOf(ORDER[k]) === 0) return k; return /integrity/i.test(t) ? 99 : 60; };
+    pages = pages.map(function(h, i){ return { h:h, r:rank(h, i), i:i }; }).sort(function(x, y){ return x.r - y.r || x.i - y.i; }).map(function(o){ return o.h; });
+    pages = pages.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + pages.length); }); })();
   if(ONLY === 'wfr'){ var all2 = waterfallPages(D, 1, 1, false, true); if(all2.length) pages = all2.map(function(h, i){ return h.replace(/Page \d+ of \d+/, 'Page ' + (i + 1) + ' of ' + all2.length); }); }
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc((s.name || 'Property') + ' - Punchlist Capital Development Summary') + '</title><style>' + CSS + '</style></head><body>' + pages.join('') + '</body></html>';
 }
