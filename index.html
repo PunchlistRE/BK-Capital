@@ -27942,7 +27942,17 @@ function heatInk(v){
     if(td.getAttribute('data-bk-heat')){ td.style.removeProperty('color'); td.removeAttribute('data-bk-heat'); }
     var cs = getComputedStyle(td), bl = lum(cs.backgroundColor), fl = lum(cs.color); if(bl == null || fl == null) return;
     if(ratio(bl, fl) < 3.2){ var dk = ratio(bl, 0.013), wh = ratio(bl, 1); td.style.setProperty('color', dk >= wh ? '#14202b' : '#ffffff', 'important'); td.setAttribute('data-bk-heat', '1'); } }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+/* two-way sensitivity grids (first header holds "A \\ B"): centered cells with the same red-to-green fill as the heat map, scaled across the grid; the middle cell is neutral */
+function gridFill(root){ root.querySelectorAll('table.fin').forEach(function(t){
+  var h = t.querySelector('thead th'); if(!h || !/\\/.test(h.textContent) || t.getAttribute('data-bk-gfill') === '1') return;
+  var cells = [].slice.call(t.querySelectorAll('tbody td:not(:first-child)')), vals = cells.map(function(c){ var m = /-?\d+(?:\.\d+)?(?=%)/.exec(c.textContent); return m ? parseFloat(m[0]) : null; }), ok = vals.filter(function(x){ return x != null; });
+  if(ok.length < 4) return; t.setAttribute('data-bk-gfill', '1');
+  var mn = Math.min.apply(null, ok), mx = Math.max.apply(null, ok), srt = ok.slice().sort(function(a, b){ return a - b; }), mid = srt[Math.floor(srt.length / 2)];
+  cells.forEach(function(c, i){ var x = vals[i]; c.style.setProperty('text-align', 'center', 'important'); if(x == null) return;
+    var up = x >= mid, k = up ? (mx === mid ? 0 : (x - mid) / (mx - mid)) : (mn === mid ? 0 : (mid - x) / (mid - mn));
+    c.style.setProperty('background', up ? 'rgba(70,160,110,' + (0.08 + 0.4 * k).toFixed(2) + ')' : 'rgba(205,85,70,' + (0.08 + 0.4 * k).toFixed(2) + ')', 'important'); });
+  t.querySelectorAll('thead th:not(:first-child)').forEach(function(th){ th.style.setProperty('text-align', 'center', 'important'); }); }); }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); gridFill(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
