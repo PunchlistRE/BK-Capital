@@ -193,7 +193,7 @@ function paginate(doc, secs, info){
       for(var k = 0; k < 3 && wid(t) > W + 1; k++){ var z = parseFloat(t.style.zoom) || 1; t.style.zoom = Math.max(0.5, z * W / wid(t) - 0.005).toFixed(3); zoomWidth(t); } });
     /* a page summary is ONE page: its whole content is scaled to fit the page (never below 50%; what still does not fit is cut and says so) */
     if(sec && sec.max === 1 && sec.kind === 'page'){ var Hb = stage.ownerDocument.defaultView.innerHeight ? 9.5 * 96 - 6 : 906;
-      for(var it = 0; it < 4; it++){ var H = node.getBoundingClientRect().height; if(H <= Hb) break; var z0 = parseFloat(node.style.zoom) || 1, z1 = Math.max(0.6, z0 * Hb / H - 0.01); if(z1 >= z0 - 0.002) break; node.style.zoom = z1.toFixed(3); if(!sec.exec){ node.style.width = (100 / z1).toFixed(2) + '%'; var pw = node.parentNode.getBoundingClientRect().width; if(pw && node.getBoundingClientRect().width > pw * 1.02) node.style.width = '100%'; /* browsers differ on how a percentage width resolves inside a zoomed box: if the first guess overflows, use 100% */ } } }
+      for(var it = 0; it < 4; it++){ var H = node.getBoundingClientRect().height; if(H <= Hb) break; var z0 = parseFloat(node.style.zoom) || 1, z1 = Math.max(0.8, z0 * Hb / H - 0.01); if(z1 >= z0 - 0.002) break; node.style.zoom = z1.toFixed(3); if(!sec.exec){ node.style.width = (100 / z1).toFixed(2) + '%'; var pw = node.parentNode.getBoundingClientRect().width; if(pw && node.getBoundingClientRect().width > pw * 1.02) node.style.width = '100%'; /* browsers differ on how a percentage width resolves inside a zoomed box: if the first guess overflows, use 100% */ } } }
     if(sec && !sec.exec){ /* nothing may stay wider than the page: tables that cannot shrink are scaled with the page */
       for(var w = 0; w < 4; w++){ var pw2 = node.parentNode.getBoundingClientRect().width, nw = node.getBoundingClientRect().width; if(!pw2 || nw <= pw2 * 1.005) break; var zz = parseFloat(node.style.zoom) || 1; node.style.zoom = Math.max(0.4, zz * pw2 / nw - 0.005).toFixed(3); } }
     stage.removeChild(node);
@@ -244,7 +244,10 @@ window.bkPackOpen = function(scope){
   if(busy) return; scope = scope || 'page';
   var s = safe(function(){ return bkLoad(); }, null);
   if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())){ modal('Open or create a deal first.'); return; }
-  var here = cur(); if(scope === 'page' && !window.bkPackHas(here)){ modal('This page has no PDF summary.'); return; }
+  var here = cur();
+  /* the waterfall pages' PDF summary is the one-page waterfall summary (src/145), not the long monthly page */
+  if(scope === 'page' && (here === 'Equity Waterfall' || here === 'Waterfall (M)') && typeof window.bkWaterfallSummaryOpen === 'function'){ window.bkWaterfallSummaryOpen(); return; }
+  if(scope === 'page' && !window.bkPackHas(here)){ modal('This page has no PDF summary.'); return; }
   busy = true; var canceled = false, secs = plan(scope, here), info = dealInfo(), data = {}, byId = {};
   window.bkPackClose(); var prog = progress(), pt = document.getElementById('pl-pack-prog-t'); document.getElementById('pl-pack-cancel').onclick = function(){ canceled = true; };
   var work = secs.filter(function(x){ return x.kind === 'page'; }), scroll = window.scrollY || 0;
