@@ -33082,6 +33082,14 @@ function wrap(sheet){
 wrap('Equity Waterfall'); wrap('Waterfall (M)');
 })();
 </script>
+<script id="bk-report-style">/* Report pages that were built on the card tables (After-Tax Report, Refinance Report) take the statement style of the Cash Flow, Sources and Uses and Valuation reports.
+   The renderers are wrapped only to mark their output with a class; the CSS lives in src/186 (.rp-stmt). Nothing here changes a figure. */
+(function(){
+function wrap(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
+  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; o.main = '<div class="rp-stmt">' + o.main + '</div>'; return o; }; }
+wrap('After-Tax Report'); wrap('Refinance Report');
+})();
+</script>
 <script id="bk-nav">/* NAVIGATION, ONE DEFINITION (2.1, owner's November 2026 regrouping). Tab -> groups -> sheets, defined once here, drives all three: the top tabs (NAV_TABS), the sub-tab row under them and the side menu (the vertical version of the same tabs,
    with the same groups and sheets in the same order and the same names). Presentation only: no sheet, renderer or calculation changes. A sheet is in exactly one place; a sheet that exists but is not listed lands in Model & Data > Other so none vanishes.
    Conditional: the Development group (Operations) shows on development deals, the Business tab on deals with an operating business; both menus follow together. The SYS_ sheets stay hidden in both.
@@ -34017,6 +34025,16 @@ html body #viewport .body-grid:not(:has(> .side-col)):not(.source-lease-grid){ g
 /* a plain drop-down in a table cell (Financing Compare) follows the night theme instead of showing as a white box */
 :root[data-theme="dark"] body #viewport td > select[onchange^="bkFC"]{ background-color:#1b2430 !important; color:#e8edf3 !important; border-color:#3a4656 !important; }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport td > select[onchange^="bkFC"]{ background-color:#1b2430 !important; color:#e8edf3 !important; border-color:#3a4656 !important; } }
+/* statement style for the report pages built on card tables: the rows, rules and number columns of the Cash Flow, Sources and Uses and Valuation reports */
+html body #viewport .rp-stmt table.fin{border:0 !important;border-collapse:collapse}
+html body #viewport .rp-stmt table.fin th, html body #viewport .rp-stmt table.fin td{border-left:0 !important;border-right:0 !important;padding:3px 10px !important;font-size:12px;line-height:1.35}
+html body #viewport .rp-stmt table.fin thead th{background:transparent !important;font-weight:600;text-transform:none;letter-spacing:0;border-bottom:1px solid var(--ae-ink,#14283d) !important;color:var(--ae-ink,#14283d)}
+html body #viewport .rp-stmt table.fin tbody td{border-top:1px solid color-mix(in srgb, var(--ae-line,#c9d2db) 55%, transparent) !important;border-bottom:0 !important}
+html body #viewport .rp-stmt table.fin tbody tr:first-child td{border-top:0 !important}
+html body #viewport .rp-stmt table.fin tbody td:not(:first-child), html body #viewport .rp-stmt table.fin thead th:not(:first-child){text-align:right}
+html body #viewport .rp-stmt table.fin tr.grandtotal td, html body #viewport .rp-stmt table.fin tr.subtotal td, html body #viewport .rp-stmt table.fin tr.total td{font-weight:700;border-top:1.5px solid var(--ae-ink,#14283d) !important}
+html body #viewport .rp-stmt table.fin tbody tr:nth-child(even) td{background:transparent !important}
+html body #viewport .rp-stmt table.fin td:first-child{width:auto}
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):

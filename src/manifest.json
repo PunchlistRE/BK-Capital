@@ -1075,6 +1075,11 @@
 "close": "</script>"
 },
 {
+"file": "206-bk-report-style.js",
+"open": "\n<script id=\"bk-report-style\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
