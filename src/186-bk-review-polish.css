@@ -44,3 +44,13 @@ html body #viewport .body-grid:not(:has(> .side-col)):not(.source-lease-grid){ g
 /* a plain drop-down in a table cell (Financing Compare) follows the night theme instead of showing as a white box */
 :root[data-theme="dark"] body #viewport td > select[onchange^="bkFC"]{ background-color:#1b2430 !important; color:#e8edf3 !important; border-color:#3a4656 !important; }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport td > select[onchange^="bkFC"]{ background-color:#1b2430 !important; color:#e8edf3 !important; border-color:#3a4656 !important; } }
+/* statement style for the report pages built on card tables: the rows, rules and number columns of the Cash Flow, Sources and Uses and Valuation reports */
+html body #viewport .rp-stmt table.fin{border:0 !important;border-collapse:collapse}
+html body #viewport .rp-stmt table.fin th, html body #viewport .rp-stmt table.fin td{border-left:0 !important;border-right:0 !important;padding:3px 10px !important;font-size:12px;line-height:1.35}
+html body #viewport .rp-stmt table.fin thead th{background:transparent !important;font-weight:600;text-transform:none;letter-spacing:0;border-bottom:1px solid var(--ae-ink,#14283d) !important;color:var(--ae-ink,#14283d)}
+html body #viewport .rp-stmt table.fin tbody td{border-top:1px solid color-mix(in srgb, var(--ae-line,#c9d2db) 55%, transparent) !important;border-bottom:0 !important}
+html body #viewport .rp-stmt table.fin tbody tr:first-child td{border-top:0 !important}
+html body #viewport .rp-stmt table.fin tbody td:not(:first-child), html body #viewport .rp-stmt table.fin thead th:not(:first-child){text-align:right}
+html body #viewport .rp-stmt table.fin tr.grandtotal td, html body #viewport .rp-stmt table.fin tr.subtotal td, html body #viewport .rp-stmt table.fin tr.total td{font-weight:700;border-top:1.5px solid var(--ae-ink,#14283d) !important}
+html body #viewport .rp-stmt table.fin tbody tr:nth-child(even) td{background:transparent !important}
+html body #viewport .rp-stmt table.fin td:first-child{width:auto}
