@@ -35,7 +35,8 @@ window.bkExitYearChart = function(rows, w){
 window.bkAfterTaxPdfHtml = function(){
   var x = data(); if(!x) return null; var p = parts(x), allYrs = p.yrs;
   var cf = '';   /* five years per table keeps every figure readable at any hold up to ten years */
-  for(var a = 0; a < allYrs.length; a += 5){ p.yrs = allYrs.slice(a, a + 5); var line = function(l, k, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="l">' + l + '</td>' + p.yrs.map(function(r){ return '<td>' + M(k(r)) + '</td>'; }).join('') + '</tr>'; };
+  var per = allYrs.length <= 8 ? allYrs.length : Math.ceil(allYrs.length / 2);   /* one table up to 8 years, two equal tables beyond */
+  for(var a = 0; a < allYrs.length; a += per){ p.yrs = allYrs.slice(a, a + per); var line = function(l, k, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="l">' + l + '</td>' + p.yrs.map(function(r){ return '<td>' + M(k(r)) + '</td>'; }).join('') + '</tr>'; };
     cf += '<div style="font-size:8.2pt;margin-bottom:6px">' + tbl(['After-tax cash flow'].concat(p.yrs.map(function(r){ return 'Yr ' + r.y; })), [line('NOI after reserves', function(r){ return r.noi; }), line('Less: interest', function(r){ return -r.interest; }), line('Less: depreciation', function(r){ return -r.depr; }),
       line('Taxable income', function(r){ return r.taxableIncome; }, 'tot'), line('Suspended loss carryforward', function(r){ return r.lossCF; }), line('Ordinary income tax', function(r){ return -r.taxDue; }, 'tot')]) + '</div>'; }
   p.yrs = allYrs;
