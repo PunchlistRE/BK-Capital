@@ -111,7 +111,7 @@ register('IC Memo', function(){
   var dealRows = [
     ['Asset', esc(s.name) + ' · ' + esc(s.propertyType) + ' · ' + esc(s.location || '')], ['Deal type', esc(s.dealType)], ['Price / basis', $(s.purchasePrice) + (cap ? ' / ' + $(cap.cost) : '')],
     ['Year-1 NOI after reserves / going-in yield', cap ? $(cap.noi) + ' · ' + P(cap.noi / s.purchasePrice) : 'n/a'], ['Hold / exit cap', (Number(s.holdYears) || '') + ' years · ' + P(Number(s.exitCap))]
-  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td data-bk-align="text">' + r[1] + '</td></tr>'; }).join('');
+  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>'; }).join('');   /* values right-aligned in every two-column table */
   var retRows = [
     ['Unlevered IRR / multiple', ret.u ? P(ret.u.irr) + ' / ' + X(ret.u.moic) : 'n/a'], ['Gross levered IRR / multiple', P(ret.irr) + ' / ' + X(ret.moic)],
     ['Net LP IRR / multiple', w ? P(w.lpIRR) + ' / ' + X(w.lp && w.lp.contrib > 0 ? w.lp.dist / w.lp.contrib : null) : 'n/a'], ['GP IRR / promote', w ? P(w.gpIRR) + ' / ' + $(w.promote) : 'n/a'],
@@ -151,7 +151,7 @@ register('IC Memo', function(){
     meta:{ Property:s.name, Verdict:g.verdict, Score:(g.score * 100).toFixed(0) + '%', Exceptions:g.hard + ' hard / ' + g.soft + ' soft' },
     main: banner
       + table('Investment Thesis', null, thesisHtml)
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows) + table('Returns', null, retRows) + table('Financing', null, fin) + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows, 'bk-kv') + table('Returns', null, retRows, 'bk-kv') + table('Financing', null, fin, 'bk-kv') + '</div>'
       + table('Policy Test Table - Every Gate in One Place', th(['Gate', 'Underwritten', 'Threshold', 'Test', 'Result', 'Severity', 'Weight', 'Score']), gateRows)
       + table('Ranked Exceptions', th(['#', 'Exception', 'Severity']), exc)
       + table('Break-Even and Stress Cushions', th(['Metric', 'Value', 'Meaning']), cush)

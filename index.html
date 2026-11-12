@@ -8824,7 +8824,7 @@ function sheetStorageLifecycle(){
            main:main,
            sidebar: shell(card('Storage Keys In Use',
              '<div class="metric-list">'
-             + Object.keys(localStorage).sort().map(function(k){
+             + Object.keys(localStorage).filter(function(k){ return !/^bk-(pt|du)/.test(k); }).sort().map(function(k){   /* page-tab memory is housekeeping, not storage worth showing */
                  return '<div class="metric-row"><span class="k">'+esc(k.replace('bkcapital.',''))
                       + '</span><span class="v">'+((localStorage.getItem(k)||'').length).toLocaleString()+' B</span></div>';
                }).join('')
@@ -20521,7 +20521,7 @@ register('IC Memo', function(){
   var dealRows = [
     ['Asset', esc(s.name) + ' · ' + esc(s.propertyType) + ' · ' + esc(s.location || '')], ['Deal type', esc(s.dealType)], ['Price / basis', $(s.purchasePrice) + (cap ? ' / ' + $(cap.cost) : '')],
     ['Year-1 NOI after reserves / going-in yield', cap ? $(cap.noi) + ' · ' + P(cap.noi / s.purchasePrice) : 'n/a'], ['Hold / exit cap', (Number(s.holdYears) || '') + ' years · ' + P(Number(s.exitCap))]
-  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td data-bk-align="text">' + r[1] + '</td></tr>'; }).join('');
+  ].map(function(r){ return '<tr><td class="rowlabel">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>'; }).join('');   /* values right-aligned in every two-column table */
   var retRows = [
     ['Unlevered IRR / multiple', ret.u ? P(ret.u.irr) + ' / ' + X(ret.u.moic) : 'n/a'], ['Gross levered IRR / multiple', P(ret.irr) + ' / ' + X(ret.moic)],
     ['Net LP IRR / multiple', w ? P(w.lpIRR) + ' / ' + X(w.lp && w.lp.contrib > 0 ? w.lp.dist / w.lp.contrib : null) : 'n/a'], ['GP IRR / promote', w ? P(w.gpIRR) + ' / ' + $(w.promote) : 'n/a'],
@@ -20561,7 +20561,7 @@ register('IC Memo', function(){
     meta:{ Property:s.name, Verdict:g.verdict, Score:(g.score * 100).toFixed(0) + '%', Exceptions:g.hard + ' hard / ' + g.soft + ' soft' },
     main: banner
       + table('Investment Thesis', null, thesisHtml)
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows) + table('Returns', null, retRows) + table('Financing', null, fin) + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows, 'bk-kv') + table('Returns', null, retRows, 'bk-kv') + table('Financing', null, fin, 'bk-kv') + '</div>'
       + table('Policy Test Table - Every Gate in One Place', th(['Gate', 'Underwritten', 'Threshold', 'Test', 'Result', 'Severity', 'Weight', 'Score']), gateRows)
       + table('Ranked Exceptions', th(['#', 'Exception', 'Severity']), exc)
       + table('Break-Even and Stress Cushions', th(['Metric', 'Value', 'Meaning']), cush)
@@ -34066,6 +34066,11 @@ html.bk-rail-collapsed .rail .rail-group > :not(.rail-group-label){ display:none
 /* header sub-tabs: one gap between every tab */
 html body .rb-tabs{ gap:6px }
 html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ margin:0 2px }
+/* two-column metric tables (label left, value right) on every page, no stray bottom border under the last row of a grid cell */
+html body #viewport table.fin tbody tr > td.v, html body #viewport table.fin tbody tr > td[data-bk-align="text"]:last-child{ text-align:right !important }
+html body #viewport .tbl-wrap > table.fin:only-child{ margin-bottom:0 }
+html body #viewport table.fin.bk-kv tbody td:last-child, html body #viewport table.fin.bk-kv tbody td.v{ text-align:right !important }
+html body #viewport table.fin.bk-kv tbody td:first-child{ width:42% }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):

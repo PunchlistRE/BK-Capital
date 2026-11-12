@@ -69,3 +69,8 @@ html.bk-rail-collapsed .rail .rail-group > :not(.rail-group-label){ display:none
 /* header sub-tabs: one gap between every tab */
 html body .rb-tabs{ gap:6px }
 html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ margin:0 2px }
+/* two-column metric tables (label left, value right) on every page, no stray bottom border under the last row of a grid cell */
+html body #viewport table.fin tbody tr > td.v, html body #viewport table.fin tbody tr > td[data-bk-align="text"]:last-child{ text-align:right !important }
+html body #viewport .tbl-wrap > table.fin:only-child{ margin-bottom:0 }
+html body #viewport table.fin.bk-kv tbody td:last-child, html body #viewport table.fin.bk-kv tbody td.v{ text-align:right !important }
+html body #viewport table.fin.bk-kv tbody td:first-child{ width:42% }
