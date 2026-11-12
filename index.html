@@ -28597,7 +28597,7 @@ function prepare(){
   var s = safe(function(){ return bkLoad(); }, {}) || {}, foot = document.createElement('div'); foot.id = 'bk-print-foot'; foot.textContent = 'Punchlist Capital · Beta · ' + (s.name || '') + ' · figures from the underwriting model; check against your own'; document.body.appendChild(foot);
   /* a chosen option prints as text (a drop-down prints blank) */
   [].forEach.call(document.querySelectorAll('#viewport select'), function(sel){ var o = sel.options[sel.selectedIndex]; if(!o) return; var sp = document.createElement('span'); sp.className = 'bk-print-sel'; sp.textContent = o.text; sel.classList.add('bk-print-hasval'); sel.parentNode.insertBefore(sp, sel.nextSibling); });
-  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl, #viewport table.fin, #viewport table.pf-tbl'), function(t){ splitYears(t, t.classList.contains('rp-tbl') ? YEARS_PER_PAGE : (t.querySelector('.status-chip') || t.classList.contains('pf-tbl') ? 6 : 8));   /* a table with a status chip in every year cell needs wider columns */ });
+  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl:not(#rp-year0), #viewport table.fin, #viewport table.pf-tbl'), function(t){ splitYears(t, t.classList.contains('rp-tbl') ? YEARS_PER_PAGE : (t.querySelector('.status-chip') || t.classList.contains('pf-tbl') ? 6 : 8));   /* a table with a status chip in every year cell needs wider columns */ });
   var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land); fitWide(land);
   pageStyle = document.createElement('style'); pageStyle.id = 'bk-print-page'; pageStyle.textContent = '@page{size:letter ' + (land ? 'landscape' : 'portrait') + ';margin:12mm 11mm 14mm}'; document.head.appendChild(pageStyle);
   document.querySelectorAll('input[type=text],input[type=number],input:not([type])').forEach(function(i){ if(i.value !== i.getAttribute('value')) i.setAttribute('value', i.value); });
@@ -34168,7 +34168,7 @@ html body #viewport table.bk-mc th:nth-child(4), html body #viewport table.bk-mc
 /* Year 0 block: header label never cut, figures fit their column */
 #rp-year0 th, #rp-year0 td{ white-space:nowrap; overflow:visible; text-overflow:clip; padding-left:3px; padding-right:3px }
 #rp-year0 th:nth-child(2), #rp-year0 td:nth-child(2){ min-width:96px }
-html body #viewport #rp-year0 th, html body #viewport #rp-year0 td{ padding-left:3px !important; padding-right:3px !important; font-size:11.5px !important }
+@media screen{ html body #viewport #rp-year0 th, html body #viewport #rp-year0 td{ padding-left:3px !important; padding-right:3px !important; font-size:11.5px !important } }
 /* holds over ten years: whole dollars at a readable width, the statement scrolls sideways with the label column held */
 html body #viewport .bk-scrollyrs{ overflow-x:auto; max-width:100% }
 html body #viewport .bk-scrollyrs table.rp-tbl{ table-layout:fixed; width:calc(210px + (var(--yrs) + 2) * 100px); min-width:100% }
