@@ -33192,13 +33192,16 @@ function wrap(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function'
         + '<div class="note" style="margin-top:6px">Year 0 is the equity paid at closing (price, closing costs and fees less the loan). The levered IRR (' + irr + ') is the XIRR of the dated monthly equity cash flows <b>including that Year 0 outflow on the closing date</b>; the years above are those months added up.</div></div>';
     } catch(e){}
     return o; }; })();
-/* when the widest figure (ten-million-dollar amounts on a long hold) cannot fit its year column, the statement is shown in thousands of dollars (a note says so) so every figure fits */
+/* the statement is always whole dollars; when the widest figure cannot fit its year column at the normal size, the type steps down (or the table scrolls) so every figure shows in full */
 function thousands(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
   RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; var first = o.main.slice(0, o.main.indexOf('</table>') + 8), yrs = (first.match(/<th class="r">Year \d+<\/th>/g) || []).length, wid = 0; (o.main.match(/<td[^>]*class="[^"]*\br\b[^"]*"[^>]*>[($\-\d,)]+<\/td>/g) || []).forEach(function(t){ var x = t.replace(/<[^>]*>/g, ''); if(x.length > wid) wid = x.length; });
-    if(yrs > 10){ o.main = '<div class="bk-scrollyrs" style="--yrs:' + yrs + '">' + o.main + '</div>'; return o; }   /* more than ten years: whole dollars, the statement scrolls sideways */
-    if(!yrs || wid * 6.3 + 9 <= (1124 - 210) / (yrs + 2)) return o;   /* the widest figure fits its column: leave whole dollars */
-    o.main = '<div class="bk-wideyrs">' + o.main.replace(/(<td[^>]*class="[^"]*\br\b[^"]*"[^>]*>)(\(?-?\$?)([\d,]{5,})(\)?)(<\/td>)/g, function(m, a, pre, num, post, z){ var k = Math.round(Number(num.replace(/,/g, '')) / 1000); return a + pre + k.toLocaleString('en-US') + post + z; })
-      .replace(/>Dollars</, '>Dollars (thousands)<').replace(/(<div class="rp-s">)/, '$1<b>Figures in thousands of dollars.</b> ') + '</div>';
+    if(yrs > 10){ o.main = '<div class="bk-scrollyrs" style="--yrs:' + yrs + ';--colw:' + Math.max(100, Math.ceil((wid + 1) * 7.6 + 8)) + 'px">' + o.main + '</div>'; return o; }   /* more than ten years: whole dollars, the statement scrolls sideways */
+    if(!yrs) return o;
+    /* whole dollars always. The type steps down so the widest figure (up to ten digits, with its $ , and brackets) fits its year column; below 9px it keeps 9px and the statement scrolls sideways instead */
+    var avail = 1124 - 170, per = avail / (yrs + 2), fs = Math.floor(((per - 6) / ((wid + 1) * 0.6)) * 10) / 10;
+    if(fs >= 12.5) return o;
+    var scroll = fs < 9; fs = Math.max(9, fs);
+    o.main = '<div class="bk-wideyrs' + (scroll ? ' bk-scrollyrs' : '') + '" style="--fs:' + fs + 'px;--yrs:' + yrs + '">' + o.main + '</div>';
     return o; }; }
 thousands('Cash Flow Report'); thousands('Sources and Uses Report');
 wrap('After-Tax Report'); wrap('Refinance Report');
@@ -34177,7 +34180,7 @@ html body #viewport .rp #rp-cashflow th:first-child, html body #viewport .rp #rp
 html body #viewport .rp #rp-cashflow td, html body #viewport .rp #rp-cashflow th, html body #viewport .rp #rp-su td, html body #viewport .rp #rp-su th{ padding-left:3px !important; padding-right:5px !important; font-size:11.5px }
 html body #viewport .rp #rp-cashflow td:first-child, html body #viewport .rp #rp-su td:first-child{ padding-left:10px !important; white-space:normal }
 html body #viewport .bk-wideyrs .rp #rp-cashflow th:first-child, html body #viewport .bk-wideyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-wideyrs .rp #rp-su th:first-child, html body #viewport .bk-wideyrs .rp #rp-su td:first-child{ width:170px !important }
-html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:10.5px; padding-left:2px !important; padding-right:4px !important }
+html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:var(--fs,10.5px); padding-left:2px !important; padding-right:4px !important }
 html body #viewport .rp #rp-cashflow thead th, html body #viewport .rp #rp-su thead th{ white-space:normal }
 /* Home "Go to" shortcuts: one grid, equal-height cards, left-aligned title and a short description */
 html body #viewport .pl-acts{ display:grid !important; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px }
@@ -34214,7 +34217,7 @@ html body #viewport table.bk-mc th:nth-child(4), html body #viewport table.bk-mc
 @media screen{ html body #viewport #rp-year0 th, html body #viewport #rp-year0 td{ padding-left:3px !important; padding-right:3px !important; font-size:11.5px !important } }
 /* holds over ten years: whole dollars at a readable width, the statement scrolls sideways with the label column held */
 html body #viewport .bk-scrollyrs{ overflow-x:auto; max-width:100% }
-html body #viewport .bk-scrollyrs table.rp-tbl{ table-layout:fixed; width:calc(210px + (var(--yrs) + 2) * 100px); min-width:100% }
+html body #viewport .bk-scrollyrs table.rp-tbl{ table-layout:fixed; width:calc(210px + (var(--yrs) + 2) * var(--colw, 100px)); min-width:100% }
 html body #viewport .bk-scrollyrs table.rp-tbl th:first-child, html body #viewport .bk-scrollyrs table.rp-tbl td:first-child{ position:sticky; left:0; z-index:1; background:var(--bk-card, #fff) }
 html body #viewport .bk-scrollyrs table#rp-year0{ table-layout:auto }
 /* Home KPI tiles: centered, titles on one plane, notes on one plane */

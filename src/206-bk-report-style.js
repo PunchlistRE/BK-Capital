@@ -16,13 +16,16 @@ function wrap(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function'
         + '<div class="note" style="margin-top:6px">Year 0 is the equity paid at closing (price, closing costs and fees less the loan). The levered IRR (' + irr + ') is the XIRR of the dated monthly equity cash flows <b>including that Year 0 outflow on the closing date</b>; the years above are those months added up.</div></div>';
     } catch(e){}
     return o; }; })();
-/* when the widest figure (ten-million-dollar amounts on a long hold) cannot fit its year column, the statement is shown in thousands of dollars (a note says so) so every figure fits */
+/* the statement is always whole dollars; when the widest figure cannot fit its year column at the normal size, the type steps down (or the table scrolls) so every figure shows in full */
 function thousands(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
   RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; var first = o.main.slice(0, o.main.indexOf('</table>') + 8), yrs = (first.match(/<th class="r">Year \d+<\/th>/g) || []).length, wid = 0; (o.main.match(/<td[^>]*class="[^"]*\br\b[^"]*"[^>]*>[($\-\d,)]+<\/td>/g) || []).forEach(function(t){ var x = t.replace(/<[^>]*>/g, ''); if(x.length > wid) wid = x.length; });
-    if(yrs > 10){ o.main = '<div class="bk-scrollyrs" style="--yrs:' + yrs + '">' + o.main + '</div>'; return o; }   /* more than ten years: whole dollars, the statement scrolls sideways */
-    if(!yrs || wid * 6.3 + 9 <= (1124 - 210) / (yrs + 2)) return o;   /* the widest figure fits its column: leave whole dollars */
-    o.main = '<div class="bk-wideyrs">' + o.main.replace(/(<td[^>]*class="[^"]*\br\b[^"]*"[^>]*>)(\(?-?\$?)([\d,]{5,})(\)?)(<\/td>)/g, function(m, a, pre, num, post, z){ var k = Math.round(Number(num.replace(/,/g, '')) / 1000); return a + pre + k.toLocaleString('en-US') + post + z; })
-      .replace(/>Dollars</, '>Dollars (thousands)<').replace(/(<div class="rp-s">)/, '$1<b>Figures in thousands of dollars.</b> ') + '</div>';
+    if(yrs > 10){ o.main = '<div class="bk-scrollyrs" style="--yrs:' + yrs + ';--colw:' + Math.max(100, Math.ceil((wid + 1) * 7.6 + 8)) + 'px">' + o.main + '</div>'; return o; }   /* more than ten years: whole dollars, the statement scrolls sideways */
+    if(!yrs) return o;
+    /* whole dollars always. The type steps down so the widest figure (up to ten digits, with its $ , and brackets) fits its year column; below 9px it keeps 9px and the statement scrolls sideways instead */
+    var avail = 1124 - 170, per = avail / (yrs + 2), fs = Math.floor(((per - 6) / ((wid + 1) * 0.6)) * 10) / 10;
+    if(fs >= 12.5) return o;
+    var scroll = fs < 9; fs = Math.max(9, fs);
+    o.main = '<div class="bk-wideyrs' + (scroll ? ' bk-scrollyrs' : '') + '" style="--fs:' + fs + 'px;--yrs:' + yrs + '">' + o.main + '</div>';
     return o; }; }
 thousands('Cash Flow Report'); thousands('Sources and Uses Report');
 wrap('After-Tax Report'); wrap('Refinance Report');

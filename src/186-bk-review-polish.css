@@ -82,7 +82,7 @@ html body #viewport .rp #rp-cashflow th:first-child, html body #viewport .rp #rp
 html body #viewport .rp #rp-cashflow td, html body #viewport .rp #rp-cashflow th, html body #viewport .rp #rp-su td, html body #viewport .rp #rp-su th{ padding-left:3px !important; padding-right:5px !important; font-size:11.5px }
 html body #viewport .rp #rp-cashflow td:first-child, html body #viewport .rp #rp-su td:first-child{ padding-left:10px !important; white-space:normal }
 html body #viewport .bk-wideyrs .rp #rp-cashflow th:first-child, html body #viewport .bk-wideyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-wideyrs .rp #rp-su th:first-child, html body #viewport .bk-wideyrs .rp #rp-su td:first-child{ width:170px !important }
-html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:10.5px; padding-left:2px !important; padding-right:4px !important }
+html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:var(--fs,10.5px); padding-left:2px !important; padding-right:4px !important }
 html body #viewport .rp #rp-cashflow thead th, html body #viewport .rp #rp-su thead th{ white-space:normal }
 /* Home "Go to" shortcuts: one grid, equal-height cards, left-aligned title and a short description */
 html body #viewport .pl-acts{ display:grid !important; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px }
@@ -119,7 +119,7 @@ html body #viewport table.bk-mc th:nth-child(4), html body #viewport table.bk-mc
 @media screen{ html body #viewport #rp-year0 th, html body #viewport #rp-year0 td{ padding-left:3px !important; padding-right:3px !important; font-size:11.5px !important } }
 /* holds over ten years: whole dollars at a readable width, the statement scrolls sideways with the label column held */
 html body #viewport .bk-scrollyrs{ overflow-x:auto; max-width:100% }
-html body #viewport .bk-scrollyrs table.rp-tbl{ table-layout:fixed; width:calc(210px + (var(--yrs) + 2) * 100px); min-width:100% }
+html body #viewport .bk-scrollyrs table.rp-tbl{ table-layout:fixed; width:calc(210px + (var(--yrs) + 2) * var(--colw, 100px)); min-width:100% }
 html body #viewport .bk-scrollyrs table.rp-tbl th:first-child, html body #viewport .bk-scrollyrs table.rp-tbl td:first-child{ position:sticky; left:0; z-index:1; background:var(--bk-card, #fff) }
 html body #viewport .bk-scrollyrs table#rp-year0{ table-layout:auto }
 /* Home KPI tiles: centered, titles on one plane, notes on one plane */
