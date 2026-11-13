@@ -137,9 +137,9 @@ html body #viewport .bk-wf3 > table.rp-tbl{ width:100% !important; min-width:0 !
 html body #viewport .bk-wf3 > table.rp-tbl td:first-child, html body #viewport .bk-wf3 > table.rp-tbl th:first-child{ width:40% !important }
 html body #viewport table.bk-wf-cf td, html body #viewport table.bk-wf-cf th{ padding-left:10px !important; padding-right:10px !important }
 html body #viewport table.bk-wf-cf td:first-child, html body #viewport table.bk-wf-cf th:first-child{ width:22% !important }
-/* one vertical divider after the label column on every report table */
-html body #viewport .rp table.rp-tbl tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px }
-@media print{ html body .rp table.rp-tbl tr > :first-child{ border-right:1px solid #000 !important } }
+/* the vertical divider after the label column belongs to the Cash Flow, Sources and Uses and Waterfall statements only */
+html body #viewport .rp table.bk-wf-cf tr > :first-child, html body #viewport .rp .bk-wf3 table.rp-tbl tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px }
+@media print{ html body .rp table.bk-wf-cf tr > :first-child, html body .rp .bk-wf3 table.rp-tbl tr > :first-child{ border-right:1px solid #000 !important } }
 /* printed year statements always run the full page width, whatever the number of years */
 @media print{ html body .rp table.rp-tbl:not(.bk-print-zoom){ width:100% !important; min-width:100% !important; table-layout:fixed !important } }
 @media print{
