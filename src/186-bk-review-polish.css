@@ -160,3 +160,6 @@ html body #bk-kpibar .kb-v{ font-size:21px; overflow:visible; text-overflow:clip
 html body #bk-kpibar .kb-k{ margin-bottom:3px }
 html body.bk-has-kpibar{ padding-bottom:92px }
 @media (min-width:901px){ html body.bk-has-kpibar .rail{ max-height:calc(100vh - 92px) } }
+/* bar labels stay on one line (Equity multiple) */
+html body #bk-kpibar .kb-k{ white-space:nowrap; font-size:10px; letter-spacing:.04em }
+html body #bk-kpibar .kb-c{ padding-left:8px; padding-right:8px; min-width:max-content }
