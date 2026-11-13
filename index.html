@@ -32645,8 +32645,8 @@ RENDERERS['Reserve Accounts'] = function(){
   var s = bkLoad() || {}, o = { title:'Reserve Accounts', crumbs:'Debt', desc:'Money set aside at closing for renovation, capex and interest, drawn as it is spent. A memo: the returns and the funding ties are unchanged.', meta:{ Property:s.name || '' }, sidebar:'' };
   if(isDev(s)){ o.main = '<div class="note-flag"><span>&#9432;</span><div>Reserve accounts are for acquisitions. A development’s interest and cost funding is on Dev Draws and Sources & Uses.</div></div>'; return o; }
   var sch = schedule(s), tot = ACC.reduce(function(t, a){ return t + (Number(s[a[0]]) || 0); }, 0), d = sch.sp.d || {}, cap = Number(s.rateCapCost) || 0;
-  var inputs = ACC.map(function(a){ var v = Number(s[a[0]]) || 0; return '<tr><td class="rowlabel">' + a[1] + '<span class="dim" style="display:block;font-size:11px">' + a[2] + '</span></td><td class="v" style="text-align:right;white-space:nowrap"><span style="color:#566a80;margin-right:6px">$</span><input type="text" value="' + (v ? Math.round(v).toLocaleString('en-US') : '') + '" placeholder="0" inputmode="decimal" style="text-align:right;width:140px !important;max-width:140px !important;min-width:0 !important" onchange="bkResSet(\'' + a[0] + '\',this.value)"></td></tr>'; }).join('');
-  var main = '<div class="tbl-wrap" style="max-width:none"><table class="fin"><caption>Reserves Funded at Closing</caption><thead><tr><th class="rowlabel-h">Account</th><th>Funded at closing</th></tr></thead><tbody>' + inputs + '<tr class="grandtotal"><td class="rowlabel">Total reserves</td><td class="bk-a-num" style="text-align:right !important">' + M(tot) + '</td></tr></tbody></table></div>';
+  var inputs = ACC.map(function(a){ var v = Number(s[a[0]]) || 0; return '<tr><td class="rowlabel">' + a[1] + '<span class="dim" style="display:block;font-size:11px">' + a[2] + '</span></td><td class="v" style="text-align:right;white-space:nowrap;background:transparent !important"><span style="color:#566a80;margin-right:6px">$</span><input type="text" value="' + (v ? Math.round(v).toLocaleString('en-US') : '') + '" placeholder="0" inputmode="decimal" style="text-align:right;width:140px !important;max-width:140px !important;min-width:0 !important" onchange="bkResSet(\'' + a[0] + '\',this.value)"></td></tr>'; }).join('');
+  var main = '<div class="tbl-wrap" style="max-width:660px"><table class="fin"><caption>Reserves Funded at Closing</caption><thead><tr><th class="rowlabel-h">Account</th><th>Funded at closing</th></tr></thead><tbody>' + inputs + '<tr class="grandtotal"><td class="rowlabel">Total reserves</td><td class="bk-a-num" style="text-align:right !important">' + M(tot) + '</td></tr></tbody></table></div>';
   if(!(tot > 0)){ o.main = main + '<div class="note-flag"><span>&#9432;</span><div>Enter the amount of each reserve to see its draws and balance by year.</div></div>'; return o; }
   var head = '<th class="rowlabel-h">Account</th>' + sch.rows.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('');
   var line = function(lbl, f, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="rowlabel">' + lbl + '</td>' + sch.rows.map(function(r){ return '<td>' + M(f(r)) + '</td>'; }).join('') + '</tr>'; };
@@ -33250,7 +33250,7 @@ window.BK_NAV_FOLDED = FOLDED;
 window.bkNavVisible = function(g){ return g.sheets.filter(function(n){ return !FOLDED[n]; }); };
 window.bkNavHostOf = function(n){ return FOLDED[n] || n; };
 /* the sub-tab row: at most two words a tab (the full name stays in the page title, the menus and the tooltip) */
-window.BK_NAV_SHORT = { 'Investment Target':'Target', 'Sources & Uses':'Sources/Uses', 'Refi / Recap':'Refi/Recap', 'Valuation Report':'Summary', 'Property Valuation Report':'Property Value', 'Sources and Uses Report':'S&U Report', 'Cash Flow Report':'Cash Flow',
+window.BK_NAV_SHORT = { 'Investment Target':'Target', 'Sources & Uses':'Sources/Uses', 'Refi / Recap':'Refi/Recap', 'Valuation Report':'Summary', 'Property Valuation Report':'Property Value', 'Sources and Uses Report':'S&U Report', 'Cash Flow Report':'Cash Flow', 'Waterfall Report':'Waterfall',
   'Present Value Report':'Present Value', 'Lease Audit Report':'Lease Audit', 'Audit Report':'Input Audit', 'Budget vs Actual':'Budget/Actual', 'Deal Vectors (M)':'Vectors (M)', 'Lease Cohort CF':'Lease Cohorts', 'Sell vs Hold':'Sell/Hold', 'Benchmarks':'Deal Targets', 'Probability-Weighted':'Probability', 'Market Benchmarks':'Benchmarks', 'After-Tax Report':'After-Tax', 'Business Valuation':'Biz Value', 'Refinance Report':'Refi Report', 'Capital Allocation':'Allocation', 'Storage Lifecycle':'Storage', 'Source Ingestion':'Ingestion', 'Investor Schedules':'Schedules', 'Portfolio Dashboard':'Dashboard', 'Portfolio Rollup':'Rollup', 'Financing Compare':'Compare', 'Covenant Monitor':'Covenants', 'Operating Underwrite':'Op. Underwrite', 'Probability-Weighted':'Probability', 'Property Valuation':'Prop. Value', 'Dev Lease-Up':'Lease-Up', 'Refinancing':'Refinance', 'Reserve Accounts':'Reserves' };
 var label = function(s){ return window.BK_NAV_LABELS[s] || s; };
 window.bkNavLabel = label;
@@ -34233,6 +34233,16 @@ html body.bk-has-kpibar{ padding-bottom:92px }
 /* bar labels stay on one line (Equity multiple) */
 html body #bk-kpibar .kb-k{ white-space:nowrap; font-size:10px; letter-spacing:.04em }
 html body #bk-kpibar .kb-c{ padding-left:8px; padding-right:8px; min-width:max-content }
+/* Model Checks (final): the finding takes the room, the three short columns are compact */
+html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(1), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(1){ width:56% !important; min-width:0 !important; text-align:left !important }
+html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(2), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(2){ width:16% !important; text-align:left !important }
+html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(3), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(3), html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(4), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(4){ width:14% !important }
+/* Waterfall page tab label and structure grid */
+/* Depreciation and other status columns: a chip never breaks across lines */
+html body #viewport .status-chip, html body #viewport .chip{ white-space:nowrap }
+html body #viewport td:last-child .status-chip{ min-width:0 }
+/* Waterfall Report: the three structure tables share the row equally */
+html body #viewport .bk-wf3{ grid-template-columns:1.05fr 1.05fr 1fr }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):
