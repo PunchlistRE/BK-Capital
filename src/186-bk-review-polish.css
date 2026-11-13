@@ -126,3 +126,14 @@ html body #viewport .bk-scrollyrs table#rp-year0{ table-layout:auto }
 html body #viewport .pl-kpi{ text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:flex-start }
 html body #viewport .pl-kpi > *{ text-align:center !important; width:100% }
 html body #viewport .pl-kpi .k{ min-height:2.6em; display:flex; align-items:flex-end; justify-content:center }
+/* native Waterfall Report page */
+html body #viewport .bk-wf3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:start; margin-bottom:6px }
+html body #viewport .bk-wf3 table.rp-tbl{ table-layout:fixed; width:100% }
+html body #viewport .bk-wf3 table.rp-tbl td:first-child, html body #viewport .bk-wf3 table.rp-tbl th:first-child{ width:38%; white-space:normal }
+html body #viewport .bk-wf3 table.rp-tbl td, html body #viewport .bk-wf3 table.rp-tbl th{ padding-left:4px; padding-right:6px; font-size:11.5px }
+@media (max-width:900px){ html body #viewport .bk-wf3{ grid-template-columns:1fr } }
+html body #viewport table.bk-wf-cf td:first-child{ white-space:nowrap }
+html body #viewport .bk-wf3 > table.rp-tbl{ width:100% !important; min-width:0 !important; table-layout:fixed !important }
+html body #viewport .bk-wf3 > table.rp-tbl td:first-child, html body #viewport .bk-wf3 > table.rp-tbl th:first-child{ width:40% !important }
+html body #viewport table.bk-wf-cf td, html body #viewport table.bk-wf-cf th{ padding-left:10px !important; padding-right:10px !important }
+html body #viewport table.bk-wf-cf td:first-child, html body #viewport table.bk-wf-cf th:first-child{ width:22% !important }
