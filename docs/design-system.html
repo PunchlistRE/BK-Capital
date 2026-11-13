@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Punchlist Design System</title>
+<style>
+/* ============ FOUNDATIONS: every value on this page comes from here ============ */
+:root{
+  /* colour: one navy, one blue, one neutral ramp, three meanings */
+  --navy:#0e2a4a; --navy-2:#1b3f66;
+  --accent:#12609f; --accent-soft:#e3eefb;
+  --ink:#0e2a4a; --ink-2:#25313d; --muted:#566a80;
+  --line:#c9d4e0; --hair:#e4eaf1; --band:#e9eff6;
+  --surface:#ffffff; --page:#f2f5f9;
+  --bar:#1b3f66; --pos:#1d7a4b; --pos-soft:#e2f3ea; --neg:#b23a2c; --neg-soft:#fbe9e6; --warn:#a86a00; --warn-soft:#fbf0d9;
+  /* type: one family, six sizes */
+  --font:Inter,"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+  --t-xs:11px; --t-s:12.5px; --t-m:14px; --t-l:17px; --t-xl:22px; --t-xxl:30px;
+  /* space: a 4-point scale */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+  /* shape: three radii, two line weights */
+  --r1:4px; --r2:8px; --r3:12px; --w1:1px; --w2:2px;
+  --shadow:0 1px 2px rgba(14,42,74,.06),0 4px 14px rgba(14,42,74,.06);
+}
+[data-theme="dark"]{
+  --navy:#0a1a2e; --navy-2:#142a47;
+  --accent:#6fb4f2; --accent-soft:#132a45;
+  --ink:#eaf0f6; --ink-2:#cfd9e4; --muted:#9db0c4;
+  --line:#2a4060; --hair:#1e3350; --band:#16304f;
+  --surface:#0f2038; --page:#081523;
+  --bar:#4f86c0; --pos:#5cc58a; --pos-soft:#12372a; --neg:#ff8f80; --neg-soft:#3a1f1d; --warn:#e8b155; --warn-soft:#3a2e12;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink-2);font:400 var(--t-m)/1.5 var(--font);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:var(--s5) var(--s4) var(--s7)}
+h1,h2,h3,p{margin:0}
+.eyebrow{font-size:var(--t-xs);letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+.page-title{font-size:var(--t-xxl);font-weight:700;color:var(--ink);letter-spacing:-.01em;margin-top:var(--s1)}
+.lede{color:var(--muted);max-width:720px;margin-top:var(--s2)}
+.bar{display:flex;gap:var(--s2);flex-wrap:wrap;margin:var(--s4) 0 var(--s6)}
+.seg{display:inline-flex;border:var(--w1) solid var(--line);border-radius:var(--r2);overflow:hidden;background:var(--surface)}
+.seg button{font:600 var(--t-s)/1 var(--font);padding:9px 14px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+section.block{margin-top:var(--s7)}
+.sec-head{display:flex;align-items:baseline;gap:var(--s3);border-bottom:var(--w1) solid var(--ink);padding-bottom:var(--s2);margin-bottom:var(--s5)}
+.sec-head h2{font-size:var(--t-l);font-weight:700;color:var(--ink)}
+.sec-head span{color:var(--muted);font-size:var(--t-s)}
+.grid{display:grid;gap:var(--s4)}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:820px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* ============ COMPONENTS ============ */
+.card{background:var(--surface);border:var(--w1) solid var(--line);border-radius:var(--r3);padding:var(--s4);box-shadow:var(--shadow)}
+.card>.card-title{font-size:var(--t-m);font-weight:700;color:var(--accent);margin-bottom:var(--s3)}
+.note{font-size:var(--t-s);color:var(--muted)}
+
+/* section name: one form everywhere */
+.section-name{font-size:var(--t-m);font-weight:700;color:var(--accent);padding:var(--s3) 0 var(--s2)}
+
+/* KPI tile */
+.kpi{background:var(--surface);border:var(--w1) solid var(--line);border-radius:var(--r2);padding:var(--s3) var(--s4);display:flex;flex-direction:column;gap:2px;text-align:center}
+.kpi .k{font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.kpi .v{font-size:var(--t-xl);font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.kpi .d{font-size:var(--t-s);color:var(--muted)}
+.kpi.pos .v{color:var(--pos)}.kpi.neg .v{color:var(--neg)}
+.kpi.hero{border-top:var(--w2) solid var(--accent)}
+
+/* statement table: the Cash Flow look */
+.stmt{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:var(--t-s)}
+.stmt th{font-weight:600;color:var(--ink);text-align:right;padding:var(--s2) var(--s3);border-bottom:var(--w1) solid var(--ink);white-space:nowrap}
+.stmt th:first-child,.stmt td:first-child{text-align:left}
+.stmt th.band{background:var(--band)}
+.stmt td{padding:6px var(--s3);text-align:right;border-bottom:var(--w1) solid var(--hair);white-space:nowrap;color:var(--ink-2)}
+.stmt td:first-child{color:var(--muted);padding-left:var(--s5);white-space:normal}
+.stmt tr>:first-child{box-shadow:1px 0 0 var(--ink)} /* the label divider: one continuous line */
+.stmt tr.sec td{color:var(--accent);font-weight:700;padding-left:var(--s3);border-bottom:0;padding-top:var(--s4)}
+.stmt tr.sub td{color:var(--ink);font-weight:700;border-top:var(--w1) solid var(--ink)}
+.stmt tr.sub td:first-child{padding-left:var(--s3)}
+.stmt tr.tot td{color:var(--ink);font-weight:700;background:var(--accent-soft);border-top:var(--w1) solid var(--accent);border-bottom:var(--w1) solid var(--accent)}
+.stmt tr.tot td:first-child{padding-left:var(--s3);box-shadow:inset 3px 0 0 var(--accent),1px 0 0 var(--ink)}
+.neg{color:var(--neg)}
+.scroll{overflow-x:auto}
+
+/* chips */
+.chip{display:inline-block;font-size:var(--t-xs);font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:var(--r1);background:var(--band);color:var(--muted);white-space:nowrap}
+.chip.pos{background:var(--pos-soft);color:var(--pos)}.chip.neg{background:var(--neg-soft);color:var(--neg)}.chip.warn{background:var(--warn-soft);color:var(--warn)}.chip.info{background:var(--accent-soft);color:var(--accent)}
+
+/* buttons */
+.btn{font:600 var(--t-s)/1 var(--font);padding:10px 16px;border-radius:var(--r2);border:var(--w1) solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+[data-theme="dark"] .btn{color:#06101c}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.quiet{border-color:var(--line);background:var(--surface);color:var(--ink-2)}
+.row{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center}
+
+/* form */
+.field{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:var(--s3);align-items:center;padding:var(--s2) 0;border-bottom:var(--w1) solid var(--hair)}
+.field:last-child{border-bottom:0}
+.field label{color:var(--ink-2);font-size:var(--t-s)}
+.field small{display:block;color:var(--muted);font-size:var(--t-xs)}
+.input{display:flex;align-items:center;border:var(--w1) solid var(--line);border-radius:var(--r2);background:var(--surface);overflow:hidden}
+.input i{font-style:normal;color:var(--muted);padding:0 var(--s2);font-size:var(--t-s)}
+.input input{border:0;background:transparent;color:var(--ink);font:600 var(--t-s) var(--font);width:100%;padding:9px var(--s2);text-align:right;font-variant-numeric:tabular-nums;outline:0}
+.input:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+@media(max-width:560px){.field{grid-template-columns:1fr}}
+
+/* chart */
+.chart{display:block;width:100%;height:auto}
+.chart .ax{stroke:var(--hair);stroke-width:1}.chart .tx{fill:var(--muted);font:500 10.5px var(--font)}
+.chart .bar{fill:var(--bar)}
+.chart .ln{fill:none;stroke:var(--warn);stroke-width:2}.chart .dot{fill:var(--warn);stroke:var(--surface);stroke-width:2}
+.chart .lb{fill:var(--ink);font:700 10.5px var(--font)}
+
+/* callout */
+.callout{border:var(--w1) solid var(--line);border-left:var(--w2) solid var(--accent);border-radius:var(--r1) var(--r2) var(--r2) var(--r1);padding:var(--s3) var(--s4);background:var(--surface)}
+.callout b{color:var(--ink)}
+
+/* foundation specimens */
+.sw{border:var(--w1) solid var(--line);border-radius:var(--r2);overflow:hidden;background:var(--surface)}
+.sw .c{height:46px}.sw .m{padding:var(--s2) var(--s3);font-size:var(--t-xs);color:var(--muted)}.sw .m b{display:block;color:var(--ink);font-size:var(--t-s)}
+.type-row{display:flex;align-items:baseline;gap:var(--s4);padding:var(--s2) 0;border-bottom:var(--w1) solid var(--hair)}
+.type-row span{width:92px;color:var(--muted);font-size:var(--t-xs);flex:none}
+.sp{display:flex;align-items:center;gap:var(--s3);font-size:var(--t-xs);color:var(--muted);padding:3px 0}.sp i{display:block;height:12px;background:var(--accent);border-radius:2px}
+.rad{width:84px;height:56px;border:var(--w1) solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:var(--t-xs);color:var(--muted)}
+
+/* composed page: how the pieces sit together */
+.frame{border:var(--w1) solid var(--line);border-radius:var(--r3);background:var(--page);padding:var(--s5)}
+.frame-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--s4);flex-wrap:wrap;margin-bottom:var(--s4)}
+.frame-head h3{font-size:var(--t-xl);font-weight:700;color:var(--ink)}
+.compose{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:var(--s4);margin-top:var(--s4)}
+@media(max-width:820px){.compose{grid-template-columns:1fr}.frame{padding:var(--s3)}}
+.phone .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+.phone .compose{grid-template-columns:1fr}
+.phone{max-width:390px;margin:0 auto}
+.paper .card,.paper .kpi,.paper .frame{box-shadow:none}
+.paper{background:#fff;color:#14283d}
+</style>
+</head>
+<body>
+<div class="wrap" id="root">
+  <div class="eyebrow">Punchlist Capital</div>
+  <h1 class="page-title">Design system</h1>
+  <p class="lede">One foundation, one form for each kind of element. Every page, report and PDF is built from these. Change a value here and it changes everywhere. Nothing carries its own colour, size or radius.</p>
+
+  <div class="bar">
+    <div class="seg" id="thm"><button aria-pressed="true" data-v="light">Light</button><button aria-pressed="false" data-v="dark">Night</button></div>
+    <div class="seg" id="viewseg"><button aria-pressed="true" data-v="web">Web</button><button aria-pressed="false" data-v="phone">Phone</button><button aria-pressed="false" data-v="paper">Paper</button></div>
+  </div>
+
+  <div id="stage">
+
+  <section class="block">
+    <div class="sec-head"><h2>1. Foundations</h2><span>the only values anything may use</span></div>
+    <div class="grid g4" style="margin-bottom:var(--s5)">
+      <div class="sw"><div class="c" style="background:var(--navy)"></div><div class="m"><b>Navy</b>headers, footer bar, primary ink</div></div>
+      <div class="sw"><div class="c" style="background:var(--accent)"></div><div class="m"><b>Accent blue</b>section names, links, focus</div></div>
+      <div class="sw"><div class="c" style="background:var(--muted)"></div><div class="m"><b>Muted</b>labels and supporting text</div></div>
+      <div class="sw"><div class="c" style="background:var(--band)"></div><div class="m"><b>Band</b>table header band, quiet fills</div></div>
+      <div class="sw"><div class="c" style="background:var(--pos)"></div><div class="m"><b>Positive</b>meets the test, gain</div></div>
+      <div class="sw"><div class="c" style="background:var(--neg)"></div><div class="m"><b>Negative</b>fails the test, loss</div></div>
+      <div class="sw"><div class="c" style="background:var(--warn)"></div><div class="m"><b>Caution</b>binding, near the limit</div></div>
+      <div class="sw"><div class="c" style="background:var(--surface);border-bottom:1px solid var(--line)"></div><div class="m"><b>Surface / Page</b>card and background</div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><div class="card-title">Type: one family, six sizes</div>
+        <div class="type-row"><span>30 · Page title</span><div style="font-size:var(--t-xxl);font-weight:700;color:var(--ink)">Cash Flow Report</div></div>
+        <div class="type-row"><span>22 · Key figure</span><div style="font-size:var(--t-xl);font-weight:700;color:var(--ink)">$24,000,000</div></div>
+        <div class="type-row"><span>17 · Block title</span><div style="font-size:var(--t-l);font-weight:700;color:var(--ink)">Sources and Uses</div></div>
+        <div class="type-row"><span>14 · Body</span><div>Net operating income grows 3.1% a year.</div></div>
+        <div class="type-row"><span>12.5 · Table</span><div style="font-size:var(--t-s)">Potential Gross Revenue</div></div>
+        <div class="type-row"><span>11 · Label</span><div style="font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)">Levered IRR</div></div>
+      </div>
+      <div class="card"><div class="card-title">Space, shape and line</div>
+        <div class="sp"><span style="width:44px">4</span><i style="width:4px"></i></div><div class="sp"><span style="width:44px">8</span><i style="width:8px"></i></div><div class="sp"><span style="width:44px">12</span><i style="width:12px"></i></div><div class="sp"><span style="width:44px">16</span><i style="width:16px"></i></div><div class="sp"><span style="width:44px">24</span><i style="width:24px"></i></div><div class="sp"><span style="width:44px">32</span><i style="width:32px"></i></div>
+        <div class="row" style="margin-top:var(--s4)"><div class="rad" style="border-radius:var(--r1)">4 chip</div><div class="rad" style="border-radius:var(--r2)">8 field</div><div class="rad" style="border-radius:var(--r3)">12 card</div></div>
+        <p class="note" style="margin-top:var(--s3)">Lines: 1px hairline between rows, 1px navy under a header and above a total, 2px accent for emphasis. Nothing else.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="sec-head"><h2>2. Components</h2><span>one form for each kind of element</span></div>
+
+    <div class="section-name" style="padding-top:0">Key figures</div>
+    <div class="grid g4">
+      <div class="kpi hero"><div class="k">Levered IRR</div><div class="v">12.41%</div><div class="d">target 12.00%</div></div>
+      <div class="kpi"><div class="k">Equity multiple</div><div class="v">2.47x</div><div class="d">target 2.25x</div></div>
+      <div class="kpi pos"><div class="k">Lender DSCR</div><div class="v">1.57x</div><div class="d">minimum 1.25x</div></div>
+      <div class="kpi neg"><div class="k">Yield on cost</div><div class="v">4.90%</div><div class="d">below 5.50%</div></div>
+    </div>
+
+    <div class="section-name" style="margin-top:var(--s5)">Statement table</div>
+    <div class="card scroll"><table class="stmt">
+      <thead><tr><th></th><th class="band">Year 1</th><th class="band">Year 2</th><th class="band">Year 3</th><th class="band">Total</th></tr></thead>
+      <tbody>
+        <tr class="sec"><td>Rental revenue</td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>Potential base rent</td><td>$2,376,000</td><td>$2,447,280</td><td>$2,520,698</td><td>$7,343,978</td></tr>
+        <tr><td>General vacancy</td><td class="neg">($118,800)</td><td class="neg">($122,364)</td><td class="neg">($126,035)</td><td class="neg">($367,199)</td></tr>
+        <tr class="sub"><td>Effective gross revenue</td><td>$2,257,200</td><td>$2,324,916</td><td>$2,394,663</td><td>$6,976,779</td></tr>
+        <tr class="sec"><td>Operating expenses</td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>Real estate taxes</td><td class="neg">($240,000)</td><td class="neg">($244,800)</td><td class="neg">($249,696)</td><td class="neg">($734,496)</td></tr>
+        <tr class="tot"><td>Net operating income</td><td>$1,306,349</td><td>$1,346,892</td><td>$1,388,678</td><td>$4,041,919</td></tr>
+      </tbody></table></div>
+
+    <div class="grid g2" style="margin-top:var(--s5)">
+      <div><div class="section-name" style="padding-top:0">Chart</div>
+        <div class="card"><svg class="chart" viewBox="0 0 400 190" role="img" aria-label="NOI against debt service">
+          <line class="ax" x1="30" y1="150" x2="390" y2="150"/><line class="ax" x1="30" y1="100" x2="390" y2="100"/><line class="ax" x1="30" y1="50" x2="390" y2="50"/>
+          <text class="tx" x="26" y="153" text-anchor="end">0</text><text class="tx" x="26" y="103" text-anchor="end">$1M</text><text class="tx" x="26" y="53" text-anchor="end">$2M</text>
+          <rect class="bar" x="48" y="64" width="40" height="86" rx="3"/><rect class="bar" x="116" y="60" width="40" height="90" rx="3"/><rect class="bar" x="184" y="56" width="40" height="94" rx="3"/><rect class="bar" x="252" y="52" width="40" height="98" rx="3"/><rect class="bar" x="320" y="48" width="40" height="102" rx="3"/>
+          <polyline class="ln" points="68,104 136,104 204,104 272,104 340,104"/>
+          <circle class="dot" cx="68" cy="104" r="4"/><circle class="dot" cx="136" cy="104" r="4"/><circle class="dot" cx="204" cy="104" r="4"/><circle class="dot" cx="272" cy="104" r="4"/><circle class="dot" cx="340" cy="104" r="4"/>
+          <text class="lb" x="68" y="58" text-anchor="middle">$1.3M</text><text class="lb" x="136" y="54" text-anchor="middle">$1.3M</text><text class="lb" x="204" y="50" text-anchor="middle">$1.4M</text><text class="lb" x="272" y="46" text-anchor="middle">$1.4M</text><text class="lb" x="340" y="42" text-anchor="middle">$1.5M</text>
+          <text class="tx" x="68" y="168" text-anchor="middle">Year 1</text><text class="tx" x="136" y="168" text-anchor="middle">Year 2</text><text class="tx" x="204" y="168" text-anchor="middle">Year 3</text><text class="tx" x="272" y="168" text-anchor="middle">Year 4</text><text class="tx" x="340" y="168" text-anchor="middle">Year 5</text>
+        </svg><p class="note" style="margin-top:var(--s2)">Bars are NOI. The line is debt service. Navy for the measure, caution amber for the limit it is tested against.</p></div>
+      </div>
+      <div><div class="section-name" style="padding-top:0">Inputs</div>
+        <div class="card">
+          <div class="field"><div><label>Purchase price</label><small>what you pay at closing</small></div><div class="input"><i>$</i><input value="24,000,000"></div></div>
+          <div class="field"><div><label>Exit cap rate</label><small>applied to forward NOI</small></div><div class="input"><input value="5.75"><i>%</i></div></div>
+          <div class="field"><div><label>Hold period</label><small>years</small></div><div class="input"><input value="7"><i>yrs</i></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:var(--s5)">
+      <div><div class="section-name" style="padding-top:0">Status chips</div>
+        <div class="card row"><span class="chip pos">PASS</span><span class="chip neg">FAIL</span><span class="chip warn">BINDING</span><span class="chip info">INPUT</span><span class="chip">N/A</span></div>
+        <div class="section-name">Buttons</div>
+        <div class="card row"><button class="btn">Build investor PDF</button><button class="btn ghost">Compile full report</button><button class="btn quiet">Print / PDF</button></div>
+      </div>
+      <div><div class="section-name" style="padding-top:0">Callout</div>
+        <div class="callout"><b>Credit gate says decline.</b> The deal fails 4 hard and 5 soft policy tests. Resize the debt, change the price, or record a documented override.</div>
+        <div class="section-name">Section name &amp; rule</div>
+        <div class="card"><div class="section-name" style="padding-top:0;border-bottom:var(--w1) solid var(--ink);margin-bottom:var(--s2)">Sizing constraints</div><p class="note">Every table, chart and card is introduced the same way: the section name in accent blue, over a rule.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="sec-head"><h2>3. Composed page</h2><span>the pieces together, as a real page</span></div>
+    <div class="frame">
+      <div class="frame-head"><div><div class="eyebrow">Reports</div><h3>Property Cash Flow</h3><p class="note">Audit Test Apartments · Charlotte, NC · Multifamily · 7 years · Base case</p></div><div class="row"><button class="btn ghost">Print / PDF</button><button class="btn">Build investor PDF</button></div></div>
+      <div class="grid g4">
+        <div class="kpi hero"><div class="k">Levered IRR</div><div class="v">12.41%</div><div class="d">target 12.00%</div></div>
+        <div class="kpi"><div class="k">Equity multiple</div><div class="v">2.47x</div><div class="d">target 2.25x</div></div>
+        <div class="kpi"><div class="k">Net profit</div><div class="v">$3.46M</div><div class="d">on $2.35M equity</div></div>
+        <div class="kpi pos"><div class="k">Lender DSCR</div><div class="v">1.57x</div><div class="d">minimum 1.25x</div></div>
+      </div>
+      <div class="compose">
+        <div class="card scroll"><div class="card-title" style="border-bottom:var(--w1) solid var(--ink);padding-bottom:var(--s2)">Operating cash flow</div><table class="stmt">
+          <thead><tr><th></th><th class="band">Year 1</th><th class="band">Year 2</th><th class="band">Year 3</th></tr></thead>
+          <tbody><tr><td>Effective gross revenue</td><td>$2,257,200</td><td>$2,324,916</td><td>$2,394,663</td></tr>
+          <tr><td>Operating expenses</td><td class="neg">($950,851)</td><td class="neg">($978,024)</td><td class="neg">($1,005,985)</td></tr>
+          <tr class="sub"><td>Net operating income</td><td>$1,306,349</td><td>$1,346,892</td><td>$1,388,678</td></tr>
+          <tr><td>Debt service</td><td class="neg">($1,045,047)</td><td class="neg">($1,045,047)</td><td class="neg">($1,045,047)</td></tr>
+          <tr class="tot"><td>Cash flow after debt</td><td>$261,302</td><td>$301,845</td><td>$343,631</td></tr></tbody></table></div>
+        <div class="card"><div class="card-title" style="border-bottom:var(--w1) solid var(--ink);padding-bottom:var(--s2)">Where the profit comes from</div>
+          <svg class="chart" viewBox="0 0 300 170"><line class="ax" x1="20" y1="130" x2="290" y2="130"/>
+          <rect x="34" y="110" width="44" height="20" rx="3" fill="var(--neg)"/><rect x="100" y="90" width="44" height="40" rx="3" fill="var(--bar)"/><rect x="166" y="48" width="44" height="82" rx="3" fill="var(--bar)"/><rect x="232" y="28" width="44" height="102" rx="3" fill="var(--pos)"/>
+          <text class="lb" x="56" y="104" text-anchor="middle">($2.4M)</text><text class="lb" x="122" y="84" text-anchor="middle">$0.9M</text><text class="lb" x="188" y="42" text-anchor="middle">$4.9M</text><text class="lb" x="254" y="22" text-anchor="middle">$3.5M</text>
+          <text class="tx" x="56" y="148" text-anchor="middle">Equity in</text><text class="tx" x="122" y="148" text-anchor="middle">Operations</text><text class="tx" x="188" y="148" text-anchor="middle">Sale</text><text class="tx" x="254" y="148" text-anchor="middle">Profit</text></svg>
+          <div class="callout" style="margin-top:var(--s3)"><b>Meets hurdle.</b> Levered IRR 12.41% against a 12.00% target.</div></div>
+      </div>
+    </div>
+  </section>
+  </div>
+</div>
+<script>
+(function(){var r=document.documentElement,st=document.getElementById('stage');
+function pick(id,cb){var g=document.getElementById(id);g.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;[].forEach.call(g.children,function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});cb(b.getAttribute('data-v'))})}
+pick('thm',function(v){r.setAttribute('data-theme',v)});
+pick('viewseg',function(v){st.className=v==='web'?'':v;});
+})();
+</script>
+</body>
+</html>

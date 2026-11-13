@@ -99,6 +99,7 @@ echo "== Development debt pages (Covenant Monitor, Debt Schedule sidebar, Deal V
 echo "== Capital measures (closing equity, total contributed equity, operating cash requirement, total project capitalization: one name for one number on every sheet, the investor PDF and the schedule report; ambiguous equity labels refused)"; node audit/capital_measures_test.js index.html
 echo "== Import tab routing (an OM with a rent roll page stays an OM; a plain rent roll stays a rent roll)"; node audit/import_route_test.js index.html | tail -1
 echo "== Document ingestion foundation (fact record and validation, quote verification, number parser, hashing, both stores, intake, pipeline failure / retry / resume, provider guard, classification measured on labeled fixtures)"; node audit/ingest_core_test.js index.html | tail -1
+echo "== Design system ratchet (no new hard-coded colours, font sizes or radii; the design-system tokens exist in light and Night)"; node audit/design_tokens_test.js | tail -1
 echo "== Visual polish (phone and web: no sheet scrolls sideways as a page, every sideways scroller says so, a stacked key row is one band with no fill, a select stays inside its cell, the capital tables fit their card, the Gantt task names are whole, the Home equity tile names its measure)"; node audit/visual_polish_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"

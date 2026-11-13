@@ -104,9 +104,19 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
     --rail-ink-dim:#7E8892;
     --shadow-card:0 1px 2px rgba(16,25,34,.06), 0 8px 24px -12px rgba(16,25,34,.18);
     color-scheme: light;
+    /* ---- DESIGN SYSTEM (docs/design-system.html): the only values new styling may use ---- */
+    --ds-accent:#12609f; --ds-accent-soft:#e3eefb; --ds-band:#e9eff6;
+    --ds-pos:#1d7a4b; --ds-pos-soft:#e2f3ea; --ds-neg:#b23a2c; --ds-neg-soft:#fbe9e6; --ds-warn:#a86a00; --ds-warn-soft:#fbf0d9;
+    --ds-bar:#1b3f66;
+    --ds-t-xs:11px; --ds-t-s:12.5px; --ds-t-m:14px; --ds-t-l:17px; --ds-t-xl:22px; --ds-t-xxl:30px;
+    --ds-s1:4px; --ds-s2:8px; --ds-s3:12px; --ds-s4:16px; --ds-s5:24px; --ds-s6:32px; --ds-s7:48px;
+    --ds-r1:4px; --ds-r2:8px; --ds-r3:12px; --ds-w1:1px; --ds-w2:2px;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
+    --ds-accent:#6fb4f2; --ds-accent-soft:#132a45; --ds-band:#16304f;
+    --ds-pos:#5cc58a; --ds-pos-soft:#12372a; --ds-neg:#ff8f80; --ds-neg-soft:#3a1f1d; --ds-warn:#e8b155; --ds-warn-soft:#3a2e12;
+    --ds-bar:#4f86c0;
       --cream-50:#0a1a2e;
       --cream-100:#0f2640;
       --cream-200:#17345280;
@@ -126,6 +136,9 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
     }
   }
   :root[data-theme="dark"]{
+    --ds-accent:#6fb4f2; --ds-accent-soft:#132a45; --ds-band:#16304f;
+    --ds-pos:#5cc58a; --ds-pos-soft:#12372a; --ds-neg:#ff8f80; --ds-neg-soft:#3a1f1d; --ds-warn:#e8b155; --ds-warn-soft:#3a2e12;
+    --ds-bar:#4f86c0;
     --cream-50:#0a1a2e;
     --cream-100:#0f2640;
     --cream-200:#17345280;
