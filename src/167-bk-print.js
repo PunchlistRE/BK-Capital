@@ -52,6 +52,9 @@ var CSS = 'table.bk-measure-wrap td,table.bk-measure-wrap th{white-space:normal 
  + 'html body #viewport table.fin.fin.fin.fin.fin td[data-bk-kind^="input"],html body #viewport table.fin.fin.fin.fin.fin td.v{background:transparent !important;box-shadow:none !important}'
  + 'html body #viewport .pf-card.pf-card>.t{background:transparent !important;color:#2c4a6b !important;border:0 !important;border-bottom:1px solid #0e2a4a !important;font-weight:700;padding:8px 0 3px !important}html body #viewport .pf-card.pf-card{border:0 !important;box-shadow:none !important;background:transparent !important}html body #viewport .pf-card.pf-card>.t:before,html body #viewport .pf-card.pf-card>.t i{display:none !important}'
  + 'html body #viewport .bk-sx-card.bk-sx-card .bk-sx-title{break-after:avoid !important;page-break-after:avoid !important;background:transparent !important;color:#2c4a6b !important;border:0 !important;border-bottom:1px solid #0e2a4a !important;font-weight:700;padding:8px 0 3px !important;box-shadow:none !important}html body #viewport .bk-sx-card.bk-sx-card{break-inside:avoid;page-break-inside:avoid;border:0 !important;box-shadow:none !important;background:transparent !important}html body #viewport .bk-sx-card.bk-sx-card .bk-sx-title:before,html body #viewport .bk-sx-card.bk-sx-card .bk-sx-title i{display:none !important}'
+ + 'html body #viewport table.fin.fin.fin.fin.fin:not(.bk-print-zoom){width:100% !important;max-width:100% !important;table-layout:auto}'
+ + 'html body #viewport table.fin.fin.fin.fin.fin thead th,html body #viewport table.fin.fin.fin.fin.fin th{border:0 !important;border-bottom:1px solid #0e2a4a !important;border-radius:0 !important;box-shadow:none !important}html body #viewport table.fin.fin.fin.fin.fin tr>th:first-child,html body #viewport table.fin.fin.fin.fin.fin tr>td:first-child{border-right:1px solid #0e2a4a !important}html body #viewport table.fin.fin.fin.fin.fin td{border-bottom:1px solid #e3e8ee !important}html body #viewport .tbl-wrap.tbl-wrap.tbl-wrap{width:100% !important;max-width:100% !important}'
+ + 'html body #viewport table.fin.fin.fin.fin.fin td{overflow-wrap:anywhere;word-break:normal;min-width:0}'
  + '}';
 
 function sheetMeta(){
@@ -117,7 +120,7 @@ function fitWide(land){
     var room = px - Math.min(120, pad) - 4; if(m <= room) return; var z = Math.max(0.42, room / m);
     t.classList.add('bk-print-zoom'); t.setAttribute('data-bk-pz', z.toFixed(3)); });
   /* the zoom itself lives in a print-only rule, so the screen is never touched */
-  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:auto !important;max-width:none !important;min-width:0 !important}'; });
+  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:calc(100% / ' + z + ') !important;max-width:none !important;min-width:0 !important}'; });
   if(css){ var st = document.createElement('style'); st.id = 'bk-print-zoomcss'; st.textContent = '@media print{' + css + '}'; document.head.appendChild(st); }
 }
 function unfit(){ var zc = document.getElementById('bk-print-zoomcss'); if(zc) zc.remove(); [].forEach.call(document.querySelectorAll('table.bk-print-zoom'), function(t){ t.classList.remove('bk-print-zoom'); t.removeAttribute('data-bk-pz'); t.removeAttribute('data-bk-pzi'); });
