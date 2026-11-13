@@ -1,0 +1,19 @@
+FAIL acq-desktop-light-sources-uses  changed 11.55% of the page, worst area 100%
+FAIL acq-desktop-dark-sources-uses  changed 11.32% of the page, worst area 100%
+FAIL dev-desktop-light-ic-memo  changed 10.43% of the page, worst area 100%
+FAIL acq-desktop-dark-ic-memo  changed 7.58% of the page, worst area 100%
+FAIL acq-desktop-light-ic-memo  changed 6.69% of the page, worst area 100%
+FAIL dev-desktop-light-depreciation  changed 4.20% of the page, worst area 100%
+FAIL dev-desktop-light-sources-uses  changed 4.19% of the page, worst area 100%
+FAIL acq-desktop-dark-depreciation  changed 4.10% of the page, worst area 100%
+FAIL acq-desktop-light-depreciation  changed 4.00% of the page, worst area 100%
+FAIL dev-desktop-light-cloud-sync  changed 2.29% of the page, worst area 100%
+FAIL acq-desktop-light-cloud-sync  changed 2.20% of the page, worst area 100%
+FAIL acq-desktop-dark-cloud-sync  changed 2.18% of the page, worst area 100%
+FAIL acq-phone-dark-waterfall-report  changed 1.34% of the page, worst area 100%
+FAIL acq-desktop-dark-waterfall-report  changed 0.64% of the page, worst area 83%
+FAIL acq-phone-light-waterfall-report  changed 0.63% of the page, worst area 100%
+FAIL dev-desktop-light-waterfall-report  changed 0.63% of the page, worst area 67%
+FAIL acq-desktop-light-waterfall-report  changed 0.59% of the page, worst area 67%
+UNSTABLE (recorded, not a failure) dev-desktop-light-deal-vectors-m (12.79%)
+333 pages compared, 17 changed beyond tolerance, 0 errors  (before / after / diff images: audit/visual_report)

@@ -17,7 +17,7 @@ var render = function(){ var s = bkLoad() || {}, html = '';
   if(html){ try {
     var doc = new DOMParser().parseFromString(html, 'text/html'), tbls = [].slice.call(doc.querySelectorAll('section.page .bd table, .page .bd table')), mk = function(t, extra){
       t.className = 'rp-tbl' + (extra ? ' ' + extra : ''); [].forEach.call(t.querySelectorAll('tr'), function(tr){ [].forEach.call(tr.children, function(c, i){ c.removeAttribute('class'); if(i) c.className = 'r'; }); });
-      [].forEach.call(t.querySelectorAll('td'), function(c){ if(/^\(.*\)$/.test(c.textContent.trim()) || /^-/.test(c.textContent.trim())) c.className += ' neg'; }); return t.outerHTML; };
+      [].forEach.call(t.querySelectorAll('td'), function(c){ var x = c.textContent.trim(); if(/^\(.*\)$/.test(x) || /^-/.test(x)) c.className += ' neg'; if(/[A-Za-z]{3}/.test(x)) c.className += ' tx'; });   /* a cell of words (a hurdle description) is text, not a figure: it may wrap */ return t.outerHTML; };
     var kv = tbls.filter(function(t){ return t.classList.contains('kv'); }), cft = tbls.filter(function(t){ return t.classList.contains('cft'); })[0], yrs = cft ? cft.querySelectorAll('thead th').length - 2 : 0;
     if(kv.length >= 4 && cft){
       body = '<div class="ae rp"><div class="rp-sec">Partners and structure</div><div class="bk-wf3">' + mk(kv[0]) + mk(kv[1]) + mk(kv[2]) + '</div>'

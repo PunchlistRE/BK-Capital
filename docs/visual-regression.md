@@ -21,3 +21,8 @@ Presentation only. These tools read the app. They never change it, a calculation
 - Screenshots are stored small (about a third of the width, WebP). They catch layout, fill, line, colour and clipping changes, not single-letter text edits (the PDF word hash covers text in the PDFs).
 - Tolerance: a page fails above 0.5% changed 6 x 6 blocks or if any 16 x 16 area changed over 60% (`--tolerance` overrides).
 - The clock is frozen, animations are off and the network is blocked so captures are repeatable.
+
+## Known instabilities (recorded, not suppressed)
+
+- **Deal Vectors (M)** (development deck): the table layout (the Date column wraps on some loads) differs from one load to the next. It is on the tool's `UNSTABLE` list: reported every run, never a failure.
+- **Rent Roll and Import** (all decks): the fixed bottom figures bar lands at a different height in the stitched full-page capture on some runs, so these pages intermittently show a difference of about 5% with identical content. They are NOT on the `UNSTABLE` list (they still fail when it happens) and no baseline was changed to hide it. Evidence from the unchanged main build and from the Phase 1 branch is in `audit/known_instability_evidence/` (see its README). Proposed fix, awaiting approval: hide the bar during capture and regenerate the baselines.

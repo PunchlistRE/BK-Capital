@@ -1,0 +1,3 @@
+FAIL acq-desktop-dark-import  changed 5.72% of the page, worst area 100%
+UNSTABLE (recorded, not a failure) acq-desktop-dark-deal-vectors-m (15.58%)
+333 pages compared, 1 changed beyond tolerance, 0 errors  (before / after / diff images: audit/visual_report)

@@ -1,0 +1,4 @@
+FAIL acq-desktop-dark-rent-roll  changed 5.08% of the page, worst area 100%
+FAIL dev-desktop-light-rent-roll  changed 5.04% of the page, worst area 100%
+FAIL acq-desktop-light-rent-roll  changed 5.03% of the page, worst area 100%
+10 pages compared, 3 changed beyond tolerance, 0 errors  (before / after / diff images: audit/known_instability_evidence/this_branch)
