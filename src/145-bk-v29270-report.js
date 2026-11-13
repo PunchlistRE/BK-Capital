@@ -146,10 +146,11 @@ function waterfallPages(D, n, N, one, sep){
   var t2LP = Number(s.t2LP) || 0, t3LP = Number(s.t3LP) || 0, t4LP = Number(s.t4LP) || 0, cat = Number(s.gpCatchup) && Number(s.gpCatchupTarget) > 0;
   var hl = irrBasis ? [P(Number(s.pref), 1) + ' preferred return', P(Number(s.hurdle2), 1) + ' IRR', P(Number(s.hurdle3), 1) + ' IRR'] : bothBasis ? [P(Number(s.pref), 1) + ' IRR' + bothWord + X(Number(s.em1)), P(Number(s.hurdle2), 1) + ' IRR' + bothWord + X(Number(s.em2)), P(Number(s.hurdle3), 1) + ' IRR' + bothWord + X(Number(s.em3))] : [X(Number(s.em1)) + ' multiple', X(Number(s.em2)) + ' multiple', X(Number(s.em3)) + ' multiple'];
   var hs = irrBasis ? [P(Number(s.pref), 1) + ' pref', P(Number(s.hurdle2), 1) + ' IRR', P(Number(s.hurdle3), 1) + ' IRR'] : hl;
+  function prior(k){ var o = A.t1.slice(); if(k >= 1) o = add(o, A.cu); if(k >= 2) o = add(o, A.t2); return o; }
   function tier(k, title, tArr, lpShare, remArr){ var a = acct[k];
     /* contributions are shown once (tier 1) unless equity also comes in after closing */
     var later = a.con.slice(1).some(function(v){ return Math.abs(v) >= 0.5; });
-    return sec(title) + (irrBasis ? cr('Beginning balance', a.beg) + cr((k ? 'Return accrued at ' + hs[k] : 'Preferred return accrued'), a.acc) + (k === 0 || later ? cr('Contributions', a.con) : '') + cr('Distributions applied', a.app, '', -1) + cr('Ending balance', a.end, 'sub') : '')
+    return sec(title) + (irrBasis ? cr('Beginning balance', a.beg) + cr((k ? 'Return accrued at ' + hs[k] : 'Preferred return accrued'), a.acc) + (k === 0 || later ? cr('Contributions', a.con) : '') + (k ? cr('Prior distributions (earlier tiers)', prior(k)) : '') + cr('Distributions applied', a.app, '', -1) + cr('Ending balance', a.end, 'sub') : '')
       + cr('&nbsp;&nbsp;Distributed to LP (' + P(lpShare, 0) + ')', mul(tArr, lpShare)) + cr('&nbsp;&nbsp;Distributed to GP (' + P(1 - lpShare, 0) + ')', mul(tArr, 1 - lpShare)) + (sep ? cr('Total distributions (tier ' + (k + 1) + ')', tArr, 'sub') + (remArr ? cr('Cash flow remaining', remArr) : '') : ''); }
   var avail = A.dist.map(function(v, j){ return v - A.con[j]; });
   var rem1 = add(avail, mul(A.t1, -1)), remC = add(rem1, mul(A.cu, -1)), rem2 = add(remC, mul(A.t2, -1)), rem3 = add(rem2, mul(A.t3, -1)), rem4 = add(rem3, mul(A.t4, -1));
