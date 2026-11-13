@@ -24390,7 +24390,7 @@ window.bkDocsExtract = function(fid){ if(typeof window.bkDocsExtractHook === 'fu
   RENDERERS['Home'] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; var id = dealId(); if(!id || !active()) return o;
     var u = window.bkDealPhotoURL(); if(cache[id] === undefined) window.bkDocsWarm().then(function(x){ if(x && document.querySelector('.pl-home') && typeof showSheet === 'function' && /Home|Overview/i.test(String(window.__bkSheet || 'Home'))) showSheet('Home'); });
     if(!u) return o; var tag = '<div class="pl-hero">'; if(o.main.indexOf(tag) < 0) return o;
-    return Object.assign({}, o, { main:o.main.replace(tag, '<div class="pl-hero"><img alt="" src="' + u + '" style="display:block;width:min(100%,200px);aspect-ratio:1/1;max-height:200px;height:auto;object-fit:cover;border-radius:10px;margin:0 auto 14px 0;float:none;border:1px solid var(--line,#c9d1dc);box-shadow:0 4px 16px rgba(14,42,74,.18)">') }); };
+    return Object.assign({}, o, { main:o.main.replace(tag, '<div class="pl-hero pl-hero-photo"><img class="pl-hero-img" alt="" src="' + u + '">') }); };
   if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer('Home', RENDERERS['Home']); } catch(e){}
 })();
 })();
@@ -28563,14 +28563,14 @@ function fitTables(land){
   var px = land ? PAGE_PX.land : PAGE_PX.port;
   [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl:not(.bk-print-orig), #viewport table.fin:not(.bk-print-orig)'), function(t){
     var cols = headCells(t).reduce(function(n, c){ return n + (c.colSpan || 1); }, 0); if(cols < 9) return;
-    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / 6.6, cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * 0.75));
+    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / 6.6, cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * (t.classList.contains('rp-tbl') ? 0.64 : 0.75)));
     t.classList.add('bk-print-fit'); t.style.setProperty('font-size', fs.toFixed(2) + 'pt', 'important'); });
 }
 /* any table still wider than the printable page (wide text tables, input grids, tables with a chip in every cell) is scaled to fit: its narrowest possible width is measured with wrapping allowed,
    and the table is zoomed so that width is the page width. Nothing printed is ever cut off at the right edge. */
 function fitWide(land){
   var px = (land ? PAGE_PX.land : PAGE_PX.port) - 6;
-  [].forEach.call(document.querySelectorAll('#viewport table'), function(t){ if(t.classList.contains('bk-print-orig')) return; var clone = t.classList.contains('bk-print-clone');   /* the year pieces are hidden on screen: shown for the measurement only */
+  [].forEach.call(document.querySelectorAll('#viewport table'), function(t){ if(t.classList.contains('bk-print-orig') || /^rp-(cashflow|su|year0)$/.test(t.id)) return; var clone = t.classList.contains('bk-print-clone');   /* the year pieces are hidden on screen: shown for the measurement only */
     if(!clone && !t.offsetWidth) return; if(t.parentElement && t.parentElement.closest('table')) return;
     var w0 = t.style.cssText; if(clone) t.style.setProperty('display', 'table', 'important'); if(t.classList.contains('fin') || t.classList.contains('rp-tbl')) t.classList.add('bk-measure-wrap');   /* only these wrap in print; every other table is measured as it prints */ t.style.setProperty('width', '1px', 'important'); t.style.setProperty('min-width', '0', 'important'); t.style.setProperty('table-layout', 'auto', 'important');
     var m = t.offsetWidth; t.classList.remove('bk-measure-wrap'); t.style.cssText = w0;
@@ -34207,6 +34207,22 @@ html body #viewport .bk-wf3 > table.rp-tbl{ width:100% !important; min-width:0 !
 html body #viewport .bk-wf3 > table.rp-tbl td:first-child, html body #viewport .bk-wf3 > table.rp-tbl th:first-child{ width:40% !important }
 html body #viewport table.bk-wf-cf td, html body #viewport table.bk-wf-cf th{ padding-left:10px !important; padding-right:10px !important }
 html body #viewport table.bk-wf-cf td:first-child, html body #viewport table.bk-wf-cf th:first-child{ width:22% !important }
+/* one vertical divider after the label column on every report table */
+html body #viewport .rp table.rp-tbl tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px }
+@media print{ html body .rp table.rp-tbl tr > :first-child{ border-right:1px solid #000 !important } }
+/* printed year statements always run the full page width, whatever the number of years */
+@media print{ html body .rp table.rp-tbl:not(.bk-print-zoom){ width:100% !important; min-width:100% !important; table-layout:fixed !important } }
+@media print{
+  html body .rp #rp-cashflow td, html body .rp #rp-cashflow th, html body .rp #rp-su td, html body .rp #rp-su th, html body .rp #rp-year0 td, html body .rp #rp-year0 th{ white-space:nowrap !important; overflow:visible !important; padding-left:2px !important; padding-right:3px !important }
+  html body .rp #rp-cashflow th:first-child, html body .rp #rp-cashflow td:first-child, html body .rp #rp-su th:first-child, html body .rp #rp-su td:first-child{ width:23% !important; padding-right:6px !important }
+}
+/* Home hero with a property photo: a card with the photo on the left, the name, facts and status chips beside it */
+html body #viewport .pl-hero.pl-hero-photo{ display:grid; grid-template-columns:300px minmax(0,1fr); column-gap:26px; align-items:center; align-content:center; background:var(--ae-cell,#fff); border:1px solid var(--ae-line,#c9d2db); border-radius:12px; padding:14px; box-shadow:0 2px 10px rgba(14,42,74,.08); margin:4px 0 18px }
+html body #viewport .pl-hero-photo .pl-hero-img{ grid-row:1 / span 6; grid-column:1; width:300px; height:190px; object-fit:cover; object-position:center 40%; border-radius:8px; border:0; box-shadow:none; margin:0 }
+html body #viewport .pl-hero-photo > :not(img){ grid-column:2; min-width:0 }
+html body #viewport .pl-hero-photo h2{ margin:0 0 6px; font-size:26px }
+html body #viewport .pl-hero-photo .pl-sub{ margin:0 0 12px }
+@media (max-width:700px){ html body #viewport .pl-hero.pl-hero-photo{ grid-template-columns:1fr; padding:10px } html body #viewport .pl-hero-photo .pl-hero-img{ grid-row:auto; width:100%; height:180px } html body #viewport .pl-hero-photo > :not(img){ grid-column:1 } }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):

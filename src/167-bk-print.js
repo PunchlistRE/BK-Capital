@@ -92,14 +92,14 @@ function fitTables(land){
   var px = land ? PAGE_PX.land : PAGE_PX.port;
   [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl:not(.bk-print-orig), #viewport table.fin:not(.bk-print-orig)'), function(t){
     var cols = headCells(t).reduce(function(n, c){ return n + (c.colSpan || 1); }, 0); if(cols < 9) return;
-    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / 6.6, cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * 0.75));
+    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / 6.6, cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * (t.classList.contains('rp-tbl') ? 0.64 : 0.75)));
     t.classList.add('bk-print-fit'); t.style.setProperty('font-size', fs.toFixed(2) + 'pt', 'important'); });
 }
 /* any table still wider than the printable page (wide text tables, input grids, tables with a chip in every cell) is scaled to fit: its narrowest possible width is measured with wrapping allowed,
    and the table is zoomed so that width is the page width. Nothing printed is ever cut off at the right edge. */
 function fitWide(land){
   var px = (land ? PAGE_PX.land : PAGE_PX.port) - 6;
-  [].forEach.call(document.querySelectorAll('#viewport table'), function(t){ if(t.classList.contains('bk-print-orig')) return; var clone = t.classList.contains('bk-print-clone');   /* the year pieces are hidden on screen: shown for the measurement only */
+  [].forEach.call(document.querySelectorAll('#viewport table'), function(t){ if(t.classList.contains('bk-print-orig') || /^rp-(cashflow|su|year0)$/.test(t.id)) return; var clone = t.classList.contains('bk-print-clone');   /* the year pieces are hidden on screen: shown for the measurement only */
     if(!clone && !t.offsetWidth) return; if(t.parentElement && t.parentElement.closest('table')) return;
     var w0 = t.style.cssText; if(clone) t.style.setProperty('display', 'table', 'important'); if(t.classList.contains('fin') || t.classList.contains('rp-tbl')) t.classList.add('bk-measure-wrap');   /* only these wrap in print; every other table is measured as it prints */ t.style.setProperty('width', '1px', 'important'); t.style.setProperty('min-width', '0', 'important'); t.style.setProperty('table-layout', 'auto', 'important');
     var m = t.offsetWidth; t.classList.remove('bk-measure-wrap'); t.style.cssText = w0;
