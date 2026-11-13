@@ -2,7 +2,8 @@
    The renderers are wrapped only to mark their output with a class; the CSS lives in src/186 (.rp-stmt). Nothing here changes a figure. */
 (function(){
 function wrap(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
-  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; o.main = '<div class="rp-stmt">' + o.main + '</div>'; return o; }; }
+  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; if(sheet === 'After-Tax Report' && !/<table/.test(o.main)){ var s0 = (typeof bkLoad === 'function' && bkLoad()) || {}; if(String(s0.dealType || '').toLowerCase() === 'development') o.main = '<div class="note-flag"><span>&#9432;</span><div>After-tax returns are for acquisitions. A development deal is not supported by the after-tax engine yet; see Returns for its pre-tax levered returns.</div></div>'; }
+    o.main = '<div class="rp-stmt">' + o.main + '</div>'; return o; }; }
 /* Cash Flow Report: the equity actually invested at close (Year 0) and what the levered IRR is calculated on */
 (function(){ var prev = RENDERERS['Cash Flow Report']; if(typeof prev !== 'function') return;
   RENDERERS['Cash Flow Report'] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;

@@ -173,3 +173,10 @@ html body #viewport .status-chip, html body #viewport .chip{ white-space:nowrap 
 html body #viewport td:last-child .status-chip{ min-width:0 }
 /* Waterfall Report: the three structure tables share the row equally */
 html body #viewport .bk-wf3{ grid-template-columns:1.05fr 1.05fr 1fr }
+html body #viewport .status-chip{ white-space:nowrap !important; flex-wrap:nowrap !important }
+html body #viewport td:has(> .status-chip){ min-width:112px }
+html body #viewport table.fin.fin.fin td[data-bk-kind] .status-chip.status-chip:not(button){ white-space:nowrap !important; min-width:0 !important }
+/* a figure is never broken across two lines; a table too wide for its card scrolls sideways instead */
+html body #viewport table.fin td[data-bk-align="num"], html body #viewport table.fin td.bk-a-num{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important }
+html body #viewport table.fin td[data-bk-kind="num"]{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; padding-left:6px !important; padding-right:8px !important }
+html body #viewport table.fin.bk-yrs{ font-size:12.5px }

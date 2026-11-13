@@ -33154,7 +33154,8 @@ wrap('Equity Waterfall'); wrap('Waterfall (M)');
    The renderers are wrapped only to mark their output with a class; the CSS lives in src/186 (.rp-stmt). Nothing here changes a figure. */
 (function(){
 function wrap(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'function') return;
-  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; o.main = '<div class="rp-stmt">' + o.main + '</div>'; return o; }; }
+  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; if(sheet === 'After-Tax Report' && !/<table/.test(o.main)){ var s0 = (typeof bkLoad === 'function' && bkLoad()) || {}; if(String(s0.dealType || '').toLowerCase() === 'development') o.main = '<div class="note-flag"><span>&#9432;</span><div>After-tax returns are for acquisitions. A development deal is not supported by the after-tax engine yet; see Returns for its pre-tax levered returns.</div></div>'; }
+    o.main = '<div class="rp-stmt">' + o.main + '</div>'; return o; }; }
 /* Cash Flow Report: the equity actually invested at close (Year 0) and what the levered IRR is calculated on */
 (function(){ var prev = RENDERERS['Cash Flow Report']; if(typeof prev !== 'function') return;
   RENDERERS['Cash Flow Report'] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o;
@@ -34243,6 +34244,13 @@ html body #viewport .status-chip, html body #viewport .chip{ white-space:nowrap 
 html body #viewport td:last-child .status-chip{ min-width:0 }
 /* Waterfall Report: the three structure tables share the row equally */
 html body #viewport .bk-wf3{ grid-template-columns:1.05fr 1.05fr 1fr }
+html body #viewport .status-chip{ white-space:nowrap !important; flex-wrap:nowrap !important }
+html body #viewport td:has(> .status-chip){ min-width:112px }
+html body #viewport table.fin.fin.fin td[data-bk-kind] .status-chip.status-chip:not(button){ white-space:nowrap !important; min-width:0 !important }
+/* a figure is never broken across two lines; a table too wide for its card scrolls sideways instead */
+html body #viewport table.fin td[data-bk-align="num"], html body #viewport table.fin td.bk-a-num{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important }
+html body #viewport table.fin td[data-bk-kind="num"]{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; padding-left:6px !important; padding-right:8px !important }
+html body #viewport table.fin.bk-yrs{ font-size:12.5px }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):
