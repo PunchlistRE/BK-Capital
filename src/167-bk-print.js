@@ -44,6 +44,7 @@ var CSS = 'table.bk-measure-wrap td,table.bk-measure-wrap th{white-space:normal 
  + '.status-chip{border:1px solid #c5ced7}'
  + '*{animation:none !important;transition:none !important}'
  + '}';
+CSS = CSS.slice(0, CSS.length - 1) + (window.BK_PDF_STYLE ? window.BK_PDF_STYLE('html body #viewport') : '') + '}';
 
 function sheetMeta(){
   var cur = safe(function(){ return currentSheet; }, ''), title = '', crumb = '', desc = '', fr = document.querySelector('#viewport .sheet-frame');
@@ -108,7 +109,7 @@ function fitWide(land){
     var room = px - Math.min(120, pad) - 4; if(m <= room) return; var z = Math.max(0.42, room / m);
     t.classList.add('bk-print-zoom'); t.setAttribute('data-bk-pz', z.toFixed(3)); });
   /* the zoom itself lives in a print-only rule, so the screen is never touched */
-  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:auto !important;max-width:none !important;min-width:0 !important}'; });
+  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:calc(100% / ' + z + ') !important;max-width:none !important;min-width:0 !important}'; });
   if(css){ var st = document.createElement('style'); st.id = 'bk-print-zoomcss'; st.textContent = '@media print{' + css + '}'; document.head.appendChild(st); }
 }
 function unfit(){ var zc = document.getElementById('bk-print-zoomcss'); if(zc) zc.remove(); [].forEach.call(document.querySelectorAll('table.bk-print-zoom'), function(t){ t.classList.remove('bk-print-zoom'); t.removeAttribute('data-bk-pz'); t.removeAttribute('data-bk-pzi'); });

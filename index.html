@@ -23394,6 +23394,49 @@ var st = document.createElement('style'); st.id = 'pl-flow-css'; st.textContent 
 })();
 </script>
 
+<script id="bk-pdf-style">/* THE ONE PDF / PRINT STYLE. Every printed table, heading and chip in the sheets, the browser print and the full report reads from this, so a Debt sheet, a Depreciation sheet and the
+   Cash Flow Report cannot drift apart. It is the Cash Flow Report look: section names in blue, a plain header over one rule, hairline rows, the label column ruled off,
+   no fills, figures right-aligned on one line, text left-aligned and wrapping, every table the full printable width.
+   BK_PDF_STYLE(scope) returns the rules for a page whose content sits under `scope` (the document for the browser print, .pg-body for the report pack).
+   Specificity: the scope already holds an id; one :not(#bk-pdf) adds another, so these win over every older screen rule without !important races. */
+(function(){
+/* the design-system tokens (src/007-style.css); the fallbacks are the same light values, for a page that does not load the palette */
+var INK = 'var(--navy-900,#0e2a4a)', HEAD = 'var(--ds-accent,#12609f)', DIM = 'var(--ink-500,#566a80)', HAIR = 'var(--line-soft,#e6edf3)', BAND = 'var(--ds-band,#e9eff6)';
+window.BK_PDF_TOKENS = { ink:INK, head:HEAD, dim:DIM, hair:HAIR, band:BAND };
+window.BK_PDF_STYLE = function(scope){
+  var X = ':not(#bk-pdf)', T = scope + ' table.fin' + X, C = scope + ' .tbl-wrap' + X, R = [];
+  /* frames and fills go: the page is the frame */
+  R.push(C + '{background:transparent !important;border:0 !important;box-shadow:none !important;width:100% !important;max-width:100% !important;overflow:visible !important}');
+  R.push(scope + ' .main-col' + X + ',' + scope + ' .body-grid' + X + '{padding-left:0 !important;padding-right:0 !important;margin-left:0 !important;margin-right:0 !important}');
+  /* section name */
+  R.push(T + '>caption{caption-side:top;width:100% !important;max-width:none !important;text-align:left !important;background:transparent !important;border:0 !important;box-shadow:none !important;color:' + HEAD + ' !important;font-size:11px !important;font-weight:700 !important;letter-spacing:.02em !important;text-transform:none !important;padding:10px 0 4px !important}');
+  R.push(T + '>caption:before,' + T + '>caption i{display:none !important}');
+  /* the table */
+  R.push(T + '{width:100% !important;max-width:100% !important;min-width:0 !important;border-collapse:collapse !important;border:0 !important;background:transparent !important;table-layout:auto}');
+  R.push(T + ' thead th,' + T + ' th{background:transparent !important;color:' + INK + ' !important;font-size:10.4px !important;font-weight:600 !important;letter-spacing:0 !important;text-transform:none !important;border:0 !important;border-bottom:1px solid ' + INK + ' !important;border-radius:0 !important;box-shadow:none !important;padding:4px 6px !important;vertical-align:bottom}');
+  R.push(T + ' td{background:transparent !important;border:0 !important;border-bottom:1px solid ' + HAIR + ' !important;box-shadow:none !important;padding:4px 6px !important;vertical-align:middle;font-size:10.4px !important;min-width:0}');
+  /* the label divider is a shadow, not a border: a border breaks at every row's hairline, a shadow runs unbroken the full height of the table (as in the Cash Flow Report) */
+  R.push(T + ' tr>:first-child{border-right:0 !important;box-shadow:1px 0 0 ' + INK + ' !important}');
+  R.push(T + ':not(.bk-yrs) tr>:first-child{width:30% !important;min-width:30% !important;max-width:30% !important}' + T + '.bk-yrs tr>:first-child{width:22% !important;min-width:22% !important;max-width:22% !important}');
+  /* figures right, on one line; text left, wrapping (text last so a text cell never inherits the figure rule) */
+  R.push(T + ' td[data-bk-kind="num"],' + T + ' td.v[data-bk-kind="num"]{text-align:right !important;white-space:nowrap !important}');
+  R.push(T + ' td[data-bk-kind="text"],' + T + ' td[data-bk-kind="input-text"],' + T + ' td:first-child{text-align:left !important;white-space:normal !important;overflow-wrap:anywhere !important;word-break:normal !important}');
+  R.push(T + ' td:first-child{color:' + INK + ' !important}');
+  /* subtotals and totals */
+  R.push(T + ' tr.grandtotal td,' + T + ' tr.total td,' + T + ' tr.subtotal td{font-weight:700 !important;border-top:1px solid ' + INK + ' !important}');
+  /* inputs print as text, never as boxes or yellow cells */
+  R.push(scope + ' input' + X + ',' + scope + ' select' + X + ',' + scope + ' textarea' + X + '{background:transparent !important;border:0 !important;box-shadow:none !important;font:inherit !important;color:inherit !important}');
+  /* chips: small, one line, never wider than their cell */
+  R.push(T + ' .status-chip{display:inline-block !important;white-space:nowrap !important;max-width:100% !important;box-sizing:border-box;min-width:0 !important;padding:1px 5px !important;font-size:7.4px !important;overflow:hidden}');
+  /* cards with a title (Property CF, sensitivity, summaries) use the same section name */
+  R.push(scope + ' .pf-card' + X + '>.t,' + scope + ' .bk-sx-card' + X + ' .bk-sx-title{background:transparent !important;color:' + HEAD + ' !important;border:0 !important;font-size:11px !important;font-weight:700 !important;padding:10px 0 4px !important;box-shadow:none !important;break-after:avoid}');
+  R.push(scope + ' .pf-card' + X + ',' + scope + ' .bk-sx-card' + X + '{border:0 !important;box-shadow:none !important;background:transparent !important;break-inside:avoid}');
+  R.push(scope + ' .pf-card' + X + '>.t:before,' + scope + ' .pf-card' + X + '>.t i,' + scope + ' .bk-sx-card' + X + ' .bk-sx-title:before{display:none !important}');
+  return R.join('');
+};
+})();
+</script>
+
 <script id="bk-v29260-proforma">
 /* V29.26.0 - PRO FORMA AND RETURNS, designed. A reading of the deal before the tables: what the income and cash flow look like, where the return comes from, how it holds up by case.
    Everything is drawn from the live engine (annual operating statement, monthly equity cash flow, the debt schedule, the scenario cases); the tables underneath are unchanged.
@@ -28540,6 +28583,7 @@ var CSS = 'table.bk-measure-wrap td,table.bk-measure-wrap th{white-space:normal 
  + '.status-chip{border:1px solid #c5ced7}'
  + '*{animation:none !important;transition:none !important}'
  + '}';
+CSS = CSS.slice(0, CSS.length - 1) + (window.BK_PDF_STYLE ? window.BK_PDF_STYLE('html body #viewport') : '') + '}';
 
 function sheetMeta(){
   var cur = safe(function(){ return currentSheet; }, ''), title = '', crumb = '', desc = '', fr = document.querySelector('#viewport .sheet-frame');
@@ -28604,7 +28648,7 @@ function fitWide(land){
     var room = px - Math.min(120, pad) - 4; if(m <= room) return; var z = Math.max(0.42, room / m);
     t.classList.add('bk-print-zoom'); t.setAttribute('data-bk-pz', z.toFixed(3)); });
   /* the zoom itself lives in a print-only rule, so the screen is never touched */
-  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:auto !important;max-width:none !important;min-width:0 !important}'; });
+  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:calc(100% / ' + z + ') !important;max-width:none !important;min-width:0 !important}'; });
   if(css){ var st = document.createElement('style'); st.id = 'bk-print-zoomcss'; st.textContent = '@media print{' + css + '}'; document.head.appendChild(st); }
 }
 function unfit(){ var zc = document.getElementById('bk-print-zoomcss'); if(zc) zc.remove(); [].forEach.call(document.querySelectorAll('table.bk-print-zoom'), function(t){ t.classList.remove('bk-print-zoom'); t.removeAttribute('data-bk-pz'); t.removeAttribute('data-bk-pzi'); });
@@ -33644,7 +33688,7 @@ window.bkPackOpen = function(scope){
     pt.textContent = 'Laying out the pages…';
     var css = [].map.call(document.querySelectorAll('style'), function(x){ return x.textContent; }).join('\n'), links = [].map.call(document.querySelectorAll('link[rel=stylesheet]'), function(l){ return '<link rel="stylesheet" href="' + esc(l.href) + '">'; }).join('');
     var title = (scope === 'full' ? 'Full property report' : scope === 'tab' ? 'Tab summary' : 'PDF summary'), name = info.name;
-    var html = '<!doctype html><html lang="en" data-theme="light" class="bk-auth-ok"><head><meta charset="utf-8"><title>' + esc(name + ' — ' + title) + '</title>' + links + '<style>' + css + '</style><style>' + (window.BK_PRINT_RULES || '') + PACK_CSS + '</style></head><body><div id="pk-stage"><div id="viewport"><div class="sheet-frame active"><div class="main-col" id="pk-stage-in"></div></div></div></div><div id="pk-out"></div></body></html>';
+    var html = '<!doctype html><html lang="en" data-theme="light" class="bk-auth-ok"><head><meta charset="utf-8"><title>' + esc(name + ' — ' + title) + '</title>' + links + '<style>' + css + '</style><style>' + (window.BK_PRINT_RULES || '') + PACK_CSS + (window.BK_PDF_STYLE ? window.BK_PDF_STYLE('html body .pg-body #viewport') : '') + '</style></head><body><div id="pk-stage"><div id="viewport"><div class="sheet-frame active"><div class="main-col" id="pk-stage-in"></div></div></div></div><div id="pk-out"></div></body></html>';
     var o = document.createElement('div'); o.id = 'pl-pack'; o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#081a30;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif';
     var seg = function(k, t, off){ return '<button type="button" ' + (off ? 'disabled style="opacity:.4" ' : '') + 'onclick="bkPackOpen(\'' + k + '\')" style="border-radius:999px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;padding:6px 13px;border:1px solid rgba(255,255,255,.4);background:' + (scope === k ? '#fff' : 'transparent') + ';color:' + (scope === k ? '#0e2a4a' : '#fff') + '">' + t + '</button>'; };
     o.innerHTML = '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;padding:10px 16px;background:#0e2a4a;border-bottom:2px solid #3E9AE6;color:#fff"><b style="font-size:13px;letter-spacing:.06em">' + esc(title.toUpperCase()) + '</b><span id="pl-pack-n" style="font-size:12px;color:#B9C8D8">' + esc(name) + '</span>'
