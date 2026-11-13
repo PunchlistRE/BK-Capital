@@ -52,6 +52,7 @@ var CSS = 'table.bk-measure-wrap td,table.bk-measure-wrap th{white-space:normal 
  + 'html body #viewport table.fin.fin.fin.fin.fin td[data-bk-kind^="input"],html body #viewport table.fin.fin.fin.fin.fin td.v{background:transparent !important;box-shadow:none !important}'
  + 'html body #viewport .pf-card.pf-card>.t{background:transparent !important;color:#2c4a6b !important;border:0 !important;border-bottom:1px solid #0e2a4a !important;font-weight:700;padding:8px 0 3px !important}html body #viewport .pf-card.pf-card{border:0 !important;box-shadow:none !important;background:transparent !important}html body #viewport .pf-card.pf-card>.t:before,html body #viewport .pf-card.pf-card>.t i{display:none !important}'
  + 'html body #viewport .bk-sx-card.bk-sx-card .bk-sx-title{break-after:avoid !important;page-break-after:avoid !important;background:transparent !important;color:#2c4a6b !important;border:0 !important;border-bottom:1px solid #0e2a4a !important;font-weight:700;padding:8px 0 3px !important;box-shadow:none !important}html body #viewport .bk-sx-card.bk-sx-card{break-inside:avoid;page-break-inside:avoid;border:0 !important;box-shadow:none !important;background:transparent !important}html body #viewport .bk-sx-card.bk-sx-card .bk-sx-title:before,html body #viewport .bk-sx-card.bk-sx-card .bk-sx-title i{display:none !important}'
+ + '#viewport .main-col,#viewport .body-grid{padding-left:0 !important;padding-right:0 !important;margin-left:0 !important;margin-right:0 !important}'
  + '}';
 
 function sheetMeta(){
@@ -89,6 +90,8 @@ function splitKeep(t, groups){
     anchor.parentNode.insertBefore(c, anchor.nextSibling); anchor = c; });
   t.classList.add('bk-print-orig'); t.classList.remove('bk-print-clone');   /* a piece that is cut again is hidden like any original */
 }
+/* how many year columns one printed piece holds: a statement whose widest figure is 14+ characters (a ten-digit amount with its $ and commas) cannot print ten years across portrait Letter at a readable size, so it is cut into pieces that each repeat the labels */
+function yrsFor(t){ var w = 0; [].forEach.call(t.querySelectorAll('td'), function(c){ var x = (c.textContent || '').trim(); if(/^[($\-]*[\d,.]+\)?$/.test(x) && x.length > w) w = x.length; }); return w >= 16 ? 4 : w >= 15 ? 5 : w >= 14 ? 7 : YEARS_PER_PAGE; }
 function splitYears(t, per){ per = per || YEARS_PER_PAGE;
   var hc = headCells(t), yr = []; hc.forEach(function(c, q){ if(/^\s*(?:Year|Yr)\s*\d+\s*$/i.test(c.textContent)) yr.push(q); });
   if(yr.length <= per || t.classList.contains('bk-print-clone')) return;
@@ -100,10 +103,10 @@ function splitYears(t, per){ per = per || YEARS_PER_PAGE;
 function fitTables(land){
   var px = land ? PAGE_PX.land : PAGE_PX.port;
   [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl:not(.bk-print-orig), #viewport table.fin:not(.bk-print-orig)'), function(t){
-    var cols = headCells(t).reduce(function(n, c){ return n + (c.colSpan || 1); }, 0); if(cols < 9) return;
-    /* the type is sized from the widest figure actually in the table (a ten-digit amount with its $, commas and brackets is 16 characters), not from an assumed width */
-    var wid = 0; [].forEach.call(t.querySelectorAll('td'), function(c){ var x = (c.textContent || '').trim(); if(/^[($\-]*[\d,.]+\)?%?$/.test(x) && x.length > wid) wid = x.length; });
-    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / Math.max(6.6, (wid + 1) * 0.62), cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * (t.classList.contains('rp-tbl') ? 0.75 : 0.8)));
+    var cols = headCells(t).reduce(function(n, c){ return n + (c.colSpan || 1); }, 0);
+    var wid = 0; [].forEach.call(t.querySelectorAll('td'), function(c){ var x = (c.textContent || '').trim(); if(/^[($\-]*[\d,.]+\)?%?$/.test(x) && x.length > wid) wid = x.length; });   /* the widest figure actually in the table (a ten-digit amount with its $, commas and brackets is 16 characters) */
+    if(cols < (wid >= 14 || t.classList.contains('bk-print-clone') ? 5 : 9)) return;
+    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / Math.max(6.6, (wid + 1) * 0.62), cap = t.classList.contains('rp-tbl') ? (cols <= 6 ? 10 : 8.6) : 7, fs = Math.max(4.6, Math.min(cap, fsPx * (t.classList.contains('rp-tbl') ? 0.68 : 0.8)));
     t.classList.add('bk-print-fit'); t.style.setProperty('font-size', fs.toFixed(2) + 'pt', 'important'); });
 }
 /* any table still wider than the printable page (wide text tables, input grids, tables with a chip in every cell) is scaled to fit: its narrowest possible width is measured with wrapping allowed,
@@ -138,7 +141,7 @@ function prepare(){
   var s = safe(function(){ return bkLoad(); }, {}) || {}, foot = document.createElement('div'); foot.id = 'bk-print-foot'; foot.textContent = 'Punchlist Capital · Beta · ' + (s.name || '') + ' · figures from the underwriting model; check against your own'; document.body.appendChild(foot);
   /* a chosen option prints as text (a drop-down prints blank) */
   [].forEach.call(document.querySelectorAll('#viewport select'), function(sel){ var o = sel.options[sel.selectedIndex]; if(!o) return; var sp = document.createElement('span'); sp.className = 'bk-print-sel'; sp.textContent = o.text; sel.classList.add('bk-print-hasval'); sel.parentNode.insertBefore(sp, sel.nextSibling); });
-  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl:not(#rp-year0), #viewport table.fin, #viewport table.pf-tbl'), function(t){ splitYears(t, t.classList.contains('rp-tbl') ? YEARS_PER_PAGE : (t.querySelector('.status-chip') || t.classList.contains('pf-tbl') ? 6 : 8));   /* a table with a status chip in every year cell needs wider columns */ });
+  [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl, #viewport table.fin, #viewport table.pf-tbl'), function(t){ if(t.id === 'rp-year0' && yrsFor(t) === YEARS_PER_PAGE) return; splitYears(t, t.classList.contains('rp-tbl') ? yrsFor(t) : (t.querySelector('.status-chip') || t.classList.contains('pf-tbl') ? 6 : 8));   /* a table with a status chip in every year cell needs wider columns */ });
   var w = wide(), land = false; document.documentElement.classList.toggle('bk-print-wide', w >= 7); fitTables(land); fitWide(land);
   pageStyle = document.createElement('style'); pageStyle.id = 'bk-print-page'; pageStyle.textContent = '@page{size:letter ' + (land ? 'landscape' : 'portrait') + ';margin:12mm 11mm 14mm}'; document.head.appendChild(pageStyle);
   document.querySelectorAll('input[type=text],input[type=number],input:not([type])').forEach(function(i){ if(i.value !== i.getAttribute('value')) i.setAttribute('value', i.value); });
