@@ -101,7 +101,9 @@ function fitTables(land){
   var px = land ? PAGE_PX.land : PAGE_PX.port;
   [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl:not(.bk-print-orig), #viewport table.fin:not(.bk-print-orig)'), function(t){
     var cols = headCells(t).reduce(function(n, c){ return n + (c.colSpan || 1); }, 0); if(cols < 9) return;
-    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / 6.6, cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * (t.classList.contains('rp-tbl') ? 0.64 : 0.75)));
+    /* the type is sized from the widest figure actually in the table (a ten-digit amount with its $, commas and brackets is 16 characters), not from an assumed width */
+    var wid = 0; [].forEach.call(t.querySelectorAll('td'), function(c){ var x = (c.textContent || '').trim(); if(/^[($\-]*[\d,.]+\)?%?$/.test(x) && x.length > wid) wid = x.length; });
+    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / Math.max(6.6, (wid + 1) * 0.62), cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * (t.classList.contains('rp-tbl') ? 0.75 : 0.8)));
     t.classList.add('bk-print-fit'); t.style.setProperty('font-size', fs.toFixed(2) + 'pt', 'important'); });
 }
 /* any table still wider than the printable page (wide text tables, input grids, tables with a chip in every cell) is scaled to fit: its narrowest possible width is measured with wrapping allowed,

@@ -21,10 +21,10 @@ function thousands(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'func
   RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; var first = o.main.slice(0, o.main.indexOf('</table>') + 8), yrs = (first.match(/<th class="r">Year \d+<\/th>/g) || []).length, wid = 0; (o.main.match(/<td[^>]*class="[^"]*\br\b[^"]*"[^>]*>[($\-\d,)]+<\/td>/g) || []).forEach(function(t){ var x = t.replace(/<[^>]*>/g, ''); if(x.length > wid) wid = x.length; });
     if(yrs > 10){ o.main = '<div class="bk-scrollyrs" style="--yrs:' + yrs + ';--colw:' + Math.max(100, Math.ceil((wid + 1) * 7.6 + 8)) + 'px">' + o.main + '</div>'; return o; }   /* more than ten years: whole dollars, the statement scrolls sideways */
     if(!yrs) return o;
-    /* whole dollars always. The type steps down so the widest figure (up to ten digits, with its $ , and brackets) fits its year column; below 9px it keeps 9px and the statement scrolls sideways instead */
+    /* whole dollars always. The type steps down so the widest figure (up to ten digits, with its $ , and brackets) fits its year column; below 7px it keeps 7px and the statement scrolls sideways instead */
     var avail = 1124 - 170, per = avail / (yrs + 2), fs = Math.floor(((per - 6) / ((wid + 1) * 0.6)) * 10) / 10;
     if(fs >= 12.5) return o;
-    var scroll = fs < 9; fs = Math.max(9, fs);
+    var scroll = fs < 7; fs = Math.max(7, fs);   /* 10 years or fewer fit down to 7px; only an extreme statement scrolls */
     o.main = '<div class="bk-wideyrs' + (scroll ? ' bk-scrollyrs' : '') + '" style="--fs:' + fs + 'px;--yrs:' + yrs + '">' + o.main + '</div>';
     return o; }; }
 thousands('Cash Flow Report'); thousands('Sources and Uses Report');

@@ -28587,7 +28587,9 @@ function fitTables(land){
   var px = land ? PAGE_PX.land : PAGE_PX.port;
   [].forEach.call(document.querySelectorAll('#viewport table.rp-tbl:not(.bk-print-orig), #viewport table.fin:not(.bk-print-orig)'), function(t){
     var cols = headCells(t).reduce(function(n, c){ return n + (c.colSpan || 1); }, 0); if(cols < 9) return;
-    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / 6.6, cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * (t.classList.contains('rp-tbl') ? 0.64 : 0.75)));
+    /* the type is sized from the widest figure actually in the table (a ten-digit amount with its $, commas and brackets is 16 characters), not from an assumed width */
+    var wid = 0; [].forEach.call(t.querySelectorAll('td'), function(c){ var x = (c.textContent || '').trim(); if(/^[($\-]*[\d,.]+\)?%?$/.test(x) && x.length > wid) wid = x.length; });
+    var colW = (px - 190) / (cols - 1), fsPx = (colW - 6) / Math.max(6.6, (wid + 1) * 0.62), cap = t.classList.contains('rp-tbl') ? 8.6 : 7, fs = Math.max(4.6, Math.min(cap, fsPx * (t.classList.contains('rp-tbl') ? 0.75 : 0.8)));
     t.classList.add('bk-print-fit'); t.style.setProperty('font-size', fs.toFixed(2) + 'pt', 'important'); });
 }
 /* any table still wider than the printable page (wide text tables, input grids, tables with a chip in every cell) is scaled to fit: its narrowest possible width is measured with wrapping allowed,
@@ -33197,10 +33199,10 @@ function thousands(sheet){ var prev = RENDERERS[sheet]; if(typeof prev !== 'func
   RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); if(!o || typeof o.main !== 'string') return o; var first = o.main.slice(0, o.main.indexOf('</table>') + 8), yrs = (first.match(/<th class="r">Year \d+<\/th>/g) || []).length, wid = 0; (o.main.match(/<td[^>]*class="[^"]*\br\b[^"]*"[^>]*>[($\-\d,)]+<\/td>/g) || []).forEach(function(t){ var x = t.replace(/<[^>]*>/g, ''); if(x.length > wid) wid = x.length; });
     if(yrs > 10){ o.main = '<div class="bk-scrollyrs" style="--yrs:' + yrs + ';--colw:' + Math.max(100, Math.ceil((wid + 1) * 7.6 + 8)) + 'px">' + o.main + '</div>'; return o; }   /* more than ten years: whole dollars, the statement scrolls sideways */
     if(!yrs) return o;
-    /* whole dollars always. The type steps down so the widest figure (up to ten digits, with its $ , and brackets) fits its year column; below 9px it keeps 9px and the statement scrolls sideways instead */
+    /* whole dollars always. The type steps down so the widest figure (up to ten digits, with its $ , and brackets) fits its year column; below 7px it keeps 7px and the statement scrolls sideways instead */
     var avail = 1124 - 170, per = avail / (yrs + 2), fs = Math.floor(((per - 6) / ((wid + 1) * 0.6)) * 10) / 10;
     if(fs >= 12.5) return o;
-    var scroll = fs < 9; fs = Math.max(9, fs);
+    var scroll = fs < 7; fs = Math.max(7, fs);   /* 10 years or fewer fit down to 7px; only an extreme statement scrolls */
     o.main = '<div class="bk-wideyrs' + (scroll ? ' bk-scrollyrs' : '') + '" style="--fs:' + fs + 'px;--yrs:' + yrs + '">' + o.main + '</div>';
     return o; }; }
 thousands('Cash Flow Report'); thousands('Sources and Uses Report');
@@ -34287,6 +34289,10 @@ html body #bk-kpibar .kb-s{ color:#CFE0F5 !important }
 html body #viewport .bk-wideyrs .rp #rp-cashflow th:first-child, html body #viewport .bk-wideyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-wideyrs .rp #rp-su th:first-child, html body #viewport .bk-wideyrs .rp #rp-su td:first-child,
 html body #viewport .bk-scrollyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-scrollyrs .rp #rp-cashflow th:first-child{ padding-left:14px !important }
 html body #viewport .bk-wideyrs .rp #rp-cashflow tbody tr:not(.sec):not(.sub):not(.tot) td:first-child, html body #viewport .bk-wideyrs .rp #rp-su tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:22px !important }
+/* Total and Y1 % columns: header cells carry the same band as the Forecast headers, bold, so they stand out */
+html body #viewport .rp #rp-cashflow thead tr:nth-child(2) th:nth-last-child(-n+2), html body #viewport .rp #rp-su thead tr:nth-child(2) th:last-child{ background:var(--ae-head) !important; color:var(--ae-ink) !important; font-weight:700 !important; padding-top:5px !important; padding-bottom:5px !important }
+/* print: the figure type comes from the print fitter (sized to the widest figure), not from the on-screen size */
+@media print{ html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:inherit !important } }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):

@@ -189,3 +189,7 @@ html body #bk-kpibar .kb-s{ color:#CFE0F5 !important }
 html body #viewport .bk-wideyrs .rp #rp-cashflow th:first-child, html body #viewport .bk-wideyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-wideyrs .rp #rp-su th:first-child, html body #viewport .bk-wideyrs .rp #rp-su td:first-child,
 html body #viewport .bk-scrollyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-scrollyrs .rp #rp-cashflow th:first-child{ padding-left:14px !important }
 html body #viewport .bk-wideyrs .rp #rp-cashflow tbody tr:not(.sec):not(.sub):not(.tot) td:first-child, html body #viewport .bk-wideyrs .rp #rp-su tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:22px !important }
+/* Total and Y1 % columns: header cells carry the same band as the Forecast headers, bold, so they stand out */
+html body #viewport .rp #rp-cashflow thead tr:nth-child(2) th:nth-last-child(-n+2), html body #viewport .rp #rp-su thead tr:nth-child(2) th:last-child{ background:var(--ae-head) !important; color:var(--ae-ink) !important; font-weight:700 !important; padding-top:5px !important; padding-bottom:5px !important }
+/* print: the figure type comes from the print fitter (sized to the widest figure), not from the on-screen size */
+@media print{ html body #viewport .bk-wideyrs .rp #rp-cashflow td, html body #viewport .bk-wideyrs .rp #rp-cashflow th, html body #viewport .bk-wideyrs .rp #rp-su td, html body #viewport .bk-wideyrs .rp #rp-su th{ font-size:inherit !important } }
