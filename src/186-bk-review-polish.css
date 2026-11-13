@@ -163,3 +163,13 @@ html body.bk-has-kpibar{ padding-bottom:92px }
 /* bar labels stay on one line (Equity multiple) */
 html body #bk-kpibar .kb-k{ white-space:nowrap; font-size:10px; letter-spacing:.04em }
 html body #bk-kpibar .kb-c{ padding-left:8px; padding-right:8px; min-width:max-content }
+/* Model Checks (final): the finding takes the room, the three short columns are compact */
+html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(1), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(1){ width:56% !important; min-width:0 !important; text-align:left !important }
+html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(2), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(2){ width:16% !important; text-align:left !important }
+html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(3), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(3), html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(4), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(4){ width:14% !important }
+/* Waterfall page tab label and structure grid */
+/* Depreciation and other status columns: a chip never breaks across lines */
+html body #viewport .status-chip, html body #viewport .chip{ white-space:nowrap }
+html body #viewport td:last-child .status-chip{ min-width:0 }
+/* Waterfall Report: the three structure tables share the row equally */
+html body #viewport .bk-wf3{ grid-template-columns:1.05fr 1.05fr 1fr }
