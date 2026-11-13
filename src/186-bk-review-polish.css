@@ -137,3 +137,29 @@ html body #viewport .bk-wf3 > table.rp-tbl{ width:100% !important; min-width:0 !
 html body #viewport .bk-wf3 > table.rp-tbl td:first-child, html body #viewport .bk-wf3 > table.rp-tbl th:first-child{ width:40% !important }
 html body #viewport table.bk-wf-cf td, html body #viewport table.bk-wf-cf th{ padding-left:10px !important; padding-right:10px !important }
 html body #viewport table.bk-wf-cf td:first-child, html body #viewport table.bk-wf-cf th:first-child{ width:22% !important }
+/* one vertical divider after the label column on every report table */
+html body #viewport .rp table.rp-tbl tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px }
+@media print{ html body .rp table.rp-tbl tr > :first-child{ border-right:1px solid #000 !important } }
+/* printed year statements always run the full page width, whatever the number of years */
+@media print{ html body .rp table.rp-tbl:not(.bk-print-zoom){ width:100% !important; min-width:100% !important; table-layout:fixed !important } }
+@media print{
+  html body .rp #rp-cashflow td, html body .rp #rp-cashflow th, html body .rp #rp-su td, html body .rp #rp-su th, html body .rp #rp-year0 td, html body .rp #rp-year0 th{ white-space:nowrap !important; overflow:visible !important; padding-left:2px !important; padding-right:3px !important }
+  html body .rp #rp-cashflow th:first-child, html body .rp #rp-cashflow td:first-child, html body .rp #rp-su th:first-child, html body .rp #rp-su td:first-child{ width:23% !important; padding-right:6px !important }
+}
+/* Home hero with a property photo: a card with the photo on the left, the name, facts and status chips beside it */
+html body #viewport .pl-hero.pl-hero-photo{ display:grid; grid-template-columns:300px minmax(0,1fr); column-gap:26px; align-items:center; align-content:center; background:var(--ae-cell,#fff); border:1px solid var(--ae-line,#c9d2db); border-radius:12px; padding:14px; box-shadow:0 2px 10px rgba(14,42,74,.08); margin:4px 0 18px }
+html body #viewport .pl-hero-photo .pl-hero-img{ grid-row:1 / span 6; grid-column:1; width:300px; height:190px; object-fit:cover; object-position:center 40%; border-radius:8px; border:0; box-shadow:none; margin:0 }
+html body #viewport .pl-hero-photo > :not(img){ grid-column:2; min-width:0 }
+html body #viewport .pl-hero-photo h2{ margin:0 0 6px; font-size:26px }
+html body #viewport .pl-hero-photo .pl-sub{ margin:0 0 12px }
+@media (max-width:700px){ html body #viewport .pl-hero.pl-hero-photo{ grid-template-columns:1fr; padding:10px } html body #viewport .pl-hero-photo .pl-hero-img{ grid-row:auto; width:100%; height:180px } html body #viewport .pl-hero-photo > :not(img){ grid-column:1 } }
+/* taller bottom figures bar */
+html body #bk-kpibar{ min-height:92px }
+html body #bk-kpibar .kb-c{ display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding-top:16px; padding-bottom:14px }
+html body #bk-kpibar .kb-v{ font-size:21px; overflow:visible; text-overflow:clip }
+html body #bk-kpibar .kb-k{ margin-bottom:3px }
+html body.bk-has-kpibar{ padding-bottom:92px }
+@media (min-width:901px){ html body.bk-has-kpibar .rail{ max-height:calc(100vh - 92px) } }
+/* bar labels stay on one line (Equity multiple) */
+html body #bk-kpibar .kb-k{ white-space:nowrap; font-size:10px; letter-spacing:.04em }
+html body #bk-kpibar .kb-c{ padding-left:8px; padding-right:8px; min-width:max-content }
