@@ -34223,6 +34223,13 @@ html body #viewport .pl-hero-photo > :not(img){ grid-column:2; min-width:0 }
 html body #viewport .pl-hero-photo h2{ margin:0 0 6px; font-size:26px }
 html body #viewport .pl-hero-photo .pl-sub{ margin:0 0 12px }
 @media (max-width:700px){ html body #viewport .pl-hero.pl-hero-photo{ grid-template-columns:1fr; padding:10px } html body #viewport .pl-hero-photo .pl-hero-img{ grid-row:auto; width:100%; height:180px } html body #viewport .pl-hero-photo > :not(img){ grid-column:1 } }
+/* taller bottom figures bar */
+html body #bk-kpibar{ min-height:92px }
+html body #bk-kpibar .kb-c{ display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding-top:16px; padding-bottom:14px }
+html body #bk-kpibar .kb-v{ font-size:21px; overflow:visible; text-overflow:clip }
+html body #bk-kpibar .kb-k{ margin-bottom:3px }
+html body.bk-has-kpibar{ padding-bottom:92px }
+@media (min-width:901px){ html body.bk-has-kpibar .rail{ max-height:calc(100vh - 92px) } }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):
