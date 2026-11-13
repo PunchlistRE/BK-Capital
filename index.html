@@ -26736,6 +26736,11 @@ function resultStrip(s, sec){
   if(sec.id === 'income' || sec.id === 'expenses'){ if(c.egi) out.push('<span>Income <b>' + money0(c.egi) + '</b></span>'); if(c.noi) out.push('<span>Net operating income <b>' + money0(c.noi) + '</b></span>'); var p = /develop/i.test(String(s.dealType || '')) ? 0 : Number(s.purchasePrice) || 0; if(c.noi && p) out.push('<span>Cap rate on price <b>' + (c.noi / p * 100).toFixed(2) + '%</b></span>'); }
   if(sec.id === 'debt'){ var dscrs = bothDscr(s), d = dscrs.dev ? null : safe(function(){ return bkDebt(); }, null), hd = dscrs.dev ? safe(function(){ return window.bkHeadline(); }, null) : null, ln = d ? d.loan : hd && hd.loan, eq = d ? d.equity : hd && hd.equity;
     if(ln) out.push('<span>' + (dscrs.dev ? 'Construction loan' : 'Loan') + ' <b>' + money0(ln) + '</b></span>' + dscrs.html + (dscrs.dev ? (hd && isFinite(hd.tce) && hd.tce ? '<span>' + esc(typeof bkCapName === 'function' ? bkCapName('totalContributedEquity', true) : 'Total contributed equity') + ' <b>' + money0(hd.tce) + '</b></span>' : '') : '<span>Equity <b>' + money0(eq) + '</b></span>')); }
+  if(sec.id === 'partners'){ var w = safe(function(){ return window.bkWaterfallSummary ? window.bkWaterfallSummary() : null; }, null);
+    if(w && w.lp && w.gp && (w.total.dist > 0)){ var pc = function(v){ return isFinite(v) ? (v * 100).toFixed(2) + '%' : 'n/a'; }, mx = function(v){ return isFinite(v) ? v.toFixed(2) + 'x' : 'n/a'; };
+      out.push('<span>LPs receive <b>' + money0(w.lp.dist) + '</b> on ' + money0(w.lp.contributed) + ' in (' + pc(w.lp.irr) + ' IRR, ' + mx(w.lp.moic) + ')</span>');
+      out.push('<span>GP receives <b>' + money0(w.gp.dist) + '</b> on ' + money0(w.gp.contributed) + ' in (' + pc(w.gp.irr) + ' IRR, ' + mx(w.gp.moic) + ')</span>');
+      out.push('<span>of which promote <b>' + money0(w.gp.promote) + '</b></span>'); } }
   return out.length ? '<div class="gd-res">' + out.join('') + '</div>' : '';
 }
 function stepScreen(secs, sec, s, g){
