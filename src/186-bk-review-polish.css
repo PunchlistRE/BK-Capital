@@ -185,3 +185,7 @@ html body #bk-kpibar.bk-kpibar, html body #bk-kpibar{ background:rgba(14,42,74,.
 html body #bk-kpibar .kb-k{ color:#E3ECF7 !important }
 html body #bk-kpibar .kb-s{ color:#CFE0F5 !important }
 @media print{ html body #bk-kpibar{ display:none !important } }
+/* the label column keeps its left padding when the figure columns are tightened, so the total-row accent bar never touches the text */
+html body #viewport .bk-wideyrs .rp #rp-cashflow th:first-child, html body #viewport .bk-wideyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-wideyrs .rp #rp-su th:first-child, html body #viewport .bk-wideyrs .rp #rp-su td:first-child,
+html body #viewport .bk-scrollyrs .rp #rp-cashflow td:first-child, html body #viewport .bk-scrollyrs .rp #rp-cashflow th:first-child{ padding-left:14px !important }
+html body #viewport .bk-wideyrs .rp #rp-cashflow tbody tr:not(.sec):not(.sub):not(.tot) td:first-child, html body #viewport .bk-wideyrs .rp #rp-su tbody tr:not(.sec):not(.sub):not(.tot) td:first-child{ padding-left:22px !important }
