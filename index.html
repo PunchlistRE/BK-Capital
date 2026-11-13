@@ -34275,6 +34275,11 @@ html body #viewport table.fin.fin.fin td[data-bk-kind] .status-chip.status-chip:
 html body #viewport table.fin td[data-bk-align="num"], html body #viewport table.fin td.bk-a-num{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important }
 html body #viewport table.fin td[data-bk-kind="num"]{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; padding-left:6px !important; padding-right:8px !important }
 html body #viewport table.fin.bk-yrs{ font-size:12.5px }
+/* bottom figures bar: the same navy, 7% see-through (no blur, no colour shift) */
+html body #bk-kpibar.bk-kpibar, html body #bk-kpibar{ background:rgba(14,42,74,.93) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important }
+html body #bk-kpibar .kb-k{ color:#E3ECF7 !important }
+html body #bk-kpibar .kb-s{ color:#CFE0F5 !important }
+@media print{ html body #bk-kpibar{ display:none !important } }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):
