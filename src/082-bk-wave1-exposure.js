@@ -208,7 +208,41 @@ extend('Property CF','w1PropertyCF', function(o){
       + val(money(-r.totalOpex)) + val(money(r.noiBeforeReserves)) + val(money(r.reserves)) + val(money(r.noi))
       + '</tr>';
   }).join('');
-  var monthly = wrapTable('Monthly Passthrough - all '+mo.length+' months of the canonical engine', mHead, mRows);
+  var monthly = wrapTable('Monthly Passthrough - all '+mo.length+' months of the canonical engine', mHead, mRows)
+    .replace('class="tbl-wrap"', 'class="tbl-wrap bk-pcf-screen"');   /* the screen table; hidden in print, where the months-across blocks below take its place */
+
+  /* ---- print only: the same monthly rows, line items down and months across (the layout an ARGUS cash-flow report uses).
+     Each cell is the same expression as the screen table above, from the same u.monthly array: nothing is added, summed or recalculated.
+     The months are cut into equal blocks sized from the widest figure so the type stays legible; the screen never shows these. ---- */
+  var pmLines = [
+    ['GPR',          function(r){ return money(r.gprGross); }],
+    ['Res. Vacancy', function(r){ return money(r.resVac); }],
+    ['Bad Debt',     function(r){ return money(r.bad); }],
+    ['Commercial',   function(r){ return money(r.commGross); }],
+    ['Comm. Vacancy',function(r){ return money(r.commVac); }],
+    ['Other',        function(r){ return money(r.other); }],
+    ['EGI',          function(r){ return money(r.egi); }, 'subtotal'],
+    ['Controllable', function(r){ return money(-r.ctrlOpex); }],
+    ['Insurance',    function(r){ return money(-r.insurance); }],
+    ['RE Taxes',     function(r){ return money(-r.taxes); }],
+    ['Mgmt Fee',     function(r){ return money(-r.mgmt); }],
+    ['Total Opex',   function(r){ return money(-r.totalOpex); }, 'subtotal'],
+    ['NOI b/ Res.',  function(r){ return money(r.noiBeforeReserves); }, 'subtotal'],
+    ['Reserves',     function(r){ return money(r.reserves); }],
+    ['NOI',          function(r){ return money(r.noi); }, 'grandtotal']
+  ];
+  var pmWidest = 0;
+  mo.forEach(function(r){ pmLines.forEach(function(l){ pmWidest = Math.max(pmWidest, l[1](r).length); }); });
+  var pmPer = Math.max(6, Math.min(12, Math.floor(580 / (pmWidest*5 + 9))));   /* months per block that fit the page width at 6.5 pt (a figure is about 5 px a character, a cell 9 px of padding and rule) */
+  var pmBlocks = Math.max(1, Math.ceil(mo.length / pmPer)), pmBase = Math.floor(mo.length / pmBlocks), pmExtra = mo.length % pmBlocks;   /* equal blocks: sizes differ by at most one month (84 months is 3 blocks of 10 and 6 of 9), never a stub */
+  var pmHtml = [], pa = 0;
+  for(var pb=0; pb<pmBlocks; pb++){
+    var pmSize = pmBase + (pb < pmExtra ? 1 : 0), chunk = mo.slice(pa, pa+pmSize); pa += pmSize;
+    pmHtml.push('<table class="fin bk-pcf-pm"><caption>Monthly Passthrough - months '+chunk[0].m+' to '+chunk[chunk.length-1].m+' of '+mo.length+' (canonical engine)</caption>'
+      + '<thead><tr><th class="rowlabel-h">Month</th>' + chunk.map(function(r){ return '<th>'+r.m+'</th>'; }).join('') + '</tr></thead><tbody>'
+      + pmLines.map(function(l){ return '<tr'+(l[2]?' class="'+l[2]+'"':'')+'>'+lbl(l[0]) + chunk.map(function(r){ return val(l[1](r)); }).join('')+'</tr>'; }).join('')
+      + '</tbody></table>');
+  }
 
   /* ---- monthly-to-annual reconciliation ---- */
   var sumM = function(k){ return mo.reduce(function(t,r){ return t + (k==='expenses' ? -r.totalOpex : r[k]); },0); };
@@ -218,16 +252,20 @@ extend('Property CF','w1PropertyCF', function(o){
     return '<tr>'+lbl(label)+val(money(a))+val(money(m))+val(money(d))
          + '<td>'+chip(ok?'pass':'fail', ok?'TIES':'VARIANCE')+'</td></tr>';
   }
-  var recon = wrapTable('Reconciliation - annual columns against the monthly engine',
+  var reconHtml = wrapTable('Reconciliation - annual columns against the monthly engine',
     '<tr><th class="rowlabel-h">Check</th><th>Annual</th><th>Monthly Sum</th><th>Variance</th><th>Status</th></tr>',
       recRow('Effective Gross Income', sumA('egi'), sumM('egi'))
     + recRow('Total Operating Expenses', sumA('expenses'), sumM('expenses'))
     + recRow('NOI Before Reserves', sumA('noi'), sumM('noiBeforeReserves'))
     + recRow('NOI After Reserves', sumA('after'), sumM('noi')));
+  var recon = reconHtml.replace('class="tbl-wrap"', 'class="tbl-wrap bk-pcf-screen"');   /* the screen table; hidden in print */
+  /* print: the last monthly block and the reconciliation are one unit that is never split, so the closing page is never the small table alone */
+  monthly += '<div class="bk-pcf-pm-set">' + pmHtml.slice(0, -1).join('') + '<div class="bk-pcf-pm-tail">' + pmHtml[pmHtml.length-1] + reconHtml + '</div></div>';
 
-  o.main = (o.main||'') + detail + cmp + unlev + monthly + recon
+  o.main = ((o.main||'') + detail + cmp + unlev + monthly + recon
     + note('&#9432;','<b>Below-market / loss-to-lease</b> is not a modelled assumption in this engine, so no loss-to-lease line is '
-      + 'shown. Mark-to-market exposure is available per unit on the Rent Roll lease-expiration schedule instead.');
+      + 'shown. Mark-to-market exposure is available per unit on the Rent Roll lease-expiration schedule instead.'))
+    .replace(/<table class="fin(?=[" ])/g, '<table class="fin bk-pcf-t');   /* marks this page's statement tables for the print rules; no wrapper, so the panel-tabs builder sees the same top-level elements */
 });
 
 /* PRIORITY 1b - Operating Underwrite QC panel (bkCalc already returns all of it) */
