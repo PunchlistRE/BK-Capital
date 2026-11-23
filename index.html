@@ -294,7 +294,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
   .meta-strip{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--surface);}
   .meta-strip .cell{padding:9px 14px; border-right:1px solid var(--line-soft);}
   .meta-strip .cell:last-child{border-right:none;}
-  .meta-strip .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-400); font-weight:600; margin-bottom:2px;}
+  .meta-strip .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-500); font-weight:600; margin-bottom:2px;}
   .meta-strip .v{font-size:13px; font-weight:600; color:var(--ink-900); font-variant-numeric:tabular-nums;}
 
   .body-grid{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:0; align-items:start;}
@@ -319,7 +319,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
   .metric-row:last-child{border-bottom:none;}
   .metric-row .k{font-size:11px; color:var(--ink-500);}
   .metric-row .v{font-size:12.5px; font-weight:700; color:var(--ink-900); font-variant-numeric:tabular-nums; text-align:right;}
-  .metric-row .v.pos{color:var(--status-pass);}
+  .metric-row .v.pos{color:var(--ds-pos);}
   .metric-row .v.neg{color:var(--status-fail);}
   .info-list .metric-row .v{font-weight:600; font-size:12px;}
   .status-chip{display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.04em; padding:2px 8px; border-radius:20px; text-transform:uppercase;}
@@ -13761,7 +13761,7 @@ function chip(cls,t){ return '<span class="status-chip '+(cls||'')+'">'+esc(t)+'
 function note(sym,html){ return '<div class="note-flag" style="margin-top:10px;"><span>'+sym+'</span><div>'+html+'</div></div>'; }
 function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; }
 function val(t){ return '<td class="v">'+t+'</td>'; }
-function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
+function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>'+caption+'</caption>'
        + '<thead>'+headHtml+'</thead><tbody>'+bodyHtml+'</tbody></table></div>';
@@ -14763,7 +14763,7 @@ function chip(cls,t){ return '<span class="status-chip '+(cls||'')+'">'+esc(t)+'
 function note(sym,html){ return '<div class="note-flag" style="margin-top:10px;"><span>'+sym+'</span><div>'+html+'</div></div>'; }
 function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; }
 function val(t){ return '<td class="v">'+t+'</td>'; }
-function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
+function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
   var sp4 = /^(Sponsor Fee Income|Project Economics|Sponsor Economics - on)/.test(caption);   /* the sponsor page's four-column tables share one grid */
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin'+(sp4?' bk-sp4':'')+'"><caption>'+caption+'</caption>'
@@ -15273,7 +15273,7 @@ function chip(cls,t){ return '<span class="status-chip '+(cls||'')+'">'+esc(t)+'
 function note(sym,html){ return '<div class="note-flag" style="margin-top:10px;"><span>'+sym+'</span><div>'+html+'</div></div>'; }
 function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; }
 function val(t){ return '<td class="v">'+t+'</td>'; }
-function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
+function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>'+caption+'</caption>'
        + '<thead>'+headHtml+'</thead><tbody>'+bodyHtml+'</tbody></table></div>';
@@ -15891,7 +15891,7 @@ extend('QA','clarityQA', function(o){
     + '<td class="v"><select onchange="bkSetQAReferenceCompare(this.value)">'
     +   '<option'+(on?'':' selected')+'>Off</option>'
     +   '<option'+(on?' selected':'')+'>On</option></select></td>'
-    + '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'
+    + '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'
     +   'Shows a set of figures captured once from one reference property, with variance and a status chip</td>'
     + '<td class="v">'+chip(on?'warn':'pass', on?'REFERENCE SHOWN':'LIVE ENGINE ONLY')+'</td></tr>'
     + '</tbody></table></div>'
@@ -18540,7 +18540,7 @@ schedule();
 .bk-sx-be th{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--sx-ink2); text-align:right; padding:6px 8px; border-bottom:1px solid var(--sx-line); }
 .bk-sx-be td{ padding:7px 8px; border-bottom:1px solid var(--sx-line); text-align:right; font-variant-numeric:tabular-nums; color:var(--sx-ink); }
 .bk-sx-be th:first-child, .bk-sx-be td:first-child{ text-align:left; }
-.bk-sx-be td.cushion-neg{ color:var(--sx-dn); font-weight:700; }
+.bk-sx-be td.cushion-neg{ color:var(--sx-ink2); font-weight:700; }
 .bk-sx-tip{ position:fixed; z-index:9999; pointer-events:none; background:#0e2a4a; color:#eaf0f6; font-size:11.5px; line-height:1.35; padding:6px 9px; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.25); max-width:260px; display:none; }
 
 /* Visual QA: the analysis cards (Sensitivity, Financing Lab/Compare, Version History) use the same lettered title bar as every other section. Hierarchy is kept: the card body keeps its own padding and the chart stays inside. */
@@ -19274,7 +19274,7 @@ function snapshotCard(){
   return head + '<div class="metric-list">'
     + row('Levered IRR', pct(h.levIRR), 'big') + row('Equity Multiple', mult(h.levMOIC))
     + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + (Number(bkLoad().gpShare) > 0 ? pct(h.gpIRR) : 'N/A'))
-    + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
+    + row('Loan', money(h.loan) + (h.binding ? ' <span style="color:var(--ink-500);font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
     + row(capName('totalContributedEquity'), money(h.tce)) + row(dscrTitle(), isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
     + (tieChip() ? row('Inputs', tieChip()) : '')
@@ -21062,7 +21062,7 @@ var render = function(){
     var cls = c.level === 'ERROR' ? 'fail' : c.level === 'WARN' ? 'warn' : '';
     var act = (c.level !== 'ERROR')
       ? (c.acknowledged ? '<button type="button" class="status-chip" onclick="bkAckConflict(\'' + c.id + '\',false)">UNDO ACK</button>' : '<button type="button" class="status-chip" onclick="bkAckConflict(\'' + c.id + '\')">ACKNOWLEDGE</button>') : '';
-    return '<tr' + (c.acknowledged ? ' style="opacity:.6"' : '') + '><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.message) + '</b><div style="margin-top:6px;font-size:12px;color:#555"><b>Why it matters.</b> ' + esc(c.why) + '</div><div style="margin-top:4px;font-size:11px;color:#555">' + esc(c.area) + '</div></td>'
+    return '<tr' + (c.acknowledged ? ' style="opacity:.6"' : '') + '><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.message) + '</b><div style="margin-top:6px;font-size:12px;color:var(--ink-500)"><b>Why it matters.</b> ' + esc(c.why) + '</div><div style="margin-top:4px;font-size:11px;color:var(--ink-500)">' + esc(c.area) + '</div></td>'
       + '<td style="vertical-align:middle"><a href="#" onclick="showSheet(\'' + c.sheet + '\');return false">' + esc(c.sheet) + '</a></td><td style="vertical-align:middle;text-align:center">' + act + (c.acknowledged ? '<div style="font-size:11px">acknowledged</div>' : '') + '</td>'
       + '<td class="bk-col-chip" style="vertical-align:middle;text-align:center">' + chip(cls, c.level) + '</td></tr>';
   }).join('') || '<tr><td class="rowlabel" colspan="4">No conflicting inputs found.</td></tr>';
@@ -21072,7 +21072,7 @@ var render = function(){
   var ig = typeof window.bkIntegrity === 'function' ? window.bkIntegrity() : null;
   if(ig){
     var irow = ig.checks.map(function(c){ var k = c.status === 'hard' ? 'fail' : c.status === 'warn' ? 'warn' : c.status === 'pass' ? 'pass' : '', lab = c.status === 'hard' ? 'FAILED' : c.status === 'warn' ? 'WARNING' : c.status === 'na' ? 'N/A' : 'PASS';
-      return '<tr' + (c.status === 'na' ? ' style="opacity:.6"' : '') + '><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.label) + '</b><div style="margin-top:4px;font-size:12px;color:#555">' + esc(c.detail) + '</div><div style="margin-top:3px;font-size:11px;color:#777">' + esc(c.group) + '</div></td><td class="bk-col-chip" style="vertical-align:middle;text-align:center">' + chip(k, lab) + '</td></tr>'; }).join('');
+      return '<tr><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.label) + '</b><div style="margin-top:4px;font-size:12px;color:var(--ink-500)">' + esc(c.detail) + '</div><div style="margin-top:3px;font-size:11px;color:var(--ink-500)">' + esc(c.group) + '</div></td><td class="bk-col-chip" style="vertical-align:middle;text-align:center">' + chip(k, lab) + '</td></tr>'; }).join('');
     main += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-mc"><caption>Calculation Integrity - recomputed independently (' + esc(ig.text) + ')</caption><thead><tr><th class="rowlabel-h">Check and what it found</th><th style="text-align:center">Result</th></tr></thead><tbody>' + irow + '</tbody></table></div>'
       + '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div><b>How to read this.</b> <b>FAILED</b>: a result does not tie to its inputs, so it must not be relied on and the credit gate is held. <b>WARNING</b>: the figures tie, but something material is true that a reader must know. <b>N/A</b>: the check does not apply to this deal. These checks never change a number.</div></div>';
     n.ERROR += ig.hard.length; n.WARN += ig.warn.length;
@@ -21663,11 +21663,11 @@ function render(){
   if(!d || !d.applies){ main = '<div class="note-flag"><span>&#9432;</span><div>' + ((d && d.reason) || 'Open a deal to compare it with the market.') + '</div></div>'; }
   else {
     var R = rows(), body = R.map(function(r){ var v = d[r.id], st = status(r, v);
-      return '<tr><td class="rowlabel">' + r.label + (r.edited ? ' <span style="font-size:10px;color:#7a8da1">(edited)</span>' : '') + '</td><td><b>' + fmt(v, r.unit) + '</b></td><td>' + inp(r.id, 'low', r) + '</td><td>' + inp(r.id, 'high', r) + '</td><td><span class="status-chip ' + st.cls + '">' + st.t + '</span></td></tr>'; }).join('');
+      return '<tr><td class="rowlabel">' + r.label + (r.edited ? ' <span style="font-size:10px;color:var(--ink-500)">(edited)</span>' : '') + '</td><td><b>' + fmt(v, r.unit) + '</b></td><td>' + inp(r.id, 'low', r) + '</td><td>' + inp(r.id, 'high', r) + '</td><td><span class="status-chip ' + st.cls + '">' + st.t + '</span></td></tr>'; }).join('');
     var out = R.filter(function(r){ return status(r, d[r.id]).cls === 'warn'; });
     var summary = out.length ? '<div class="note-flag" style="margin-top:0"><span>&#9888;</span><div><b>' + out.length + ' of ' + R.length + ' assumptions sit outside the published range:</b> ' + out.map(function(r){ return r.label.replace(/ \(.*\)/, ''); }).join('; ') + '. That is not an error - it is where a reviewer will push, so have the reason ready.</div></div>'
       : '<div class="note-flag" style="margin-top:0"><span>&#10003;</span><div>Every assumption sits inside the published range.</div></div>';
-    var src = R.map(function(r){ return '<tr><td class="rowlabel">' + r.label.replace(/ \(.*\)/, '') + '</td><td>' + r.asOf + '</td><td style="text-align:left;white-space:normal;min-width:260px">' + (r.url ? '<a href="' + r.url + '" target="_blank" rel="noopener">' + r.src + '</a>' : r.src) + '<div style="font-size:11px;color:#7a8da1;margin-top:4px">' + r.note + '</div></td></tr>'; }).join('');
+    var src = R.map(function(r){ return '<tr><td class="rowlabel">' + r.label.replace(/ \(.*\)/, '') + '</td><td>' + r.asOf + '</td><td style="text-align:left;white-space:normal;min-width:260px">' + (r.url ? '<a href="' + r.url + '" target="_blank" rel="noopener">' + r.src + '</a>' : r.src) + '<div style="font-size:11px;color:var(--ink-500);margin-top:4px">' + r.note + '</div></td></tr>'; }).join('');
     main = summary
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Deal vs Published Market Range</caption><thead><tr><th class="rowlabel-h">Assumption</th><th>This deal</th><th>Range low</th><th>Range high</th><th>Position</th></tr></thead><tbody>' + body + '</tbody></table></div>'
       + '<div style="margin-top:10px"><button type="button" class="status-chip" onclick="bkMarketReset()">RESET RANGES TO PUBLISHED</button></div>'
@@ -29533,7 +29533,7 @@ function ganttSheet(M, o){
     var pad = hasWbs && r.depth ? '<span style="display:inline-block;width:' + (r.depth * 14) + 'px"></span>' : '', closed = r.id && fold.indexOf(r.id) >= 0;
     var tg = !hasWbs || r.linked ? '' : r.summary ? '<span class="gx-fold" role="button" tabindex="0" data-name="' + esc(r.name) + '" aria-expanded="' + (closed ? 'false' : 'true') + '" aria-label="' + (closed ? 'Expand ' : 'Collapse ') + esc(r.name) + '" onclick="bkGxFold(\'' + esc(r.id) + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();bkGxFold(\'' + esc(r.id) + '\')}">' + (closed ? '+' : '−') + '</span> ' : '<span class="gx-fold-sp"></span> ';
     var code = hasWbs && r.wbs && !r.linked ? '<span style="opacity:.55;font-weight:400">' + esc(r.wbs) + '</span> ' : '';
-    var cnt = r.summary && !r.empty ? '<span style="opacity:.6;font-weight:400"> &middot; ' + r.leafN + (r.leafN === 1 ? ' task' : ' tasks') + '</span>' : '';
+    var cnt = r.summary && !r.empty ? '<span style="color:var(--ink-500);font-weight:400"> &middot; ' + r.leafN + (r.leafN === 1 ? ' task' : ' tasks') + '</span>' : '';
     return pad + tg + code + (r.milestone ? '&#9670; ' : '') + esc(r.name) + cnt; };
   var basisText = function(b){ return b === 'cost' ? 'weighted by cost' : b === 'months' ? 'weighted by months' : b === 'average' ? 'average of the tasks with a percent' : ''; };
   secs.forEach(function(g){
@@ -33966,7 +33966,7 @@ html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
 
 /* STATUS CHIPS: INPUT is light blue (you can type here), NOT APPLIED / N/A is grey (does not apply), OPTIONAL is plain outline. */
 html body #viewport .status-chip[data-bk-chip="input"]{ background:#E3EEFB !important; color:#1A4B8C !important; }
-html body #viewport .status-chip[data-bk-chip="na"]{ background:#ECEFF2 !important; color:#6B7785 !important; }
+html body #viewport .status-chip[data-bk-chip="na"]{ background:#ECEFF2 !important; color:var(--ink-500) !important; }
 html body #viewport .status-chip[data-bk-chip="optional"]{ background:transparent !important; color:var(--ae-dim) !important; box-shadow:inset 0 0 0 1px var(--ae-line); }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; } :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; } }
 :root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; }

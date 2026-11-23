@@ -408,7 +408,7 @@ function ganttSheet(M, o){
     var pad = hasWbs && r.depth ? '<span style="display:inline-block;width:' + (r.depth * 14) + 'px"></span>' : '', closed = r.id && fold.indexOf(r.id) >= 0;
     var tg = !hasWbs || r.linked ? '' : r.summary ? '<span class="gx-fold" role="button" tabindex="0" data-name="' + esc(r.name) + '" aria-expanded="' + (closed ? 'false' : 'true') + '" aria-label="' + (closed ? 'Expand ' : 'Collapse ') + esc(r.name) + '" onclick="bkGxFold(\'' + esc(r.id) + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();bkGxFold(\'' + esc(r.id) + '\')}">' + (closed ? '+' : '−') + '</span> ' : '<span class="gx-fold-sp"></span> ';
     var code = hasWbs && r.wbs && !r.linked ? '<span style="opacity:.55;font-weight:400">' + esc(r.wbs) + '</span> ' : '';
-    var cnt = r.summary && !r.empty ? '<span style="opacity:.6;font-weight:400"> &middot; ' + r.leafN + (r.leafN === 1 ? ' task' : ' tasks') + '</span>' : '';
+    var cnt = r.summary && !r.empty ? '<span style="color:var(--ink-500);font-weight:400"> &middot; ' + r.leafN + (r.leafN === 1 ? ' task' : ' tasks') + '</span>' : '';
     return pad + tg + code + (r.milestone ? '&#9670; ' : '') + esc(r.name) + cnt; };
   var basisText = function(b){ return b === 'cost' ? 'weighted by cost' : b === 'months' ? 'weighted by months' : b === 'average' ? 'average of the tasks with a percent' : ''; };
   secs.forEach(function(g){
