@@ -221,7 +221,7 @@
   .meta-strip{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--surface);}
   .meta-strip .cell{padding:9px 14px; border-right:1px solid var(--line-soft);}
   .meta-strip .cell:last-child{border-right:none;}
-  .meta-strip .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-400); font-weight:600; margin-bottom:2px;}
+  .meta-strip .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-500); font-weight:600; margin-bottom:2px;}
   .meta-strip .v{font-size:13px; font-weight:600; color:var(--ink-900); font-variant-numeric:tabular-nums;}
 
   .body-grid{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:0; align-items:start;}
@@ -246,7 +246,7 @@
   .metric-row:last-child{border-bottom:none;}
   .metric-row .k{font-size:11px; color:var(--ink-500);}
   .metric-row .v{font-size:12.5px; font-weight:700; color:var(--ink-900); font-variant-numeric:tabular-nums; text-align:right;}
-  .metric-row .v.pos{color:var(--status-pass);}
+  .metric-row .v.pos{color:var(--ds-pos);}
   .metric-row .v.neg{color:var(--status-fail);}
   .info-list .metric-row .v{font-weight:600; font-size:12px;}
   .status-chip{display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.04em; padding:2px 8px; border-radius:20px; text-transform:uppercase;}

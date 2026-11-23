@@ -42,7 +42,7 @@ function chip(cls,t){ return '<span class="status-chip '+(cls||'')+'">'+esc(t)+'
 function note(sym,html){ return '<div class="note-flag" style="margin-top:10px;"><span>'+sym+'</span><div>'+html+'</div></div>'; }
 function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; }
 function val(t){ return '<td class="v">'+t+'</td>'; }
-function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
+function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>'+caption+'</caption>'
        + '<thead>'+headHtml+'</thead><tbody>'+bodyHtml+'</tbody></table></div>';

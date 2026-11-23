@@ -178,7 +178,7 @@ html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
 
 /* STATUS CHIPS: INPUT is light blue (you can type here), NOT APPLIED / N/A is grey (does not apply), OPTIONAL is plain outline. */
 html body #viewport .status-chip[data-bk-chip="input"]{ background:#E3EEFB !important; color:#1A4B8C !important; }
-html body #viewport .status-chip[data-bk-chip="na"]{ background:#ECEFF2 !important; color:#6B7785 !important; }
+html body #viewport .status-chip[data-bk-chip="na"]{ background:#ECEFF2 !important; color:var(--ink-500) !important; }
 html body #viewport .status-chip[data-bk-chip="optional"]{ background:transparent !important; color:var(--ae-dim) !important; box-shadow:inset 0 0 0 1px var(--ae-line); }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; } :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; } }
 :root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; }
