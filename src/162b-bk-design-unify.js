@@ -136,6 +136,28 @@ function rail(){
       /* collapsed: the group's letter opens the sidebar on that group */
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
+/* Every input, select and text area has a name a screen reader can say. Most sit in table rows where the row label and the column heading are plain text beside them, not linked to them:
+   a control that has no name of its own is named "row label, column heading" (or by the label printed beside it in a form). Only the aria-label attribute is set, so nothing changes on screen,
+   and a control that already has a label, aria-label, aria-labelledby or title is left alone. */
+function ctlText(t){ return String(t || '').replace(/[\u24D8\u2139\u25B6\u25C0\u25B8\u25BE]/g, '').replace(/\s+/g, ' ').trim().slice(0, 70); }
+function ctlColHead(table, td){ var idx = 0; [].some.call(td.parentElement.cells, function(c){ if(c === td) return true; idx += c.colSpan || 1; return false; });
+  var rows = table.tHead ? [].slice.call(table.tHead.rows) : []; if(!rows.length){ var r0 = table.rows[0]; if(r0 && r0.cells.length && [].every.call(r0.cells, function(c){ return c.tagName === 'TH'; })) rows = [r0]; }
+  for(var i = rows.length - 1; i >= 0; i--){ var pos = 0, hit = null; [].forEach.call(rows[i].cells, function(c){ var sp = c.colSpan || 1; if(idx >= pos && idx < pos + sp) hit = c; pos += sp; }); if(hit && ctlText(hit.textContent)) return ctlText(hit.textContent); }
+  return ''; }
+function ctlName(e){
+  var td = e.closest('td,th'), table = td && td.closest('table');
+  if(td && table){ var c0 = td.parentElement.cells[0], row = '', sub = '', head = ctlColHead(table, td);
+    if(c0 && c0 !== td){ var cl = c0.cloneNode(true), subs = [].slice.call(cl.querySelectorAll('.bk-sub,.sub,small,.hint,.ae-hint,.dim,.muted')); sub = ctlText(subs.map(function(n){ return n.textContent; }).join(' ')); subs.forEach(function(n){ n.remove(); }); var bd = cl.querySelector('b,strong'), bt = bd ? ctlText(bd.textContent) : '';
+      if(bt){ var rest = ctlText(cl.textContent.replace(bd.textContent, '')); row = bt; if(rest) sub = (sub ? sub + ' ' : '') + rest; } else row = ctlText(cl.textContent); }
+    e.__bkSub = sub; if(row && head && head.toLowerCase() !== row.toLowerCase()) return row + ', ' + head; return row || head || ''; }
+  var box = e.closest('.ae-form > div'), lab = box && box.previousElementSibling && box.previousElementSibling.tagName === 'LABEL' ? box.previousElementSibling : null;
+  if(!lab && e.parentElement){ lab = e.parentElement.querySelector(':scope > label'); if(!lab && e.parentElement.previousElementSibling && e.parentElement.previousElementSibling.tagName === 'LABEL') lab = e.parentElement.previousElementSibling; }
+  var t = lab ? ctlText(lab.textContent) : ''; if(t) return e.type === 'range' ? t + ' (slider)' : t;
+  return ctlText(e.getAttribute('placeholder') || e.getAttribute('name') || ''); }
+function nameControls(v){
+  [].forEach.call(v.querySelectorAll('input:not([type=hidden]), select, textarea'), function(e){
+    var own = e.hasAttribute('aria-labelledby') || e.getAttribute('title') || e.closest('label') || (e.id && document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(e.id) : e.id) + '"]')) || (e.hasAttribute('aria-label') && !e.hasAttribute('data-bk-aria'));
+    if(own) return; e.__bkSub = ''; var n = ctlName(e); if(n){ if(e.getAttribute('aria-label') !== n) e.setAttribute('aria-label', n); e.setAttribute('data-bk-aria', '1'); if(e.__bkSub) e.setAttribute('aria-description', e.__bkSub); } }); }
 var queued = false;
 /* a cell filled with a heat color (sensitivity grids and the like) keeps type that reads on it: whichever of near-black or white has more contrast with the fill, whenever the
    theme's own type color would fall short (light type from the night palette on a pale or mid-tone fill) */
@@ -156,7 +178,7 @@ function gridFill(root){ root.querySelectorAll('table.fin').forEach(function(t){
     var up = x >= mid, k = up ? (mx === mid ? 0 : (x - mid) / (mx - mid)) : (mn === mid ? 0 : (mid - x) / (mid - mn));
     c.style.setProperty('background', up ? 'rgba(70,160,110,' + (0.08 + 0.4 * k).toFixed(2) + ')' : 'rgba(205,85,70,' + (0.08 + 0.4 * k).toFixed(2) + ')', 'important'); });
   t.querySelectorAll('thead th:not(:first-child)').forEach(function(th){ th.style.setProperty('text-align', 'center', 'important'); }); }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); gridFill(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); gridFill(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); nameControls(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
