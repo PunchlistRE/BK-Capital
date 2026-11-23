@@ -98,21 +98,52 @@ NAV_TABS.length = 0; tabs.forEach(function(t){ NAV_TABS.push(t); });
 
 /* the side menu: the vertical version of the top tabs. One heading per tab (a count of its sheets), under it the same groups and sheets in the same order. */
 function railBuild(){
-  var rail = document.getElementById('rail-groups'); if(!rail) return; rail.innerHTML = '';
+  var rail = document.getElementById('rail-groups'); if(!rail) return;
+  /* the menu is rebuilt on every page change: remember where keyboard focus was so it can be put back */
+  var fk = null, ae = document.activeElement; if(ae && ae !== document.body && rail.contains(ae)) fk = ae.classList.contains('rail-item') ? ['i', ae.dataset.sheet] : ['g', ((ae.querySelector('span') || {}).textContent || '')];
+  var rr = document.getElementById('rail'); if(rr && !rr.getAttribute('aria-label')) rr.setAttribute('aria-label', 'Sheets');
+  rail.innerHTML = '';
   var cur = null; try { cur = currentSheet; } catch(e){}
   NAV_TABS.forEach(function(t){
     if(window.bkNavTabHidden(t, cur)) return;
     var gs = t.groups.map(function(id){ return GROUPS.filter(function(x){ return x.id === id; })[0]; }).filter(function(g){ return g && !g.hidden && groupShown(g, cur); });
     var n = gs.reduce(function(a, g){ return a + window.bkNavVisible(g).length; }, 0); if(!n) return;
     var wrap = document.createElement('div'); wrap.className = 'rail-group'; wrap.setAttribute('data-nav-tab', t.id);
-    var lab = document.createElement('div'); lab.className = 'rail-group-label'; lab.innerHTML = '<span>' + t.label + '</span><span class="grp-tag">' + n + '</span>'; wrap.appendChild(lab);
+    var lab = document.createElement('div'); lab.className = 'rail-group-label'; lab.innerHTML = '<span>' + t.label + '</span><span class="grp-tag">' + n + '</span>'; lab.setAttribute('role', 'button'); lab.setAttribute('tabindex', '0'); wrap.appendChild(lab);
     gs.forEach(function(g, gi){
       if(gs.length > 1){ var sub = document.createElement('div'); sub.className = 'rail-sub'; sub.textContent = g.label; wrap.appendChild(sub); }
-      window.bkNavVisible(g).forEach(function(s){ var item = document.createElement('div'); item.className = 'rail-item' + (cur === s || FOLDED[cur] === s ? ' active' : ''); item.style.setProperty('--gid-color', g.color); item.dataset.sheet = s;
+      window.bkNavVisible(g).forEach(function(s){ var item = document.createElement('div'); item.className = 'rail-item' + (cur === s || FOLDED[cur] === s ? ' active' : ''); item.style.setProperty('--gid-color', g.color); item.dataset.sheet = s; item.setAttribute('role', 'link'); item.setAttribute('tabindex', '0'); if(item.classList.contains('active')) item.setAttribute('aria-current', 'page');
         item.innerHTML = '<span class="dot"></span><span class="name">' + label(s) + '</span>'; item.addEventListener('click', function(){ showSheet(s); }); wrap.appendChild(item); }); });
     rail.appendChild(wrap); });
   var sg = GROUPS.filter(function(g){ return g.hidden; }); /* the SYS_ sheets stay hidden in both menus */
+  if(fk){ var f = fk[0] === 'i' ? [].slice.call(rail.querySelectorAll('.rail-item')).filter(function(x){ return x.dataset.sheet === fk[1]; })[0]
+        : [].slice.call(rail.querySelectorAll('.rail-group-label')).filter(function(x){ return ((x.querySelector('span') || {}).textContent || '') === fk[1]; })[0];
+    if(f && f.offsetParent !== null) f.focus({ preventScroll:true }); }
+  railAria(); menuSync();
 }
+/* keyboard: Enter or Space on a sheet opens it, on a group heading folds or unfolds it; the heading says which */
+function railAria(){ [].forEach.call(document.querySelectorAll('#rail-groups .rail-group'), function(g){ var l = g.querySelector('.rail-group-label'); if(l) l.setAttribute('aria-expanded', String(!g.classList.contains('pl-collapsed'))); }); }
+(function(){ var host = document.getElementById('rail-groups'); if(!host) return;
+  host.addEventListener('keydown', function(e){ if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return; var t = e.target;
+    if(t.classList && t.classList.contains('rail-item')){ e.preventDefault(); showSheet(t.dataset.sheet); }
+    else if(t.classList && t.classList.contains('rail-group-label')){ e.preventDefault(); t.click(); } });
+  new MutationObserver(railAria).observe(host, { subtree:true, childList:true, attributes:true, attributeFilter:['class'] }); })();
+/* the phone menu: the same sheet list as a drawer at 900 px and below. It already closes on a tap outside or a choice; this adds what was missing: a visible way to close it, Escape,
+   focus moved in and put back, a dimmed page behind it that does not scroll, and the open state told to assistive technology */
+function drawerMode(){ return window.innerWidth <= 900; }
+function menuBtns(){ return [].slice.call(document.querySelectorAll('[data-bk-menu]')); }
+function menuSync(){ var r = document.getElementById('rail'); if(!r) return; var open = r.classList.contains('open') && drawerMode();
+  menuBtns().forEach(function(b){ b.setAttribute('aria-expanded', open ? 'true' : 'false'); b.setAttribute('aria-controls', 'rail'); }); document.documentElement.classList.toggle('bk-rail-open', open); }
+(function(){ var r = document.getElementById('rail'); if(!r) return;
+  if(!r.querySelector('.bk-rail-close')){ var cb = document.createElement('button'); cb.type = 'button'; cb.className = 'bk-rail-close'; cb.setAttribute('aria-label', 'Close menu'); cb.innerHTML = '&times;';
+    cb.addEventListener('click', function(){ window.__bkRailKey = 1; r.classList.remove('open'); }); r.appendChild(cb); }
+  var was = false;
+  new MutationObserver(function(){ var open = r.classList.contains('open') && drawerMode(); menuSync();
+    if(open && !was) setTimeout(function(){ var c = [].slice.call(r.querySelectorAll('.rail-item')).filter(function(x){ return x.offsetParent !== null; }), t = c.filter(function(x){ return x.classList.contains('active'); })[0] || c[0]; if(t) t.focus({ preventScroll:true }); }, 0);
+    if(!open && was && window.__bkRailKey){ var b = menuBtns()[0]; if(b) b.focus(); }
+    if(!open) window.__bkRailKey = 0; was = open; }).observe(r, { attributes:true, attributeFilter:['class'] });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && r.classList.contains('open') && drawerMode()){ window.__bkRailKey = 1; r.classList.remove('open'); } });
+  window.addEventListener('resize', menuSync); })();
 window.bkBuildRail = railBuild; try { bkBuildRail = railBuild; } catch(e){}
 railBuild();
 
@@ -140,5 +171,9 @@ var css = document.createElement('style'); css.id = 'bk-nav-css';
 css.textContent = '.tabnav-primary .grp-btn{padding-left:4px !important;padding-right:1px !important;font-size:10.5px !important;gap:2px !important;letter-spacing:0 !important;box-sizing:border-box;flex:0 0 106px;width:106px;min-width:106px;max-width:106px;justify-content:flex-start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.tabnav-primary .grp-btn{flex-basis:112px;width:112px;min-width:112px;max-width:112px}}'
  + '.rb-tabs .rb-t{padding-left:5px !important;padding-right:5px !important;font-size:12px !important;box-sizing:border-box;width:106px;min-width:106px;max-width:106px;flex:0 0 106px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.rb-tabs .rb-t{width:106px;min-width:106px;max-width:106px;flex-basis:106px}}'
  + '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}.bk-views .bkv-b{font:600 12.5px Inter,system-ui,sans-serif;padding:6px 12px;border:1px solid var(--ae-line,#c9d1dc);border-radius:999px;background:var(--ae-tab,#e3e8ee);color:var(--ae-ink,#1b2733);cursor:pointer}.bk-views .bkv-b:hover{border-color:#3E9AE6}.bk-views .bkv-b.on{background:#163a62;border-color:#163a62;color:#fff}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
+css.textContent += '.rail-item:focus-visible,.rail-group-label:focus-visible,.bk-rail-close:focus-visible{outline:2px solid #3E9AE6;outline-offset:-2px}'
+ + '.bk-rail-close{display:none}'
+ + '@media (max-width:900px){.rail.open .bk-rail-close{display:flex;position:absolute;top:8px;right:8px;width:40px;height:40px;align-items:center;justify-content:center;font:400 26px/1 Inter,system-ui,sans-serif;color:#eaf0f6;background:transparent;border:1px solid rgba(255,255,255,.28);border-radius:6px;cursor:pointer;z-index:2}'
+ + 'html.bk-rail-open,html.bk-rail-open body{overflow:hidden}html.bk-rail-open body::after{content:"";position:fixed;inset:0;z-index:19;background:rgba(8,14,22,.55)}}';
 document.head.appendChild(css);
 })();
