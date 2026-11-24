@@ -20612,7 +20612,7 @@ register('IC Memo', function(){
     meta:{ Property:s.name, Verdict:g.verdict, Score:(g.score * 100).toFixed(0) + '%', Exceptions:g.hard + ' hard / ' + g.soft + ' soft' },
     main: banner
       + table('Investment Thesis', null, thesisHtml)
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows, 'bk-kv') + table('Returns', null, retRows, 'bk-kv') + table('Financing', null, fin, 'bk-kv') + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows, 'bk-kv') + table('Returns', null, retRows, 'bk-kv') + table('Financing', null, fin, 'bk-kv') + '</div>'
       + table('Policy Test Table - Every Gate in One Place', th(['Gate', 'Underwritten', 'Threshold', 'Test', 'Result', 'Severity', 'Weight', 'Score']), gateRows)
       + table('Ranked Exceptions', th(['#', 'Exception', 'Severity']), exc)
       + table('Break-Even and Stress Cushions', th(['Metric', 'Value', 'Meaning']), cush)
@@ -24630,8 +24630,9 @@ function subOf(tab){ var t = TABS.filter(function(x){ return x.id === tab; })[0]
 window.bkEdSub = function(tab, id){ subs[tab] = id; try { localStorage.setItem(SUBKEY, JSON.stringify(subs)); } catch(e){} showSheet(tab); };
 window.bkEdGo = function(sheet, tab, id){ if(tab){ subs[tab] = id; try { localStorage.setItem(SUBKEY, JSON.stringify(subs)); } catch(e){} } showSheet(sheet); };
 /* ---------- building blocks ---------- */
+/* a phone shows a number pad for whole numbers and dollar amounts (percent fields are left alone: the iPhone decimal pad has no minus key and a growth rate can be negative) */
 function inp(path, kind, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s, path); if((v === undefined || v === null || v === '') && o.def !== undefined) v = o.def; var id = 'ae-' + String(path).replace(/[^A-Za-z0-9]+/g, '-');
-  return '<input type="text" id="' + id + '" class="ae-in' + (kind === 'text' ? '' : ' num') + '" value="' + esc(fmtIn(v, kind)) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + ' autocomplete="off" onchange="bkEdSet(\'' + path + '\',\'' + kind + '\',this.value' + (o.blank ? ',\'' + o.blank + '\'' : '') + ')">'; }
+  return '<input type="text" id="' + id + '" class="ae-in' + (kind === 'text' ? '' : ' num') + '"' + (kind === 'int' ? ' inputmode="numeric"' : kind === 'num' ? ' inputmode="decimal"' : '') + ' value="' + esc(fmtIn(v, kind)) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + ' autocomplete="off" onchange="bkEdSet(\'' + path + '\',\'' + kind + '\',this.value' + (o.blank ? ',\'' + o.blank + '\'' : '') + ')">'; }
 function sel(path, options, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s, path); if(v == null || v === '') v = o.def == null ? '' : o.def;
   return '<select class="ae-sel" onchange="bkEdSet(\'' + path + '\',\'text\',this.value)">' + options.map(function(op){ var val = Array.isArray(op) ? op[0] : op, lab = Array.isArray(op) ? op[1] : op; return '<option value="' + esc(val) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(lab) + '</option>'; }).join('') + '</select>'; }
 function ro(t){ return '<span class="ae-ro">' + t + '</span>'; }
@@ -33249,6 +33250,19 @@ thousands('Cash Flow Report'); thousands('Sources and Uses Report');
 wrap('After-Tax Report'); wrap('Refinance Report');
 })();
 </script>
+<style id="bk-touch-targets-css">/* TOUCH TARGETS (phones and tablets, and any touch screen). The controls a finger has to hit were 24 to 34 px high; they are raised to 40 px: the ribbon icon buttons (38 px, so the ribbon stays under its 46 px ceiling), the tab-strip arrows, the header buttons
+   (Guide, Search, Sign in, theme), the Sheets menu button, the Downside / Base / Upside and Undo / Redo buttons, the workflow steps, the page buttons and the sensitivity chips. The tabs (the section page tabs, the editor tabs and the view tabs) keep their established 28 px height.
+   Buttons inside table rows are left alone so dense grids keep their row height. A desktop with a mouse is unchanged. Size only: no colour, type, handler or text changes. */
+@media (max-width:900px), (pointer:coarse){
+  html body .nav-chev, html body .pl-search, html body #pl-guide-toggle, html body .pl-user button,
+  html body .bk-btn, html body .bk-menu-btn, html body .bk-case button, html body button[data-bk-undo], html body button[data-bk-redo], html body .bk-step,
+  html body .bk-sx-chip, html body .pl-hbtn, html body .pl-btn, html body .ae-btn, html body .pf-print{ min-height:40px; }
+  html body .nav-chev{ min-width:40px; }
+  /* the ribbon keeps its established height ceiling (46 px): its icon buttons are 38 px high, the most that fits with the ribbon's own padding */
+  html body .bk-ribbon .rb-c{ min-width:40px; min-height:38px; }
+  html body td .bk-btn, html body th .bk-btn, html body td .ae-btn, html body td .pl-btn, html body td .pl-hbtn{ min-height:0; }
+}
+</style>
 <script id="bk-nav">/* NAVIGATION, ONE DEFINITION (2.1, owner's November 2026 regrouping). Tab -> groups -> sheets, defined once here, drives all three: the top tabs (NAV_TABS), the sub-tab row under them and the side menu (the vertical version of the same tabs,
    with the same groups and sheets in the same order and the same names). Presentation only: no sheet, renderer or calculation changes. A sheet is in exactly one place; a sheet that exists but is not listed lands in Model & Data > Other so none vanishes.
    Conditional: the Development group (Operations) shows on development deals, the Business tab on deals with an operating business; both menus follow together. The SYS_ sheets stay hidden in both.
@@ -33771,6 +33785,25 @@ function mark(el, k){
   put(el, 'data-bk-w', k);
   var td = el.parentElement; if(td && td.tagName === 'TD' && td.children.length === 1){ put(td, 'data-bk-wc', k); var tb = td.closest('table'); if(tb && /\bae-grid\b/.test(tb.className || '')) put(tb, 'data-bk-fit', '1'); }
 }
+/* A drop-down in a table or grid keeps its kind's width unless that is too narrow for the words it shows. Then it grows just enough (never past its box) so no value is cut off ("Suspended until income or sale (passive"),
+   and goes back to the kind's width if a shorter choice is picked. The words are measured in a plain select placed off screen with the same font, padding and chevron, so the page's own width rules do not distort the measure. */
+var NEED = {};
+function needOf(el, text){
+  var cs = getComputedStyle(el), key = [cs.font, cs.letterSpacing, cs.paddingLeft, cs.paddingRight, cs.borderLeftWidth, cs.borderRightWidth, cs.appearance, cs.backgroundSize, text].join('|');
+  if(NEED[key] !== undefined) return NEED[key];
+  var t = document.createElement('select'); t.setAttribute('aria-hidden', 'true'); t.tabIndex = -1;
+  t.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;width:auto;min-width:0;max-width:none;box-sizing:' + cs.boxSizing + ';font:' + cs.font + ';letter-spacing:' + cs.letterSpacing + ';padding:' + cs.padding + ';border:' + cs.border + ';text-transform:' + cs.textTransform
+    + ';appearance:' + cs.appearance + ';-webkit-appearance:' + cs.webkitAppearance + ';background-image:' + cs.backgroundImage + ';background-repeat:no-repeat;background-position:' + cs.backgroundPosition + ';background-size:' + cs.backgroundSize;
+  var o = document.createElement('option'); o.textContent = text; t.appendChild(o); document.body.appendChild(t); var w = t.getBoundingClientRect().width; document.body.removeChild(t); return (NEED[key] = w);
+}
+function fitSelects(vp){
+  vp.querySelectorAll('select').forEach(function(el){
+    if(el.closest('.bk-flow,.bk-ribbon,.tabnav,.brand-bar,.pl-search')) return;
+    if(el.closest('.ae-form')) return;   /* a drop-down in a form keeps the one standard width (src/189) */
+    if(el.hasAttribute('data-bk-fit')){ el.style.removeProperty('width'); el.style.removeProperty('min-width'); el.style.removeProperty('max-width'); el.removeAttribute('data-bk-fit'); }
+    var o = el.options[el.selectedIndex], text = o ? o.text : ''; if(!text) return; var r = el.getBoundingClientRect(); if(r.width < 2) return;
+    var need = needOf(el, text); if(need > r.width + 1.5){ var w = Math.ceil(need) + 2; el.style.setProperty('width', w + 'px', 'important'); el.style.setProperty('min-width', w + 'px', 'important'); el.style.setProperty('max-width', '100%', 'important'); el.setAttribute('data-bk-fit', '1'); } });
+}
 function run(){
   var vp = document.getElementById('viewport'); if(!vp) return;
   vp.querySelectorAll(SEL).forEach(function(el){
@@ -33780,6 +33813,7 @@ function run(){
     if(r.width > 340 && el.tagName === 'INPUT' && !el.closest('.ae-form,.ae-grid')) return;   /* a long box on purpose (a question, a note, a task name) */
     var k; try { k = kindOf(el); } catch(e){ k = null; } if(k) mark(el, k);
   });
+  try { fitSelects(vp); } catch(e){}
 }
 var q = false; function schedule(){ if(q) return; q = true; requestAnimationFrame(function(){ q = false; try { run(); } catch(e){} }); }
 window.bkDisplayPass(schedule); window.bkFieldWidths = run;
@@ -34436,6 +34470,8 @@ html body #viewport table.ae-grid td[data-bk-wc="c"]{ width:var(--bk-w-c); }
 html body #viewport .ae-form [data-bk-w="s"], html body #viewport .ae-form [data-bk-w="m"], html body #viewport .ae-form [data-bk-w="l"], html body #viewport .ae-form [data-bk-w="c"]{ width:var(--bk-w-form,220px) !important; min-width:var(--bk-w-form,220px) !important; max-width:var(--bk-w-form,220px) !important; }
 html body #viewport .ae-form > div > [data-bk-w]{ margin-right:0; }
 @media (max-width:760px){ html body #viewport .ae-form [data-bk-w]{ width:100% !important; min-width:0 !important; max-width:100% !important; } }
+/* a drop-down in a form is one standard width, 266 px, the same for every one: wide enough for the longest label on the Valuation form ("Forward 12 months NOI after reserves"). Uniformity comes first; a phone keeps the full-width rule above. */
+@media (min-width:761px){ html body #viewport .ae-form select[data-bk-w]{ width:266px !important; min-width:266px !important; max-width:266px !important; } }
 </style>
 <style id="bk-emphasis-tiers-css">/* EMPHASIS TIERS (owner, November 2026). NO FILL: the owner chose rules over fills after seeing both. A table's totals are told apart by their rules and weight, not by a background, and each is ruled
    across the WHOLE row, label included:

@@ -151,7 +151,7 @@ register('IC Memo', function(){
     meta:{ Property:s.name, Verdict:g.verdict, Score:(g.score * 100).toFixed(0) + '%', Exceptions:g.hard + ' hard / ' + g.soft + ' soft' },
     main: banner
       + table('Investment Thesis', null, thesisHtml)
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows, 'bk-kv') + table('Returns', null, retRows, 'bk-kv') + table('Financing', null, fin, 'bk-kv') + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr));gap:0 24px">' + table('Deal Snapshot', null, dealRows, 'bk-kv') + table('Returns', null, retRows, 'bk-kv') + table('Financing', null, fin, 'bk-kv') + '</div>'
       + table('Policy Test Table - Every Gate in One Place', th(['Gate', 'Underwritten', 'Threshold', 'Test', 'Result', 'Severity', 'Weight', 'Score']), gateRows)
       + table('Ranked Exceptions', th(['#', 'Exception', 'Severity']), exc)
       + table('Break-Even and Stress Cushions', th(['Metric', 'Value', 'Meaning']), cush)

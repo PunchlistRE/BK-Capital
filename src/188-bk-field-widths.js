@@ -36,6 +36,25 @@ function mark(el, k){
   put(el, 'data-bk-w', k);
   var td = el.parentElement; if(td && td.tagName === 'TD' && td.children.length === 1){ put(td, 'data-bk-wc', k); var tb = td.closest('table'); if(tb && /\bae-grid\b/.test(tb.className || '')) put(tb, 'data-bk-fit', '1'); }
 }
+/* A drop-down in a table or grid keeps its kind's width unless that is too narrow for the words it shows. Then it grows just enough (never past its box) so no value is cut off ("Suspended until income or sale (passive"),
+   and goes back to the kind's width if a shorter choice is picked. The words are measured in a plain select placed off screen with the same font, padding and chevron, so the page's own width rules do not distort the measure. */
+var NEED = {};
+function needOf(el, text){
+  var cs = getComputedStyle(el), key = [cs.font, cs.letterSpacing, cs.paddingLeft, cs.paddingRight, cs.borderLeftWidth, cs.borderRightWidth, cs.appearance, cs.backgroundSize, text].join('|');
+  if(NEED[key] !== undefined) return NEED[key];
+  var t = document.createElement('select'); t.setAttribute('aria-hidden', 'true'); t.tabIndex = -1;
+  t.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;width:auto;min-width:0;max-width:none;box-sizing:' + cs.boxSizing + ';font:' + cs.font + ';letter-spacing:' + cs.letterSpacing + ';padding:' + cs.padding + ';border:' + cs.border + ';text-transform:' + cs.textTransform
+    + ';appearance:' + cs.appearance + ';-webkit-appearance:' + cs.webkitAppearance + ';background-image:' + cs.backgroundImage + ';background-repeat:no-repeat;background-position:' + cs.backgroundPosition + ';background-size:' + cs.backgroundSize;
+  var o = document.createElement('option'); o.textContent = text; t.appendChild(o); document.body.appendChild(t); var w = t.getBoundingClientRect().width; document.body.removeChild(t); return (NEED[key] = w);
+}
+function fitSelects(vp){
+  vp.querySelectorAll('select').forEach(function(el){
+    if(el.closest('.bk-flow,.bk-ribbon,.tabnav,.brand-bar,.pl-search')) return;
+    if(el.closest('.ae-form')) return;   /* a drop-down in a form keeps the one standard width (src/189) */
+    if(el.hasAttribute('data-bk-fit')){ el.style.removeProperty('width'); el.style.removeProperty('min-width'); el.style.removeProperty('max-width'); el.removeAttribute('data-bk-fit'); }
+    var o = el.options[el.selectedIndex], text = o ? o.text : ''; if(!text) return; var r = el.getBoundingClientRect(); if(r.width < 2) return;
+    var need = needOf(el, text); if(need > r.width + 1.5){ var w = Math.ceil(need) + 2; el.style.setProperty('width', w + 'px', 'important'); el.style.setProperty('min-width', w + 'px', 'important'); el.style.setProperty('max-width', '100%', 'important'); el.setAttribute('data-bk-fit', '1'); } });
+}
 function run(){
   var vp = document.getElementById('viewport'); if(!vp) return;
   vp.querySelectorAll(SEL).forEach(function(el){
@@ -45,6 +64,7 @@ function run(){
     if(r.width > 340 && el.tagName === 'INPUT' && !el.closest('.ae-form,.ae-grid')) return;   /* a long box on purpose (a question, a note, a task name) */
     var k; try { k = kindOf(el); } catch(e){ k = null; } if(k) mark(el, k);
   });
+  try { fitSelects(vp); } catch(e){}
 }
 var q = false; function schedule(){ if(q) return; q = true; requestAnimationFrame(function(){ q = false; try { run(); } catch(e){} }); }
 window.bkDisplayPass(schedule); window.bkFieldWidths = run;
