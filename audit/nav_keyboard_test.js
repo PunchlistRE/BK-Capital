@@ -15,6 +15,9 @@ async function open(b, w, h) { const ctx = await b.newContext({ viewport: { widt
   check('every group heading is a keyboard target and says folded or open', rail.labs > 0 && rail.labFocusable === rail.labs && rail.labRole === rail.labs && rail.labExp === rail.labs, rail.labFocusable + ' of ' + rail.labs);
   check('the rail has an accessible name and the open sheet is marked as current', rail.railLabel === 'Sheets' && rail.current.length === 1 && rail.current[0] === 'Home', rail.railLabel + ' / ' + rail.current);
   /* Tab reaches a sheet, Enter opens it, focus stays in the menu afterwards */
+  /* on Home only its own group is open, so open the Debt group from the keyboard first: that gives Tab a second sheet to reach (and checks a group that holds several sections unfolds with Enter) */
+  await p.evaluate(() => { const l = [].slice.call(document.querySelectorAll('#rail-groups .rail-group-label')).filter(e => (e.textContent || '').indexOf('Debt') === 0)[0]; if (l) l.focus(); }); await p.keyboard.press('Enter'); await p.waitForTimeout(250);
+  check('Enter on the Debt group heading opens it (a group of several sections)', await p.evaluate(() => { const l = [].slice.call(document.querySelectorAll('#rail-groups .rail-group-label')).filter(e => (e.textContent || '').indexOf('Debt') === 0)[0]; return !!l && l.getAttribute('aria-expanded') === 'true' && !l.parentNode.classList.contains('pl-collapsed'); }));
   await p.evaluate(() => { document.activeElement && document.activeElement.blur(); }); let reached = false; await p.keyboard.press('Tab');
   for (let i = 0; i < 160; i++) { const on = await p.evaluate(() => { const e = document.activeElement; return !!(e && e.classList && e.classList.contains('rail-item')); }); if (on) { reached = true; break; } await p.keyboard.press('Tab'); }
   check('Tab reaches a sheet in the rail', reached);

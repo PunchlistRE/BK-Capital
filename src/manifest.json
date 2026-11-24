@@ -1125,6 +1125,11 @@
 "close": "</style>"
 },
 {
+"file": "208-bk-control-uniform.css",
+"open": "\n<style id=\"bk-control-uniform-css\">",
+"close": "</style>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
