@@ -88,11 +88,14 @@ var userOpen = store(OKEY) || {};
 function applyRail(){
   var rail = document.getElementById('rail-groups'); if(!rail) return; var cur = null; try { cur = currentSheet; } catch(e){} var g = groupOf(cur);
   [].forEach.call(rail.querySelectorAll('.rail-group'), function(el){ var lab = (el.querySelector('.rail-group-label span') || {}).textContent || '';
-    var grp = GROUPS.filter(function(x){ return x.label === lab || lab.indexOf(x.label) === 0; })[0]; if(!grp) return;
-    var open = (g && grp.id === g.id) || !!userOpen[grp.id]; var has = el.classList.contains('pl-collapsed'); if(open === has) el.classList.toggle('pl-collapsed', !open); el.setAttribute('data-pl-gid', grp.id); });
+    var grp = GROUPS.filter(function(x){ return x.label === lab || lab.indexOf(x.label) === 0; })[0]; var tg = null;
+    /* a heading that holds several sections (Property, Debt, Model & Data) matches none of them by name: it is one fold, keyed by its tab, and is the working group when the open page is in any of its sections */
+    if(!grp){ var nt = el.getAttribute('data-nav-tab'), tab = null; try { tab = NAV_TABS.filter(function(x){ return x.id === nt; })[0]; } catch(e){} if(!tab) return; grp = { id:'tab-' + nt }; tg = tab.groups; }
+    var open = (g && (grp.id === g.id || (tg && tg.indexOf(g.id) > -1))) || !!userOpen[grp.id]; var has = el.classList.contains('pl-collapsed'); if(open === has) el.classList.toggle('pl-collapsed', !open); el.setAttribute('data-pl-gid', grp.id); });
 }
 document.addEventListener('click', function(e){ var lab = e.target.closest && e.target.closest('#rail-groups .rail-group-label'); if(!lab) return; var grp = lab.parentNode, id = grp.getAttribute('data-pl-gid'); if(!id) return;
   var cur = null; try { cur = currentSheet; } catch(x){} var g = groupOf(cur), isCur = g && g.id === id;
+  if(!isCur && g && /^tab-/.test(id)){ try { var tb = NAV_TABS.filter(function(x){ return x.id === id.slice(4); })[0]; isCur = !!(tb && tb.groups.indexOf(g.id) > -1); } catch(x){} }
   if(grp.classList.contains('pl-collapsed')){ userOpen[id] = 1; grp.classList.remove('pl-collapsed'); } else { delete userOpen[id]; if(!isCur) grp.classList.add('pl-collapsed'); else { userOpen[id] = 0; grp.classList.add('pl-collapsed'); } }
   store(OKEY, userOpen); });
 /* the current group re-opens when you move into it; a folded current group stays folded until you navigate */

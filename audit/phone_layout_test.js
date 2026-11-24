@@ -39,6 +39,12 @@ const sheetsOf = p => p.evaluate(() => { const o = []; document.querySelectorAll
   { const { ctx, p } = await open(b, deck, 1440, false); const ws = new Set();
    for (const s of ['Valuation', 'Property', 'Investment', 'Revenues', 'Expenses']) { await p.evaluate(x => showSheet(x), s); await p.waitForTimeout(450); (await p.evaluate(() => [].slice.call(document.querySelectorAll('#viewport .ae-form select')).filter(e => e.getBoundingClientRect().width > 0).map(e => Math.round(e.getBoundingClientRect().width)))).forEach(w => ws.add(w)); }
    check(dn + ' 1440 px: every drop-down in a form is the one standard width, 266 px', ws.size === 1 && ws.has(266), [...ws].join()); await ctx.close(); }
+  /* text, amount and choice boxes in a form are the same width as its drop-downs, so their right edges line up */
+  { const { ctx, p } = await open(b, deck, 1440, false); const off = []; let n = 0;
+   for (const s of ['Valuation', 'Property', 'Investment', 'Revenues', 'Expenses']) { await p.evaluate(x => showSheet(x), s); await p.waitForTimeout(450);
+    const r = await p.evaluate(() => [].slice.call(document.querySelectorAll('#viewport .ae-form input[data-bk-w]:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=date]), #viewport .ae-form select[data-bk-w], #viewport .ae-form span.ae-ro[data-bk-w]')).filter(e => e.getBoundingClientRect().width > 0).map(e => Math.round(e.getBoundingClientRect().width)));
+    r.forEach(x => { n++; if (x !== 266) off.push(s + ' ' + x); }); }
+   check(dn + ' 1440 px: every box in a form (inputs and drop-downs) is 266 px wide, so the right edges line up (' + n + ' boxes)', n > 0 && off.length === 0, off.slice(0, 4).join(' ; ')); await ctx.close(); }
   { const { ctx, p } = await open(b, deck, 1440, false); const h = await p.evaluate(() => { const e = document.querySelector('.pl-search'), g = document.querySelector('#pl-guide-toggle'); return { search: Math.round(e.getBoundingClientRect().height), guide: Math.round(g.getBoundingClientRect().height) }; });
    check(dn + ' 1440 px with a mouse: header buttons keep their desktop height (under 36 px)', h.search < 36 && h.guide < 36, JSON.stringify(h)); await ctx.close(); }
   /* 4: input modes */

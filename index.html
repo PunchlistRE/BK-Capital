@@ -23257,11 +23257,14 @@ var userOpen = store(OKEY) || {};
 function applyRail(){
   var rail = document.getElementById('rail-groups'); if(!rail) return; var cur = null; try { cur = currentSheet; } catch(e){} var g = groupOf(cur);
   [].forEach.call(rail.querySelectorAll('.rail-group'), function(el){ var lab = (el.querySelector('.rail-group-label span') || {}).textContent || '';
-    var grp = GROUPS.filter(function(x){ return x.label === lab || lab.indexOf(x.label) === 0; })[0]; if(!grp) return;
-    var open = (g && grp.id === g.id) || !!userOpen[grp.id]; var has = el.classList.contains('pl-collapsed'); if(open === has) el.classList.toggle('pl-collapsed', !open); el.setAttribute('data-pl-gid', grp.id); });
+    var grp = GROUPS.filter(function(x){ return x.label === lab || lab.indexOf(x.label) === 0; })[0]; var tg = null;
+    /* a heading that holds several sections (Property, Debt, Model & Data) matches none of them by name: it is one fold, keyed by its tab, and is the working group when the open page is in any of its sections */
+    if(!grp){ var nt = el.getAttribute('data-nav-tab'), tab = null; try { tab = NAV_TABS.filter(function(x){ return x.id === nt; })[0]; } catch(e){} if(!tab) return; grp = { id:'tab-' + nt }; tg = tab.groups; }
+    var open = (g && (grp.id === g.id || (tg && tg.indexOf(g.id) > -1))) || !!userOpen[grp.id]; var has = el.classList.contains('pl-collapsed'); if(open === has) el.classList.toggle('pl-collapsed', !open); el.setAttribute('data-pl-gid', grp.id); });
 }
 document.addEventListener('click', function(e){ var lab = e.target.closest && e.target.closest('#rail-groups .rail-group-label'); if(!lab) return; var grp = lab.parentNode, id = grp.getAttribute('data-pl-gid'); if(!id) return;
   var cur = null; try { cur = currentSheet; } catch(x){} var g = groupOf(cur), isCur = g && g.id === id;
+  if(!isCur && g && /^tab-/.test(id)){ try { var tb = NAV_TABS.filter(function(x){ return x.id === id.slice(4); })[0]; isCur = !!(tb && tb.groups.indexOf(g.id) > -1); } catch(x){} }
   if(grp.classList.contains('pl-collapsed')){ userOpen[id] = 1; grp.classList.remove('pl-collapsed'); } else { delete userOpen[id]; if(!isCur) grp.classList.add('pl-collapsed'); else { userOpen[id] = 0; grp.classList.add('pl-collapsed'); } }
   store(OKEY, userOpen); });
 /* the current group re-opens when you move into it; a folded current group stays folded until you navigate */
@@ -34524,7 +34527,7 @@ html body #viewport table.ae-grid td[data-bk-wc="l"]{ width:var(--bk-w-l); }
 html body #viewport table.ae-grid td[data-bk-wc="c"]{ width:var(--bk-w-c); }
 @media (max-width:760px){ html body #viewport [data-bk-w]{ max-width:100% !important; } }
 /* in a label-and-value form every box of a column is the same width, whatever it holds (a percent, a dollar amount, text or a choice): the left and right edges line up down the page */
-html body #viewport .ae-form [data-bk-w="s"], html body #viewport .ae-form [data-bk-w="m"], html body #viewport .ae-form [data-bk-w="l"], html body #viewport .ae-form [data-bk-w="c"]{ width:var(--bk-w-form,220px) !important; min-width:var(--bk-w-form,220px) !important; max-width:var(--bk-w-form,220px) !important; }
+html body #viewport .ae-form [data-bk-w="s"], html body #viewport .ae-form [data-bk-w="m"], html body #viewport .ae-form [data-bk-w="l"], html body #viewport .ae-form [data-bk-w="c"]{ width:var(--bk-w-form,266px) !important; min-width:var(--bk-w-form,266px) !important; max-width:var(--bk-w-form,266px) !important; }
 html body #viewport .ae-form > div > [data-bk-w]{ margin-right:0; }
 @media (max-width:760px){ html body #viewport .ae-form [data-bk-w]{ width:100% !important; min-width:0 !important; max-width:100% !important; } }
 /* a drop-down in a form is one standard width, 266 px, the same for every one: wide enough for the longest label on the Valuation form ("Forward 12 months NOI after reserves"). Uniformity comes first; a phone keeps the full-width rule above. */
@@ -34594,6 +34597,12 @@ html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk
   html body #viewport .rp .rp-tbl tr.tot:not(.key) > td{ border-color:var(--bk-imp-rule) !important; }
   html body #viewport .rp .rp-tbl tr.tot.key.key > td{ border-color:var(--bk-key-rule) !important; }
 }
+</style>
+<style id="bk-control-uniform-css">/* ONE LOOK FOR EVERY CONTROL. A button, box or drop-down that nobody styled falls back to the browser's own look: Arial, 13 px, rounded corners and a different height from the rest of the app (the Sign in and theme
+   buttons, the tab arrows, the Rent Roll row count, the Deal Remedies and Deal Review boxes). Every control now uses the app's font, and an unstyled box or drop-down in a sheet gets the same look as the editor boxes.
+   :where() keeps these rules at zero weight, so any control that already has its own style keeps it. Font, size, border and padding only: no layout, colour value, handler or text changes. */
+:where(button, input, select, textarea){ font-family:inherit; }
+:where(#viewport) :where(input[type=text], input[type=number], input:not([type]), select, textarea){ box-sizing:border-box; padding:4px 7px; border:1px solid var(--bk-in-line,var(--ae-line)); background:var(--bk-in-fill,var(--ae-cell)); color:var(--bk-in-ink,var(--ae-ink)); font-size:12.5px; font-weight:600; border-radius:0; }
 </style>
 </body>
 </html>
