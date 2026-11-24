@@ -144,7 +144,10 @@
   var FIG=/^(?=.*\d)[\s(−$\-]*[\d$(][\d,.$%x()−\- ]*(bps|yrs?|x|%|mo)?\)?$/i, PERIOD=/year|yr\b|month|^20\d\d|^q[1-4]\b|^m\d|total|forecast|^close$|^stab/i;
   var cv=null; function tw(el,txt){ if(!cv) cv=document.createElement('canvas').getContext('2d'); var cs=getComputedStyle(el); cv.font=cs.fontStyle+' '+cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
     var m=0; String(txt).split('\n').forEach(function(l){ m=Math.max(m,cv.measureText(l.trim()).width); }); return m+(parseFloat(cs.letterSpacing)||0)*String(txt).length; }
-  function own(c){ var x=c.cloneNode(true); [].forEach.call(x.querySelectorAll('.bk-sub,select,option'),function(n){ n.remove(); }); return x.textContent.replace(/\s+/g,' ').trim(); }
+  /* a cell's own text, line by line: a block inside it (a description under a name) starts a new line, so two lines never read as one long word */
+  function lines(c){ var x=c.cloneNode(true); [].forEach.call(x.querySelectorAll('.bk-sub,select,option'),function(n){ n.remove(); }); [].forEach.call(x.querySelectorAll('div,p,br,li'),function(n){ n.parentNode.insertBefore(document.createTextNode('\n'),n); });
+    return x.textContent.split('\n').map(function(l){ return l.replace(/\s+/g,' ').trim(); }).filter(Boolean); }
+  function own(c){ return lines(c).join(' '); }
   function inScope(tb){ return tb.offsetParent && !tb.classList.contains('rp-tbl') && !tb.classList.contains('ae-grid') && !tb.closest('.rp, .ae, .gd-su'); }
   function setStyle(el,k,v){ if(el.style.getPropertyValue(k)!==v) el.style.setProperty(k,v); }
   function classify(tb){
@@ -177,19 +180,29 @@
   }
   function measure(o,r,i){
     var m=Math.max.apply(null,t(o.hs[i]).split(/\s+/).map(function(w){ return tw(o.hs[i],w); }))+22;
+    var txt=0;   /* a short phrase among the figures ("clean browser; nothing to migrate") stays on one line when it fits a short-text column */
     o.body.forEach(function(row){ var c=row.cells[i];
       if(r==='choice'){ var sl=c.querySelector('select'), so=sl&&sl.options[sl.selectedIndex]; if(so) m=Math.max(m,tw(sl,so.text)+48); }   /* sized by the choice shown; choosing another re-renders and re-measures */
       else if(r==='input'){ var ip=c.querySelector('input'), sf=c.querySelector('.bk-sfx'), pw=ip&&/width:\s*(\d+)px/.exec(ip.getAttribute('data-bk-pw')||''), base=ip?Math.max(tw(ip,ip.value||ip.placeholder||''),40,pw?+pw[1]-30:0):tw(c,own(c)); m=Math.max(m,base+30+(sf?tw(sf,sf.textContent)+12:0)); }
       else if(r==='status'){ var ch=c.querySelector('.status-chip'); m=Math.max(m,ch?Math.max(tw(ch,t(ch))+44,ch.getBoundingClientRect().width+18):tw(c,own(c))+22); }   /* the label as drawn (letter spacing, marker, padding), not an estimate */
-      else if(r==='amount'||r==='rate'||r==='period'){ var x=own(c), chp=c.querySelector('.status-chip'); if(chp) m=Math.max(m,tw(chp,t(chp))+44,chp.getBoundingClientRect().width+18); else if(/^(num|calc|empty)/.test(c.getAttribute('data-bk-kind')||'')||FIG.test(x)) m=Math.max(m,tw(c,x)+24); }
+      else if(r==='amount'||r==='rate'||r==='period'){ var x=own(c), chp=c.querySelector('.status-chip'); if(chp) m=Math.max(m,tw(chp,t(chp))+44,chp.getBoundingClientRect().width+18); else if(/^(num|calc|empty)/.test(c.getAttribute('data-bk-kind')||'')||FIG.test(x)) m=Math.max(m,tw(c,x)+24); else if(x) txt=Math.max(txt,tw(c,x)+24); }
       else m=Math.max(m,tw(c,own(c))+22); });
     /* no column is narrower than its longest unbreakable word (an identifier, a long figure): text may wrap between words, never inside one */
     var word=0; o.body.concat([{cells:o.hs}]).forEach(function(row){ var c=row.cells[i]; if(!c || c.querySelector('select,input')) return; own(c).split(/\s+/).forEach(function(wd){ if(wd.length>1) word=Math.max(word,tw(c,wd)); }); });
     var res=Math.max(Math.ceil(word+24),Math.min(CEIL[r],Math.max(FLOOR[r],Math.ceil(m)))), full=Math.ceil(tw(o.hs[i],t(o.hs[i]))+22);
+    if(txt>res && o.hs.length===2) res=Math.min(CEIL.short,Math.ceil(txt));   /* only a two-column label/value table, where the label column gives the room; in wider tables the phrase wraps rather than widen the table */
     if(full>res && full<=res*1.45) res=Math.min(CEIL[r],full);   /* a header stays on one line when that costs little; a long header wraps instead of widening its column */
     return res;
   }
-  function labelNat(o){ return Math.max.apply(null,o.body.map(function(r){ return tw(r.cells[0],own(r.cells[0])); }).concat([40]))+26; }
+  /* the narrowest a label column can go: its longest word, so a label wraps between words and never inside one */
+  function wordMin(o,i){ var m=0; o.body.concat([{cells:o.hs}]).forEach(function(r){ var c=r.cells[i]; if(!c || c.querySelector('select,input')) return; var cs=getComputedStyle(c), pad=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0)+4; own(c).split(/\s+/).forEach(function(wd){ if(wd.length>1) m=Math.max(m,tw(c,wd)+pad); }); }); return Math.ceil(m); }   /* the longest word plus that cell's own padding */
+  function labelWord(o){ return Math.max(40,wordMin(o,0)); }
+  /* the least a figure column can take without crushing: its widest figure, badge or word, plus padding (no floor) */
+  function figMin(o,i){ var m=wordMin(o,i); o.body.forEach(function(r){ var c=r.cells[i]; if(!c || c.querySelector('select,input')) return; var ch=c.querySelector('.status-chip'); if(ch){ m=Math.max(m,ch.getBoundingClientRect().width+18); return; }
+      var x=own(c); if(x && (FIG.test(x) || /^(num|calc)/.test(c.getAttribute('data-bk-kind')||''))){ var cs=getComputedStyle(c); m=Math.max(m,tw(c,x)+(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0)+4); } }); return Math.ceil(m); }
+  /* the least a field column can take: the value it shows (a drop-down may clip a long choice, as a drop-down does), never under 64 px */
+  function fieldMin(o,r,i){ var m=64; o.body.forEach(function(row){ var c=row.cells[i]; if(!c) return; var ip=c.querySelector('input'), sf=c.querySelector('.bk-sfx'); if(r==='input' && ip) m=Math.max(m,tw(ip,ip.value||ip.placeholder||'')+30+(sf?tw(sf,sf.textContent)+12:0)); }); return Math.min(Math.ceil(m),r==='choice'?112:999); }
+  function labelNat(o){ return Math.max.apply(null,o.body.map(function(r){ return Math.max.apply(null,lines(r.cells[0]).map(function(l){ return tw(r.cells[0],l); }).concat([0])); }).concat([40]))+26; }   /* its longest line */
   function standard(vp){
     var desk=window.innerWidth>760, groups=[];
     vp.querySelectorAll('table.fin').forEach(function(tb){ if(!inScope(tb)) return; var o=classify(tb); if(!o) return; o.tb=tb;
@@ -212,9 +225,18 @@
         var lw=o.fam==='kv'?null:o.fam==='kvn'?Math.min(W*0.36,Math.max(W*0.2,lab.kvn)):Math.min(300,Math.max(60,labelNat(o)));
         var tmin='';
         if(o.fam==='kvn'){ var room=W-fixed-nNotes*160; if(lw>room) lw=Math.max(W*0.2,room); if(fixed+lw+nNotes*160>W) tmin=Math.ceil(fixed+lw+nNotes*160)+'px'; }
-        if(o.fam==='period'){ var np=o.roles.filter(function(r){ return r==='period'; }).length, pm=need.period||FLOOR.period; if(lw+np*pm>W) tmin=Math.ceil(lw+np*pm)+'px'; }
+        /* a period table or a ledger that does not fit gives back its slack before it ever scrolls: first each figure column comes down to its widest
+           value plus padding, then the label column down to its longest word (labels wrap between words); only then does the table scroll inside its card */
+        if(o.fam==='period'){ var np=o.roles.filter(function(r){ return r==='period'; }).length, pm=need.period||FLOOR.period;
+          if(lw+np*pm>W){ var pw0=0; o.roles.forEach(function(r,i){ if(r==='period') pw0=Math.max(pw0,figMin(o,i)); }); pm=Math.max(pm-12,(W-lw)/np,pw0); if(lw+np*pm>W) lw=Math.max(labelWord(o),W-np*pm); if(lw+np*pm>W) tmin=Math.ceil(lw+np*pm)+'px'; } }
         if(o.fam==='kv'){ var lmin=Math.min(labelNat(o),Math.max(W*0.24,140)); if(fixed+lmin>W) tmin=Math.ceil(fixed+lmin)+'px'; }   /* the label is never squeezed below its minimum: the table scrolls instead */
-        if(o.fam==='ledger'){ var nf=0, fm=0; o.roles.forEach(function(r,i){ if(r==='amount'||r==='rate'){ nf++; fm=Math.max(fm,measure(o,r,i)); } }); if(lw+nf*fm>W) tmin=Math.ceil(lw+nf*fm)+'px'; }   /* figures never squeezed below their widest value: the ledger scrolls instead */
+        if(o.fam==='ledger'){ var nf=0, fm=0, own={}; o.roles.forEach(function(r,i){ if(r==='amount'||r==='rate'){ nf++; own[i]=measure(o,r,i); fm=Math.max(fm,own[i]); } });
+          if(lw+nf*fm>W){   /* too tight for equal columns: each figure column takes its own widest value, then drops its slack (never below its longest word), then the label gives way */
+            var sf=0; Object.keys(own).forEach(function(i){ sf+=own[i]; });
+            if(lw+sf>W) Object.keys(own).forEach(function(i){ own[i]=Math.max(own[i]-12,figMin(o,+i)); });
+            sf=0; Object.keys(own).forEach(function(i){ sf+=own[i]; }); if(lw+sf>W) Object.keys(own).forEach(function(i){ own[i]=figMin(o,+i); });
+            sf=0; Object.keys(own).forEach(function(i){ sf+=own[i]; w[i]=own[i]; });
+            if(lw+sf>W) lw=Math.max(labelWord(o),W-sf); if(lw+sf>W) tmin=Math.ceil(lw+sf)+'px'; } }   /* figures never squeezed below their widest value: the ledger scrolls instead */
         w[0]=lw; o.w=w; o.tmin=tmin; o.W=W; });
       /* tables in one section with the same column structure (label, value, text, status in the same order) share one grid, whatever kind of value each
          holds: each column takes the widest of them; a text column that flexes in one flexes in all, and their labels share one measured width */
@@ -226,11 +248,31 @@
         L.forEach(function(o){ for(var i=1;i<n;i++) o.w[i]=flexText[i]?null:(mx[i]||null); o.w[0]=lw; }); });
       /* the crush guard, once every width is final: each column that takes spare width keeps a minimum (long text 160 px, short text 96, a label its own
          minimum); the label gives way first (down to 20% of the table), and if the columns still do not fit the table scrolls inside its card */
-      G.list.forEach(function(o){ if(!o.roles || o.fam==='period' || o.fam==='ledger') return; var W=o.W, fixed=0, flexMin=0;
-        o.roles.forEach(function(r,i){ if(i===0) return; if(o.w[i]==null) flexMin+=(r==='note'?160:r==='short'?96:(r==='amount'||r==='rate')?(need[r]||96):96); else fixed+=o.w[i]; });
-        var lab0=o.w[0]==null?Math.min(labelNat(o),Math.max(W*0.24,140)):o.w[0];
-        if(o.w[0]!=null && fixed+lab0+flexMin>W){ o.w[0]=Math.max(W*0.2,W-fixed-flexMin); lab0=o.w[0]; }
-        o.tmin=(fixed+lab0+flexMin>W)?Math.ceil(fixed+lab0+flexMin)+'px':''; });
+      /* A table that does not fit gives back space in this order before it ever scrolls: its columns drop the section-wide widths (kept only for
+         alignment) for their own; a label with a set width gives way to 20%; figure columns drop their slack (never below their longest word); the label
+         comes down to its longest word. Tables that share a grid do this together, as one: each column is the widest any of them needs, so they stay in line. */
+      var units=[]; Object.keys(sigs).forEach(function(k){ if(sigs[k].length>1){ units.push(sigs[k]); sigs[k].forEach(function(o){ o.inSet=true; }); } });
+      G.list.forEach(function(o){ if(o.roles && o.fam!=='period' && o.fam!=='ledger' && !o.inSet) units.push([o]); });
+      /* the least a column that takes spare width keeps: a note 160 px to stay readable, but never more than its longest note needs on one line */
+      function fmin(o,r,i){ if(r!=='note') return r==='short'?96:(r==='amount'||r==='rate')?(need[r]||96):96; var m=wordMin(o,i); o.body.forEach(function(row){ var c=row.cells[i]; if(c && !c.querySelector('select,input')){ var cs=getComputedStyle(c); m=Math.max(m,tw(c,own(c))+(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0)+4); } }); return Math.min(160,Math.ceil(m)); }
+      units.forEach(function(L){ var n=L[0].roles.length, W=Math.min.apply(null,L.map(function(o){ return o.W; }));
+        L.forEach(function(o){ o.lmin=Math.min(labelNat(o),Math.max(o.W*0.24,140)); });
+        function col(i){ var v=0; for(var j=0;j<L.length;j++){ if(L[j].w[i]==null) return null; v=Math.max(v,L[j].w[i]); } return v; }
+        function lab(){ return Math.max.apply(null,L.map(function(o){ return o.w[0]!=null?o.w[0]:o.lmin; })); }
+        function rest(){ var t=0; for(var i=1;i<n;i++){ var c=col(i); t+=c!=null?c:Math.max.apply(null,L.map(function(o){ return fmin(o,o.roles[i],i); })); } return t; }
+        function over(){ return rest()+lab()>W; }
+        if(over()) L.forEach(function(o){ o.roles.forEach(function(r,i){ if(i && o.w[i]!=null && r!=='short'){ var m=measure(o,r,i); if(m<o.w[i]) o.w[i]=m; } }); });
+        if(over()) L.forEach(function(o){ if(o.w[0]!=null) o.w[0]=Math.max(W*0.2,W-rest()); });
+        if(over()) L.forEach(function(o){ o.roles.forEach(function(r,i){ if(i && o.w[i]!=null && (r==='amount'||r==='rate')) o.w[i]=Math.max(Math.min(o.w[i],o.w[i]-12),figMin(o,i)); }); });
+        if(over()) L.forEach(function(o){ o.roles.forEach(function(r,i){ if(i && o.w[i]!=null && (r==='amount'||r==='rate')) o.w[i]=Math.min(o.w[i],figMin(o,i)); }); });
+        if(over()){ var ex=rest()+lab()-W; L.forEach(function(o){ var sl={}, tot=0; o.roles.forEach(function(r,i){ if(i && o.w[i]!=null && (r==='choice'||r==='input'||r==='status')){ var v=Math.max(0,o.w[i]-(r==='status'?figMin(o,i):fieldMin(o,r,i))); if(v){ sl[i]=v; tot+=v; } } });
+            Object.keys(sl).forEach(function(i){ o.w[i]-=Math.min(sl[i],Math.ceil(ex*sl[i]/tot)); }); }); }   /* fields and status columns give back last, in proportion to the room each has (a badge never below its own width) */
+        if(over()){ var lw0=Math.max.apply(null,L.map(function(o){ return labelWord(o); })), room=Math.max(lw0,W-rest()); L.forEach(function(o){ if(o.w[0]!=null) o.w[0]=room; else o.lmin=Math.min(o.lmin,room); }); }
+        var cols=[]; for(var i=1;i<n;i++) cols[i]=col(i); var l=lab(), t=rest()+l;
+        L.forEach(function(o){ for(var i=1;i<n;i++) o.w[i]=cols[i]; if(o.w[0]!=null) o.w[0]=l; o.tmin=t>o.W?Math.ceil(t)+'px':''; }); });
+      /* period tables stacked in one column with the same number of periods share one label width, so their period columns line up */
+      var per={}; G.list.forEach(function(o){ if(o.fam==='period' && o.roles){ var k=o.roles.length+'|'+Math.round(o.W); (per[k]=per[k]||[]).push(o); } });
+      Object.keys(per).forEach(function(k){ var L=per[k]; if(L.length<2) return; var l=Math.max.apply(null,L.map(function(o){ return o.w[0]; })); L.forEach(function(o){ o.w[0]=l; }); });
       G.list.forEach(function(o){ if(!o.roles) return; setStyle(o.tb,'--bk-tmin',o.tmin||'0px'); o.hs.forEach(function(h,i){ setStyle(h,'--bk-cw',o.w[i]==null?'auto':Math.round(o.w[i])+'px'); }); });
     });
   }
