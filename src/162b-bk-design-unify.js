@@ -181,6 +181,7 @@ function gridFill(root){ root.querySelectorAll('table.fin').forEach(function(t){
 function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); gridFill(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); nameControls(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
+window.bkDesignRunNow = run;   /* print preparation (src/167) re-runs the passes at once, under the layout it is about to measure */
 if(stored()) html.classList.add('bk-rail-collapsed');
 document.addEventListener('keydown', function(e){ if(e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return; var t = e.target; if(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return; window.bkRailCollapse(); });
 /* The rail's groups fold: a click on a group name (its +/- box) opens or folds it (src/141), and the Advanced heading folds the advanced groups (src/124).

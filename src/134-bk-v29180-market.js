@@ -48,7 +48,7 @@ function status(r, v){ if(v == null || !isFinite(v)) return { cls:'', t:'N/A', d
   var lo = r.low, hi = r.high; if(v < lo) return { cls:'warn', t:'BELOW RANGE', d:v - lo }; if(v > hi) return { cls:'warn', t:'ABOVE RANGE', d:v - hi }; return { cls:'pass', t:'IN RANGE', d:0 }; }
 window.bkMarketCompare = function(){ var d = window.bkMarketDeal(); if(!d || !d.applies) return d; return Object.assign({ applies:true }, { rows: rows().map(function(r){ var v = d[r.id], st = status(r, v); return { id:r.id, label:r.label, value:v, low:r.low, high:r.high, status:st.t, gap:st.d }; }) }); };
 function inp(id, side, r){ var v = r[side], shown = r.unit === 'pct' ? (v * 100).toFixed(2).replace(/\.?0+$/, '') : r.unit === 'usd' ? Number(v).toLocaleString('en-US') : String(v);
-  return '<input type="text" value="' + shown + '" style="width:72px!important;min-width:0;text-align:left" onchange="bkMarketSet(\'' + id + '\',\'' + side + '\',parseFloat(String(this.value).replace(/[$,]/g,\'\'))||0)">' + (r.unit === 'pct' ? '<span style="font-size:11px"> %</span>' : r.unit === 'bps' ? '<span style="font-size:11px"> bps</span>' : r.unit === 'x' ? '<span style="font-size:11px"> x</span>' : ''); }
+  return '<input type="text" value="' + shown + '" style="text-align:left" data-bk-pw="width:72px!important;min-width:0" onchange="bkMarketSet(\'' + id + '\',\'' + side + '\',parseFloat(String(this.value).replace(/[$,]/g,\'\'))||0)">' + (r.unit === 'pct' ? '<span style="font-size:11px"> %</span>' : r.unit === 'bps' ? '<span style="font-size:11px"> bps</span>' : r.unit === 'x' ? '<span style="font-size:11px"> x</span>' : ''); }
 function render(){
   var s = bkLoad(), d = window.bkMarketDeal();
   var main;

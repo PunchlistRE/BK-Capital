@@ -106,14 +106,17 @@ html body #viewport table.fin tbody td.bk-changed::after{ content:''; position:a
 .bk-nav .grp-btn .car{ font-size:9px; opacity:.7; margin-left:2px; }
 @media (max-width:640px){ .bk-nav .grp-btn .cur{ display:none; } }
 .bk-nav.open > .grp-btn{ color:#fff; background:rgba(255,255,255,.08); }
-html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(1){ width:24% !important; }
-html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(2){ width:22% !important; }
-html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(3){ width:39% !important; text-align:left !important; }
-html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(4){ width:15% !important; }
-html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(1){ width:11% !important; }
-html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(2){ width:56% !important; text-align:left !important; }
-html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(3){ width:17% !important; }
-html body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(4){ width:16% !important; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(1){ width:24% !important; }
+html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(2){ width:22% !important; }
+html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(3){ width:39% !important; text-align:left !important; }
+html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(4){ width:15% !important; }
+html:where(.bk-printing) body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(1){ width:11% !important; }
+html:where(.bk-printing) body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(2){ width:56% !important; text-align:left !important; }
+html:where(.bk-printing) body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(3){ width:17% !important; }
+html:where(.bk-printing) body #viewport table.fin[data-bk-findings][data-bk-findings] tr > :nth-child(4){ width:16% !important; }
+
 @media (max-width:640px){ #viewport table.fin[data-bk-findings] button{ white-space:normal !important; padding:6px 8px; } }
 td[data-bk-sfx]{ white-space:nowrap !important; }
 td[data-bk-sfx] input{ width:calc(100% - 26px) !important; min-width:0; display:inline-block; }
@@ -138,7 +141,10 @@ html body #viewport#viewport .bk-dep-v2 input.dep-money{ text-align:right !impor
 .bk-nav-pop .it.stub{ font-style:italic; color:var(--ink-400,#7a8da1); }
 
 html body #viewport table.fin tbody tr.bk-na > td:not(:last-child){ opacity:.5; }
-html body #viewport .status-chip.na{ background:transparent; color:var(--ae-dim,#7d8b99); border:1px solid var(--ae-line,#c9d1dc); font-weight:600; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport .status-chip.na{ background:transparent; color:var(--ae-dim,#7d8b99); border:1px solid var(--ae-line,#c9d1dc); font-weight:600; }
+
 
 #bk-undo-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;z-index:2400;max-width:min(560px,92vw);padding:9px 14px;background:#14283d;color:#fff;font-size:12.5px;border-radius:3px;box-shadow:0 6px 22px rgba(0,0,0,.35);transition:opacity .18s,transform .18s}
 #bk-undo-toast.on{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}#bk-undo-toast button{font:inherit;font-weight:700;margin-left:10px;background:transparent;color:#9ccbf5;border:0;text-decoration:underline;cursor:pointer}

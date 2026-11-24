@@ -18,7 +18,7 @@ function verdictChip(v){ return chip(v === 'APPROVE' ? 'pass' : v === 'CONDITION
 function fmt(v, t){ return t === 'pct' ? P(v) : t === 'x' ? X(v) : t === 'usd' ? $(v) : t === 'bps' ? B(v) : (v == null ? 'n/a' : String(Math.round(v))); }
 function table(caption, head, body, cls){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin' + (cls ? ' ' + cls : '') + '"><caption>' + caption + '</caption>' + (head ? '<thead><tr>' + head + '</tr></thead>' : '') + '<tbody>' + body + '</tbody></table></div>'; }
 function th(a){ return a.map(function(h, i){ return i === 0 ? '<th class="rowlabel-h">' + h + '</th>' : '<th>' + h + '</th>'; }).join(''); }
-function inp(js, val, w, align){ return '<input type="text" value="' + esc(val) + '" style="width:' + (w || 110) + 'px;text-align:' + (align || 'left') + '" onchange="' + js + '">'; }
+function inp(js, val, w, align){ return '<input type="text" value="' + esc(val) + '" style="text-align:' + (align || 'left') + '" data-bk-pw="width:' + (w || 110) + 'px" onchange="' + js + '">'; }
 function note(t, ok){ return '<div class="note-flag" style="margin-top:12px"><span>' + (ok === false ? '&#9888;' : '&#9432;') + '</span><div>' + t + '</div></div>'; }
 function side(rows, group){
   return (typeof sidebarShell === 'function') ? sidebarShell('<div class="card"><div class="card-head">' + group + '</div><div class="metric-list">' + rows.map(function(r){ return '<div class="metric-row"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>'; }).join('') + '</div></div>' + (typeof colorKeyCard === 'function' ? colorKeyCard() : '')) : '';
@@ -40,15 +40,29 @@ var POLICY_ROWS = [
   ['maxHighRisks', 'Maximum high or critical risks', 'n'], ['maxDebtOverage', 'Maximum debt overage vs. supportable debt ($)', 'usd'],
   ['advanceScore', 'Gate score to APPROVE', 'pct'], ['conditionalScore', 'Gate score for CONDITIONAL', 'pct'], ['exitCapStressBps', 'Exit-cap stress for upside / downside IRR (bps)', 'n']
 ];
+/* the settings in the groups a credit committee reads them in: targets, then limits, then tests, then the scores that decide the verdict. Grouping only orders
+   and labels the rows; every setting, value, default, status and handler is as before. A setting not listed here still shows, under "Other settings". */
+var POLICY_GROUPS = [
+  ['Return targets', ['targetIRR', 'targetEM', 'targetLpIRR', 'targetLpEM']],
+  ['Debt limits', ['minDSCR', 'minDebtYield', 'maxLTV', 'maxLTC', 'stressBps', 'maxDebtOverage']],
+  ['Market and development tests', ['minGoingInCap', 'minDevSpreadBps', 'maxBreakEvenOcc', 'minNOITolerance', 'minRentCushion']],
+  ['Risk tolerance', ['maxHighRisks']],
+  ['Approval thresholds', ['advanceScore', 'conditionalScore']],
+  ['Stress tests', ['exitCapStressBps']]
+];
 register('Credit Policy', function(){
   var p = window.bkPolicy(), D = window.BK_POLICY_DEFAULTS, custom = (bkLoad()._policy || {});
-  var rows = POLICY_ROWS.map(function(r){
+  var listed = {}; POLICY_GROUPS.forEach(function(g){ g[1].forEach(function(k){ listed[k] = 1; }); });
+  var groups = POLICY_GROUPS.concat(POLICY_ROWS.some(function(r){ return !listed[r[0]]; }) ? [['Other settings', POLICY_ROWS.filter(function(r){ return !listed[r[0]]; }).map(function(r){ return r[0]; })]] : []);
+  var rowFor = function(r){
     var k = r[0], t = r[2], pct = t === 'pct';
     var val = pct ? (p[k] * 100).toFixed(2) : t === 'x' ? p[k].toFixed(2) : String(p[k]);
     var conv = pct ? '(parseFloat(this.value)||0)/100' : 'parseFloat(this.value.replace(/[$,]/g,\'\'))||0';
     var isCustom = Math.abs(p[k] - D[k]) > 1e-12;
     return '<tr><td class="rowlabel">' + r[1] + '</td><td class="v">' + inp('bkPolicySet(\'' + k + '\',' + conv + ')', val, 90) + (pct ? ' %' : '') + '</td><td data-bk-align="text">Default ' + fmt(D[k], t) + '</td><td>' + (isCustom ? chip('', 'CUSTOM') : chip('pass', 'DEFAULT')) + '</td></tr>';
-  }).join('');
+  };
+  var rows = groups.map(function(g){ var rs = g[1].map(function(k){ return POLICY_ROWS.filter(function(r){ return r[0] === k; })[0]; }).filter(Boolean);
+    return rs.length ? '<tr class="section" data-bk-group="1"><td colspan="4">' + g[0] + '</td></tr>' + rs.map(rowFor).join('') : ''; }).join('');
   var gw = 0;
   var gates = window.BK_GATES.map(function(g){
     var c = {weight:0, severity:g[4]}, o = (custom.gates || {})[g[0]] || {};

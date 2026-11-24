@@ -1,5 +1,5 @@
 /* TABLE STANDARD (design-system phase 1). Every sheet of both decks, at 1440, 1024 and 390 px, in Light and Night:
-   (1) nothing in a financial table spills out of its cell: no text, box, drop-down or badge crosses into the next cell;
+   (1) nothing in a financial table spills out of its cell (no text, box, drop-down or badge crosses into the next cell), and no column is crushed (no word is wider than its cell);
    (2) on a desktop-width screen every financial table is classified: it has a family (key-value, key-value with notes, ledger, period, matrix) and every column a role;
    (3) tables stacked in one column that have the same column roles line their columns up (the same right edge for each figure, field and status column);
    (4) every status label has a tier (provenance, result, role, not applicable, state, action) so its meaning shows in its form, not only its colour.
@@ -9,7 +9,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); con
 const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirname, 'devdeal.js'));
 const HTML = path.resolve(process.argv[2] || 'index.html'), QUICK = process.argv.indexOf('--quick') > 0, FIXED = Date.UTC(2026, 10, 13, 12, 0, 0);
 let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 500) + ']' : '')); };
-const SCAN = () => { const fr = document.querySelector('#viewport .sheet-frame.active') || document.getElementById('viewport'); const R = { over: [], unclassified: [], misaligned: [], untiered: [], tables: 0 };
+const SCAN = () => { const fr = document.querySelector('#viewport .sheet-frame.active') || document.getElementById('viewport'); const R = { over: [], crushed: [], unclassified: [], misaligned: [], untiered: [], tables: 0 };
   const inScope = t => t.offsetParent && !t.closest('.rp, .rp-tbl, .ae, .gd-su') && !t.classList.contains('rp-tbl') && !t.classList.contains('ae-grid');
   const tabs = [].filter.call(fr.querySelectorAll('table.fin'), inScope); R.tables = tabs.length; const desk = window.innerWidth > 760;
   tabs.forEach(t => { if (t.getAttribute('data-bk-fam') === 'matrix') return;
@@ -17,7 +17,12 @@ const SCAN = () => { const fr = document.querySelector('#viewport .sheet-frame.a
       [].forEach.call(c.querySelectorAll('*'), k => { if (what || (k.closest('select') && k.tagName !== 'SELECT')) return; const cs = getComputedStyle(k); if (cs.position === 'absolute' || cs.position === 'fixed' || cs.display === 'none') return; const kr = k.getBoundingClientRect(); if (kr.width > 0 && kr.height > 0 && (kr.right > r.right + 1.5 || kr.left < r.left - 1.5)) what = k.tagName.toLowerCase() + ' "' + ((k.value || k.textContent || '').trim().slice(0, 28)) + '"'; });
       if (!what) { const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement.closest('select,option') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT }); let n;
         while (!what && (n = w.nextNode())) { if (!n.textContent.trim()) continue; const g = document.createRange(); g.selectNodeContents(n); [].forEach.call(g.getClientRects(), q => { if (!what && q.width > 0 && (q.right > r.right + 1.5 || q.left < r.left - 1.5)) what = 'text "' + n.textContent.trim().slice(0, 28) + '"'; }); } }
-      if (what) R.over.push((t.caption ? t.caption.textContent.trim().slice(0, 30) : 'table') + ': ' + what); });
+      if (what) R.over.push((t.caption ? t.caption.textContent.trim().slice(0, 30) : 'table') + ': ' + what);
+      /* a crushed column: a word wider than the cell that holds it breaks letter by letter instead of fitting (text inside a drop-down is excluded) */
+      if (!R.cv) R.cv = document.createElement('canvas').getContext('2d'); const cs = getComputedStyle(c), inner = r.width - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+      if (!c.querySelector('input,select,textarea') && cs.whiteSpace !== 'nowrap') { R.cv.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        const words = (c.innerText || '').split(/\s+/).filter(w => w.length > 1 && !/^https?:/.test(w)); const wmax = words.reduce((m, w) => Math.max(m, R.cv.measureText(w).width), 0);
+        if (wmax > inner + 2) R.crushed.push((t.caption ? t.caption.textContent.trim().slice(0, 30) : 'table') + ': "' + words.find(w => R.cv.measureText(w).width === wmax) + '" needs ' + Math.round(wmax) + ' has ' + Math.round(inner)); } });
     if (desk) { const hr = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : t.rows[0];
       if (!t.getAttribute('data-bk-fam') || (hr && [].some.call(hr.cells, c => !c.getAttribute('data-bk-role')))) R.unclassified.push((t.caption ? t.caption.textContent.trim().slice(0, 30) : 'table') + ' fam=' + t.getAttribute('data-bk-fam')); } });
   if (desk) { const cols = t => { const hr = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : t.rows[0]; return hr ? [].map.call(hr.cells, c => ({ role: c.getAttribute('data-bk-role'), r: Math.round(c.getBoundingClientRect().right) })) : []; };
@@ -34,10 +39,11 @@ const SCAN = () => { const fr = document.querySelector('#viewport .sheet-frame.a
     await p.addInitScript(F => { const D = Date; class FD extends D { constructor(...a) { if (a.length) super(...a); else super(F); } static now() { return F; } } window.Date = FD; }, FIXED);
     await p.goto('file://' + HTML); await p.waitForTimeout(700); await p.evaluate(([d, t]) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); bkTheme.set(t); }, [deck, theme]); await p.waitForTimeout(500);
     const sheets = await p.evaluate(() => { const o = []; document.querySelectorAll('.rail [data-sheet]').forEach(e => { const s = e.dataset.sheet; if (s && o.indexOf(s) < 0) o.push(s); }); return o; });
-    const agg = { over: [], unclassified: [], misaligned: [], untiered: [], tables: 0 };
-    for (const s of sheets) { await p.evaluate(x => showSheet(x), s); await p.waitForTimeout(420); const r = await p.evaluate(SCAN); agg.tables += r.tables; ['over', 'unclassified', 'misaligned', 'untiered'].forEach(k => r[k].forEach(x => agg[k].push(s + ' / ' + x))); }
+    const agg = { over: [], crushed: [], unclassified: [], misaligned: [], untiered: [], tables: 0 };
+    for (const s of sheets) { await p.evaluate(x => showSheet(x), s); await p.waitForTimeout(420); const r = await p.evaluate(SCAN); agg.tables += r.tables; ['over', 'crushed', 'unclassified', 'misaligned', 'untiered'].forEach(k => r[k].forEach(x => agg[k].push(s + ' / ' + x))); }
     const tag = dn + ' ' + w + ' px ' + (theme === 'dark' ? 'Night' : 'Light');
     check(tag + ': nothing spills out of a table cell (' + agg.tables + ' tables on ' + sheets.length + ' sheets)', agg.over.length === 0, agg.over.length + ': ' + agg.over.slice(0, 5).join(' ; '));
+    check(tag + ': no column is crushed (no word is wider than the cell that holds it)', agg.crushed.length === 0, agg.crushed.length + ': ' + agg.crushed.slice(0, 5).join(' ; '));
     if (w > 760) { check(tag + ': every table has a family and every column a role', agg.unclassified.length === 0, agg.unclassified.length + ': ' + agg.unclassified.slice(0, 5).join(' ; '));
       check(tag + ': stacked tables with the same column roles line their columns up', agg.misaligned.length === 0, agg.misaligned.length + ': ' + agg.misaligned.slice(0, 5).join(' ; ')); }
     check(tag + ': every status label has a tier', agg.untiered.length === 0, agg.untiered.length + ': ' + [...new Set(agg.untiered.map(x => x.split(' / ').pop()))].slice(0, 12).join(', '));

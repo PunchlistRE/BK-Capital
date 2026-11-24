@@ -222,7 +222,7 @@ extend('Returns','w3bValuation', function(o){
         +   '<option value="DCF"'+(/dcf/i.test(method)?' selected':'')+'>DCF</option>'
         + '</select></td>'+txt('Which value the conclusion uses')+'<td class="v">'+chip('','INPUT')+'</td></tr>'
       + '<tr>'+lbl('DCF Discount Rate')
-        + '<td class="v"><input type="number" step="0.01" style="width:110px" value="'+(disc*100).toFixed(2)+'"'
+        + '<td class="v"><input type="number" step="0.01" data-bk-pw="width:110px" value="'+(disc*100).toFixed(2)+'"'
         +   ' onchange="bkSetDcfDiscountRate(this.value)"></td>'
         + txt('% - applied to the monthly unlevered stream')+'<td class="v">'+chip('','INPUT')+'</td></tr>'
       + '<tr>'+lbl('Direct Cap Basis Year')
@@ -391,7 +391,7 @@ extend('Residual Land','w3bResidualSolve', function(o){
       +   Object.keys(METRICS).map(function(k){ return '<option'+(k===metricKey?' selected':'')+'>'+esc(k)+'</option>'; }).join('')
       + '</select></td>'+txt('Which return the land value is solved to')+'<td class="v">'+chip('','INPUT')+'</td></tr>'
     + '<tr>'+lbl('Target Value')
-      + '<td class="v"><input type="number" step="0.01" style="width:110px" value="'
+      + '<td class="v"><input type="number" step="0.01" data-bk-pw="width:110px" value="'
       +   (/multiple|moic|equity/i.test(metricKey) ? targetVal.toFixed(2) : (targetVal*100).toFixed(2))
       + '" onchange="bkSetRlvTarget(this.value)"></td>'
       + txt(/multiple|moic|equity/i.test(metricKey) ? 'x - equity multiple' : '% - annual return')

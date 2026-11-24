@@ -51,6 +51,7 @@ function fitSelects(vp){
   vp.querySelectorAll('select').forEach(function(el){
     if(el.closest('.bk-flow,.bk-ribbon,.tabnav,.brand-bar,.pl-search')) return;
     if(el.closest('.ae-form')) return;   /* a drop-down in a form keeps the one standard width (src/189) */
+    if(el.closest('table.fin') && !document.documentElement.classList.contains('bk-printing')){ if(el.hasAttribute('data-bk-fit')){ el.style.removeProperty('width'); el.style.removeProperty('min-width'); el.style.removeProperty('max-width'); el.removeAttribute('data-bk-fit'); } return; }   /* in a financial table the column is sized from the drop-down's longest choice (the table standard, src/111 + src/209) */
     if(el.hasAttribute('data-bk-fit')){ el.style.removeProperty('width'); el.style.removeProperty('min-width'); el.style.removeProperty('max-width'); el.removeAttribute('data-bk-fit'); }
     var o = el.options[el.selectedIndex], text = o ? o.text : ''; if(!text) return; var r = el.getBoundingClientRect(); if(r.width < 2) return;
     var need = needOf(el, text); if(need > r.width + 1.5){ var w = Math.ceil(need) + 2; el.style.setProperty('width', w + 'px', 'important'); el.style.setProperty('min-width', w + 'px', 'important'); el.style.setProperty('max-width', '100%', 'important'); el.setAttribute('data-bk-fit', '1'); } });

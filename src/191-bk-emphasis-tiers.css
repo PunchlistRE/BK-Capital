@@ -39,7 +39,10 @@ html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk
   border-top:1px solid var(--bk-imp-rule) !important; border-bottom:1px solid var(--bk-imp-rule) !important; }
 html body #viewport table.fin tbody tr.total > :first-child,
 html body #viewport table.fin tbody tr.total[data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph][data-bk-emph] > :first-child{ box-shadow:none !important; }
-html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-imp-rule) !important; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-imp-rule) !important; }
+
 
 /* ---- phone: a stacked table (table.fin.bk-m-stack, one block per row) shows a key or total row as ONE band: ruled on the row, no fill (the same rules-not-fill choice), and no rule cutting between a label and its
    figure. Before this the stacked rows still painted --bk-key-fill and every cell carried its own top and bottom rule, and the left bar sat on the first letter. ---- */
