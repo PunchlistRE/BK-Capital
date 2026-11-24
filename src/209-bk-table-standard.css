@@ -1,0 +1,124 @@
+/* THE TABLE STANDARD (design-system phase 1). The one set of rules for how a financial table looks on screen: column widths by what the column holds,
+   alignment by role, editable / not set / calculated / locked cells, status labels by tier, and notes attached to their table. The table cell tagger
+   (src/111) gives every table a family (data-bk-fam), every column a role (data-bk-role) and every role a measured width (--bk-cw on the sizing row);
+   these rules only read those. The rules they replace on screen were wrapped in @media print where they stood (marked print-legacy), so printed pages
+   stay exactly as they were until phase 5 moves print onto this standard. Report typesetting (rp-tbl) and the editor's form grids (ae-grid) are separate.
+   Screen only. No figure, label or status word is changed here: only where things sit and how they read. */
+:root, body{
+  /* declared on body too, so a token that names a theme colour (var(--ink-700)) takes the theme that is on, not the root default; status tiers and field states use the palette's own colours (src/182, src/162a), so the standard adds no new colour */
+  --bk-tier-pass-bg:var(--bk-ok-bg); --bk-tier-pass-ink:var(--bk-link-ink); --bk-tier-warn-bg:var(--bk-warn-bg); --bk-tier-warn-ink:#8A5A12; --bk-tier-fail-bg:var(--bk-fail-bg); --bk-tier-fail-ink:#A32F24;
+  --bk-tier-na-bg:#ECEFF2; --bk-tier-na-ink:var(--bk-na-ink); --bk-tier-role-line:var(--ae-line); --bk-tier-neutral-bg:#E6EDF3; --bk-tier-neutral-ink:var(--ink-700); --bk-tier-dot:var(--ae-dim);
+  --bk-field-unset:var(--ae-line); --bk-note-rule:#1F4E8C;
+}
+:root[data-theme="dark"], :root[data-theme="dark"] body{
+  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
+}
+/* the same dark values when the computer is set to dark and no theme was chosen in the app (as the palette does, src/162a) */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]), :root:not([data-theme="light"]) body{
+  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
+} }
+@media screen {
+
+/* ---------- 1. column widths by role (desktop and tablet; a phone stacks or scrolls rows as before) ---------- */
+@media (min-width:761px){
+  html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam]:not([data-bk-fam="matrix"]):not([data-bk-fam="complex"]){ table-layout:fixed !important; width:100% !important; min-width:var(--bk-tmin,0px) !important; }
+  html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role][style*="--bk-cw"]{ width:var(--bk-cw) !important; min-width:0 !important; max-width:none !important; }
+  /* a table wider than its card (a long period schedule, or text that needs its minimum) scrolls inside the card, never over its neighbours */
+  html:where(:not(.bk-printing)) body #viewport .tbl-wrap:has(> table.fin[data-bk-fam]){ overflow-x:auto; }
+  /* a period table keeps its row labels in view while its periods scroll */
+  html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"] tr > [data-bk-role="label"]{ position:sticky; left:0; z-index:1; background-color:var(--ae-cell,#fff); }
+  html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"] tr.total > [data-bk-role="label"], html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"] tr.grandtotal > [data-bk-role="label"]{ background-color:var(--bk-total-fill); }
+}
+
+/* ---------- 2. one alignment per role, one row density, headers wrap instead of widening a column ---------- */
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="amount"], html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="rate"],
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="period"], html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="input"],
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="choice"]{ text-align:right !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="unit"], html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="short"],
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="note"], html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="label"]{ text-align:left !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="status"]{ text-align:center !important; padding-left:6px !important; padding-right:6px !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-role="status"]:not([data-bk-kind="chip"]){ white-space:normal !important; overflow-wrap:anywhere; }
+/* a free-text entry box in a note column fills it, left aligned */
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-role="note"] input[type="text"]{ text-align:left !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-role="unit"]{ color:var(--ae-dim) !important; padding-left:6px !important; padding-right:4px !important; white-space:nowrap; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody tr:not(.total):not(.grandtotal):not(.subtotal) > td[data-bk-role="note"]{ color:var(--ae-dim) !important; font-size:12px !important; line-height:1.4 !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td{ padding-top:4px !important; padding-bottom:4px !important; height:auto !important; vertical-align:middle; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-kind="num"], html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-kind="calc"]{ white-space:nowrap; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-role="amount"]:not([data-bk-kind="num"]):not([data-bk-kind="calc"]),
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-role="rate"]:not([data-bk-kind="num"]):not([data-bk-kind="calc"]),
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-role="short"], html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-role="note"],
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tbody td[data-bk-role="label"]{ white-space:normal !important; overflow-wrap:anywhere; }
+@media (min-width:761px){
+  html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam]:not([data-bk-fam="matrix"]):not([data-bk-fam="complex"]) thead th{ white-space:normal !important; overflow-wrap:normal; line-height:1.25 !important; vertical-align:bottom !important; }
+}
+/* the description under a field name reads at 11.5 px, not smaller */
+:where(html:not(.bk-printing)) .bk-sub{ display:block; font-size:11.5px; font-weight:400; line-height:1.3; color:var(--ink-500); margin-top:1px; white-space:normal; }
+
+/* ---------- 3. cell states ---------- */
+/* an editable value is a field box inside its cell (the editor's field), not a painted column: pale fill, a thin rule, blue figures */
+html:where(:not(.bk-printing)) body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind^="input"]{ background:transparent !important; color:var(--bk-in-ink) !important; font-weight:600 !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] select,
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(.bk-sfx-in),
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] input.bk-sfx-in{
+  -webkit-appearance:none; appearance:none; box-sizing:border-box; height:24px !important; width:100% !important; min-width:0 !important; max-width:100% !important;
+  margin:0 !important; padding:0 7px !important; border:1px solid var(--bk-in-line) !important; border-radius:0 !important; background-color:var(--bk-in-fill) !important;
+  color:var(--bk-in-ink) !important; font:600 12px/22px inherit !important; font-family:inherit !important; box-shadow:none !important; vertical-align:middle; }
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind="input-num"] input, html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"][data-bk-role="input"] input,
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-role="choice"] select, html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind="input-num"] select{ text-align:right !important; text-align-last:right !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] select{ padding-right:22px !important; cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--bk-in-ink) 50%),linear-gradient(135deg,var(--bk-in-ink) 50%,transparent 50%) !important;
+  background-position:calc(100% - 11px) 10px, calc(100% - 7px) 10px !important; background-size:4px 4px,4px 4px !important; background-repeat:no-repeat !important; }
+/* a figure with its unit: one box around both, the unit inside on the right */
+html:where(:not(.bk-printing)) body #viewport table.fin td.bk-has-sfx{ white-space:nowrap !important; }
+/* a field with a prefix or note beside it in the cell takes the width that is left (the tagger measures the neighbours as --bk-adorn) */
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"][style*="--bk-adorn"] > input:not([type="checkbox"]):not([type="radio"]):not(.bk-sfx-in), html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"][style*="--bk-adorn"] > select{ width:calc(100% - var(--bk-adorn,0px)) !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"][style*="--bk-adorn"]{ white-space:nowrap !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin td.bk-has-sfx > input.bk-sfx-in.bk-sfx-in{ width:calc(100% - var(--bk-sfx-w,26px)) !important; border-right:0 !important; padding-right:3px !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin td.bk-has-sfx > .bk-sfx{ display:inline-flex !important; align-items:center; box-sizing:border-box; width:var(--bk-sfx-w,26px) !important; height:24px; vertical-align:middle;
+  padding:0 7px 0 1px !important; border:1px solid var(--bk-in-line); border-left:0; background-color:var(--bk-in-fill); color:var(--bk-in-ink); font-size:11px; font-weight:600; opacity:1; }
+/* an optional field left empty reads as not set: dashed, no fill, grey placeholder */
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(.bk-sfx-in):placeholder-shown, html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] input.bk-sfx-in.bk-sfx-in:placeholder-shown{ border-style:dashed !important; border-color:var(--bk-field-unset) !important; background-color:transparent !important; color:var(--ae-dim) !important; font-weight:500 !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin td.bk-has-sfx > input.bk-sfx-in:placeholder-shown + .bk-sfx{ border-style:dashed; border-color:var(--bk-field-unset); background-color:transparent; color:var(--ae-dim); }
+/* a value edited in place in its cell: the cell is the field (it carries the input fill), framed by a thin inner ring; a missing required value or one the returns need turns the ring red or amber */
+  html:where(:not(.bk-printing)) body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind^="input"]:not(:has(select,input,textarea)){
+  background:var(--bk-in-fill) !important; background-image:none !important; box-shadow:inset 0 0 0 3px var(--ae-cell,#fff), inset 0 0 0 4px var(--bk-in-line) !important; }
+  html:where(:not(.bk-printing)) body #viewport table.fin tbody tr.bk-attn:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind^="input"]:not(:has(select,input,textarea)){ box-shadow:inset 0 0 0 3px var(--ae-cell,#fff), inset 0 0 0 5px var(--bk-attn-amber) !important; }
+  html:where(:not(.bk-printing)) body #viewport table.fin tbody tr.bk-req-missing:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind^="input"]:not(:has(select,input,textarea)){ box-shadow:inset 0 0 0 3px var(--ae-cell,#fff), inset 0 0 0 5px var(--bk-attn-red) !important; }
+/* locked, or carried in from another sheet: secondary ink, no box */
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] input:disabled, html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] input[readonly], html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] select:disabled{
+  border-color:transparent !important; background-color:transparent !important; color:var(--ae-dim) !important; font-weight:500 !important; }
+/* calculated: plain ink, no fill */
+html:where(:not(.bk-printing)) body #viewport table.fin tbody tr:not(.grandtotal):not(.total):not(.section) > td[data-bk-kind="calc"]{ background:transparent !important; color:var(--ae-ink,#10233a) !important; font-weight:400 !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] select:focus, html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"] input:focus{ outline:2px solid #D4A73C !important; outline-offset:0; }
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"][contenteditable="true"]:focus{ outline:2px solid #D4A73C !important; outline-offset:-3px; }
+
+/* ---------- 4. status labels by tier (the words are never changed) ---------- */
+html:where(:not(.bk-printing)) body #viewport .status-chip{ display:inline-flex !important; align-items:center; justify-content:center; gap:5px; box-sizing:border-box; height:18px !important; min-height:0 !important;
+  padding:0 7px !important; border-radius:2px !important; border:1px solid transparent !important; font:700 9.5px/1 inherit !important; font-family:inherit !important;
+  letter-spacing:.05em !important; text-transform:uppercase; white-space:nowrap; vertical-align:middle; background:var(--bk-tier-neutral-bg) !important; color:var(--bk-tier-neutral-ink) !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-pill-empty="1"]{ display:none !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-role="status"] .status-chip:not([data-bk-tier="prov"]):not([data-bk-tier="state"]):not([data-bk-tier="action"]){ min-width:88px; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="pass"]{ background:var(--bk-tier-pass-bg) !important; color:var(--bk-tier-pass-ink) !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="warn"]{ background:var(--bk-tier-warn-bg) !important; color:var(--bk-tier-warn-ink) !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="fail"]{ background:var(--bk-tier-fail-bg) !important; color:var(--bk-tier-fail-ink) !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="na"]{ background:var(--bk-tier-na-bg) !important; color:var(--bk-tier-na-ink) !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="role"]{ background:transparent !important; border-color:var(--bk-tier-role-line) !important; color:var(--ink-700) !important; }
+/* provenance (where a value comes from) and state (a setting) are quiet labels, not badges */
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="prov"], html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="state"]{ background:transparent !important; border-color:transparent !important; color:var(--ae-dim) !important; font-weight:600 !important; padding:0 2px !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="prov"]::before{ content:"" !important; display:inline-block !important; width:6px !important; height:6px !important; border:1.5px solid currentColor !important; background:transparent !important; border-radius:0 !important; margin:0 !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="state"]::before{ content:"" !important; display:inline-block !important; width:7px !important; height:7px !important; border-radius:50% !important; background:var(--bk-tier-dot) !important; border:0 !important; margin:0 !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="state"]{ color:var(--ink-700) !important; }
+/* an action is a button, so it looks like one */
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="action"]{ height:26px !important; padding:0 10px !important; background:var(--ae-cell,#fff) !important; border-color:var(--ae-line) !important; color:var(--ae-ink) !important;
+  font-size:11.5px !important; letter-spacing:0 !important; text-transform:none !important; font-weight:600 !important; cursor:pointer; white-space:normal; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="action"]:hover{ border-color:var(--ae-accent) !important; }
+html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="action"]::before{ display:none !important; }
+
+/* ---------- 5. a note belongs to the table above it ---------- */
+html:where(:not(.bk-printing)) body #viewport .tbl-wrap + .note-flag{ margin-top:-13px !important; border-top:0 !important; border-left:3px solid var(--bk-note-rule) !important; padding:6px 10px !important; font-size:12px !important; line-height:1.45 !important; }
+
+}
+
+/* a titled block (Deal Remedies) carries the panel heading at its top edge; its content sits under it (screen and print: this is new markup with no older print layout) */
+html body #viewport .bk-box.bk-box-t{ padding:0 !important; }
+html body #viewport .bk-box.bk-box-t > .bk-box-b{ padding:12px 14px; }

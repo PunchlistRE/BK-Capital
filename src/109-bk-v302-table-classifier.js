@@ -37,7 +37,10 @@
   /* report tables (class rp-tbl) scroll themselves, so they get the same cue */
   function runRp(){ var vp=document.getElementById('viewport'); if(!vp) return;
     /* on a desktop-width screen a table with up to ten columns that is wider than its card only because long text cells do not wrap gets to wrap them, so it fits without scrolling sideways */
-    if(window.innerWidth > 900) vp.querySelectorAll('.tbl-wrap, div[style*="overflow-x:auto"], table.rp-tbl').forEach(function(w){ var t = w.tagName === 'TABLE' ? w : w.querySelector('table'); if(!t || t.classList.contains('bk-wrapfit')) return;
+    if(window.innerWidth > 900) vp.querySelectorAll('.tbl-wrap, div[style*="overflow-x:auto"], table.rp-tbl').forEach(function(w){ var t = w.tagName === 'TABLE' ? w : w.querySelector('table');
+      /* a table the table standard lays out (src/111) gets its widths and its sideways scroll from the standard, not from wrap-fitting */
+      if(t && /^(kv|kvn|ledger|period)$/.test(t.getAttribute('data-bk-fam') || '') && !document.documentElement.classList.contains('bk-printing')){ if(t.classList.contains('bk-wrapfit')) t.classList.remove('bk-wrapfit'); return; }
+      if(!t || t.classList.contains('bk-wrapfit')) return;
       var box = w.tagName === 'TABLE' ? (w.parentElement || w) : w; if(!(box.scrollWidth > box.clientWidth + 2) && !(w.scrollWidth > w.clientWidth + 2)) return;
       var n = 0; [].forEach.call(t.rows, function(r){ var k = 0; [].forEach.call(r.cells, function(c){ k += c.colSpan || 1; }); if(k > n) n = k; }); if(n && n <= 10) t.classList.add('bk-wrapfit'); });
     vp.querySelectorAll('table.rp-tbl').forEach(function(t){ var sc = t.scrollWidth > t.clientWidth + 2;
@@ -56,4 +59,5 @@
   var q=false; function schedule(){ if(q) return; q=true; requestAnimationFrame(function(){ q=false; try{ run(); runRp(); }catch(e){} }); }
   if(typeof window.bkDisplayPass==='function') window.bkDisplayPass(schedule);
   window.addEventListener('resize', schedule);
+  window.bkTableClassifyNow=function(){ try{ run(); runRp(); }catch(e){} };   /* print preparation (src/167) re-runs it at once */
 })();

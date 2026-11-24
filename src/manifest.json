@@ -1130,6 +1130,11 @@
 "close": "</style>"
 },
 {
+"file": "209-bk-table-standard.css",
+"open": "\n<style id=\"bk-table-standard-css\">",
+"close": "</style>"
+},
+{
 "file": "163-markup.html",
 "open": "",
 "close": ""
