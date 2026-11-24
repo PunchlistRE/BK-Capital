@@ -294,7 +294,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
   .meta-strip{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--surface);}
   .meta-strip .cell{padding:9px 14px; border-right:1px solid var(--line-soft);}
   .meta-strip .cell:last-child{border-right:none;}
-  .meta-strip .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-400); font-weight:600; margin-bottom:2px;}
+  .meta-strip .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-500); font-weight:600; margin-bottom:2px;}
   .meta-strip .v{font-size:13px; font-weight:600; color:var(--ink-900); font-variant-numeric:tabular-nums;}
 
   .body-grid{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:0; align-items:start;}
@@ -319,7 +319,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
   .metric-row:last-child{border-bottom:none;}
   .metric-row .k{font-size:11px; color:var(--ink-500);}
   .metric-row .v{font-size:12.5px; font-weight:700; color:var(--ink-900); font-variant-numeric:tabular-nums; text-align:right;}
-  .metric-row .v.pos{color:var(--status-pass);}
+  .metric-row .v.pos{color:var(--ds-pos);}
   .metric-row .v.neg{color:var(--status-fail);}
   .info-list .metric-row .v{font-weight:600; font-size:12px;}
   .status-chip{display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.04em; padding:2px 8px; border-radius:20px; text-transform:uppercase;}
@@ -13761,7 +13761,7 @@ function chip(cls,t){ return '<span class="status-chip '+(cls||'')+'">'+esc(t)+'
 function note(sym,html){ return '<div class="note-flag" style="margin-top:10px;"><span>'+sym+'</span><div>'+html+'</div></div>'; }
 function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; }
 function val(t){ return '<td class="v">'+t+'</td>'; }
-function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
+function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>'+caption+'</caption>'
        + '<thead>'+headHtml+'</thead><tbody>'+bodyHtml+'</tbody></table></div>';
@@ -14763,7 +14763,7 @@ function chip(cls,t){ return '<span class="status-chip '+(cls||'')+'">'+esc(t)+'
 function note(sym,html){ return '<div class="note-flag" style="margin-top:10px;"><span>'+sym+'</span><div>'+html+'</div></div>'; }
 function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; }
 function val(t){ return '<td class="v">'+t+'</td>'; }
-function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
+function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
   var sp4 = /^(Sponsor Fee Income|Project Economics|Sponsor Economics - on)/.test(caption);   /* the sponsor page's four-column tables share one grid */
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin'+(sp4?' bk-sp4':'')+'"><caption>'+caption+'</caption>'
@@ -15273,7 +15273,7 @@ function chip(cls,t){ return '<span class="status-chip '+(cls||'')+'">'+esc(t)+'
 function note(sym,html){ return '<div class="note-flag" style="margin-top:10px;"><span>'+sym+'</span><div>'+html+'</div></div>'; }
 function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; }
 function val(t){ return '<td class="v">'+t+'</td>'; }
-function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
+function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>'+caption+'</caption>'
        + '<thead>'+headHtml+'</thead><tbody>'+bodyHtml+'</tbody></table></div>';
@@ -15891,7 +15891,7 @@ extend('QA','clarityQA', function(o){
     + '<td class="v"><select onchange="bkSetQAReferenceCompare(this.value)">'
     +   '<option'+(on?'':' selected')+'>Off</option>'
     +   '<option'+(on?' selected':'')+'>On</option></select></td>'
-    + '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'
+    + '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'
     +   'Shows a set of figures captured once from one reference property, with variance and a status chip</td>'
     + '<td class="v">'+chip(on?'warn':'pass', on?'REFERENCE SHOWN':'LIVE ENGINE ONLY')+'</td></tr>'
     + '</tbody></table></div>'
@@ -18540,7 +18540,7 @@ schedule();
 .bk-sx-be th{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--sx-ink2); text-align:right; padding:6px 8px; border-bottom:1px solid var(--sx-line); }
 .bk-sx-be td{ padding:7px 8px; border-bottom:1px solid var(--sx-line); text-align:right; font-variant-numeric:tabular-nums; color:var(--sx-ink); }
 .bk-sx-be th:first-child, .bk-sx-be td:first-child{ text-align:left; }
-.bk-sx-be td.cushion-neg{ color:var(--sx-dn); font-weight:700; }
+.bk-sx-be td.cushion-neg{ color:var(--sx-ink2); font-weight:700; }
 .bk-sx-tip{ position:fixed; z-index:9999; pointer-events:none; background:#0e2a4a; color:#eaf0f6; font-size:11.5px; line-height:1.35; padding:6px 9px; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.25); max-width:260px; display:none; }
 
 /* Visual QA: the analysis cards (Sensitivity, Financing Lab/Compare, Version History) use the same lettered title bar as every other section. Hierarchy is kept: the card body keeps its own padding and the chart stays inside. */
@@ -19274,7 +19274,7 @@ function snapshotCard(){
   return head + '<div class="metric-list">'
     + row('Levered IRR', pct(h.levIRR), 'big') + row('Equity Multiple', mult(h.levMOIC))
     + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + (Number(bkLoad().gpShare) > 0 ? pct(h.gpIRR) : 'N/A'))
-    + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
+    + row('Loan', money(h.loan) + (h.binding ? ' <span style="color:var(--ink-500);font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
     + row(capName('totalContributedEquity'), money(h.tce)) + row(dscrTitle(), isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
     + (tieChip() ? row('Inputs', tieChip()) : '')
@@ -21062,7 +21062,7 @@ var render = function(){
     var cls = c.level === 'ERROR' ? 'fail' : c.level === 'WARN' ? 'warn' : '';
     var act = (c.level !== 'ERROR')
       ? (c.acknowledged ? '<button type="button" class="status-chip" onclick="bkAckConflict(\'' + c.id + '\',false)">UNDO ACK</button>' : '<button type="button" class="status-chip" onclick="bkAckConflict(\'' + c.id + '\')">ACKNOWLEDGE</button>') : '';
-    return '<tr' + (c.acknowledged ? ' style="opacity:.6"' : '') + '><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.message) + '</b><div style="margin-top:6px;font-size:12px;color:#555"><b>Why it matters.</b> ' + esc(c.why) + '</div><div style="margin-top:4px;font-size:11px;color:#555">' + esc(c.area) + '</div></td>'
+    return '<tr' + (c.acknowledged ? ' style="opacity:.6"' : '') + '><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.message) + '</b><div style="margin-top:6px;font-size:12px;color:var(--ink-500)"><b>Why it matters.</b> ' + esc(c.why) + '</div><div style="margin-top:4px;font-size:11px;color:var(--ink-500)">' + esc(c.area) + '</div></td>'
       + '<td style="vertical-align:middle"><a href="#" onclick="showSheet(\'' + c.sheet + '\');return false">' + esc(c.sheet) + '</a></td><td style="vertical-align:middle;text-align:center">' + act + (c.acknowledged ? '<div style="font-size:11px">acknowledged</div>' : '') + '</td>'
       + '<td class="bk-col-chip" style="vertical-align:middle;text-align:center">' + chip(cls, c.level) + '</td></tr>';
   }).join('') || '<tr><td class="rowlabel" colspan="4">No conflicting inputs found.</td></tr>';
@@ -21072,7 +21072,7 @@ var render = function(){
   var ig = typeof window.bkIntegrity === 'function' ? window.bkIntegrity() : null;
   if(ig){
     var irow = ig.checks.map(function(c){ var k = c.status === 'hard' ? 'fail' : c.status === 'warn' ? 'warn' : c.status === 'pass' ? 'pass' : '', lab = c.status === 'hard' ? 'FAILED' : c.status === 'warn' ? 'WARNING' : c.status === 'na' ? 'N/A' : 'PASS';
-      return '<tr' + (c.status === 'na' ? ' style="opacity:.6"' : '') + '><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.label) + '</b><div style="margin-top:4px;font-size:12px;color:#555">' + esc(c.detail) + '</div><div style="margin-top:3px;font-size:11px;color:#777">' + esc(c.group) + '</div></td><td class="bk-col-chip" style="vertical-align:middle;text-align:center">' + chip(k, lab) + '</td></tr>'; }).join('');
+      return '<tr><td data-bk-align="text" style="vertical-align:middle"><b>' + esc(c.label) + '</b><div style="margin-top:4px;font-size:12px;color:var(--ink-500)">' + esc(c.detail) + '</div><div style="margin-top:3px;font-size:11px;color:var(--ink-500)">' + esc(c.group) + '</div></td><td class="bk-col-chip" style="vertical-align:middle;text-align:center">' + chip(k, lab) + '</td></tr>'; }).join('');
     main += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-mc"><caption>Calculation Integrity - recomputed independently (' + esc(ig.text) + ')</caption><thead><tr><th class="rowlabel-h">Check and what it found</th><th style="text-align:center">Result</th></tr></thead><tbody>' + irow + '</tbody></table></div>'
       + '<div class="note-flag" style="margin-top:12px"><span>&#9432;</span><div><b>How to read this.</b> <b>FAILED</b>: a result does not tie to its inputs, so it must not be relied on and the credit gate is held. <b>WARNING</b>: the figures tie, but something material is true that a reader must know. <b>N/A</b>: the check does not apply to this deal. These checks never change a number.</div></div>';
     n.ERROR += ig.hard.length; n.WARN += ig.warn.length;
@@ -21663,11 +21663,11 @@ function render(){
   if(!d || !d.applies){ main = '<div class="note-flag"><span>&#9432;</span><div>' + ((d && d.reason) || 'Open a deal to compare it with the market.') + '</div></div>'; }
   else {
     var R = rows(), body = R.map(function(r){ var v = d[r.id], st = status(r, v);
-      return '<tr><td class="rowlabel">' + r.label + (r.edited ? ' <span style="font-size:10px;color:#7a8da1">(edited)</span>' : '') + '</td><td><b>' + fmt(v, r.unit) + '</b></td><td>' + inp(r.id, 'low', r) + '</td><td>' + inp(r.id, 'high', r) + '</td><td><span class="status-chip ' + st.cls + '">' + st.t + '</span></td></tr>'; }).join('');
+      return '<tr><td class="rowlabel">' + r.label + (r.edited ? ' <span style="font-size:10px;color:var(--ink-500)">(edited)</span>' : '') + '</td><td><b>' + fmt(v, r.unit) + '</b></td><td>' + inp(r.id, 'low', r) + '</td><td>' + inp(r.id, 'high', r) + '</td><td><span class="status-chip ' + st.cls + '">' + st.t + '</span></td></tr>'; }).join('');
     var out = R.filter(function(r){ return status(r, d[r.id]).cls === 'warn'; });
     var summary = out.length ? '<div class="note-flag" style="margin-top:0"><span>&#9888;</span><div><b>' + out.length + ' of ' + R.length + ' assumptions sit outside the published range:</b> ' + out.map(function(r){ return r.label.replace(/ \(.*\)/, ''); }).join('; ') + '. That is not an error - it is where a reviewer will push, so have the reason ready.</div></div>'
       : '<div class="note-flag" style="margin-top:0"><span>&#10003;</span><div>Every assumption sits inside the published range.</div></div>';
-    var src = R.map(function(r){ return '<tr><td class="rowlabel">' + r.label.replace(/ \(.*\)/, '') + '</td><td>' + r.asOf + '</td><td style="text-align:left;white-space:normal;min-width:260px">' + (r.url ? '<a href="' + r.url + '" target="_blank" rel="noopener">' + r.src + '</a>' : r.src) + '<div style="font-size:11px;color:#7a8da1;margin-top:4px">' + r.note + '</div></td></tr>'; }).join('');
+    var src = R.map(function(r){ return '<tr><td class="rowlabel">' + r.label.replace(/ \(.*\)/, '') + '</td><td>' + r.asOf + '</td><td style="text-align:left;white-space:normal;min-width:260px">' + (r.url ? '<a href="' + r.url + '" target="_blank" rel="noopener">' + r.src + '</a>' : r.src) + '<div style="font-size:11px;color:var(--ink-500);margin-top:4px">' + r.note + '</div></td></tr>'; }).join('');
     main = summary
       + '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Deal vs Published Market Range</caption><thead><tr><th class="rowlabel-h">Assumption</th><th>This deal</th><th>Range low</th><th>Range high</th><th>Position</th></tr></thead><tbody>' + body + '</tbody></table></div>'
       + '<div style="margin-top:10px"><button type="button" class="status-chip" onclick="bkMarketReset()">RESET RANGES TO PUBLISHED</button></div>'
@@ -27997,6 +27997,28 @@ function rail(){
       /* collapsed: the group's letter opens the sidebar on that group */
       lab.addEventListener('click', function(e){ if(!html.classList.contains('bk-rail-collapsed')) return; e.stopPropagation(); e.preventDefault(); setCollapsed(false); g.classList.remove('pl-collapsed'); g.scrollIntoView({ block:'nearest' }); }, true); } });
 }
+/* Every input, select and text area has a name a screen reader can say. Most sit in table rows where the row label and the column heading are plain text beside them, not linked to them:
+   a control that has no name of its own is named "row label, column heading" (or by the label printed beside it in a form). Only the aria-label attribute is set, so nothing changes on screen,
+   and a control that already has a label, aria-label, aria-labelledby or title is left alone. */
+function ctlText(t){ return String(t || '').replace(/[\u24D8\u2139\u25B6\u25C0\u25B8\u25BE]/g, '').replace(/\s+/g, ' ').trim().slice(0, 70); }
+function ctlColHead(table, td){ var idx = 0; [].some.call(td.parentElement.cells, function(c){ if(c === td) return true; idx += c.colSpan || 1; return false; });
+  var rows = table.tHead ? [].slice.call(table.tHead.rows) : []; if(!rows.length){ var r0 = table.rows[0]; if(r0 && r0.cells.length && [].every.call(r0.cells, function(c){ return c.tagName === 'TH'; })) rows = [r0]; }
+  for(var i = rows.length - 1; i >= 0; i--){ var pos = 0, hit = null; [].forEach.call(rows[i].cells, function(c){ var sp = c.colSpan || 1; if(idx >= pos && idx < pos + sp) hit = c; pos += sp; }); if(hit && ctlText(hit.textContent)) return ctlText(hit.textContent); }
+  return ''; }
+function ctlName(e){
+  var td = e.closest('td,th'), table = td && td.closest('table');
+  if(td && table){ var c0 = td.parentElement.cells[0], row = '', sub = '', head = ctlColHead(table, td);
+    if(c0 && c0 !== td){ var cl = c0.cloneNode(true), subs = [].slice.call(cl.querySelectorAll('.bk-sub,.sub,small,.hint,.ae-hint,.dim,.muted')); sub = ctlText(subs.map(function(n){ return n.textContent; }).join(' ')); subs.forEach(function(n){ n.remove(); }); var bd = cl.querySelector('b,strong'), bt = bd ? ctlText(bd.textContent) : '';
+      if(bt){ var rest = ctlText(cl.textContent.replace(bd.textContent, '')); row = bt; if(rest) sub = (sub ? sub + ' ' : '') + rest; } else row = ctlText(cl.textContent); }
+    e.__bkSub = sub; if(row && head && head.toLowerCase() !== row.toLowerCase()) return row + ', ' + head; return row || head || ''; }
+  var box = e.closest('.ae-form > div'), lab = box && box.previousElementSibling && box.previousElementSibling.tagName === 'LABEL' ? box.previousElementSibling : null;
+  if(!lab && e.parentElement){ lab = e.parentElement.querySelector(':scope > label'); if(!lab && e.parentElement.previousElementSibling && e.parentElement.previousElementSibling.tagName === 'LABEL') lab = e.parentElement.previousElementSibling; }
+  var t = lab ? ctlText(lab.textContent) : ''; if(t) return e.type === 'range' ? t + ' (slider)' : t;
+  return ctlText(e.getAttribute('placeholder') || e.getAttribute('name') || ''); }
+function nameControls(v){
+  [].forEach.call(v.querySelectorAll('input:not([type=hidden]), select, textarea'), function(e){
+    var own = e.hasAttribute('aria-labelledby') || e.getAttribute('title') || e.closest('label') || (e.id && document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(e.id) : e.id) + '"]')) || (e.hasAttribute('aria-label') && !e.hasAttribute('data-bk-aria'));
+    if(own) return; e.__bkSub = ''; var n = ctlName(e); if(n){ if(e.getAttribute('aria-label') !== n) e.setAttribute('aria-label', n); e.setAttribute('data-bk-aria', '1'); if(e.__bkSub) e.setAttribute('aria-description', e.__bkSub); } }); }
 var queued = false;
 /* a cell filled with a heat color (sensitivity grids and the like) keeps type that reads on it: whichever of near-black or white has more contrast with the fill, whenever the
    theme's own type color would fall short (light type from the night palette on a pale or mid-tone fill) */
@@ -28017,7 +28039,7 @@ function gridFill(root){ root.querySelectorAll('table.fin').forEach(function(t){
     var up = x >= mid, k = up ? (mx === mid ? 0 : (x - mid) / (mx - mid)) : (mn === mid ? 0 : (mid - x) / (mid - mn));
     c.style.setProperty('background', up ? 'rgba(70,160,110,' + (0.08 + 0.4 * k).toFixed(2) + ')' : 'rgba(205,85,70,' + (0.08 + 0.4 * k).toFixed(2) + ')', 'important'); });
   t.querySelectorAll('thead th:not(:first-child)').forEach(function(th){ th.style.setProperty('text-align', 'center', 'important'); }); }); }
-function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); gridFill(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
+function run(){ queued = false; var v = document.getElementById('viewport'); if(v){ icons(v); emptyKinds(v); chipKinds(v); selectBlanks(v); chipCols(v); alignRules(v); alignText(v); gridFill(v); yearCols(v); numRight(v); stkLabels(v); sfxSlots(v); pctDom(v); alignHeads(v); heatInk(v); nameControls(v); setTimeout(function(){ var w = document.getElementById('viewport'); if(w) alignHeads(w); }, 450); } rail(); var rl = document.getElementById('rail'); if(rl) pctDom(rl); var ah = document.querySelector('.rail .bk-adv-head span'); if(ah && ah.textContent.length > 14){ ah.title = ah.textContent; ah.textContent = 'Advanced'; } }
 function later(){ if(!queued){ queued = true; (window.requestAnimationFrame || setTimeout)(run); } }
 window.bkDesignRun = later;
 if(stored()) html.classList.add('bk-rail-collapsed');
@@ -29534,7 +29556,7 @@ function ganttSheet(M, o){
     var pad = hasWbs && r.depth ? '<span style="display:inline-block;width:' + (r.depth * 14) + 'px"></span>' : '', closed = r.id && fold.indexOf(r.id) >= 0;
     var tg = !hasWbs || r.linked ? '' : r.summary ? '<span class="gx-fold" role="button" tabindex="0" data-name="' + esc(r.name) + '" aria-expanded="' + (closed ? 'false' : 'true') + '" aria-label="' + (closed ? 'Expand ' : 'Collapse ') + esc(r.name) + '" onclick="bkGxFold(\'' + esc(r.id) + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();bkGxFold(\'' + esc(r.id) + '\')}">' + (closed ? '+' : '−') + '</span> ' : '<span class="gx-fold-sp"></span> ';
     var code = hasWbs && r.wbs && !r.linked ? '<span style="opacity:.55;font-weight:400">' + esc(r.wbs) + '</span> ' : '';
-    var cnt = r.summary && !r.empty ? '<span style="opacity:.6;font-weight:400"> &middot; ' + r.leafN + (r.leafN === 1 ? ' task' : ' tasks') + '</span>' : '';
+    var cnt = r.summary && !r.empty ? '<span style="color:var(--ink-500);font-weight:400"> &middot; ' + r.leafN + (r.leafN === 1 ? ' task' : ' tasks') + '</span>' : '';
     return pad + tg + code + (r.milestone ? '&#9670; ' : '') + esc(r.name) + cnt; };
   var basisText = function(b){ return b === 'cost' ? 'weighted by cost' : b === 'months' ? 'weighted by months' : b === 'average' ? 'average of the tasks with a percent' : ''; };
   secs.forEach(function(g){
@@ -31222,7 +31244,7 @@ window.bkImportHubFill = function(){
 
 /* ---------- the tab ---------- */
 function uploadBox(){ var box = window.bkConf ? window.bkConf.box : function(h){ return '<div class="note-flag">' + h + '</div>'; };
-  return box('<b>Upload</b><div style="margin:8px 0"><input id="bkImportHubFile" type="file" multiple accept=".pdf,.xlsx,.xlsm,.csv" onchange="bkImportHubRun(this)"' + (S.busy ? ' disabled' : '') + '></div>'
+  return box('<b>Upload</b><div style="margin:8px 0"><input id="bkImportHubFile" type="file" aria-label="Choose files to upload (PDF, Excel or CSV)" multiple accept=".pdf,.xlsx,.xlsm,.csv" onchange="bkImportHubRun(this)"' + (S.busy ? ' disabled' : '') + '></div>'
     + '<div style="font-size:12px;opacity:.75">PDF, Excel (.xlsx, .xlsm) or CSV; add several together (an OM and its pro forma, say). The reader works out what each file is from what is in it, finds the inputs wherever they sit, and shows where each came from. A rent roll, an operating statement or a listing is read by its dedicated reader; pro formas, budgets and development offerings are read for labelled facts and tables; a workbook of several properties goes to Portfolio Import. Nothing is sent to a server.</div>'
     + (S.busy ? '<div style="margin-top:8px"><b>' + esc(S.msg) + '</b></div>' : '') + (S.msg && !S.busy ? '<div style="margin-top:8px">' + esc(S.msg) + '</div>' : '') + learnedLine()); }
 function learnedLine(){ var n = Object.keys(window.bkImportLearn.all()).length; return n ? '<div style="font-size:12px;margin-top:8px"><b>' + n + ' label' + (n === 1 ? '' : 's') + ' learned from your corrections</b> are applied to every file. <a style="cursor:pointer" onclick="if(confirm(\'Forget everything the reader has learned from your corrections?\')){ bkImportLearn.forget(); showSheet(currentSheet); }">Forget them</a></div>' : ''; }
@@ -32777,7 +32799,7 @@ RENDERERS['Deal Review'] = function(){
   var main = '<div class="tbl-wrap" style="padding:14px"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><b>IC status</b><span class="status-chip ' + cls + '">' + esc(c.status.toUpperCase()) + '</span><span style="flex:1"></span>' + acts + '</div>'
     + (c.status === 'Submitted for IC' || c.status === 'Draft' ? '<input id="bk-ic-note" type="text" maxlength="1000" placeholder="' + (c.status === 'Draft' ? 'Note to the committee (optional)' : 'Note (required to return)') + '" style="width:100%;margin-top:10px">' : '') + '</div>';
   var abouts = ['Whole deal', 'Property', 'Operations', 'Debt', 'Returns', 'Credit & IC', 'Reports'].map(function(a){ return '<option>' + a + '</option>'; }).join('');
-  main += '<div class="tbl-wrap" style="margin-top:16px;padding:14px"><b>Comments</b><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><select id="bk-cm-about">' + abouts + '</select><input id="bk-cm-text" type="text" maxlength="2000" placeholder="Add a comment" style="flex:1;min-width:200px"><button type="button" class="bk-btn" onclick="bkCollabComment()">Comment</button></div>'
+  main += '<div class="tbl-wrap" style="margin-top:16px;padding:14px"><b>Comments</b><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><select id="bk-cm-about" aria-label="Comment about">' + abouts + '</select><input id="bk-cm-text" type="text" maxlength="2000" placeholder="Add a comment" style="flex:1;min-width:200px"><button type="button" class="bk-btn" onclick="bkCollabComment()">Comment</button></div>'
     + (c.comments.length ? '<table class="fin" style="margin-top:10px"><thead><tr><th class="rowlabel-h">Who and when</th><th style="text-align:left">About</th><th style="text-align:left">Comment</th><th></th></tr></thead><tbody>' + c.comments.slice().reverse().map(function(m){ return '<tr' + (m.resolved ? ' style="opacity:.55"' : '') + '><td class="rowlabel">' + esc(m.by) + '<span class="dim" style="display:block;font-size:11px">' + esc(when(m.at)) + '</span></td><td data-bk-align="text">' + esc(m.about) + '</td><td data-bk-align="text" style="white-space:normal">' + esc(m.text) + '</td><td><button type="button" class="bk-btn" onclick="bkCollabResolve(\'' + m.id + '\')">' + (m.resolved ? 'Reopen' : 'Resolve') + '</button></td></tr>'; }).join('') + '</tbody></table>' : '<p class="dim" style="margin:10px 0 0">No comments yet.</p>') + '</div>';
   var P = function(v){ return isFinite(v) ? (v * 100).toFixed(2) + '%' : '—'; };
   main += '<div class="tbl-wrap" style="margin-top:16px;padding:14px"><b>Approval history</b>' + (c.events.length ? '<table class="fin" style="margin-top:10px"><thead><tr><th class="rowlabel-h">Who and when</th><th style="text-align:left">Action</th><th>Levered IRR then</th><th style="text-align:left">Credit gate then</th><th style="text-align:left">Note</th></tr></thead><tbody>' + c.events.slice().reverse().map(function(e){ var sn = e.snap || {}; return '<tr><td class="rowlabel">' + esc(e.by) + '<span class="dim" style="display:block;font-size:11px">' + esc(when(e.at)) + '</span></td><td data-bk-align="text">' + esc(e.action) + '</td><td>' + P(sn.irr) + '</td><td data-bk-align="text">' + esc(sn.verdict || '—') + '</td><td data-bk-align="text" style="white-space:normal">' + esc(e.note || '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="dim" style="margin:10px 0 0">Nothing submitted yet.</p>') + '</div>';
@@ -33165,7 +33187,7 @@ window.bkTargetSave = function(){
 };
 window.bkTargetLoad = function(id){ var s = bkLoad(), t = (s._targets || []).filter(function(x){ return x.id === id; })[0]; if(!t) return; ui.capital = t.inputs.capital; ui.target = t.inputs.target; ui.years = t.inputs.years; saveUi(); window.bkTargetPaint(); };
 
-var inp = function(k, label, min, max, step){ return '<div class="ae-form" style="margin:12px 0"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><label style="font-weight:600">' + label + '</label><input id="bk-tg-' + k + '" class="ae-in" style="width:150px !important;text-align:right" inputmode="decimal" onchange="bkTargetUpdate(\'' + k + '\')"></div><input id="bk-tg-' + k + '-r" type="range" min="' + min + '" max="' + max + '" step="' + step + '" style="width:100%" oninput="bkTargetUpdate(\'' + k + '-r\')"></div>'; };
+var inp = function(k, label, min, max, step){ return '<div class="ae-form" style="margin:12px 0"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><label for="bk-tg-' + k + '" style="font-weight:600">' + label + '</label><input id="bk-tg-' + k + '" class="ae-in" style="width:150px !important;text-align:right" inputmode="decimal" onchange="bkTargetUpdate(\'' + k + '\')"></div><input id="bk-tg-' + k + '-r" type="range" aria-label="' + label + ' (slider)" min="' + min + '" max="' + max + '" step="' + step + '" style="width:100%" oninput="bkTargetUpdate(\'' + k + '-r\')"></div>'; };
 RENDERERS[SHEET] = function(){
   var s = bkLoad() || {}, ref = dealRef(), saved = Array.isArray(s._targets) ? s._targets : [];
   var o = { title:'Investment Target', crumbs:'Debt', desc:'Work backward from a capital target to the annual return it requires.', meta:{ Property:s.name || '' }, sidebar:'' };
@@ -33363,21 +33385,52 @@ NAV_TABS.length = 0; tabs.forEach(function(t){ NAV_TABS.push(t); });
 
 /* the side menu: the vertical version of the top tabs. One heading per tab (a count of its sheets), under it the same groups and sheets in the same order. */
 function railBuild(){
-  var rail = document.getElementById('rail-groups'); if(!rail) return; rail.innerHTML = '';
+  var rail = document.getElementById('rail-groups'); if(!rail) return;
+  /* the menu is rebuilt on every page change: remember where keyboard focus was so it can be put back */
+  var fk = null, ae = document.activeElement; if(ae && ae !== document.body && rail.contains(ae)) fk = ae.classList.contains('rail-item') ? ['i', ae.dataset.sheet] : ['g', ((ae.querySelector('span') || {}).textContent || '')];
+  var rr = document.getElementById('rail'); if(rr && !rr.getAttribute('aria-label')) rr.setAttribute('aria-label', 'Sheets');
+  rail.innerHTML = '';
   var cur = null; try { cur = currentSheet; } catch(e){}
   NAV_TABS.forEach(function(t){
     if(window.bkNavTabHidden(t, cur)) return;
     var gs = t.groups.map(function(id){ return GROUPS.filter(function(x){ return x.id === id; })[0]; }).filter(function(g){ return g && !g.hidden && groupShown(g, cur); });
     var n = gs.reduce(function(a, g){ return a + window.bkNavVisible(g).length; }, 0); if(!n) return;
     var wrap = document.createElement('div'); wrap.className = 'rail-group'; wrap.setAttribute('data-nav-tab', t.id);
-    var lab = document.createElement('div'); lab.className = 'rail-group-label'; lab.innerHTML = '<span>' + t.label + '</span><span class="grp-tag">' + n + '</span>'; wrap.appendChild(lab);
+    var lab = document.createElement('div'); lab.className = 'rail-group-label'; lab.innerHTML = '<span>' + t.label + '</span><span class="grp-tag">' + n + '</span>'; lab.setAttribute('role', 'button'); lab.setAttribute('tabindex', '0'); wrap.appendChild(lab);
     gs.forEach(function(g, gi){
       if(gs.length > 1){ var sub = document.createElement('div'); sub.className = 'rail-sub'; sub.textContent = g.label; wrap.appendChild(sub); }
-      window.bkNavVisible(g).forEach(function(s){ var item = document.createElement('div'); item.className = 'rail-item' + (cur === s || FOLDED[cur] === s ? ' active' : ''); item.style.setProperty('--gid-color', g.color); item.dataset.sheet = s;
+      window.bkNavVisible(g).forEach(function(s){ var item = document.createElement('div'); item.className = 'rail-item' + (cur === s || FOLDED[cur] === s ? ' active' : ''); item.style.setProperty('--gid-color', g.color); item.dataset.sheet = s; item.setAttribute('role', 'link'); item.setAttribute('tabindex', '0'); if(item.classList.contains('active')) item.setAttribute('aria-current', 'page');
         item.innerHTML = '<span class="dot"></span><span class="name">' + label(s) + '</span>'; item.addEventListener('click', function(){ showSheet(s); }); wrap.appendChild(item); }); });
     rail.appendChild(wrap); });
   var sg = GROUPS.filter(function(g){ return g.hidden; }); /* the SYS_ sheets stay hidden in both menus */
+  if(fk){ var f = fk[0] === 'i' ? [].slice.call(rail.querySelectorAll('.rail-item')).filter(function(x){ return x.dataset.sheet === fk[1]; })[0]
+        : [].slice.call(rail.querySelectorAll('.rail-group-label')).filter(function(x){ return ((x.querySelector('span') || {}).textContent || '') === fk[1]; })[0];
+    if(f && f.offsetParent !== null) f.focus({ preventScroll:true }); }
+  railAria(); menuSync();
 }
+/* keyboard: Enter or Space on a sheet opens it, on a group heading folds or unfolds it; the heading says which */
+function railAria(){ [].forEach.call(document.querySelectorAll('#rail-groups .rail-group'), function(g){ var l = g.querySelector('.rail-group-label'); if(l) l.setAttribute('aria-expanded', String(!g.classList.contains('pl-collapsed'))); }); }
+(function(){ var host = document.getElementById('rail-groups'); if(!host) return;
+  host.addEventListener('keydown', function(e){ if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return; var t = e.target;
+    if(t.classList && t.classList.contains('rail-item')){ e.preventDefault(); showSheet(t.dataset.sheet); }
+    else if(t.classList && t.classList.contains('rail-group-label')){ e.preventDefault(); t.click(); } });
+  new MutationObserver(railAria).observe(host, { subtree:true, childList:true, attributes:true, attributeFilter:['class'] }); })();
+/* the phone menu: the same sheet list as a drawer at 900 px and below. It already closes on a tap outside or a choice; this adds what was missing: a visible way to close it, Escape,
+   focus moved in and put back, a dimmed page behind it that does not scroll, and the open state told to assistive technology */
+function drawerMode(){ return window.innerWidth <= 900; }
+function menuBtns(){ return [].slice.call(document.querySelectorAll('[data-bk-menu]')); }
+function menuSync(){ var r = document.getElementById('rail'); if(!r) return; var open = r.classList.contains('open') && drawerMode();
+  menuBtns().forEach(function(b){ b.setAttribute('aria-expanded', open ? 'true' : 'false'); b.setAttribute('aria-controls', 'rail'); }); document.documentElement.classList.toggle('bk-rail-open', open); }
+(function(){ var r = document.getElementById('rail'); if(!r) return;
+  if(!r.querySelector('.bk-rail-close')){ var cb = document.createElement('button'); cb.type = 'button'; cb.className = 'bk-rail-close'; cb.setAttribute('aria-label', 'Close menu'); cb.innerHTML = '&times;';
+    cb.addEventListener('click', function(){ window.__bkRailKey = 1; r.classList.remove('open'); }); r.appendChild(cb); }
+  var was = false;
+  new MutationObserver(function(){ var open = r.classList.contains('open') && drawerMode(); menuSync();
+    if(open && !was) setTimeout(function(){ var c = [].slice.call(r.querySelectorAll('.rail-item')).filter(function(x){ return x.offsetParent !== null; }), t = c.filter(function(x){ return x.classList.contains('active'); })[0] || c[0]; if(t) t.focus({ preventScroll:true }); }, 0);
+    if(!open && was && window.__bkRailKey){ var b = menuBtns()[0]; if(b) b.focus(); }
+    if(!open) window.__bkRailKey = 0; was = open; }).observe(r, { attributes:true, attributeFilter:['class'] });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && r.classList.contains('open') && drawerMode()){ window.__bkRailKey = 1; r.classList.remove('open'); } });
+  window.addEventListener('resize', menuSync); })();
 window.bkBuildRail = railBuild; try { bkBuildRail = railBuild; } catch(e){}
 railBuild();
 
@@ -33405,6 +33458,10 @@ var css = document.createElement('style'); css.id = 'bk-nav-css';
 css.textContent = '.tabnav-primary .grp-btn{padding-left:4px !important;padding-right:1px !important;font-size:10.5px !important;gap:2px !important;letter-spacing:0 !important;box-sizing:border-box;flex:0 0 106px;width:106px;min-width:106px;max-width:106px;justify-content:flex-start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.tabnav-primary .grp-btn{flex-basis:112px;width:112px;min-width:112px;max-width:112px}}'
  + '.rb-tabs .rb-t{padding-left:5px !important;padding-right:5px !important;font-size:12px !important;box-sizing:border-box;width:106px;min-width:106px;max-width:106px;flex:0 0 106px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.rb-tabs .rb-t{width:106px;min-width:106px;max-width:106px;flex-basis:106px}}'
  + '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}.bk-views .bkv-b{font:600 12.5px Inter,system-ui,sans-serif;padding:6px 12px;border:1px solid var(--ae-line,#c9d1dc);border-radius:999px;background:var(--ae-tab,#e3e8ee);color:var(--ae-ink,#1b2733);cursor:pointer}.bk-views .bkv-b:hover{border-color:#3E9AE6}.bk-views .bkv-b.on{background:#163a62;border-color:#163a62;color:#fff}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
+css.textContent += '.rail-item:focus-visible,.rail-group-label:focus-visible,.bk-rail-close:focus-visible{outline:2px solid #3E9AE6;outline-offset:-2px}'
+ + '.bk-rail-close{display:none}'
+ + '@media (max-width:900px){.rail.open .bk-rail-close{display:flex;position:absolute;top:8px;right:8px;width:40px;height:40px;align-items:center;justify-content:center;font:400 26px/1 Inter,system-ui,sans-serif;color:#eaf0f6;background:transparent;border:1px solid rgba(255,255,255,.28);border-radius:6px;cursor:pointer;z-index:2}'
+ + 'html.bk-rail-open,html.bk-rail-open body{overflow:hidden}html.bk-rail-open body::after{content:"";position:fixed;inset:0;z-index:19;background:rgba(8,14,22,.55)}}';
 document.head.appendChild(css);
 })();
 </script>
@@ -34000,7 +34057,7 @@ html body .rail ::-webkit-scrollbar-thumb{ background:#4B545D; }
 
 /* STATUS CHIPS: INPUT is light blue (you can type here), NOT APPLIED / N/A is grey (does not apply), OPTIONAL is plain outline. */
 html body #viewport .status-chip[data-bk-chip="input"]{ background:#E3EEFB !important; color:#1A4B8C !important; }
-html body #viewport .status-chip[data-bk-chip="na"]{ background:#ECEFF2 !important; color:#6B7785 !important; }
+html body #viewport .status-chip[data-bk-chip="na"]{ background:#ECEFF2 !important; color:var(--ink-500) !important; }
 html body #viewport .status-chip[data-bk-chip="optional"]{ background:transparent !important; color:var(--ae-dim) !important; box-shadow:inset 0 0 0 1px var(--ae-line); }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; } :root:not([data-theme="light"]) body #viewport .status-chip[data-bk-chip="na"]{ background:rgba(255,255,255,.08) !important; color:#9BA6B2 !important; } }
 :root[data-theme="dark"] body #viewport .status-chip[data-bk-chip="input"]{ background:rgba(111,180,242,.18) !important; color:#9BCBFA !important; }

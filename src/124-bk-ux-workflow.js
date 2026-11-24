@@ -223,7 +223,7 @@ function snapshotCard(){
   return head + '<div class="metric-list">'
     + row('Levered IRR', pct(h.levIRR), 'big') + row('Equity Multiple', mult(h.levMOIC))
     + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + (Number(bkLoad().gpShare) > 0 ? pct(h.gpIRR) : 'N/A'))
-    + row('Loan', money(h.loan) + (h.binding ? ' <span style="opacity:.6;font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
+    + row('Loan', money(h.loan) + (h.binding ? ' <span style="color:var(--ink-500);font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
     + row(capName('totalContributedEquity'), money(h.tce)) + row(dscrTitle(), isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
     + row('Yield on Cost', pct(h.yoc))
     + (tieChip() ? row('Inputs', tieChip()) : '')

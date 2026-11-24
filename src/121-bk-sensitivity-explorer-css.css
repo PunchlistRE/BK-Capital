@@ -57,7 +57,7 @@
 .bk-sx-be th{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--sx-ink2); text-align:right; padding:6px 8px; border-bottom:1px solid var(--sx-line); }
 .bk-sx-be td{ padding:7px 8px; border-bottom:1px solid var(--sx-line); text-align:right; font-variant-numeric:tabular-nums; color:var(--sx-ink); }
 .bk-sx-be th:first-child, .bk-sx-be td:first-child{ text-align:left; }
-.bk-sx-be td.cushion-neg{ color:var(--sx-dn); font-weight:700; }
+.bk-sx-be td.cushion-neg{ color:var(--sx-ink2); font-weight:700; }
 .bk-sx-tip{ position:fixed; z-index:9999; pointer-events:none; background:#0e2a4a; color:#eaf0f6; font-size:11.5px; line-height:1.35; padding:6px 9px; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.25); max-width:260px; display:none; }
 
 /* Visual QA: the analysis cards (Sensitivity, Financing Lab/Compare, Version History) use the same lettered title bar as every other section. Hierarchy is kept: the card body keeps its own padding and the chart stays inside. */
