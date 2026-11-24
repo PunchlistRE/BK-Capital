@@ -1125,6 +1125,11 @@
 "close": "</style>"
 },
 {
+"file": "208-bk-control-uniform.css",
+"open": "\n<style id=\"bk-control-uniform-css\">",
+"close": "</style>"
+},
+{
 "file": "209-bk-table-standard.css",
 "open": "\n<style id=\"bk-table-standard-css\">",
 "close": "</style>"
