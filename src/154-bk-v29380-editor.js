@@ -46,8 +46,9 @@ function subOf(tab){ var t = TABS.filter(function(x){ return x.id === tab; })[0]
 window.bkEdSub = function(tab, id){ subs[tab] = id; try { localStorage.setItem(SUBKEY, JSON.stringify(subs)); } catch(e){} showSheet(tab); };
 window.bkEdGo = function(sheet, tab, id){ if(tab){ subs[tab] = id; try { localStorage.setItem(SUBKEY, JSON.stringify(subs)); } catch(e){} } showSheet(sheet); };
 /* ---------- building blocks ---------- */
+/* a phone shows a number pad for whole numbers and dollar amounts (percent fields are left alone: the iPhone decimal pad has no minus key and a growth rate can be negative) */
 function inp(path, kind, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s, path); if((v === undefined || v === null || v === '') && o.def !== undefined) v = o.def; var id = 'ae-' + String(path).replace(/[^A-Za-z0-9]+/g, '-');
-  return '<input type="text" id="' + id + '" class="ae-in' + (kind === 'text' ? '' : ' num') + '" value="' + esc(fmtIn(v, kind)) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + ' autocomplete="off" onchange="bkEdSet(\'' + path + '\',\'' + kind + '\',this.value' + (o.blank ? ',\'' + o.blank + '\'' : '') + ')">'; }
+  return '<input type="text" id="' + id + '" class="ae-in' + (kind === 'text' ? '' : ' num') + '"' + (kind === 'int' ? ' inputmode="numeric"' : kind === 'num' ? ' inputmode="decimal"' : '') + ' value="' + esc(fmtIn(v, kind)) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + ' autocomplete="off" onchange="bkEdSet(\'' + path + '\',\'' + kind + '\',this.value' + (o.blank ? ',\'' + o.blank + '\'' : '') + ')">'; }
 function sel(path, options, o){ o = o || {}; var s = o.s || bkLoad(), v = getPath(s, path); if(v == null || v === '') v = o.def == null ? '' : o.def;
   return '<select class="ae-sel" onchange="bkEdSet(\'' + path + '\',\'text\',this.value)">' + options.map(function(op){ var val = Array.isArray(op) ? op[0] : op, lab = Array.isArray(op) ? op[1] : op; return '<option value="' + esc(val) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(lab) + '</option>'; }).join('') + '</select>'; }
 function ro(t){ return '<span class="ae-ro">' + t + '</span>'; }
