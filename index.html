@@ -33981,7 +33981,7 @@ if(typeof prev === 'function'){ window.showSheet = function(sheet){ var r = prev
 var css = document.createElement('style'); css.id = 'bk-nav-css';
 css.textContent = '.tabnav-primary .grp-btn{padding-left:4px !important;padding-right:1px !important;font-size:10.5px !important;gap:2px !important;letter-spacing:0 !important;box-sizing:border-box;flex:0 0 106px;width:106px;min-width:106px;max-width:106px;justify-content:flex-start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.tabnav-primary .grp-btn{flex-basis:112px;width:112px;min-width:112px;max-width:112px}}'
  + '.rb-tabs .rb-t{padding-left:5px !important;padding-right:5px !important;font-size:12px !important;box-sizing:border-box;width:106px;min-width:106px;max-width:106px;flex:0 0 106px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media (max-width:760px){.rb-tabs .rb-t{width:106px;min-width:106px;max-width:106px;flex-basis:106px}}'
- + '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:10px;box-shadow:-6px 0 0 -5px var(--ae-line,#c9d1dc)}';
+ + '.bk-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 14px;padding:0 22px}.bk-views .bkv-l{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);margin-right:2px}@media print{.bk-views{display:none !important}}.rail-sub{font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ae-dim,#8a98a8);padding:6px 14px 2px 22px;opacity:.85}.rb-t.rb-gs{margin-left:0;box-shadow:none}';
 css.textContent += '.rail-item:focus-visible,.rail-group-label:focus-visible,.bk-rail-close:focus-visible{outline:2px solid #3E9AE6;outline-offset:-2px}'
  + '.bk-rail-close{display:none}'
  + '@media (max-width:900px){.rail.open .bk-rail-close{display:flex;position:absolute;top:8px;right:8px;width:40px;height:40px;align-items:center;justify-content:center;font:400 26px/1 Inter,system-ui,sans-serif;color:#eaf0f6;background:transparent;border:1px solid rgba(255,255,255,.28);border-radius:6px;cursor:pointer;z-index:2}'
@@ -34848,7 +34848,8 @@ html.bk-rail-collapsed .rail .rail-sub, html.bk-rail-collapsed .rail .rail-subla
 html.bk-rail-collapsed .rail .rail-group > :not(.rail-group-label){ display:none !important }
 /* header sub-tabs: one gap between every tab */
 html body .rb-tabs{ gap:6px }
-html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ margin:0 2px }
+/* one even gap between every tab, also where one sheet group ends and the next begins (the group is named in each tab's tooltip) */
+html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ display:none }
 /* two-column metric tables (label left, value right) on every page, no stray bottom border under the last row of a grid cell */
 /* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
 
