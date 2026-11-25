@@ -77,9 +77,10 @@ html body #viewport table.fin tbody td.bk-changed::after{ content:''; position:a
 @keyframes bkflash{ 0%{ background:#FBF0D9; } 100%{ background:transparent; } }
 
 /* Returns KPI tiles */
+/* tiles in one row share their label, figure and note lines (subgrid), so a label that wraps to two lines moves every figure in the row with it and the figures stay level */
 .bk-tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:10px; margin-bottom:16px; }
-.bk-tile{ background:var(--surface,#fff); border:1px solid var(--line,#dbe4ec); border-radius:8px; padding:12px 14px; box-shadow:var(--shadow-card,none); }
-.bk-tile .kk{ font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-500,#566a80); }
+.bk-tile{ display:grid; grid-row:span 3; grid-template-rows:subgrid; row-gap:0; align-content:start; background:var(--surface,#fff); border:1px solid var(--line,#dbe4ec); border-radius:8px; padding:12px 14px; box-shadow:var(--shadow-card,none); }
+.bk-tile .kk{ align-self:end; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-500,#566a80); }
 .bk-tile .kv{ font-size:21px; font-weight:700; color:var(--ink-900,#10233a); margin-top:4px; font-variant-numeric:tabular-nums; line-height:1.15; }
 .bk-tile .ks{ font-size:11px; color:var(--ink-500,#566a80); margin-top:2px; }
 .bk-tile.hero{ border-color:var(--navy-900,#0e2a4a); box-shadow:inset 0 3px 0 #3E9AE6, var(--shadow-card,none); }

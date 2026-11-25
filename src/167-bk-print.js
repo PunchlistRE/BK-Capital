@@ -24,8 +24,12 @@ var CSS = 'table.bk-measure-wrap td,table.bk-measure-wrap th{white-space:normal 
  + '#bk-print-head .ph-brand{display:flex;align-items:center;gap:10px}#bk-print-head .ph-brand svg{width:38px;height:38px}#bk-print-head .ph-brand b{display:block;font:700 15px/1.1 Inter,system-ui,sans-serif;letter-spacing:.02em}#bk-print-head .ph-brand span{font:500 9px/1.3 Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#566a80}'
  + '#bk-print-head .ph-meta{text-align:right;font:500 9px/1.4 Inter,system-ui,sans-serif;color:#566a80}'
  + '#bk-print-head h1{font:700 20px/1.2 Inter,system-ui,sans-serif;margin:10px 0 2px;letter-spacing:-.01em}#bk-print-head .ph-sub{font:500 11px/1.4 Inter,system-ui,sans-serif;color:#44515f}'
- + '#bk-print-head .ph-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:0;margin-top:9px;border:1px solid #b8c2cc}#bk-print-head .ph-strip div{padding:5px 8px;border-right:1px solid #d5dce3}#bk-print-head .ph-strip div:last-child{border-right:0}#bk-print-head .ph-strip i{display:block;font:600 7.5px/1.2 Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#566a80;font-style:normal}#bk-print-head .ph-strip b{font:700 11.5px/1.3 Inter,system-ui,sans-serif}'
+ + '#bk-print-head .ph-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:0;margin-top:9px;border-top:1px solid #b8c2cc;border-left:1px solid #b8c2cc}#bk-print-head .ph-strip div{padding:5px 8px;border-right:1px solid #b8c2cc;border-bottom:1px solid #b8c2cc}#bk-print-head .ph-strip i{display:block;font:600 7.5px/1.2 Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#566a80;font-style:normal}#bk-print-head .ph-strip b{font:700 11.5px/1.3 Inter,system-ui,sans-serif}'
  + '#bk-print-head .ph-sec{margin-top:12px;font:700 13px/1.2 Inter,system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#14202b}#bk-print-head .ph-desc{font:400 10px/1.4 Inter,system-ui,sans-serif;color:#566a80;margin-top:2px}'
+ + '#viewport .pf-kpis,#viewport .bk-tiles{grid-template-columns:none !important;grid-template-rows:repeat(3,auto);grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);column-gap:8px !important;row-gap:0 !important;margin:10px 0 12px !important}'
+ + '#viewport .pf-kpi,#viewport .bk-tile{border:1px solid #b8c2cc !important;border-radius:0 !important;box-shadow:none !important;background:#fff !important;padding:7px 9px !important}'
+ + '#viewport .pf-kpi .k,#viewport .bk-tile .kk{font:600 7.5px/1.2 Inter,system-ui,sans-serif !important;letter-spacing:.1em !important;text-transform:uppercase;color:#566a80 !important}#viewport .pf-kpi .v,#viewport .bk-tile .kv{font:700 15px/1.2 Inter,system-ui,sans-serif !important;margin-top:3px !important;color:#14202b !important}#viewport .pf-kpi .d,#viewport .bk-tile .ks{font:500 8.5px/1.3 Inter,system-ui,sans-serif !important;color:#566a80 !important;margin-top:1px !important}'
+ + '#viewport .pf-ins li{font-size:9.5pt !important;line-height:1.4 !important;padding:6px 10px !important}'
  + '#bk-print-foot{display:block !important;position:fixed;left:0;right:0;bottom:0;padding:4px 0 0;border-top:1px solid #c5ced7;font:500 8px/1.3 Inter,system-ui,sans-serif;color:#6b7a89;text-align:center}'
  + 'body{font-size:9.5pt !important}'
  + '.card,.bk-snap,.pl-card,.bx,.bk-kpi,.note-flag,.metric-row{break-inside:avoid;page-break-inside:avoid;box-shadow:none !important}'
@@ -56,6 +60,10 @@ function sheetMeta(){
   if(tb){ var h = tb.querySelector('h2'), cr = tb.querySelector('.crumbs, .crumb, .eyebrow, .kicker, .bk-crumb'), d = tb.querySelector('p, .desc, .sub'); title = h ? h.textContent.trim() : ''; crumb = cr ? cr.textContent.trim() : ''; desc = d ? d.textContent.trim() : ''; }
   return { title:title || cur || 'Section', crumb:crumb, desc:desc };
 }
+/* the deal strip fills every row: up to 7 cells a row, the rows balanced, the last cell spanning any slot left, so every cell edge is the same hairline and none is missing */
+function stripGrid(html){ var n = (html.match(/<div>/g) || []).length; if(!n) return ''; var rows = Math.ceil(n / 7), cols = Math.ceil(n / rows), spare = cols * rows - n;
+  if(spare) html = html.replace(/<div>(?![\s\S]*<div>)/, '<div style="grid-column:span ' + (spare + 1) + '">');
+  return '<div class="ph-strip" style="grid-template-columns:repeat(' + cols + ',minmax(0,1fr))">' + html + '</div>'; }
 function headHtml(){
   var s = safe(function(){ return bkLoad(); }, {}) || {}, dev = /develop/i.test(String(s.dealType || '')), m = sheetMeta();
   var logo = safe(function(){ var g = document.querySelector('.brand-mark .glyph svg'); return g ? g.outerHTML.replace(/id="(pl[a-z]+\d)"/g, 'id="p$1"').replace(/url\(#(pl[a-z]+\d)\)/g, 'url(#p$1)') : ''; }, '');
@@ -67,7 +75,7 @@ function headHtml(){
   var d = new Date(), date = d.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
   return '<div class="ph-top"><div class="ph-brand">' + logo + '<div><b>Punchlist Capital</b><span>Real Estate Investments</span></div></div><div class="ph-meta">Prepared ' + esc(date) + '<br>' + esc(cs) + ' case · ' + esc(String(s.dealId || '')) + '</div></div>'
     + '<h1>' + esc(s.name || 'Untitled deal') + '</h1><div class="ph-sub">' + esc([s.location, s.status].filter(Boolean).join(' · ')) + '</div>'
-    + (strip ? '<div class="ph-strip">' + strip + '</div>' : '')
+    + (strip ? stripGrid(strip) : '')
     + '<div class="ph-sec">' + esc(m.title) + (m.crumb && m.crumb.toLowerCase() !== m.title.toLowerCase() ? ' <span style="font-weight:500;color:#566a80;letter-spacing:.06em"> · ' + esc(m.crumb) + '</span>' : '') + '</div>' + (m.desc ? '<div class="ph-desc">' + esc(m.desc) + '</div>' : '');
 }
 function wide(){ var t = [].slice.call(document.querySelectorAll('#viewport table.fin, #viewport table.rp-tbl')).filter(function(x){ return !x.classList.contains('bk-print-orig'); }), mx = 0; t.forEach(function(x){ var r = x.rows[0] ? x.rows[0].cells.length : 0; if(x.tHead && x.tHead.rows[0]) r = Math.max(r, x.tHead.rows[0].cells.length); mx = Math.max(mx, r); }); return mx; }
