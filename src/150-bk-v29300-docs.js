@@ -9,7 +9,7 @@ function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(
 function active(){ return typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal(); }
 function dealId(){ var s = safe(function(){ return bkLoad(); }, null); return s && s.dealId != null ? String(s.dealId) : ''; }
 var SLOTS = [['om', 'Offering memorandum', 'The broker\'s OM. Extract its price, units, rents, income and expenses into this deal.', '.pdf'], ['t12', 'T-12 / operating statement', 'Yardi or any trailing-12 statement.', '.pdf,.xlsx,.xlsm,.csv'],
-  ['costar', 'CoStar report', 'Market, comps or property report. Stored with the deal.', '.pdf,.xlsx,.csv'], ['listing', 'Listing summary', 'A one- or two-page listing or flyer.', '.pdf'], ['other', 'Other documents', 'Leases, inspections, appraisals, anything else.', '']];
+  ['costar', 'CoStar report', 'Market, comps or property report. Stored with the deal.', '.pdf,.xlsx,.csv'], ['listing', 'Listing summary', 'A one- or two-page listing or flyer.', '.pdf'], ['other', 'Other documents', 'Leases, inspections, appraisals, anything else.', ''], ['gallery', 'Photos for the report', 'Exterior, interior, unit and site photos. They print on the photos page of the PDF summary, in the order added. An imported OM adds its own photos here.', 'image/*']];
 var db = null, cache = {};
 function open(){ if(db) return Promise.resolve(db); return new Promise(function(res, rej){ var r = indexedDB.open('punchlist-docs', 1); r.onupgradeneeded = function(){ r.result.createObjectStore('files', { keyPath:'id' }); }; r.onsuccess = function(){ db = r.result; res(db); }; r.onerror = function(){ rej(r.error); }; }); }
 function tx(mode, fn){ return open().then(function(d){ return new Promise(function(res, rej){ var t = d.transaction('files', mode), st = t.objectStore('files'), out = fn(st); t.oncomplete = function(){ res(out && out.result !== undefined ? out.result : undefined); }; t.onerror = function(){ rej(t.error); }; }); }); }
@@ -24,6 +24,12 @@ function toDataURL(blob){ return new Promise(function(res){ var fr = new FileRea
 window.bkDocsPrepPhoto = function(file){ return createImageBitmap(file).then(function(bm){ var sc = Math.min(1, 1800 / Math.max(bm.width, bm.height)), w = Math.round(bm.width * sc), h = Math.round(bm.height * sc), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(bm, 0, 0, w, h); return new Promise(function(res){ c.toBlob(function(b){ res(new File([b], (file.name || 'photo').replace(/\.\w+$/, '') + '.jpg', { type:'image/jpeg' })); }, 'image/jpeg', 0.88); }); }); };
 window.bkDocsSetPhoto = function(file, id){ id = id == null ? dealId() : String(id); return window.bkDocsPrepPhoto(file).then(function(f){ return window.bkDocsAdd('photo', f, id); }).then(function(rec){ return toDataURL(rec.blob).then(function(u){ cache[id] = u; return rec; }); }); };
 window.bkDocsWarm = function(){ var id = dealId(); if(!id) return Promise.resolve(''); if(cache[id] !== undefined) return Promise.resolve(cache[id]); return window.bkDocsList(id).then(function(a){ var p = a.filter(function(f){ return f.slot === 'photo'; })[0]; return p ? toDataURL(p.blob) : ''; }).then(function(u){ cache[id] = u || ''; return cache[id]; }).catch(function(){ cache[id] = ''; return ''; }); };
+/* the report's photo set: every photo in the 'gallery' slot, oldest first, as data URLs the summary can print */
+var galCache = {};
+window.bkDocsGalleryWarm = function(){ var id = dealId(); if(!id) return Promise.resolve([]); if(galCache[id]) return Promise.resolve(galCache[id]);
+  return window.bkDocsList(id).then(function(a){ var g = a.filter(function(f){ return f.slot === 'gallery'; }).sort(function(x, y){ return x.t - y.t; }).slice(0, 16); return Promise.all(g.map(function(f){ return toDataURL(f.blob).then(function(u){ return { url:u, name:f.name }; }); })); })
+    .then(function(list){ galCache[id] = list.filter(function(x){ return x.url; }); return galCache[id]; }).catch(function(){ galCache[id] = []; return []; }); };
+window.bkDealGalleryURLs = function(){ var id = dealId(); return (id && galCache[id]) || []; };
 window.bkDealPhotoURL = function(){ var id = dealId(); return (id && cache[id]) || ''; };
 window.bkDocsPhotoCache = cache;
 /* remove the deal's photo (no question asked: the caller has its own control) */
@@ -32,9 +38,9 @@ window.bkDocsClearPhoto = function(){ var id = dealId(); if(!id) return Promise.
 var busy = '';
 function fmtSize(n){ return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
 window.bkDocsUpload = function(slot, input){ listing = null; var files = input && input.files ? Array.prototype.slice.call(input.files) : []; if(!files.length) return; busy = 'Saving ' + files[0].name + '...'; showSheet('Deal Documents');
-  Promise.all(files.map(function(f){ return slot === 'photo' ? window.bkDocsSetPhoto(f) : window.bkDocsAdd(slot, f); })).catch(function(e){ busy = 'Could not save: ' + (e && e.message || e); }).then(function(){ if(/^Saving/.test(busy)) busy = ''; listing = null; showSheet('Deal Documents'); }); };
+  delete galCache[dealId()]; Promise.all(files.map(function(f){ return slot === 'photo' ? window.bkDocsSetPhoto(f) : slot === 'gallery' ? window.bkDocsPrepPhoto(f).then(function(p){ return window.bkDocsAdd('gallery', p); }) : window.bkDocsAdd(slot, f); })).catch(function(e){ busy = 'Could not save: ' + (e && e.message || e); }).then(function(){ if(/^Saving/.test(busy)) busy = ''; listing = null; showSheet('Deal Documents'); }); };
 window.bkDocsDownload = function(fid){ window.bkDocsGet(fid).then(function(r){ if(!r) return; var a = document.createElement('a'); a.href = URL.createObjectURL(r.blob); a.download = r.name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000); }); };
-window.bkDocsDelete = function(fid){ if(!window.confirm('Remove this file from the deal?')) return; window.bkDocsGet(fid).then(function(r){ if(r && r.slot === 'photo') delete cache[r.dealId]; return window.bkDocsRemove(fid); }).then(function(){ listing = null; showSheet('Deal Documents'); }); };
+window.bkDocsDelete = function(fid){ if(!window.confirm('Remove this file from the deal?')) return; window.bkDocsGet(fid).then(function(r){ if(r && r.slot === 'photo') delete cache[r.dealId]; if(r) delete galCache[r.dealId]; return window.bkDocsRemove(fid); }).then(function(){ listing = null; showSheet('Deal Documents'); }); };
 var listing = null;
 function render(){
   var s = safe(function(){ return bkLoad(); }, null), hdr = { title:'Deal Documents', crumbs:'Inputs', desc:'The photo and source documents for this deal. They are kept in this browser with the deal and feed the data intake and the PDF summaries.', sidebar:'', meta:{ Property:s && s.name } };
@@ -52,7 +58,7 @@ function render(){
   hdr.main = main; hdr.meta = { Property:s && s.name, Files:files.filter(function(f){ return f.slot !== 'photo'; }).length, Photo:photo ? 'Yes' : 'No' }; return hdr;
 }
 var g = function(){ if(!active() && typeof window.bkEmptyState === 'function') return window.bkEmptyState('Deal Documents'); return render(); };
-window.bkDocsInvalidate = function(){ listing = null; };
+window.bkDocsInvalidate = function(){ listing = null; galCache = {}; };
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Deal Documents', g); else RENDERERS['Deal Documents'] = g;
 window.bkDocsExtract = function(fid){ if(typeof window.bkDocsExtractHook === 'function') window.bkDocsExtractHook(fid); else alert('Extraction is not available.'); };
 

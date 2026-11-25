@@ -674,6 +674,9 @@ function readOMPdfjs(file){
       .catch(function(e){ if(pendingAll.length >= n) throw e; info.ocrError = (e && e.message) || String(e); info.ocrSkipped = pendingAll.map(function(i){ return i + 1; }); pendingAll.forEach(function(i){ if(!texts[i]) texts[i] = ''; }); });
     }).then(function(){
       info.pages = texts;
+      /* the OM's own photographs: the embedded JPEGs at least 1000 x 700, each once. The first is the cover photo, as printed (not cropped); the rest go to the report's photos page. */
+      var seenJ = {}; info.photos = (jpegs || []).filter(function(j){ var k = j.w + 'x' + j.h + ':' + j.blob.size; if(seenJ[k]) return false; seenJ[k] = 1; return true; }).map(function(j){ return j.blob; });
+      if(info.photos.length && !isLoopNet(texts)){ info.cover = info.photos[0]; info.coverIsJpeg = true; return info; }
       /* a LoopNet listing's hero photo is an embedded image on page 1 (the largest one on the page); the page text is a header, so the designed-OM test below does not apply */
       if(isLoopNet(texts)) return getPage(0).then(function(p){ return pageImage(p, 600); }).then(function(b){ if(b) info.cover = b; return info; }).catch(function(){ return info; });
       if(!coverIsPhoto(texts[0])) return info;
@@ -686,6 +689,17 @@ function coverIsPhoto(t){ return !/\$\s?\d/.test(t || ''); }
 /* the cover's photo, without the title text along its bottom */
 function coverPhoto(blob){ return createImageBitmap(blob).then(function(bm){ var h = Math.round(bm.height * 0.70), c = document.createElement('canvas'); c.width = bm.width; c.height = h; c.getContext('2d').drawImage(bm, 0, 0, bm.width, h, 0, 0, bm.width, h); return new Promise(function(res){ c.toBlob(function(b){ res(new File([b], 'cover-photo.jpg', { type:'image/jpeg' })); }, 'image/jpeg', 0.9); }); }); }
 
+/* the cover photo as a file: an embedded photograph as it is, a rendered first page without its title text along the bottom */
+function coverFile(info){ return info.coverIsJpeg ? Promise.resolve(new File([info.cover], 'cover-photo.jpg', { type:'image/jpeg' })) : coverPhoto(info.cover); }
+/* the OM's other photographs, up to 12, into the deal's photos for the report (resized like any photo) */
+function saveGallery(info, id){ if(!info || !info.photos || info.photos.length < 2 || typeof window.bkDocsAdd !== 'function' || typeof window.bkDocsPrepPhoto !== 'function') return Promise.resolve();
+  return info.photos.slice(1, 13).reduce(function(p, b, i){ return p.then(function(){ return window.bkDocsPrepPhoto(new File([b], 'om-photo-' + (i + 1) + '.jpg', { type:'image/jpeg' })).then(function(f){ return window.bkDocsAdd('gallery', f, id); }).catch(function(){}); }); }, Promise.resolve()); }
+/* the OM's own figures, kept with the deal so the summary can set them beside the underwriting: the asking price, the printed cap rates, the OM's in-place
+   (current or trailing-12) and pro forma income and NOI, the unit mix and the property facts. Nothing here is used by the engine. */
+function omFacts(om, basis){ var I = om.ie || {}, g = function(o, k){ return o && o[k] != null ? o[k] : null; }, per = function(o){ return o ? { t12:g(o, 't12'), cur:g(o, 'cur'), pf:g(o, 'pf') } : null; };
+  return { at:new Date().toISOString().slice(0, 10), basis:basis, askingPrice:om.price || null, priceMethod:om.priceMethod || null, capPrinted:om.capRates ? { cur:om.capRates.cur, pf:om.capRates.pf } : null,
+    noi:per(I.noi), egi:per(I.egi), gsr:per(I.gsr || I.gpr), vac:per(I.vac), expTot:per(I.expTot), other:per(I.addTot), units:om.units || null, sf:om.sf || null, yearBuilt:om.yearBuilt || null, lotAcres:om.lotAcres || null,
+    unitMix:(om.unitMix || []).map(function(m){ return { type:m.type, units:m.units, cur:m.cur, pf:m.pf, sf:m.sf || null }; }), avgCur:om.avgCur || null, avgPf:om.avgPf || null, periods:I.periods || null }; }
 function sumBy(list, rx, key){ return list.filter(function(e){ return rx.test(e.label); }).reduce(function(t, e){ return t + (e[key] || 0); }, 0); }
 var CAT_RX = [['mgmt', /manag/i], ['taxes', /tax/i], ['insurance', /insur/i], ['utilities', /electric|gas|heat|water|sewer|trash|refuse|utilit/i], ['rm', /repair|maint|plumb|hvac|appliance|key\/?lock|lock(?:smith)?\b/i], ['contract', /contract|landscap|snow|janitor|pest|exterminat|cleaning|elevator|alarm|security/i], ['payroll', /payroll|salar|on-?site|super|labor/i], ['marketing', /market|advert|leasing/i]];
 function autoCat(label){ for(var q = 0; q < CAT_RX.length; q++){ if(CAT_RX[q][1].test(label)) return CAT_RX[q][0]; } return 'ga'; }
@@ -840,10 +854,12 @@ window.bkOMCreate = function(){ if(!S.om || !((S.om.price || S.mPrice) && (S.om.
   b.deal.blankStructure = true;   /* all cash, one investor: financing, costs and partners come from the guided steps */
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
   /* the OM's printed figures and the user's decisions travel with the deal (bkCreateNewDeal keeps only the deal fields) */
-  if(b.deal._imp || b.deal._omReported || b.deal._omDecisions){ var si = bkLoad(); if(b.deal._imp) si._imp = b.deal._imp; if(b.deal._omReported) si._omReported = b.deal._omReported; if(b.deal._omDecisions) si._omDecisions = b.deal._omDecisions; bkSave(si); }
+  b.deal._omFacts = omFacts(S.om, S.basis);
+  if(b.deal._imp || b.deal._omReported || b.deal._omDecisions || b.deal._omFacts){ var si = bkLoad(); if(b.deal._imp) si._imp = b.deal._imp; if(b.deal._omReported) si._omReported = b.deal._omReported; if(b.deal._omDecisions) si._omDecisions = b.deal._omDecisions; si._omFacts = b.deal._omFacts; bkSave(si); }
   var id = String(b.deal.dealId), jobs = [];
   if(file && typeof window.bkDocsAdd === 'function') jobs.push(window.bkDocsAdd('om', file, id));
-  if(info && info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverPhoto(info.cover).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
+  if(info && info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverFile(info).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
+  jobs.push(saveGallery(info, id));
   Promise.all(jobs).catch(function(){}).then(function(){ if(window.bkDocsInvalidate) window.bkDocsInvalidate(); if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Home'); }); };
 var KEEP = ['dealId', 'closing', 'holdYears', 'rentGrowth', 'otherGrowth', 'opexGrowth', 'taxGrowth', 'commercialRentGrowth', 'closingCostsPct', 'saleCostPct', 'miscPerGSF'];
 window.bkOMApply = function(){ if(!S.om) return; var b = buildDeal(S.om, S.basis, S.file && S.file.name), cur = bkLoad(), nd = Object.assign({}, b.deal);
@@ -852,6 +868,7 @@ window.bkOMApply = function(){ if(!S.om) return; var b = buildDeal(S.om, S.basis
   if(!window.confirm('Apply these figures to "' + (cur.name || 'this deal') + '"? Price, units, rents, other income, vacancy and every expense line are replaced. The previous values stay in Version History.')) return;
   if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('Before applying OM figures', true);
   stampImp(nd, confOM(S.om, b, S.info, S.basis), S.file && S.file.name);
+  nd._omFacts = omFacts(S.om, S.basis);
   bkSave(Object.assign(cur, nd)); showSheet('Home'); };
 window.bkDocsExtractHook = function(fid){ window.bkDocsGet(fid).then(function(r){ if(!r) return; var f = new File([r.blob], r.name, { type:r.type }); if(r.slot === 't12') return t12(f); S.basis = 'cur'; run(f, 'apply'); }); };
 
@@ -956,7 +973,8 @@ window.bkOMDevCreate = function(){ if(!S.dev || !S.dev.pf) return; var b = build
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal(b.deal);
   if(b.deal._imp){ var si = bkLoad(); si._imp = b.deal._imp; bkSave(si); }
   var jobs = []; if(S.file && /\.pdf$/i.test(S.file.name)) jobs.push(window.bkDocsAdd('om', S.file, id)); if(S.devFile) jobs.push(window.bkDocsAdd('other', S.devFile, id));
-  if(S.info && S.info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverPhoto(S.info.cover).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
+  if(S.info && S.info.cover && typeof window.bkDocsSetPhoto === 'function') jobs.push(coverFile(S.info).then(function(f){ return window.bkDocsSetPhoto(f, id); }).catch(function(){}));
+  jobs.push(saveGallery(S.info, id));
   Promise.all(jobs).catch(function(){}).then(function(){ if(window.bkDocsInvalidate) window.bkDocsInvalidate(); if(typeof window.bkGuideAfterImport === 'function') window.bkGuideAfterImport('OM'); else showSheet('Home'); }); };
 function renderDev(body){
   var dv = S.dev || { om:{} }, om = dv.om || {};
