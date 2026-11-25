@@ -35,7 +35,8 @@ html body #viewport a{ color:var(--ae-accent); }
 :root[data-theme="dark"] body, :root[data-theme="dark"] html body{ background:var(--ae-bg); }
 
 /* LAYOUT: one left edge. The page title, the header strip and every section start at the same x (22px gutter); sections sit 16px below the header and 12px apart. */
-@media (min-width:901px){ html body .main-col{ padding:16px 22px 40px; } html body #viewport .main-col > .note-flag:first-child{ margin-top:0; } }
+/* screen only: in print this inset pushed every sheet's content 22 px in from the page header and strip */
+@media screen and (min-width:901px){ html body .main-col{ padding:16px 22px 40px; } html body #viewport .main-col > .note-flag:first-child{ margin-top:0; } }
 
 /* KEY-FIGURE BAR: a deep-navy strip at the foot of the window with the headline figures, large and plain. */
 #bk-kpibar{ position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex; align-items:stretch; background:var(--bk-navy); color:#EAF0F7; border-top:2px solid var(--bk-navy-2); font-family:Inter,"Segoe UI",system-ui,sans-serif; }
