@@ -8,9 +8,7 @@
 .ae-tab:hover{ color:var(--ae-ink); }
 .ae-tab.on{ background:var(--ae-tab-on); color:var(--ae-ink); border-top:2px solid var(--ae-accent); padding-top:6px; }
 .ae-tab i{ font-style:normal; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font-size:10px; line-height:16px; text-align:center; font-weight:700; }
-.ae-subs{ display:flex; gap:1px; padding:6px 4px 0; background:var(--ae-bg); border-bottom:1px solid var(--ae-line); flex-wrap:wrap; }
-.ae-sub{ padding:5px 12px; background:var(--ae-head2); border:1px solid var(--ae-line); border-bottom:0; font-size:12px; color:var(--ae-dim); cursor:pointer; margin-bottom:-1px; }
-.ae-sub.on{ background:var(--ae-cell); color:var(--ae-ink); font-weight:700; border-top:2px solid var(--ae-accent); padding-top:4px; }
+/* .ae-subs / .ae-sub: the shared panel tabs (src/210) */
 .ae-body{ background:var(--ae-bg); border:1px solid var(--ae-line); border-top:0; padding:12px; }
 .ae-panel{ border:1px solid var(--ae-line); background:var(--ae-cell-ro); margin-bottom:12px; }
 .ae-ph{ background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); border-bottom:1px solid var(--ae-line); padding:5px 10px; font-weight:700; letter-spacing:.01em; display:flex; align-items:center; gap:8px; }
@@ -33,8 +31,7 @@
 .ae-grid td input.num{ text-align:right; } .ae-grid td input:focus, .ae-grid td select:focus{ outline:2px solid var(--ae-accent); outline-offset:-2px; background:var(--ae-cell); }
 .ae-grid tr.sel td{ background:var(--ae-sel); } .ae-grid tr.tot td{ font-weight:700; background:var(--ae-head2); }
 .ae-grid td.dim{ color:var(--ae-dim); text-align:center; }
-.ae-btn{ display:inline-block; padding:4px 12px; border:1px solid var(--ae-line); background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)); color:var(--ae-ink); font:inherit; cursor:pointer; border-radius:2px; }
-.ae-btn:hover{ border-color:var(--ae-accent); } .ae-btn.pri{ background:var(--ae-accent); color:#fff; border-color:var(--ae-accent); }
+.ae-btn{ display:inline-block; }   /* its look is the shared button (src/210) */
 .ae-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:8px 10px; }
 .ae-hint{ display:flex; gap:10px; align-items:center; background:var(--ae-hint); border:1px solid var(--ae-line); padding:7px 12px; margin-top:12px; color:var(--ae-ink); }
 .ae-hint:before{ content:"\1F4A1"; font-size:15px; }

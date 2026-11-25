@@ -93,7 +93,7 @@ html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"
 html:where(:not(.bk-printing)) body #viewport table.fin td[data-bk-kind^="input"][contenteditable="true"]:focus{ outline:2px solid #D4A73C !important; outline-offset:-3px; }
 
 /* ---------- 4. status labels by tier (the words are never changed) ---------- */
-html:where(:not(.bk-printing)) body #viewport .status-chip{ display:inline-flex !important; align-items:center; justify-content:center; gap:5px; box-sizing:border-box; height:18px !important; min-height:0 !important;
+html:where(:not(.bk-printing)) body #viewport .status-chip:not([data-bk-tier="action"]){ display:inline-flex !important; align-items:center; justify-content:center; gap:5px; box-sizing:border-box; height:18px !important; min-height:0 !important;
   padding:0 7px !important; border-radius:2px !important; border:1px solid transparent !important; font:700 9.5px/1 inherit !important; font-family:inherit !important;
   letter-spacing:.05em !important; text-transform:uppercase; white-space:nowrap; vertical-align:middle; background:var(--bk-tier-neutral-bg) !important; color:var(--bk-tier-neutral-ink) !important; }
 html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-pill-empty="1"]{ display:none !important; }
@@ -108,11 +108,7 @@ html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="prov"],
 html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="prov"]::before{ content:"" !important; display:inline-block !important; width:6px !important; height:6px !important; border:1.5px solid currentColor !important; background:transparent !important; border-radius:0 !important; margin:0 !important; }
 html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="state"]::before{ content:"" !important; display:inline-block !important; width:7px !important; height:7px !important; border-radius:50% !important; background:var(--bk-tier-dot) !important; border:0 !important; margin:0 !important; }
 html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="state"]{ color:var(--ink-700) !important; }
-/* an action is a button, so it looks like one */
-html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="action"]{ height:26px !important; padding:0 10px !important; background:var(--ae-cell,#fff) !important; border-color:var(--ae-line) !important; color:var(--ae-ink) !important;
-  font-size:11.5px !important; letter-spacing:0 !important; text-transform:none !important; font-weight:600 !important; cursor:pointer; white-space:normal; }
-html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="action"]:hover{ border-color:var(--ae-accent) !important; }
-html:where(:not(.bk-printing)) body #viewport .status-chip[data-bk-tier="action"]::before{ display:none !important; }
+/* an action is a button: it takes the shared button (src/210) */
 
 /* ---------- 5. a note belongs to the table above it ---------- */
 html:where(:not(.bk-printing)) body #viewport .tbl-wrap + .note-flag{ margin-top:-13px !important; border-top:0 !important; border-left:3px solid var(--bk-note-rule) !important; padding:6px 10px !important; font-size:12px !important; line-height:1.45 !important; }
