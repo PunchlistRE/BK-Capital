@@ -22,6 +22,8 @@ function persist(o){ try { localStorage.setItem(KEY, JSON.stringify(o)); } catch
 function rows(){ var o = saved(); return DEFAULTS.map(function(d){ var u = o[d.id] || {}; return Object.assign({}, d, { low:u.low != null ? u.low : d.low, high:u.high != null ? u.high : d.high, edited:u.low != null || u.high != null }); }); }
 window.bkMarketSet = function(id, side, v){ var o = saved(); o[id] = o[id] || {}; var d = DEFAULTS.filter(function(x){ return x.id === id; })[0]; if(!d) return;
   o[id][side] = d.unit === 'pct' ? v / 100 : v; persist(o); if(typeof showSheet === 'function') showSheet('Market Benchmarks'); };
+/* one benchmark band as the user has it (their edits applied): { low, high, label, src, asOf } */
+window.bkMarketBand = function(id){ var r = rows().filter(function(x){ return x.id === id; })[0]; return r ? { low:r.low, high:r.high, label:r.label, src:r.src, asOf:r.asOf } : null; };
 window.bkMarketReset = function(){ persist({}); if(typeof showSheet === 'function') showSheet('Market Benchmarks'); };
 /* the deal's own value for each benchmark; null where it does not apply */
 window.bkMarketDeal = function(){

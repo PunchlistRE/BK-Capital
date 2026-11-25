@@ -250,7 +250,7 @@ function unitStatement(txt, o){
   for(var pi = 0; pi < txt.length; pi++){
     var L = String(txt[pi] || '').split(/\n/), hdr = -1, order = null;
     L.forEach(function(l, q){ if(hdr >= 0) return; var c = /\b(current|in-?place|actual)\b/i.exec(l), f = /\b(pro\s*-?\s*forma|projected|market)\b/i.exec(l);
-      if(c && f && /\bunit\b/i.test(l)){ hdr = q; order = c.index < f.index ? ['cur', 'pf'] : ['pf', 'cur']; } });
+      if(c && f && /^\s*unit\b/i.test(l) && !/\$\s*\/\s*unit/i.test(l)){ hdr = q; order = c.index < f.index ? ['cur', 'pf'] : ['pf', 'cur']; } });
     if(hdr < 0) continue;
     var noiAt = -1; L.forEach(function(l, q){ if(noiAt < 0 && q > hdr && /^\s*(net operating income|noi)\b/i.test(l) && (l.match(MONEY) || []).length >= 2) noiAt = q; });
     if(noiAt < 0) continue;
@@ -291,6 +291,25 @@ function unitStatement(txt, o){
     o.ie = I; o.periods = ['cur', 'pf']; o.curNOI = o.curNOI || noi.cur; o.pfNOI = o.pfNOI || noi.pf; o.sources.income = pi + 1; o.sources.noi = pi + 1;
     return true; }
   return false;
+}
+/* A UNIT-BY-UNIT RENT ROLL in an OM ("UNIT  UNIT TYPE  SF  CURRENT RENT  PRO FORMA  MOVE IN  LEASE END  NOTES", one row per unit, a Monthly Total row).
+   Each unit keeps its in-place rent, its pro forma (market) rent, its area and its lease dates; a vacant unit is marked vacant. The rows are checked
+   against the table's own Monthly Total. Returns { rows, total, page, check } or null. */
+function unitRollTable(txt){
+  var D = '(\\d{1,2}\\/\\d{1,2}\\/\\d{2,4}|vacant|mtm|month[- ]to[- ]month|-|n\\/a)', ROW = new RegExp('^\\s*([A-Za-z]{0,4}-?\\d{1,4}[A-Za-z]?)\\s+(.+?)\\s+(?:([\\d,]{3,6})\\s+)?\\$\\s?([\\d,]+(?:\\.\\d+)?)\\s+\\$\\s?([\\d,]+(?:\\.\\d+)?)(?:\\s+' + D + ')?(?:\\s+' + D + ')?(?:\\s+(.*))?\\s*$', 'i');
+  var iso = function(d){ var m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(String(d || '')); if(!m) return ''; var y = m[3].length === 2 ? '20' + m[3] : m[3]; return y + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2); };
+  for(var pi = 0; pi < txt.length; pi++){ var L = String(txt[pi] || '').split(/\n/), hdr = -1;
+    L.forEach(function(l, q){ if(hdr < 0 && /^\s*unit\b/i.test(l) && /\bunit\s*type\b|\btype\b/i.test(l) && /current|in-?place/i.test(l) && /pro\s*-?\s*forma|market/i.test(l) && !/\$\s*\/\s*unit/i.test(l)) hdr = q; });
+    if(hdr < 0) continue; var rows = [], total = null;
+    for(var q = hdr + 1; q < L.length; q++){ var l = L[q], t = l.trim(); if(!t) continue;
+      if(/^(monthly\s+)?totals?\b/i.test(t)){ var mt = t.match(/\$\s?[\d,]+(?:\.\d+)?/g) || []; if(mt.length >= 2) total = { cur:Number(mt[0].replace(/[^\d.]/g, '')), pf:Number(mt[1].replace(/[^\d.]/g, '')) }; break; }
+      var m = ROW.exec(l); if(!m){ if(rows.length) break; continue; }
+      var cur = Number(m[4].replace(/,/g, '')), pf = Number(m[5].replace(/,/g, '')), mi = (m[6] || '').toLowerCase(), le = (m[7] || '').toLowerCase(), note = (m[8] || '').trim(), vacant = mi === 'vacant' || le === 'vacant' || /\bvacant\b/i.test(note);
+      rows.push({ unit:m[1], type:m[2].replace(/\s+/g, ' ').trim(), sf:m[3] ? Number(m[3].replace(/,/g, '')) : 0, cur:cur, pf:pf, vacant:vacant, moveIn:iso(m[6]), leaseEnd:iso(m[7]), mtm:/mtm|month/.test(le), note:note }); }
+    if(rows.length < 2) continue;
+    var sumCur = rows.reduce(function(a, r){ return a + r.cur; }, 0), sumPf = rows.reduce(function(a, r){ return a + r.pf; }, 0);
+    return { rows:rows, total:total, page:pi + 1, check:total ? { cur:{ a:sumCur, b:total.cur, ok:Math.abs(sumCur - total.cur) <= 2 }, pf:{ a:sumPf, b:total.pf, ok:Math.abs(sumPf - total.pf) <= 2 } } : null }; }
+  return null;
 }
 function looseIE(txt, o){
   /* an amount is a cell that is a number and nothing else (cells are separated by two or more spaces), or a figure that ends the line; a number inside a text cell ("1455 State - $72,915") is not an amount */
@@ -391,7 +410,9 @@ function parseOM(pages){
   /* the broker's printed cap rates, kept as printed: they check the price below and never stand in for a calculated rate */
   var CRT = findCapRates(txt); if(CRT.cur != null || CRT.pf != null){ o.capPrinted = true; o.capRates = CRT; if(CRT.cur != null) o.curCap = CRT.cur; if(CRT.pf != null) o.pfCap = CRT.pf; }
   var BAN = bannerPairs(txt), banner = function(re, test){ var h = BAN.filter(function(bp){ return re.test(bp.label) && !bp.pct && test(bp.value); })[0]; return h || null; };
-  o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/Total\s+Units\s*:?\s+(\d{1,4})\b/i, 1, 'units')) || (function(){ var bu = banner(/\bunits?\b/i, function(v){ return v >= 1 && v < 2000 && v === Math.round(v); }); if(bu){ src.units = bu.page; return bu.value; } return null; })() || num(find(/(\d{1,4})\s*[- ]?\s*units?\b/i, 1, 'units'));
+  o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/Total\s+Units\s*:?\s+(\d{1,4})\b/i, 1, 'units')) || (function(){ var bu = banner(/\bunits?\b/i, function(v){ return v >= 1 && v < 2000 && v === Math.round(v); }); if(bu){ src.units = bu.page; return bu.value; } return null; })() || null;
+  /* a loose "N units" phrase anywhere in the text is the last resort, used only when no table, banner or labelled count states the units (below) */
+  var unitsLoose = null, unitsLoosePage = null; (function(){ for(var q = 0; q < txt.length; q++){ var lm = /(\d{1,4})\s*[- ]?\s*units?\b/i.exec(txt[q]); if(lm){ unitsLoose = num(lm[1]); unitsLoosePage = q + 1; return; } } })();
   o.sf = num(find(/\bTotal\s+\d{1,4}\s+Units\s+([\d,]{4,})\s*SF/i, 1, 'sf')) || num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf'))
     || num(find(/([\d,]{4,})\s*Total\s*SF\b/i, 1, 'sf')) || (function(){ var bm = /Building\s*SF\s+([\d,]{3,})\s*SF(?:\s*\|\s*([\d,]{3,})\s*SF)?/i.exec(all); return bm ? num(bm[1]) + (bm[2] ? num(bm[2]) : 0) : null; })() || num(find(/\bTotal\s+(?:Rentable\s+|Building\s+|Gross\s+)?SF\s*:?\s+([\d,]{4,})\b/i, 1, 'sf')) || num(find(/\bBuilding\s+(?:Size|Area)\s*:?\s*([\d,]{3,})\s*(?:SF\b|sq\.?\s*f(?:ee)?t|square\s+f(?:ee|oo)t)/i, 1, 'sf'))
     || (function(){ var bs = banner(/sq\.?\s*f|\bsf\b|square|approx|area|size/i, function(v){ return v >= 300 && v < 5000000; }); if(bs){ src.sf = bs.page; return bs.value; } return null; })() || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
@@ -405,31 +426,40 @@ function parseOM(pages){
   var mix = [], avgCur = null, avgPf = null;
   for(i = 0; i < txt.length; i++){ if(!/Unit\s*Mix/i.test(txt[i]) || !/UNIT TYPE|FLOOR\s*PLAN/i.test(txt[i])) continue; src.unitMix = i + 1;
     var hdr = null, hdrAt = -1; txt[i].split(/\n/).forEach(function(l, lq){ var hm = /^\s*(?:Unit\s*Type|Floor\s*Plan|Unit\s*Types?)\s{2,}(.+)$/i.exec(l); if(!hdr && hm){ var cl = hm[1].trim().split(/\s{2,}/).map(function(nm){ return /pro\s*-?\s*forma|projected/i.test(nm) ? 'pf' : /\b(?:high|achiev|market|asking)/i.test(nm) ? 'high' : /current|in-?place|actual/i.test(nm) ? 'cur' : /\bsf\b|sq/i.test(nm) ? 'sf' : /#|units?/i.test(nm) ? 'units' : 'x'; }); if(cl.indexOf('units') >= 0 && cl.indexOf('cur') >= 0){ hdr = cl; hdrAt = lq; } } });
-    txt[i].split(/\n/).forEach(function(line, lq){ var m = /^\s*(.*?[A-Za-z].*?)\s+(\d{1,3})\s+([\d.]+)\s*%\s+\$([\d,]+)\s+(?:\$([\d,]+)\s+)?\$([\d,]+)\s*$/.exec(line);
+    /* a heading printed with single spaces ("UNIT TYPE # OF UNITS SF CURRENT RENT HIGH ACHIEVED PRO FORMA HUD FMR"): its columns in order, from their words */
+    if(!hdr) txt[i].split(/\n/).forEach(function(l, lq){ if(hdr || !/^\s*unit\s*type\b/i.test(l)) return; var cl = [], km, KR = /(#\s*of\s*units|\bunits\b)|(\bsf\b|\bsq\.?\s*ft\b)|(current(?:\s+rent)?|in-?place)|(high(?:est)?\s+achieved|\bhigh\b)|(pro\s*-?\s*forma|projected)|(hud\s*fmr|\bfmr\b|market)/ig;
+      while((km = KR.exec(l))) cl.push(km[1] ? 'units' : km[2] ? 'sf' : km[3] ? 'cur' : km[4] ? 'high' : km[5] ? 'pf' : 'x');
+      if(cl.indexOf('units') >= 0 && cl.indexOf('cur') >= 0){ hdr = cl; hdrAt = lq; } });
+    var cellsOf = function(line){ var parts = line.trim().split(/\s{2,}/); if(parts.length > 1) return parts;
+      var tk = line.trim().split(/\s+/), vals = []; while(tk.length && /^\$?[\d,]+(?:\.\d+)?$/.test(tk[tk.length - 1])) vals.unshift(tk.pop()); return [tk.join(' ')].concat(vals); };   /* a single-spaced row: the figures are the numbers at its end */
+    txt[i].split(/\n/).forEach(function(line, lq){ var m = hdr ? null : /^\s*(.*?[A-Za-z].*?)\s+(\d{1,3})\s+([\d.]+)\s*%\s+\$([\d,]+)\s+(?:\$([\d,]+)\s+)?\$([\d,]+)\s*$/.exec(line);
       if(!m){
         /* No percent column: read the row by the table's own column headings ("Unit Type   # of Units   SF   Current Rent   Highest Achieved   Pro Forma Rent"), so a square-foot column is
            not mistaken for the unit count. Its totals are an annual row (skipped) and an Average row. */
-        if(!hdr || lq <= hdrAt) return; var parts = line.trim().split(/\s{2,}/), lab = parts[0], vals = parts.slice(1);
+        if(!hdr || lq <= hdrAt) return; var parts = cellsOf(line), lab = parts[0], vals = parts.slice(1);
         if(/^(?:annual\s+)?total/i.test(lab) || !/[A-Za-z]/.test(lab) || !vals.length || !vals.every(function(v){ return /^\$?\s?[\d,]+(?:\.\d+)?$/.test(v); })) return;
         var isAvg = /^average/i.test(lab), cols = hdr; if(isAvg){ var noU = hdr.filter(function(c){ return c !== 'units'; }), noUS = noU.filter(function(c){ return c !== 'sf'; }); cols = vals.length === hdr.length ? hdr : vals.length === noU.length ? noU : vals.length === noUS.length ? noUS : hdr; } if(vals.length !== cols.length) return;
         var rec = {}; cols.forEach(function(c, q){ if(c !== 'x') rec[c] = num(vals[q]); });
-        if(isAvg){ avgCur = rec.cur || null; avgPf = rec.pf || null; return; }
+        if(isAvg){ avgCur = rec.cur || null; avgPf = rec.pf || null; if(rec.units) o.mixTotalUnits = rec.units; return; }
         if(rec.units > 0 && rec.units < 1000 && rec.cur > 0) mix.push({ type:lab.replace(/^1BR$/i, '1 BR'), units:rec.units, cur:rec.cur, high:rec.high || null, pf:rec.pf || rec.cur, sf:rec.sf || null }); return; }
       var label = m[1].trim(); if(/^total/i.test(label)){ avgCur = num(m[4]); avgPf = num(m[6]); return; }
       mix.push({ type:label.replace(/^1BR$/i, '1 BR'), units:num(m[2]), cur:num(m[4]), high:m[5] ? num(m[5]) : null, pf:num(m[6]) }); }); break; }
   o.unitMix = mix; o.avgCur = avgCur; o.avgPf = avgPf;
+  var UR = unitRollTable(txt); if(UR){ o.unitRoll = UR; src.unitRoll = UR.page; }
+  if(!o.units && UR && (!mix.length || mix.reduce(function(t, x){ return t + (x.units || 0); }, 0) === UR.rows.length)){ o.units = UR.rows.length; src.units = UR.page; o.unitsFrom = 'rent roll'; }
+  if(!o.units){ var mixU = mix.reduce(function(t, x){ return t + (x.units || 0); }, 0); if(mixU > 0){ o.units = mixU; src.units = src.unitMix; o.unitsFrom = 'unit mix'; } else if(unitsLoose){ o.units = unitsLoose; src.units = unitsLoosePage; } }
   /* income and expense */
   /* Some OMs print letter-spaced section headings ("I N C O M E S U M M A R Y"). A run of five or more single capital letters
      separated by single spaces AT THE START OF A LINE is closed up (heading detection only); a label inside a row, digits and
      lower-case text are never touched. */
   var deLS = function(t){ return String(t || '').replace(/^([ \t]*)((?:[A-Z] ){4,}[A-Z])(?![A-Za-z])/gm, function(m, pre, run){ return pre + run.replace(/ /g, ''); }); };
-  var IE_HEAD = function(t){ return (/OPERATING INCOME/i.test(t) && /OPERATING EXPENSES/i.test(t)) || (/INCOME ?SUMMARY/i.test(t) && /EXPENSE ?SUMMARY/i.test(t)); };
+  var IE_HEAD = function(t){ return (/OPERATING ?INCOME/i.test(t) && /OPERATING ?EXPENSES/i.test(t)) || (/INCOME ?SUMMARY/i.test(t) && /EXPENSE ?SUMMARY/i.test(t)); };   /* a letter-spaced heading closes up without its word space: OPERATINGINCOME */
   var ie = null; for(i = 0; i < txt.length; i++){ var nt = deLS(txt[i]); if(IE_HEAD(nt)){ ie = nt; src.income = i + 1; break; } }
   if(ie){
     var sec = 'inc', sub = '', I = { addl:[], exp:[], aligned:[], twoFigure:[] }, done = false;
     /* Which period columns the table has, in the order printed ("Trailing 12", "Current", "Pro Forma"). Read from the column
        heading lines, before the first figure. The classic two-column layout (Current, Pro Forma) keeps the original reading. */
-    var LINES = ie.split(/\n/), hi0 = -1; LINES.forEach(function(l, q){ if(hi0 < 0 && (/INCOME ?SUMMARY/i.test(l) || /^\s*OPERATING INCOME/i.test(l))) hi0 = q; });
+    var LINES = ie.split(/\n/), hi0 = -1; LINES.forEach(function(l, q){ if(hi0 < 0 && (/INCOME ?SUMMARY/i.test(l) || /^\s*OPERATING ?INCOME/i.test(l))) hi0 = q; });
     var SETS = [], PER = /(trailing\s*(?:12|twelve)(?:\s*months?)?|\bt-?12\b|\bttm\b|\bactuals?\b|\bhistorical\b)|(\bcurrent\b|\bin-?place\b|\bas-?is\b)|(pro\s*-?\s*forma|\bproforma\b|\bprojected\b|\bstabili[sz]ed\b|\byear\s*1\b)/ig;
     for(var hq = Math.max(0, hi0); hq < Math.min(LINES.length, Math.max(0, hi0) + 3); hq++){ if(/\$\s?\d{2,}|\b\d{1,3},\d{3}\b/.test(LINES[hq])) break; var pm; PER.lastIndex = 0; while((pm = PER.exec(LINES[hq]))){ var pk = pm[1] ? 't12' : pm[2] ? 'cur' : 'pf'; if(SETS.indexOf(pk) < 0) SETS.push(pk); } }
     var LEGACY = SETS.length < 2 || (SETS.length === 2 && SETS[0] === 'cur' && SETS[1] === 'pf');
@@ -444,7 +474,7 @@ function parseOM(pages){
       if(/^[A-Za-z]/.test(l) && nums.length === 4 && nums[0] > nums[1] && nums[2] > nums[3] && !/%/.test(l)) ratios.push(nums[0] / nums[1]); });
     ratios.sort(function(a, b){ return a - b; }); var UDIV = null; if(ratios.length >= 3){ var med = ratios[Math.floor(ratios.length / 2)]; if(ratios.filter(function(r){ return Math.abs(r - med) <= 0.02 * med; }).length >= Math.max(3, Math.ceil(ratios.length * 0.6))) UDIV = med; }
     LINES.forEach(function(line){ if(done || /^\s*FOR SALE/i.test(line)){ done = true; return; }
-      if(/^\s*ADDITIONAL INCOME/i.test(line)){ sec = 'add'; return; } if(/^\s*OPERATING EXPENSES/i.test(line) || /^\s*EXPENSE ?SUMMARY/i.test(line)){ sec = 'exp'; return; }
+      if(/^\s*ADDITIONAL INCOME/i.test(line)){ sec = 'add'; return; } if(/^\s*OPERATING ?EXPENSES/i.test(line) || /^\s*EXPENSE ?SUMMARY/i.test(line)){ sec = 'exp'; return; }
       var re = /\(?\$?\s?\d[\d,]*(?:\.\d+)?\)?\s*%?/g, toks = [], m, cut = -1; while((m = re.exec(line))){ if(cut < 0) cut = m.index; var t = m[0].trim(); toks.push({ pct:/%$/.test(t), v:num(t.replace('%', '')), neg:/^\(/.test(t) }); }
       if(cut < 0) return; var label = line.slice(0, cut).replace(/[\s:|]+$/, '').trim(); if(!label || /^(current|pro forma|%|\$ ?\/ ?unit)/i.test(label) || /SUMMARY\b/i.test(label)) return;
       var money = toks.filter(function(t){ return !t.pct; }).map(function(t){ return Math.abs(t.v); }), pcts = toks.filter(function(t){ return t.pct; }).map(function(t){ return t.v; });
@@ -710,6 +740,15 @@ function buildDeal(om0, basis, fileName){
     if(om.priceTypo) notes.push('The OM prints the price as "' + om.priceTypo + '"; it is read as ' + $(om.price) + '. Confirm it with the broker.');
     if(om.misc && om.misc.length) notes.push('Other income from the rent roll: ' + om.misc.map(function(x){ return x.name + ' ' + $(x.amount * 12) + '/yr'; }).join(', ') + '.');
   }
+  /* the OM's own unit-by-unit rent roll goes on the deal: each unit at its in-place rent, its pro forma rent as the market rent (a vacant unit is
+     counted at it, as the OM counts it), its area and lease dates. The engine then builds rent from the units; underwriting the pro forma applies
+     the market rents. */
+  if(om.layout !== 'rentroll' && om.unitRoll && om.unitRoll.rows && om.unitRoll.rows.length){
+    d.rentRoll = om.unitRoll.rows.map(function(r){ return { unitId:r.unit, tenantType:'Residential', unitType:r.type, tenant:r.vacant ? 'Vacant' : '', sf:r.sf || 0, status:r.vacant ? 'Vacant' : 'Occupied',
+      inPlaceRent:r.vacant ? 0 : r.cur, marketRent:r.vacant && !(r.pf > 0) ? r.cur : r.pf, recovery:0, leaseStart:r.moveIn || '', leaseEnd:r.leaseEnd || (r.mtm ? 'MTM' : '') }; });
+    d.rentAppliedBasis = basis === 'pf' ? 'Market' : 'In-Place';
+    var vacU = om.unitRoll.rows.filter(function(r){ return r.vacant; });
+    notes.unshift('Rent roll: the OM\'s ' + om.unitRoll.rows.length + ' units are on the deal\'s rent roll (page ' + om.unitRoll.page + '), each at its current rent with its pro forma rent as the market rent' + (vacU.length ? '; ' + vacU.map(function(r){ return r.unit; }).join(', ') + (vacU.length === 1 ? ' is' : ' are') + ' vacant and counted at the asking rent, as the OM counts ' + (vacU.length === 1 ? 'it' : 'them') : '') + '. ' + (om.unitRoll.check ? (om.unitRoll.check.cur.ok && om.unitRoll.check.pf.ok ? 'The units add to the OM\'s monthly totals (' + $(om.unitRoll.check.cur.b) + ' current, ' + $(om.unitRoll.check.pf.b) + ' pro forma).' : 'The units do NOT add to the OM\'s printed monthly total (' + $(om.unitRoll.check.cur.a) + ' against ' + $(om.unitRoll.check.cur.b) + '); compare the rent roll page.') : '')); }
   /* mixed-use table: commercial rent and vacancy go to the engine's own commercial inputs. The area is the user's to state:
      it changes $/SF, not the income. Recoveries are not printed in the table, so they stay 0. */
   if(I.mixed && I.comm && I.comm.gsr && I.comm.gsr[k] != null){
@@ -1090,6 +1129,12 @@ function render(){
     if(!om.price){ var KNm = { asking:'asking price', sold:'SOLD price (what it sold for, not an asking price)', assessed:'assessed / estimated value (not an asking price)', loan:'loan figure (not a price)' }, pcs = om.priceCandidates || [];
       need += '<div style="margin-bottom:8px;font-size:13px">' + (om.priceConflict ? '<b>The OM states more than one asking price:</b> ' + om.priceConflict.map(function(v){ return $(v); }).join(' and ') + '. Choose the one you mean, or enter another.' : (pcs.some(function(c){ return c.kind !== 'loan'; }) ? '<b>The OM states no asking price.</b> It does mention:' : '<b>The OM states no price.</b>'))
         + (pcs.length ? '<div style="margin-top:6px">' + pcs.map(function(c, i){ return '<div style="margin:3px 0"><button type="button" class="pl-hbtn" onclick="bkOMPricePick(' + i + ')">Use ' + $(c.value) + '</button> <span style="font-size:12.5px">' + KNm[c.kind] + ' · page ' + c.page + ' · "' + esc(c.snippet) + '"</span></div>'; }).join('') + '</div>' : '') + '</div>';
+      /* no price stated: what the OM's own NOI is worth at the market going-in cap rates (Market Benchmarks), as starting points to choose from */
+      var band = typeof window.bkMarketBand === 'function' ? window.bkMarketBand('goingIn') : null, noiC = om.ie && om.ie.noi ? om.ie.noi.cur : om.curNOI, noiP = om.ie && om.ie.noi ? om.ie.noi.pf : om.pfNOI;
+      if(band && noiC > 0){ var mid = (band.low + band.high) / 2, r1k = function(v){ return Math.round(v / 1000) * 1000; }, sug = [['at the low end of the market band', band.low], ['at the middle of the band', mid], ['at the high end of the band', band.high]].map(function(x){ return { v:r1k(noiC / x[1]), cap:x[1], why:x[0] }; });
+        need += '<div style="margin:8px 0 10px;font-size:12.5px"><b>Suggested prices from the OM\'s in-place NOI (' + $(noiC) + ')</b> at the market going-in cap rates (' + pct(band.low, 1) + ' to ' + pct(band.high, 1) + ', Market Benchmarks' + (band.asOf ? ', ' + esc(band.asOf) : '') + '). A lower cap rate means a higher price. These are starting points, not the seller\'s number.'
+          + '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px">' + sug.map(function(x){ return '<button type="button" class="pl-hbtn" onclick="bkOMManual(\'mPrice\',' + x.v + ')" title="In-place NOI ' + $(noiC) + ' / ' + pct(x.cap, 2) + ' ' + x.why + '">' + $(x.v) + ' at ' + pct(x.cap, 2) + '</button>'; }).join('') + '</div>'
+          + (noiP > noiC ? '<div style="margin-top:6px;opacity:.85">On the OM\'s pro forma NOI (' + $(noiP) + ') the middle of the band gives ' + $(r1k(noiP / mid)) + '; the gap is the value of reaching the pro forma, which a buyer should not pay for in full.</div>' : '') + '</div>'; }
       need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-right:14px">Asking price (not found in the OM)<input type="text" value="' + (S.mPrice || '') + '" placeholder="e.g. 3,600,000" onchange="bkOMManual(\'mPrice\',this.value)" oninput="bkOMLive(\'mPrice\',this)" style="width:150px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>'; }
     if(!om.units) need += '<label style="display:inline-flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Units (not found)<input type="text" value="' + (S.mUnits || '') + '" onchange="bkOMManual(\'mUnits\',this.value)" oninput="bkOMLive(\'mUnits\',this)" style="width:90px;padding:7px 9px;border:1px solid var(--line,#dbe4ec);border-radius:6px;font:inherit;font-size:14px;text-align:right"></label>';
     var ready = (om.price || S.mPrice) && (om.units || S.mUnits) && !(b.needs && b.needs.length);

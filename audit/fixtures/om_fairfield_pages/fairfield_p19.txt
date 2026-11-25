@@ -1,0 +1,34 @@
+18 Fairfield Avenue
+Norwalk, CT 06854
+Rent Roll
+Rent roll information is current as of November 10, 2026. The most up-to-date rent roll and financial information is available in the Income & Expense (I&E) Excel workbook located in the Deal Room.
+UNIT UNIT TYPE SF CURRENT RENT PRO FORMA MOVE IN LEASE END NOTES
+BA1 Studio 400 $1,800 $1,800 Vacant Vacant Vacant · Private Entrance
+BA2 1 Bedroom - Large 589 $2,300 $2,500 09/02/2026 09/01/2027 Private Entrance
+BA3 1 Bedroom - Extra Large 729 $2,125 $2,600 11/01/2026 04/30/2028 Private Entrance
+A1 1 Bedroom - Large 589 $2,112 $2,500 07/01/2026 06/30/2027
+A2 1 Bedroom - Large 589 $2,200 $2,500 10/15/2025 09/30/2027
+A3 2 Bedroom 1,026 $2,450 $2,950 06/01/2024 02/28/2027
+A4 1 Bedroom 400 $1,450 $2,300 11/01/2022 12/31/2027
+A5 1 Bedroom - Large 589 $1,850 $2,500 08/01/2024 07/31/2028
+A6 1 Bedroom - Large 589 $2,250 $2,500 02/01/2026 01/31/2027
+A7 1 Bedroom 400 $2,150 $2,300 02/15/2026 02/15/2027
+A8 1 Bedroom - Large 589 $1,750 $2,500 03/01/2024 05/31/2027
+A9 1 Bedroom - Large 589 $2,172 $2,500 09/01/2025 08/31/2027
+A10 1 Bedroom - Large 589 $2,250 $2,500 08/17/2026 08/15/2027
+A11 1 Bedroom - Large 589 $2,025 $2,500 10/30/2026 10/29/2027
+A12 1 Bedroom 400 $1,650 $2,300 04/01/2024 04/30/2027
+A13 1 Bedroom - Large 589 $1,925 $2,500 11/01/2023 04/30/2028
+A14 1 Bedroom - Large 589 $2,340 $2,500 10/01/2024 09/30/2027
+A15 1 Bedroom 400 $2,080 $2,300 08/01/2024 09/30/2027
+Monthly Total 10,234 $36,879 $44,050
+Current Rent includes vacant unit BA1 at its $1,800 asking rent.
+UNIT MIX
+UNIT TYPE # OF UNITS SF CURRENT RENT HIGH ACHIEVED PRO FORMA HUD FMR
+Studio 1 400 $1,800 $1,800 $1,800 $2,073
+1 Bedroom 4 400 $1,833 $2,150 $2,300 $2,504
+1 Bedroom - Large 11 589 $2,107 $2,340 $2,500 $2,504
+1 Bedroom - Extra Large 1 729 $2,125 $2,125 $2,600 $2,504
+2 Bedroom 1 1,026 $2,450 $2,450 $2,950 $2,999
+Average 18 10,234 $2,049 $2,262 $2,447 $2,508
+For Sale · 18 Fairfield Avenue, Norwalk, CT 19
