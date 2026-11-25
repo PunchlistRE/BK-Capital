@@ -15,7 +15,7 @@
     box-sizing:border-box; height:30px; line-height:28px; padding:0 12px; vertical-align:middle;
     font:600 12px/28px var(--bk-ctl-font); letter-spacing:0 !important; text-transform:none !important; white-space:nowrap;
     color:var(--bk-ctl-ink) !important; background:var(--bk-ctl-bg) !important; border:1px solid var(--bk-ctl-line) !important; border-radius:2px !important; box-shadow:none !important; cursor:pointer; }
-  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):hover{ background:var(--bk-ctl-bg-hover) !important; border-color:var(--bk-ctl-accent) !important; }
+  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):not(.primary):not(.pri):hover{ background:var(--bk-ctl-bg-hover) !important; border-color:var(--bk-ctl-accent) !important; }   /* a primary button keeps its fill on hover, so its white text stays readable */
   :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):disabled{ opacity:.45; cursor:default; }
   :is(#viewport, #pl-modal) :is(.status-chip[onclick], button.status-chip, .status-chip[role=button])::before{ display:none !important; }
   /* primary: the one main action of a block */

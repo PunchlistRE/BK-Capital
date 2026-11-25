@@ -2678,16 +2678,20 @@ RENDERERS['Returns']=function(){const s=bkLoad();if(String(s.dealType||'').toLow
    }
    const status=!isRef?'N/A':(total&&pass===total?'PASS':'TIE-OUT IN PROGRESS');
    const cls=status==='PASS'?'pass':(status==='N/A'?'':'warn');
-   if(!isRef && !isDev) rows='<tr><td class="rowlabel" colspan="5">N/A - the Excel tie-out applies only to the reference workbook deal (Harvard Avenue, BK-001). This deal is checked by the model controls on Home and by the independent reconciliation suite.</td></tr>';
+   if(!isRef && !isDev) rows='<tr><td class="rowlabel" colspan="5">Not applicable to this deal. The Excel tie-out compares the web engine with the reference workbook, which models one deal: Harvard Avenue (BK-001).</td></tr>';
    const main=`<div class="tbl-wrap"><table class="fin"><caption>Excel ↔ Web Engine Certification - Active Deal</caption><thead><tr><th class="rowlabel-h">Metric</th><th>Web Engine</th><th>Excel Baseline</th><th>Variance</th><th>Status</th></tr></thead><tbody>${isDev?'<tr><td class="rowlabel" colspan="5">Development certification requires a saved Excel development baseline; engine is live but not certified from the active acquisition baseline.</td></tr>':rows}</tbody></table></div>
-   <div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Certification Gates</caption><tbody>
+   ${isRef?`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Certification Gates</caption><tbody>
    <tr><td class="rowlabel">Web core return tie-out</td><td><span class="status-chip ${cls}">${status}</span></td></tr>
-   <tr><td class="rowlabel">Checks passed</td><td>${isRef?pass+' / '+total:'N/A'}</td></tr>
+   <tr><td class="rowlabel">Checks passed</td><td>${pass+' / '+total}</td></tr>
    <tr><td class="rowlabel">Workbook structural failures</td><td>0</td></tr>
    <tr><td class="rowlabel">Workbook stamped regression</td><td>30 of 30 rows - PASS</td></tr>
-   <tr><td class="rowlabel">Workbook live ENGINE CERTIFIED flag</td><td>${isRef?'<span class="status-chip fail">NOT CERTIFIED - FAIL</span>':'<span class="status-chip">N/A - reference workbook only</span>'}</td></tr>
+   <tr><td class="rowlabel">Workbook live ENGINE CERTIFIED flag</td><td><span class="status-chip fail">NOT CERTIFIED - FAIL</span></td></tr>
+   </tbody></table></div>`:`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Certification Gates</caption><tbody>
+   <tr><td class="rowlabel">Web core return tie-out</td><td><span class="status-chip">N/A</span></td></tr>
+   <tr><td class="rowlabel">Checks passed</td><td><span class="status-chip">N/A</span></td></tr>
    </tbody></table></div>
-   <div class="note-flag"><span>&#9888;</span><div><b>Certification is intentionally strict.</b> The workbook itself currently reports 0 structural failures and a 30/30 stamped regression, but its live ENGINE CERTIFIED gate still reads NOT CERTIFIED - FAIL because the synthetic QA suite needs to be rerun after the repaired assertions. This check does not override that workbook status. Web rows only pass when the live browser result is within 0.20% of the stored Excel baseline.</div></div>`;
+   <div class="note-flag"><span>&#9432;</span><div><b>This page is for the reference deal.</b> It checks the web engine against the Excel workbook, which models one deal, Harvard Avenue (BK-001). ${bkEsc(s.name||'This deal')} is checked instead by the model controls on Home and the reconciliation checks on Model Checks.</div></div>`}
+   ${isRef?`<div class="note-flag"><span>&#9888;</span><div><b>Certification is intentionally strict.</b> The workbook itself currently reports 0 structural failures and a 30/30 stamped regression, but its live ENGINE CERTIFIED gate still reads NOT CERTIFIED - FAIL because the synthetic QA suite needs to be rerun after the repaired assertions. This check does not override that workbook status. Web rows only pass when the live browser result is within 0.20% of the stored Excel baseline.</div></div>`:''}`;
    const sidebar=sidebarShell(`<div class="card"><div class="card-head">Web Certification</div><div class="metric-list"><div class="metric-row"><span class="k">Active Deal</span><span class="v">${s.name||'-'}</span></div><div class="metric-row"><span class="k">Web Tie-Out</span><span class="v"><span class="status-chip ${cls}">${status}</span></span></div><div class="metric-row"><span class="k">Passed</span><span class="v">${isRef?pass+' / '+total:'N/A'}</span></div><div class="metric-row"><span class="k">Tolerance</span><span class="v">0.20%</span></div></div></div>${colorKeyCard()}`);
    return {title:'QA',crumbs:'QA',desc:'Live Excel-to-web engine tie-out and certification gates.',meta:{Property:s.name||'-','Web Checks':isRef?pass+' / '+total:'N/A','Workbook Structural':isRef?'0 failures':'N/A','Workbook Engine':isRef?'NOT CERTIFIED':'N/A',Status:status},main,sidebar};
  }
@@ -17443,6 +17447,8 @@ html body #viewport table.fin.bk-opstmt.bk-opstmt tbody tr.gap > td{ height:6px 
            value plus padding, then the label column down to its longest word (labels wrap between words); only then does the table scroll inside its card */
         if(o.fam==='period'){ var np=o.roles.filter(function(r){ return r==='period'; }).length, pm=need.period||FLOOR.period;
           if(lw+np*pm>W){ var pw0=0; o.roles.forEach(function(r,i){ if(r==='period') pw0=Math.max(pw0,figMin(o,i)); }); pm=Math.max(pm-12,(W-lw)/np,pw0); if(lw+np*pm>W) lw=Math.max(labelWord(o),W-np*pm); if(lw+np*pm>W) tmin=Math.ceil(lw+np*pm)+'px'; } }
+        /* a first column of short codes (a month number, a unit) is not a description: it takes its own width and the table's text column takes the rest */
+        if(o.fam==='kv' && labelNat(o)<=90){ var ti=-1; o.roles.forEach(function(r,i){ if(i && (r==='short'||r==='note')) ti=i; }); if(ti>0){ lw=Math.max(labelNat(o),labelWord(o)); w[ti]=null; if(o.roles[ti]==='short'){ fixed-=Math.min(shortMax,W*0.5); } } }
         if(o.fam==='kv'){ var lmin=Math.min(labelNat(o),Math.max(W*0.24,140)); if(fixed+lmin>W) tmin=Math.ceil(fixed+lmin)+'px'; }   /* the label is never squeezed below its minimum: the table scrolls instead */
         if(o.fam==='ledger'){ var nf=0, fm=0, own={}; o.roles.forEach(function(r,i){ if(r==='amount'||r==='rate'){ nf++; own[i]=measure(o,r,i); fm=Math.max(fm,own[i]); } });
           if(lw+nf*fm>W){   /* too tight for equal columns: each figure column takes its own widest value, then drops its slack (never below its longest word), then the label gives way */
@@ -34876,6 +34882,9 @@ html body #bk-kpibar.bk-kpibar, html body #bk-kpibar{ background:rgba(14,42,74,.
 html body #bk-kpibar .kb-k{ color:#E3ECF7 !important }
 html body #bk-kpibar .kb-s{ color:#CFE0F5 !important }
 @media print{ html body #bk-kpibar{ display:none !important } }
+
+/* a card's list ends without its own rule: the card's edge or the footer note under it is the one line (two lines 4 px apart under the last row before) */
+html body #viewport .metric-list > .metric-row:last-child{ border-bottom:0 !important; }
 </style>
 <style id="bk-report-argus-css">/* Reports in the Argus layout (Reports > Cash Flow, Valuation, Tenant, Lease Schedule, Audit). Display only: the same rows, figures and order as before.
    Modelled on the Argus Enterprise Property Reports (Cash Flow, Detailed Lines) and Valuation Reports (Present Value, Valuation & Return Summary):
@@ -35202,7 +35211,7 @@ html body #viewport .bk-box.bk-box-t > .bk-box-b{ padding:12px 14px; }
     box-sizing:border-box; height:30px; line-height:28px; padding:0 12px; vertical-align:middle;
     font:600 12px/28px var(--bk-ctl-font); letter-spacing:0 !important; text-transform:none !important; white-space:nowrap;
     color:var(--bk-ctl-ink) !important; background:var(--bk-ctl-bg) !important; border:1px solid var(--bk-ctl-line) !important; border-radius:2px !important; box-shadow:none !important; cursor:pointer; }
-  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):hover{ background:var(--bk-ctl-bg-hover) !important; border-color:var(--bk-ctl-accent) !important; }
+  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):not(.primary):not(.pri):hover{ background:var(--bk-ctl-bg-hover) !important; border-color:var(--bk-ctl-accent) !important; }   /* a primary button keeps its fill on hover, so its white text stays readable */
   :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):disabled{ opacity:.45; cursor:default; }
   :is(#viewport, #pl-modal) :is(.status-chip[onclick], button.status-chip, .status-chip[role=button])::before{ display:none !important; }
   /* primary: the one main action of a block */

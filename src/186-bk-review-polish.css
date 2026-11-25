@@ -215,3 +215,6 @@ html body #bk-kpibar.bk-kpibar, html body #bk-kpibar{ background:rgba(14,42,74,.
 html body #bk-kpibar .kb-k{ color:#E3ECF7 !important }
 html body #bk-kpibar .kb-s{ color:#CFE0F5 !important }
 @media print{ html body #bk-kpibar{ display:none !important } }
+
+/* a card's list ends without its own rule: the card's edge or the footer note under it is the one line (two lines 4 px apart under the last row before) */
+html body #viewport .metric-list > .metric-row:last-child{ border-bottom:0 !important; }

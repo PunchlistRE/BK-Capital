@@ -229,6 +229,8 @@
            value plus padding, then the label column down to its longest word (labels wrap between words); only then does the table scroll inside its card */
         if(o.fam==='period'){ var np=o.roles.filter(function(r){ return r==='period'; }).length, pm=need.period||FLOOR.period;
           if(lw+np*pm>W){ var pw0=0; o.roles.forEach(function(r,i){ if(r==='period') pw0=Math.max(pw0,figMin(o,i)); }); pm=Math.max(pm-12,(W-lw)/np,pw0); if(lw+np*pm>W) lw=Math.max(labelWord(o),W-np*pm); if(lw+np*pm>W) tmin=Math.ceil(lw+np*pm)+'px'; } }
+        /* a first column of short codes (a month number, a unit) is not a description: it takes its own width and the table's text column takes the rest */
+        if(o.fam==='kv' && labelNat(o)<=90){ var ti=-1; o.roles.forEach(function(r,i){ if(i && (r==='short'||r==='note')) ti=i; }); if(ti>0){ lw=Math.max(labelNat(o),labelWord(o)); w[ti]=null; if(o.roles[ti]==='short'){ fixed-=Math.min(shortMax,W*0.5); } } }
         if(o.fam==='kv'){ var lmin=Math.min(labelNat(o),Math.max(W*0.24,140)); if(fixed+lmin>W) tmin=Math.ceil(fixed+lmin)+'px'; }   /* the label is never squeezed below its minimum: the table scrolls instead */
         if(o.fam==='ledger'){ var nf=0, fm=0, own={}; o.roles.forEach(function(r,i){ if(r==='amount'||r==='rate'){ nf++; own[i]=measure(o,r,i); fm=Math.max(fm,own[i]); } });
           if(lw+nf*fm>W){   /* too tight for equal columns: each figure column takes its own widest value, then drops its slack (never below its longest word), then the label gives way */
