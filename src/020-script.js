@@ -26,16 +26,20 @@
    }
    const status=!isRef?'N/A':(total&&pass===total?'PASS':'TIE-OUT IN PROGRESS');
    const cls=status==='PASS'?'pass':(status==='N/A'?'':'warn');
-   if(!isRef && !isDev) rows='<tr><td class="rowlabel" colspan="5">N/A - the Excel tie-out applies only to the reference workbook deal (Harvard Avenue, BK-001). This deal is checked by the model controls on Home and by the independent reconciliation suite.</td></tr>';
+   if(!isRef && !isDev) rows='<tr><td class="rowlabel" colspan="5">Not applicable to this deal. The Excel tie-out compares the web engine with the reference workbook, which models one deal: Harvard Avenue (BK-001).</td></tr>';
    const main=`<div class="tbl-wrap"><table class="fin"><caption>Excel ↔ Web Engine Certification - Active Deal</caption><thead><tr><th class="rowlabel-h">Metric</th><th>Web Engine</th><th>Excel Baseline</th><th>Variance</th><th>Status</th></tr></thead><tbody>${isDev?'<tr><td class="rowlabel" colspan="5">Development certification requires a saved Excel development baseline; engine is live but not certified from the active acquisition baseline.</td></tr>':rows}</tbody></table></div>
-   <div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Certification Gates</caption><tbody>
+   ${isRef?`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Certification Gates</caption><tbody>
    <tr><td class="rowlabel">Web core return tie-out</td><td><span class="status-chip ${cls}">${status}</span></td></tr>
-   <tr><td class="rowlabel">Checks passed</td><td>${isRef?pass+' / '+total:'N/A'}</td></tr>
+   <tr><td class="rowlabel">Checks passed</td><td>${pass+' / '+total}</td></tr>
    <tr><td class="rowlabel">Workbook structural failures</td><td>0</td></tr>
    <tr><td class="rowlabel">Workbook stamped regression</td><td>30 of 30 rows - PASS</td></tr>
-   <tr><td class="rowlabel">Workbook live ENGINE CERTIFIED flag</td><td>${isRef?'<span class="status-chip fail">NOT CERTIFIED - FAIL</span>':'<span class="status-chip">N/A - reference workbook only</span>'}</td></tr>
+   <tr><td class="rowlabel">Workbook live ENGINE CERTIFIED flag</td><td><span class="status-chip fail">NOT CERTIFIED - FAIL</span></td></tr>
+   </tbody></table></div>`:`<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Certification Gates</caption><tbody>
+   <tr><td class="rowlabel">Web core return tie-out</td><td><span class="status-chip">N/A</span></td></tr>
+   <tr><td class="rowlabel">Checks passed</td><td><span class="status-chip">N/A</span></td></tr>
    </tbody></table></div>
-   <div class="note-flag"><span>&#9888;</span><div><b>Certification is intentionally strict.</b> The workbook itself currently reports 0 structural failures and a 30/30 stamped regression, but its live ENGINE CERTIFIED gate still reads NOT CERTIFIED - FAIL because the synthetic QA suite needs to be rerun after the repaired assertions. This check does not override that workbook status. Web rows only pass when the live browser result is within 0.20% of the stored Excel baseline.</div></div>`;
+   <div class="note-flag"><span>&#9432;</span><div><b>This page is for the reference deal.</b> It checks the web engine against the Excel workbook, which models one deal, Harvard Avenue (BK-001). ${bkEsc(s.name||'This deal')} is checked instead by the model controls on Home and the reconciliation checks on Model Checks.</div></div>`}
+   ${isRef?`<div class="note-flag"><span>&#9888;</span><div><b>Certification is intentionally strict.</b> The workbook itself currently reports 0 structural failures and a 30/30 stamped regression, but its live ENGINE CERTIFIED gate still reads NOT CERTIFIED - FAIL because the synthetic QA suite needs to be rerun after the repaired assertions. This check does not override that workbook status. Web rows only pass when the live browser result is within 0.20% of the stored Excel baseline.</div></div>`:''}`;
    const sidebar=sidebarShell(`<div class="card"><div class="card-head">Web Certification</div><div class="metric-list"><div class="metric-row"><span class="k">Active Deal</span><span class="v">${s.name||'-'}</span></div><div class="metric-row"><span class="k">Web Tie-Out</span><span class="v"><span class="status-chip ${cls}">${status}</span></span></div><div class="metric-row"><span class="k">Passed</span><span class="v">${isRef?pass+' / '+total:'N/A'}</span></div><div class="metric-row"><span class="k">Tolerance</span><span class="v">0.20%</span></div></div></div>${colorKeyCard()}`);
    return {title:'QA',crumbs:'QA',desc:'Live Excel-to-web engine tie-out and certification gates.',meta:{Property:s.name||'-','Web Checks':isRef?pass+' / '+total:'N/A','Workbook Structural':isRef?'0 failures':'N/A','Workbook Engine':isRef?'NOT CERTIFIED':'N/A',Status:status},main,sidebar};
  }
