@@ -55,12 +55,12 @@ html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
 /* DEAL UNDERWRITE TAB BAR: one horizontal row of seven group tabs, sticky under the pinned header, scrolling sideways on a phone (never wrapping to a second row). The open tab has a
    coloured underline and a raised fill; a red count marks required inputs still missing in that group; a group that does not apply reads N/A. */
-html body #viewport .bk-dui.bk-tabs{ position:sticky; top:var(--bk-stick,0px); z-index:12; display:flex; flex-direction:row; flex-wrap:nowrap; align-items:stretch; gap:0; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:thin; background:var(--ae-bg); border:1px solid var(--ae-line); border-bottom:2px solid var(--ae-line); border-radius:0; padding:0; margin:0 0 12px; box-shadow:0 1px 0 rgba(0,0,0,.04); }
-html body #viewport .bk-dui.bk-tabs .bk-dt{ flex:0 0 auto; position:relative; display:inline-flex; align-items:center; gap:6px; height:38px; margin:0 0 -2px; padding:0 10px !important; background:transparent !important; border:0 !important; border-bottom:3px solid transparent !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:600 12px/1 Inter,system-ui,sans-serif !important; letter-spacing:0; white-space:nowrap; cursor:pointer; }
-html body #viewport .bk-dui.bk-tabs .bk-dt::before{ content:''; width:8px; height:8px; border-radius:2px; background:var(--g,#6a7480); flex:0 0 auto; }
-html body #viewport .bk-dui.bk-tabs .bk-dt:hover{ color:var(--ae-ink) !important; background:color-mix(in srgb,var(--g,#6a7480) 9%,transparent) !important; }
-html body #viewport .bk-dui.bk-tabs .bk-dt.on{ color:var(--ae-ink) !important; background:var(--ae-tab-on,#fff) !important; border-bottom-color:var(--g,#6a7480) !important; font-weight:700 !important; }
-html body #viewport .bk-dui.bk-tabs .bk-dt:focus-visible{ outline:2px solid var(--g,#2f5f9e); outline-offset:-3px; }
+html body #viewport .bk-dui.bk-tabs{ position:sticky; top:var(--bk-stick,0px); z-index:12; display:flex; flex-direction:row; flex-wrap:nowrap; align-items:flex-end; gap:2px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:thin; background:var(--ae-head2); border:1px solid var(--ae-line); border-left:4px solid var(--ae-accent); border-radius:0; padding:8px 8px 0 10px; margin:0 0 12px; box-shadow:none; }   /* the panel tabs of the editor (src/210): one look for every set of sub-tabs */
+html body #viewport .bk-dui.bk-tabs .bk-dt{ flex:0 0 auto; position:relative; display:inline-flex; align-items:center; gap:6px; box-sizing:border-box; height:30px; margin:0 0 -1px; padding:0 14px !important; background:var(--ae-cell-ro, var(--ae-head)) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:500 12px/1 Inter,system-ui,sans-serif !important; letter-spacing:0; white-space:nowrap; cursor:pointer; }
+html body #viewport .bk-dui.bk-tabs .bk-dt::before{ content:none; }
+html body #viewport .bk-dui.bk-tabs .bk-dt:not(.on):hover{ color:var(--ae-ink) !important; background:var(--ae-head2) !important; }
+html body #viewport .bk-dui.bk-tabs .bk-dt.on{ color:var(--ae-ink) !important; background:var(--ae-cell,#fff) !important; border-top:2px solid var(--ae-accent) !important; font-weight:700 !important; }
+html body #viewport .bk-dui.bk-tabs .bk-dt:focus-visible{ outline:2px solid var(--ae-accent); outline-offset:-3px; }
 html body #viewport .bk-dui.bk-tabs .bk-dt.na{ color:var(--bk-na-ink) !important; }
 html body #viewport .bk-dui.bk-tabs .bk-dt.na::before{ background:var(--bk-na-ink); }
 html body #viewport .bk-dui.bk-tabs .bk-dt.empty{ opacity:.45; pointer-events:none; }
@@ -70,7 +70,7 @@ html body #viewport .bk-dui.bk-tabs .bk-dt-all{ flex:0 0 auto; margin-left:auto;
 html body #viewport .bk-dui.bk-tabs .bk-dt-all:hover{ color:var(--ae-ink) !important; }
 html body #viewport .tbl-wrap.bk-grp-hide{ display:none !important; }
 @media print{ html body #viewport .tbl-wrap.bk-grp-hide{ display:block !important; } }
-@media (max-width:760px){ html body #viewport .bk-dui.bk-tabs .bk-dt{ height:42px; padding:0 13px !important; } }
+@media (max-width:760px){ html body #viewport .bk-dui.bk-tabs .bk-dt{ height:40px; padding:0 13px !important; } }
 /* buttons: the shared component (src/210) */
 /* top navigation as editor tabs with letter icons */
 html body .tabnav-primary{ gap:2px !important; align-items:flex-end; }
@@ -368,8 +368,8 @@ html body #viewport [data-bk-v="na"]{ color:var(--bk-na-ink) !important; font-si
 html body #viewport [data-bk-v="unavail"]{ color:var(--bk-attn-amber) !important; font-style:italic; }
 
 /* Visual QA: the section-tab strip never hides a label behind the "Show as tabs" button; the button scrolls with the strip, tabs keep their full label, and an edge shade shows when more tabs are off-screen. */
-html body #viewport .bk-dui.bk-tabs .bk-dt{ padding:0 9px !important; gap:5px; }
-html body #viewport .bk-dui.bk-tabs{ scroll-padding:0 40px; background:linear-gradient(to left,rgba(14,42,74,.16),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll, var(--ae-bg) !important; }
+
+html body #viewport .bk-dui.bk-tabs{ scroll-padding:0 40px; background:linear-gradient(to left,rgba(14,42,74,.16),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll, var(--ae-head2) !important; }
 
 /* Polish: a header cell with no value says so instead of leaving a gap; editor grids and the step strip scroll with a visible edge instead of clipping. */
 html body #viewport .meta-strip .v[data-bk-v="unset"]::before{ content:'Not set'; color:var(--bk-na-ink); font-weight:500; font-style:italic; }
@@ -377,7 +377,7 @@ html body .ae .ae-panel{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
 html body .bk-steps{ background:linear-gradient(to left,rgba(14,42,74,.14),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll; }
 
 /* Polish: on a wide screen the section tabs wrap onto a second row rather than hiding a label; on a phone they scroll. */
-@media (min-width:761px){ html body #viewport .bk-dui.bk-tabs{ flex-wrap:wrap; overflow:visible; background:var(--ae-bg) !important; } html body #viewport .bk-dui.bk-tabs .bk-dt-all{ margin-left:auto; } }
+@media (min-width:761px){ html body #viewport .bk-dui.bk-tabs{ flex-wrap:wrap; overflow:visible; background:var(--ae-head2) !important; } html body #viewport .bk-dui.bk-tabs .bk-dt-all{ margin-left:auto; } }
 
 /* Polish: an unfinished deal gets a neutral notice, not a red alarm. */
 html body #viewport .note-flag.bk-draft-banner{ border-left-color:var(--bk-attn-amber) !important; }
