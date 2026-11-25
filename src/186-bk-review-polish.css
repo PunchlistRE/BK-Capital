@@ -74,7 +74,8 @@ html.bk-rail-collapsed .rail .rail-sub, html.bk-rail-collapsed .rail .rail-subla
 html.bk-rail-collapsed .rail .rail-group > :not(.rail-group-label){ display:none !important }
 /* header sub-tabs: one gap between every tab */
 html body .rb-tabs{ gap:6px }
-html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ margin:0 2px }
+/* one even gap between every tab, also where one sheet group ends and the next begins (the group is named in each tab's tooltip) */
+html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ display:none }
 /* two-column metric tables (label left, value right) on every page, no stray bottom border under the last row of a grid cell */
 /* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
 
