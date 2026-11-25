@@ -1,0 +1,62 @@
+/* CONTROLS (design-system phase 2). One definition for each control, replacing the per-module copies that were deleted from 121, 123, 142, 144, 153, 162,
+   162a, 182, 194 and 209:
+   1 buttons: one component, three variants (secondary, primary, quiet), two sizes (30 px; 24 px inside tables and in the step bar), the step navigation at 34 px;
+   2 view switches: one segmented control (the CASE switch is the benchmark), the chosen option filled;
+   3 panel tabs: the editor sub-tabs, boxed like the page tabs above them, 30 px, a 2 px accent line on the open tab;
+   4 disclosure: the side menu's +/- sign on every summary (Model notes, Step sizes);
+   5 fields: a long choice is clipped inside its own box, clear of the chevron, and shown in full in the open list; a field never wraps or widens its column.
+   Buttons are styled in the sheet and in the dialogs (#pl-modal). Screen only: buttons and switches are not printed. No display, position or handler is set here, so a control that is hidden stays hidden.
+   Home's next-step band (light buttons on navy) is a named exception and keeps its own rules (src/140, src/162a). */
+:root, body{ --bk-ctl-bg:var(--ae-cell,#fff); --bk-ctl-bg-hover:var(--ae-head2,#F1F4F8); --bk-ctl-line:var(--ae-line,#C4CDD9); --bk-ctl-ink:var(--ae-ink,#14212F); --bk-ctl-dim:var(--ae-dim,#566A80);
+  --bk-ctl-accent:var(--ae-accent,#1F4E8C); --bk-ctl-on:var(--ae-ink,#14212F); --bk-ctl-on-ink:var(--ae-cell,#fff); --bk-ctl-danger:#A32F24; --bk-ctl-font:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
+@media screen{
+  /* 1 · buttons */
+  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]){
+    box-sizing:border-box; height:30px; line-height:28px; padding:0 12px; vertical-align:middle;
+    font:600 12px/28px var(--bk-ctl-font); letter-spacing:0 !important; text-transform:none !important; white-space:nowrap;
+    color:var(--bk-ctl-ink) !important; background:var(--bk-ctl-bg) !important; border:1px solid var(--bk-ctl-line) !important; border-radius:2px !important; box-shadow:none !important; cursor:pointer; }
+  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):hover{ background:var(--bk-ctl-bg-hover) !important; border-color:var(--bk-ctl-accent) !important; }
+  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):disabled{ opacity:.45; cursor:default; }
+  :is(#viewport, #pl-modal) :is(.status-chip[onclick], button.status-chip, .status-chip[role=button])::before{ display:none !important; }
+  /* primary: the one main action of a block */
+  :is(#viewport, #pl-modal) :is(.bk-btn.primary, .bk-btn.pri, .ae-btn.pri, .ae-btn.primary, .pl-hbtn.primary){ color:#fff !important; background:var(--bk-ctl-accent) !important; border-color:var(--bk-ctl-accent) !important; }
+  :is(#viewport, #pl-modal) :is(.bk-btn.primary, .bk-btn.pri, .ae-btn.pri, .ae-btn.primary, .pl-hbtn.primary):hover{ filter:brightness(1.1); }
+  /* quiet: a text action; danger keeps its red text (Clear inputs) */
+  :is(#viewport, #pl-modal) :is(.bk-btn, .pl-hbtn).quiet{ background:transparent !important; border-color:transparent !important; color:var(--bk-ctl-accent) !important; }
+  :is(#viewport, #pl-modal) .pl-hbtn.danger{ color:var(--bk-ctl-danger) !important; }
+  /* compact: inside tables and in the step bar, so neither grows */
+  #viewport :is(td, th, .bk-flow) :is(.bk-btn, .ae-btn, .pl-hbtn, button.status-chip, .status-chip[onclick], .status-chip[role=button]){ height:24px; line-height:22px; padding:0 8px; font-size:11.5px; }
+  /* the step navigation ("Next: Debt Schedule ->") is the one larger, page-level size */
+  #viewport .bk-stepnav .bk-btn{ height:34px; line-height:32px; padding:0 14px; font-size:12.5px; }
+
+  /* 2 · view switches */
+  #viewport :is(.bk-seg, .bk-sx-seg){ border:1px solid var(--bk-ctl-line) !important; border-radius:2px !important; overflow:hidden; }
+  #viewport .bk-views{ gap:0; }
+  #viewport .bk-views .bkv-l{ margin-right:8px; }
+  #viewport :is(.bk-seg button, .bk-sx-seg button, .bk-views .bkv-b){ box-sizing:border-box; height:30px; line-height:28px; padding:0 12px; margin:0;
+    font:600 12px/28px var(--bk-ctl-font); letter-spacing:0; text-transform:none; color:var(--bk-ctl-ink); background:var(--bk-ctl-bg); border:0; border-left:1px solid var(--bk-ctl-line); border-radius:0 !important; box-shadow:none; cursor:pointer; }
+  #viewport :is(.bk-seg, .bk-sx-seg) button:first-child{ border-left:0; }
+  #viewport .bk-views .bkv-b{ border:1px solid var(--bk-ctl-line); }
+  #viewport .bk-views .bkv-b + .bkv-b{ border-left:0; }
+  #viewport :is(.bk-seg button, .bk-sx-seg button, .bk-views .bkv-b):hover{ background:var(--bk-ctl-bg-hover); }
+  #viewport :is(.bk-seg button[aria-pressed="true"], .bk-seg button.on, .bk-sx-seg button[aria-pressed="true"], .bk-views .bkv-b.on){ color:var(--bk-ctl-on-ink); background:var(--bk-ctl-on); border-color:var(--bk-ctl-on); }
+  #viewport .bk-flow .bk-seg button{ height:24px; line-height:22px; padding:0 10px; font-size:11.5px; }
+
+  /* 3 · panel tabs */
+  #viewport .ae-subs{ display:flex; flex-wrap:wrap; gap:2px; padding:8px 8px 0 10px; background:var(--ae-head2); border:1px solid var(--bk-ctl-line); border-left:4px solid var(--bk-ctl-accent); border-top:0; }
+  #viewport .ae-subs .ae-sub{ box-sizing:border-box; height:30px; line-height:28px; padding:0 14px; margin-bottom:-1px; font:500 12px/28px var(--bk-ctl-font); color:var(--bk-ctl-dim);
+    background:var(--ae-cell-ro, var(--ae-head)); border:1px solid var(--bk-ctl-line); border-bottom:0; border-radius:0; cursor:pointer; }
+  #viewport .ae-subs .ae-sub:hover{ color:var(--bk-ctl-ink); background:var(--bk-ctl-bg-hover); }
+  #viewport .ae-subs .ae-sub.on{ color:var(--bk-ctl-ink); font-weight:700; background:var(--bk-ctl-bg); border-top:2px solid var(--bk-ctl-accent); line-height:26px; }
+
+  /* 4 · disclosure */
+  #viewport summary{ list-style:none; display:flex; align-items:center; gap:8px; cursor:pointer; }
+  #viewport summary::-webkit-details-marker{ display:none; }
+  #viewport summary::before{ content:"+"; flex:0 0 13px; width:13px; height:13px; box-sizing:border-box; border:1px solid currentColor; font:600 11px/11px var(--bk-ctl-font); text-align:center; }
+  #viewport details[open] > summary::before{ content:"\2212"; }
+  #viewport details.bk-conv-na > summary{ display:list-item; list-style:revert; }
+  #viewport details.bk-conv-na > summary::before{ content:none; }
+
+  /* 5 · fields: a long choice clips inside its own box */
+  #viewport select{ text-overflow:ellipsis; white-space:nowrap; overflow:hidden; max-width:100%; }
+}
