@@ -232,10 +232,11 @@ function parseLoopNet(txt){
 function bannerPairs(txt){
   var out = [], FIG = /^\(?\$?\s?\d[\d,]*(?:\.\d+)?\)?\s*%?$/;
   (txt || []).forEach(function(pg, pi){ var L = String(pg || '').split(/\n/);
-    L.forEach(function(line, li){ var vals = line.trim().split(/\s{2,}/); if(vals.length < 3 || !vals.every(function(v){ return FIG.test(v); })) return;
+    L.forEach(function(line, li){ var vals = line.trim().split(/\s{2,}/); if(vals.length < 2 || !vals.every(function(v){ return FIG.test(v); })) return;
       for(var q = li + 1; q <= Math.min(L.length - 1, li + 3); q++){ var labs = L[q].trim().split(/\s{2,}/);
         if(labs.length === 1 && (FIG.test(labs[0]) || labs[0].length <= 12)) continue;   /* a stacked tile or its one-word label */
         if(labs.length !== vals.length || !labs.every(function(x){ return /[A-Za-z#]/.test(x) && !/\d{3}/.test(x); })) return;
+        if(vals.length === 2 && !labs.some(function(x){ return /price|units?|cap|sq\.?\s*f|\bsf\b|noi/i.test(x); })) return;   /* two cells pair only when a label says what a figure is */
         vals.forEach(function(v, k){ var n = parseFloat(v.replace(/[^0-9.]/g, '')); if(!isFinite(n)) return; out.push({ label:labs[k].replace(/\s+/g, ' ').trim(), value:n, raw:v, pct:/%$/.test(v), money:/\$/.test(v), page:pi + 1 }); });
         return; } }); });
   return out;
@@ -302,6 +303,7 @@ function unitRollTable(txt){
     L.forEach(function(l, q){ if(hdr < 0 && /^\s*unit\b/i.test(l) && /\bunit\s*type\b|\btype\b/i.test(l) && /current|in-?place/i.test(l) && /pro\s*-?\s*forma|market/i.test(l) && !/\$\s*\/\s*unit/i.test(l)) hdr = q; });
     if(hdr < 0) continue; var rows = [], total = null;
     for(var q = hdr + 1; q < L.length; q++){ var l = L[q], t = l.trim(); if(!t) continue;
+      var unitsRow = /^(\d{1,4})\s+units?\b/i.exec(t); if(unitsRow){ var mu = t.match(/\$\s?[\d,]+(?:\.\d+)?/g) || []; if(mu.length >= 2) total = { cur:Number(mu[0].replace(/[^\d.]/g, '')), pf:Number(mu[1].replace(/[^\d.]/g, '')), units:Number(unitsRow[1]) }; break; }
       if(/^(monthly\s+)?totals?\b/i.test(t)){ var mt = t.match(/\$\s?[\d,]+(?:\.\d+)?/g) || []; if(mt.length >= 2) total = { cur:Number(mt[0].replace(/[^\d.]/g, '')), pf:Number(mt[1].replace(/[^\d.]/g, '')) }; break; }
       var m = ROW.exec(l); if(!m){ if(rows.length) break; continue; }
       var cur = Number(m[4].replace(/,/g, '')), pf = Number(m[5].replace(/,/g, '')), mi = (m[6] || '').toLowerCase(), le = (m[7] || '').toLowerCase(), note = (m[8] || '').trim(), vacant = mi === 'vacant' || le === 'vacant' || /\bvacant\b/i.test(note);
@@ -410,12 +412,12 @@ function parseOM(pages){
   /* the broker's printed cap rates, kept as printed: they check the price below and never stand in for a calculated rate */
   var CRT = findCapRates(txt); if(CRT.cur != null || CRT.pf != null){ o.capPrinted = true; o.capRates = CRT; if(CRT.cur != null) o.curCap = CRT.cur; if(CRT.pf != null) o.pfCap = CRT.pf; }
   var BAN = bannerPairs(txt), banner = function(re, test){ var h = BAN.filter(function(bp){ return re.test(bp.label) && !bp.pct && test(bp.value); })[0]; return h || null; };
-  o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b/i, 1, 'units')) || num(find(/Total\s+Units\s*:?\s+(\d{1,4})\b/i, 1, 'units')) || (function(){ var bu = banner(/\bunits?\b/i, function(v){ return v >= 1 && v < 2000 && v === Math.round(v); }); if(bu){ src.units = bu.page; return bu.value; } return null; })() || null;
+  o.units = num(find(/\bTotal\s+(\d{1,4})\s+Units\b/i, 1, 'units')) || num(find(/\bUNITS\s+(\d{1,4})\b(?![,.]\d)/i, 1, 'units')) || num(find(/Total\s+Units\s*:?\s+(\d{1,4})\b/i, 1, 'units')) || (function(){ var bu = banner(/\bunits?\b/i, function(v){ return v >= 1 && v < 2000 && v === Math.round(v); }); if(bu){ src.units = bu.page; return bu.value; } return null; })() || null;
   /* a loose "N units" phrase anywhere in the text is the last resort, used only when no table, banner or labelled count states the units (below) */
   var unitsLoose = null, unitsLoosePage = null; (function(){ for(var q = 0; q < txt.length; q++){ var lm = /(\d{1,4})\s*[- ]?\s*units?\b/i.exec(txt[q]); if(lm){ unitsLoose = num(lm[1]); unitsLoosePage = q + 1; return; } } })();
   o.sf = num(find(/\bTotal\s+\d{1,4}\s+Units\s+([\d,]{4,})\s*SF/i, 1, 'sf')) || num(find(/(?:RENTABLE|LIVING|BUILDING)[^\n]{0,20}AREA\s+([\d,]{3,})\s*SF/i, 1, 'sf'))
     || num(find(/([\d,]{4,})\s*Total\s*SF\b/i, 1, 'sf')) || (function(){ var bm = /Building\s*SF\s+([\d,]{3,})\s*SF(?:\s*\|\s*([\d,]{3,})\s*SF)?/i.exec(all); return bm ? num(bm[1]) + (bm[2] ? num(bm[2]) : 0) : null; })() || num(find(/\bTotal\s+(?:Rentable\s+|Building\s+|Gross\s+)?SF\s*:?\s+([\d,]{4,})\b/i, 1, 'sf')) || num(find(/\bBuilding\s+(?:Size|Area)\s*:?\s*([\d,]{3,})\s*(?:SF\b|sq\.?\s*f(?:ee)?t|square\s+f(?:ee|oo)t)/i, 1, 'sf'))
-    || (function(){ var bs = banner(/sq\.?\s*f|\bsf\b|square|approx|area|size/i, function(v){ return v >= 300 && v < 5000000; }); if(bs){ src.sf = bs.page; return bs.value; } return null; })() || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf'));
+    || (function(){ var bs = banner(/sq\.?\s*f|\bsf\b|square|approx|area|size/i, function(v){ return v >= 300 && v < 5000000; }); if(bs){ src.sf = bs.page; return bs.value; } return null; })() || num(find(/([\d,]{4,})\s*SF\b/i, 1, 'sf')) || num(find(/\b(\d{1,3},\d{3})\s*(?:square\s+feet|sq\.?\s*ft\b)/i, 1, 'sf'));
   o.yearBuilt = num(find(/YEAR BUILT\s+(\d{4})/i, 1, 'yearBuilt'));
   o.lotAcres = num(find(/LOT SIZE[^\n]{0,30}?([\d.]+)\s*Acres/i, 1, 'lot')) || num(find(/\b(\d?\.\d+)\s*Acres/i, 1));
   o.stories = num(find(/STORIES\s+(\d+)/i, 1));

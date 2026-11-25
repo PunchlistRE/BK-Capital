@@ -323,7 +323,7 @@ function pdfRows(text){
     /* a row of headings over a row of values */
     if(headerLike(line) && toks.length >= 2 && toks.length <= 8 && next.replace(/\$?[\d,.]+\s?(%|SF|acres?|units?)?/gi, '').trim().length < 3){ var parts = bestSplit(line.split(/\s+/), toks.length, knownLabel); if(parts && parts.filter(knownLabel).length >= 2){ rows.push(parts); rows.push(toks); i += 2; continue; } }
     /* a small table: a heading line, then rows that are a label followed by figures */
-    var dataRe = /^([A-Za-z0-9][A-Za-z0-9 &\/.\-]*?)\s+((?:\(?\$?-?[\d,]+(?:\.\d+)?%?\)?[KkMm]?\s*(?:weighted avg\.?)?\s*){2,})$/, d1 = dataRe.exec(next), d2 = dataRe.exec(lines[i + 2] || '');
+    var dataRe = /^([A-Za-z0-9][A-Za-z0-9 &\/.\-]*?)\s+((?:\(?\$?-?\d[\d,]*(?:\.\d+)?%?\)?[KkMm]?(?:\s*weighted avg\.?)?(?:\s+|$)){2,})$/   /* each figure ends at a space or the line end: an optional space inside the repeat let a long run of digits split every possible way (exponential), which froze the page on some OMs */, d1 = dataRe.exec(next), d2 = dataRe.exec(lines[i + 2] || '');
     if(d1 && d2 && !dataRe.test(line) && w2(line) >= 2 && w2(line) <= 14){ var nc = 1 + valTokens(d1[2]).length, hp = bestSplit(line.split(/\s+/), nc, isHeadScore); if(hp){ rows.push(hp); i++; while(i < lines.length && dataRe.test(lines[i])){ var dm = dataRe.exec(lines[i]); rows.push([dm[1].trim()].concat(valTokens(dm[2]))); i++; } continue; } }
     /* "Label  value": a known label at the start of the line */
     var w = line.split(/\s+/), done = false;
