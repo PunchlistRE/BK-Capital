@@ -85,7 +85,7 @@ function panel(){
     +   '<td data-bk-align="text">-</td>'
     +   '<td>' + chip('', 'INPUT') + '</td></tr>'
     + '<tr class="input"><td class="rowlabel" data-bk-align="text">Minimum Debt Yield - Origination<span class="bk-sub">Blank or 0 disables this constraint</span></td>'
-    +   '<td class="v"><input type="number" step="0.01" style="width:118px"'
+    +   '<td class="v"><input type="number" step="0.01" data-bk-pw="width:118px"'
     +     ' value="' + (Number(s.acqDebtYield)>0 ? (Number(s.acqDebtYield)*100).toFixed(2) : '') + '"'
     +     ' placeholder="off"'
     +     ' onchange="bkSetAcqDebtYield(this.value)"></td>'

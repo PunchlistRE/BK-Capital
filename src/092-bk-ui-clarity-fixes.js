@@ -233,7 +233,7 @@ extend('QA','clarityQA', function(o){
     + '<td class="v"><select onchange="bkSetQAReferenceCompare(this.value)">'
     +   '<option'+(on?'':' selected')+'>Off</option>'
     +   '<option'+(on?' selected':'')+'>On</option></select></td>'
-    + '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'
+    + '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'
     +   'Shows a set of figures captured once from one reference property, with variance and a status chip</td>'
     + '<td class="v">'+chip(on?'warn':'pass', on?'REFERENCE SHOWN':'LIVE ENGINE ONLY')+'</td></tr>'
     + '</tbody></table></div>'

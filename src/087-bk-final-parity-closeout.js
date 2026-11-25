@@ -54,7 +54,7 @@ function chip(cls,t){ return '<span class="status-chip '+(cls||'')+'">'+esc(t)+'
 function note(sym,html){ return '<div class="note-flag" style="margin-top:10px;"><span>'+sym+'</span><div>'+html+'</div></div>'; }
 function lbl(t){ return '<td class="rowlabel" data-bk-align="text">'+t+'</td>'; }
 function val(t){ return '<td class="v">'+t+'</td>'; }
-function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400;opacity:.8">'+t+'</td>'; }
+function txt(t){ return '<td class="rowlabel" data-bk-align="text" style="font-weight:400">'+t+'</td>'; }
 function wrapTable(caption, headHtml, bodyHtml){
   return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>'+caption+'</caption>'
        + '<thead>'+headHtml+'</thead><tbody>'+bodyHtml+'</tbody></table></div>';
@@ -126,18 +126,18 @@ extend('Operating Underwrite','fRevenueBuild', function(o){
     + '<tr>'+lbl('Less: Vacancy')+val(money(c.vacancy))+txt('Gross potential rent &times; vacancy rate')+'<td></td></tr>'
     + '<tr>'+lbl('Less: Bad Debt / Credit Loss')+val(money(c.bad))+txt(bkConventions(bkLoad()).cvBadDebtBasis==='afterVacancy' ? 'Bad debt rate &times; rent after vacancy' : 'Bad debt rate &times; gross potential rent')+'<td></td></tr>'
     + '<tr>'+lbl('Loss to Lease - underwriting deduction')
-      + '<td class="v"><input type="number" step="0.01" style="width:100px" value="'+((Number(s.lossToLeasePct)||0)*100).toFixed(2)+'"'
+      + '<td class="v"><input type="number" step="0.01" data-bk-pw="width:100px" value="'+((Number(s.lossToLeasePct)||0)*100).toFixed(2)+'"'
       + ' onchange="bkSetLossToLease(this.value)"></td>'
       + txt('% of gross potential rent - workbook Operating Underwrite C8')
       + '<td class="v">'+chip('','INPUT %')+'</td></tr>'
     + '<tr>'+lbl('Less: Loss to Lease')+val(money(c.ltl))+txt('Gross potential rent &times; the rate above')+'<td></td></tr>'
     + '<tr>'+lbl('Concessions - stabilized')
-      + '<td class="v"><input type="number" step="0.01" style="width:100px" value="'+((Number(s.concessionPct)||0)*100).toFixed(2)+'"'
+      + '<td class="v"><input type="number" step="0.01" data-bk-pw="width:100px" value="'+((Number(s.concessionPct)||0)*100).toFixed(2)+'"'
       + ' onchange="bkSetConcession(this.value)"></td>'
       + txt('% of gross potential rent - workbook Operating Underwrite C9')
       + '<td class="v">'+chip('','INPUT %')+'</td></tr>'
     + '<tr>'+lbl('Concessions - lease-up')
-      + '<td class="v"><input type="number" step="0.01" style="width:100px" value="'
+      + '<td class="v"><input type="number" step="0.01" data-bk-pw="width:100px" value="'
       + ((s.concessionLeaseUpPct===undefined||s.concessionLeaseUpPct===null||s.concessionLeaseUpPct==='')
           ? ((Number(s.concessionPct)||0)*100).toFixed(2) : ((Number(s.concessionLeaseUpPct)||0)*100).toFixed(2))+'"'
       + ' onchange="bkSetConcessionLeaseUp(this.value)"></td>'
@@ -466,7 +466,7 @@ extend('Capital Allocation','fDecision', function(o){
     var shown = isPct ? (cur*100).toFixed(2) : Math.round(cur).toLocaleString('en-US');
     var unit = isPct ? '%' : '$';
     return '<tr>'+lbl(label)
-      + '<td class="v"><input type="text" inputmode="decimal" style="width:120px;text-align:left" value="'+shown+'"'
+      + '<td class="v"><input type="text" inputmode="decimal" style="text-align:left" data-bk-pw="width:120px" value="'+shown+'"'
       +   ' onchange="bkSetCapThreshold(\''+key+'\',this.value,'+(isPct?1:0)+')"></td>'
       + '<td class="unit-cell">'+unit+'</td>'+txt(why)+'</tr>';
   }

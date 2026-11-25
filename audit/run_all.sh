@@ -39,6 +39,7 @@ echo "== Import OM, rent-roll layout (unit rent roll + expense list, two-buildin
 echo "== Import OM, letter-spaced headings and period columns (Trailing 12 / Current / Pro Forma)"; node audit/om_columns_test.js index.html "$REF" | tail -1
 echo "== Import OM, price and printed cap rate (asking vs sold vs assessed)"; node audit/om_price_test.js index.html "$REF" | tail -1
 echo "== Import OM, 32 Ferry / 45-47 Spring Street layouts (price tile, sub-\$1M prices, dash column, unit mix by heading, stated commercial area)"; node audit/om_ferry_test.js index.html | tail -1
+echo "== Import OM, 509-515 Gregory Street layout (key figures in a banner with their labels under them; a unit table and a two-column statement on one page; the OM's own pro forma that does not add up is reported)"; node audit/om_gregory_test.js index.html | tail -1
 echo "== Financing Compare (complete dated financing economics, reconciled to the engine)"; node audit/fincompare_test.js index.html | tail -1
 echo "== Pre-Offer Bid (maximum supportable price, verified against the engine)"; node audit/prebid_test.js index.html | tail -1
 echo "== Deal Remedies (resize debt, maximum price, rent and occupancy required, through the credit gate)"; node audit/remedies_test.js index.html | tail -1
@@ -99,6 +100,7 @@ echo "== Development debt pages (Covenant Monitor, Debt Schedule sidebar, Deal V
 echo "== Capital measures (closing equity, total contributed equity, operating cash requirement, total project capitalization: one name for one number on every sheet, the investor PDF and the schedule report; ambiguous equity labels refused)"; node audit/capital_measures_test.js index.html
 echo "== Import tab routing (an OM with a rent roll page stays an OM; a plain rent roll stays a rent roll)"; node audit/import_route_test.js index.html | tail -1
 echo "== Document ingestion foundation (fact record and validation, quote verification, number parser, hashing, both stores, intake, pipeline failure / retry / resume, provider guard, classification measured on labeled fixtures)"; node audit/ingest_core_test.js index.html | tail -1
+echo "== Design system ratchet (no new hard-coded colours, font sizes or radii; the design-system tokens exist in light and Night)"; node audit/design_tokens_test.js | tail -1
 echo "== Visual polish (phone and web: no sheet scrolls sideways as a page, every sideways scroller says so, a stacked key row is one band with no fill, a select stays inside its cell, the capital tables fit their card, the Gantt task names are whole, the Home equity tile names its measure)"; node audit/visual_polish_test.js index.html | tail -1
 echo "== ui";                                 node audit/ui_test.js index.html | tail -1
 echo "ALL AUDITS PASSED"

@@ -1,0 +1,12 @@
+/* TOUCH TARGETS (phones and tablets, and any touch screen). The controls a finger has to hit were 24 to 34 px high; they are raised to 40 px: the ribbon icon buttons (38 px, so the ribbon stays under its 46 px ceiling), the tab-strip arrows, the header buttons
+   (Guide, Search, Sign in, theme), the Sheets menu button, the Downside / Base / Upside and Undo / Redo buttons, the workflow steps, the page buttons and the sensitivity chips. The tabs (the section page tabs, the editor tabs and the view tabs) keep their established 28 px height.
+   Buttons inside table rows are left alone so dense grids keep their row height. A desktop with a mouse is unchanged. Size only: no colour, type, handler or text changes. */
+@media (max-width:900px), (pointer:coarse){
+  html body .nav-chev, html body .pl-search, html body #pl-guide-toggle, html body .pl-user button,
+  html body .bk-btn, html body .bk-menu-btn, html body .bk-case button, html body button[data-bk-undo], html body button[data-bk-redo], html body .bk-step,
+  html body .bk-sx-chip, html body .pl-hbtn, html body .pl-btn, html body .ae-btn, html body .pf-print{ min-height:40px; }
+  html body .nav-chev{ min-width:40px; }
+  /* the ribbon keeps its established height ceiling (46 px): its icon buttons are 38 px high, the most that fits with the ribbon's own padding */
+  html body .bk-ribbon .rb-c{ min-width:40px; min-height:38px; }
+  html body td .bk-btn, html body th .bk-btn, html body td .ae-btn, html body td .pl-btn, html body td .pl-hbtn{ min-height:0; }
+}

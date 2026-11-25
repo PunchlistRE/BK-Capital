@@ -1080,6 +1080,11 @@
 "close": "</script>"
 },
 {
+"file": "207-bk-touch-targets.css",
+"open": "\n<style id=\"bk-touch-targets-css\">",
+"close": "</style>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
@@ -1117,6 +1122,21 @@
 {
 "file": "191-bk-emphasis-tiers.css",
 "open": "\n<style id=\"bk-emphasis-tiers-css\">",
+"close": "</style>"
+},
+{
+"file": "208-bk-control-uniform.css",
+"open": "\n<style id=\"bk-control-uniform-css\">",
+"close": "</style>"
+},
+{
+"file": "209-bk-table-standard.css",
+"open": "\n<style id=\"bk-table-standard-css\">",
+"close": "</style>"
+},
+{
+"file": "210-bk-controls.css",
+"open": "\n<style id=\"bk-controls-css\">",
 "close": "</style>"
 },
 {

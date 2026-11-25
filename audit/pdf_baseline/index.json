@@ -1,0 +1,112 @@
+{
+ "sheet-debt": {
+  "pages": 2,
+  "size": [
+   612,
+   792
+  ],
+  "words": 379,
+  "hash": "9acfb11641e13500",
+  "ink": 0
+ },
+ "investor-acq-7y": {
+  "pages": 9,
+  "size": [
+   612,
+   792
+  ],
+  "words": 3099,
+  "hash": "22ebcad77584729e",
+  "ink": 9216
+ },
+ "investor-dev": {
+  "pages": 14,
+  "size": [
+   612,
+   792
+  ],
+  "words": 5617,
+  "hash": "2507fc63abb74401",
+  "ink": 9216
+ },
+ "waterfall-summary-acq": {
+  "pages": 1,
+  "size": [
+   612,
+   792
+  ],
+  "words": 493,
+  "hash": "b6a5f1d046dbe785",
+  "ink": 12
+ },
+ "sheet-depreciation": {
+  "pages": 3,
+  "size": [
+   612,
+   792
+  ],
+  "words": 657,
+  "hash": "2d87b23521664d82",
+  "ink": 0
+ },
+ "sheet-credit-policy": {
+  "pages": 2,
+  "size": [
+   612,
+   792
+  ],
+  "words": 494,
+  "hash": "fb1c84aa7ea3a338",
+  "ink": 0
+ },
+ "sheet-property-cf": {
+  "pages": 7,
+  "size": [
+   612,
+   792
+  ],
+  "words": 2797,
+  "hash": "8b39e8292356256a",
+  "ink": 0
+ },
+ "sheet-cash-flow-report": {
+  "pages": 2,
+  "size": [
+   612,
+   792
+  ],
+  "words": 605,
+  "hash": "0d724d6860bd0a55",
+  "ink": 0
+ },
+ "sheet-sources-and-uses-report": {
+  "pages": 2,
+  "size": [
+   612,
+   792
+  ],
+  "words": 556,
+  "hash": "d440f170b0b46d2a",
+  "ink": 0
+ },
+ "sheet-waterfall-report": {
+  "pages": 3,
+  "size": [
+   612,
+   792
+  ],
+  "words": 1005,
+  "hash": "376c8208933f3035",
+  "ink": 0
+ },
+ "sheet-valuation-report": {
+  "pages": 2,
+  "size": [
+   612,
+   792
+  ],
+  "words": 488,
+  "hash": "7e7169fba66ff385",
+  "ink": 0
+ }
+}

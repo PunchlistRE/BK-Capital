@@ -29,10 +29,13 @@ html body #viewport table.fin td.neg{ color:#c0392b; }
 :root[data-theme="dark"]{ --bk-in-fill:#34301d; --bk-in-ink:#9bbcff; --bk-in-line:#6f6531; --bk-in-hover:#403b22; --bk-link-ink:#62d79f; --bk-na-ink:#7f8a97; --bk-attn-red:#ff7a6e; --bk-attn-amber:#f0b84a; }
 html body #viewport{ --bk-calc-fill:transparent; --bk-total-fill:var(--bk-key-fill); --bk-total-ink:var(--bk-key-ink); }
 /* input cells: a boxed field, as in the editor */
-html body #viewport table.fin tr.input td.v{ background:var(--bk-in-fill) !important; color:var(--bk-in-ink) !important; box-shadow:inset 0 0 0 1px var(--bk-in-line); font-weight:600; }
-html body #viewport table.fin tr.input td.v *{ background:transparent !important; border-color:transparent !important; text-decoration:none !important; color:inherit !important; box-shadow:none !important; }
-html body #viewport table.fin td.v:has(select){ box-shadow:inset 0 0 0 1px var(--bk-in-line); }
-html body #viewport table.fin tr.input td.v:hover{ box-shadow:inset 0 0 0 2px var(--bk-in-line); background:var(--bk-in-hover) !important; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin tr.input td.v{ background:var(--bk-in-fill) !important; color:var(--bk-in-ink) !important; box-shadow:inset 0 0 0 1px var(--bk-in-line); font-weight:600; }
+html:where(.bk-printing) body #viewport table.fin tr.input td.v *{ background:transparent !important; border-color:transparent !important; text-decoration:none !important; color:inherit !important; box-shadow:none !important; }
+html:where(.bk-printing) body #viewport table.fin td.v:has(select){ box-shadow:inset 0 0 0 1px var(--bk-in-line); }
+html:where(.bk-printing) body #viewport table.fin tr.input td.v:hover{ box-shadow:inset 0 0 0 2px var(--bk-in-line); background:var(--bk-in-hover) !important; }
+
 html body #viewport input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]), html body #viewport select, html body #viewport textarea{ border:1px solid var(--bk-in-line); background:var(--bk-in-fill); color:var(--bk-in-ink); font-weight:600; border-radius:0; }
 html body #viewport input::placeholder, html body #viewport textarea::placeholder{ color:var(--bk-in-ink); opacity:.45; font-weight:400; }
 /* calculated: black, no fill. linked: green. N/A: grey. attention: a red or amber outline on the value cell */
@@ -68,9 +71,7 @@ html body #viewport .bk-dui.bk-tabs .bk-dt-all:hover{ color:var(--ae-ink) !impor
 html body #viewport .tbl-wrap.bk-grp-hide{ display:none !important; }
 @media print{ html body #viewport .tbl-wrap.bk-grp-hide{ display:block !important; } }
 @media (max-width:760px){ html body #viewport .bk-dui.bk-tabs .bk-dt{ height:42px; padding:0 13px !important; } }
-/* buttons */
-html body #viewport .bk-btn, html body #viewport button.pl-hbtn{ border:1px solid var(--ae-line) !important; background:linear-gradient(180deg,var(--ae-head2),var(--ae-head)) !important; color:var(--ae-ink) !important; border-radius:2px !important; box-shadow:none !important; }
-html body #viewport .bk-btn.primary, html body #viewport button.pl-hbtn.primary{ background:var(--ae-accent) !important; border-color:var(--ae-accent) !important; color:#fff !important; }
+/* buttons: the shared component (src/210) */
 /* top navigation as editor tabs with letter icons */
 html body .tabnav-primary{ gap:2px !important; align-items:flex-end; }
 html body .tabnav-primary .grp-btn{ display:inline-flex; align-items:center; gap:7px; padding:7px 12px 6px !important; background:var(--ae-tab) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:3px 3px 0 0 !important; color:var(--ae-dim) !important; font-weight:600 !important; }
@@ -102,8 +103,11 @@ html body #viewport table.fin tr > .bk-col-chip.bk-col-chip.bk-col-chip{ text-al
 html body #viewport .bk-col-chip .status-chip{ margin:0 auto; }
 /* two-column label / value tables: the value column is the right 60%, its figures end at the cell's right edge, and text values wrap in a column wide enough to read */
 @media (min-width:761px){
-  html body #viewport table.fin.bk-vt2 tr > :nth-child(1){ width:40% !important; }
-  html body #viewport table.fin.bk-vt2 tr > :nth-child(2):not([colspan]){ width:60% !important; padding-right:10px !important; }
+  /* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+  
+  html:where(.bk-printing) body #viewport table.fin.bk-vt2 tr > :nth-child(1){ width:40% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-vt2 tr > :nth-child(2):not([colspan]){ width:60% !important; padding-right:10px !important; }
+  
 }
 /* KPI strips: labels of one or two lines sit on a common baseline so the figures line up across tiles */
 html body #viewport .bk-kpi .l{ min-height:24px; display:flex; align-items:flex-end; line-height:1.25; }
@@ -114,10 +118,13 @@ html body #viewport table.fin thead tr > th.bk-h-r.bk-h-r.bk-h-r, html body #vie
 html body #viewport table.fin thead tr > th.bk-h-c.bk-h-c.bk-h-c, html body #viewport table.fin tr > th.bk-h-c.bk-h-c.bk-h-c{ text-align:center !important; }
 html body #viewport table.fin thead tr > th.bk-h-l.bk-h-l.bk-h-l, html body #viewport table.fin tr > th.bk-h-l.bk-h-l.bk-h-l{ text-align:left !important; }
 /* figures typed into a box end at the same edge as plain figures, so the header above sits on the same line */
-html body #viewport table.fin td[data-bk-kind="input-num"] input{ padding-right:0 !important; }
-html body #viewport table.fin td.bk-has-sfx.bk-has-sfx > input.bk-sfx-in.bk-sfx-in{ width:calc(100% - 24px) !important; max-width:none !important; min-width:0 !important; box-sizing:border-box !important; padding-right:6px !important; margin:0 !important; text-align:right !important; }
-html body #viewport table.fin td > .bk-sfx{ display:inline-block; width:24px; box-sizing:border-box; padding-left:5px; text-align:left; white-space:nowrap; vertical-align:middle; }
-html body #viewport table.fin td:has(> .bk-sfx){ white-space:nowrap; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin td[data-bk-kind="input-num"] input{ padding-right:0 !important; }
+html:where(.bk-printing) body #viewport table.fin td.bk-has-sfx.bk-has-sfx > input.bk-sfx-in.bk-sfx-in{ width:calc(100% - 24px) !important; max-width:none !important; min-width:0 !important; box-sizing:border-box !important; padding-right:6px !important; margin:0 !important; text-align:right !important; }
+html:where(.bk-printing) body #viewport table.fin td > .bk-sfx{ display:inline-block; width:24px; box-sizing:border-box; padding-left:5px; text-align:left; white-space:nowrap; vertical-align:middle; }
+html:where(.bk-printing) body #viewport table.fin td:has(> .bk-sfx){ white-space:nowrap; }
+
 
 
 /* LEFT RAIL base rules. The tree look in src/182 (+/- boxes, folded groups hidden) is more specific and wins whenever the sidebar is open; the sidebar still collapses to its strip of group letters */
@@ -143,18 +150,24 @@ html body #viewport .pl-home .pl-row:hover{ background:rgba(90,105,120,.07); }
 html body #viewport .pl-home .pl-row .dot{ width:8px; height:8px; background:#9aa5b1; }
 html body #viewport .pl-home .pl-row.pass .dot{ background:#5d8a70; } html body #viewport .pl-home .pl-row.warn .dot{ background:#b09254; } html body #viewport .pl-home .pl-row.fail .dot{ background:#a65a53; }
 html body #viewport .pl-home .pl-step{ border-left-color:#7d93aa; background:rgba(90,105,120,.07); border-radius:0; }
-html body #viewport .pl-home .pl-chips .status-chip{ background:#eceff2; color:#46525f; border-radius:2px; }
-html body #viewport .pl-home .pl-chips .status-chip.pass{ background:#e8efea; color:#3F6B52; }
-html body #viewport .pl-home .pl-chips .status-chip.warn{ background:#f1ece0; color:#7E6428; }
-html body #viewport .pl-home .pl-chips .status-chip.fail{ background:#f1e4e2; color:#8C3B34; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport .pl-home .pl-chips .status-chip{ background:#eceff2; color:#46525f; border-radius:2px; }
+html:where(.bk-printing) body #viewport .pl-home .pl-chips .status-chip.pass{ background:#e8efea; color:#3F6B52; }
+html:where(.bk-printing) body #viewport .pl-home .pl-chips .status-chip.warn{ background:#f1ece0; color:#7E6428; }
+html:where(.bk-printing) body #viewport .pl-home .pl-chips .status-chip.fail{ background:#f1e4e2; color:#8C3B34; }
+
 html body #viewport .pl-home .pl-hero h2{ font-weight:600; }
 
 /* analysis panels written as cards (comparison, bid, remedies, waterfall checks): the same square panel as the tables */
 html body #viewport .bk-box{ border:1px solid var(--ae-line); border-radius:0; background:var(--ae-cell-ro); box-shadow:none; padding:12px 14px; margin:0 0 14px; }
 html body #viewport .bk-box > b:first-child, html body #viewport .bk-box > div:first-child > b:first-child{ font-size:13px; letter-spacing:.01em; }
 /* a status chip that has to wrap stays centred and reads as one label */
-html body #viewport .status-chip{ max-width:100%; white-space:normal; text-align:center; justify-content:center; line-height:1.25; }
-html body #viewport table.fin td.bk-col-chip .status-chip{ white-space:normal; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport .status-chip{ max-width:100%; white-space:normal; text-align:center; justify-content:center; line-height:1.25; }
+html:where(.bk-printing) body #viewport table.fin td.bk-col-chip .status-chip{ white-space:normal; }
+
 /* report tables share one column grid so figures line up from table to table */
 html body #viewport .rp .rp-tbl{ table-layout:fixed; }
 html body #viewport .rp .rp-tbl td:first-child, html body #viewport .rp .rp-tbl th:first-child{ width:30%; }
@@ -232,11 +245,17 @@ html body #viewport .rp .rp-tbl tr.tot td:first-child{ box-shadow:inset 3px 0 0 
 /* totals: a grand total is a key metric (gold band, through --bk-total-fill above); a subtotal is only a lightly tinted, ruled row. The heading blue-grey stays on headings alone. */
 html body #viewport table.fin tbody tr.grandtotal > td, html body #viewport table.fin tbody tr.total > td{ border-top:1px solid var(--bk-key-rule) !important; border-bottom:1px solid var(--bk-key-rule) !important; }
 html body #viewport table.fin tbody tr.grandtotal > td:first-child, html body #viewport table.fin tbody tr.total > td:first-child{ box-shadow:inset 4px 0 0 var(--bk-key-rule); }
-html body #viewport table.fin tbody tr.grandtotal .status-chip, html body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-key-line) !important; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin tbody tr.grandtotal .status-chip, html:where(.bk-printing) body #viewport table.fin tbody tr.total .status-chip{ border-color:var(--bk-key-line) !important; }
+
 html body #viewport table.fin tr.subtotal td{ background:rgba(90,110,130,.07) !important; border-top:1px solid var(--ae-line); }
 @media (prefers-color-scheme: dark){ html body #viewport table.fin tr.subtotal td{ background:rgba(160,180,200,.08) !important; } }
 /* status chips in a table never break into a stack of short lines */
-html body #viewport table.fin td.v > .status-chip, html body #viewport table.fin td.bk-col-chip > .status-chip{ white-space:nowrap; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin td.v > .status-chip, html:where(.bk-printing) body #viewport table.fin td.bk-col-chip > .status-chip{ white-space:nowrap; }
+
 
 @media (min-width:761px){
   html body #viewport table.fin.bk-yrs{ table-layout:fixed; width:100%; }
@@ -245,38 +264,53 @@ html body #viewport table.fin td.v > .status-chip, html body #viewport table.fin
 
 /* Sponsor CF: the four-column tables (setting / value / basis / status) share one grid and one row height */
 @media (min-width:761px){
-  html body #viewport table.fin.bk-sp4{ table-layout:fixed !important; width:100% !important; }
-  html body #viewport table.fin.bk-sp4 tr > :nth-child(1){ width:26% !important; }
-  html body #viewport table.fin.bk-sp4 tr > :nth-child(2){ width:16% !important; }
-  html body #viewport table.fin.bk-sp4 tr > :nth-child(3){ width:34% !important; }
-  html body #viewport table.fin.bk-sp4 tr > :nth-child(4){ width:24% !important; }
-  html body #viewport table.fin.bk-sp4 .status-chip{ white-space:nowrap !important; }
-  html body #viewport table.fin.bk-sp4 tbody td{ height:40px; vertical-align:middle; white-space:normal; }
-  html body #viewport table.fin.bk-sp4 tbody td:nth-child(3){ font-size:12px; color:var(--ae-dim); font-weight:400; text-align:left; }
-  html body #viewport table.fin.bk-sp4 tbody tr.grandtotal td:nth-child(3){ color:var(--bk-key-ink); font-weight:400; }
-  html body #viewport table.fin.bk-sp4 th:nth-child(4), html body #viewport table.fin.bk-sp4 td:nth-child(4){ text-align:center; }
+  /* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+  
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4{ table-layout:fixed !important; width:100% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 tr > :nth-child(1){ width:26% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 tr > :nth-child(2){ width:16% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 tr > :nth-child(3){ width:34% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 tr > :nth-child(4){ width:24% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 .status-chip{ white-space:nowrap !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 tbody td{ height:40px; vertical-align:middle; white-space:normal; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 tbody td:nth-child(3){ font-size:12px; color:var(--ae-dim); font-weight:400; text-align:left; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 tbody tr.grandtotal td:nth-child(3){ color:var(--bk-key-ink); font-weight:400; }
+  html:where(.bk-printing) body #viewport table.fin.bk-sp4 th:nth-child(4), html:where(.bk-printing) body #viewport table.fin.bk-sp4 td:nth-child(4){ text-align:center; }
+  
 }
 /* a long row label wraps instead of running into the next column */
 html body #viewport table.fin td.rowlabel{ white-space:normal; overflow-wrap:anywhere; }
-html body #viewport table.fin.bk-opstmt td.rowlabel, html body #viewport table.fin.bk-vt4 td{ white-space:normal !important; overflow-wrap:anywhere; }
-html body #viewport table.fin.bk-vt4 th{ white-space:normal !important; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin.bk-opstmt td.rowlabel, html:where(.bk-printing) body #viewport table.fin.bk-vt4 td{ white-space:normal !important; overflow-wrap:anywhere; }
+html:where(.bk-printing) body #viewport table.fin.bk-vt4 th{ white-space:normal !important; }
+
 /* Model Checks: severity, fix and action columns are wide enough for their labels */
 @media (min-width:761px){
-  html body #viewport table.fin.bk-mc{ table-layout:fixed !important; width:100% !important; }
-  html body #viewport table.fin.bk-mc tr > :nth-child(1){ width:14% !important; }
-  html body #viewport table.fin.bk-mc tr > :nth-child(3){ width:16% !important; }
-  html body #viewport table.fin.bk-mc tr > :nth-child(4){ width:21% !important; }
-  html body #viewport table.fin.bk-mc button{ padding-left:8px; padding-right:8px; letter-spacing:0; }
-  html body #viewport table.fin.bk-mc .status-chip, html body #viewport table.fin.bk-mc button{ white-space:nowrap !important; }
+  /* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+  
+  html:where(.bk-printing) body #viewport table.fin.bk-mc{ table-layout:fixed !important; width:100% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-mc tr > :nth-child(1){ width:14% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-mc tr > :nth-child(3){ width:16% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-mc tr > :nth-child(4){ width:21% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-mc button{ padding-left:8px; padding-right:8px; letter-spacing:0; }
+  html:where(.bk-printing) body #viewport table.fin.bk-mc .status-chip, html:where(.bk-printing) body #viewport table.fin.bk-mc button{ white-space:nowrap !important; }
+  
 }
-html body #viewport table.fin td .status-chip[data-bk-nowrap], html body #viewport table.fin td.bk-col-chip .status-chip{ white-space:nowrap; }
-html body #viewport table.fin.bk-mc button{ width:auto !important; min-width:0 !important; max-width:100%; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin td .status-chip[data-bk-nowrap], html:where(.bk-printing) body #viewport table.fin td.bk-col-chip .status-chip{ white-space:nowrap; }
+html:where(.bk-printing) body #viewport table.fin.bk-mc button{ width:auto !important; min-width:0 !important; max-width:100%; }
+
 /* conventions / depreciation settings: the value column is wide enough for a full option label */
 @media (min-width:761px){
-  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(1){ width:20% !important; }
-  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(2){ width:33% !important; }
-  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(3){ width:35% !important; }
-  html body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(4){ width:12% !important; }
+  /* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+  
+  html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(1){ width:20% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(2){ width:33% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(3){ width:35% !important; }
+  html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv tr > :nth-child(4){ width:12% !important; }
+  
 }
 /* the editor's total rows follow the same fill rule: a total is KEY, not HEADER */
 html body #viewport .ae-grid tr.tot td{ background:var(--bk-fill-key) !important; color:var(--bk-key-ink); box-shadow:none; }
@@ -288,25 +322,23 @@ html body #viewport .ae .ae-panel{ overflow-x:auto; }
   html body #viewport .rp .rp-tbl{ display:block; overflow-x:auto; max-width:100%; width:100%; }
 }
 /* a status chip may wrap between words, never inside one */
-html body #viewport .status-chip{ overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport .status-chip{ overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none; }
+
 
 /* ---- Property editor rows read as one block that belongs to the Property tab: the two rows (sections, then panels) share a tinted band with an accent spine and a
    "PROPERTY EDITOR" label, so the third row is not mistaken for the top navigation's own Property / Market tabs. */
 html body #viewport .ae{ margin-top:6px }
 html body #viewport .ae > .ae-tabs{ background:var(--ae-head2); border:1px solid var(--ae-line); border-left:4px solid var(--ae-accent); border-bottom:0; padding:8px 8px 0 10px }
 html body #viewport .ae > .ae-tabs::before{ content:"PROPERTY EDITOR"; flex:0 0 100%; font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--ae-accent); padding:0 2px 7px }
-html body #viewport .ae > .ae-subs{ background:var(--ae-head2); border:1px solid var(--ae-line); border-left:4px solid var(--ae-accent); border-top:0; padding:8px 8px 0 10px }
-html body #viewport .ae > .ae-subs .ae-sub{ background:transparent; border-color:transparent; border-bottom:0 }
-html body #viewport .ae > .ae-subs .ae-sub:hover{ color:var(--ae-ink) }
-html body #viewport .ae > .ae-subs .ae-sub.on{ background:var(--ae-cell); border-color:var(--ae-line); border-top:2px solid var(--ae-accent) }
 html body #viewport .ae > .ae-body{ border-left:4px solid var(--ae-accent) }
 
 /* ---- Night mode: the text that was dark on dark or white on light blue. Primary buttons get a mid blue that carries white text; status and negative colours are
    lifted; numbers and notes set in the day palette's navy and grey are lightened; buttons with no styling of their own get a dark face; the Deal Underwrite group
    labels are brightened. (The day palette is untouched.) */
 @media (prefers-color-scheme: dark){
-html:not([data-theme="light"]) body #viewport .bk-btn.primary, html:not([data-theme="light"]) body #viewport button.pl-hbtn.primary, html:not([data-theme="light"]) .bk-btn.primary, html:not([data-theme="light"]) .bk-btn.pri, html:not([data-theme="light"]) .pl-hbtn.primary, html:not([data-theme="light"]) .ae-btn.pri, html:not([data-theme="light"]) .ae-btn.primary, html:not([data-theme="light"]) button.primary{ background:#2f6fb5 !important; border-color:#2f6fb5 !important; color:#fff !important; }
-html:not([data-theme="light"]) body #viewport .bk-btn.primary:hover, html:not([data-theme="light"]) body #viewport button.pl-hbtn.primary:hover, html:not([data-theme="light"]) .bk-btn.primary:hover, html:not([data-theme="light"]) .pl-hbtn.primary:hover, html:not([data-theme="light"]) .ae-btn.pri:hover{ background:#3a7cc7 !important; }
+html:not([data-theme="light"]) button.primary:not(.bk-btn):not(.pl-hbtn):not(.ae-btn){ background:#2f6fb5 !important; border-color:#2f6fb5 !important; color:#fff !important; }
 html:not([data-theme="light"]) #viewport .go, html:not([data-theme="light"]) #viewport a.go{ color:#8fc3f2 !important; }
 html:not([data-theme="light"]) #viewport .bk-ctl-WARN, html:not([data-theme="light"]) #viewport .st-warn, html:not([data-theme="light"]) #viewport .warn{ color:#f0c060 !important; }
 html:not([data-theme="light"]) #viewport .bk-ctl-FAIL, html:not([data-theme="light"]) #viewport .bk-ctl-ERROR, html:not([data-theme="light"]) #viewport .neg, html:not([data-theme="light"]) #viewport .v.neg{ color:#ff9a8a !important; }
@@ -317,7 +349,7 @@ html:not([data-theme="light"]) #viewport a:not([class]):not([style*="color"]){ c
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.fail .v{ color:#ff9a8a; }
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.warn .v{ color:#f0c060; }
 html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.pass .v, html:not([data-theme="light"]) body #viewport .pl-home .pl-kpi.ok .v{ color:#7fd4a0; }
-html:not([data-theme="light"]) #viewport button:not([class]), html:not([data-theme="light"]) #viewport button[class=""]{ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
+html:not([data-theme="light"]) #viewport button:not([class]):not(:is(.bk-seg, .bk-sx-seg) > button), html:not([data-theme="light"]) #viewport button[class=""]:not(:is(.bk-seg, .bk-sx-seg) > button){ background:#232a32 !important; color:#e3e8ed !important; border:1px solid #3a4550 !important; }
 }
 
 /* Visual QA: wide tables. One cue on every screen size: a "scroll sideways" line that stays put while the table moves, plus a shaded edge on whichever side still has columns hidden, so the last column is always reachable. */

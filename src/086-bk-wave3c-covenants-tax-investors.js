@@ -275,12 +275,12 @@ extend('Operating Underwrite','w3cTaxReassess', function(o){
 
   var body = ''
     + '<tr>'+lbl('Assessment Ratio')
-      + '<td class="v"><input type="number" step="0.01" style="width:110px" value="'+(ar*100).toFixed(2)+'"'
+      + '<td class="v"><input type="number" step="0.01" data-bk-pw="width:110px" value="'+(ar*100).toFixed(2)+'"'
       + ' onchange="bkSetAssessmentRatio(this.value)"></td>'
       + txt('% of value assessed (0 = off)')
       + '<td class="v">'+chip('','INPUT')+'</td></tr>'
     + '<tr>'+lbl('Effective Millage Rate')
-      + '<td class="v"><input type="number" step="0.01" style="width:110px" value="'+(mill*100).toFixed(2)+'"'
+      + '<td class="v"><input type="number" step="0.01" data-bk-pw="width:110px" value="'+(mill*100).toFixed(2)+'"'
       + ' onchange="bkSetMillageRate(this.value)"></td>'
       + txt('% applied to assessed value')+'<td class="v">'+chip('','INPUT')+'</td></tr>'
     + '<tr>'+lbl('NOI Before Real Estate Taxes')+val(money(noiBeforeTax))+txt('Year 1 NOI with the entered tax added back')+'<td></td></tr>'
@@ -364,7 +364,7 @@ extend('Sensitivity','w3cDrivers', function(o){
     var upK = 'up'+d[1], dnK = 'down'+d[1];
     var up = Number(s[upK])||0, dn = Number(s[dnK])||0;
     var fmt = function(v){ return d[2]==='pct' ? (v*100).toFixed(2) : String(v); }, suf = d[2]==='pct' ? '%' : ' mo';
-    var cell = function(k, v){ return '<td class="v" data-bk-align="num"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end"><input type="number" step="'+(d[2]==='pct' ? '0.01' : '1')+'" style="width:88px;text-align:right" value="'+fmt(v)+'" onchange="bkSetScenarioDriver(\''+k+'\',this.value,\''+d[2]+'\')"><span style="width:2.2em;text-align:left;opacity:.7">'+suf+'</span></span></td>'; };
+    var cell = function(k, v){ return '<td class="v" data-bk-align="num"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end"><input type="number" step="'+(d[2]==='pct' ? '0.01' : '1')+'" style="text-align:right" data-bk-pw="width:88px" value="'+fmt(v)+'" onchange="bkSetScenarioDriver(\''+k+'\',this.value,\''+d[2]+'\')"><span style="width:2.2em;text-align:left;opacity:.7">'+suf+'</span></span></td>'; };
     return '<tr>'+lbl(d[0])
       + cell(dnK, dn)
       + '<td class="v" data-bk-align="num" style="text-align:center">&mdash;</td>'
@@ -400,7 +400,7 @@ extend('Dev Draws','w3cCurveControls', function(o){
       + '</select></td>';
   }
   function steep(key, cur){
-    return '<td class="v"><input type="number" step="1" min="1" max="20" style="width:86px" value="'+(Number(cur)||1)
+    return '<td class="v"><input type="number" step="1" min="1" max="20" data-bk-pw="width:86px" value="'+(Number(cur)||1)
       + '" onchange="bkSetCurveField(\''+key+'\',this.value,1)"></td>';
   }
   var rows = ''

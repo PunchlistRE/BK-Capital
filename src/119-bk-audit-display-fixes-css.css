@@ -12,10 +12,13 @@ html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][d
   border-top:1px solid var(--bk-key-line) !important; border-bottom:1px solid var(--bk-key-line) !important; }
 html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] > :first-child {
   box-shadow:inset 3px 0 0 var(--bk-key-rule); }
-html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip:not(.pass):not(.warn):not(.fail) {
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip:not(.pass):not(.warn):not(.fail){
   background:#e6edf3 !important; color:#2f4258 !important; border-color:transparent !important; }
-html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.pass { background:#E3F1E7 !important; color:#1F7A45 !important; border-color:transparent !important; }
-html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.warn { background:#FBF0D9 !important; color:#8A6212 !important; border-color:transparent !important; }
-html body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.fail { background:#F8E1DC !important; color:#9B2C1F !important; border-color:transparent !important; }
+html:where(.bk-printing) body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.pass{ background:#E3F1E7 !important; color:#1F7A45 !important; border-color:transparent !important; }
+html:where(.bk-printing) body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.warn{ background:#FBF0D9 !important; color:#8A6212 !important; border-color:transparent !important; }
+html:where(.bk-printing) body #viewport table.fin tbody tr[data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"][data-bk-emph="key"] .status-chip.fail{ background:#F8E1DC !important; color:#9B2C1F !important; border-color:transparent !important; }
+
 /* two closing totals in a row get a hairline between them instead of fusing into one block */
 html body #viewport table.fin tbody tr.grandtotal:not([data-bk-emph="key"]) + tr.grandtotal:not([data-bk-emph="key"]) > td { border-top:1px solid rgba(244,239,225,.22) !important; }

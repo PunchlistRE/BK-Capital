@@ -37,8 +37,11 @@ html body #viewport .bk-sx-svgwrap.bk-xs.bk-scrollable::before{ content:'Scroll 
   html body #viewport table.bk-wrapfit td.num, html body #viewport table.bk-wrapfit td.r, html body #viewport table.bk-wrapfit .status-chip{ white-space:nowrap !important; }
 }
 @media (min-width:901px){ html body #viewport table.bk-wrapfit{ min-width:0 !important; max-width:100% !important; } html body #viewport table.bk-wrapfit td, html body #viewport table.bk-wrapfit th{ min-width:0; } html body #viewport table.bk-wrapfit td:first-child, html body #viewport table.bk-wrapfit th:first-child{ min-width:120px; } }
-@media (min-width:901px){ html body #viewport table.fin.bk-conv.bk-conv{ table-layout:fixed !important; width:100% !important; } html body #viewport table.fin.bk-conv.bk-conv td select, html body #viewport table.fin.bk-conv.bk-conv td input{ max-width:100% !important; min-width:0 !important; box-sizing:border-box; } html body #viewport table.fin.bk-conv.bk-conv td{ overflow-wrap:break-word; } }
-html body #viewport table.fin.bk-conv.bk-conv td .status-chip{ width:auto !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box; }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+@media (min-width:901px){ html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv{ table-layout:fixed !important; width:100% !important; } html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv td select, html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv td input{ max-width:100% !important; min-width:0 !important; box-sizing:border-box; } html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv td{ overflow-wrap:break-word; } }
+html:where(.bk-printing) body #viewport table.fin.bk-conv.bk-conv td .status-chip{ width:auto !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box; }
+
 /* a page with no side panel gives its whole width to the main column: no reserved, empty 300px strip on the right */
 html body #viewport .body-grid:not(:has(> .side-col)):not(.source-lease-grid){ grid-template-columns:minmax(0,1fr) !important; }
 /* a plain drop-down in a table cell (Financing Compare) follows the night theme instead of showing as a white box */
@@ -56,7 +59,10 @@ html body #viewport .rp-stmt table.fin tbody tr:nth-child(even) td{background:tr
 html body #viewport .rp-stmt table.fin td:first-child{width:auto}
 /* ---- 12 Nov owner review: small consistency fixes ---- */
 /* an action chip never wraps (Export CSV, Import master data) and file pickers sit centered like status chips */
-html body #viewport .status-chip, html body #viewport button.status-chip{ white-space:nowrap !important }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport .status-chip, html:where(.bk-printing) body #viewport button.status-chip{ white-space:nowrap !important }
+
 html body #viewport td:has(> input[type="file"]), html body #viewport td:has(> label > input[type="file"]){ text-align:center !important }
 html body #viewport td > input[type="file"]{ display:inline-block; max-width:100% }
 /* the Save a version name box is a normal-width field, not the full row */
@@ -70,10 +76,16 @@ html.bk-rail-collapsed .rail .rail-group > :not(.rail-group-label){ display:none
 html body .rb-tabs{ gap:6px }
 html body .rb-tabs .rb-sep, html body .rb-tabs .rb-div{ margin:0 2px }
 /* two-column metric tables (label left, value right) on every page, no stray bottom border under the last row of a grid cell */
-html body #viewport table.fin tbody tr > td.v, html body #viewport table.fin tbody tr > td[data-bk-align="text"]:last-child{ text-align:right !important }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin tbody tr > td.v, html:where(.bk-printing) body #viewport table.fin tbody tr > td[data-bk-align="text"]:last-child{ text-align:right !important }
+
 html body #viewport .tbl-wrap > table.fin:only-child{ margin-bottom:0 }
-html body #viewport table.fin.bk-kv tbody td:last-child, html body #viewport table.fin.bk-kv tbody td.v{ text-align:right !important }
-html body #viewport table.fin.bk-kv tbody td:first-child{ width:42% }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin.bk-kv tbody td:last-child, html:where(.bk-printing) body #viewport table.fin.bk-kv tbody td.v{ text-align:right !important }
+html:where(.bk-printing) body #viewport table.fin.bk-kv tbody td:first-child{ width:42% }
+
 /* a row label never breaks inside a word */
 html body #viewport table.fin td.rowlabel, html body #viewport table.fin td:first-child{ overflow-wrap:normal; word-break:normal; hyphens:none }
 @media (min-width:761px){ html body #viewport table.fin tr.grandtotal td.rowlabel, html body #viewport table.fin tr.total td.rowlabel{ min-width:190px } }
@@ -94,11 +106,17 @@ html body #viewport .rp #rp-su tr > :first-child{ border-right:1px solid var(--a
 @media print{ html body .rp #rp-su tr > :first-child{ border-right:1px solid #000 !important } }
 /* ---- 13 Nov owner review, batch 3 ---- */
 /* Model Checks tables: the finding gets the room, status columns stay narrow */
-html body #viewport table.bk-mc td:first-child, html body #viewport table.bk-mc th:first-child{ width:auto !important; min-width:0 }
-html body #viewport table.bk-mc th:not(:first-child), html body #viewport table.bk-mc td:not(:first-child){ width:130px }
-html body #viewport table.bk-mc td[data-bk-align="text"]{ overflow-wrap:normal; word-break:normal }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.bk-mc td:first-child, html:where(.bk-printing) body #viewport table.bk-mc th:first-child{ width:auto !important; min-width:0 }
+html:where(.bk-printing) body #viewport table.bk-mc th:not(:first-child), html:where(.bk-printing) body #viewport table.bk-mc td:not(:first-child){ width:130px }
+html:where(.bk-printing) body #viewport table.bk-mc td[data-bk-align="text"]{ overflow-wrap:normal; word-break:normal }
+
 /* a number input in a table cell is a box of its own beside its unit, not a yellow field filling the column */
-html body #viewport table.fin td:has(> input.bk-sfx-in), html body #viewport table.fin td.bk-has-sfx{ width:150px; text-align:right }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin td:has(> input.bk-sfx-in), html:where(.bk-printing) body #viewport table.fin td.bk-has-sfx{ width:150px; text-align:right }
+
 /* the cards of one row all reach the same right edge: IC Memo snapshot / returns / financing as three equal columns */
 html body #viewport .main-col > div[style*="grid-template-columns:repeat(auto-fit,minmax(380px"]{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:0 16px !important; align-items:start }
 @media (max-width:1100px){ html body #viewport .main-col > div[style*="grid-template-columns:repeat(auto-fit,minmax(380px"]{ grid-template-columns:1fr !important } }
@@ -108,11 +126,14 @@ html body #viewport .bk-kpi > .k{ display:flex; flex-direction:column; align-ite
 html body #viewport .bk-kpi > .k > .l{ min-height:2.6em; display:flex; align-items:flex-start; justify-content:center; text-align:center }
 html body #viewport .bk-kpi > .k > *{ text-align:center }
 /* Model Checks: finding gets the width, the other three are compact */
-html body #viewport table.bk-mc{ table-layout:fixed; width:100% }
-html body #viewport table.bk-mc th:nth-child(1), html body #viewport table.bk-mc td:nth-child(1){ width:auto !important; text-align:left !important; word-break:normal !important; overflow-wrap:break-word !important }
-html body #viewport table.bk-mc th:nth-child(2), html body #viewport table.bk-mc td:nth-child(2){ width:130px !important; text-align:left !important }
-html body #viewport table.bk-mc th:nth-child(3), html body #viewport table.bk-mc td:nth-child(3),
-html body #viewport table.bk-mc th:nth-child(4), html body #viewport table.bk-mc td:nth-child(4){ width:120px !important; text-align:center !important }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.bk-mc{ table-layout:fixed; width:100% }
+html:where(.bk-printing) body #viewport table.bk-mc th:nth-child(1), html:where(.bk-printing) body #viewport table.bk-mc td:nth-child(1){ width:auto !important; text-align:left !important; word-break:normal !important; overflow-wrap:break-word !important }
+html:where(.bk-printing) body #viewport table.bk-mc th:nth-child(2), html:where(.bk-printing) body #viewport table.bk-mc td:nth-child(2){ width:130px !important; text-align:left !important }
+html:where(.bk-printing) body #viewport table.bk-mc th:nth-child(3), html:where(.bk-printing) body #viewport table.bk-mc td:nth-child(3),
+html:where(.bk-printing) body #viewport table.bk-mc th:nth-child(4), html:where(.bk-printing) body #viewport table.bk-mc td:nth-child(4){ width:120px !important; text-align:center !important }
+
 /* Year 0 block: header label never cut, figures fit their column */
 #rp-year0 th, #rp-year0 td{ white-space:nowrap; overflow:visible; text-overflow:clip; padding-left:3px; padding-right:3px }
 #rp-year0 th:nth-child(2), #rp-year0 td:nth-child(2){ min-width:96px }
@@ -137,9 +158,9 @@ html body #viewport .bk-wf3 > table.rp-tbl{ width:100% !important; min-width:0 !
 html body #viewport .bk-wf3 > table.rp-tbl td:first-child, html body #viewport .bk-wf3 > table.rp-tbl th:first-child{ width:40% !important }
 html body #viewport table.bk-wf-cf td, html body #viewport table.bk-wf-cf th{ padding-left:10px !important; padding-right:10px !important }
 html body #viewport table.bk-wf-cf td:first-child, html body #viewport table.bk-wf-cf th:first-child{ width:22% !important }
-/* one vertical divider after the label column on every report table */
-html body #viewport .rp table.rp-tbl tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px }
-@media print{ html body .rp table.rp-tbl tr > :first-child{ border-right:1px solid #000 !important } }
+/* the vertical divider after the label column belongs to the Cash Flow, Sources and Uses and Waterfall statements only */
+html body #viewport .rp table.bk-wf-cf tr > :first-child, html body #viewport .rp .bk-wf3 table.rp-tbl tr > :first-child{ border-right:1px solid var(--ae-ink) !important; padding-right:14px }
+@media print{ html body .rp table.bk-wf-cf tr > :first-child, html body .rp .bk-wf3 table.rp-tbl tr > :first-child{ border-right:1px solid #000 !important } }
 /* printed year statements always run the full page width, whatever the number of years */
 @media print{ html body .rp table.rp-tbl:not(.bk-print-zoom){ width:100% !important; min-width:100% !important; table-layout:fixed !important } }
 @media print{
@@ -164,19 +185,33 @@ html body.bk-has-kpibar{ padding-bottom:92px }
 html body #bk-kpibar .kb-k{ white-space:nowrap; font-size:10px; letter-spacing:.04em }
 html body #bk-kpibar .kb-c{ padding-left:8px; padding-right:8px; min-width:max-content }
 /* Model Checks (final): the finding takes the room, the three short columns are compact */
-html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(1), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(1){ width:56% !important; min-width:0 !important; text-align:left !important }
-html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(2), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(2){ width:16% !important; text-align:left !important }
-html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(3), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(3), html body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(4), html body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(4){ width:14% !important }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(1), html:where(.bk-printing) body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(1){ width:56% !important; min-width:0 !important; text-align:left !important }
+html:where(.bk-printing) body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(2), html:where(.bk-printing) body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(2){ width:16% !important; text-align:left !important }
+html:where(.bk-printing) body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(3), html:where(.bk-printing) body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(3), html:where(.bk-printing) body #viewport table.fin.bk-mc.bk-wrapfit th:nth-child(4), html:where(.bk-printing) body #viewport table.fin.bk-mc.bk-wrapfit td:nth-child(4){ width:14% !important }
+
 /* Waterfall page tab label and structure grid */
 /* Depreciation and other status columns: a chip never breaks across lines */
-html body #viewport .status-chip, html body #viewport .chip{ white-space:nowrap }
-html body #viewport td:last-child .status-chip{ min-width:0 }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport .status-chip, html:where(.bk-printing) body #viewport .chip{ white-space:nowrap }
+html:where(.bk-printing) body #viewport td:last-child .status-chip{ min-width:0 }
+
 /* Waterfall Report: the three structure tables share the row equally */
 html body #viewport .bk-wf3{ grid-template-columns:1.05fr 1.05fr 1fr }
-html body #viewport .status-chip{ white-space:nowrap !important; flex-wrap:nowrap !important }
-html body #viewport td:has(> .status-chip){ min-width:112px }
-html body #viewport table.fin.fin.fin td[data-bk-kind] .status-chip.status-chip:not(button){ white-space:nowrap !important; min-width:0 !important }
+/* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
+
+html:where(.bk-printing) body #viewport .status-chip{ white-space:nowrap !important; flex-wrap:nowrap !important }
+html:where(.bk-printing) body #viewport td:has(> .status-chip){ min-width:112px }
+html:where(.bk-printing) body #viewport table.fin.fin.fin td[data-bk-kind] .status-chip.status-chip:not(button){ white-space:nowrap !important; min-width:0 !important }
+
 /* a figure is never broken across two lines; a table too wide for its card scrolls sideways instead */
 html body #viewport table.fin td[data-bk-align="num"], html body #viewport table.fin td.bk-a-num{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important }
 html body #viewport table.fin td[data-bk-kind="num"]{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; padding-left:6px !important; padding-right:8px !important }
 html body #viewport table.fin.bk-yrs{ font-size:12.5px }
+/* bottom figures bar: the same navy, 7% see-through (no blur, no colour shift) */
+html body #bk-kpibar.bk-kpibar, html body #bk-kpibar{ background:rgba(14,42,74,.93) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important }
+html body #bk-kpibar .kb-k{ color:#E3ECF7 !important }
+html body #bk-kpibar .kb-s{ color:#CFE0F5 !important }
+@media print{ html body #bk-kpibar{ display:none !important } }
