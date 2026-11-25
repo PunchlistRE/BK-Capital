@@ -28946,6 +28946,10 @@ var CSS = 'table.bk-measure-wrap td,table.bk-measure-wrap th{white-space:normal 
  + '#viewport table.fin.bk-pcf-t,#viewport .bk-pcf table.pf-tbl,#viewport table.fin.bk-pcf-t th,#viewport table.fin.bk-pcf-t td,#viewport .bk-pcf table.pf-tbl th,#viewport .bk-pcf table.pf-tbl td{font-size:6.5pt !important}'
  + '#viewport table.fin.bk-pcf-t th,#viewport table.fin.bk-pcf-t td,#viewport .bk-pcf table.pf-tbl th,#viewport .bk-pcf table.pf-tbl td,html body #viewport table.fin.bk-pcf-t td,html body #viewport table.fin.bk-pcf-t th,html body #viewport table.fin.bk-pcf-t td[data-bk-kind="num"]{padding:2px 3px !important}html body #viewport table.fin.bk-pcf-t td,html body #viewport table.fin.bk-pcf-t th{height:auto !important}#viewport table.fin.bk-pcf-t th,#viewport .bk-pcf table.pf-tbl th,html body #viewport table.fin.bk-pcf-t th{letter-spacing:normal !important}#viewport .bk-pcf table.pf-tbl td:first-child,#viewport .bk-pcf table.pf-tbl th:first-child{white-space:normal !important}#viewport .bk-pcf table.pf-tbl td:not(:first-child),#viewport .bk-pcf table.pf-tbl th:not(:first-child){white-space:nowrap !important}'
  + '#viewport .bk-pcf .pf-card:has(.pf-tbl){break-inside:auto}#viewport .bk-pcf .pf-tbl thead{display:table-header-group}#viewport .bk-pcf .pf-tbl tr{break-inside:avoid;page-break-inside:avoid}'
+ /* tables fill the printed page width: a table that fits spans the page, header cells are plain with one rule under them, cell text wraps instead of running into the next column */
+ + 'html body #viewport table.fin.fin.fin.fin.fin:not(.bk-print-zoom){width:100% !important;max-width:100% !important;table-layout:auto}'
+ + 'html body #viewport table.fin.fin.fin.fin.fin thead th,html body #viewport table.fin.fin.fin.fin.fin th{border:0 !important;border-bottom:1px solid #0e2a4a !important;border-radius:0 !important;box-shadow:none !important}html body #viewport table.fin.fin.fin.fin.fin tr>th:first-child,html body #viewport table.fin.fin.fin.fin.fin tr>td:first-child{border-right:1px solid #0e2a4a !important}html body #viewport table.fin.fin.fin.fin.fin td{border-bottom:1px solid #e3e8ee !important}html body #viewport .tbl-wrap.tbl-wrap.tbl-wrap{width:100% !important;max-width:100% !important}'
+ + 'html body #viewport table.fin.fin.fin.fin.fin td{overflow-wrap:anywhere;word-break:normal;min-width:0}'
  + '}';
 
 function sheetMeta(){
@@ -29016,7 +29020,7 @@ function fitWide(land){
     var room = px - Math.min(120, pad) - 4; if(own && t.closest('.pf-card')) room -= 30;   /* a pro forma card insets its table a further 14 px a side in print */ if(m <= room) return; var z = Math.max(0.42, room / m);
     t.classList.add('bk-print-zoom'); t.setAttribute('data-bk-pz', z.toFixed(3)); });
   /* the zoom itself lives in a print-only rule, so the screen is never touched */
-  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:auto !important;max-width:none !important;min-width:0 !important}'; });
+  var css = ''; [].forEach.call(document.querySelectorAll('#viewport table.bk-print-zoom'), function(t, i){ t.setAttribute('data-bk-pzi', i); var z = +t.getAttribute('data-bk-pz'); css += '#viewport table.bk-print-zoom[data-bk-pzi="' + i + '"]{zoom:' + z + ' !important;width:calc(100% / ' + z + ') !important;max-width:none !important;min-width:0 !important}'; });
   if(css){ var st = document.createElement('style'); st.id = 'bk-print-zoomcss'; st.textContent = '@media print{' + css + '}'; document.head.appendChild(st); }
 }
 function unfit(){ var zc = document.getElementById('bk-print-zoomcss'); if(zc) zc.remove(); [].forEach.call(document.querySelectorAll('table.bk-print-zoom'), function(t){ t.classList.remove('bk-print-zoom'); t.removeAttribute('data-bk-pz'); t.removeAttribute('data-bk-pzi'); });
