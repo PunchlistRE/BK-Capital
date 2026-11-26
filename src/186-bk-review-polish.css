@@ -144,6 +144,10 @@ html body #viewport .bk-scrollyrs{ overflow-x:auto; max-width:100% }
 html body #viewport .bk-scrollyrs table.rp-tbl{ table-layout:fixed; width:calc(210px + (var(--yrs) + 2) * 100px); min-width:100% }
 html body #viewport .bk-scrollyrs table.rp-tbl th:first-child, html body #viewport .bk-scrollyrs table.rp-tbl td:first-child{ position:sticky; left:0; z-index:1; background:var(--bk-card, #fff) }
 html body #viewport .bk-scrollyrs table#rp-year0{ table-layout:auto }
+/* in print nothing scrolls: the year pieces are already set to fit the page (src/167), so the box around them shows them whole */
+@media print{ html body #viewport .bk-scrollyrs{ overflow:visible !important; }
+  /* Property CF's statements print at the page width, columns shared out evenly (the last one, Growth / yr, ran 6 pt past the margin) */
+  html body #viewport .bk-pcf .tbl-wrap.tbl-wrap.tbl-wrap{ overflow:visible !important; width:auto !important; max-width:none !important; box-sizing:border-box !important; }   /* inset 14 px a side in the card: it takes the room between its margins, not the card's full width */ html body #viewport .bk-pcf table.pf-tbl{ table-layout:fixed !important; width:100% !important; min-width:0 !important; max-width:100% !important; } }
 /* Home KPI tiles: centered, titles on one plane, notes on one plane */
 html body #viewport .pl-kpi{ text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:flex-start }
 html body #viewport .pl-kpi > *{ text-align:center !important; width:100% }
