@@ -140,7 +140,7 @@
     if(c.classList.contains('pass')) return 'pass'; if(c.classList.contains('fail')) return 'fail'; if(c.classList.contains('warn')) return 'warn';
     return 'neutral';
   }
-  var FLOOR={amount:96,rate:72,unit:28,status:96,period:84,input:128,choice:128,short:64}, CEIL={amount:170,rate:130,unit:90,status:220,period:150,input:180,choice:320,short:360};
+  var FLOOR={amount:96,rate:72,unit:28,status:96,period:84,input:128,choice:128,short:64,actions:48}, CEIL={amount:170,rate:130,unit:90,status:220,period:150,input:180,choice:320,short:360,actions:320};
   var FIG=/^(?=.*\d)[\s(−$\-]*[\d$(][\d,.$%x()−\- ]*(bps|yrs?|x|%|mo)?\)?$/i, PERIOD=/year|yr\b|month|^20\d\d|^q[1-4]\b|^m\d|total|forecast|^close$|^stab/i;
   var cv=null; function tw(el,txt){ if(!cv) cv=document.createElement('canvas').getContext('2d'); var cs=getComputedStyle(el); cv.font=cs.fontStyle+' '+cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
     var m=0; String(txt).split('\n').forEach(function(l){ m=Math.max(m,cv.measureText(l.trim()).width); }); return m+(parseFloat(cs.letterSpacing)||0)*String(txt).length; }
@@ -161,6 +161,8 @@
       if(i===0) return 'label'; if(isPeriod) return 'period';
       var cells=body.map(function(r){ return r.cells[i]; }), k=cells.map(function(c){ return c.getAttribute('data-bk-kind')||''; }),
           cnt=function(x){ return k.filter(function(v){ return v.indexOf(x)===0; }).length; }, txt=cells.map(own), filled=txt.filter(Boolean).length, ht=t(h).toLowerCase();
+      var btnOnly=function(c){ var b=c.querySelectorAll('button'); if(!b.length) return false; var x=own(c); [].forEach.call(b,function(e){ x=x.replace(t(e).trim(),''); }); return !x.trim(); };
+      if(cells.some(btnOnly) && cells.every(function(c){ return !own(c) || btnOnly(c); })) return 'actions';
       if(h.classList.contains('bk-col-chip') || cnt('chip')>=Math.max(1,(k.length-cnt('empty'))/2)) return 'status';
       if(cells.some(function(c){ return c.querySelector('select'); })) return 'choice';
       /* a free-text entry box (a mitigant, a reason, a name: declared 200 px or more) is text, not a figure: it shares the spare width like a note */
@@ -184,6 +186,7 @@
     o.body.forEach(function(row){ var c=row.cells[i];
       if(r==='choice'){ var sl=c.querySelector('select'), so=sl&&sl.options[sl.selectedIndex]; if(so) m=Math.max(m,tw(sl,so.text)+48); }   /* sized by the choice shown; choosing another re-renders and re-measures */
       else if(r==='input'){ var ip=c.querySelector('input'), sf=c.querySelector('.bk-sfx'), pw=ip&&/width:\s*(\d+)px/.exec(ip.getAttribute('data-bk-pw')||''), base=ip?Math.max(tw(ip,ip.value||ip.placeholder||''),40,pw?+pw[1]-30:0):tw(c,own(c)); m=Math.max(m,base+30+(sf?tw(sf,sf.textContent)+12:0)); }
+      else if(r==='actions'){ var bw=0, bs=c.querySelectorAll('button'); [].forEach.call(bs,function(e){ var cs=getComputedStyle(e); bw+=e.offsetWidth+(parseFloat(cs.marginLeft)||0)+(parseFloat(cs.marginRight)||0)+4; }); var ccs=getComputedStyle(c); m=Math.max(m,bw+(parseFloat(ccs.paddingLeft)||0)+(parseFloat(ccs.paddingRight)||0)+4); }
       else if(r==='status'){ var ch=c.querySelector('.status-chip'); m=Math.max(m,ch?Math.max(tw(ch,t(ch))+44,ch.getBoundingClientRect().width+18):tw(c,own(c))+22); }   /* the label as drawn (letter spacing, marker, padding), not an estimate */
       else if(r==='amount'||r==='rate'||r==='period'){ var x=own(c), chp=c.querySelector('.status-chip'); if(chp) m=Math.max(m,tw(chp,t(chp))+44,chp.getBoundingClientRect().width+18); else if(/^(num|calc|empty)/.test(c.getAttribute('data-bk-kind')||'')||FIG.test(x)) m=Math.max(m,tw(c,x)+24); else if(x) txt=Math.max(txt,tw(c,x)+24); }
       else m=Math.max(m,tw(c,own(c))+22); });

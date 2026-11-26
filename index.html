@@ -4082,16 +4082,16 @@ RENDERERS['Portfolio'] = function(){
   const saved = bkPortfolioLoad();
   const money = n => n<0 ? '($'+bkFmt(-n)+')' : '$'+bkFmt(n);
   const computed = saved.map(snap=>({snap, key:bkPortfolioKey(snap), m:bkPortfolioMetricsFor(snap)}));
-  const rows = computed.map(({snap,key,m})=>`<tr${key===curKey?' class="grandtotal"':''}>
-    <td class="rowlabel">${bkEsc(snap.name||key)}${key===curKey?' <span class="status-chip pass">ACTIVE</span>':''}</td>
-    <td>${bkEsc(snap.dealType||'-')}</td><td>${bkEsc(snap.propertyType||'-')}</td>
+  /* one row a deal: the name with its type and property under it, the four figures, then Load and Remove; the active deal is tinted, not styled like the total */
+  const rows = computed.map(({snap,key,m})=>`<tr${key===curKey?' class="bk-pf-on"':''}>
+    <td class="rowlabel"><span class="bk-pf-nm">${bkEsc(snap.name||key)}</span><span class="bk-pf-sub">${bkEsc([snap.dealType,snap.propertyType].filter(Boolean).join(' · ')||'-')}${key===curKey?' · <b>Active</b>':''}</span></td>
     <td>${m.ok?money(m.purchasePrice):'-'}</td><td>${m.ok?money(m.equity):'-'}</td>
     <td>${m.ok?bkPct(m.irr):'engine error'}</td><td>${m.ok?m.moic.toFixed(2)+'x':'-'}</td>
-    <td><button type="button" class="status-chip" data-portfolio-load="${bkEsc(key)}">Load</button> <button type="button" class="status-chip" data-portfolio-remove="${bkEsc(key)}">Remove</button></td></tr>`).join('');
+    <td class="bk-pf-act">${key===curKey?'':`<button type="button" class="bk-btn" data-portfolio-load="${bkEsc(key)}">Load</button>`}<button type="button" class="bk-btn quiet bk-pf-rm" data-portfolio-remove="${bkEsc(key)}" aria-label="Remove ${bkEsc(snap.name||key)} from the portfolio">Remove</button></td></tr>`).join('');
   const ok = computed.filter(r=>r.m.ok);
   const totalEquity = ok.reduce((z,r)=>z+r.m.equity,0), totalPrice = ok.reduce((z,r)=>z+r.m.purchasePrice,0);
   const PC = bkPortfolioConsolidated(saved);
-  const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio - Saved Deals (${saved.length})</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Type</th><th>Property</th><th>Purchase Price</th><th>Closing / initial funding equity</th><th>Levered IRR</th><th>MOIC</th><th>Actions</th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="8">No deals saved to the portfolio yet.</td></tr>'}<tr class="grandtotal"><td class="rowlabel">Portfolio total</td><td></td><td></td><td>${money(totalPrice)}</td><td>${money(totalEquity)}</td><td>${bkPortfolioIRRText(PC)}</td><td>${PC.available&&isFinite(PC.moic)?PC.moic.toFixed(2)+'x':'-'}</td><td></td></tr></tbody></table></div>${bkPortfolioIRRNote(PC)}
+  const main = `<div class="tbl-wrap"><table class="fin bk-pf"><caption>Portfolio - Saved Deals (${saved.length})</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Purchase price</th><th>Closing equity</th><th>Levered IRR</th><th>MOIC</th><th class="bk-pf-act" aria-label="Actions"></th></tr></thead><tbody>${rows||'<tr><td class="rowlabel" colspan="6">No deals saved to the portfolio yet.</td></tr>'}<tr class="grandtotal"><td class="rowlabel">Portfolio total</td><td>${money(totalPrice)}</td><td>${money(totalEquity)}</td><td>${bkPortfolioIRRText(PC)}</td><td>${PC.available&&isFinite(PC.moic)?PC.moic.toFixed(2)+'x':'-'}</td><td></td></tr></tbody></table></div>${bkPortfolioIRRNote(PC)}
     ${hasDeal?`<div style="margin-top:12px;"><button type="button" class="status-chip pass" data-portfolio-add="1">+ Save Active Deal (${bkEsc(cur.name||'Untitled')}) to Portfolio</button></div>`:`<div class="note-flag" style="margin-top:12px;"><span>&#9432;</span><div>No deal is active, so there is nothing to add. Create or load a deal first.</div></div>`}
     <div class="note-flag"><span>&#10003;</span><div><b>Live portfolio -</b> each row re-runs the real, already-verified engine (<code>bkAnnualCF</code>/<code>bkDebt</code>/<code>bkMonthlyReturns</code>) against that deal's own saved snapshot, the same safe scratch-copy swap Sensitivity uses -- not a static copy of numbers. "Load" swaps a saved deal into the active slot (this app holds one active deal at a time); "Save Active Deal" snapshots whatever's currently loaded. The equity-weighted total only includes deals whose engine run succeeded.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">Portfolio Summary</div><div class="metric-list">
@@ -17358,7 +17358,7 @@ html body #viewport table.fin.bk-opstmt.bk-opstmt tbody tr.gap > td{ height:6px 
     if(c.classList.contains('pass')) return 'pass'; if(c.classList.contains('fail')) return 'fail'; if(c.classList.contains('warn')) return 'warn';
     return 'neutral';
   }
-  var FLOOR={amount:96,rate:72,unit:28,status:96,period:84,input:128,choice:128,short:64}, CEIL={amount:170,rate:130,unit:90,status:220,period:150,input:180,choice:320,short:360};
+  var FLOOR={amount:96,rate:72,unit:28,status:96,period:84,input:128,choice:128,short:64,actions:48}, CEIL={amount:170,rate:130,unit:90,status:220,period:150,input:180,choice:320,short:360,actions:320};
   var FIG=/^(?=.*\d)[\s(−$\-]*[\d$(][\d,.$%x()−\- ]*(bps|yrs?|x|%|mo)?\)?$/i, PERIOD=/year|yr\b|month|^20\d\d|^q[1-4]\b|^m\d|total|forecast|^close$|^stab/i;
   var cv=null; function tw(el,txt){ if(!cv) cv=document.createElement('canvas').getContext('2d'); var cs=getComputedStyle(el); cv.font=cs.fontStyle+' '+cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
     var m=0; String(txt).split('\n').forEach(function(l){ m=Math.max(m,cv.measureText(l.trim()).width); }); return m+(parseFloat(cs.letterSpacing)||0)*String(txt).length; }
@@ -17379,6 +17379,8 @@ html body #viewport table.fin.bk-opstmt.bk-opstmt tbody tr.gap > td{ height:6px 
       if(i===0) return 'label'; if(isPeriod) return 'period';
       var cells=body.map(function(r){ return r.cells[i]; }), k=cells.map(function(c){ return c.getAttribute('data-bk-kind')||''; }),
           cnt=function(x){ return k.filter(function(v){ return v.indexOf(x)===0; }).length; }, txt=cells.map(own), filled=txt.filter(Boolean).length, ht=t(h).toLowerCase();
+      var btnOnly=function(c){ var b=c.querySelectorAll('button'); if(!b.length) return false; var x=own(c); [].forEach.call(b,function(e){ x=x.replace(t(e).trim(),''); }); return !x.trim(); };
+      if(cells.some(btnOnly) && cells.every(function(c){ return !own(c) || btnOnly(c); })) return 'actions';
       if(h.classList.contains('bk-col-chip') || cnt('chip')>=Math.max(1,(k.length-cnt('empty'))/2)) return 'status';
       if(cells.some(function(c){ return c.querySelector('select'); })) return 'choice';
       /* a free-text entry box (a mitigant, a reason, a name: declared 200 px or more) is text, not a figure: it shares the spare width like a note */
@@ -17402,6 +17404,7 @@ html body #viewport table.fin.bk-opstmt.bk-opstmt tbody tr.gap > td{ height:6px 
     o.body.forEach(function(row){ var c=row.cells[i];
       if(r==='choice'){ var sl=c.querySelector('select'), so=sl&&sl.options[sl.selectedIndex]; if(so) m=Math.max(m,tw(sl,so.text)+48); }   /* sized by the choice shown; choosing another re-renders and re-measures */
       else if(r==='input'){ var ip=c.querySelector('input'), sf=c.querySelector('.bk-sfx'), pw=ip&&/width:\s*(\d+)px/.exec(ip.getAttribute('data-bk-pw')||''), base=ip?Math.max(tw(ip,ip.value||ip.placeholder||''),40,pw?+pw[1]-30:0):tw(c,own(c)); m=Math.max(m,base+30+(sf?tw(sf,sf.textContent)+12:0)); }
+      else if(r==='actions'){ var bw=0, bs=c.querySelectorAll('button'); [].forEach.call(bs,function(e){ var cs=getComputedStyle(e); bw+=e.offsetWidth+(parseFloat(cs.marginLeft)||0)+(parseFloat(cs.marginRight)||0)+4; }); var ccs=getComputedStyle(c); m=Math.max(m,bw+(parseFloat(ccs.paddingLeft)||0)+(parseFloat(ccs.paddingRight)||0)+4); }
       else if(r==='status'){ var ch=c.querySelector('.status-chip'); m=Math.max(m,ch?Math.max(tw(ch,t(ch))+44,ch.getBoundingClientRect().width+18):tw(c,own(c))+22); }   /* the label as drawn (letter spacing, marker, padding), not an estimate */
       else if(r==='amount'||r==='rate'||r==='period'){ var x=own(c), chp=c.querySelector('.status-chip'); if(chp) m=Math.max(m,tw(chp,t(chp))+44,chp.getBoundingClientRect().width+18); else if(/^(num|calc|empty)/.test(c.getAttribute('data-bk-kind')||'')||FIG.test(x)) m=Math.max(m,tw(c,x)+24); else if(x) txt=Math.max(txt,tw(c,x)+24); }
       else m=Math.max(m,tw(c,own(c))+22); });
@@ -35301,6 +35304,9 @@ html:where(:not(.bk-printing)) body #viewport .tbl-wrap + .note-flag{ margin-top
 /* a titled block (Deal Remedies) carries the panel heading at its top edge; its content sits under it (screen and print: this is new markup with no older print layout) */
 html body #viewport .bk-box.bk-box-t{ padding:0 !important; }
 html body #viewport .bk-box.bk-box-t > .bk-box-b{ padding:12px 14px; }
+/* an actions column (Load, Remove, Open): its buttons stay on one line, at the right of the row; the column is sized to them (src/111) */
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="actions"]{ text-align:right !important; white-space:nowrap !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-role="actions"] button + button{ margin-left:4px; }
 </style>
 <style id="bk-controls-css">/* CONTROLS (design-system phase 2). One definition for each control, replacing the per-module copies that were deleted from 121, 123, 142, 144, 153, 162,
    162a, 182, 194 and 209:
@@ -35364,6 +35370,21 @@ html body #viewport .bk-box.bk-box-t > .bk-box-b{ padding:12px 14px; }
   /* 5 · fields: a long choice clips inside its own box */
   #viewport select{ text-overflow:ellipsis; white-space:nowrap; overflow:hidden; max-width:100%; }
 }
+
+/* Portfolio > Saved deals: fits its column at desktop widths; the type sits under the name; Load and Remove share one line; the active deal is tinted, not bold like the total */
+#viewport table.bk-pf{ width:100%; }
+#viewport table.bk-pf th:not(.rowlabel-h), #viewport table.bk-pf td:not(.rowlabel){ text-align:right; white-space:nowrap; }
+#viewport table.bk-pf td.rowlabel{ white-space:normal; min-width:150px; }
+#viewport table.bk-pf .bk-pf-nm{ display:block; font-weight:600; }
+#viewport table.bk-pf .bk-pf-sub{ display:block; margin-top:2px; font-size:11px; font-weight:400; color:var(--bk-ctl-dim); }
+#viewport table.bk-pf .bk-pf-sub b{ color:var(--bk-ctl-accent); font-weight:700; }
+#viewport table.bk-pf :is(th, td).bk-pf-act{ width:1%; text-align:right; padding-left:6px; }
+#viewport table.bk-pf td.bk-pf-act{ display:table-cell; white-space:nowrap !important; }
+#viewport table.bk-pf td.bk-pf-act .bk-btn{ display:inline-block; vertical-align:middle; }
+#viewport table.bk-pf td.bk-pf-act .bk-btn + .bk-btn{ margin-left:4px; }
+#viewport table.bk-pf td.bk-pf-act .bk-pf-rm{ color:var(--bk-ctl-danger) !important; }
+#viewport table.bk-pf tr.bk-pf-on > td{ background:var(--ae-head2, #EDF1F6); }
+#viewport table.bk-pf tr.bk-pf-on > td:first-child{ box-shadow:inset 3px 0 0 var(--bk-ctl-accent); }
 </style>
 </body>
 </html>
