@@ -1100,6 +1100,11 @@
 "close": "</script>"
 },
 {
+"file": "211-bk-equity-partners.js",
+"open": "\n<script id=\"bk-equity-partners\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"
