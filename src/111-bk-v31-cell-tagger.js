@@ -182,20 +182,21 @@
   }
   function measure(o,r,i){
     var m=Math.max.apply(null,t(o.hs[i]).split(/\s+/).map(function(w){ return tw(o.hs[i],w); }))+22;
+    var chipW=0;   /* a status label among the figures is never clipped: it sets the column's least width past the figure ceiling */
     var txt=0;   /* a short phrase among the figures ("clean browser; nothing to migrate") stays on one line when it fits a short-text column */
     o.body.forEach(function(row){ var c=row.cells[i];
       if(r==='choice'){ var sl=c.querySelector('select'), so=sl&&sl.options[sl.selectedIndex]; if(so) m=Math.max(m,tw(sl,so.text)+48); }   /* sized by the choice shown; choosing another re-renders and re-measures */
       else if(r==='input'){ var ip=c.querySelector('input'), sf=c.querySelector('.bk-sfx'), pw=ip&&/width:\s*(\d+)px/.exec(ip.getAttribute('data-bk-pw')||''), base=ip?Math.max(tw(ip,ip.value||ip.placeholder||''),40,pw?+pw[1]-30:0):tw(c,own(c)); m=Math.max(m,base+30+(sf?tw(sf,sf.textContent)+12:0)); }
       else if(r==='actions'){ var bw=0, bs=c.querySelectorAll('button'); [].forEach.call(bs,function(e){ var cs=getComputedStyle(e); bw+=e.offsetWidth+(parseFloat(cs.marginLeft)||0)+(parseFloat(cs.marginRight)||0)+4; }); var ccs=getComputedStyle(c); m=Math.max(m,bw+(parseFloat(ccs.paddingLeft)||0)+(parseFloat(ccs.paddingRight)||0)+4); }
       else if(r==='status'){ var ch=c.querySelector('.status-chip'); m=Math.max(m,ch?Math.max(tw(ch,t(ch))+44,ch.getBoundingClientRect().width+18):tw(c,own(c))+22); }   /* the label as drawn (letter spacing, marker, padding), not an estimate */
-      else if(r==='amount'||r==='rate'||r==='period'){ var x=own(c), chp=c.querySelector('.status-chip'); if(chp) m=Math.max(m,tw(chp,t(chp))+44,chp.getBoundingClientRect().width+18); else if(/^(num|calc|empty)/.test(c.getAttribute('data-bk-kind')||'')||FIG.test(x)) m=Math.max(m,tw(c,x)+24); else if(x) txt=Math.max(txt,tw(c,x)+24); }
+      else if(r==='amount'||r==='rate'||r==='period'){ var x=own(c), chp=c.querySelector('.status-chip'); if(chp){ m=Math.max(m,tw(chp,t(chp))+44,chp.getBoundingClientRect().width+18); chipW=Math.max(chipW,Math.ceil(chp.getBoundingClientRect().width+18)); } else if(/^(num|calc|empty)/.test(c.getAttribute('data-bk-kind')||'')||FIG.test(x)) m=Math.max(m,tw(c,x)+24); else if(x) txt=Math.max(txt,tw(c,x)+24); }
       else m=Math.max(m,tw(c,own(c))+22); });
     /* no column is narrower than its longest unbreakable word (an identifier, a long figure): text may wrap between words, never inside one */
     var word=0; o.body.concat([{cells:o.hs}]).forEach(function(row){ var c=row.cells[i]; if(!c || c.querySelector('select,input')) return; own(c).split(/\s+/).forEach(function(wd){ if(wd.length>1) word=Math.max(word,tw(c,wd)); }); });
     var res=Math.max(Math.ceil(word+24),Math.min(CEIL[r],Math.max(FLOOR[r],Math.ceil(m)))), full=Math.ceil(tw(o.hs[i],t(o.hs[i]))+22);
     if(txt>res && o.hs.length===2) res=Math.min(CEIL.short,Math.ceil(txt));   /* only a two-column label/value table, where the label column gives the room; in wider tables the phrase wraps rather than widen the table */
     if(full>res && full<=res*1.45) res=Math.min(CEIL[r],full);   /* a header stays on one line when that costs little; a long header wraps instead of widening its column */
-    return res;
+    return Math.max(res,chipW);
   }
   /* the narrowest a label column can go: its longest word, so a label wraps between words and never inside one */
   function wordMin(o,i){ var m=0; o.body.concat([{cells:o.hs}]).forEach(function(r){ var c=r.cells[i]; if(!c || c.querySelector('select,input')) return; var cs=getComputedStyle(c), pad=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0)+4; own(c).split(/\s+/).forEach(function(wd){ if(wd.length>1) m=Math.max(m,tw(c,wd)+pad); }); }); return Math.ceil(m); }   /* the longest word plus that cell's own padding */
@@ -208,12 +209,17 @@
   function labelNat(o){ return Math.max.apply(null,o.body.map(function(r){ return Math.max.apply(null,lines(r.cells[0]).map(function(l){ return tw(r.cells[0],l); }).concat([0])); }).concat([40]))+26; }   /* its longest line */
   function standard(vp){
     var desk=window.innerWidth>760, groups=[];
-    vp.querySelectorAll('table.fin').forEach(function(tb){ if(!inScope(tb)) return; var o=classify(tb); if(!o) return; o.tb=tb;
+    vp.querySelectorAll('table.fin').forEach(function(tb){ if(!inScope(tb)) return; var o=null; try { o=classify(tb); } catch(e){ o=null; } if(!o) return; o.tb=tb;
       set(tb,'data-bk-fam',o.fam); o.hs.forEach(function(h,i){ var r=o.roles?o.roles[i]:o.fam; set(h,'data-bk-role',r); });
       if(o.roles) o.body.forEach(function(row){ [].forEach.call(row.cells,function(c,i){ set(c,'data-bk-role',o.roles[i]); }); });
       var g=tb.closest('.main-col, .side-col')||tb.closest('.sheet-frame')||vp; var e=groups.filter(function(x){ return x.el===g; })[0]; if(!e){ e={el:g,list:[]}; groups.push(e); } e.list.push(o); });
     if(!desk) return;
-    groups.forEach(function(G){
+    /* each section is laid out on its own; if measuring fails in a browser (an API it lacks), that section's tables still share one grid: the same
+       proportions for every table with the same number of columns, so they line up instead of each sizing its columns to its own content */
+    var PROP={2:[60,40],3:[44,36,20],4:[30,20,34,16],5:[28,16,16,24,16]};
+    function fallback(G){ G.list.forEach(function(o){ if(!o.roles || o.fam==='period' || o.fam==='ledger') return; var pr=PROP[o.hs.length]; if(!pr) return; setStyle(o.tb,'--bk-tmin','0px'); o.hs.forEach(function(h,i){ setStyle(h,'--bk-cw',pr[i]+'%'); }); }); }
+    groups.forEach(function(G){ try { layout(G); } catch(e){ try { fallback(G); } catch(e2){} } });
+    function layout(G){
       var need={}, lab={kvn:0,period:0,ledger:0};
       G.list.forEach(function(o){ if(!o.roles) return; o.roles.forEach(function(r,i){ if(r==='label'||r==='note'||r==='short') return; need[r]=Math.max(need[r]||0,measure(o,r,i)); });
         o.short={}; o.roles.forEach(function(r,i){ if(r==='short') o.short[i]=measure(o,r,i); });
@@ -279,7 +285,7 @@
       var per={}; G.list.forEach(function(o){ if(o.fam==='period' && o.roles){ var k=o.roles.length+'|'+Math.round(o.W); (per[k]=per[k]||[]).push(o); } });
       Object.keys(per).forEach(function(k){ var L=per[k]; if(L.length<2) return; var l=Math.max.apply(null,L.map(function(o){ return o.w[0]; })); L.forEach(function(o){ o.w[0]=l; }); });
       G.list.forEach(function(o){ if(!o.roles) return; setStyle(o.tb,'--bk-tmin',o.tmin||'0px'); o.hs.forEach(function(h,i){ setStyle(h,'--bk-cw',o.w[i]==null?'auto':Math.round(o.w[i])+'px'); }); });
-    });
+    }
   }
   /* a field with something beside it in its cell (a "$" before it, a note after it) takes the width that is left, so the pair never crosses the cell edge */
   function adorn(vp){ vp.querySelectorAll('table.fin td[data-bk-kind^="input"]').forEach(function(c){ var f=c.querySelector(':scope > input:not([type=checkbox]):not([type=radio]):not(.bk-sfx-in), :scope > select'); if(!f){ if(c.style.getPropertyValue('--bk-adorn')) c.style.removeProperty('--bk-adorn'); return; }
