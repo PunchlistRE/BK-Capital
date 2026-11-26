@@ -204,7 +204,7 @@ var DEAL_SHEETS = ['Home','Deal Underwrite','Rent Roll','Operating Underwrite','
   'Debt Schedule','Covenant Monitor','Returns','Equity Waterfall','After-Tax','Sensitivity',
   'Reverse Solve','Development','Dev Schedule','Dev Draws','Residual Land','Sources & Uses',
   'Investors','Investor Schedules','Liquidity','Waterfall (M)','Sponsor CF','Lease Cohort CF',
-  'Deal Vectors (M)','Ledger (M)','Source Data'];
+  'Deal Vectors (M)','Ledger (M)'];   /* Source Data is reference data from the Yardi files: it shows without a deal (src/213) */
 
 function quarantineNotice(){
   var idx = (typeof window.bkQuarantineIndex === 'function') ? window.bkQuarantineIndex() : [];

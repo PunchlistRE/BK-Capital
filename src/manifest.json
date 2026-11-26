@@ -1110,6 +1110,11 @@
 "close": "</script>"
 },
 {
+"file": "213-bk-source-yardi.js",
+"open": "\n<script id=\"bk-source-yardi\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"
