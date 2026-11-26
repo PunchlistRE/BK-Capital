@@ -1085,6 +1085,11 @@
 "close": "</style>"
 },
 {
+"file": "216-bk-optimizer.js",
+"open": "\n<script id=\"bk-optimizer\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
@@ -1125,8 +1130,8 @@
 "close": "</script>"
 },
 {
-"file": "216-bk-optimizer.js",
-"open": "\n<script id=\"bk-optimizer\">",
+"file": "217-bk-analysis-routing.js",
+"open": "\n<script id=\"bk-analysis-routing\">",
 "close": "</script>"
 },
 {

@@ -371,14 +371,16 @@ function reviewScreen(secs, s, g){
   if(conf.length) open.push('<li>' + conf.length + ' model check' + (conf.length === 1 ? '' : 's') + ' to look at. <a href="#" onclick="bkGuideDetail(\'Model Checks\');return false">Open Model Checks</a></li>');
   h += '<div class="gd-card"><b>' + (open.length ? 'Still open' : 'Nothing is open') + '</b>' + (open.length ? '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.7">' + open.join('') + '</ul>' : '<p class="sub" style="margin:6px 0 0">Every step is done and every assumption has been checked.</p>') + '</div>';
   /* the package: what to send, each piece one click, with a plain line on what it is; the deal goes to the committee from Deal Review */
-  var hasWf = !!safe(function(){ return window.bkWaterfallSummaryHTML && /class="page/.test(window.bkWaterfallSummaryHTML()); }, false), nOpen = open.length;
+  var own = safe(function(){ return window.bkAnalysisReport ? window.bkAnalysisReport() : null; }, null), rets = safe(function(){ return window.bkAnalysisHasReturns ? window.bkAnalysisHasReturns() : true; }, true);   /* a valuation sends its own report: no investor PDF, waterfall or committee */
+  var hasWf = rets && !!safe(function(){ return window.bkWaterfallSummaryHTML && /class="page/.test(window.bkWaterfallSummaryHTML()); }, false), nOpen = open.length;
   var pk = function(title, what, btn, fn, pri){ return '<div class="gd-pk"><div><b>' + title + '</b><small>' + what + '</small></div><button type="button" class="gd-btn' + (pri ? '' : ' ghost') + '" onclick="' + fn + '">' + btn + '</button></div>'; };
   h += '<div class="gd-card"><b>Your package</b><p class="sub" style="margin:4px 0 10px">' + (nOpen ? 'Some items above are still open. You can build the documents now; they show what is entered today.' : 'Everything is checked. Build what you need, then send it.') + '</p>'
-    + pk('Investor PDF', 'The investor summary: dashboard, sources and uses, annual cash flow, waterfall, returns by exit year, risk, credit and market.', 'Build investor PDF', 'bkReportOpen()', !nOpen)
+    + (own ? pk(esc(own.label.charAt(0).toUpperCase() + own.label.slice(1)), esc(own.what), 'Open the report', "bkGuideDetail('" + own.sheet + "')", !nOpen)
+      : pk('Investor PDF', 'The investor summary: dashboard, sources and uses, annual cash flow, waterfall, returns by exit year, risk, credit and market.', 'Build investor PDF', 'bkReportOpen()', !nOpen))
     + pk('Full property report', 'Every page of the model in navigation order: cover, contents, summaries and the detail behind them.', 'Compile full report', "bkPackOpen('full')", false)
     + (hasWf ? pk('Waterfall summary', 'One page: who contributes, what each tier pays, and what the LP and the GP receive by year.', 'Waterfall summary', 'bkWaterfallSummaryOpen()', false) : '')
-    + pk('Send to the committee', 'Add a note and submit the deal for IC approval; comments and the approval history are kept with the deal.', 'Open Deal Review', "bkGuideDetail('Deal Review')", false) + '</div>';
-  h += '<div class="gd-act"><button type="button" class="gd-btn ghost" onclick="bkGuideDetail(\'Returns\')">Open Returns</button><button type="button" class="gd-btn link" onclick="bkGuideBack()">Back</button><button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideOff()">Turn the guide off</button></div></div>';
+    + (rets ? pk('Send to the committee', 'Add a note and submit the deal for IC approval; comments and the approval history are kept with the deal.', 'Open Deal Review', "bkGuideDetail('Deal Review')", false) : '') + '</div>';
+  h += '<div class="gd-act">' + (rets ? '<button type="button" class="gd-btn ghost" onclick="bkGuideDetail(\'Returns\')">Open Returns</button>' : '<button type="button" class="gd-btn ghost" onclick="bkGuideDetail(\'' + (own ? own.sheet : 'Home') + '\')">Open the report</button>') + '<button type="button" class="gd-btn link" onclick="bkGuideBack()">Back</button><button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideOff()">Turn the guide off</button></div></div>';
   return h;
 }
 
