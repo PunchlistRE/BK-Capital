@@ -26,7 +26,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   };
   /* light theme, desktop, the Property section (seven pages) */
   let p = await open(1440, 'light', 'Revenues'); let m = await p.evaluate(MEASURE);
-  check('second row: a tab for every page of the section, the same names as before (Property, Market, Revenues, Expenses, Tenants, Investment, Valuation)', m.n === 7 && m.names.join('|') === 'Property|Market|Revenues|Expenses|Tenants|Investment|Valuation', m.names.join('|'));
+  check('second row: a tab for every page of the Property section (the editor pages, then Rent Roll, Import, Depreciation and Benchmarks)', m.n === 11 && m.names.join('|') === 'Property|Market|Revenues|Expenses|Tenants|Investment|Valuation|Rent Roll|Import|Depreciation|Benchmarks', m.names.join('|'));
   check('tab shape: rounded top corners at the same radius as the section tabs, a 1px border on the sides and top, no bottom edge on an inactive tab', m.off.radius >= 3 && m.off.radius === m.top.radius && m.off.bt === 1 && m.off.bl === 1 && m.off.bb === 0, JSON.stringify([m.off.radius, m.top.radius, m.off.bt, m.off.bl, m.off.bb]));
   check('lighter than the section tabs: an inactive page tab is much lighter than an inactive section tab (' + m.off.lum.toFixed(2) + ' against ' + m.top.lum.toFixed(2) + ')', m.off.lum > m.top.lum + 0.4, JSON.stringify([m.off.lum, m.top.lum]));
   check('the open page is marked: aria-current, white, bold, an accent edge 2px across its top, no line under it; and it differs from an inactive tab', m.ariaOn === 'page' && m.on.fill.join() === '255,255,255' && m.on.fw >= 600 && m.on.bt === 2 && m.on.btc !== m.off.btc && m.on.bbc === 'rgb(255, 255, 255)' && m.on.fill.join() !== m.off.fill.join(), JSON.stringify(m.on));
@@ -47,15 +47,15 @@ const A = require(path.join(__dirname, 'deal.js'));
   /* a section with many pages wraps; and the phone: nothing cut off, nothing pushes the page sideways */
   p = await open(1440, 'light', 'Deal Underwrite'); m = await p.evaluate(MEASURE);
   check('Underwrite (many pages): every page has a tab and one is open', m.n >= 8 && m.ariaOn === 'page', m.names.join('|')); await p.close();
-  /* one row at every width: the 23 pages of Portfolio & Data, the section with the most */
-  for (const [w, sheet] of [[1440, 'Portfolio Import'], [1000, 'Portfolio Import']]) { p = await open(w, 'light', sheet); m = await p.evaluate(MEASURE);
-    check('one row at ' + w + ' px: all ' + m.n + ' pages of Portfolio & Data sit on a single line (never wrapped), the row is one tab high, and the page does not scroll sideways', m.n === 23 && m.strip.rows === 1 && m.strip.wrap === 'nowrap' && m.strip.h <= 46 && m.strip.over <= 1, JSON.stringify(m.strip));
+  /* one row at every width: the 11 pages of Property, the section with the most, do not fit and slide instead of wrapping */
+  for (const [w, sheet] of [[1440, 'Revenues'], [1000, 'Revenues']]) { p = await open(w, 'light', sheet); m = await p.evaluate(MEASURE);
+    check('one row at ' + w + ' px: all ' + m.n + ' pages of Property sit on a single line (never wrapped), the row is one tab high, and the page does not scroll sideways', m.n === 11 && m.strip.rows === 1 && m.strip.wrap === 'nowrap' && m.strip.h <= 46 && m.strip.over <= 1, JSON.stringify(m.strip));
     check('at ' + w + ' px the pages that do not fit are reachable: the strip slides, the arrows show, and a fade marks the hidden side', m.strip.scrolls && m.strip.can && m.strip.navShown === 2 && m.strip.fade, JSON.stringify(m.strip)); await p.close(); }
-  p = await open(1440, 'light', 'Property'); m = await p.evaluate(MEASURE);
-  check('a section whose pages fit (Property, 7 pages) shows no arrows and no fade, and the same one-tab-high row', m.n === 7 && m.strip.rows === 1 && !m.strip.can && m.strip.navShown === 0 && !m.strip.fade && m.strip.h <= 46, JSON.stringify(m.strip)); await p.close();
+  p = await open(1440, 'light', 'Portfolio Import'); m = await p.evaluate(MEASURE);
+  check('a section whose pages fit (Portfolio Import\'s section, 7 pages) shows no arrows and no fade, and the same one-tab-high row', m.n === 7 && m.strip.rows === 1 && !m.strip.can && m.strip.navShown === 0 && !m.strip.fade && m.strip.h <= 46, JSON.stringify(m.strip)); await p.close();
   /* the open page is brought into view, however far along the strip it is */
-  p = await open(1440, 'light', 'Ledger (M)'); m = await p.evaluate(MEASURE);
-  check('opening the last page (Ledger (M)) brings its tab into view: the strip is slid to the end and the tab is whole inside it', m.on.text === 'Ledger (M)' && m.strip.onIn && m.strip.sl > 0, JSON.stringify(m.strip));
+  p = await open(1440, 'light', 'Market Benchmarks'); m = await p.evaluate(MEASURE);
+  check('opening the last page of Property (Benchmarks) brings its tab into view: the strip is slid along and the tab is whole inside it', m.on.text === 'Benchmarks' && m.strip.onIn && m.strip.sl > 0, JSON.stringify([m.on.text, m.strip]));
   const arrows = await p.evaluate(async () => { const sc = document.querySelector('.bk-ribbon .rb-tabs'), a0 = sc.scrollLeft; document.querySelector('.bk-ribbon .rb-prev').click(); await new Promise(r => setTimeout(r, 700)); const a1 = sc.scrollLeft; document.querySelector('.bk-ribbon .rb-next').click(); await new Promise(r => setTimeout(r, 700)); return { a0: Math.round(a0), a1: Math.round(a1), a2: Math.round(sc.scrollLeft), data: document.querySelector('.bk-ribbon .rb-scroll').dataset.sl + document.querySelector('.bk-ribbon .rb-scroll').dataset.sr }; });
   check('the left arrow slides the strip back and the right arrow forward; at the end the right arrow is dimmed (data-sr = 0)', arrows.a1 < arrows.a0 - 100 && arrows.a2 > arrows.a1 + 100 && arrows.data === '10', JSON.stringify(arrows));
   /* a click on a page that is only partly in view opens it, and the strip does not jump back: the position is kept from page to page */
