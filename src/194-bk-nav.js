@@ -17,16 +17,16 @@ window.BK_NAV = [
       { label:'Operations', sheets:['Operating Underwrite', 'Property CF', 'Property Valuation'] },
       { label:'Asset management', sheets:['Budget vs Actual', 'Actuals'] },
       { id:'dev', label:'Development', cond:'development', sheets:['Development', 'Dev Schedule', 'Dev Lease-Up', 'Dev Draws', 'Residual Land'] } ] },
-  { id:'debt', label:'Debt', q:'Can we finance it, and is the loan safe?', color:'#2E6E6E', groups:[
+  { id:'debt', label:'Debt', q:'Can we finance it, and is the loan safe?', color:'#2E6E6E', cond:'eng:debt|refinance|development', groups:[
       { label:'Capital stack', sheets:['Sources & Uses', 'Reserve Accounts'] },
       { label:'Loan', sheets:['Debt', 'Debt Schedule', 'Covenant Monitor'] },
       { label:'Refinance', sheets:['Refinancing', 'Refi / Recap'] },
       { label:'Compare', sheets:['Financing Lab', 'Financing Compare', 'Investment Target'] } ] },
-  { id:'returns', label:'Returns', q:'What do the investors earn?', color:'#3F6B4A', groups:[
+  { id:'returns', label:'Returns', q:'What do the investors earn?', color:'#3F6B4A', cond:'eng:returns', groups:[
       { label:'Returns', sheets:['Returns', 'Equity Waterfall', 'Waterfall (M)', 'Sponsor CF', 'After-Tax'] },
       { label:'Investors', sheets:['Investors', 'Investor Schedules', 'Liquidity'] },
       { label:'Risk & pricing', sheets:['Deal Optimizer', 'Sensitivity', 'Reverse Solve', 'Probability-Weighted', 'Pre-Offer Bid'] } ] },
-  { id:'credit', label:'Credit & IC', q:'Does it meet house policy?', color:'#7A3E4D', groups:[ { label:'Credit & IC', sheets:['IC Memo', 'Credit Policy', 'Debt Capacity', 'Deal Remedies', 'Deal Review'] } ] },
+  { id:'credit', label:'Credit & IC', q:'Does it meet house policy?', color:'#7A3E4D', cond:'eng:returns', groups:[ { label:'Credit & IC', sheets:['IC Memo', 'Credit Policy', 'Debt Capacity', 'Deal Remedies', 'Deal Review'] } ] },
   { id:'business', label:'Business', q:'Operating-business deals only', color:'#6B4E71', cond:'business', groups:[ { label:'Operating business', sheets:['Business Model', 'Business Valuation', 'Sell vs Hold'] } ] },
   { id:'reports', label:'Reports', q:'Documents to send out', color:'#B0592A', groups:[ { label:'Reports', sheets:['Cash Flow Report', 'After-Tax Report', 'Sources and Uses Report', 'Waterfall Report', 'Valuation Report', 'Property Valuation Report', 'Present Value Report', 'Tenant Report', 'Rent Roll Report', 'Lease Schedule', 'Lease Audit Report', 'Refinance Report', 'Audit Report'] } ] },
   { id:'portfolio', label:'Portfolio', q:'Across all deals', color:'#5A6B7A', groups:[ { label:'Portfolio', sheets:['Portfolio', 'Portfolio Dashboard', 'Property DB', 'Portfolio CF', 'Portfolio M', 'Portfolio Rollup', 'Capital Allocation', 'Capital Calls', 'Equity Partners', 'Investor Summary', 'Benchmarks'] } ] },
@@ -66,7 +66,14 @@ window.BK_NAV_FOLD = {
 var FOLDED = {}; Object.keys(window.BK_NAV_FOLD).forEach(function(h){ window.BK_NAV_FOLD[h].views.forEach(function(v){ FOLDED[v[0]] = h; }); });
 window.BK_NAV_FOLDED = FOLDED;
 /* the pages a group lists in its menus: the folded views are reached from their host's tabs, not listed again; the host stands for its family */
-window.bkNavVisible = function(g){ return g.sheets.filter(function(n){ return !FOLDED[n]; }); };
+/* an analysis that runs no financing or investor returns (a Property Valuation) does not list the pages and reports that are built from them; the
+   engines come from the analysis registry, and a deal with no analysis set shows everything, as before */
+function engines(){ try { var R = window.BKReg, a = R && R.of ? R.of(bkLoad() || {}) : null; return a && a.engines ? a.engines : null; } catch(e){ return null; } }
+function engOk(cond){ var e = engines(); if(!e) return true; return String(cond).slice(4).split('|').some(function(k){ return e.indexOf(k) >= 0; }); }
+window.bkNavEngineShown = engOk;
+var REPORT_NEEDS = { 'Cash Flow Report':'eng:monthly|development', 'After-Tax Report':'eng:tax', 'Sources and Uses Report':'eng:debt|development', 'Waterfall Report':'eng:waterfall', 'Refinance Report':'eng:refinance|debt' };
+window.bkNavVisible = function(g){ var noRet = !engOk('eng:returns|development');
+  return g.sheets.filter(function(n){ return !FOLDED[n] && (!REPORT_NEEDS[n] || engOk(REPORT_NEEDS[n])); }).map(function(n){ return noRet && n === 'Valuation Report' ? 'Property Valuation Report' : n; }); };
 window.bkNavHostOf = function(n){ return FOLDED[n] || n; };
 /* the sub-tab row: at most two words a tab (the full name stays in the page title, the menus and the tooltip) */
 window.BK_NAV_SHORT = { 'Investment Target':'Target', 'Sources & Uses':'Sources/Uses', 'Refi / Recap':'Refi/Recap', 'Valuation Report':'Summary', 'Property Valuation Report':'Property Value', 'Sources and Uses Report':'S&U Report', 'Cash Flow Report':'Cash Flow', 'Waterfall Report':'Waterfall',
@@ -80,7 +87,7 @@ function tabOf(sheet){ for(var i = 0; i < NAV_TABS.length; i++){ var t = NAV_TAB
 /* is a conditional group or tab showing right now? (the open sheet always shows, so a page you are on never disappears from its own menu) */
 function groupShown(g, sheet){ if(!g.cond) return true; if(g.sheets.indexOf(sheet) > -1) return true; return g.cond === 'development' ? isDev() : g.cond === 'business' ? hasBiz() : true; }
 window.bkNavTabHidden = function(t, sheet){ var d = window.BK_NAV.filter(function(x){ return x.id === t.id; })[0]; if(!d || !d.cond) return false;
-  var gs = t.groups.map(function(id){ return GROUPS.filter(function(x){ return x.id === id; })[0]; }).filter(Boolean); if(gs.some(function(g){ return g.sheets.indexOf(sheet) > -1; })) return false; return !(d.cond === 'business' ? hasBiz() : true); };
+  var gs = t.groups.map(function(id){ return GROUPS.filter(function(x){ return x.id === id; })[0]; }).filter(Boolean); if(gs.some(function(g){ return g.sheets.indexOf(sheet) > -1; })) return false; return !(d.cond === 'business' ? hasBiz() : /^eng:/.test(d.cond) ? engOk(d.cond) : true); };
 window.bkNavGroupShown = groupShown;
 
 /* rebuild GROUPS and NAV_TABS in place from the definition */
@@ -161,7 +168,7 @@ function decorate(){
 function viewStrip(cs){
   document.querySelectorAll('#viewport .bk-views').forEach(function(e){ e.parentNode.removeChild(e); });
   var host = FOLDED[cs] || (window.BK_NAV_FOLD[cs] ? cs : null); if(!host) return;
-  var fam = window.BK_NAV_FOLD[host], all = [[host, fam.label]].concat(fam.views).filter(function(v){ return RENDERERS[v[0]]; }); if(all.length < 2) return;
+  var fam = window.BK_NAV_FOLD[host], noRet = !engOk('eng:returns|development'), all = [[host, fam.label]].concat(fam.views).filter(function(v){ return RENDERERS[v[0]] && !(noRet && (v[0] === 'Valuation Report' || v[0] === 'Present Value Report')); }); if(all.length < 2) return;   /* a valuation has no return summary or present value of returns */
   var html = '<div class="bk-views no-print" role="tablist" aria-label="Views of this page"><span class="bkv-l">View</span>' + all.map(function(v){ var on = v[0] === cs; return '<button type="button" role="tab" class="bkv-b' + (on ? ' on' : '') + '" aria-selected="' + (on ? 'true' : 'false') + '" data-goto-sheet2="' + v[0].replace(/"/g, '&quot;') + '">' + v[1] + '</button>'; }).join('') + '</div>';
   var tb = document.querySelector('#viewport .title-block'); if(tb) tb.insertAdjacentHTML('afterend', html);
 }

@@ -29,7 +29,9 @@ function run(){
   var s = bkLoad(), dev = /develop/i.test(String(s.dealType || '')), C = [];
   /* a check the deal's analysis does not use (src/139g) reads N/A, never a failure */
   var aid = safe(function(){ return window.BKReg ? window.BKReg.of(s).id : null; }, null);
-  var add = function(id, group, label, status, detail){ if(aid && window.BKReg.applies && window.BKReg.mapsCheck && window.BKReg.mapsCheck(id) && !window.BKReg.applies(aid, id)){ status = 'na'; detail = 'Not used by this analysis. ' + detail; } C.push({ id:id, group:group, label:label, status:status, detail:detail }); };
+  /* the waterfall's own checks (wf_...) belong to the registry's 'waterfall' rule: an analysis with no waterfall (a valuation) reads them as N/A */
+  var notUsed = function(id){ if(!aid || !window.BKReg.applies) return false; if(/^wf(_|$)/.test(id)) return (window.BKReg.checks(aid) || []).indexOf('waterfall') < 0; return window.BKReg.mapsCheck && window.BKReg.mapsCheck(id) && !window.BKReg.applies(aid, id); };
+  var add = function(id, group, label, status, detail){ if(notUsed(id)){ status = 'na'; detail = 'Not used by this analysis. ' + detail; } C.push({ id:id, group:group, label:label, status:status, detail:detail }); };
   var tie = function(a, b, tol){ return Math.abs(a - b) <= (tol == null ? TOL : tol); };
   var m = safe(function(){ return bkMonthlyReturns(); }, null);
   if(!m){ add('calc', 'Engine', 'The engine produced results', 'hard', 'The returns could not be calculated.'); return summarize(C); }

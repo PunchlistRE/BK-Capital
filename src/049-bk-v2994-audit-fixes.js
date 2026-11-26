@@ -31,7 +31,7 @@
       const capexAmt=(u.capex&&u.capex[m-1])||0,other=noi-reserve-ds-assetFee+sale-dispoFee-payoff+refiProceeds-refiShortfall-balloonEq-capexAmt-loanCost-mezzPaid-prefPaid;
       const draw=(m===1)?eqDraw:0,cf=other-draw,dt=bkMonthEnd(start,m);
       values.push(cf);dates.push(dt);xv.push(other);xd.push(dt);
-      rows.push({m,y,dt,egi,noi,reserve,ds,assetFee,sale,dispoFee,payoff,refi:refiProceeds,refiEq:refiShortfall,balloonEq,loanCost,mezzPaid,prefPaid,eqDraw:draw,cf,wfContrib:draw+Math.max(0,-other),wfDist:Math.max(0,other)});}
+      rows.push({m,y,dt,egi,noi,reserve,ds,assetFee,sale,dispoFee,payoff,refi:refiProceeds,refiEq:refiShortfall,balloonEq,loanCost,mezzPaid,prefPaid,capex:capexAmt,eqDraw:draw,cf,wfContrib:draw+Math.max(0,-other),wfDist:Math.max(0,other)});}
     const irr=bkXirr(xv,xd),dist=rows.reduce((z,r)=>z+r.wfDist,0),contrib=rows.reduce((z,r)=>z+r.wfContrib,0),moic=contrib?dist/contrib:0;
     return{s,u,d,rows,values,dates,irr,moic,dist,contrib,refi,oldBalloon,closeDt:new Date(start),eqDraw,xirrValues:xv,xirrDates:xd};
   };
