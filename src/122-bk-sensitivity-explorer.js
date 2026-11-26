@@ -182,7 +182,9 @@ function spider(series, M, nSteps){
 function mix(a, b, t){ // hex mix for heat cells; CSS vars can't be interpolated in JS, so the heat map uses the light-mode poles and a dark-safe text rule
   function h(x){ return [parseInt(x.slice(1,3),16), parseInt(x.slice(3,5),16), parseInt(x.slice(5,7),16)]; }
   var A = h(a), B = h(b), c = A.map(function(v,i){ return Math.round(v + (B[i]-v)*t); });
-  return { css:'rgb('+c.join(',')+')', lum:(0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2])/255 };
+  /* the text on a cell is whichever of white and the dark ink reads better on it (WCAG contrast), not a fixed lightness cut */
+  var L = function(v){ v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }, Y = 0.2126 * L(c[0]) + 0.7152 * L(c[1]) + 0.0722 * L(c[2]), onWhite = 1.05 / (Y + 0.05), onInk = (Y + 0.05) / (0.0153 + 0.05);
+  return { css:'rgb('+c.join(',')+')', lum:(0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2])/255, white:onWhite > onInk };
 }
 
 /* ---------------------------------------------------------------- view */
@@ -253,9 +255,9 @@ function explorer(s){
     + ks.map(function(kx){ return '<th>'+esc(gx.show(kx*sx))+'</th>'; }).join('') + '</tr></thead><tbody>'
     + ks.map(function(ky, i){ return '<tr><th class="rh">'+esc(gy.show(ky*sy))+'</th>' + ks.map(function(kx, j){
         var v = cells[i][j], t = maxDev > 0 && isFinite(v) ? Math.min(1, Math.abs(v-base)/maxDev) : 0;
-        var night = document.documentElement.getAttribute('data-theme') === 'dark', c = !isFinite(v) ? null : mix(night ? '#2b3646' : '#eef2f6', v >= base ? (night ? '#3fb27a' : '#2f8f5b') : (night ? '#e0675c' : '#c24a3f'), t*0.88);   /* green above base, red below, deeper the further from base */
+        var night = document.documentElement.getAttribute('data-theme') === 'dark', c = !isFinite(v) ? null : mix(night ? '#2b3646' : '#eef2f6', v >= base ? (night ? '#3fb27a' : '#2f8f5b') : (night ? '#e0675c' : '#c24a3f'), t*(night ? 0.88 : 0.78));   /* light mode stops a little short of the poles, so the strongest cells still carry text at 4.5 to 1 */   /* green above base, red below, deeper the further from base */
         var isBase = kx === 0 && ky === 0;
-        return '<td class="'+(isBase?'base ':'')+(c && c.lum < 0.55 ? 'dark' : '')+'"'+(c?' style="background:'+c.css+'"':'')
+        return '<td class="'+(isBase?'base ':'')+(c ? (c.white ? 'dark' : 'ink') : '')+'"'+(c?' style="background:'+c.css+'"':'')
           + tip('<b>'+esc(gy.label)+' '+esc(gy.show(ky*sy))+' &middot; '+esc(gx.label)+' '+esc(gx.show(kx*sx))+'</b><br>'+esc(M.label)+' '+esc(M.fmt(v))
               + (isFinite(v) && !isBase ? ' ('+(v>=base?'+':'')+esc(M.rate ? ((v-base)*10000).toFixed(0)+' bps' : (v-base).toFixed(2)+'x')+' vs base)' : ''))
           + '>'+esc(M.fmt(v))+'</td>'; }).join('') + '</tr>'; }).join('')

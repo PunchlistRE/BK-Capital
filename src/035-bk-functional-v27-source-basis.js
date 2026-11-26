@@ -306,7 +306,7 @@ function sheetSourceDataV27(){
   const hv = BK_SOURCE_DATA.harvard;
 
   const portRows = BK_SOURCE_DATA.portfolio.map(p=>`<tr><td class="rowlabel">${p.property}${p.dealId?` <span style="opacity:.6">(${p.dealId})</span>`:''}</td><td>${p.type}</td><td>${p.units}</td><td>${bkFmt(p.sf)}</td><td>$${bkFmt(p.annualRent)}</td><td>$${p.rentPSF.toFixed(2)}</td><td>$${bkFmt(p.t12noi)}</td><td>${bkPct(p.expenseRatio)}</td><td>${bkPct(p.capRate)}</td><td>${bkPct(p.vacancy)}</td><td>${bkPct(p.ownership)}</td><td>$${bkFmt(p.impliedValue)}</td></tr>`).join('');
-  const targetRows = BK_SOURCE_DATA.targets.map(p=>`<tr><td class="rowlabel">${p.property}</td><td>${p.type}</td><td>-</td><td>${bkFmt(p.sf)}</td><td colspan="8" style="text-align:left;opacity:.7">Target acquisition - no operating history yet.</td></tr>`).join('');
+  const targetRows = BK_SOURCE_DATA.targets.map(p=>`<tr class="bk-src-target"><td class="rowlabel" style="white-space:normal">${p.property}</td><td style="white-space:normal">${p.type}</td><td>-</td><td>${bkFmt(p.sf)}</td><td colspan="8" style="text-align:left;opacity:.7">Target acquisition - no operating history yet.</td></tr>`).join('');
 
   const portfolioTable = `<div class="tbl-wrap"><table class="fin"><caption>Yardi Portfolio Reference - Property Summary (source: ${BK_SOURCE_DATA.asOf})</caption>
     <thead><tr><th class="rowlabel-h">Property</th><th>Type</th><th>Units</th><th>SF</th><th>Annual Rent</th><th>Rent/SF</th><th>T-12 NOI</th><th>Exp. Ratio</th><th>Cap Rate</th><th>Vacancy</th><th>Ownership</th><th>Implied Value</th></tr></thead>

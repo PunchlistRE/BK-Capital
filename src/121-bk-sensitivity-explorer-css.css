@@ -41,6 +41,7 @@
 .bk-sx-heat th.rh{ text-align:right; padding-right:8px; white-space:nowrap; }
 .bk-sx-heat td{ text-align:center; padding:8px 4px; border-radius:4px; color:var(--sx-ink); font-variant-numeric:tabular-nums; background:var(--sx-mid); }
 .bk-sx-heat td.dark{ color:#fff; }
+.bk-sx-heat td.ink{ color:#14212F; }   /* a light cell takes the dark ink in either theme */
 .bk-sx-heat td.base{ outline:2px solid var(--sx-ink); outline-offset:-2px; font-weight:700; }
 .bk-sx-heat .corner{ font-size:10px; text-align:right; }
 .bk-sx-scale{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--sx-ink2); margin-top:8px; }

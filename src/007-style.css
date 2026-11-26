@@ -16,7 +16,7 @@
     --ink-900:#10233a;
     --ink-700:#2f4258;
     --ink-500:#566a80;
-    --ink-400:#7C8792;
+    --ink-400:#66717C;   /* small labels: 4.9 to 1 on white (was #7C8792, 3.7 to 1) */
     --input-blue:#1B5FA6;
     --formula-ink:#10233a;
     --linked-green:#2C7A4B;
