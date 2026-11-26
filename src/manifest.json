@@ -1120,6 +1120,11 @@
 "close": "</script>"
 },
 {
+"file": "215-bk-capital-stack.js",
+"open": "\n<script id=\"bk-capital-stack\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"

@@ -4585,8 +4585,8 @@ RENDERERS['Sources & Uses'] = function(){
     totalUses = x.unlev + d.fee;
   } else {
     const price = Number(s.purchasePrice)||0, closing = price*Number(s.closingCostsPct||0), acqFee = price*bkAcqFeePct(s);
-    usesRows = `<tr><td class="rowlabel">Purchase Price</td><td class="v">${money(price)}</td></tr><tr><td class="rowlabel">Closing Costs</td><td class="v">${money(closing)}</td></tr><tr><td class="rowlabel">Acquisition Fee</td><td class="v">${money(acqFee)}</td></tr><tr><td class="rowlabel">Loan Origination Fee</td><td class="v">${money(d.fee)}</td></tr>`;
-    totalUses = price+closing+acqFee+d.fee;
+    usesRows = `<tr><td class="rowlabel">Purchase Price</td><td class="v">${money(price)}</td></tr><tr><td class="rowlabel">Closing Costs</td><td class="v">${money(closing)}</td></tr><tr><td class="rowlabel">Acquisition Fee</td><td class="v">${money(acqFee)}</td></tr><tr><td class="rowlabel">Loan Origination Fee</td><td class="v">${money(d.fee)}</td></tr>${d.stack && d.stack.mezzFee > 0.5 ? `<tr><td class="rowlabel">Mezzanine Origination Fee</td><td class="v">${money(d.stack.mezzFee)}</td></tr>` : ''}`;
+    totalUses = price+closing+acqFee+d.fee+(d.stack && d.stack.mezzFee > 0.5 ? d.stack.mezzFee : 0);
   }
   /* closing view of an acquisition: the rate cap premium is paid at closing as Month-1 equity, so it is a use and part of the closing equity; capital called after closing is shown separately, below */
   const capAcq = isDev ? 0 : (Number(s.rateCapCost)||0);
@@ -4594,9 +4594,9 @@ RENDERERS['Sources & Uses'] = function(){
   const closingEq = d.equity + capAcq, atClosing = isDev ? '' : ' AT CLOSING';
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Sources &amp; Uses${isDev ? '' : ' at Closing'} - Active Deal</caption><thead><tr><th class="rowlabel-h" colspan="2">Uses</th></tr></thead><tbody>${usesRows}<tr class="grandtotal"><td class="rowlabel">TOTAL USES${atClosing}</td><td class="v">${money(totalUses)}</td></tr></tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Sources${isDev ? '' : ' at Closing'}</caption><thead><tr><th class="rowlabel-h" colspan="2">Sources</th></tr></thead><tbody>
-    <tr><td class="rowlabel">Acquisition Loan</td><td class="v">${money(d.loan)}</td></tr>
+    <tr><td class="rowlabel">Acquisition Loan</td><td class="v">${money(d.loan)}</td></tr>${!isDev && d.stack && d.stack.mezz ? `<tr><td class="rowlabel">Mezzanine Loan</td><td class="v">${money(d.stack.mezz)}</td></tr>` : ''}${!isDev && d.stack && d.stack.pref ? `<tr><td class="rowlabel">Preferred Equity</td><td class="v">${money(d.stack.pref)}</td></tr>` : ''}
     <tr><td class="rowlabel">Sponsor / LP Equity${isDev ? '' : ' (closing equity)'}</td><td class="v">${money(closingEq)}</td></tr>
-    <tr class="grandtotal"><td class="rowlabel">TOTAL SOURCES${atClosing}</td><td class="v">${money(d.loan+closingEq)}</td></tr>
+    <tr class="grandtotal"><td class="rowlabel">TOTAL SOURCES${atClosing}</td><td class="v">${money(d.loan+closingEq+(!isDev && d.stack ? (d.stack.mezz||0)+(d.stack.pref||0) : 0))}</td></tr>
     </tbody></table></div>
     <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> Uses and Sources reuse the figures already calculated on Debt and Deal Underwrite${isDev?' and the development budget':''}; this page lays them out in standard Sources &amp; Uses form. Total Uses and Total Sources tie by construction, since equity is defined as basis + fee - loan.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">S&amp;U Check</div><div class="metric-list"><div class="metric-row"><span class="k">Total Uses</span><span class="v">${money(totalUses)}</span></div><div class="metric-row"><span class="k">Total Sources</span><span class="v">${money(d.loan+closingEq)}</span></div><div class="metric-row"><span class="k">Loan / ${bkCapName('closingEquity', isDev)}</span><span class="v">${money(d.loan)} / ${money(closingEq)}</span></div></div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
@@ -7368,11 +7368,11 @@ try{implement(document);}catch(e){}
     const xv=[-eqDraw], xd=[new Date(start)];
     for(let m=1;m<=months;m++){const y=Math.ceil(m/12),a=u.arr[Math.min(y-1,u.arr.length-1)],mo=(u.monthly&&u.monthly[m-1])||null,
         egi=mo?mo.egi:a.egi/12,noi=mo?mo.noiBeforeReserves:a.noi/12,reserve=mo?(mo.noiBeforeReserves-mo.noi):(a.noi-a.after)/12,
-        assetFee=egi*Number(s.assetMgmtPct||0),sale=m===months?u.netSale:0,dispoFee=m===months?u.grossSale*dispPct:0;const ds=L.flows.ds[m-1],payoff=(m===months)?L.payoffAtSale:0,refiProceeds=L.flows.refiProceeds[m-1],refiShortfall=L.flows.refiShortfall[m-1],balloonEq=L.flows.balloonEquity[m-1],loanCost=(L.flows.loanCosts&&L.flows.loanCosts[m-1])||0;
-      const capexAmt=(u.capex&&u.capex[m-1])||0,other=noi-reserve-ds-assetFee+sale-dispoFee-payoff+refiProceeds-refiShortfall-balloonEq-capexAmt-loanCost;
+        assetFee=egi*Number(s.assetMgmtPct||0),sale=m===months?u.netSale:0,dispoFee=m===months?u.grossSale*dispPct:0;const ds=L.flows.ds[m-1],payoff=(m===months)?L.payoffAtSale:0,refiProceeds=L.flows.refiProceeds[m-1],refiShortfall=L.flows.refiShortfall[m-1],balloonEq=L.flows.balloonEquity[m-1],loanCost=(L.flows.loanCosts&&L.flows.loanCosts[m-1])||0,kr=(d.stack&&d.stack.rows)?d.stack.rows[m-1]:null,mezzPaid=kr?kr.mezzInterest+kr.mezzPayoff:0,prefPaid=kr?kr.prefPaid+kr.prefRedeem:0;   /* mezzanine and preferred equity are paid ahead of the common equity (src/215) */
+      const capexAmt=(u.capex&&u.capex[m-1])||0,other=noi-reserve-ds-assetFee+sale-dispoFee-payoff+refiProceeds-refiShortfall-balloonEq-capexAmt-loanCost-mezzPaid-prefPaid;
       const draw=(m===1)?eqDraw:0,cf=other-draw,dt=bkMonthEnd(start,m);
       values.push(cf);dates.push(dt);xv.push(other);xd.push(dt);
-      rows.push({m,y,dt,egi,noi,reserve,ds,assetFee,sale,dispoFee,payoff,refi:refiProceeds,refiEq:refiShortfall,balloonEq,loanCost,eqDraw:draw,cf,wfContrib:draw+Math.max(0,-other),wfDist:Math.max(0,other)});}
+      rows.push({m,y,dt,egi,noi,reserve,ds,assetFee,sale,dispoFee,payoff,refi:refiProceeds,refiEq:refiShortfall,balloonEq,loanCost,mezzPaid,prefPaid,eqDraw:draw,cf,wfContrib:draw+Math.max(0,-other),wfDist:Math.max(0,other)});}
     const irr=bkXirr(xv,xd),dist=rows.reduce((z,r)=>z+r.wfDist,0),contrib=rows.reduce((z,r)=>z+r.wfContrib,0),moic=contrib?dist/contrib:0;
     return{s,u,d,rows,values,dates,irr,moic,dist,contrib,refi,oldBalloon,closeDt:new Date(start),eqDraw,xirrValues:xv,xirrDates:xd};
   };
@@ -18318,7 +18318,7 @@ try{
         if(iu<0 || is<0) return o;
         var F = bkFundingSummary();   /* shared funding calculation (src/184) */
         var units = Number(s.units)||0, gsf = Number(s.gsf)||0, uses = F.uses, tu = F.totalUses;
-        var srcs = [['Acquisition Loan',F.loan],['LP Equity (closing)',F.lpEquity],['GP Equity (closing)',F.gpEquity]], ts = F.totalSources;
+        var srcs = [['Acquisition Loan',F.loan]].concat(F.mezz>0?[['Mezzanine Loan',F.mezz]]:[]).concat(F.pref>0?[['Preferred Equity',F.pref]]:[]).concat([['LP Equity (closing)',F.lpEquity],['GP Equity (closing)',F.gpEquity]]), ts = F.totalSources;   /* mezzanine and preferred equity sit between the senior loan and the common equity (src/215) */
         var tU = CR.table('Uses at closing - total, per unit, per SF, and as a share', HEAD5('Use'), uses.map(function(u){ return r5(u[0],u[1],tu,units,gsf); }).join('') + r5('TOTAL USES AT CLOSING',tu,tu,units,gsf,'grandtotal'));
         var tS = CR.table('Sources at closing - total, per unit, per SF, and as a share', HEAD5('Source'), srcs.map(function(u){ return r5(u[0],u[1],tu,units,gsf); }).join('') + r5('TOTAL SOURCES AT CLOSING',ts,tu,units,gsf,'grandtotal'));
         var a = m.lastIndexOf('<div class="tbl-wrap"', iu), b0 = m.indexOf('</table></div>', is) + 14;
@@ -35033,6 +35033,93 @@ var css = '.bk-ds-card,.bk-ds-note{margin:10px 0 4px;padding:12px 14px;border:1p
   + '.bk-ds-h{font-weight:700;margin-bottom:8px}.bk-ds-sum{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:flex-end}.bk-ds-sum div{display:flex;flex-direction:column}.bk-ds-sum span{font-size:11.5px;color:var(--ae-dim,#56616c)}.bk-ds-sum b{font-size:20px;font-variant-numeric:tabular-nums}'
   + '.bk-ds-sum .t{padding-left:20px;border-left:2px solid var(--ae-line,#d6dde5)}.bk-ds-n,.bk-ds-pub,.bk-ds-typ{margin-top:8px;color:var(--ae-dim,#56616c);font-size:12.5px}.bk-ds-pub .bk-btn,.bk-ds-note .bk-btn{margin-left:6px}.bk-ds-note .bk-btn{margin:8px 0 0}.bk-ds-ok{color:var(--bk-link-ink,#1f6b45);font-weight:600}';
 var st = document.createElement('style'); st.id = 'bk-debt-structure-css'; st.textContent = css; document.head.appendChild(st);
+})();
+</script>
+<script id="bk-capital-stack">/* CAPITAL STACK: mezzanine debt and preferred equity between the senior loan and the common equity (acquisitions).
+     Mezzanine loan   subordinate to the senior mortgage, secured by the ownership interest in the property-owning entity. Sized as a fixed amount, or up to a
+                      combined loan-to-value (senior + mezzanine) on the same value the senior LTV test uses. Interest only: a current-pay rate paid monthly
+                      after senior debt service, and an optional accruing (PIK) rate added to its balance. Repaid with what accrued at its maturity or the sale.
+     Preferred equity not a loan: contractual return and priority ahead of the common equity. Sized as a fixed amount or a share of the equity the deal still
+                      needs after the loans. A current-pay return paid monthly, an accruing return compounded into what it is owed; redeemed (capital plus
+                      what accrued) at the sale, ahead of the common equity, with an optional minimum multiple.
+   Both are sources at closing, so the common (sponsor / LP) equity is smaller by their proceeds; the mezzanine origination fee is a use. Their payments come
+   out of the cash flow before the common equity, so the returns, the waterfall and every page that reads bkDebt().equity see the common equity only.
+   A deal with neither is calculated exactly as before. */
+(function(){
+'use strict';
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+function esc(x){ return String(x == null ? '' : x).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+function dev(s){ return /develop/i.test(String((s || {}).dealType || '')); }
+/* the sizes, from the senior loan's figures */
+function size(s, d){
+  var out = { mezz:0, mezzFee:0, pref:0, active:false };
+  if(dev(s) || !d) return out;
+  var mz = num(s.mezzAmount) > 0 ? num(s.mezzAmount) : (num(s.mezzCLTV) > 0 ? Math.max(0, num(s.mezzCLTV) * num(d.ltvValue) - num(d.loan)) : 0);
+  mz = Math.floor(mz / 1000) * 1000;
+  var fee = mz * Math.max(0, num(s.mezzOrigFee));
+  var need = Math.max(0, num(d.basis) + num(d.fee) + fee - num(d.loan) - mz);   /* the equity the deal still needs after both loans */
+  var pf = num(s.prefAmount) > 0 ? Math.min(num(s.prefAmount), need) : (num(s.prefPct) > 0 ? need * Math.min(1, num(s.prefPct)) : 0);
+  pf = Math.floor(pf / 1000) * 1000;
+  out.mezz = mz; out.mezzFee = fee; out.pref = pf; out.active = mz > 0 || pf > 0; out.need = need; return out;
+}
+/* month by month: what each is paid currently, what accrues, and the payoff */
+function schedule(s, K, holdM){
+  var mz = K.mezz, pf = K.pref, mTerm = num(s.mezzTerm) > 0 ? Math.min(holdM, Math.round(num(s.mezzTerm) * 12)) : holdM;
+  var cur = Math.max(0, num(s.mezzRate)), pik = Math.max(0, num(s.mezzPikRate)), pc = Math.max(0, num(s.prefCurrentRate)), pa = Math.max(0, num(s.prefAccrualRate));
+  var rows = [], mb = mz, owed = pf, paidPref = 0;
+  for(var m = 1; m <= holdM; m++){
+    var r = { m:m, mezzInterest:0, mezzPik:0, mezzPayoff:0, mezzBal:0, prefPaid:0, prefAccrued:0, prefRedeem:0, prefOwed:0 };
+    if(mb > 0 && m <= mTerm){ r.mezzInterest = mb * cur / 12; r.mezzPik = mb * pik / 12; mb += r.mezzPik; if(m === mTerm){ r.mezzPayoff = mb; mb = 0; } }
+    if(owed > 0){ r.prefPaid = pf * pc / 12; r.prefAccrued = owed * pa / 12; owed += r.prefAccrued; paidPref += r.prefPaid;
+      if(m === holdM){ var minM = num(s.prefMinMultiple) > 0 ? num(s.prefMinMultiple) * pf - paidPref : 0; r.prefRedeem = Math.max(owed, minM); owed = 0; } }
+    r.mezzBal = mb; r.prefOwed = owed; rows.push(r);
+  }
+  return rows;
+}
+var _debt = window.bkDebt;
+if(typeof _debt === 'function' && !_debt.__bkStack){
+  var w = function(){ var d = _debt.apply(this, arguments); if(!d || d.__bkStackDone) return d;   /* results are cached (src/184b): apply once per result */
+    try { d.__bkStackDone = true; var s = d.s || bkLoad(), K = size(s, d);
+      d.stack = K; d.seniorEquity = d.equity;
+      if(K.active){ d.equity = d.equity + K.mezzFee - K.mezz - K.pref;   /* the common equity: the rest of the basis after both loans and the preferred equity */
+        var hold = Math.max(1, Math.round(num(s.holdYears) * 12)); K.rows = schedule(s, K, hold);
+        var m1 = K.rows[0] || {}; K.combinedDscr = d.pmt > 0 ? num(d.dscrNoi) / ((num(d.pmt) + num(m1.mezzInterest)) * 12) : 0; K.cltv = num(d.ltvValue) > 0 ? (num(d.loan) + K.mezz) / num(d.ltvValue) : 0; }
+    } catch(e){} return d; };
+  w.__bkStack = true; window.bkDebt = w; try { bkDebt = w; } catch(e){}
+}
+window.bkCapitalStack = function(){ var d = bkDebt(); return d.stack || { active:false }; };
+
+/* the inputs, after the senior loan's groups on Deal Underwrite */
+function groupHtml(s){ var K = window.bkCapitalStack(), d = bkDebt();
+  var rows = bkInput('Mezzanine loan amount', 'mezzAmount', '$ (or size by combined LTV below)', 'money') + bkInput('Mezzanine: max combined LTV', 'mezzCLTV', '% senior + mezzanine', 'pct')
+    + bkInput('Mezzanine current-pay rate', 'mezzRate', '% a year, paid monthly', 'pct') + bkInput('Mezzanine accruing (PIK) rate', 'mezzPikRate', '% a year, added to the balance', 'pct')
+    + bkInput('Mezzanine origination fee', 'mezzOrigFee', '% of the mezzanine loan', 'pct') + bkInput('Mezzanine term', 'mezzTerm', 'years (blank = the hold)', 'num')
+    + bkInput('Preferred equity amount', 'prefAmount', '$ (or a share below)', 'money') + bkInput('Preferred equity: share of the equity need', 'prefPct', '% of the equity after the loans', 'pct')
+    + bkInput('Preferred current-pay return', 'prefCurrentRate', '% a year on its capital, paid monthly', 'pct') + bkInput('Preferred accruing return', 'prefAccrualRate', '% a year, compounded, paid at redemption', 'pct')
+    + bkInput('Preferred minimum multiple', 'prefMinMultiple', 'x its capital (blank = none)', 'num');
+  rows = rows.replace(/>undefined</g, '><').replace(/>null</g, '><');
+  var note = K.active ? '<div class="bk-ds-note">Capital stack at closing: senior loan $' + bkFmt(d.loan) + (K.mezz ? ' · mezzanine $' + bkFmt(K.mezz) + ' (combined LTV ' + (K.cltv * 100).toFixed(1) + '%)' : '') + (K.pref ? ' · preferred equity $' + bkFmt(K.pref) : '') + ' · common equity $' + bkFmt(d.equity) + '.'
+      + (K.mezz ? ' Combined DSCR (senior and mezzanine current pay), year 1: ' + K.combinedDscr.toFixed(2) + 'x.' : '') + ' Both are paid before the common equity, monthly and at the sale.</div>'
+    : '<div class="bk-ds-note">Optional. Mezzanine debt sits behind the senior mortgage; preferred equity is not a loan but is paid a contractual return ahead of the common equity. Both reduce the common equity needed at closing.</div>';
+  return '<div class="tbl-wrap" style="margin-top:16px;"><table class="fin bk-input-grid bk-debt-grp"><caption>Mezzanine &amp; Preferred Equity</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + note; }
+function wrapR(name, fn){ if(!window.RENDERERS || typeof RENDERERS[name] !== 'function' || RENDERERS[name]['__bkStack']) return; var prev = RENDERERS[name], w2 = function(){ return fn(prev.apply(this, arguments)); }; w2.__bkStack = true; Object.keys(prev).forEach(function(k){ if(!(k in w2)) w2[k] = prev[k]; }); RENDERERS[name] = w2; if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer(name, w2); } catch(e){} }
+wrapR('Deal Underwrite', function(o){ try { var s = bkLoad(); if(!o || typeof o.main !== 'string' || dev(s)) return o; var m = o.main, i = m.indexOf('<caption>Underwriting &amp; Covenants</caption>'); if(i < 0) return o;
+    var e = m.indexOf('</table></div>', i); if(e < 0) return o; e += '</table></div>'.length; var nx = m.indexOf('<div class="bk-ds-note">', e); if(nx === e) e = m.indexOf('</div>', nx) + 6;
+    o.main = m.slice(0, e) + groupHtml(s) + m.slice(e); } catch(x){} return o; });
+/* Sources & Uses: the mezzanine loan and the preferred equity are sources, the mezzanine fee a use */
+var _fs = window.bkFundingSummary;
+if(typeof _fs === 'function' && !_fs.__bkStack){
+  var fw = function(){ var F = _fs.apply(this, arguments); if(!F || F.__bkStackDone) return F; try { F.__bkStackDone = true; if(!F.dev){ var K = window.bkCapitalStack(); if(K.active){
+        if(K.mezzFee > 0.5){ F.uses.push(['Mezzanine Origination Fee', K.mezzFee]); F.totalUses += K.mezzFee; }
+        var i = F.sources.findIndex(function(x){ return /^Equity/.test(x[0]); }), add = []; if(K.mezz > 0) add.push(['Mezzanine Loan', K.mezz]); if(K.pref > 0) add.push(['Preferred Equity', K.pref]);
+        F.sources.splice(i < 0 ? F.sources.length : i, 0, add[0], add[1]); F.sources = F.sources.filter(Boolean);
+        F.mezz = K.mezz; F.pref = K.pref; F.totalSources = F.sources.reduce(function(t, x){ return t + num(x[1]); }, 0);
+        var su = (F.ties || []).find(function(t){ return t.id === 'su'; }); if(su){ su.a = F.totalSources; su.b = F.totalUses; su.ok = Math.abs(su.a - su.b) <= 1; }
+        if(F.measures && F.measures.totalProjectCapitalization){ var tp = F.measures.totalProjectCapitalization; tp.amount += K.mezz + K.pref; tp.closingSources = F.totalSources; tp.mezzanine = K.mezz; tp.preferred = K.pref;
+          var ct = (F.ties || []).find(function(t){ return t.id === 'capTotal'; }); if(ct){ ct.a = tp.amount; ct.b = F.totalSources + num(F.measures.callsTotal); ct.ok = Math.abs(ct.a - ct.b) <= 1; } }
+        F.failed = (F.ties || []).filter(function(t){ return !t.ok; }); } } } catch(e){} return F; };
+  fw.__bkStack = true; window.bkFundingSummary = fw; try { bkFundingSummary = fw; } catch(e){}
+}
 })();
 </script>
 <style id="bk-palette-css">/* PALETTE. One defined color scheme, set once as tokens so every sheet, chart and chip reads from it.

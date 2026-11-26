@@ -93,6 +93,26 @@ let n = 0, fails = 0; const check = (name, ok, detail) => { n++; if (!ok) fails+
   check('guide, fixed rate: asks the rate, not the index', g0.includes('acqRate') && !g0.includes('debtIndexRate'));
   check('guide, floating: the index, benchmark, rate and spread questions appear at once, and the fixed rate goes', ['debtIndexName', 'debtIndexTenor', 'debtIndexRate', 'debtSpread'].every(k => g1.f.includes(k)) && !g1.f.includes('acqRate'), g1.f);
   check('guide: suggests the latest published SOFR with its date and source, and the loan type\'s typical spread and repayment', g1.sug.some(x => /^debtIndexRate\|.*3\.94%.*2026-11-25.*New York/.test(x)) && g1.sug.some(x => /^debtSpread\|.*3\.50%.*Bridge/.test(x)) && g1.sug.some(x => /^repayType\|.*Interest only/.test(x)), g1.sug.map(x => x.slice(0, 80)));
+  /* 8. capital stack: mezzanine and preferred equity between the senior loan and the common equity */
+  const st = await p.evaluate(A => { bkCreateNewDeal(A); const d0 = bkDebt(), r0 = bkMonthlyReturns(), eq0 = d0.equity, loan0 = d0.loan; const s = bkLoad();
+    Object.assign(s, { mezzCLTV: 0.75, mezzRate: 0.09, mezzPikRate: 0.02, mezzOrigFee: 0.01, prefAmount: 1000000, prefCurrentRate: 0.06, prefAccrualRate: 0.04, prefMinMultiple: 1.2 }); bkSave(s);
+    const d = bkDebt(), K = d.stack, r = bkMonthlyReturns(), F = bkFundingSummary(), hold = K.rows.length, last = K.rows[hold - 1];
+    const pik = K.rows.reduce((a, z) => a + z.mezzPik, 0), cur = K.rows.reduce((a, z) => a + z.mezzInterest, 0), prefCur = K.rows.reduce((a, z) => a + z.prefPaid, 0);
+    bkDebt(); bkDebt(); bkFundingSummary(); bkFundingSummary();   /* repeated calls must not stack the adjustment twice (results are cached) */
+    const d2 = bkDebt(), F2 = bkFundingSummary();
+    return { loan0, eq0, loan: d.loan, ltvValue: d.ltvValue, mezz: K.mezz, fee: K.mezzFee, pref: K.pref, eq: d.equity, eq2: d2.equity, ts: F.totalSources, tu: F.totalUses, ts2: F2.totalSources, failed: (F.failed || []).map(t => t.id), srcs: F.sources.map(x => x[0]),
+      mezzPayoff: last.mezzPayoff, pik, cur, prefRedeem: last.prefRedeem, prefCur, mezzPaid: r.rows.reduce((a, z) => a + z.mezzPaid, 0), prefPaid: r.rows.reduce((a, z) => a + z.prefPaid, 0), dscr: K.combinedDscr, senDscr: d.dscr, irr0: r0.irr, irr: r.irr, contrib: r.contrib }; }, A);
+  check('mezzanine sized to a 75% combined LTV on the senior LTV value, rounded to $1,000; the senior loan is unchanged', st.loan === st.loan0 && Math.abs(st.mezz - Math.floor((0.75 * st.ltvValue - st.loan) / 1000) * 1000) < 1, [st.loan0, st.loan, st.mezz]);
+  check('common equity is the basis less both loans and the preferred equity, plus the mezzanine fee; repeated calls do not apply it twice', Math.abs(st.eq - (st.eq0 + st.fee - st.mezz - st.pref)) < 1 && st.eq2 === st.eq && Math.abs(st.ts2 - st.ts) < 1, [st.eq0, st.eq, st.eq2]);
+  check('Sources & Uses: senior loan, mezzanine, preferred and common equity; sources equal uses and every funding tie passes', st.srcs.join('|') === 'Acquisition Loan|Mezzanine Loan|Preferred Equity|Equity at closing' && Math.abs(st.ts - st.tu) < 1 && st.failed.length === 0, [st.srcs, st.ts, st.tu, st.failed]);
+  check('mezzanine: current interest is paid monthly, the PIK accrues, and the balance with the PIK is repaid at the sale', Math.abs(st.mezzPayoff - st.mezz - st.pik) < 1 && Math.abs(st.mezzPaid - st.cur - st.mezzPayoff) < 1, [st.mezzPayoff, st.mezz, st.pik]);
+  check('preferred equity: current return paid monthly; redeemed at the sale for the greater of capital plus the compounded accrual and the minimum multiple', st.prefRedeem >= st.pref && Math.abs(st.prefPaid - st.prefCur - st.prefRedeem) < 1 && st.prefRedeem >= 1.2 * st.pref - st.prefCur - 1, [st.prefRedeem, st.prefCur]);
+  check('combined DSCR (senior plus mezzanine current pay) is below the senior DSCR', st.dscr > 0 && st.dscr < st.senDscr, [st.senDscr, st.dscr]);
+  check('the common equity\'s contributions are its own (the returns see the smaller cheque)', Math.abs(st.contrib - st.eq) < 1 || st.contrib >= st.eq, [st.contrib, st.eq]);
+  await p.evaluate(() => showSheet('Deal Underwrite')); await p.waitForTimeout(700);
+  check('Deal Underwrite shows the Mezzanine & Preferred Equity group with the capital stack', await p.evaluate(() => [...document.querySelectorAll('#viewport caption')].some(c => /Mezzanine & Preferred Equity/.test(c.textContent)) && /Capital stack at closing/.test(document.getElementById('viewport').innerText)));
+  await p.evaluate(() => showSheet('Sources & Uses')); await p.waitForTimeout(700);
+  check('the Sources & Uses page lists the mezzanine loan and preferred equity and its sources total the uses', await p.evaluate(() => { const t = document.getElementById('viewport').innerText; return /Mezzanine Loan/.test(t) && /Preferred Equity/.test(t) && /Mezzanine Origination Fee/.test(t) && !/Does not tie/i.test(t); }));
   check('no page errors', errs.length === 0, errs.slice(0, 2));
   console.log('debt structure: ' + n + ' checks, ' + fails + ' failures');
   await b.close(); process.exit(fails ? 1 : 0);

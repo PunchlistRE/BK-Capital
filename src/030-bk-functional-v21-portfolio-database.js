@@ -168,8 +168,8 @@ RENDERERS['Sources & Uses'] = function(){
     totalUses = x.unlev + d.fee;
   } else {
     const price = Number(s.purchasePrice)||0, closing = price*Number(s.closingCostsPct||0), acqFee = price*bkAcqFeePct(s);
-    usesRows = `<tr><td class="rowlabel">Purchase Price</td><td class="v">${money(price)}</td></tr><tr><td class="rowlabel">Closing Costs</td><td class="v">${money(closing)}</td></tr><tr><td class="rowlabel">Acquisition Fee</td><td class="v">${money(acqFee)}</td></tr><tr><td class="rowlabel">Loan Origination Fee</td><td class="v">${money(d.fee)}</td></tr>`;
-    totalUses = price+closing+acqFee+d.fee;
+    usesRows = `<tr><td class="rowlabel">Purchase Price</td><td class="v">${money(price)}</td></tr><tr><td class="rowlabel">Closing Costs</td><td class="v">${money(closing)}</td></tr><tr><td class="rowlabel">Acquisition Fee</td><td class="v">${money(acqFee)}</td></tr><tr><td class="rowlabel">Loan Origination Fee</td><td class="v">${money(d.fee)}</td></tr>${d.stack && d.stack.mezzFee > 0.5 ? `<tr><td class="rowlabel">Mezzanine Origination Fee</td><td class="v">${money(d.stack.mezzFee)}</td></tr>` : ''}`;
+    totalUses = price+closing+acqFee+d.fee+(d.stack && d.stack.mezzFee > 0.5 ? d.stack.mezzFee : 0);
   }
   /* closing view of an acquisition: the rate cap premium is paid at closing as Month-1 equity, so it is a use and part of the closing equity; capital called after closing is shown separately, below */
   const capAcq = isDev ? 0 : (Number(s.rateCapCost)||0);
@@ -177,9 +177,9 @@ RENDERERS['Sources & Uses'] = function(){
   const closingEq = d.equity + capAcq, atClosing = isDev ? '' : ' AT CLOSING';
   const main = `<div class="tbl-wrap"><table class="fin"><caption>Sources &amp; Uses${isDev ? '' : ' at Closing'} - Active Deal</caption><thead><tr><th class="rowlabel-h" colspan="2">Uses</th></tr></thead><tbody>${usesRows}<tr class="grandtotal"><td class="rowlabel">TOTAL USES${atClosing}</td><td class="v">${money(totalUses)}</td></tr></tbody></table></div>
     <div class="tbl-wrap" style="margin-top:16px;"><table class="fin"><caption>Sources${isDev ? '' : ' at Closing'}</caption><thead><tr><th class="rowlabel-h" colspan="2">Sources</th></tr></thead><tbody>
-    <tr><td class="rowlabel">Acquisition Loan</td><td class="v">${money(d.loan)}</td></tr>
+    <tr><td class="rowlabel">Acquisition Loan</td><td class="v">${money(d.loan)}</td></tr>${!isDev && d.stack && d.stack.mezz ? `<tr><td class="rowlabel">Mezzanine Loan</td><td class="v">${money(d.stack.mezz)}</td></tr>` : ''}${!isDev && d.stack && d.stack.pref ? `<tr><td class="rowlabel">Preferred Equity</td><td class="v">${money(d.stack.pref)}</td></tr>` : ''}
     <tr><td class="rowlabel">Sponsor / LP Equity${isDev ? '' : ' (closing equity)'}</td><td class="v">${money(closingEq)}</td></tr>
-    <tr class="grandtotal"><td class="rowlabel">TOTAL SOURCES${atClosing}</td><td class="v">${money(d.loan+closingEq)}</td></tr>
+    <tr class="grandtotal"><td class="rowlabel">TOTAL SOURCES${atClosing}</td><td class="v">${money(d.loan+closingEq+(!isDev && d.stack ? (d.stack.mezz||0)+(d.stack.pref||0) : 0))}</td></tr>
     </tbody></table></div>
     <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> Uses and Sources reuse the figures already calculated on Debt and Deal Underwrite${isDev?' and the development budget':''}; this page lays them out in standard Sources &amp; Uses form. Total Uses and Total Sources tie by construction, since equity is defined as basis + fee - loan.</div></div>`;
   const sidebar = sidebarShell(`<div class="card"><div class="card-head">S&amp;U Check</div><div class="metric-list"><div class="metric-row"><span class="k">Total Uses</span><span class="v">${money(totalUses)}</span></div><div class="metric-row"><span class="k">Total Sources</span><span class="v">${money(d.loan+closingEq)}</span></div><div class="metric-row"><span class="k">Loan / ${bkCapName('closingEquity', isDev)}</span><span class="v">${money(d.loan)} / ${money(closingEq)}</span></div></div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
