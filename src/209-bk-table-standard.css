@@ -118,3 +118,6 @@ html:where(:not(.bk-printing)) body #viewport .tbl-wrap + .note-flag{ margin-top
 /* a titled block (Deal Remedies) carries the panel heading at its top edge; its content sits under it (screen and print: this is new markup with no older print layout) */
 html body #viewport .bk-box.bk-box-t{ padding:0 !important; }
 html body #viewport .bk-box.bk-box-t > .bk-box-b{ padding:12px 14px; }
+/* an actions column (Load, Remove, Open): its buttons stay on one line, at the right of the row; the column is sized to them (src/111) */
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="actions"]{ text-align:right !important; white-space:nowrap !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-role="actions"] button + button{ margin-left:4px; }

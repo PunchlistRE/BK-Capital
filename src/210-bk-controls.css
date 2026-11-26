@@ -60,3 +60,18 @@
   /* 5 · fields: a long choice clips inside its own box */
   #viewport select{ text-overflow:ellipsis; white-space:nowrap; overflow:hidden; max-width:100%; }
 }
+
+/* Portfolio > Saved deals: fits its column at desktop widths; the type sits under the name; Load and Remove share one line; the active deal is tinted, not bold like the total */
+#viewport table.bk-pf{ width:100%; }
+#viewport table.bk-pf th:not(.rowlabel-h), #viewport table.bk-pf td:not(.rowlabel){ text-align:right; white-space:nowrap; }
+#viewport table.bk-pf td.rowlabel{ white-space:normal; min-width:150px; }
+#viewport table.bk-pf .bk-pf-nm{ display:block; font-weight:600; }
+#viewport table.bk-pf .bk-pf-sub{ display:block; margin-top:2px; font-size:11px; font-weight:400; color:var(--bk-ctl-dim); }
+#viewport table.bk-pf .bk-pf-sub b{ color:var(--bk-ctl-accent); font-weight:700; }
+#viewport table.bk-pf :is(th, td).bk-pf-act{ width:1%; text-align:right; padding-left:6px; }
+#viewport table.bk-pf td.bk-pf-act{ display:table-cell; white-space:nowrap !important; }
+#viewport table.bk-pf td.bk-pf-act .bk-btn{ display:inline-block; vertical-align:middle; }
+#viewport table.bk-pf td.bk-pf-act .bk-btn + .bk-btn{ margin-left:4px; }
+#viewport table.bk-pf td.bk-pf-act .bk-pf-rm{ color:var(--bk-ctl-danger) !important; }
+#viewport table.bk-pf tr.bk-pf-on > td{ background:var(--ae-head2, #EDF1F6); }
+#viewport table.bk-pf tr.bk-pf-on > td:first-child{ box-shadow:inset 3px 0 0 var(--bk-ctl-accent); }
