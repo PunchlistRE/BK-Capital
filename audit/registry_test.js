@@ -29,7 +29,9 @@ const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
   check('checks that do not apply read N/A: construction checks apply to development only', await p.evaluate(() => !BKReg.applies('acquisition', 'draws') && BKReg.applies('development', 'draws') && BKReg.applies('acquisition', 'irr') && !BKReg.applies('valuation', 'irr')));
 
   /* 2 the guide reads its steps from the registry, and they are today's steps */
-  for (const [tag, deal, want] of [['acquisition', A, GUIDE_ACQ], ['development', V, GUIDE_DEV]]) {
+  for (let [tag, deal, want] of [['acquisition', A, GUIDE_ACQ], ['development', V, GUIDE_DEV]]) {
+    /* a deal with no commercial space is not asked commercial rent, recoveries or commercial vacancy */
+    if (!(deal.commercialArea > 0 || deal.commercialUnits > 0 || deal.commercialRent > 0 || deal.recovery > 0 || (deal.leases || []).length)) want = want.map(([id, f]) => [id, f.filter(x => !/^(commercialRent|recovery|commercialVacancy)$/.test(x[0]))]);
     await open(deal); const g = await p.evaluate(() => bkGuideSections(bkLoad()).map(s => [s.id, s.fields.map(f => [f.k, f.req ? 1 : 0, f.label])]));
     check('guide (' + tag + '): its steps, fields, labels and required flags are exactly today\'s, now from the registry', JSON.stringify(g) === JSON.stringify(want), JSON.stringify(g).slice(0, 300)); }
 

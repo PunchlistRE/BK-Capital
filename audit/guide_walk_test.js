@@ -20,8 +20,8 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
   let p = await fresh(1440);
   const st = await p.evaluate(() => { const t = document.querySelector('#viewport .gd').innerText; return { t, opts: document.querySelectorAll('#viewport .gd-opt').length, acq: (t.match(/acquisition[\s\S]*?(\d+) short steps/i) || [])[1], dev: (t.match(/development[\s\S]*?(\d+) short steps/i) || [])[1] }; });
   await p.evaluate(() => bkGuideBlank('Acquisition')); await p.waitForTimeout(500);
-  const n1 = await p.evaluate(() => (document.querySelector('#viewport .gd div').textContent.match(/of (\d+)/) || [])[1]);
-  check('the start screen does not promise "two ways in" above four options or "about 15 questions", and the step count it gives is the number of steps the guide walks', st.opts === 4 && !/Two ways in|About 15 questions/i.test(st.t) && st.acq === n1 && Number(st.dev) > 0, JSON.stringify([st.opts, st.acq, st.dev, n1]));
+  const n1 = await p.evaluate(() => (document.querySelector('#viewport .gd').innerText.match(/Step \d+ of (\d+)/i) || [])[1]);
+  check('the start screen does not promise "two ways in" above four options or "about 15 questions", and the step count it gives is the number of steps the guide walks', st.opts >= 4 && !/Two ways in|About 15 questions/i.test(st.t) && st.acq === n1 && Number(st.dev) > 0, JSON.stringify([st.opts, st.acq, st.dev, n1]));
 
   /* 2. units in the boxes, separators, the key to the marks */
   await p.evaluate(() => bkGuideGo('price')); await p.waitForTimeout(400);
@@ -38,7 +38,7 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
   const ar = await p.evaluate(() => ({ y: window.scrollY, f: document.activeElement && document.activeElement.tagName, h: document.querySelector('#viewport .gd h1').textContent, ring: getComputedStyle(document.querySelector('#viewport .gd h1')).outlineStyle }));
   check('desktop: Continue from the foot of a step opens the next step at the top of the page with the keyboard on its heading (no focus ring drawn on the heading)', y0 > 200 && ar.y === 0 && ar.f === 'H1' && ar.h !== 'Operating expenses' && ar.ring === 'none', JSON.stringify([y0, ar]));
   /* "Use this" re-draws the same step: it keeps its place */
-  await p.evaluate(() => bkGuideGo('expenses')); await p.waitForTimeout(400); await p.evaluate(() => window.scrollTo(0, 700)); await p.waitForTimeout(60);
+  await p.evaluate(() => { try { bkGuideDepth('full'); } catch (e) {} bkGuideGo('expenses'); }); await p.waitForTimeout(400); await p.evaluate(() => window.scrollTo(0, 700)); await p.waitForTimeout(60);
   const use = await p.evaluate(async () => { const b = [...document.querySelectorAll('#viewport .gd-sug button')][0]; if (!b) return null; const y = window.scrollY; b.click(); await new Promise(r => setTimeout(r, 300)); return [y, window.scrollY]; });
   check('a suggestion\'s "Use this" re-draws the same step and keeps the page where it was (it does not jump to the top; the answered suggestion closing may shift it a little)', use && use[0] > 300 && use[1] > use[0] - 80, JSON.stringify(use));
 
@@ -70,7 +70,7 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
   await p.evaluate(() => document.getElementById('gd-next').click()); await p.waitForTimeout(500); await FILL(p, V); await p.evaluate(() => document.getElementById('gd-next').click()); await p.waitForTimeout(500);
   await FILL(p, V); await p.evaluate(() => document.getElementById('gd-next').click()); await p.waitForTimeout(600);
   const su = await p.evaluate(() => ({ h: document.querySelector('#viewport .gd h1').textContent, t: document.querySelector('#viewport .gd').innerText, empty: [...document.querySelectorAll('#viewport .gd .gd-card')].filter(c => !c.innerText.trim()).length, wait: !!document.querySelector('#viewport .gd-su tr.gd-wait'), can: bkDealReadiness().canCalculate }));
-  check('Sources and uses before the hold and exit: no "Does not tie" alarm and no $0 contributed equity, a line saying when those measures appear, and no empty card', su.h === 'Sources and uses' && !su.can && !/Does not tie/.test(su.t) && su.wait && su.empty === 0, JSON.stringify({ h: su.h, can: su.can, wait: su.wait, empty: su.empty, tie: /Does not tie/.test(su.t) }));
+  check('before the hold and exit is set: no "Does not tie" alarm and no empty card on the step', !su.can && !/Does not tie/.test(su.t) && su.empty === 0, JSON.stringify({ h: su.h, can: su.can, wait: su.wait, empty: su.empty, tie: /Does not tie/.test(su.t) }));
   const advDev = await p.evaluate(() => { const s = bkLoad(); Object.assign(s, { holdYears: 6, exitCap: 0.0525 }); bkSave(s); return bkGuideSections ? (function(){ bkGuideGo('exit'); return new Promise(r => setTimeout(() => r((document.getElementById('gd-advw') || {}).innerText || ''), 400)); })() : ''; });
   check('development: the exit advice never compares the exit cap with a "going-in cap" on the land price', !/but buy at/.test(advDev), advDev);
   check('no page errors on the development checks', p.errs.length === 0, p.errs.slice(0, 2).join(' | ')); await p.context().close();

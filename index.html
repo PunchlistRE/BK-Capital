@@ -22840,7 +22840,10 @@ window.BKReg.addFields([
   F('acqDSCR', 'Lender minimum DSCR', 'num'),
   /* hold and exit */
   F('holdYears', 'Hold period, years', 'int', { sug:sug(5, 'Five years is the usual base case.') }),
-  F('exitCap', 'Exit cap rate', 'pct', { help:'The cap rate a buyer pays when you sell, applied to next year\'s income. Compare it with the going-in cap rate (year-1 NOI divided by the purchase price): an exit cap below the going-in cap assumes the market improves; above it is the cautious case.', sug:function(s){ var c = safe(function(){ return bkCalc(); }, {}), p = Number(s.purchasePrice) || 0; return c.noi && p ? { v:Math.round((c.noi / p + 0.0025) * 10000) / 10000, why:'The going-in cap rate (' + (c.noi / p * 100).toFixed(2) + '%) plus 0.25%, so the sale is not assumed to be better than the purchase.' } : { v:0.06, why:'No price or income yet; 6% is a placeholder.' }; } }),
+  F('exitCap', 'Exit cap rate', 'pct', { help:'The cap rate a buyer pays when you sell, applied to next year\'s income. Compare it with the going-in cap rate (year-1 NOI divided by the purchase price): an exit cap below the going-in cap assumes the market improves; above it is the cautious case.', sug:function(s){ var c = safe(function(){ return bkCalc(); }, {}), p = Number(s.purchasePrice) || 0;
+    /* a development is sold on its stabilized income, so its exit cap comes from the market, not from income over the land price (that gave 38%) */
+    if(/develop/i.test(String(s.dealType || ''))){ var mb = safe(function(){ return window.bkMarketBand && window.bkMarketBand('exitCap'); }, null); if(mb && isFinite(mb.low) && isFinite(mb.high)){ var mid = Math.round((mb.low + mb.high) / 2 * 400) / 400; return { v:mid, why:'The middle of the market exit cap range (' + (mb.low * 100).toFixed(2) + '% to ' + (mb.high * 100).toFixed(2) + '%, Market Benchmarks). A development is sold on its stabilized income, so the exit cap comes from the market; keep it below the yield on cost, or the build earns no development spread.' }; } return { v:0.06, why:'No market range is set; 6% is a placeholder. Keep it below the yield on cost.' }; }
+    return c.noi && p ? { v:Math.round((c.noi / p + 0.0025) * 10000) / 10000, why:'The going-in cap rate (' + (c.noi / p * 100).toFixed(2) + '%) plus 0.25%, so the sale is not assumed to be better than the purchase.' } : { v:0.06, why:'No price or income yet; 6% is a placeholder.' }; } }),
   F('rentGrowth', 'Annual rent growth', 'pct', { zeroOk:true, sug:sug(0.03, '3% is a common long-run assumption; use less in a soft market.') }),
   F('opexGrowth', 'Annual expense growth', 'pct', { zeroOk:true, sug:sug(0.03, 'Expenses usually grow at about 3% a year.') }),
   F('saleCostPct', 'Cost of sale, % of price', 'pct', { zeroOk:true, sug:sug(0.02, 'Broker and closing costs on a sale are about 2%.') }),
@@ -23582,7 +23585,7 @@ window.bkNewDealGo = function(){
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id, blankStructure:true });
   if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
-window.bkNewDealFrom = function(sheet){ snapshot(); closeModal(); showSheet(sheet); };
+window.bkNewDealFrom = function(sheet){ window.__bkGuideNext = !!(document.getElementById('pl-guide') || {}).checked; snapshot(); closeModal(); showSheet(sheet); };
 window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import'); };
 
 window.bkClearInputsDialog = function(){
@@ -27151,7 +27154,12 @@ function fromRegistry(s){ var R = window.BKReg; if(!R) return null; var a = R.of
 var FULL_EXTRA_DEV = { property:['gla', 'commercialArea', 'commercialUnits'], income:['badDebtPct', 'concessionPct'], expenses:['reserves'], debt:['conFixedAmt', 'permRate', 'permAmort'], exit:['saleCostPct', 'rentGrowth', 'opexGrowth'] };   /* a development has no renovation program or acquisition loan: its Full detail is its own */
 function fullExtras(list, s){ var R = window.BKReg; if(!R || depth() !== 'full') return list; var EX = /develop/i.test(String((s || {}).dealType || '')) ? FULL_EXTRA_DEV : FULL_EXTRA; return list.map(function(sec){ var have = {}; sec.fields.forEach(function(fl){ have[fl.k] = 1; }); var add = (EX[sec.id] || []).filter(function(k){ var d = R.field(k); return d && !have[k] && d.kind !== 'derived' && d.kind !== 'table' && !d.planned; }).map(function(k){ var d = R.field(k), o = { k:k, label:d.label, t:d.kind === 'choice' ? 'text' : d.kind }; if(d.help) o.help = d.help; if(d.sug) o.sug = d.sug; return o; });
   return add.length ? Object.assign({}, sec, { fields:sec.fields.concat(add) }) : sec; }); }
-function sections(s){ s = s || bkLoad(); return (fullExtras(fromRegistry(s) || (/develop/i.test(String(s.dealType || '')) ? DEVS : ACQ), s)); }
+/* questions that apply only when the deal has commercial space: rent, recoveries and vacancy on commercial space are asked (and suggested) once there is
+   commercial area, a suite count, a commercial lease, or a figure already entered; a residential deal is never asked for a commercial vacancy rate */
+var COMM_ONLY = { commercialRent:1, recovery:1, commercialVacancy:1 };
+function hasComm(d){ var n = function(k){ return Number(d[k]) || 0; }; return n('commercialArea') > 0 || n('commercialUnits') > 0 || n('commercialRent') > 0 || n('recovery') > 0 || (Array.isArray(d.leases) && d.leases.length > 0); }
+function sections(s){ s = s || bkLoad(); var list = fullExtras(fromRegistry(s) || (/develop/i.test(String(s.dealType || '')) ? DEVS : ACQ), s), d = Object.assign({}, s, st.draft || {}), comm = hasComm(d);
+  return comm ? list : list.map(function(sec){ return Object.assign({}, sec, { fields:sec.fields.filter(function(fl){ return !COMM_ONLY[fl.k]; }) }); }); }
 window.bkGuideSections = function(s){ return sections(s); };
 
 /* ------------------------------------------------------------ values */
@@ -27226,7 +27234,7 @@ function pctTxt(v){ return (Math.round(v * 10000) / 100) + '%'; }
 /* a model check that names this figure is shown on the figure (the check's own message, with its level) */
 var CONFLICT_FIELD = { 'acct.occupancy-vs-vacancy':['vacancy'], 'acct.reserves-zero':['reserves'], 'acct.mgmt-zero':['mgmtPct'], 'acct.exit-below-going-in':['exitCap'], 'val.exit-cap-typo':['exitCap'], 'val.exit-cap-unusual':['exitCap'], 'val.exit-far-above-going-in':['exitCap'],
   'val.going-in-cap-low':['purchasePrice'], 'acct.units-vs-gsf':['units', 'gsf'], 'debt.loan-above-cost':['acqLTV'], 'acct.ltv-on-value':['acqLTV'], 'debt.term-before-hold':['holdYears'], 'debt.io-longer-than-term':['acqIO'], 'dev.no-construction':['constructionMonths'], 'dev.no-leaseup':['leaseupMonths'], 'dev.con-loan-zero-rate':['conRate'], 'wf.gp-share-extreme':['gpShare'] };
-function modelWarn(sec, out){ var list = safe(function(){ return window.bkConflicts ? window.bkConflicts() : []; }, []); list.forEach(function(c){ if(c.acknowledged || c.level === 'INFO') return; (CONFLICT_FIELD[c.id] || []).forEach(function(k){ if(!sec.fields.some(function(f){ return f.k === k; })) return; (out[k] = out[k] || []).push({ lvl:c.level === 'ERROR' ? 'err' : 'warn', text:'Model check: ' + c.message }); }); }); }
+function modelWarn(sec, out){ var list = safe(function(){ return !window.bkConflicts ? [] : (window.bkRunWith && st.draft && Object.keys(st.draft).length) ? window.bkRunWith(st.draft, window.bkConflicts) : window.bkConflicts(); }, []); list.forEach(function(c){ if(c.acknowledged || c.level === 'INFO') return; (CONFLICT_FIELD[c.id] || []).forEach(function(k){ if(!sec.fields.some(function(f){ return f.k === k; })) return; (out[k] = out[k] || []).push({ lvl:c.level === 'ERROR' ? 'err' : 'warn', text:'Model check: ' + c.message }); }); }); }
 /* the published market range beside the figure, with a flag when it sits outside (the Market Benchmarks page's own ranges) */
 var MKT = { exitCap:'exitCap', opexGrowth:'opexGrowth', acqRate:'rate', acqLTV:'ltv' };
 function mktLine(k){ var id = MKT[k]; if(!id) return ''; var m = safe(function(){ return window.bkMarketCompare ? window.bkMarketCompare() : null; }, null); if(!m || !m.applies) return ''; var r = m.rows.filter(function(x){ return x.id === id; })[0]; if(!r) return '';
@@ -27313,7 +27321,7 @@ function progress(secs, s, g){ return '<div class="gd-prog">' + secs.map(functio
   + '<div class="gd-key"><span><i class="done">✓</i>reviewed</span><span><i class="filled">●</i>entered, not yet reviewed</span><span><i class="partial">!</i>reviewed, a figure missing</span><span><i class="skipped">⚑</i>skipped</span></div>'; }
 
 /* how many steps the guide walks for each kind of deal: the registry's workflow when it has one, else the built-in list (the start screen used to promise "about 15 questions") */
-function stepCount(type){ var id = type === 'Development' ? 'development' : 'acquisition', wf = safe(function(){ return window.BKReg && window.BKReg.workflow ? window.BKReg.workflow(id) : null; }, null); return (wf && wf.length) || (type === 'Development' ? DEVS.length : ACQ.length); }
+function stepCount(type){ var id = type === 'Development' ? 'development' : 'acquisition', wf = safe(function(){ return window.BKReg && window.BKReg.workflow ? window.BKReg.workflow(id) : null; }, null); var blank = { dealType:type }; if(wf) wf = wf.filter(function(x){ return typeof x.when !== 'function' || safe(function(){ return x.when(blank); }, true); }); return (wf && wf.length) || (type === 'Development' ? DEVS.length : ACQ.length); }
 function startScreen(){
   return '<div class="gd"><h1>Let\'s set up a deal</h1><p class="sub">Start from blank or from a document. Whichever you pick, nothing is changed until you confirm it, you can skip any step, and the guide reminds you what you skipped.</p>'
    + depthPicker() + '<div class="gd-start"><button type="button" class="gd-opt gd-first" onclick="bkGuideDoc(\'Import\')"><b>Start from your documents</b><span>Drop an offering memorandum, listing, T-12, rent roll or a whole package on one page. I work out what each one is, read it, and then walk you through confirming what came from where and what is still missing.</span></button>'
@@ -27522,6 +27530,7 @@ window.bkGuideGo = function(id){ st.draft = {}; st.checked = {}; st.step = id; s
 window.bkGuideDraft = function(k, raw){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0]; if(!sec) return; var fl = sec.fields.filter(function(x){ return x.k === k; })[0], v = fl.t === 'bool' ? !!raw : parse(fl, raw);
   if(v == null || (fl.t !== 'text' && fl.t !== 'bool' && !isFinite(v))) { delete st.draft[k]; } else if(String(v) === String(s[k])) { delete st.draft[k]; } else st.draft[k] = v;
   if(v != null && (fl.t === 'money' || fl.t === 'int')){ var box = document.getElementById('gdf-' + k); if(box && box.value !== fmt(fl, v)) box.value = fmt(fl, v); }
+  if((k === 'commercialArea' || k === 'commercialUnits') && hasComm(s) !== hasComm(Object.assign({}, s, st.draft))){ show(); return; }   /* commercial space added or removed: the commercial questions appear or go */
   refreshChanges(sec); };
 function rentRollNote(s){ var n = Array.isArray(s.rentRoll) ? s.rentRoll.length : 0; return '<div style="padding:10px 0;border-top:1px solid var(--line,#eef2f6);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:200px">' + (n ? 'A rent roll of <b>' + n + ' units</b> is loaded.' : 'No unit-by-unit rent roll: revenue uses the average rent above.') + '</span><button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideDetail(\'Import Rent Roll\')">' + (n ? 'Replace it' : 'Import a rent roll') + '</button></div>'; }
 function impact(sec){
@@ -27562,7 +27571,7 @@ window.bkGuideWhat = function(k){
 window.bkGuideOptHint = function(k, el){ var cp = CHOICE_COPY[k], h = el && el.closest('.gd-f') && el.closest('.gd-f').querySelector('.gd-mk'); if(cp && h) h.textContent = cp.opts[el.value] || 'Pick the closest fit; you can change it later.'; };
 window.bkGuideDepth = function(d){ if(d === 'quick'){ window.bkGuideQuick(); return; } st.depth = d; memSet('depth', d); st.draft = {}; st.fi = 0; if(st.screen === 'quick') st.screen = ''; show(); };
 window.bkGuideQ2 = function(d){ st.fi = Math.max(0, (st.fi || 0) + d); show(); };
-function depthPicker(inStep){ var d = depth(); return '<div class="gd-depth" role="group" aria-label="Depth">' + [['quick', 'Quick', 'nine numbers'], ['standard', 'Standard', 'the steps'], ['full', 'Full', 'every figure']].filter(function(x){ return !(inStep && x[0] === 'quick'); }).map(function(x){ return '<button type="button" class="' + (d === x[0] ? 'on' : '') + '" onclick="bkGuideDepth(\'' + x[0] + '\')"><b>' + x[1] + '</b><span>' + x[2] + '</span></button>'; }).join('') + '</div>'; }
+function depthPicker(inStep){ var d = depth(); return '<div class="gd-depth" role="group" aria-label="Depth">' + [['quick', 'Quick', 'nine numbers'], ['standard', 'Standard', 'one question at a time'], ['full', 'Full', 'every figure at once']].filter(function(x){ return !(inStep && x[0] === 'quick'); }).map(function(x){ return '<button type="button" class="' + (d === x[0] ? 'on' : '') + '" onclick="bkGuideDepth(\'' + x[0] + '\')"><b>' + x[1] + '</b><span>' + x[2] + '</span></button>'; }).join('') + '</div>'; }
 window.bkGuideNext = function(){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.id === st.step; })[0]; if(!sec) return; var bad = errorsOf(sec, s); if(bad.length){ paintMsgs(sec); var first = document.getElementById('gdf-' + bad[0].k); if(first && first.focus) first.focus(); return; } apply(sec); st.step = nextId(secs, sec.id); show(); };
 /* one click confirms everything on the step: my assumptions count as checked, then the step is saved and the next one opens */
 window.bkGuideConfirm = function(){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.id === st.step; })[0]; if(sec){ var g = gstate(s); sec.fields.forEach(function(fl){ if(g.assumed.indexOf(fl.k) >= 0) st.checked[fl.k] = 1; st.kept = st.kept || {}; if(!(fl.k in st.draft)) st.kept[fl.k] = 1; }); } window.bkGuideNext(); };
@@ -27579,7 +27588,9 @@ window.bkGuideAfterImport = function(label){ var s = bkLoad(), dev = /develop/i.
   assumed = assumed.filter(function(k){ return keys.indexOf(k) >= 0 || k === 'reserves'; }); keys = keys.filter(function(k){ return assumed.indexOf(k) < 0; });
   var L = window.__bkOMLast || {}, pages = label === 'OM' && L.sources ? L.sources : null; window.__bkOMLast = null;
   s._guide = { done:{}, skipped:{}, from:{ label:label, keys:keys, pages:pages }, assumed:assumed, confirmed:{} }; bkSave(s); st.step = null; st.draft = {}; st.screen = '';
-  if(prefOn()) show(); else if(typeof showSheet === 'function') showSheet('Home'); };
+  var asked = window.__bkGuideNext; window.__bkGuideNext = false;   /* "Guide me step by step" was ticked before choosing a document */
+  if(asked) setPref(true);
+  if(prefOn()){ show(); paintToggle(); } else if(typeof showSheet === 'function') showSheet('Home'); };
 
 /* ------------------------------------------------------------ chrome: toggle, class, way back */
 function paintToggle(){ var host = document.querySelector('.pl-searchwrap'); if(!host) return; var b = document.getElementById('pl-guide-toggle'); if(!b){ b = document.createElement('button'); b.type = 'button'; b.id = 'pl-guide-toggle'; b.setAttribute('onclick', 'bkGuideToggle()'); b.title = 'Step-by-step guide'; host.insertBefore(b, host.firstChild); } var on = prefOn(); b.className = on ? 'on' : ''; b.innerHTML = '<i></i>Guide'; }
@@ -27589,7 +27600,7 @@ document.addEventListener('keydown', function(e){ if(e.key !== 'Enter' || !e.tar
 var lastKey = '';
 /* a phone: one question to a screen (the step form stays whole on a wider window) */
 function phoneQ(){
-  if((window.innerWidth > 760 && depth() !== 'full') || st.screen || !st.step || st.step === 'review') return; var fs = [].slice.call(document.querySelectorAll('#viewport .gd-card > .gd-f')); if(fs.length < 2) return;
+  if((window.innerWidth > 760 && depth() === 'full') || st.screen || !st.step || st.step === 'review') return;   /* Standard walks the step one question at a time; Full shows every figure of the step at once (a phone is always one at a time) */ var fs = [].slice.call(document.querySelectorAll('#viewport .gd-card > .gd-f')); if(fs.length < 2) return;
   var i = Math.min(st.fi || 0, fs.length - 1); st.fi = i; fs.forEach(function(f, j){ f.style.display = j === i ? '' : 'none'; });
   var bar = document.createElement('div'); bar.className = 'gd-qbar'; bar.innerHTML = '<span>Question ' + (i + 1) + ' of ' + fs.length + '</span><i style="width:' + Math.round((i + 1) / fs.length * 100) + '%"></i>' + (i > 0 ? '<button type="button" class="gd-btn link" onclick="bkGuideQ2(-1)">Previous</button>' : '') + (i < fs.length - 1 ? '<button type="button" class="gd-btn" onclick="bkGuideQ2(1)">Next question</button>' : '');
   fs[0].parentNode.insertBefore(bar, fs[0]); if(i < fs.length - 1){ var nb = document.getElementById('gd-next'); if(nb) nb.style.display = 'none'; }
