@@ -149,13 +149,13 @@ extend('Portfolio CF','fbChecks', function(o){
 
   function check(label, a, bq, basis){
     var v = a - bq, ok = Math.abs(v) <= 1;
-    return '<tr>'+lbl(label)+val(money(a))+val(money(bq))+val(money(v))
-      + '<td class="v">'+chip(ok?'pass':'warn', ok?'PASS':'REVIEW')+'</td>'+txt(basis)+'</tr>';
+    /* the basis is said under the check's name, so the figures keep their columns and the explanation reads on a full line */
+    return '<tr>'+lbl(label+'<span class="bk-sub bk-chk-basis">'+basis+'</span>')+val(money(a))+val(money(bq))+val(money(v))
+      + '<td class="v">'+chip(ok?'pass':'warn', ok?'PASS':'REVIEW')+'</td></tr>';
   }
 
   o.main = (o.main||'') + wrapTable('Portfolio Model Checks - the same figure computed two independent ways',
-    '<tr><th class="rowlabel-h">Check</th><th>Route A</th><th>Route B</th><th>Variance</th><th>Status</th>'
-    + '<th style="text-align:left">Basis</th></tr>',
+    '<tr><th class="rowlabel-h">Check</th><th>Route A</th><th>Route B</th><th>Variance</th><th>Status</th></tr>',
       check('Portfolio NOI over the hold', annualNOI, monthlyNOI,
             'Each deal&rsquo;s annual operating array against its own monthly array')
     + check('Portfolio EGI over the hold', annualEGI, monthlyEGI,
@@ -163,13 +163,12 @@ extend('Portfolio CF','fbChecks', function(o){
     + check('Portfolio debt service over the hold', rowsDS, schedDS,
             'Levered monthly rows against each deal&rsquo;s own facility schedule - acquisition loan, '
             + 'or the permanent loan where the deal is a development')
-    + '<tr>'+lbl('Going-in value at each deal&rsquo;s exit cap')+val(money(sumValue))+val(money(sumValue))+val(money(0))
-      + '<td class="v">'+chip('pass','PASS')+'</td>'+txt('Year-1 NOI &divide; exit cap, deal by deal')+'</tr>'
-    + '<tr class="grandtotal">'+lbl('PORTFOLIO CAPITALIZATION')+val(money(sumPrice))
+    + '<tr>'+lbl('Going-in value at each deal&rsquo;s exit cap<span class="bk-sub bk-chk-basis">Year-1 NOI &divide; exit cap, deal by deal</span>')+val(money(sumValue))+val(money(sumValue))+val(money(0))
+      + '<td class="v">'+chip('pass','PASS')+'</td></tr>'
+    + '<tr class="grandtotal">'+lbl('Portfolio capitalization<span class="bk-sub bk-chk-basis">Purchase price against equity plus debt; a gap is closing costs and fees, not an error</span>')+val(money(sumPrice))
       + val(money(sumEquity + sumLoan))+val(money(sumPrice - (sumEquity + sumLoan)))
       + '<td class="v">'+chip(Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'pass' : 'warn',
-          Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'IN LINE' : 'REVIEW')+'</td>'
-      + txt('Purchase price against equity plus debt; a gap is closing costs and fees, not an error')+'</tr>')
+          Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'IN LINE' : 'REVIEW')+'</td></tr>')
     + wrapTable('Deals in the Portfolio',
       '<tr><th class="rowlabel-h">Deal</th><th>Purchase Price</th><th>Year-1 NOI</th><th>Loan</th><th>Closing / initial funding equity</th>'
       + '<th>Levered IRR</th><th>MOIC</th></tr>',

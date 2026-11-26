@@ -4246,25 +4246,38 @@ function bkPortfolioMonthlyFor(snapshot){
   return out;
 }
 
-// ---- Portfolio M: calendar-aligned monthly cash flow combined across every saved deal ----
+// ---- Portfolio M: the portfolio month by month, on the calendar. One calendar year is shown at a time (twelve months and the year's total),
+// chosen with the year switch above the table, so a long portfolio never becomes a table of a hundred columns. Each deal's own monthly rows are
+// placed on their own dates, so deals that close at different times line up on the calendar. ----
+window.bkPMYear = function(y){ try{ localStorage.setItem('bkcapital.pm.year', String(y)); }catch(e){} showSheet('Portfolio M'); };
 RENDERERS['Portfolio M'] = function(){
-  const saved = bkPortfolioLoad(), money = n=>n<0?'('+bkFmt(-n)+')':bkFmt(n);
+  const saved = bkPortfolioLoad(), money = n=>Math.abs(n)<0.5?'–':(n<0?'('+bkFmt(-n)+')':bkFmt(n));
   const perDeal = saved.map(snap=>({snap, res:bkPortfolioMonthlyFor(snap)})).filter(x=>x.res.ok);
-  const byYear = {};
-  perDeal.forEach(({res})=>{ res.r.rows.forEach(row=>{ const yr=row.dt.getFullYear(); if(!byYear[yr]) byYear[yr]={cf:0,noi:0,ds:0}; byYear[yr].cf+=row.cf; byYear[yr].noi+=row.noi; byYear[yr].ds+=row.ds; }); });
-  const years = Object.keys(byYear).map(Number).sort((a,b)=>a-b).slice(0,15);
-  const heads = years.map(y=>`<th>${y}</th>`).join('');
-  const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio M - Calendar-Year Aggregated Monthly Equity Cash Flow (${perDeal.length} Deal(s))</caption><thead><tr><th class="rowlabel-h">Line Item</th>${heads}</tr></thead><tbody>
-    <tr><td class="rowlabel">Combined NOI</td>${years.map(y=>`<td>${money(byYear[y].noi)}</td>`).join('')}</tr>
-    <tr><td class="rowlabel">Combined Debt Service</td>${years.map(y=>`<td>${money(-byYear[y].ds)}</td>`).join('')}</tr>
-    <tr class="grandtotal"><td class="rowlabel">Combined Net Equity Cash Flow</td>${years.map(y=>`<td>${money(byYear[y].cf)}</td>`).join('')}</tr>
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // every deal's rows, keyed by calendar month
+  const cell = {}, years = new Set();
+  perDeal.forEach(({snap,res},di)=>{ res.r.rows.forEach(row=>{ const d = row.dt instanceof Date ? row.dt : new Date(row.dt), y = d.getUTCFullYear(), m = d.getUTCMonth(), k = y*12+m; years.add(y);
+    const c = cell[k] || (cell[k] = {noi:0, ds:0, cf:0, deal:{}}); c.noi += Number(row.noi)||0; c.ds += Number(row.ds)||0; c.cf += Number(row.cf)||0; c.deal[di] = (c.deal[di]||0) + (Number(row.cf)||0); }); });
+  const Y = [...years].sort((a,b)=>a-b);
+  let pick = NaN; try{ pick = Number(localStorage.getItem('bkcapital.pm.year')); }catch(e){}
+  if(!Y.includes(pick)){ const now = new Date().getUTCFullYear(); pick = Y.includes(now) ? now : (Y[0]||now); }
+  const ks = MON.map((_,m)=>pick*12+m), get = (k,f)=>cell[k] ? f(cell[k]) : 0, tot = f=>ks.reduce((t,k)=>t+get(k,f),0);
+  const head = `<tr><th class="rowlabel-h">${pick}</th>${MON.map(m=>`<th>${m} ${pick}</th>`).join('')}<th>Total ${pick}</th></tr>`;
+  const line = (label, f, cls)=>`<tr${cls?` class="${cls}"`:''}><td class="rowlabel">${label}</td>${ks.map(k=>`<td>${money(get(k,f))}</td>`).join('')}<td>${money(tot(f))}</td></tr>`;
+  const byDeal = perDeal.map(({snap},di)=>line(bkEsc(snap.name||snap.dealId||'Deal'), c=>c.deal[di]||0)).join('');
+  const seg = Y.length>1 ? `<div class="bk-pm-years"><span class="bk-pm-l">Calendar year</span><span class="bk-seg">${Y.map(y=>`<button type="button" aria-pressed="${y===pick}" class="${y===pick?'on':''}" onclick="bkPMYear(${y})">${y}</button>`).join('')}</span></div>` : '';
+  const main = perDeal.length ? `${seg}<div class="tbl-wrap"><table class="fin bk-pm"><caption>Portfolio cash flow by month, ${pick} (${perDeal.length} deal${perDeal.length===1?'':'s'})</caption><thead>${head}</thead><tbody>
+    ${line('Combined NOI', c=>c.noi)}${line('Combined debt service', c=>-c.ds)}${line('Combined net equity cash flow', c=>c.cf, 'grandtotal')}
+    ${perDeal.length>1?`<tr class="sec"><td class="rowlabel" colspan="14">Net equity cash flow by deal</td></tr>${byDeal}`:''}
     </tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> each deal's real monthly return output is bucketed by actual calendar year and summed -- deals with different closing dates line up on the calendar, not on deal-relative month number.</div></div>`;
-  const sidebar = sidebarShell(`<div class="card"><div class="card-head">Portfolio M Summary</div><div class="metric-list">
-    <div class="metric-row"><span class="k">Deals Included</span><span class="v">${perDeal.length}</span></div>
-    <div class="metric-row"><span class="k">Calendar Years Shown</span><span class="v">${years.length}</span></div>
+    <div class="note-flag"><span>&#10003;</span><div><b>Month by month, on the calendar.</b> Each deal's own monthly rows are placed on their own dates and added together, so deals that close at different times line up. A month before a deal closes or after it sells shows a dash. The closing month carries the equity put in at closing. Choose another year above; the Annual view gives the whole hold by deal-relative year.</div></div>`
+    : `<div class="note-flag"><span>&#9432;</span><div>${saved.length ? 'Saved deals exist but none produced a valid cash flow (see Portfolio for per-deal engine errors).' : 'No saved deals yet. Save an underwritten deal from the Portfolio page.'}</div></div>`;
+  const sidebar = sidebarShell(`<div class="card"><div class="card-head">Portfolio by month</div><div class="metric-list">
+    <div class="metric-row"><span class="k">Deals included</span><span class="v">${perDeal.length}</span></div>
+    <div class="metric-row"><span class="k">Calendar years</span><span class="v">${Y.length ? Y[0]+'–'+Y[Y.length-1] : '-'}</span></div>
+    <div class="metric-row"><span class="k">Net equity cash flow, ${pick}</span><span class="v">${money(tot(c=>c.cf))}</span></div>
   </div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Monthly Engine</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
-  return {title:'Portfolio M', crumbs:'Monthly Engine', desc:'Calendar-aligned monthly cash flow aggregated across every saved portfolio deal.', meta:{Deals:perDeal.length,Years:years.length,'Portfolio IRR':(typeof bkPortfolioIRRText==='function'?bkPortfolioIRRText():'-'),Currency:'USD'}, main:main+(typeof bkPortfolioMBlock==='function'?bkPortfolioMBlock():''), sidebar};
+  return {title:'Portfolio M', crumbs:'Monthly Engine', desc:'The portfolio month by month on the calendar: NOI, debt service and net equity cash flow, in total and by deal.', meta:{Deals:perDeal.length,Year:pick,'Portfolio IRR':(typeof bkPortfolioIRRText==='function'?bkPortfolioIRRText():'-'),Currency:'USD'}, main:main+(typeof bkPortfolioMBlock==='function'?bkPortfolioMBlock():''), sidebar};
 };
 
 // ---- Deal Vectors (M): raw per-month vectors for the active deal -- what every other
@@ -4396,7 +4409,7 @@ window.bkPortfolioMBlock = function(){
     + c.excluded.map(function(e){ return '<tr><td class="rowlabel">' + bkEsc(e.name) + '</td><td colspan="5">' + bkEsc(e.why) + '</td><td><span class="status-chip fail">Left out</span></td></tr>'; }).join('');
   var sumC = c.deals.reduce(function(a, d){ return a + d.contrib; }, 0), sumD = c.deals.reduce(function(a, d){ return a + d.dist; }, 0);
   var t2 = '<div class="tbl-wrap" style="margin-top:16px;overflow-x:auto"><table class="fin" id="pc-recon"><caption>Reconciliation - Each Deal\'s Own Dated Flows</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Type</th><th>Contributions</th><th>Distributions</th><th>Deal IRR (engine)</th><th>XIRR of the Flows Used</th><th>Status</th></tr></thead><tbody>' + rows
-    + '<tr class="grandtotal"><td class="rowlabel">Sum of deals</td><td></td><td>' + m(-sumC) + '</td><td>' + m(sumD) + '</td><td colspan="2">Combined: contributions ' + m(-c.contrib) + ', distributions ' + m(c.dist) + '</td><td><span class="status-chip ' + (c.reconciles ? 'pass">Ties' : 'fail">Does not tie') + '</span></td></tr></tbody></table></div>';
+    + '<tr class="grandtotal"><td class="rowlabel">Sum of deals</td><td></td><td>' + m(-sumC) + '</td><td>' + m(sumD) + '</td><td colspan="2" class="bk-pc-note" style="white-space:normal !important;text-align:left !important;font-weight:400;font-size:11.5px;line-height:1.35">Combined flows: ' + m(-c.contrib) + ' in, ' + m(c.dist) + ' out</td><td><span class="status-chip ' + (c.reconciles ? 'pass">Ties' : 'fail">Does not tie') + '</span></td></tr></tbody></table></div>';
   return t1 + t2 + window.bkPortfolioIRRNote(c);
 };
 })();
@@ -15396,13 +15409,13 @@ extend('Portfolio CF','fbChecks', function(o){
 
   function check(label, a, bq, basis){
     var v = a - bq, ok = Math.abs(v) <= 1;
-    return '<tr>'+lbl(label)+val(money(a))+val(money(bq))+val(money(v))
-      + '<td class="v">'+chip(ok?'pass':'warn', ok?'PASS':'REVIEW')+'</td>'+txt(basis)+'</tr>';
+    /* the basis is said under the check's name, so the figures keep their columns and the explanation reads on a full line */
+    return '<tr>'+lbl(label+'<span class="bk-sub bk-chk-basis">'+basis+'</span>')+val(money(a))+val(money(bq))+val(money(v))
+      + '<td class="v">'+chip(ok?'pass':'warn', ok?'PASS':'REVIEW')+'</td></tr>';
   }
 
   o.main = (o.main||'') + wrapTable('Portfolio Model Checks - the same figure computed two independent ways',
-    '<tr><th class="rowlabel-h">Check</th><th>Route A</th><th>Route B</th><th>Variance</th><th>Status</th>'
-    + '<th style="text-align:left">Basis</th></tr>',
+    '<tr><th class="rowlabel-h">Check</th><th>Route A</th><th>Route B</th><th>Variance</th><th>Status</th></tr>',
       check('Portfolio NOI over the hold', annualNOI, monthlyNOI,
             'Each deal&rsquo;s annual operating array against its own monthly array')
     + check('Portfolio EGI over the hold', annualEGI, monthlyEGI,
@@ -15410,13 +15423,12 @@ extend('Portfolio CF','fbChecks', function(o){
     + check('Portfolio debt service over the hold', rowsDS, schedDS,
             'Levered monthly rows against each deal&rsquo;s own facility schedule - acquisition loan, '
             + 'or the permanent loan where the deal is a development')
-    + '<tr>'+lbl('Going-in value at each deal&rsquo;s exit cap')+val(money(sumValue))+val(money(sumValue))+val(money(0))
-      + '<td class="v">'+chip('pass','PASS')+'</td>'+txt('Year-1 NOI &divide; exit cap, deal by deal')+'</tr>'
-    + '<tr class="grandtotal">'+lbl('PORTFOLIO CAPITALIZATION')+val(money(sumPrice))
+    + '<tr>'+lbl('Going-in value at each deal&rsquo;s exit cap<span class="bk-sub bk-chk-basis">Year-1 NOI &divide; exit cap, deal by deal</span>')+val(money(sumValue))+val(money(sumValue))+val(money(0))
+      + '<td class="v">'+chip('pass','PASS')+'</td></tr>'
+    + '<tr class="grandtotal">'+lbl('Portfolio capitalization<span class="bk-sub bk-chk-basis">Purchase price against equity plus debt; a gap is closing costs and fees, not an error</span>')+val(money(sumPrice))
       + val(money(sumEquity + sumLoan))+val(money(sumPrice - (sumEquity + sumLoan)))
       + '<td class="v">'+chip(Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'pass' : 'warn',
-          Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'IN LINE' : 'REVIEW')+'</td>'
-      + txt('Purchase price against equity plus debt; a gap is closing costs and fees, not an error')+'</tr>')
+          Math.abs(sumPrice-(sumEquity+sumLoan)) <= Math.max(1, sumPrice*0.15) ? 'IN LINE' : 'REVIEW')+'</td></tr>')
     + wrapTable('Deals in the Portfolio',
       '<tr><th class="rowlabel-h">Deal</th><th>Purchase Price</th><th>Year-1 NOI</th><th>Loan</th><th>Closing / initial funding equity</th>'
       + '<th>Levered IRR</th><th>MOIC</th></tr>',
@@ -17371,7 +17383,7 @@ html body #viewport table.fin.bk-opstmt.bk-opstmt tbody tr.gap > td{ height:6px 
     return 'neutral';
   }
   var FLOOR={amount:96,rate:72,unit:28,status:96,period:84,input:128,choice:128,short:64,actions:48}, CEIL={amount:170,rate:130,unit:90,status:220,period:150,input:180,choice:320,short:360,actions:320};
-  var FIG=/^(?=.*\d)[\s(−$\-]*[\d$(][\d,.$%x()−\- ]*(bps|yrs?|x|%|mo)?\)?$/i, PERIOD=/year|yr\b|month|^20\d\d|^q[1-4]\b|^m\d|total|forecast|^close$|^stab/i;
+  var FIG=/^(?=.*\d)[\s(−$\-]*[\d$(][\d,.$%x()−\- ]*(bps|yrs?|x|%|mo)?\)?$/i, PERIOD=/year|yr\b|month|^20\d\d|^q[1-4]\b|^m\d|total|forecast|^close$|^stab|^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i;   /* a month heading (Jan 2027) is a period too */
   var cv=null; function tw(el,txt){ if(!cv) cv=document.createElement('canvas').getContext('2d'); var cs=getComputedStyle(el); cv.font=cs.fontStyle+' '+cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
     var m=0; String(txt).split('\n').forEach(function(l){ m=Math.max(m,cv.measureText(l.trim()).width); }); return m+(parseFloat(cs.letterSpacing)||0)*String(txt).length; }
   /* a cell's own text, line by line: a block inside it (a description under a name) starts a new line, so two lines never read as one long word */
@@ -17461,7 +17473,7 @@ html body #viewport table.fin.bk-opstmt.bk-opstmt tbody tr.gap > td{ height:6px 
         /* a period table or a ledger that does not fit gives back its slack before it ever scrolls: first each figure column comes down to its widest
            value plus padding, then the label column down to its longest word (labels wrap between words); only then does the table scroll inside its card */
         if(o.fam==='period'){ var np=o.roles.filter(function(r){ return r==='period'; }).length, pm=need.period||FLOOR.period;
-          if(lw+np*pm>W){ var pw0=0; o.roles.forEach(function(r,i){ if(r==='period') pw0=Math.max(pw0,figMin(o,i)); }); pm=Math.max(pm-12,(W-lw)/np,pw0); if(lw+np*pm>W) lw=Math.max(labelWord(o),W-np*pm); if(lw+np*pm>W) tmin=Math.ceil(lw+np*pm)+'px'; } }
+          if(lw+np*pm>W){ var pw0=0; o.roles.forEach(function(r,i){ if(r==='period') pw0=Math.max(pw0,figMin(o,i)); }); pm=Math.max(pm-12,(W-lw)/np,pw0); if(lw+np*pm>W) lw=Math.max(labelWord(o),W-np*pm); if(lw+np*pm>W){ lw=Math.max(lw,Math.min(240,labelNat(o))); tmin=Math.ceil(lw+np*pm)+'px'; } } }   /* once it scrolls anyway, the label keeps its own line (up to 240 px): squeezing it saves nothing */
         /* a first column of short codes (a month number, a unit) is not a description: it takes its own width and the table's text column takes the rest */
         if(o.fam==='kv' && labelNat(o)<=90){ var ti=-1; o.roles.forEach(function(r,i){ if(i && (r==='short'||r==='note')) ti=i; }); if(ti>0){ lw=Math.max(labelNat(o),labelWord(o)); w[ti]=null; if(o.roles[ti]==='short'){ fixed-=Math.min(shortMax,W*0.5); } } }
         if(o.fam==='kv'){ var lmin=Math.min(labelNat(o),Math.max(W*0.24,140)); if(fixed+lmin>W) tmin=Math.ceil(fixed+lmin)+'px'; }   /* the label is never squeezed below its minimum: the table scrolls instead */
@@ -35662,6 +35674,13 @@ html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !import
 #viewport tr.bk-omr-on > td{ background:var(--ae-head2, #EDF1F6); }
 #viewport .bk-omr-edit{ display:inline-flex; gap:4px; align-items:center; justify-content:flex-end; }
 #viewport .bk-omr-edit input{ width:100% !important; max-width:130px; box-sizing:border-box; height:24px; padding:0 6px; font:600 12px var(--bk-ctl-font); text-align:right; border:1px solid var(--bk-ctl-accent); border-radius:2px; }
+
+/* Portfolio M: the calendar-year switch above the monthly table */
+#viewport .bk-pm-years{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 10px; }
+#viewport .bk-pm-years .bk-pm-l{ font:600 10.5px var(--bk-ctl-font); letter-spacing:.06em; text-transform:uppercase; color:var(--bk-ctl-dim); }
+#viewport .bk-pm-years .bk-seg{ display:inline-flex; flex-wrap:wrap; }
+/* a check's basis, said under its name in the label column */
+#viewport td .bk-sub.bk-chk-basis{ display:block; margin-top:2px; font-size:11px; font-weight:400; line-height:1.35; color:var(--bk-ctl-dim); white-space:normal; text-transform:none; letter-spacing:0; }
 </style>
 </body>
 </html>

@@ -64,7 +64,7 @@ window.bkPortfolioMBlock = function(){
     + c.excluded.map(function(e){ return '<tr><td class="rowlabel">' + bkEsc(e.name) + '</td><td colspan="5">' + bkEsc(e.why) + '</td><td><span class="status-chip fail">Left out</span></td></tr>'; }).join('');
   var sumC = c.deals.reduce(function(a, d){ return a + d.contrib; }, 0), sumD = c.deals.reduce(function(a, d){ return a + d.dist; }, 0);
   var t2 = '<div class="tbl-wrap" style="margin-top:16px;overflow-x:auto"><table class="fin" id="pc-recon"><caption>Reconciliation - Each Deal\'s Own Dated Flows</caption><thead><tr><th class="rowlabel-h">Deal</th><th>Type</th><th>Contributions</th><th>Distributions</th><th>Deal IRR (engine)</th><th>XIRR of the Flows Used</th><th>Status</th></tr></thead><tbody>' + rows
-    + '<tr class="grandtotal"><td class="rowlabel">Sum of deals</td><td></td><td>' + m(-sumC) + '</td><td>' + m(sumD) + '</td><td colspan="2">Combined: contributions ' + m(-c.contrib) + ', distributions ' + m(c.dist) + '</td><td><span class="status-chip ' + (c.reconciles ? 'pass">Ties' : 'fail">Does not tie') + '</span></td></tr></tbody></table></div>';
+    + '<tr class="grandtotal"><td class="rowlabel">Sum of deals</td><td></td><td>' + m(-sumC) + '</td><td>' + m(sumD) + '</td><td colspan="2" class="bk-pc-note" style="white-space:normal !important;text-align:left !important;font-weight:400;font-size:11.5px;line-height:1.35">Combined flows: ' + m(-c.contrib) + ' in, ' + m(c.dist) + ' out</td><td><span class="status-chip ' + (c.reconciles ? 'pass">Ties' : 'fail">Does not tie') + '</span></td></tr></tbody></table></div>';
   return t1 + t2 + window.bkPortfolioIRRNote(c);
 };
 })();
