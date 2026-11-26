@@ -16,13 +16,15 @@ const VARIANTS = [['audit development deal', V, {}], ['Harbor Point', H, {}], ['
   const open = async (deal, over, w) => { const p = await (await b.newContext({ viewport: { width: w || 1440, height: 1000 } })).newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
     await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
     await p.evaluate(([d, o]) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d, o || {}); bkSave(s); }, [deal, over]); return p; };
-  const near = (a, c, tol) => a != null && c != null && Math.abs(a - c) <= (tol == null ? 1 : tol);
+  let SLACK = 0;   /* set per variant: a statement in thousands is rounded to the nearest $1,000, so its figures are compared within that rounding */
+  const near = (a, c, tol) => a != null && c != null && Math.abs(a - c) <= Math.max(tol == null ? 1 : tol, SLACK);
   const sameArr = (x, y, tol) => x.length === y.length && x.every((v, i) => near(v, y[i], tol));
 
   /* the report as text, and the engines read independently of it */
   const READ = (p) => p.evaluate(async () => {
     const num = (t) => { t = String(t).trim(); if (t === '' || t === '-') return null; const neg = /^\(.*\)$/.test(t); const v = parseFloat(t.replace(/[(),%$x]/g, '')); return neg ? -v : v; };
-    const table = (id) => { const rows = {}, order = [], cls = {}; let sec = ''; [...document.querySelectorAll('#' + id + ' tbody tr')].forEach(tr => { const c = [...tr.children].map(td => td.textContent.trim()); if (tr.classList.contains('sec')) { sec = c[0]; order.push('#' + sec); return; } rows[c[0]] = c.slice(1).map(num); cls[c[0]] = tr.className; order.push(c[0]); }); return { rows, order, cls }; };
+    const table = (id) => { const rows = {}, order = [], cls = {}; let sec = ''; const el = document.getElementById(id), k = el && el.closest('.bk-wideyrs') ? 1000 : 1;   /* a long hold shown in thousands of dollars (src/206, with a note) is read back in dollars */
+      [...document.querySelectorAll('#' + id + ' tbody tr')].forEach(tr => { const c = [...tr.children].map(td => td.textContent.trim()); if (tr.classList.contains('sec')) { sec = c[0]; order.push('#' + sec); return; } rows[c[0]] = c.slice(1).map(t => { const v = num(t); return v != null && k > 1 && !/[%x]/.test(t) ? v * k : v; }); cls[c[0]] = tr.className; order.push(c[0]); }); return { rows, order, cls, k }; };
     showSheet('Sources and Uses Report'); await new Promise(r => setTimeout(r, 500));
     const su = table('rp-su'), suText = document.querySelector('#viewport').innerText, suHead = (document.querySelector('#viewport .rp-head .rp-t') || {}).textContent, years = document.querySelectorAll('#rp-su thead tr:not(.rp-fc):not(.rp-pe) th.r').length - 1;
     const pe = [...document.querySelectorAll('#rp-su thead tr.rp-pe th')].map(x => x.textContent.trim());
@@ -44,7 +46,7 @@ const VARIANTS = [['audit development deal', V, {}], ['Harbor Point', H, {}], ['
   const $ = (v) => (v < 0 ? '($' : '$') + Math.round(Math.abs(v)).toLocaleString('en-US') + (v < 0 ? ')' : '');
   const results = [];
   for (const [tag, deal, over] of VARIANTS) {
-    const p = await open(deal, over); const R = await READ(p), E = R.eng, n = R.n, r = (k) => R.su.rows[k] || null, yr = (k) => (r(k) || new Array(n + 1).fill(0)).slice(0, n), tot = (k) => (r(k) || [])[n];
+    const p = await open(deal, over); const R = await READ(p); SLACK = (R.su.k > 1 || R.cf.k > 1) ? 1000 : 0; const E = R.eng, n = R.n, r = (k) => R.su.rows[k] || null, yr = (k) => (r(k) || new Array(n + 1).fill(0)).slice(0, n), tot = (k) => (r(k) || [])[n];
     const zeros = new Array(n).fill(0), sumOf = (ks) => ks.reduce((a, k) => a.map((v, i) => v + yr(k)[i]), zeros.slice());
     const ty = E.tk.inHold && E.tk.perm > 0 ? Math.ceil(E.tk.stab / 12) : 0, at = (v) => zeros.map((x, i) => (i + 1 === ty ? v : 0));
     const o = { tag, errs: p.errs.slice() };
@@ -66,7 +68,8 @@ const VARIANTS = [['audit development deal', V, {}], ['Harbor Point', H, {}], ['
     o.valPanels = R.valSec.join('|') === 'Valuation Assumptions|Development Yield|Sales Proceeds Calculation|Distributions of Net Proceeds|Return Summary' && /Development Valuation and Return Summary/.test(R.valText) && !/A development is valued from/.test(R.valText) && !/NaN|undefined|Infinity/.test(R.valText);
     o.valYield = VY['Total Development Cost (before financing)'] === $(E.met.devCost) && VY['Total Capitalization (incl. financing)'] === $(E.met.capitalization) && VY['Stabilized NOI'] === $(E.met.stabNOI) && VY['Yield on Cost'] === (E.met.yieldOnCost * 100).toFixed(2) + '%'
       && VY['Stabilized Value'] === $(E.met.stabValue) && VY['Development Spread'] === (E.met.devSpread < 0 ? '(' + Math.round(-E.met.devSpread).toLocaleString('en-US') + ')' : Math.round(E.met.devSpread).toLocaleString('en-US')) + ' bps';   /* a negative spread in parentheses, as every negative figure */
-    o.valSale = VB['Gross Sale Price'] === $(sumA(E.gross)) && VB['Net Sales Price'] === $(cfTot('Net Sales Price')) && VD['Proceeds from Sale'] === $(cfTot('Proceeds from Sale')) && VD['Less: Loan Payoff'] === $(cfTot('Loan Payoff')) && VD['Less: Disposition Fee'] === $(cfTot('Disposition Fee'));
+    const pv = (t) => { t = String(t || '').trim(); const neg = /^\(.*\)$/.test(t); const v = parseFloat(t.replace(/[(),$]/g, '')); return neg ? -v : v; }, eqd = (t, v) => SLACK ? near(pv(t), v) : t === $(v);   /* the valuation page is in dollars; the cash flow it is checked against may be in thousands */
+    o.valSale = VB['Gross Sale Price'] === $(sumA(E.gross)) && eqd(VB['Net Sales Price'], cfTot('Net Sales Price')) && eqd(VD['Proceeds from Sale'], cfTot('Proceeds from Sale')) && eqd(VD['Less: Loan Payoff'], cfTot('Loan Payoff')) && eqd(VD['Less: Disposition Fee'], cfTot('Disposition Fee'));
     o.valReturns = VC['IRR (Leveraged)'] === (E.irr * 100).toFixed(2) + '%' && VC['IRR (Unleveraged)'] === (E.uirr * 100).toFixed(2) + '%' && Object.keys(E.meas).every(k => VC[E.meas[k].name] === $(E.meas[k].amount)) && E.meas.closingEquity.name === 'Initial funding equity';
     o.valTakeout = ty ? V0['Permanent Loan (Takeout)'] === $(E.tk.perm) : V0['Permanent Loan (Takeout)'] === 'None in the hold';
     o.detail = JSON.stringify({ ty, n, cfSale: ['Net Sales Price', 'Proceeds from Sale', 'Loan Payoff', 'Disposition Fee'].map(k => [k, cfTot(k)]), rows: Object.keys(R.su.rows).length, d: yr('Total Sources less Total Uses'), V0: V0['Permanent Loan (Takeout)'], VY, VB, VD, C: Object.keys(E.meas).map(k => [VC[E.meas[k].name], E.meas[k].amount]) });
