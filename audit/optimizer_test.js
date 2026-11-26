@@ -1,0 +1,40 @@
+// Deal Optimizer: baseline, hurdles, levers, financing alternatives and recommendations, every figure a scratch run of the engine.
+//   node audit/optimizer_test.js [index.html]
+const { chromium } = require('playwright'); const path = require('path');
+const A = require(path.join(__dirname, 'deal.js'));
+const html = path.resolve(process.argv[2] || 'index.html');
+let n = 0, fails = 0; const check = (name, ok, detail) => { n++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail !== undefined ? '  ' + String(typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 400) : '')); };
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1000 } }); const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr|newyorkfed/, r => r.abort()); await p.goto('file://' + html); await p.waitForTimeout(700);
+  await p.evaluate(A => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(A); const s = bkLoad(); Object.assign(s, { reverseSolveTargetIRR: 0.07, hurdleEM: 1.3, hurdleDSCR: 1.2 }); bkSave(s); }, A);
+  const before = await p.evaluate(() => JSON.stringify(bkLoad()));
+  await p.evaluate(() => showSheet('Deal Optimizer')); await p.waitForTimeout(600);
+  const pg = await p.evaluate(() => { const caps = [...document.querySelectorAll('#viewport table caption')].map(c => c.textContent.trim()); const t = id => [...document.querySelectorAll('#viewport table')].find(x => (x.caption || {}).textContent.indexOf(id) === 0);
+    const rows = id => { const x = t(id); return x ? [...x.tBodies[0].rows].map(r => [...r.cells].map(c => c.innerText.trim())) : []; }; return { caps, base: rows('Baseline deal'), hurdles: rows('Investment hurdles'), levers: rows('Deal levers'), fin: rows('Financing alternatives'), rec: rows('Recommendations'), text: document.getElementById('viewport').innerText, irr: bkMonthlyReturns().irr }; });
+  const after = await p.evaluate(() => JSON.stringify(bkLoad()));
+  check('the page has the five steps: baseline, hurdles, levers, financing alternatives, recommendations', ['Baseline deal', 'Investment hurdles', 'Deal levers, one at a time', 'Financing alternatives', 'Recommendations: combinations that meet the hurdles'].every(c => pg.caps.includes(c)), pg.caps);
+  check('working out the scenarios changes nothing on the deal', before === after);
+  check('baseline levered IRR is the deal\'s own', pg.base.some(r => r[0] === 'Levered IRR' && r[1] === (pg.irr * 100).toFixed(2) + '%'));
+  check('each hurdle shows whether the baseline meets it (IRR below 7%, DSCR above 1.2x, cash-on-cash not set)', /BELOW/.test(pg.hurdles[0][3]) && /MEETS/.test(pg.hurdles[3][3]) && /NOT SET/.test(pg.hurdles[2][3]), pg.hurdles.map(r => r[3]));
+  const lv = await p.evaluate(() => { const P = bkLoad().purchasePrice; return [bkRunWith({ purchasePrice: P * 0.9 }, () => bkMonthlyReturns().irr), bkRunWith({ exitCap: bkLoad().exitCap + 0.0025 }, () => bkMonthlyReturns().irr)]; });
+  check('a lever row is a full engine run: a 10% lower price and a 0.25% higher exit cap give the engine\'s own IRRs', pg.levers.some(r => /10\.00% lower/.test(r[0]) && r[1].indexOf((lv[0] * 100).toFixed(2) + '%') === 0) && pg.levers.some(r => /exit cap 0\.25% higher/.test(r[0]) && r[1].indexOf((lv[1] * 100).toFixed(2) + '%') === 0), pg.levers.map(r => r[0] + ' ' + r[1]));
+  const solve = /To reach the 7\.00% IRR target on its own: Purchase price \$([\d,]+)/.exec(pg.text); const sp = solve ? Number(solve[1].replace(/,/g, '')) : 0;
+  const atSp = sp ? await p.evaluate(sp => bkRunWith({ purchasePrice: sp }, () => bkMonthlyReturns().irr), sp) : 0;
+  check('the price that reaches the IRR target, solved on full runs, gives that IRR', sp > 0 && Math.abs(atSp - 0.07) < 0.0005, [sp, atSp]);
+  check('financing alternatives cover leverage, fixed vs floating, spreads, interest-only, term, bank / agency / bridge, mezzanine and preferred equity', ['Leverage', 'Fixed vs floating', 'SOFR spread', 'Interest-only', 'Term', 'Bank', 'Agency', 'Bridge', 'mezzanine', 'Preferred equity'].every(k => pg.fin.some(r => r[0].indexOf(k) >= 0)), pg.fin.map(r => r[0]));
+  check('each alternative shows proceeds, debt service, cash flow, DSCR, returns and its refinancing exposure (the bridge loan maturing before the sale)', pg.fin.every(r => r.length === 8) && pg.fin.some(r => /Bridge/.test(r[0]) && /matures in month 36/.test(r[7])), pg.fin.find(r => /Bridge/.test(r[0])));
+  check('a leverage alternative that the DSCR caps says so', pg.fin.some(r => /70\.00% LTV/.test(r[0]) && /sized by DSCR/.test(r[7])));
+  const recs = pg.rec.slice(1);
+  check('recommendations: the baseline is below target and every recommended combination meets the hurdles', /BELOW TARGET/.test(pg.rec[0][2]) && recs.length > 0 && recs.every(r => /MEETS HURDLES/.test(r[2])), pg.rec.map(r => r[0] + ' ' + r[1]));
+  check('each recommendation says what it requires and its tradeoffs', recs.every(r => r[4].length > 2 && r[5].length > 2));
+  check('no two recommendations repeat the same result', new Set(recs.map(r => r[3] + r[4].split(';')[0])).size === recs.length);
+  const pick = recs[0]; await p.evaluate(() => bkOptApply(0)); await p.waitForTimeout(600);
+  const ap = await p.evaluate(() => ({ irr: bkMonthlyReturns().irr, em: bkMonthlyReturns().moic, v: (bkLoad()._history || {}).versions }));
+  check('"Apply" writes that combination to the deal (a version saved first) and the deal then meets the hurdles', ap.irr >= 0.07 - 1e-6 && ap.em >= 1.3 && pick[3].indexOf((ap.irr * 100).toFixed(2) + '%') === 0, [pick[3], ap.irr]);
+  await p.evaluate(A => { bkCreateNewDeal(A); const s = bkLoad(); Object.assign(s, { reverseSolveTargetIRR: 0.5 }); bkSave(s); showSheet('Deal Optimizer'); }, A); await p.waitForTimeout(500);
+  check('an unreachable hurdle says no tested combination meets it', /No combination tested meets every hurdle/.test(await p.evaluate(() => document.getElementById('viewport').innerText)));
+  check('the optimizer is in the Returns menu under Risk & pricing', await p.evaluate(() => (window.BK_NAV || []).some(t => t.id === 'returns' && t.groups.some(g => g.sheets.indexOf('Deal Optimizer') >= 0))));
+  check('no page errors', errs.length === 0, errs.slice(0, 2));
+  console.log('optimizer: ' + n + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
+})();

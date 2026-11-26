@@ -170,7 +170,7 @@ function groups(s){ var t = rateType(s), floating = t === 'Floating', sofrBased 
   r3 += bkInput('Loan term (maturity)', 'debtTerm', 'years from closing (blank = the hold)', 'num') + sel('Recourse', 'recourse', RECOURSE) + sel('Prepayment', 'prepayType', PREPAY);
   if(pp === 'Fixed prepayment penalty' || pp === 'Custom') r3 += bkInput('Prepayment penalty', 'prepayPct', '% of the balance repaid', 'pct');
   if(pp === 'Step-down') r3 += bkInput('Step-down schedule', 'prepaySteps', '% by loan year, e.g. 5,4,3,2,1', 'text');
-  if(pp === 'Yield maintenance' || pp === 'Defeasance') r3 += bkInput('Treasury yield for the calculation', 'prepayTreasury', '% (blank = the index rate)', 'pct') + (pp === 'Yield maintenance' ? bkInput('Minimum premium', 'prepayPct', '% of the balance (blank = 1%)', 'pct') : bkInput('Defeasance transaction cost', 'defeaseCostPct', '% of the balance (blank = 0.5%)', 'pct'));
+  if(pp === 'Yield maintenance' || pp === 'Defeasance') r3 += bkInput('Treasury yield for the calculation', 'prepayTreasury', '% (blank = the index rate, else SOFR, else 4%)', 'pct') + (pp === 'Yield maintenance' ? bkInput('Minimum premium', 'prepayPct', '% of the balance (blank = 1%)', 'pct') : bkInput('Defeasance transaction cost', 'defeaseCostPct', '% of the balance (blank = 0.5%)', 'pct'));
   if(pp && pp !== 'Open') r3 += bkInput('Open window before maturity', 'prepayOpenMonths', 'months', 'num');
   r3 += bkInput('Origination fee', 'acqOrigFee', '% of the loan', 'pct') + bkInput('Commitment fee', 'debtCommitFeePct', '% of the loan, at closing', 'pct') + bkInput('Exit fee', 'debtExitFeePct', '% of the balance repaid', 'pct')
     + bkInput('Extension options', 'debtExtCount', 'number', 'num');
