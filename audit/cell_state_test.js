@@ -23,16 +23,20 @@ let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) fail
     for (const sh of sheets) {
       await p.evaluate(s => showSheet(s), sh); await p.waitForTimeout(500);
       const r = await p.evaluate(() => { const v = document.getElementById('viewport'), bg = e => getComputedStyle(e).backgroundColor, out = { input: [], calc: [], link: [], na: [] };
-        v.querySelectorAll('table.fin td[data-bk-kind^="input"]').forEach(c => { if (c.getBoundingClientRect().width) out.input.push({ fill: bg(c), ink: getComputedStyle(c).color }); });
+        /* the input fill is carried by the field box when the cell has one (the table standard, src/209: the cell itself is clear), else by the cell; a locked field (disabled or
+           read-only) is not an input and is skipped; an empty field shows the dashed "not yet entered" outline instead of the fill, and counts as marked */
+        v.querySelectorAll('table.fin td[data-bk-kind^="input"]').forEach(c => { if (!c.getBoundingClientRect().width) return; const f = c.querySelector('select, textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])');
+          if (f && (f.disabled || f.readOnly)) return; const el = f || c, cs = getComputedStyle(el), empty = f && f.matches(':placeholder-shown') && cs.borderTopStyle === 'dashed';
+          out.input.push({ fill: empty ? 'dashed' : bg(el), ink: getComputedStyle(c).color }); });
         v.querySelectorAll('table.fin tbody td[data-bk-kind="num"]').forEach(c => { if (c.getBoundingClientRect().width && !c.closest('tr.grandtotal,tr.total,tr.subtotal,tr.sec')) out.calc.push({ fill: bg(c) }); });
         v.querySelectorAll('.bk-link, td.bk-link, [data-bk-link]').forEach(c => { if (c.getBoundingClientRect().width) out.link.push({ ink: getComputedStyle(c).color }); });
         v.querySelectorAll('tr.bk-na > td').forEach(c => { if (c.getBoundingClientRect().width) out.na.push({ op: +getComputedStyle(c).opacity }); }); return out; });
       r.input.forEach(x => inputs.push(Object.assign({ sh }, x))); r.calc.slice(0, 30).forEach(x => calcs.push(Object.assign({ sh }, x)));
       if (!seen.input && r.input.length) seen.input = sh; if (!seen.calc && r.calc.length) seen.calc = sh; if (!seen.link && r.link.length) { seen.link = sh; seen.linkInk = r.link[0].ink; } if (!seen.na && r.na.length) { seen.na = sh; seen.naOp = r.na[0].op; }
     }
-    const inSheets = new Set(inputs.map(x => x.sh)), badIn = inputs.filter(x => x.fill !== tok.inFill);
+    const inSheets = new Set(inputs.map(x => x.sh)), badIn = inputs.filter(x => x.fill !== tok.inFill && x.fill !== 'dashed');
     check(theme + ': input cells exist on several sheets (' + inputs.length + ' on ' + inSheets.size + ')', inputs.length >= 60 && inSheets.size >= 8, inputs.length + ' / ' + inSheets.size);
-    const KNOWN_UNFILLED = ['Reserve Accounts'];   /* real defect, recorded: its amount boxes have no input fill (src/199). Fix individually under Phase 1; when fixed, remove it from this list. */
+    const KNOWN_UNFILLED = [];   /* Reserve Accounts was here: its amount boxes carry the input fill now (the box, per src/209) */   /* real defect, recorded: its amount boxes have no input fill (src/199). Fix individually under Phase 1; when fixed, remove it from this list. */
     const badSheets = [...new Set(badIn.map(x => x.sh))], unknown = badSheets.filter(x => KNOWN_UNFILLED.indexOf(x) < 0), healed = KNOWN_UNFILLED.filter(x => badSheets.indexOf(x) < 0);
     check(theme + ': every input cell carries the input fill (except the recorded known ones)', unknown.length === 0, unknown.length ? unknown.join(', ') : 'all but known: ' + badSheets.join(', '));
     check(theme + ': a recorded known deviation that no longer exists is removed from the list', healed.length === 0, healed.join(', ') || 'none');
