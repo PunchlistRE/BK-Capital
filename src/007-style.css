@@ -186,19 +186,19 @@
   .tabnav-primary .grp-btn{
     /* V29.7 nav legibility: inactive labels were #C9D3DC. That value is uniform across every
        group, so the "Property Operations reads as disabled" effect was NOT coming from the text
-       colour -- it came from the category dot (see .sw below). The label is still lifted to a
+       color -- it came from the category dot (see .sw below). The label is still lifted to a
        clearly legible off-white so no category reads as greyed-out, while staying below the
        active #fff. Weight stays 600 for every item: active state is communicated by the gold
        underline + gold-tint background, never by making inactive items lighter/thinner. */
     padding:10px 16px; font-size:11.5px; font-weight:600; letter-spacing:.03em; color:#DDE5EC;
     white-space:nowrap; cursor:pointer; border-bottom:2.5px solid transparent; display:flex; align-items:center; gap:6px;
   }
-  /* Category dots keep their exact GROUPS colours (they are the category key and are not
+  /* Category dots keep their exact GROUPS colors (they are the category key and are not
      changed here), but several of them are as dark as the navy bar itself -- Property
      Operations is #163a62, which IS --navy-800, so its dot was invisible; Monthly Engine
      (#47507A) and Portfolio Database (#566a80) were similarly muddy. A 1px translucent light
      ring makes every dot register at the same perceived weight against the navy without
-     altering a single category colour. */
+     altering a single category color. */
   .tabnav-primary .grp-btn .sw{
     width:7px;height:7px;border-radius:50%;
     box-shadow:0 0 0 1px rgba(233,239,245,.55);

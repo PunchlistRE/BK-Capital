@@ -22,7 +22,11 @@ window.bkInterestCoverage = function(){
 };
 function card(title, head, rows){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>' + title + '</caption><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>'; }
 function wrap(sheet, build){ var prev = window.RENDERERS && RENDERERS[sheet]; if(typeof prev !== 'function') return;
-  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); try { var add = build(); if(add && o && typeof o.main === 'string') o.main += add; } catch(e){} return o; }; }
+  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments);
+    /* a page that withholds its results (a deal missing inputs, or none open) gets no exit-year figures either */
+    if(o && /withheld|calculation blocked|no deal loaded/i.test(String(o.main || ''))) return o;
+    try { var rd = typeof bkDealReadiness === 'function' ? bkDealReadiness() : null; if(rd && rd.canCalculate === false) return o; } catch(e){}
+    try { var add = build(); if(add && o && typeof o.main === 'string') o.main += add; } catch(e){} return o; }; }
 wrap('Returns', function(){
   var rows = window.bkExitYearTable(); if(!rows) return '';
   return '<div class="tbl-wrap" style="margin-top:16px;padding:12px 14px"><div style="font:700 12px Inter,system-ui,sans-serif;margin-bottom:6px">Levered IRR by Exit Year</div>' + (window.bkExitYearChart ? window.bkExitYearChart(rows, 900) : '') + '</div>' + card('If Sold at the End of Each Year - levered returns by exit year', '<th class="rowlabel-h">Exit at the end of</th><th>Levered IRR</th><th>Equity Multiple</th><th>Equity Profit</th>',

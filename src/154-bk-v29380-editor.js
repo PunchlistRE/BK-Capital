@@ -362,7 +362,7 @@ window.bkEdBudCopy = function(){ var s = bkLoad(), had = Array.isArray(s.budgetL
   hl.lines.forEach(function(l){ add('hard', l.name, l.total); }); add('hard', 'General conditions', hl.gc); add('hard', 'Contractor fee', hl.contractorFee); add('hard', 'Payment and performance bonds', hl.riskBonds); add('cont', 'Hard cost contingency', hl.contingency);
   sl.lines.forEach(function(l){ add(/FF&E/i.test(l.name) ? 'ffe' : 'soft', l.name, l.total); }); add('soft', 'Development fee', sl.devFee); add('soft', 'Soft cost contingency', sl.contingency);
   s.budgetLines = out; s.devBudgetMode = 'LINES'; bkSave(s); showSheet(cur()); };
-/* cash by month as stacked bars (one colour per cost class); also drawn on the Dev Schedule page */
+/* cash by month as stacked bars (one color per cost class); also drawn on the Dev Schedule page */
 var BCOL = window.BK_CLASS_COLORS || { hard:'#2f6db5', cont:'#e08a2c', soft:'#2a9d8f', ffe:'#7b5ea7' };
 window.bkBudgetSpendSvg = function(plan, o){ o = o || {}; if(!plan || !plan.rows || !plan.rows.length) return '';
   var byCls = { hard:{}, cont:{}, soft:{}, ffe:{} }, last = 0; plan.rows.forEach(function(r){ Object.keys(r.monthly).forEach(function(m){ byCls[r.cls][m] = (byCls[r.cls][m] || 0) + r.monthly[m]; last = Math.max(last, Number(m)); }); });

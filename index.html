@@ -259,19 +259,19 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
   .tabnav-primary .grp-btn{
     /* V29.7 nav legibility: inactive labels were #C9D3DC. That value is uniform across every
        group, so the "Property Operations reads as disabled" effect was NOT coming from the text
-       colour -- it came from the category dot (see .sw below). The label is still lifted to a
+       color -- it came from the category dot (see .sw below). The label is still lifted to a
        clearly legible off-white so no category reads as greyed-out, while staying below the
        active #fff. Weight stays 600 for every item: active state is communicated by the gold
        underline + gold-tint background, never by making inactive items lighter/thinner. */
     padding:10px 16px; font-size:11.5px; font-weight:600; letter-spacing:.03em; color:#DDE5EC;
     white-space:nowrap; cursor:pointer; border-bottom:2.5px solid transparent; display:flex; align-items:center; gap:6px;
   }
-  /* Category dots keep their exact GROUPS colours (they are the category key and are not
+  /* Category dots keep their exact GROUPS colors (they are the category key and are not
      changed here), but several of them are as dark as the navy bar itself -- Property
      Operations is #163a62, which IS --navy-800, so its dot was invisible; Monthly Engine
      (#47507A) and Portfolio Database (#566a80) were similarly muddy. A 1px translucent light
      ring makes every dot register at the same perceived weight against the navy without
-     altering a single category colour. */
+     altering a single category color. */
   .tabnav-primary .grp-btn .sw{
     width:7px;height:7px;border-radius:50%;
     box-shadow:0 0 0 1px rgba(233,239,245,.55);
@@ -2379,7 +2379,7 @@ function bkDevBudgetPlan(x,s){
   return {rows:out,hard:byMo.hard,soft:byMo.soft,all:byMo.all,LC};
 }
 window.bkDevBudgetPlan=bkDevBudgetPlan;window.BK_RATE_PRESETS=BK_RATE_PRESETS;window.BK_BUDGET_CLASSES=BK_BUDGET_CLASSES;
-/* one colour per cost class, used by the Budget panel, the cash charts and the Dev Schedule Gantt (blue = hard cost, amber = contingency, teal = soft cost, violet = FF&E) */
+/* one color per cost class, used by the Budget panel, the cash charts and the Dev Schedule Gantt (blue = hard cost, amber = contingency, teal = soft cost, violet = FF&E) */
 window.BK_CLASS_COLORS={hard:'#2f6db5',cont:'#e08a2c',soft:'#2a9d8f',ffe:'#7b5ea7'};
 /* Contingency register: the hard-cost contingency in the budget tracked as original / allocated / change orders (used) / remaining / forecast. Change orders and expected further use draw it down; use beyond the original is an overrun added to hard cost, and (when release is 'saved') what is not used is taken out of cost. With no register the contingency is spent in full, as before. */
 window.bkContingencyStats=function(s,original){const c=(s&&s.contingency&&typeof s.contingency==='object')?s.contingency:null;if(!c)return null;const sum=a=>(Array.isArray(a)?a:[]).reduce((t,r)=>t+(Number(r&&r.amount)||0),0);const alloc=sum(c.allocations),used=sum(c.changeOrders),more=Math.max(0,Number(c.forecastMore)||0),forecast=used+more,remaining=original-used,fRemaining=original-forecast,over=Math.max(0,-fRemaining),saved=c.release==='saved'?Math.max(0,fRemaining):0;return{original,allocated:alloc,unallocated:original-alloc,used,remaining,more,forecast,forecastRemaining:fRemaining,overrun:over,saved,release:c.release==='saved'?'saved':'spent',adj:over-saved};};
@@ -4087,7 +4087,7 @@ RENDERERS['Portfolio'] = function(){
     <td class="rowlabel"><span class="bk-pf-nm">${bkEsc(snap.name||key)}</span><span class="bk-pf-sub">${bkEsc([snap.dealType,snap.propertyType].filter(Boolean).join(' · ')||'-')}${key===curKey?' · <b>Active</b>':''}</span></td>
     <td>${m.ok?money(m.purchasePrice):'-'}</td><td>${m.ok?money(m.equity):'-'}</td>
     <td>${m.ok?bkPct(m.irr):'engine error'}</td><td>${m.ok?m.moic.toFixed(2)+'x':'-'}</td>
-    <td class="bk-pf-act">${key===curKey?'':`<button type="button" class="bk-btn" data-portfolio-load="${bkEsc(key)}">Load</button>`}<button type="button" class="bk-btn quiet bk-pf-rm" data-portfolio-remove="${bkEsc(key)}" aria-label="Remove ${bkEsc(snap.name||key)} from the portfolio">Remove</button></td></tr>`).join('');
+    <td class="bk-pf-act"><span class="bk-pf-acts">${key===curKey?'':`<button type="button" class="bk-btn" data-portfolio-load="${bkEsc(key)}">Load</button>`}<button type="button" class="bk-btn quiet danger bk-pf-rm" data-portfolio-remove="${bkEsc(key)}" aria-label="Remove ${bkEsc(snap.name||key)} from the portfolio">Remove</button></span></td></tr>`).join('');
   const ok = computed.filter(r=>r.m.ok);
   const totalEquity = ok.reduce((z,r)=>z+r.m.equity,0), totalPrice = ok.reduce((z,r)=>z+r.m.purchasePrice,0);
   const PC = bkPortfolioConsolidated(saved);
@@ -19623,7 +19623,7 @@ function decorateUnderwrite(frame){
   var req = '<div class="bk-req"><b>Required inputs: ' + done + ' of ' + total + '</b><span class="bar"><i style="width:' + (total ? Math.round(done/total*100) : 0) + '%"></i></span>'
     + (r.missing.length ? '<span>Missing:</span>' + r.missing.map(function(m){ return '<button type="button" data-bk-jump-key="' + esc(REQ_KEYS[m.key] || m.key) + '">' + esc(m.label) + '</button>'; }).join('')
                          : '<span style="color:#1F7A45;font-weight:600">All required inputs entered</span>') + '</div>';
-  /* The section index: every panel on this long page, grouped under a coloured label and named in a few words (three panels were all called "Development"),
+  /* The section index: every panel on this long page, grouped under a colored label and named in a few words (three panels were all called "Development"),
      with the section you are reading marked as you scroll. */
   var DUG = [['Setup', '#2f6fb5', /^(Identity|Ownership|Program)\b/], ['Income & costs', '#2e7d5b', /^(Source Economics|Operating Assumptions)/], ['Exit', '#a8641c', /^(Exit & Hold|Growth & Sale)/],
     ['Financing', '#2e6e6e', /^(Acquisition Debt|Permanent|Construction Facility|Debt Maturity|Audit-Fixed|What Each Debt)/], ['Partnership', '#7a4a8c', /^(JV Structure|Sponsor Economics)/],
@@ -23834,7 +23834,7 @@ var CSS = '.pf{max-width:1040px}.pf h3{font:700 11px/1 Inter,system-ui,sans-seri
  + '.pf-tbl td{padding:6px 7px;text-align:right;border-top:1px solid var(--line,#dbe4ec);background:var(--surface,#fff);white-space:nowrap}.pf-tbl td.l{text-align:left;padding-left:16px}.pf-tbl tr.sec td{background:#e8f1fa;font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#566a80}.pf-tbl tr.sub td{font-weight:700;background:#EEF2F6}.pf-tbl tr.tot td{font-weight:700;background:#0e2a4a;color:#fff}.pf-tbl tr.tot td:first-child{background:#0e2a4a}.pf-tbl td.dim{color:var(--ink-500,#566a80)}.pf-tbl tr:not(.sec):not(.tot):hover td{background:rgba(62,154,230,.14)}.pf-tbl .neg{color:#B23A2C}.pf-tbl tr.tot .neg{color:#FFB3A8}'
  + '.pf-bar{display:flex;gap:8px;justify-content:flex-end;margin:0 0 4px}'
  + '.pf-note{font-size:11.5px;color:var(--ink-500,#566a80);margin-top:8px;line-height:1.45}'
- + '@media print{body{background:#fff !important}.rail,.brand-bar,.tabnav,.bk-flow,.side-col,.bk-stepnav,.pf-bar,.title-block .btn,#pl-palette,#pl-modal,#pl-tip,.bk-case,.colour-key{display:none !important}.shell{display:block !important}.sheet-viewport,#viewport{overflow:visible !important;height:auto !important}.body-grid{display:block !important}.main-col{padding:0 !important;max-width:none !important}.pf-card,.pf-kpi,.pf-sc,.tbl-wrap{break-inside:avoid;box-shadow:none !important}.pf-tbl th:first-child,.pf-tbl td:first-child{position:static}.pf-tbl th,.pf-tbl tr.tot td{-webkit-print-color-adjust:exact;print-color-adjust:exact}svg{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:14mm}}';
+ + '@media print{body{background:#fff !important}.rail,.brand-bar,.tabnav,.bk-flow,.side-col,.bk-stepnav,.pf-bar,.title-block .btn,#pl-palette,#pl-modal,#pl-tip,.bk-case,.color-key{display:none !important}.shell{display:block !important}.sheet-viewport,#viewport{overflow:visible !important;height:auto !important}.body-grid{display:block !important}.main-col{padding:0 !important;max-width:none !important}.pf-card,.pf-kpi,.pf-sc,.tbl-wrap{break-inside:avoid;box-shadow:none !important}.pf-tbl th:first-child,.pf-tbl td:first-child{position:static}.pf-tbl th,.pf-tbl tr.tot td{-webkit-print-color-adjust:exact;print-color-adjust:exact}svg{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:14mm}}';
 if(!document.getElementById('pf-css')){ var st = document.createElement('style'); st.id = 'pf-css'; st.textContent = CSS; document.head.appendChild(st); }
 window.bkPrintProForma = function(){ window.print(); };
 function printBar(){ return '<div class="pf-bar"><button type="button" class="pf-print" onclick="bkPrintProForma()">Print / save as PDF</button></div>'; }
@@ -25301,7 +25301,7 @@ window.bkEdBudCopy = function(){ var s = bkLoad(), had = Array.isArray(s.budgetL
   hl.lines.forEach(function(l){ add('hard', l.name, l.total); }); add('hard', 'General conditions', hl.gc); add('hard', 'Contractor fee', hl.contractorFee); add('hard', 'Payment and performance bonds', hl.riskBonds); add('cont', 'Hard cost contingency', hl.contingency);
   sl.lines.forEach(function(l){ add(/FF&E/i.test(l.name) ? 'ffe' : 'soft', l.name, l.total); }); add('soft', 'Development fee', sl.devFee); add('soft', 'Soft cost contingency', sl.contingency);
   s.budgetLines = out; s.devBudgetMode = 'LINES'; bkSave(s); showSheet(cur()); };
-/* cash by month as stacked bars (one colour per cost class); also drawn on the Dev Schedule page */
+/* cash by month as stacked bars (one color per cost class); also drawn on the Dev Schedule page */
 var BCOL = window.BK_CLASS_COLORS || { hard:'#2f6db5', cont:'#e08a2c', soft:'#2a9d8f', ffe:'#7b5ea7' };
 window.bkBudgetSpendSvg = function(plan, o){ o = o || {}; if(!plan || !plan.rows || !plan.rows.length) return '';
   var byCls = { hard:{}, cont:{}, soft:{}, ffe:{} }, last = 0; plan.rows.forEach(function(r){ Object.keys(r.monthly).forEach(function(m){ byCls[r.cls][m] = (byCls[r.cls][m] || 0) + r.monthly[m]; last = Math.max(last, Number(m)); }); });
@@ -26692,7 +26692,7 @@ function reviewCell(k, c){ if(!k || !OVK[k]) return confChip(c);
   var lr = S.om && S.om.learned && S.om.learned[k];
   if(ov) return '<span class="bk-omr-st ' + ov.mode + '">' + (ov.mode === 'reject' ? 'Left out' : 'Edited') + '</span><span class="bk-omr-was">OM read ' + fmt(was) + '</span> <button type="button" class="bk-btn quiet bk-omr-b" onclick="bkOMOv(\'' + k + '\',\'undo\')">Undo</button>';
   return confChip(c) + (lr ? ' <span class="bk-omr-st learned" title="Read from beside &quot;' + esc(lr.label) + '&quot; on page ' + lr.page + ', as you taught it' + (lr.was ? '; the reader alone found ' + fmt(lr.was) : '') + '">Learned</span>' : '')
-    + '<span class="bk-omr-acts"><button type="button" class="bk-btn quiet bk-omr-b" onclick="bkOMEdit(\'' + k + '\')">Edit</button>' + (OV_REJECT[k] ? '<button type="button" class="bk-btn quiet bk-omr-b bk-omr-x" onclick="bkOMOv(\'' + k + '\',\'reject\')" title="Not this property\'s figure: leave it out ($0)">Reject</button>' : '') + '</span>'; }
+    + '<span class="bk-omr-acts"><button type="button" class="bk-btn quiet bk-omr-b" onclick="bkOMEdit(\'' + k + '\')">Edit</button>' + (OV_REJECT[k] ? '<button type="button" class="bk-btn quiet danger bk-omr-b bk-omr-x" onclick="bkOMOv(\'' + k + '\',\'reject\')" title="Not this property\'s figure: leave it out ($0)">Reject</button>' : '') + '</span>'; }
 function valueCell(k, val){ if(!k || S.editing !== k) return val; var d = CUR_B && CUR_B.deal ? CUR_B.deal[k] : '', v0 = OVK[k] === '%' ? (Number(d) * 100).toFixed(2) + '%' : d;
   return '<span class="bk-omr-edit"><input id="bk-omr-in" type="text" class="bk-nofield" data-bk-w="free" aria-label="Your figure" value="' + esc(v0) + '" onkeydown="if(event.key===\'Enter\')bkOMOv(\'' + k + '\',\'edit\',this.value);if(event.key===\'Escape\')bkOMEdit(null)"></span>'; }
 window.__bkOMApplyLearned = applyLearned; window.bkOMParse = parseOM; window.bkOMBuild = buildDeal; window.bkOMPageJpegs = pageJpegs; window.bkOMConf = confOM; window.bkOMState = function(){ return S; };   /* read access for the audit tests */
@@ -28048,10 +28048,10 @@ html:not([data-theme="light"]) .bk-save.warn{ background:#2d2818; color:#e8c46a;
 }
 </style>
 <style id="bk-design-unify-css">/* ONE DESIGN LANGUAGE. Every page takes the Property Editor's look: square panels with a header bar and a letter icon, grids with
-   full cell borders and graded header rows, boxed input cells, tab strips for section jumps, and the editor's colour tokens
+   full cell borders and graded header rows, boxed input cells, tab strips for section jumps, and the editor's color tokens
    (--ae-*), in light and dark. Loaded last so it settles the older layers; the editor itself (.ae) is untouched. */
 /* FILL RULE (engine-wide). Three fills, three jobs, never swapped:
-     HEADER  blue-grey (--bk-fill-head, --bk-fill-head2): names things. Panel title bars, column-heading rows, section-divider rows. A row that carries a value is never this colour.
+     HEADER  blue-grey (--bk-fill-head, --bk-fill-head2): names things. Panel title bars, column-heading rows, section-divider rows. A row that carries a value is never this color.
      KEY     gold (--bk-fill-key, with --bk-key-rule on the left edge): the answer. Grand totals and headline metrics (IRR, multiple, DSCR, NOI, loan, price...). Only on a row that carries values, never on a heading.
      SUB     light neutral tint (--bk-fill-sub): a subtotal inside a table. Quieter than KEY, different from HEADER.
    Everything else is no fill (cells), the editor's read-only tint (calculated), or a boxed field (inputs). audit/fillrule_test.js walks every sheet and fails on a value row filled as a header, or a heading filled as a key metric. */
@@ -28103,7 +28103,7 @@ html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 /* the letter icon the decorator puts in each panel header (same square as the editor's) */
 html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
 /* DEAL UNDERWRITE TAB BAR: one horizontal row of seven group tabs, sticky under the pinned header, scrolling sideways on a phone (never wrapping to a second row). The open tab has a
-   coloured underline and a raised fill; a red count marks required inputs still missing in that group; a group that does not apply reads N/A. */
+   colored underline and a raised fill; a red count marks required inputs still missing in that group; a group that does not apply reads N/A. */
 html body #viewport .bk-dui.bk-tabs{ position:sticky; top:var(--bk-stick,0px); z-index:12; display:flex; flex-direction:row; flex-wrap:nowrap; align-items:flex-end; gap:2px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:thin; background:var(--ae-head2); border:1px solid var(--ae-line); border-left:4px solid var(--ae-accent); border-radius:0; padding:8px 8px 0 10px; margin:0 0 12px; box-shadow:none; }   /* the panel tabs of the editor (src/210): one look for every set of sub-tabs */
 html body #viewport .bk-dui.bk-tabs .bk-dt{ flex:0 0 auto; position:relative; display:inline-flex; align-items:center; gap:6px; box-sizing:border-box; height:30px; margin:0 0 -1px; padding:0 14px !important; background:var(--ae-cell-ro, var(--ae-head)) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:500 12px/1 Inter,system-ui,sans-serif !important; letter-spacing:0; white-space:nowrap; cursor:pointer; }
 html body #viewport .bk-dui.bk-tabs .bk-dt::before{ content:none; }
@@ -28183,7 +28183,7 @@ html body .rail .rail-group-label{ cursor:default !important; }
 html body .rail .bk-adv-head{ cursor:pointer; }   /* the Advanced heading folds its groups again (src/124); its arrow shows the state */
 html.bk-rail-collapsed body .rail .rail-group-label{ cursor:pointer !important; }
 
-/* OVERVIEW: a quiet, professional palette. Status is carried by a small marker and a muted tone, not by saturated colour fields. */
+/* OVERVIEW: a quiet, professional palette. Status is carried by a small marker and a muted tone, not by saturated color fields. */
 html body #viewport .pl-home .pl-kpi .v{ font-weight:600; font-size:24px; color:var(--ae-ink,#1f2933); }
 html body #viewport .pl-home .pl-kpi.pass .v{ color:#3F6B52; } html body #viewport .pl-home .pl-kpi.warn .v{ color:#7E6428; } html body #viewport .pl-home .pl-kpi.fail .v{ color:#8C3B34; }
 html body #viewport .pl-home .pl-kpi{ border-radius:0; box-shadow:none; border-color:var(--ae-line,#cfd6dd); }
@@ -28383,7 +28383,7 @@ html body #viewport .ae > .ae-tabs{ background:var(--ae-head2); border:1px solid
 html body #viewport .ae > .ae-tabs::before{ content:"PROPERTY EDITOR"; flex:0 0 100%; font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--ae-accent); padding:0 2px 7px }
 html body #viewport .ae > .ae-body{ border-left:4px solid var(--ae-accent) }
 
-/* ---- Night mode: the text that was dark on dark or white on light blue. Primary buttons get a mid blue that carries white text; status and negative colours are
+/* ---- Night mode: the text that was dark on dark or white on light blue. Primary buttons get a mid blue that carries white text; status and negative colors are
    lifted; numbers and notes set in the day palette's navy and grey are lightened; buttons with no styling of their own get a dark face; the Deal Underwrite group
    labels are brightened. (The day palette is untouched.) */
 @media (prefers-color-scheme: dark){
@@ -28485,7 +28485,7 @@ function emptyKinds(root){
     if(k){ if(c.getAttribute('data-bk-v') !== k) c.setAttribute('data-bk-v', k); } else if(c.hasAttribute('data-bk-v')) c.removeAttribute('data-bk-v');
   });
 }
-/* status chips get a kind from their words, so INPUT (light blue), NOT APPLIED / N/A (grey) and the rest can be coloured apart without touching the code that writes them */
+/* status chips get a kind from their words, so INPUT (light blue), NOT APPLIED / N/A (grey) and the rest can be colored apart without touching the code that writes them */
 function chipKinds(root){
   [].forEach.call(root.querySelectorAll('.status-chip'), function(c){
     var t = (c.textContent || '').trim().toUpperCase(), k = '';
@@ -29166,7 +29166,7 @@ function P2(v){ return !isFinite(v) ? '—' : (v * 100).toFixed(2) + '%'; }
 var CSS = 'table.bk-measure-wrap td,table.bk-measure-wrap th{white-space:normal !important}table.bk-measure-wrap .status-chip{white-space:nowrap !important}#bk-print-head,#bk-print-foot,.bk-print-sel{display:none}table.bk-print-clone{display:none}.bk-pcf-pm-set{position:absolute;left:0;top:0;width:1px;height:0;overflow:hidden;visibility:hidden;margin:0;padding:0}#viewport table.bk-print-own-m,#viewport table.bk-print-own-m th,#viewport table.bk-print-own-m thead th,#viewport table.bk-print-own-m td{font-size:6.5pt !important;padding:2px 3px !important;min-width:0 !important;letter-spacing:normal !important}#viewport table.bk-print-own-m caption{display:none !important}#viewport table.pf-tbl.bk-print-own-m td:first-child,#viewport table.pf-tbl.bk-print-own-m th:first-child{white-space:normal !important}#viewport table.pf-tbl.bk-print-own-m td:not(:first-child),#viewport table.pf-tbl.bk-print-own-m th:not(:first-child){white-space:nowrap !important}html body #viewport table.bk-print-own-m td,html body #viewport table.bk-print-own-m th,html body #viewport table.bk-print-own-m td[data-bk-kind="num"]{padding:2px 3px !important;font-size:6.5pt !important}.title-block{position:relative}.title-block .bk-print-btn{position:absolute;top:12px;right:128px;z-index:2}.title-block:not(:has(.bk-key-wrap)) .bk-print-btn{right:18px}@media (max-width:760px){.title-block .bk-print-btn{position:static;margin:6px 0 0}}'
  + '@media print{#viewport table.fin td,#viewport table.fin th,#viewport table.rp-tbl td{white-space:normal !important;overflow-wrap:break-word}#viewport table .status-chip{white-space:nowrap !important}#viewport .tbl-wrap{overflow:visible !important}#viewport select.bk-print-hasval{display:none !important}#viewport .bk-print-sel{display:inline !important;font-weight:600}'
  + 'html,body{background:#fff !important;color:#14202b !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
- + '.rail,.brand-bar,.tabnav,.tabnav-primary,.bk-flow,.bk-stepnav,.bk-case,.side-col,.title-block,.bk-dui,.pf-bar,.rp-bar,.bk-rail-toggle,#bk-sync-status,#bk-auth-gate,#pl-palette,#pl-modal,#pl-tip,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,#bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,select{display:none !important}'
+ + '.rail,.brand-bar,.tabnav,.tabnav-primary,.bk-flow,.bk-stepnav,.bk-case,.side-col,.title-block,.bk-dui,.pf-bar,.rp-bar,.bk-rail-toggle,#bk-sync-status,#bk-auth-gate,#pl-palette,#pl-modal,#pl-tip,.color-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,#bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,select{display:none !important}'
  + '.shell{display:block !important;height:auto !important}.sheet-viewport,#viewport,.sheet-frame,.body-grid{display:block !important;overflow:visible !important;height:auto !important;width:auto !important;max-width:none !important;margin:0 !important;padding:0 !important;position:static !important}'
  + '.main-col{display:block !important;width:100% !important;max-width:none !important;padding:0 !important;margin:0 !important}'
  + '#bk-print-head{display:block !important;margin:0 0 12px;padding:0 0 10px;border-bottom:2px solid #14202b}'
@@ -30121,8 +30121,8 @@ function ganttSvg(rows, sc, s, o){
 /* The schedule as a sheet, in the style of a project-management Gantt: a grey band for each phase with its summary bar in dark green, each task beneath it with a light green bar, the task's start, end and months in columns on the left, a month
    grid across the top with the calendar year above it, milestone call-outs, and a vertical line at the certificate of occupancy and at stabilization. It draws the same rows the chart does; it adds no schedule of its own. */
 var GX = { crit:'#b3392c', band:'#c9ced8', head:'#cfd3db', sum:'#00b050', task:'#92d050', cell:'#f1f3f6', cellAlt:'#e6e9ee', line:'#b9bfca', ink:'#10213a', ms:'#2f7d32' };
-/* More than one green: bars are coloured by what they are. With a budget the colour is the cost class of the lines tied to the task (blue hard cost, amber contingency, teal soft cost, violet FF&E); without one it is the task's phase
-   (teal pre-development, green construction, slate other); lease-up is gold and stabilized operations steel. The summary bar of each phase is the deep version of its colour. */
+/* More than one green: bars are colored by what they are. With a budget the color is the cost class of the lines tied to the task (blue hard cost, amber contingency, teal soft cost, violet FF&E); without one it is the task's phase
+   (teal pre-development, green construction, slate other); lease-up is gold and stabilized operations steel. The summary bar of each phase is the deep version of its color. */
 var PAL = { cls:(window.BK_CLASS_COLORS || { hard:'#2f6db5', cont:'#e08a2c', soft:'#2a9d8f', ffe:'#7b5ea7' }), grp:{ predev:'#5fb7ad', construction:'#92d050', other:'#aab6c6' }, lu:'#f2c14e', ops:'#9fb4cc', ph:{ 'Pre-development':'#2a8f85', 'Construction':'#00a050', 'Other tasks':'#51647a', 'Lease-up and operations':'#b9852a' } };
 function deep(hex){ var h = String(hex).replace('#', ''), r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16), f = .72; return '#' + [r, g, b].map(function(v){ return ('0' + Math.round(v * f).toString(16)).slice(-2); }).join(''); }
 function ganttSheet(M, o){
@@ -30140,7 +30140,7 @@ function ganttSheet(M, o){
   h += '</colgroup><thead><tr><th style="' + th + ';text-align:center" rowspan="2">#</th><th style="' + th + ';text-align:left" rowspan="2">Task</th><th style="' + th + ';text-align:right" rowspan="2">Start</th><th style="' + th + ';text-align:right" rowspan="2">End</th><th style="' + th + ';text-align:right" rowspan="2">Months</th>' + (hasCost ? '<th style="' + th + ';text-align:right" rowspan="2" title="The dollars of each budget line (Investment > Budget)">Cost</th>' : '') + '<th style="' + th + ';text-align:left" rowspan="2" title="Predecessor rows; +n / -n is a lag / overlap in months">Pred.</th>' + (showPct ? '<th style="' + th + ';text-align:right" rowspan="2" title="Percent complete. A summary task shows the roll-up of the tasks inside it, weighted by cost (by months where no cost is tied). For tracking only: it does not change the schedule, the draws or the returns.">% done</th>' : '');
   yearRuns.forEach(function(r){ h += '<th colspan="' + r.n + '" style="' + th + ';text-align:center">' + (r.n >= 3 ? r.y : '') + '</th>'; });
   h += '</tr><tr>'; for(var c2 = 1; c2 <= N; c2++) h += '<th style="' + th + ';text-align:left;font-size:9px;padding:2px 0 2px 1px;font-weight:500;overflow:visible">' + (N <= 18 || (N <= 36 && c2 % 3 === 1) || (N > 36 && c2 % 6 === 1) ? c2 : '') + '</th>'; h += '</tr></thead><tbody>';
-  /* A bar is drawn month by month. With a percent complete the first part of it is the darker colour: whole months are solid, and the month the progress ends in is shaded by the part of it that is done. */
+  /* A bar is drawn month by month. With a percent complete the first part of it is the darker color: whole months are solid, and the month the progress ends in is shaded by the part of it that is done. */
   var cellsFor = function(rowBars, ms, bold, crit, rowBg){
     var out = ''; for(var m2 = 1; m2 <= N; m2++){ var inBar = rowBars && m2 >= rowBars.a && m2 <= rowBars.b, edge = (inBar ? '' : ''), bg = inBar ? rowBars.col : (bold ? (rowBg || GX.band) : (colAlt(m2) ? GX.cellAlt : GX.cell)), prog = '';
       if(inBar && rowBars.pct != null && rowBars.pct > 0 && rowBars.done){ var span = rowBars.b - rowBars.a + 1, f = Math.max(0, Math.min(1, span * Math.min(100, rowBars.pct) / 100 - (m2 - rowBars.a)));
@@ -30153,7 +30153,7 @@ function ganttSheet(M, o){
   var tdl = function(txt, al, b, bg){ return '<td style="padding:3px 6px;border:1px solid ' + GX.line + ';text-align:' + al + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:' + (al === 'right' ? 11.5 : 12) + 'px;' + (b ? 'font-weight:700;background:' + (bg || GX.band) : 'background:#fff') + '">' + txt + '</td>'; };
   var tint = function(hex, a){ var h2 = String(hex).replace('#', ''); return 'rgba(' + parseInt(h2.slice(0, 2), 16) + ',' + parseInt(h2.slice(2, 4), 16) + ',' + parseInt(h2.slice(4, 6), 16) + ',' + a + ')'; };
   var pctText = function(v){ return pctOnly(v); };
-  /* the percent-complete cell has its own bar: the cell is filled to the percent, in the colour of the task */
+  /* the percent-complete cell has its own bar: the cell is filled to the percent, in the color of the task */
   var pctCell = function(v, col, bold, bg, tip){ if(!showPct) return ''; if(v == null) return tdl('', 'right', bold, bg); var p = Math.max(0, Math.min(100, v)), base = bg || (bold ? GX.band : '#fff');
     return '<td data-pct="' + p.toFixed(1) + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + ' style="padding:3px 6px;border:1px solid ' + GX.line + ';text-align:right;white-space:nowrap;font-size:11.5px;' + (bold ? 'font-weight:700;' : '') + 'background:linear-gradient(to right,' + tint(col, .45) + ' ' + p + '%,' + base + ' ' + p + '%)">' + pctText(v) + '</td>'; };
   var padPct = function(b){ return showPct ? tdl('', 'left', b) : ''; };
@@ -30212,7 +30212,7 @@ function ganttSheet(M, o){
   }
   var sw = function(col, lab, extra){ return '<span style="display:inline-block;width:14px;height:9px;background:' + col + ';margin-right:4px;' + (extra || '') + '"></span>' + lab + ' &nbsp; '; };
   var cats = hasCost ? sw(PAL.cls.hard, 'Hard cost') + sw(PAL.cls.cont, 'Contingency') + sw(PAL.cls.soft, 'Soft cost') + sw(PAL.cls.ffe, 'FF&amp;E') : sw(PAL.grp.predev, 'Pre-development task') + sw(PAL.grp.construction, 'Construction task') + sw(PAL.grp.other, 'Other task');
-  h += '</tbody></table></div><div style="font-size:11px;opacity:.9;margin-top:5px;line-height:1.9">' + sw(PAL.ph.Construction, 'Phase (deep colour of its tasks)') + (hasWbs ? sw(deep(PAL.cls.hard), 'Summary task (rolls up what is inside it)') : '') + (showPct ? sw('linear-gradient(to right,' + deep(PAL.cls.hard) + ' 50%,' + PAL.cls.hard + ' 50%)', 'Percent complete (the darker part)') : '') + cats + sw(PAL.lu, 'Lease-up') + sw(PAL.ops, 'Stabilized operations') + sw(GX.task, 'Critical path (red outline)', 'border:2px solid ' + GX.crit + ';box-sizing:border-box;background:transparent') + '<span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilization</div>';
+  h += '</tbody></table></div><div style="font-size:11px;opacity:.9;margin-top:5px;line-height:1.9">' + sw(PAL.ph.Construction, 'Phase (deep color of its tasks)') + (hasWbs ? sw(deep(PAL.cls.hard), 'Summary task (rolls up what is inside it)') : '') + (showPct ? sw('linear-gradient(to right,' + deep(PAL.cls.hard) + ' 50%,' + PAL.cls.hard + ' 50%)', 'Percent complete (the darker part)') : '') + cats + sw(PAL.lu, 'Lease-up') + sw(PAL.ops, 'Stabilized operations') + sw(GX.task, 'Critical path (red outline)', 'border:2px solid ' + GX.crit + ';box-sizing:border-box;background:transparent') + '<span style="display:inline-block;width:9px;height:9px;background:' + GX.ms + ';transform:rotate(45deg);margin:0 6px 0 2px"></span>Milestone &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px solid ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Certificate of occupancy &nbsp; <span style="display:inline-block;width:0;height:11px;border-right:2px dashed ' + GX.ms + ';margin:0 6px 0 2px;vertical-align:-2px"></span>Stabilization</div>';
   return h;
 }
 function startYear(s){ return startDate(s).getFullYear(); }
@@ -33101,7 +33101,11 @@ window.bkInterestCoverage = function(){
 };
 function card(title, head, rows){ return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>' + title + '</caption><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>'; }
 function wrap(sheet, build){ var prev = window.RENDERERS && RENDERERS[sheet]; if(typeof prev !== 'function') return;
-  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments); try { var add = build(); if(add && o && typeof o.main === 'string') o.main += add; } catch(e){} return o; }; }
+  RENDERERS[sheet] = function(){ var o = prev.apply(this, arguments);
+    /* a page that withholds its results (a deal missing inputs, or none open) gets no exit-year figures either */
+    if(o && /withheld|calculation blocked|no deal loaded/i.test(String(o.main || ''))) return o;
+    try { var rd = typeof bkDealReadiness === 'function' ? bkDealReadiness() : null; if(rd && rd.canCalculate === false) return o; } catch(e){}
+    try { var add = build(); if(add && o && typeof o.main === 'string') o.main += add; } catch(e){} return o; }; }
 wrap('Returns', function(){
   var rows = window.bkExitYearTable(); if(!rows) return '';
   return '<div class="tbl-wrap" style="margin-top:16px;padding:12px 14px"><div style="font:700 12px Inter,system-ui,sans-serif;margin-bottom:6px">Levered IRR by Exit Year</div>' + (window.bkExitYearChart ? window.bkExitYearChart(rows, 900) : '') + '</div>' + card('If Sold at the End of Each Year - levered returns by exit year', '<th class="rowlabel-h">Exit at the end of</th><th>Levered IRR</th><th>Equity Multiple</th><th>Equity Profit</th>',
@@ -33905,7 +33909,7 @@ wrap('After-Tax Report'); wrap('Refinance Report');
 </script>
 <style id="bk-touch-targets-css">/* TOUCH TARGETS (phones and tablets, and any touch screen). The controls a finger has to hit were 24 to 34 px high; they are raised to 40 px: the ribbon icon buttons (38 px, so the ribbon stays under its 46 px ceiling), the tab-strip arrows, the header buttons
    (Guide, Search, Sign in, theme), the Sheets menu button, the Downside / Base / Upside and Undo / Redo buttons, the workflow steps, the page buttons and the sensitivity chips. The tabs (the section page tabs, the editor tabs and the view tabs) keep their established 28 px height.
-   Buttons inside table rows are left alone so dense grids keep their row height. A desktop with a mouse is unchanged. Size only: no colour, type, handler or text changes. */
+   Buttons inside table rows are left alone so dense grids keep their row height. A desktop with a mouse is unchanged. Size only: no color, type, handler or text changes. */
 @media (max-width:900px), (pointer:coarse){
   html body .nav-chev, html body .pl-search, html body #pl-guide-toggle, html body .pl-user button,
   html body .bk-btn, html body .bk-menu-btn, html body .bk-case button, html body button[data-bk-undo], html body button[data-bk-redo], html body .bk-step,
@@ -34155,7 +34159,7 @@ function plan(scope, here){
 }
 
 /* take the open page as it stands: its title, its key-figure strip, its own panels and tables; no chrome, controls as text */
-var DROP = '.bk-flow,.bk-stepnav,.bk-case,.side-col,.bk-dui,.pf-bar,.rp-bar,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,.bk-pt-bar,.ae-tabs,.ae-subs,.bk-sg,.bk-views,.bk-pack-cta,script,style,noscript,[hidden]';
+var DROP = '.bk-flow,.bk-stepnav,.bk-case,.side-col,.bk-dui,.pf-bar,.rp-bar,.color-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,.bk-pt-bar,.ae-tabs,.ae-subs,.bk-sg,.bk-views,.bk-pack-cta,script,style,noscript,[hidden]';
 function harvest(){
   var fr = document.querySelector('#viewport .sheet-frame'), main = fr && fr.querySelector('.main-col'); if(!main) return null;
   var tb = fr.querySelector('.title-block'), meta = [];
@@ -34580,7 +34584,7 @@ function dealView(s, now){
   return o; }
 
 function kv(rows){ return '<table class="bk-ep-kv"><tbody>' + rows.filter(Boolean).map(function(a){ return '<tr><th scope="row">' + a[0] + '</th><td>' + a[1] + '</td></tr>'; }).join('') + '</tbody></table>'; }
-function field(o, k, ph, w){ var v = o.s[k]; if(k === 'epTargetIRR' && v != null && v !== '') v = (num(v) * 100).toFixed(1) + '%'; return '<input type="text" class="bk-ep-in bk-nofield" data-bk-w="free" value="' + esc(v == null ? '' : v) + '" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '" onchange="bkEPSet(\'' + esc(o.key).replace(/'/g, '\\\'') + '\',\'' + k + '\',this.value)"' + (w ? ' style="width:' + w + '"' : '') + '>'; }
+function field(o, k, ph, w){ var v = o.s[k]; if(k === 'epTargetIRR' && v != null && v !== '') v = (num(v) * 100).toFixed(1) + '%'; return '<input type="text" class="bk-ep-in bk-nofield" data-bk-w="free" value="' + esc(v == null ? '' : v) + '" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '" onchange="bkEPSet(\'' + esc(o.key).replace(/'/g, '\\\'') + '\',\'' + k + '\',this.value)"' + ' style="text-align:left !important' + (w ? ';width:' + w : '') + '">'; }   /* text reads from the left; the app's input rule right-aligns figures */
 function card(o){
   var s = o.s, nm = esc(s.name || o.key); if(!o.ok) return '<section class="bk-ep-card"><h3>' + nm + '</h3><div class="note-flag"><span>&#9888;</span><div>The engine could not run this deal: ' + esc(o.err) + '</div></div></section>';
   var m = o.m, gp = num(s.gpShare), lp = 1 - gp, eq = num(m.equity), contrib = num(m.contributed) || eq, dl = function(d){ return d ? d.toLocaleDateString('en-US', { month:'short', year:'numeric', timeZone:'UTC' }) : '—'; };
@@ -34713,10 +34717,10 @@ render.__bkOriginal = orig && orig.__bkOriginal || orig;
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Source Data', render); else RENDERERS['Source Data'] = render;
 })();
 </script>
-<style id="bk-palette-css">/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.
+<style id="bk-palette-css">/* PALETTE. One defined color scheme, set once as tokens so every sheet, chart and chip reads from it.
    Navy is the brand and the structure (chrome, section bars, the key rule). Slate greys carry the neutral surfaces. One blue is the accent.
-   Four semantic colours, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
-   The cell convention is unchanged: blue text on pale yellow is an input. This part loads after every other style so it settles the tokens; it changes colours only. */
+   Four semantic colors, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
+   The cell convention is unchanged: blue text on pale yellow is an input. This part loads after every other style so it settles the tokens; it changes colors only. */
 :root{
   --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
   --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
@@ -34843,7 +34847,7 @@ html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,syste
 .bk-ribbon{ overflow:hidden; }
 .bk-ribbon .rb-g:first-child{ flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
 .bk-ribbon .rb-g:not(:first-child){ flex:0 0 auto; }
-/* the ribbon carries Print and Colour key on wide screens, so the copies beside the page title go */
+/* the ribbon carries Print and Color key on wide screens, so the copies beside the page title go */
 @media (min-width:901px){ html body #viewport .title-block .bk-print-btn{ display:none; } }
 
 /* Phones have no side-by-side cells, so an input keeps its box outline there. */
@@ -35263,13 +35267,14 @@ html body #viewport .pl-hero-photo .pl-sub{ margin:0 0 12px }
 /* taller bottom figures bar */
 html body #bk-kpibar{ min-height:92px }
 html body #bk-kpibar .kb-c{ display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding-top:16px; padding-bottom:14px }
-html body #bk-kpibar .kb-v{ font-size:21px; overflow:visible; text-overflow:clip }
+html body #bk-kpibar .kb-c{ container-type:inline-size }
+html body #bk-kpibar .kb-v{ font-size:clamp(11px, 21cqw, 21px); overflow:visible; text-overflow:clip }   /* the figure is sized to its cell, so it fits however many cells share the bar */
 html body #bk-kpibar .kb-k{ margin-bottom:3px }
 html body.bk-has-kpibar{ padding-bottom:92px }
 @media (min-width:901px){ html body.bk-has-kpibar .rail{ max-height:calc(100vh - 92px) } }
 /* bar labels stay on one line (Equity multiple) */
-html body #bk-kpibar .kb-k{ white-space:nowrap; font-size:10px; letter-spacing:.04em }
-html body #bk-kpibar .kb-c{ padding-left:8px; padding-right:8px; min-width:max-content }
+html body #bk-kpibar .kb-k{ white-space:normal; font-size:10px; letter-spacing:.04em; overflow-wrap:anywhere }
+html body #bk-kpibar .kb-c{ padding-left:8px; padding-right:8px; min-width:0 }   /* every cell the same width; a long label wraps inside its cell */
 /* Model Checks (final): the finding takes the room, the three short columns are compact */
 /* print-legacy (design-system phase 1): active only while a page is being printed (html.bk-printing, set by src/167 for print preparation and printing), so printed pages are exactly as before; the screen uses the table standard (src/209). Remove in phase 5. */
 
@@ -35296,8 +35301,8 @@ html:where(.bk-printing) body #viewport table.fin.fin.fin td[data-bk-kind] .stat
 html body #viewport table.fin td[data-bk-align="num"], html body #viewport table.fin td.bk-a-num{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important }
 html body #viewport table.fin td[data-bk-kind="num"]{ white-space:nowrap !important; word-break:keep-all !important; overflow-wrap:normal !important; padding-left:6px !important; padding-right:8px !important }
 html body #viewport table.fin.bk-yrs{ font-size:12.5px }
-/* bottom figures bar: the same navy, 7% see-through (no blur, no colour shift) */
-html body #bk-kpibar.bk-kpibar, html body #bk-kpibar{ background:rgba(14,42,74,.93) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important }
+/* bottom figures bar: the same navy, 7% see-through (no blur, no color shift) */
+html body #bk-kpibar.bk-kpibar, html body #bk-kpibar{ background:var(--bk-navy,#0E2A4A) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important }
 html body #bk-kpibar .kb-k{ color:#E3ECF7 !important }
 html body #bk-kpibar .kb-s{ color:#CFE0F5 !important }
 @media print{ html body #bk-kpibar{ display:none !important } }
@@ -35488,7 +35493,7 @@ html:where(.bk-printing) body #viewport table.fin tbody tr.total .status-chip{ b
 </style>
 <style id="bk-control-uniform-css">/* ONE LOOK FOR EVERY CONTROL. A button, box or drop-down that nobody styled falls back to the browser's own look: Arial, 13 px, rounded corners and a different height from the rest of the app (the Sign in and theme
    buttons, the tab arrows, the Rent Roll row count, the Deal Remedies and Deal Review boxes). Every control now uses the app's font, and an unstyled box or drop-down in a sheet gets the same look as the editor boxes.
-   :where() keeps these rules at zero weight, so any control that already has its own style keeps it. Font, size, border and padding only: no layout, colour value, handler or text changes. */
+   :where() keeps these rules at zero weight, so any control that already has its own style keeps it. Font, size, border and padding only: no layout, color value, handler or text changes. */
 :where(button, input, select, textarea){ font-family:inherit; }
 :where(#viewport) :where(input[type=text], input[type=number], input:not([type]), select, textarea){ box-sizing:border-box; padding:4px 7px; border:1px solid var(--bk-in-line,var(--ae-line)); background:var(--bk-in-fill,var(--ae-cell)); color:var(--bk-in-ink,var(--ae-ink)); font-size:12.5px; font-weight:600; border-radius:0; }
 </style>
@@ -35499,17 +35504,17 @@ html:where(.bk-printing) body #viewport table.fin tbody tr.total .status-chip{ b
    stay exactly as they were until phase 5 moves print onto this standard. Report typesetting (rp-tbl) and the editor's form grids (ae-grid) are separate.
    Screen only. No figure, label or status word is changed here: only where things sit and how they read. */
 :root, body{
-  /* declared on body too, so a token that names a theme colour (var(--ink-700)) takes the theme that is on, not the root default; status tiers and field states use the palette's own colours (src/182, src/162a), so the standard adds no new colour */
+  /* declared on body too, so a token that names a theme color (var(--ink-700)) takes the theme that is on, not the root default; status tiers and field states use the palette's own colors (src/182, src/162a), so the standard adds no new color */
   --bk-tier-pass-bg:var(--bk-ok-bg); --bk-tier-pass-ink:var(--bk-link-ink); --bk-tier-warn-bg:var(--bk-warn-bg); --bk-tier-warn-ink:#8A5A12; --bk-tier-fail-bg:var(--bk-fail-bg); --bk-tier-fail-ink:#A32F24;
-  --bk-tier-na-bg:#ECEFF2; --bk-tier-na-ink:var(--bk-na-ink); --bk-tier-role-line:var(--ae-line); --bk-tier-neutral-bg:#E6EDF3; --bk-tier-neutral-ink:var(--ink-700); --bk-tier-dot:var(--ae-dim);
+  --bk-tier-na-bg:#ECEFF2; --bk-tier-na-ink:#56616C; --bk-tier-role-line:var(--ae-line); --bk-tier-neutral-bg:#E6EDF3; --bk-tier-neutral-ink:var(--ink-700); --bk-tier-dot:var(--ae-dim);
   --bk-field-unset:var(--ae-line); --bk-note-rule:#1F4E8C;
 }
 :root[data-theme="dark"], :root[data-theme="dark"] body{
-  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
+  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-na-ink:#9AA6B2; --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
 }
 /* the same dark values when the computer is set to dark and no theme was chosen in the app (as the palette does, src/162a) */
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]), :root:not([data-theme="light"]) body{
-  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
+  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-na-ink:#9AA6B2; --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
 } }
 @media screen {
 
@@ -35613,7 +35618,7 @@ html:where(:not(.bk-printing)) body #viewport .tbl-wrap + .note-flag{ margin-top
 html body #viewport .bk-box.bk-box-t{ padding:0 !important; }
 html body #viewport .bk-box.bk-box-t > .bk-box-b{ padding:12px 14px; }
 /* an actions column (Load, Remove, Open): its buttons stay on one line, at the right of the row; the column is sized to them (src/111) */
-html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="actions"]{ text-align:right !important; white-space:nowrap !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="actions"][data-bk-role]{ text-align:right; white-space:nowrap; }
 html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-role="actions"] button + button{ margin-left:4px; }
 </style>
 <style id="bk-controls-css">/* CONTROLS (design-system phase 2). One definition for each control, replacing the per-module copies that were deleted from 121, 123, 142, 144, 153, 162,
@@ -35626,7 +35631,10 @@ html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-
    Buttons are styled in the sheet and in the dialogs (#pl-modal). Screen only: buttons and switches are not printed. No display, position or handler is set here, so a control that is hidden stays hidden.
    Home's next-step band (light buttons on navy) is a named exception and keeps its own rules (src/140, src/162a). */
 :root, body{ --bk-ctl-bg:var(--ae-cell,#fff); --bk-ctl-bg-hover:var(--ae-head2,#F1F4F8); --bk-ctl-line:var(--ae-line,#C4CDD9); --bk-ctl-ink:var(--ae-ink,#14212F); --bk-ctl-dim:var(--ae-dim,#566A80);
-  --bk-ctl-accent:var(--ae-accent,#1F4E8C); --bk-ctl-on:var(--ae-ink,#14212F); --bk-ctl-on-ink:var(--ae-cell,#fff); --bk-ctl-danger:#A32F24; --bk-ctl-font:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
+  --bk-ctl-accent:var(--ae-accent,#1F4E8C); --bk-ctl-on:var(--ae-ink,#14212F); --bk-ctl-on-ink:var(--ae-cell,#fff); --bk-ctl-danger:#A32F24; --bk-ctl-font:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; --bk-ctl-on-accent:#fff; }
+/* night: the accent is a light blue, so a filled button takes dark text on it (white on it would be 2.2:1) */
+:root[data-theme="dark"], :root[data-theme="dark"] body{ --bk-ctl-on-accent:#0B1A2B; --bk-ctl-danger:#F08C80; }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]), :root:not([data-theme="light"]) body{ --bk-ctl-on-accent:#0B1A2B; --bk-ctl-danger:#F08C80; } }
 @media screen{
   /* 1 · buttons */
   :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]){
@@ -35637,13 +35645,17 @@ html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-
   :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):disabled{ opacity:.45; cursor:default; }
   :is(#viewport, #pl-modal) :is(.status-chip[onclick], button.status-chip, .status-chip[role=button])::before{ display:none !important; }
   /* primary: the one main action of a block */
-  :is(#viewport, #pl-modal) :is(.bk-btn.primary, .bk-btn.pri, .ae-btn.pri, .ae-btn.primary, .pl-hbtn.primary){ color:#fff !important; background:var(--bk-ctl-accent) !important; border-color:var(--bk-ctl-accent) !important; }
+  :is(#viewport, #pl-modal) :is(.bk-btn.primary, .bk-btn.pri, .ae-btn.pri, .ae-btn.primary, .pl-hbtn.primary){ color:var(--bk-ctl-on-accent) !important; background:var(--bk-ctl-accent) !important; border-color:var(--bk-ctl-accent) !important; }
   :is(#viewport, #pl-modal) :is(.bk-btn.primary, .bk-btn.pri, .ae-btn.pri, .ae-btn.primary, .pl-hbtn.primary):hover{ filter:brightness(1.1); }
   /* quiet: a text action; danger keeps its red text (Clear inputs) */
   :is(#viewport, #pl-modal) :is(.bk-btn, .pl-hbtn).quiet{ background:transparent !important; border-color:transparent !important; color:var(--bk-ctl-accent) !important; }
-  :is(#viewport, #pl-modal) .pl-hbtn.danger{ color:var(--bk-ctl-danger) !important; }
+  :is(#viewport, #pl-modal) :is(.pl-hbtn, .bk-btn).danger{ color:var(--bk-ctl-danger) !important; }
   /* compact: inside tables and in the step bar, so neither grows */
   #viewport :is(td, th, .bk-flow) :is(.bk-btn, .ae-btn, .pl-hbtn, button.status-chip, .status-chip[onclick], .status-chip[role=button]){ height:24px; line-height:22px; padding:0 8px; font-size:11.5px; }
+  /* a button is never wider than its box; on a phone a long label wraps onto a second line instead of pushing the page sideways */
+  /* the unmatched [data-bk-never] lifts this to the base rule's weight, so it wins by coming later */
+  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .bk-btn[data-bk-never]){ max-width:100%; }
+  @media (max-width:760px){ :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .bk-btn[data-bk-never]){ white-space:normal; height:auto; min-height:30px; line-height:1.3; padding-top:6px; padding-bottom:6px; text-align:center; } }
   /* the step navigation ("Next: Debt Schedule ->") is the one larger, page-level size */
   #viewport .bk-stepnav .bk-btn{ height:34px; line-height:32px; padding:0 14px; font-size:12.5px; }
 
@@ -35687,10 +35699,8 @@ html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-
 #viewport table.bk-pf .bk-pf-sub{ display:block; margin-top:2px; font-size:11px; font-weight:400; color:var(--bk-ctl-dim); }
 #viewport table.bk-pf .bk-pf-sub b{ color:var(--bk-ctl-accent); font-weight:700; }
 #viewport table.bk-pf :is(th, td).bk-pf-act{ width:1%; text-align:right; padding-left:6px; }
-#viewport table.bk-pf td.bk-pf-act{ display:table-cell; white-space:nowrap !important; }
 #viewport table.bk-pf td.bk-pf-act .bk-btn{ display:inline-block; vertical-align:middle; }
-#viewport table.bk-pf td.bk-pf-act .bk-btn + .bk-btn{ margin-left:4px; }
-#viewport table.bk-pf td.bk-pf-act .bk-pf-rm{ color:var(--bk-ctl-danger) !important; }
+#viewport table.bk-pf .bk-pf-acts{ display:flex; justify-content:flex-end; gap:4px; }
 #viewport table.bk-pf tr.bk-pf-on > td{ background:var(--ae-head2, #EDF1F6); }
 #viewport table.bk-pf tr.bk-pf-on > td:first-child{ box-shadow:inset 3px 0 0 var(--bk-ctl-accent); }
 
@@ -35716,8 +35726,7 @@ html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-
 #viewport table.bk-ep-kv td .bk-ep-dim{ display:block; font-weight:400; }
 #viewport table.bk-ep-kv td .bk-ep-tag{ margin-left:0; margin-top:2px; }
 #viewport table.bk-ep-sum .bk-ep-ent{ display:block; margin-top:2px; font-size:11px; color:var(--bk-ctl-dim); }
-#viewport .bk-ep-in, html body #viewport input.bk-ep-in{ box-sizing:border-box; width:100% !important; max-width:none !important; text-align:left !important; height:28px; padding:0 8px; font:500 12px var(--bk-ctl-font); color:var(--bk-ctl-ink); background:var(--ae-cell,#fff); border:1px solid var(--bk-ctl-line); border-radius:2px; }
-html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !important; padding:0 8px !important; }
+html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ box-sizing:border-box; width:100%; max-width:none; text-align:left; height:28px; padding:0 8px; font:500 12px var(--bk-ctl-font); color:var(--bk-ctl-ink); background:var(--ae-cell,#fff); border:1px solid var(--bk-ctl-line); border-radius:2px; }
 #viewport .bk-ep-in:focus{ outline:2px solid var(--bk-ctl-accent); outline-offset:-1px; }
 #viewport .bk-ep-tag{ display:inline-block; margin-left:6px; padding:0 6px; font:700 10px/18px var(--bk-ctl-font); letter-spacing:.04em; text-transform:uppercase; border:1px solid currentColor; border-radius:2px; }
 #viewport .bk-ep-tag.ok{ color:#1F7A4C; } #viewport .bk-ep-tag.bad{ color:var(--bk-ctl-danger); }
@@ -35725,13 +35734,12 @@ html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !import
 /* Import review: each figure can be edited or (an income or expense line) left out; the row shows what you changed and what the OM said */
 #viewport .bk-omr-acts{ display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; }
 #viewport :is(.bk-omr-acts, .bk-omr-edit, td) .bk-btn.bk-omr-b{ height:22px; line-height:20px; padding:0 7px; font-size:11px; }
-#viewport .bk-btn.quiet.bk-omr-x{ color:var(--bk-ctl-danger) !important; }
 #viewport .bk-omr-st{ display:inline-block; padding:0 6px; font:700 10px/18px var(--bk-ctl-font); letter-spacing:.04em; text-transform:uppercase; border:1px solid currentColor; border-radius:2px; color:var(--bk-ctl-accent); }
 #viewport .bk-omr-st.reject{ color:var(--bk-ctl-danger); } #viewport .bk-omr-st.learned{ color:#1F7A4C; margin-left:4px; }
 #viewport .bk-omr-was{ margin-left:8px; font-size:11px; color:var(--bk-ctl-dim); }
 #viewport tr.bk-omr-on > td{ background:var(--ae-head2, #EDF1F6); }
 #viewport .bk-omr-edit{ display:inline-flex; gap:4px; align-items:center; justify-content:flex-end; }
-#viewport .bk-omr-edit input{ width:100% !important; max-width:130px; box-sizing:border-box; height:24px; padding:0 6px; font:600 12px var(--bk-ctl-font); text-align:right; border:1px solid var(--bk-ctl-accent); border-radius:2px; }
+html body #viewport .bk-omr-edit input.bk-nofield{ width:100%; max-width:130px; box-sizing:border-box; height:24px; padding:0 6px; font:600 12px var(--bk-ctl-font); text-align:right; border:1px solid var(--bk-ctl-accent); border-radius:2px; }
 
 /* Portfolio M: the calendar-year switch above the monthly table */
 #viewport .bk-pm-years{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 10px; }

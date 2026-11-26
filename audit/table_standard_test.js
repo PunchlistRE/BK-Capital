@@ -2,7 +2,7 @@
    (1) nothing in a financial table spills out of its cell (no text, box, drop-down or badge crosses into the next cell), and no column is crushed (no word is wider than its cell);
    (2) on a desktop-width screen every financial table is classified: it has a family (key-value, key-value with notes, ledger, period, matrix) and every column a role;
    (3) a key-value or ledger table scrolls sideways only when even its least widths (longest word, widest figure) exceed its card; tables stacked in one column that have the same column roles line their columns up (the same right edge for each figure, field and status column);
-   (4) every status label has a tier (provenance, result, role, not applicable, state, action) so its meaning shows in its form, not only its colour.
+   (4) every status label has a tier (provenance, result, role, not applicable, state, action) so its meaning shows in its form, not only its color.
    Report typesetting (rp-tbl) and the editor's own form grids (ae-grid) keep their own systems and are not part of this standard.  Read-only.
    node audit/table_standard_test.js index.html [--quick] */
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path');

@@ -1,5 +1,5 @@
 /* CONTRAST (polish group C). On the sheets that carried faint text, no text is below WCAG AA (4.5:1, 3:1 for large text), in Light and Night, counting the dimming of the element and every parent (opacity), so a dimmed row is
-   judged as it is seen. One kind of text is named as an exception and printed as KNOWN: text on a heat-map fill (an inline background colour on a cell or tile), where the ink is already the better of near-black and white for the fill
+   judged as it is seen. One kind of text is named as an exception and printed as KNOWN: text on a heat-map fill (an inline background color on a cell or tile), where the ink is already the better of near-black and white for the fill
    and a higher ratio means changing the fills themselves. Read-only: nothing here changes the app, a calculation or deal data.   node audit/contrast_polish_test.js index.html */
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const path = require('path'); const A = require(path.join(__dirname, 'deal.js')); const HTML = path.resolve(process.argv[2] || 'index.html'), FIXED = Date.UTC(2026, 10, 13, 12, 0, 0);
 let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 300) + ']' : '')); };
