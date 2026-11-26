@@ -1115,6 +1115,11 @@
 "close": "</script>"
 },
 {
+"file": "214-bk-debt-structure.js",
+"open": "\n<script id=\"bk-debt-structure\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"

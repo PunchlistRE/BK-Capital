@@ -8,6 +8,9 @@ if(!window.BKReg) return;
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
 function F(k, label, kind, o){ return Object.assign({ k:k, label:label, kind:kind }, o || {}); }
 function sug(v, why){ return function(){ return { v:v, why:why }; }; }
+/* the loan type's typical term when one is chosen, otherwise the general default (or nothing) */
+function typ(k, v, why){ return function(s){ var t = window.bkLoanTypeTypical ? window.bkLoanTypeTypical(s, k) : undefined; if(t !== undefined) return { v:t, why:'Typical for ' + (s.loanType === 'Agency' || s.loanType === 'Acquisition' ? 'an ' : 'a ') + s.loanType + ' loan. A starting point, not a quote.' }; return v === null || v === undefined ? null : { v:v, why:why }; }; }
+function sofr(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; }
 window.BKReg.addFields([
   /* property */
   F('name', 'Name', 'text', { help:'What the deal is called on every page and report.', ex:'14 Main Street' }),
@@ -46,12 +49,35 @@ window.BKReg.addFields([
   F('capex', 'Capital items', 'table', { help:'Dated one-off capital spending below NOI (roof, HVAC, renovations).', sheet:'Expenses' }),
   /* financing (acquisition loan) */
   F('debtEnabled', 'Use acquisition debt', 'bool'),
-  F('acqLTV', 'Loan-to-value, max', 'pct', { sug:sug(0.65, 'Most lenders cap multifamily at 65% to 75%; 65% is a safe starting point.') }),
-  F('acqRate', 'Interest rate', 'pct', { sug:sug(0.0675, 'A placeholder until you have a lender quote.') }),
-  F('acqAmort', 'Amortization, years', 'int', { sug:sug(30, '30 years is standard.') }),
-  F('acqIO', 'Interest-only years', 'num', { zeroOk:true, help:'0 if none.' }),
-  F('acqOrigFee', 'Origination fee, %', 'pct', { zeroOk:true, sug:sug(0.01, '1% is typical.') }),
-  F('acqDSCR', 'Lender minimum DSCR', 'num'),
+  F('loanType', 'Loan type', 'choice', { options:['Permanent / Term', 'Acquisition', 'Refinance', 'Cash-Out Refinance', 'Bridge', 'Construction', 'Renovation / Rehabilitation', 'Construction-to-Permanent', 'Agency', 'CMBS', 'Bank / Credit Union', 'Life Company', 'SBA', 'Hard Money'],
+    help:'What kind of loan it is. It suggests typical terms for the questions that follow; it never changes the calculation on its own. Many loans are two of these at once: an acquisition loan can be a bridge loan, an agency loan is permanent financing.' }),
+  F('acqLTV', 'Loan-to-value, max', 'pct', { sug:typ('acqLTV', 0.65, 'Most lenders cap multifamily at 65% to 75%; 65% is a safe starting point.') }),
+  F('debtRateType', 'Interest rate structure', 'choice', { options:['Fixed', 'Fixed (SOFR-based)', 'Floating'], sug:typ('debtRateType', null, ''),
+    help:'Fixed: one contractual rate for the term. Fixed (SOFR-based): SOFR plus a spread on the lock date, then fixed for the term. Floating: an index (usually SOFR) plus a spread, reset through the term.' }),
+  F('acqRate', 'Interest rate', 'pct', { when:function(s){ return String(s.debtRateType || 'Fixed') === 'Fixed' || !s.debtRateType; }, sug:typ('acqRate', 0.0675, 'A placeholder until you have a lender quote.') }),
+  F('debtIndexName', 'Floating index', 'choice', { options:['SOFR', 'Prime', 'Treasury', 'Other'], when:function(s){ return s.debtRateType === 'Floating'; }, sug:sug('SOFR', 'Almost every floating commercial loan is priced over SOFR.') }),
+  F('debtIndexTenor', 'Which SOFR the loan uses', 'choice', { options:['Overnight SOFR', '30-day SOFR average', '90-day SOFR average', '180-day SOFR average', '1-month Term SOFR', '3-month Term SOFR', '6-month Term SOFR'],
+    when:function(s){ return sofr(s); }, help:'The loan agreement names the benchmark and how often it resets. Overnight SOFR and the 30, 90 and 180-day averages are published free by the New York Fed; Term SOFR is published by CME and is entered from the lender\'s quote.', sug:typ('debtIndexTenor', 'Overnight SOFR', 'The published overnight rate, if the loan does not name another.') }),
+  F('debtIndexRate', 'Benchmark rate today', 'pct', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; },
+    help:'The index the loan is priced over. A typed rate is recorded as an override, with the date; the published figure stays on record.', sug:function(s){ var p = window.bkSofrFor ? window.bkSofrFor(s.debtIndexTenor) : null;
+      if(!p && sofr(s) && window.bkSofrFetch && !/Term SOFR/.test(String(s.debtIndexTenor || ''))) window.bkSofrFetch().then(function(){ if(document.getElementById('gdf-debtIndexRate') && window.bkGuideRefresh) window.bkGuideRefresh(); }, function(){});
+      return p ? { v:p.rate, why:'The latest published ' + (s.debtIndexTenor || 'Overnight SOFR') + ', effective ' + p.date + ' (Federal Reserve Bank of New York).' } : null; } }),
+  F('debtSpread', 'Lender spread over the index', 'pct', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; }, sug:typ('debtSpread', 0.0275, 'Stabilized multifamily often prices about 2.25% to 3.25% over SOFR.') }),
+  F('debtIndexFloor', 'Index floor (SOFR floor)', 'pct', { zeroOk:true, when:function(s){ return s.debtRateType === 'Floating'; } }),
+  F('rateCapStrike', 'Purchased rate cap strike (SOFR cap)', 'pct', { zeroOk:true, when:function(s){ return s.debtRateType === 'Floating'; }, help:'Floating loans usually require one: above the strike the cap pays the difference.' }),
+  F('debtResetMonths', 'Reset frequency, months', 'int', { when:function(s){ return s.debtRateType === 'Floating'; }, sug:typ('debtResetMonths', 1, 'Most SOFR loans reset monthly.') }),
+  F('debtIndexDrift', 'Rate outlook, change a year', 'pct', { zeroOk:true, when:function(s){ return s.debtRateType === 'Floating'; }, help:'Later months follow this outlook, not today\'s rate: +0.25% means the index rises a quarter point a year. Blank holds it flat. It is a forecast, not a published rate.' }),
+  F('debtDayCount', 'Day-count convention', 'choice', { options:['Actual/360', '30/360', 'Actual/365'], sug:typ('debtDayCount', null, ''), help:'Actual/360, the usual commercial convention, charges 365/360 of the quoted rate over a year.' }),
+  F('repayType', 'Repayment structure', 'choice', { options:['Fully amortizing', 'Interest only', 'Partial interest only', 'Interest only then amortizing', 'Balloon'], sug:typ('repayType', 'Balloon', 'Most commercial loans amortize over 25 to 30 years and are repaid at maturity.') }),
+  F('acqAmort', 'Amortization, years', 'int', { when:function(s){ return String(s.repayType || '') !== 'Interest only'; }, sug:typ('acqAmort', 30, '30 years is standard.') }),
+  F('acqIO', 'Interest-only years', 'num', { zeroOk:true, help:'0 if none.', when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); }, sug:typ('acqIO', null, '') }),
+  F('debtTerm', 'Loan term (maturity), years', 'num', { help:'Blank means the loan runs to the sale.', sug:typ('debtTerm', null, '') }),
+  F('recourse', 'Recourse', 'choice', { options:['Full recourse', 'Non-recourse', 'Limited / carve-out guaranty'], sug:typ('recourse', null, '') }),
+  F('prepayType', 'Prepayment', 'choice', { options:['Open', 'Fixed prepayment penalty', 'Step-down', 'Yield maintenance', 'Defeasance', 'Custom'], sug:typ('prepayType', null, ''), help:'What repaying early costs. It is charged in the sale month when the sale comes before maturity.' }),
+  F('acqOrigFee', 'Origination fee, %', 'pct', { zeroOk:true, sug:typ('acqOrigFee', 0.01, '1% is typical.') }),
+  F('debtExitFeePct', 'Exit fee, % of the balance repaid', 'pct', { zeroOk:true, sug:typ('debtExitFeePct', null, '') }),
+  F('acqDSCR', 'Lender minimum DSCR', 'num', { sug:typ('acqDSCR', null, '') }),
+  F('acqDebtYield', 'Lender minimum debt yield', 'pct', { zeroOk:true, sug:typ('acqDebtYield', null, '') }),
   /* hold and exit */
   F('holdYears', 'Hold period, years', 'int', { sug:sug(5, 'Five years is the usual base case.') }),
   F('exitCap', 'Exit cap rate', 'pct', { help:'The cap rate a buyer pays when you sell, applied to next year\'s income. Compare it with the going-in cap rate (year-1 NOI divided by the purchase price): an exit cap below the going-in cap assumes the market improves; above it is the cautious case.', sug:function(s){ var c = safe(function(){ return bkCalc(); }, {}), p = Number(s.purchasePrice) || 0;

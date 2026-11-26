@@ -29,20 +29,48 @@
      Conventions: IO does NOT consume the stated amortization period (approved F09). Row.balance = balance outstanding at month end
      after scheduled payment and any maturity/refinance event, BEFORE repayment from sale proceeds in the final month.
      Row identity: beg + draw - principal - payoff = balance. */
+  /* DEBT STRUCTURE (loan terms beyond rate and size). All optional: a deal that sets none of them is calculated exactly as before.
+     repayType   Fully amortizing (amortizes over the loan term), Interest only (no principal before maturity), Partial interest only and
+                 Interest only then amortizing (acqIO years of interest, then amortizing over acqAmort), Balloon (amortizes over acqAmort, repaid at maturity).
+     debtDayCount  Actual/360 accrues 365/360 of the quoted rate's interest each year; 30/360 and Actual/365 accrue the quoted rate. Payments are set on the
+                 quoted rate, so under Actual/360 more of each payment is interest. Blank is 30/360, as before.
+     extensions  debtExtUse = 1 exercises debtExtCount extensions of debtExtMonths each: maturity moves out and debtExtFeePct of the balance is paid at each.
+     loan costs  debtExitFeePct of what is repaid at payoff (sale or maturity); prepayment premium when the loan is repaid at a sale before maturity. */
+  function termMonths(s){ return Math.max(1,Math.round(Number(s.debtTerm||s.holdYears)*12)); }
+  window.bkLoanShape=function(s){ const t=String(s.repayType||''), term=termMonths(s), hasTerm=Number(s.debtTerm)>0;
+    let io=Math.max(0,Math.round(Number(s.acqIO)*12)), am=Math.max(1,Math.round(Number(s.acqAmort)*12));
+    if(t==='Interest only') io=99999; else if(t==='Fully amortizing'){ io=0; if(hasTerm) am=term; } else if(t==='Balloon') io=0;
+    return { io:io, amort:am, term:term, interestOnly:t==='Interest only' }; };
+  window.bkDayCountFactor=function(s){ return String(s.debtDayCount||'')==='Actual/360'?365/360:1; };
+  function extMonths(s){ return Number(s.debtExtUse)===1?Math.max(0,Math.round(Number(s.debtExtCount)||0))*Math.max(0,Math.round(Number(s.debtExtMonths)||0)):0; }
+  /* the prepayment premium on a balance repaid at month m of the loan, under the loan's prepayment terms */
+  window.bkPrepayPremium=function(s,bal,m,maturity,coupon){ const t=String(s.prepayType||''), left=maturity-m; if(!(bal>0)||left<=0||!t||t==='Open') return 0;
+    if(left<=Math.max(0,Math.round(Number(s.prepayOpenMonths)||0))) return 0;   /* the open window before maturity */
+    const yr=Math.max(1,Math.ceil(m/12));
+    if(t==='Fixed prepayment penalty'||t==='Custom') return bal*Math.max(0,Number(s.prepayPct)||0);
+    if(t==='Step-down'){ const st=String(s.prepaySteps||'').split(/[^0-9.]+/).filter(Boolean).map(Number); const p=st[yr-1]; return bal*Math.max(0,(p||0)/100); }
+    if(t==='Yield maintenance'||t==='Defeasance'){ const tsy=Number(s.prepayTreasury)>0?Number(s.prepayTreasury):Math.max(0,Number(s.debtIndexRate)||0), diff=Math.max(0,coupon-tsy), i=tsy/12;
+      const pv=diff>0?(i>0?bal*diff/12*(1-Math.pow(1+i,-left))/i:bal*diff/12*left):0;
+      return t==='Yield maintenance'?Math.max(pv,bal*Math.max(0,Number(s.prepayPct)>0?Number(s.prepayPct):0.01)):pv+bal*(Number(s.defeaseCostPct)>0?Number(s.defeaseCostPct):0.005); }
+    return 0; };
   function bkDebtLifecycleCore(s,loan,holdM,debtOff,noiArrFn){
-    const amortMonths=Math.max(1,Math.round(Number(s.acqAmort)*12)),io=Math.max(0,Math.round(Number(s.acqIO)*12));
-    const maturity=Math.max(1,Math.round(Number(s.debtTerm||s.holdYears)*12)),preExit=maturity<holdM;
+    const shp=bkLoanShape(s),amortMonths=shp.amort,io=shp.io,dcf=bkDayCountFactor(s);
+    const ext=extMonths(s),maturity=Math.max(1,termMonths(s)+ext),preExit=maturity<holdM;
+    const loanCosts=Array.from({length:holdM},()=>0),costNotes=[];
     const zeroRow=m=>({m,loan:'NONE',beg:0,draw:0,payment:0,interest:0,principal:0,payoff:0,fees:0,balance:0,annualRate:0,indexRate:null});
     const orig=[];let bal=loan;
     for(let m=1;m<=holdM;m++){
       if(m>maturity){orig.push(zeroRow(m));continue;}
-      const annualRate=bkDebtRateForMonth(s,m),r=annualRate/12,indexRate=isFloating(s)?indexForMonth(s,m):null,beg=bal,interest=bal*r;
+      const annualRate=bkDebtRateForMonth(s,m),r=annualRate/12,indexRate=isFloating(s)?(window.bkDebtIndexForMonth?bkDebtIndexForMonth(s,m):indexForMonth(s,m)):null,beg=bal,interest=bal*r*dcf;
       let principal=0,payment=interest;
       if(m>io){const remaining=Math.max(1,amortMonths-(m-io-1));payment=bkPmt(r,remaining,bal);principal=Math.max(0,Math.min(bal,payment-interest));}
       bal=Math.max(0,bal-principal);
       orig.push({m,loan:loan>0?'ORIGINAL':'NONE',beg,draw:0,payment,interest,principal,payoff:0,fees:0,balance:bal,annualRate,indexRate});
     }
+    if(ext>0&&loan>0&&!debtOff){ const base=termMonths(s),n=Math.max(0,Math.round(Number(s.debtExtCount)||0)),len=Math.max(0,Math.round(Number(s.debtExtMonths)||0)),pct=Math.max(0,Number(s.debtExtFeePct)||0);
+      for(let k=0;k<n;k++){ const mm=base+k*len; if(mm>=1&&mm<=holdM&&pct>0){ const b=orig[mm-1]?orig[mm-1].balance:0; loanCosts[mm-1]+=b*pct; costNotes.push({m:mm,kind:'extension fee',amount:b*pct}); } } }
     const balloon=orig[Math.min(maturity,holdM)-1]?orig[Math.min(maturity,holdM)-1].balance:0;
+    if(preExit&&loan>0&&!debtOff&&Number(s.debtExitFeePct)>0){ const f=balloon*Number(s.debtExitFeePct); loanCosts[maturity-1]+=f; costNotes.push({m:maturity,kind:'exit fee',amount:f}); }
     let refi=null;
     if(Number(s.refiAtMaturity||0)&&preExit&&!debtOff){
       const arr=noiArrFn(),y=Math.min(arr.length-1,Math.max(0,Math.ceil(maturity/12)-1)),noi=Number(bkLenderNoi(arr[y],s)||0),cap=Math.max(.0001,Number(s.refiCapRate||s.exitCap||.07)),val=noi/cap,
@@ -63,13 +91,15 @@
     const flows={ds:combined.map(x=>x.payment),interest:combined.map(x=>x.interest),principal:combined.map(x=>x.principal),
       balloonEquity:combined.map(x=>(preExit&&!refi&&x.m===maturity)?balloon:0),
       refiProceeds:combined.map(x=>(refi&&x.m===maturity)?Math.max(0,refi.loan-balloon-refi.fee):0),
-      refiShortfall:combined.map(x=>(refi&&x.m===maturity)?Math.max(0,balloon+refi.fee-refi.loan):0)};
+      refiShortfall:combined.map(x=>(refi&&x.m===maturity)?Math.max(0,balloon+refi.fee-refi.loan):0),loanCosts};
     const payoffAtSale=debtOff?0:(refi&&holdM>maturity?(refiRows.length?refiRows[refiRows.length-1].balance:refi.loan):(!preExit?(orig[holdM-1]?orig[holdM-1].balance:0):0));
+    if(!preExit&&!debtOff&&payoffAtSale>0&&holdM>=1){ const cpn=orig[holdM-1]?orig[holdM-1].annualRate:0, prem=bkPrepayPremium(s,payoffAtSale,holdM,maturity,cpn), xf=payoffAtSale*Math.max(0,Number(s.debtExitFeePct)||0);
+      if(prem>0){ loanCosts[holdM-1]+=prem; costNotes.push({m:holdM,kind:'prepayment premium',amount:prem}); } if(xf>0){ loanCosts[holdM-1]+=xf; costNotes.push({m:holdM,kind:'exit fee',amount:xf}); } }
     const annual=[];for(let y=1;y<=Math.ceil(holdM/12);y++){const ms=combined.slice((y-1)*12,y*12),live=ms.filter(a=>a.loan!=='NONE');
       annual.push({y,payment:ms.reduce((z,a)=>z+a.payment,0),interest:ms.reduce((z,a)=>z+a.interest,0),principal:ms.reduce((z,a)=>z+a.principal,0),draw:ms.reduce((z,a)=>z+a.draw,0),payoff:ms.reduce((z,a)=>z+a.payoff,0),
         ending:ms.length?ms[ms.length-1].balance:0,avgRate:live.length?live.reduce((z,a)=>z+a.annualRate,0)/live.length:0,indexRate:ms.length?ms[0].indexRate:null});}
     return{loan,maturityMonth:maturity,holdMonths:holdM,preExit,balloon,refi,original:orig,refiMonths:refiRows,combined,annual,flows,payoffAtSale,
-      fundedBy:preExit?(refi?'REFINANCE':'EQUITY'):'SALE',conventions:{ioConsumesAmort:false}};
+      fundedBy:preExit?(refi?'REFINANCE':'EQUITY'):'SALE',loanCosts,costNotes,dayCount:dcf,shape:shp,extensionMonths:ext,conventions:{ioConsumesAmort:false}};
   }
   window.bkDebtLifecycle=function(){return bkDebt().lifecycle;};
   window.bkDebt=function(){
@@ -80,7 +110,7 @@
     const ltvBasis=bkConventions(s).cvLtvBasis, price=Number(s.purchasePrice)||0;
     const ltvValue=ltvBasis==='price'?price:ltvBasis==='lesser'?(stab>0?Math.min(price,stab):price):stab;
     const byLTV=Number(s.acqLTV)*ltvValue,byLTC=Number(s.acqLTC)>0?Number(s.acqLTC)*basis:Infinity;
-    const coupon=bkDebtRateForMonth(s,1),amortMonths=Math.max(1,Math.round(Number(s.acqAmort)*12)),unitPmt=bkPmt(coupon/12,amortMonths,1);
+    const coupon=bkDebtRateForMonth(s,1),shp0=bkLoanShape(s),amortMonths=shp0.amort,unitPmt=shp0.interestOnly?coupon/12*bkDayCountFactor(s):bkPmt(coupon/12,amortMonths,1);   /* an interest-only loan is sized on its interest-only payment */
     /* lenderNoiBasis (optional): 'after' runs the lender tests (DSCR, and LTV when it is measured on value) on NOI after replacement reserves, as many lenders do; blank = NOI before reserves, the original behavior. */
     const dscrNoi=(s.lenderNoiBasis==='after'&&isFinite(op.after))?op.after:op.noi;
     const byDSCR=(Number(s.acqDSCR)>0&&unitPmt>0)?(dscrNoi/Number(s.acqDSCR))/(unitPmt*12):Infinity;
@@ -92,7 +122,7 @@
     /* debtEnabled is the ONLY way to model an unlevered deal. debtTerm=0 means term-equals-hold
        via a falsy-OR and must never be used to mean no debt. */
     const debtOff=(s.debtEnabled===false);
-    const raw=Math.max(0,Math.min(byLTV,byLTC,byDSCR,byDebtYield)),loan=debtOff?0:Math.floor(raw/1000)*1000,fee=debtOff?0:loan*Number(s.acqOrigFee);
+    const raw=Math.max(0,Math.min(byLTV,byLTC,byDSCR,byDebtYield)),loan=debtOff?0:Math.floor(raw/1000)*1000,fee=debtOff?0:loan*(Number(s.acqOrigFee)+Math.max(0,Number(s.debtCommitFeePct)||0));
     const initialPmt=bkPmt(coupon/12,amortMonths,loan),dscr=initialPmt?dscrNoi/(initialPmt*12):0,ltv=ltvValue?loan/ltvValue:0,ltc=basis?loan/basis:0;
     let binding=debtOff?'DEBT OFF':'LTV';const rounded=x=>Math.floor(x/1000)*1000;
     if(!debtOff){ if(rounded(byDebtYield)===loan)binding='DEBT YIELD';
@@ -101,7 +131,7 @@
     const L=bkDebtLifecycleCore(s,loan,hold,debtOff,()=>bkAnnualCF().arr);
     const months=L.combined,annual=L.annual,liveR=months.filter(x=>x.loan!=='NONE');
     /* V32.3 (CV-D2): reported payment and going-in DSCR use the ACTUAL month-1 contractual payment (interest-only during an IO period). The amortizing figures stay available as pmtAmortizing / dscrAmortizing. Debt SIZING is unchanged (still sized on the amortizing constant). */
-    const goingInPmt=(L.combined[0]&&L.combined[0].loan!=='NONE')?L.combined[0].payment:0,goingInDscr=goingInPmt?dscrNoi/(goingInPmt*12):0,pmtBasis=Math.round(Number(s.acqIO)*12)>0?'INTEREST-ONLY':'AMORTIZING';
+    const goingInPmt=(L.combined[0]&&L.combined[0].loan!=='NONE')?L.combined[0].payment:0,goingInDscr=goingInPmt?dscrNoi/(goingInPmt*12):0,pmtBasis=shp0.io>0?'INTEREST-ONLY':'AMORTIZING';
     const equity=basis+fee-loan,maxCoupon=liveR.length?Math.max(...liveR.map(x=>x.annualRate)):coupon,minCoupon=liveR.length?Math.min(...liveR.map(x=>x.annualRate)):coupon;
     return{s,op,basis,stab,ltvBasis,ltvValue,byLTV,byLTC,byDSCR,byDebtYield,dscrNoi,debtEnabled:!debtOff,loan,fee,pmt:debtOff?0:goingInPmt,dscr:debtOff?0:goingInDscr,pmtBasis,pmtAmortizing:debtOff?0:initialPmt,dscrAmortizing:debtOff?0:dscr,ltv:debtOff?0:ltv,ltc:debtOff?0:ltc,binding,months,annual,equity,debtAtSale:debtOff?0:L.payoffAtSale,coupon,rateType:isFloating(s)?'Floating':'Fixed',maxCoupon,minCoupon,lifecycle:L};
   };

@@ -17,7 +17,7 @@ function memSet(k, v){ try { localStorage.setItem(memKey(k), v); } catch(e){} }
 function depth(){ return st.depth || memGet('depth') || 'standard'; }
 /* Full depth: each step also asks the optional figures of its own area (keys that exist in the registry's field dictionary; none is required) */
 var FULL_EXTRA = { property:['gla', 'commercialArea', 'commercialUnits'], income:['oiLaundry', 'oiLateFees', 'oiPetRent', 'oiPetFees', 'oiParking', 'oiStorage', 'oiRubsPct', 'badDebtPct', 'concessionPct', 'lossToLeasePct', 'renoUnitsPerYear', 'renoDownMonths', 'renoPremium', 'renoCapexPerUnit'],
-  expenses:['utilities', 'rm', 'payroll', 'contract', 'ga', 'reserves'], debt:['acqIO', 'acqOrigFee', 'acqDSCR'], exit:['saleCostPct', 'rentGrowth', 'opexGrowth'] };
+  expenses:['utilities', 'rm', 'payroll', 'contract', 'ga', 'reserves'], debt:['acqIO', 'acqOrigFee', 'debtIndexFloor', 'rateCapStrike', 'debtResetMonths', 'debtIndexDrift', 'debtDayCount', 'recourse', 'prepayType', 'debtExitFeePct', 'acqDSCR', 'acqDebtYield'], exit:['saleCostPct', 'rentGrowth', 'opexGrowth'] };
 
 /* ------------------------------------------------------------ what each step asks (essentials only; "add detail" opens the full sheet) */
 var Q = { pct:'pct', money:'money', int:'int', num:'num', text:'text', bool:'bool' };
@@ -52,7 +52,12 @@ var DEVS = [
   EXIT ];
 /* the steps come from the analysis registry (src/139d): the deal's own analysis decides them. The lists above are the fallback if the registry is not loaded. */
 /* the two "type" questions, said plainly: what the building is (it decides which benchmarks and which steps apply) and what you plan to do with it (it decides whether the renovation steps appear) */
+var SWITCH = { loanType:1, debtRateType:1, debtIndexName:1, debtIndexTenor:1, repayType:1, debtEnabled:1 };
 var CHOICE_COPY = {
+  debtRateType:{ label:'How is the interest rate set?', help:'This decides which rate questions follow. SOFR is a floating benchmark: a loan priced over it either floats or locks the rate at closing.',
+    opts:{ 'Fixed':'One contractual rate for the whole term. Enter the rate.', 'Fixed (SOFR-based)':'SOFR plus a spread on the lock date, then fixed for the term. Later moves in SOFR do not change it.', 'Floating':'An index (usually SOFR) plus a spread, reset through the term. Later months follow your rate outlook, not today\'s rate.' } },
+  repayType:{ label:'How is the principal repaid?', help:'Decides the payment and what is still owed at maturity or sale.',
+    opts:{ 'Fully amortizing':'Paid off over the term: nothing left at maturity.', 'Interest only':'Interest only for the whole term: the full loan is repaid at maturity or sale.', 'Partial interest only':'Interest only for some years, then amortizing.', 'Interest only then amortizing':'Interest only for some years, then amortizing (the same as partial).', 'Balloon':'Amortizes over a longer schedule than the term; the rest is repaid at maturity.' } },
   propertyType:{ label:'What kind of building is it?', help:'The use of the building. It decides which market benchmarks apply (they are for multifamily) and whether the commercial-space step is asked.',
     opts:{ 'Multifamily':'Apartments. Market benchmarks apply.', 'Mixed-Use':'Apartments with shops or offices. Adds the commercial-space step.', 'Industrial':'Warehouse or flex. Adds the commercial-space step; no multifamily benchmarks.', 'Retail':'Shops. Adds the commercial-space step; no multifamily benchmarks.', 'Office':'Offices. Adds the commercial-space step; no multifamily benchmarks.', 'Hospitality':'Hotel. Underwritten on the standard steps.', 'Land':'Vacant land.', 'Other':'Anything else.' } },
   acqStrategy:{ label:'What is your plan for it?', help:'Your business plan, not the building. It decides whether the guide asks about renovations and extra income.',
@@ -61,13 +66,13 @@ function fromRegistry(s){ var R = window.BKReg; if(!R) return null; var a = R.of
   return wf.filter(function(st){ return typeof st.when !== 'function' || safe(function(){ return st.when(s); }, true); }).map(function(st){ return { id:st.id, title:st.title, why:st.why, sheet:st.sheet, skippable:!!st.skippable, fields:(st.fields || []).filter(function(e){ var d = R.field(e.k); return d && d.kind !== 'derived' && d.kind !== 'table' && R.requirement(e, s) !== 'na'; }).map(function(e){ var d = R.field(e.k), o = { k:e.k, label:e.label || d.label, t:d.kind === 'choice' ? 'text' : d.kind };
       if(d.kind === 'choice' && d.options) o.opts = d.options.slice(); var cp = CHOICE_COPY[e.k]; if(cp){ o.label = cp.label; o.help = cp.help; o.optHelp = cp.opts; } if(R.requirement(e, s) === 'required') o.req = 1; var h = e.help || d.help; if(h) o.help = h; var sg = e.sug || d.sug; if(sg) o.sug = sg; if(cp) o.help = cp.help; return o; }) }; }); }
 var FULL_EXTRA_DEV = { property:['gla', 'commercialArea', 'commercialUnits'], income:['badDebtPct', 'concessionPct'], expenses:['reserves'], debt:['conFixedAmt', 'permRate', 'permAmort'], exit:['saleCostPct', 'rentGrowth', 'opexGrowth'] };   /* a development has no renovation program or acquisition loan: its Full detail is its own */
-function fullExtras(list, s){ var R = window.BKReg; if(!R || depth() !== 'full') return list; var EX = /develop/i.test(String((s || {}).dealType || '')) ? FULL_EXTRA_DEV : FULL_EXTRA; return list.map(function(sec){ var have = {}; sec.fields.forEach(function(fl){ have[fl.k] = 1; }); var add = (EX[sec.id] || []).filter(function(k){ var d = R.field(k); return d && !have[k] && d.kind !== 'derived' && d.kind !== 'table' && !d.planned; }).map(function(k){ var d = R.field(k), o = { k:k, label:d.label, t:d.kind === 'choice' ? 'text' : d.kind }; if(d.help) o.help = d.help; if(d.sug) o.sug = d.sug; return o; });
+function fullExtras(list, s){ var R = window.BKReg; if(!R || depth() !== 'full') return list; var EX = /develop/i.test(String((s || {}).dealType || '')) ? FULL_EXTRA_DEV : FULL_EXTRA; return list.map(function(sec){ var have = {}; sec.fields.forEach(function(fl){ have[fl.k] = 1; }); var add = (EX[sec.id] || []).filter(function(k){ var d = R.field(k); return d && !have[k] && d.kind !== 'derived' && d.kind !== 'table' && !d.planned && !(typeof d.when === 'function' && !safe(function(){ return d.when(s || {}); }, true)); }).map(function(k){ var d = R.field(k), o = { k:k, label:d.label, t:d.kind === 'choice' ? 'text' : d.kind }; if(d.help) o.help = d.help; if(d.sug) o.sug = d.sug; return o; });
   return add.length ? Object.assign({}, sec, { fields:sec.fields.concat(add) }) : sec; }); }
 /* questions that apply only when the deal has commercial space: rent, recoveries and vacancy on commercial space are asked (and suggested) once there is
    commercial area, a suite count, a commercial lease, or a figure already entered; a residential deal is never asked for a commercial vacancy rate */
 var COMM_ONLY = { commercialRent:1, recovery:1, commercialVacancy:1 };
 function hasComm(d){ var n = function(k){ return Number(d[k]) || 0; }; return n('commercialArea') > 0 || n('commercialUnits') > 0 || n('commercialRent') > 0 || n('recovery') > 0 || (Array.isArray(d.leases) && d.leases.length > 0); }
-function sections(s){ s = s || bkLoad(); var list = fullExtras(fromRegistry(s) || (/develop/i.test(String(s.dealType || '')) ? DEVS : ACQ), s), d = Object.assign({}, s, st.draft || {}), comm = hasComm(d);
+function sections(s){ s = s || bkLoad(); var d = Object.assign({}, s, st.draft || {}), list = fullExtras(fromRegistry(d) || (/develop/i.test(String(s.dealType || '')) ? DEVS : ACQ), d), comm = hasComm(d);   /* the steps follow the answers being typed: picking a floating rate shows the index questions at once */
   return comm ? list : list.map(function(sec){ return Object.assign({}, sec, { fields:sec.fields.filter(function(fl){ return !COMM_ONLY[fl.k]; }) }); }); }
 window.bkGuideSections = function(s){ return sections(s); };
 
@@ -246,7 +251,7 @@ function choiceSug(k, s){ var n = function(x){ return Number(s[x]) || 0; };
   if(k === 'propertyType' && (n('commercialArea') > 0 || n('commercialUnits') > 0) && /^(multifamily)?$/i.test(String(s.propertyType || ''))) return { v:'Mixed-Use', why:'There is commercial space entered (' + (n('commercialArea') ? n('commercialArea').toLocaleString('en-US') + ' SF' : n('commercialUnits') + ' suites') + '), so the building is mixed-use. That adds the commercial steps and sets the market benchmarks aside.' };
   if(k === 'acqStrategy' && (n('renoUnitsPerYear') > 0 || n('renoPremium') > 0) && /^(stabilized)?$/i.test(String(s.acqStrategy || ''))) return { v:'Value-add', why:'A renovation program is entered (' + (n('renoUnitsPerYear') || '') + ' units a year), so this is a value-add plan, not buy and hold.' };
   return null; }
-function sugOf(fl, s){ var d = Object.assign({}, s, st.draft); if(fl.opts) return safe(function(){ return choiceSug(fl.k, d); }, null); return fl.sug ? safe(function(){ return fl.sug(d); }, null) : null; }
+function sugOf(fl, s){ var d = Object.assign({}, s, st.draft); if(fl.opts){ var cs = safe(function(){ return choiceSug(fl.k, d); }, null); if(cs || !fl.sug) return cs; var fs = safe(function(){ return fl.sug(d); }, null); return fs && fl.opts.indexOf(String(fs.v)) >= 0 ? fs : null; } return fl.sug ? safe(function(){ return fl.sug(d); }, null) : null; }
 window.bkGuideKeep = function(k){ st.kept = st.kept || {}; st.kept[k] = 1; show(); };
 function fieldRow(fl, s, g){
   var v = cur(s, fl), tag = '', changed = Object.prototype.hasOwnProperty.call(st.draft, fl.k), id = 'gdf-' + fl.k;
@@ -436,10 +441,12 @@ window.bkGuideNew = function(){ st.screen = 'start'; st.draft = {}; show(); };
 window.bkGuideOff = function(){ setPref(false); st.draft = {}; document.documentElement.classList.remove('bk-guide'); backPill(); paintToggle(); if(typeof showSheet === 'function') showSheet('Home'); };
 window.bkGuideToggle = function(){ if(prefOn()) bkGuideOff(); else bkGuideOn(); };
 window.bkGuideGo = function(id){ st.draft = {}; st.checked = {}; st.step = id; st.screen = ''; show(); };
+window.bkGuideRefresh = function(){ if(document.querySelector('#viewport .gd')) show(); };   /* re-draw the open step, keeping the answers in progress (a suggestion that arrived late) */
 window.bkGuideDraft = function(k, raw){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0]; if(!sec) return; var fl = sec.fields.filter(function(x){ return x.k === k; })[0], v = fl.t === 'bool' ? !!raw : parse(fl, raw);
   if(v == null || (fl.t !== 'text' && fl.t !== 'bool' && !isFinite(v))) { delete st.draft[k]; } else if(String(v) === String(s[k])) { delete st.draft[k]; } else st.draft[k] = v;
   if(v != null && (fl.t === 'money' || fl.t === 'int')){ var box = document.getElementById('gdf-' + k); if(box && box.value !== fmt(fl, v)) box.value = fmt(fl, v); }
-  if((k === 'commercialArea' || k === 'commercialUnits') && hasComm(s) !== hasComm(Object.assign({}, s, st.draft))){ show(); return; }   /* commercial space added or removed: the commercial questions appear or go */
+  if((k === 'commercialArea' || k === 'commercialUnits') && hasComm(s) !== hasComm(Object.assign({}, s, st.draft))){ show(); return; }
+  if(SWITCH[k]){ show(); return; }   /* an answer that changes which questions apply (the rate structure, the repayment, the loan type's suggestions) re-draws the step */   /* commercial space added or removed: the commercial questions appear or go */
   refreshChanges(sec); };
 function rentRollNote(s){ var n = Array.isArray(s.rentRoll) ? s.rentRoll.length : 0; return '<div style="padding:10px 0;border-top:1px solid var(--line,#eef2f6);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:200px">' + (n ? 'A rent roll of <b>' + n + ' units</b> is loaded.' : 'No unit-by-unit rent roll: revenue uses the average rent above.') + '</span><button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideDetail(\'Import Rent Roll\')">' + (n ? 'Replace it' : 'Import a rent roll') + '</button></div>'; }
 function impact(sec){

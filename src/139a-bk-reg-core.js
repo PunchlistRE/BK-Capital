@@ -36,7 +36,7 @@ var BKReg = {
   rule:function(id){ return R.rules[id] || null; },
   checks:function(id){ return R.checks[id] || []; },
   /* is a field required, optional, not applicable ... in this step, for this deal. Conditional fields resolve against the deal. */
-  requirement:function(entry, s){ var q = entry.req || 'optional'; if(q === 'conditional') return (typeof entry.when === 'function' && entry.when(s || {})) ? 'required' : 'na'; return q; },
+  requirement:function(entry, s){ var q = entry.req || 'optional'; if(q === 'conditional') return (typeof entry.when === 'function' && entry.when(s || {})) ? 'required' : 'na'; if(typeof entry.when === 'function' && !entry.when(s || {})) return 'na'; return q; },   /* a condition on an optional or required field hides it where it does not apply */
   /* a value is present when it was entered: blank and null are missing; zero is missing for amounts that cannot be zero (a price, a unit count) */
   present:function(k, s){ var f = R.fields[k] || {}, v = (s || {})[k];
     if(f.kind === 'table') return Array.isArray(v) && v.length > 0;
