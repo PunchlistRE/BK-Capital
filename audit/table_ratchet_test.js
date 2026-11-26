@@ -11,8 +11,8 @@ function strip(c) { let o = '', i = 0; while (i < c.length) { const m = /@media\
   let d = 1, j = r.index + r[0].length; while (j < c.length && d > 0) { if (c[j] === '{') d++; else if (c[j] === '}') d--; j++; } const inner = c.slice(r.index + r[0].length, j - 1);
   if (/\bprint\b/.test(r[1]) && !/\bscreen\b/.test(r[1])) { i = j; continue; } o += '@media ' + r[1] + '{' + strip(inner) + '}'; i = j; } return o; }
 const rules = css => { const o = []; const re = /([^{};]+)\{([^{}]*)\}/g; let m; while ((m = re.exec(css))) o.push({ sel: m[1].trim(), body: m[2] }); return o; };
-/* app-wide bases (outside the sheet area too) and single rules that agree with the standard: where a status label sits or wraps, never its colour or size */
-const CHIP_ALLOWED = { '007-style.css': 5, '162-bk-v29340-institutional.css': 5, '108-bk-v302-responsive-system.css': 1, '123-bk-ux-workflow-css.css': 1, '162a-bk-design-unify.css': 1, '182-bk-palette.css': 1, '186-bk-review-polish.css': 1, '209-bk-table-standard.css': 99 };
+/* app-wide bases (outside the sheet area too) and single rules that agree with the standard: where a status label sits or wraps, never its color or size */
+const CHIP_ALLOWED = { '007-style.css': 5, '162-bk-v29340-institutional.css': 5, '108-bk-v302-responsive-system.css': 1, '123-bk-ux-workflow-css.css': 1, '162a-bk-design-unify.css': 1, '182-bk-palette.css': 1, '186-bk-review-polish.css': 1, '209-bk-table-standard.css': 99, '210-bk-controls.css': 5 };   /* 210: a clickable chip is a button there (phase 2), styled as one; no status color or size */
 const IMPORTANT_CEILING = 778, IMPORTANT_MAIN = 913;
 let imp = 0, legacy = 0; const pos = [], cnt = [], chip = {};
 fs.readdirSync(SRC).filter(f => /\.css$/.test(f)).forEach(f => { const raw = fs.readFileSync(path.join(SRC, f), 'utf8'); legacy += (raw.match(/print-legacy \(design-system phase 1\)/g) || []).length;

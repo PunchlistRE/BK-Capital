@@ -24,7 +24,7 @@ No formulas or financial logic were touched.
 ## Second pass: approved fixes (display only, no formulas or financial logic)
 - Card chrome: Sensitivity, Financing Lab/Compare and Version History cards now use the lettered title bar. The Guide keeps its step layout, KPI tiles keep theirs (intentional hierarchy).
 - Wide tables: any table wider than its card, on any screen size, gets a pinned "Scroll sideways" line and a shaded edge on the side that still has columns. Report tables (Valuation Report etc.) were previously clipped with no cue on phones.
-- Empty states: dash = nothing entered / nothing in that period; Unavailable = cannot be calculated yet (amber italic); N/A = does not apply (small caps); zero is always a number. Added to the Colour key. Text is unchanged, only styling, so tests that read the text are unaffected.
+- Empty states: dash = nothing entered / nothing in that period; Unavailable = cannot be calculated yet (amber italic); N/A = does not apply (small caps); zero is always a number. Added to the Color key. Text is unchanged, only styling, so tests that read the text are unaffected.
 - Tab strip: "Show as tabs" no longer overlays the last tab; all seven labels fit at desktop, and on phone the strip scrolls with an edge shade.
 Not changed: status chip on blank text fields (logic), Guide wizard layout, report-style sheets.
 Measured defect counts are unchanged (100 before and after) because the harness does not measure these items.

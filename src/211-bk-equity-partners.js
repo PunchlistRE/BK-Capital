@@ -69,7 +69,7 @@ function dealView(s, now){
   return o; }
 
 function kv(rows){ return '<table class="bk-ep-kv"><tbody>' + rows.filter(Boolean).map(function(a){ return '<tr><th scope="row">' + a[0] + '</th><td>' + a[1] + '</td></tr>'; }).join('') + '</tbody></table>'; }
-function field(o, k, ph, w){ var v = o.s[k]; if(k === 'epTargetIRR' && v != null && v !== '') v = (num(v) * 100).toFixed(1) + '%'; return '<input type="text" class="bk-ep-in bk-nofield" data-bk-w="free" value="' + esc(v == null ? '' : v) + '" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '" onchange="bkEPSet(\'' + esc(o.key).replace(/'/g, '\\\'') + '\',\'' + k + '\',this.value)"' + (w ? ' style="width:' + w + '"' : '') + '>'; }
+function field(o, k, ph, w){ var v = o.s[k]; if(k === 'epTargetIRR' && v != null && v !== '') v = (num(v) * 100).toFixed(1) + '%'; return '<input type="text" class="bk-ep-in bk-nofield" data-bk-w="free" value="' + esc(v == null ? '' : v) + '" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '" onchange="bkEPSet(\'' + esc(o.key).replace(/'/g, '\\\'') + '\',\'' + k + '\',this.value)"' + ' style="text-align:left !important' + (w ? ';width:' + w : '') + '">'; }   /* text reads from the left; the app's input rule right-aligns figures */
 function card(o){
   var s = o.s, nm = esc(s.name || o.key); if(!o.ok) return '<section class="bk-ep-card"><h3>' + nm + '</h3><div class="note-flag"><span>&#9888;</span><div>The engine could not run this deal: ' + esc(o.err) + '</div></div></section>';
   var m = o.m, gp = num(s.gpShare), lp = 1 - gp, eq = num(m.equity), contrib = num(m.contributed) || eq, dl = function(d){ return d ? d.toLocaleDateString('en-US', { month:'short', year:'numeric', timeZone:'UTC' }) : '—'; };

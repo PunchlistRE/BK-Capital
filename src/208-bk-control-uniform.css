@@ -1,5 +1,5 @@
 /* ONE LOOK FOR EVERY CONTROL. A button, box or drop-down that nobody styled falls back to the browser's own look: Arial, 13 px, rounded corners and a different height from the rest of the app (the Sign in and theme
    buttons, the tab arrows, the Rent Roll row count, the Deal Remedies and Deal Review boxes). Every control now uses the app's font, and an unstyled box or drop-down in a sheet gets the same look as the editor boxes.
-   :where() keeps these rules at zero weight, so any control that already has its own style keeps it. Font, size, border and padding only: no layout, colour value, handler or text changes. */
+   :where() keeps these rules at zero weight, so any control that already has its own style keeps it. Font, size, border and padding only: no layout, color value, handler or text changes. */
 :where(button, input, select, textarea){ font-family:inherit; }
 :where(#viewport) :where(input[type=text], input[type=number], input:not([type]), select, textarea){ box-sizing:border-box; padding:4px 7px; border:1px solid var(--bk-in-line,var(--ae-line)); background:var(--bk-in-fill,var(--ae-cell)); color:var(--bk-in-ink,var(--ae-ink)); font-size:12.5px; font-weight:600; border-radius:0; }

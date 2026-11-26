@@ -331,7 +331,7 @@ function decorateUnderwrite(frame){
   var req = '<div class="bk-req"><b>Required inputs: ' + done + ' of ' + total + '</b><span class="bar"><i style="width:' + (total ? Math.round(done/total*100) : 0) + '%"></i></span>'
     + (r.missing.length ? '<span>Missing:</span>' + r.missing.map(function(m){ return '<button type="button" data-bk-jump-key="' + esc(REQ_KEYS[m.key] || m.key) + '">' + esc(m.label) + '</button>'; }).join('')
                          : '<span style="color:#1F7A45;font-weight:600">All required inputs entered</span>') + '</div>';
-  /* The section index: every panel on this long page, grouped under a coloured label and named in a few words (three panels were all called "Development"),
+  /* The section index: every panel on this long page, grouped under a colored label and named in a few words (three panels were all called "Development"),
      with the section you are reading marked as you scroll. */
   var DUG = [['Setup', '#2f6fb5', /^(Identity|Ownership|Program)\b/], ['Income & costs', '#2e7d5b', /^(Source Economics|Operating Assumptions)/], ['Exit', '#a8641c', /^(Exit & Hold|Growth & Sale)/],
     ['Financing', '#2e6e6e', /^(Acquisition Debt|Permanent|Construction Facility|Debt Maturity|Audit-Fixed|What Each Debt)/], ['Partnership', '#7a4a8c', /^(JV Structure|Sponsor Economics)/],

@@ -33,15 +33,15 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
     const money = n => Math.round(n).toLocaleString('en-US');
     check(tag + ': the Sources & Uses page shows the same total uses and total sources', su.indexOf(money(F.uses)) > -1 && su.indexOf(money(F.srcs)) > -1, money(F.uses));
     check(tag + ': Sources & Uses has no GP-share (or any equity-split) input of its own', await p.evaluate(() => !document.querySelector('#viewport input[data-key=gpShare], #viewport [onchange*=gpShare]')));
-    await p.evaluate(() => { bkGuideOn(); bkGuideGo('sources'); }); await p.waitForTimeout(600);
-    const g = await p.evaluate(() => { const el = document.getElementById('gd-su'); return el ? { t: el.innerText, inputs: el.querySelectorAll('input,select,textarea').length } : null; });
-    check(tag + ': the guide Sources & Uses step is read-only (no inputs) and shows the same figures', !!g && g.inputs === 0 && g.t.indexOf(money(F.uses)) > -1 && g.t.indexOf(money(F.equity)) > -1, g && g.t.slice(0, 120));
+    await p.evaluate(() => { bkGuideOn(); }); await p.waitForTimeout(600);
+    const g = await p.evaluate(() => ({ steps: [...document.querySelectorAll('[onclick*="bkGuideGo"]')].map(e => (e.getAttribute('onclick').match(/bkGuideGo\('([^']+)'/) || [])[1]), su: !!document.getElementById('gd-su') }));
+    check(tag + ': the guide has no Sources & Uses step of its own (removed in 8bf02fc): sources and uses are read on the Sources & Uses page only', g.steps.length > 0 && g.steps.indexOf('sources') < 0 && !g.su, JSON.stringify(g));
     await p.evaluate(() => { bkGuideGo('partners'); }); await p.waitForTimeout(500);
     check(tag + ': the GP equity share is edited in one place, on the guide Partnership step (the same field as Investment > Partnership)', await p.evaluate(() => !!document.querySelector('#gdi-gpShare, [id*=gpShare], [data-k=gpShare]')));
     await p.evaluate(() => { bkGuideOff(); showSheet('Home'); }); await p.waitForTimeout(500);
     const home = await p.evaluate(() => /all inputs tie/i.test(document.getElementById('viewport').innerText)); await p.evaluate(() => showSheet('Returns')); await p.waitForTimeout(500);
-    const snap = await p.evaluate(() => ({ chip: /ALL INPUTS TIE/.test(document.body.innerText), bar: !!document.querySelector('#bk-kpibar') && /ALL INPUTS TIE/.test(document.getElementById('bk-kpibar').innerText) }));
-    check(tag + ': ALL INPUTS TIE shows on the Home checklist, the Deal Snapshot and the key-figure bar', home && snap.chip && snap.bar, JSON.stringify([home, snap]));
+    const snap = await p.evaluate(() => ({ chip: /ALL INPUTS TIE/.test((document.querySelector('.bk-snap') || {}).innerText || ''), bar: !!document.getElementById('bk-tie-hdr') && /ALL INPUTS TIE/.test(document.getElementById('bk-tie-hdr').innerText) }));
+    check(tag + ': ALL INPUTS TIE shows on the Home checklist, the Deal Snapshot and in the header beside the page tabs', home && snap.chip && snap.bar, JSON.stringify([home, snap]));
     /* tamper: the indicator must fail visibly when a figure no longer ties */
     const t = await p.evaluate(() => { const o = window.bkMonthlyReturns; window.bkMonthlyReturns = function () { const r = o.apply(this, arguments); return Object.assign({}, r, { contrib: r.contrib + 5000 }); }; bkPerfClear(); const a = bkAllInputsTie(); window.bkMonthlyReturns = o; bkPerfClear(); return { ok: a.ok, n: a.failed.length }; });
     check(tag + ': tamper test: $5,000 added to the returns contributions makes the indicator fail (it is not a constant)', t.ok === false && t.n > 0, JSON.stringify(t));

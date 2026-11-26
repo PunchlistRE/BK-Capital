@@ -8,7 +8,10 @@
    Buttons are styled in the sheet and in the dialogs (#pl-modal). Screen only: buttons and switches are not printed. No display, position or handler is set here, so a control that is hidden stays hidden.
    Home's next-step band (light buttons on navy) is a named exception and keeps its own rules (src/140, src/162a). */
 :root, body{ --bk-ctl-bg:var(--ae-cell,#fff); --bk-ctl-bg-hover:var(--ae-head2,#F1F4F8); --bk-ctl-line:var(--ae-line,#C4CDD9); --bk-ctl-ink:var(--ae-ink,#14212F); --bk-ctl-dim:var(--ae-dim,#566A80);
-  --bk-ctl-accent:var(--ae-accent,#1F4E8C); --bk-ctl-on:var(--ae-ink,#14212F); --bk-ctl-on-ink:var(--ae-cell,#fff); --bk-ctl-danger:#A32F24; --bk-ctl-font:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
+  --bk-ctl-accent:var(--ae-accent,#1F4E8C); --bk-ctl-on:var(--ae-ink,#14212F); --bk-ctl-on-ink:var(--ae-cell,#fff); --bk-ctl-danger:#A32F24; --bk-ctl-font:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; --bk-ctl-on-accent:#fff; }
+/* night: the accent is a light blue, so a filled button takes dark text on it (white on it would be 2.2:1) */
+:root[data-theme="dark"], :root[data-theme="dark"] body{ --bk-ctl-on-accent:#0B1A2B; --bk-ctl-danger:#F08C80; }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]), :root:not([data-theme="light"]) body{ --bk-ctl-on-accent:#0B1A2B; --bk-ctl-danger:#F08C80; } }
 @media screen{
   /* 1 · buttons */
   :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]){
@@ -19,13 +22,17 @@
   :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]):disabled{ opacity:.45; cursor:default; }
   :is(#viewport, #pl-modal) :is(.status-chip[onclick], button.status-chip, .status-chip[role=button])::before{ display:none !important; }
   /* primary: the one main action of a block */
-  :is(#viewport, #pl-modal) :is(.bk-btn.primary, .bk-btn.pri, .ae-btn.pri, .ae-btn.primary, .pl-hbtn.primary){ color:#fff !important; background:var(--bk-ctl-accent) !important; border-color:var(--bk-ctl-accent) !important; }
+  :is(#viewport, #pl-modal) :is(.bk-btn.primary, .bk-btn.pri, .ae-btn.pri, .ae-btn.primary, .pl-hbtn.primary){ color:var(--bk-ctl-on-accent) !important; background:var(--bk-ctl-accent) !important; border-color:var(--bk-ctl-accent) !important; }
   :is(#viewport, #pl-modal) :is(.bk-btn.primary, .bk-btn.pri, .ae-btn.pri, .ae-btn.primary, .pl-hbtn.primary):hover{ filter:brightness(1.1); }
   /* quiet: a text action; danger keeps its red text (Clear inputs) */
   :is(#viewport, #pl-modal) :is(.bk-btn, .pl-hbtn).quiet{ background:transparent !important; border-color:transparent !important; color:var(--bk-ctl-accent) !important; }
-  :is(#viewport, #pl-modal) .pl-hbtn.danger{ color:var(--bk-ctl-danger) !important; }
+  :is(#viewport, #pl-modal) :is(.pl-hbtn, .bk-btn).danger{ color:var(--bk-ctl-danger) !important; }
   /* compact: inside tables and in the step bar, so neither grows */
   #viewport :is(td, th, .bk-flow) :is(.bk-btn, .ae-btn, .pl-hbtn, button.status-chip, .status-chip[onclick], .status-chip[role=button]){ height:24px; line-height:22px; padding:0 8px; font-size:11.5px; }
+  /* a button is never wider than its box; on a phone a long label wraps onto a second line instead of pushing the page sideways */
+  /* the unmatched [data-bk-never] lifts this to the base rule's weight, so it wins by coming later */
+  :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .bk-btn[data-bk-never]){ max-width:100%; }
+  @media (max-width:760px){ :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .bk-btn[data-bk-never]){ white-space:normal; height:auto; min-height:30px; line-height:1.3; padding-top:6px; padding-bottom:6px; text-align:center; } }
   /* the step navigation ("Next: Debt Schedule ->") is the one larger, page-level size */
   #viewport .bk-stepnav .bk-btn{ height:34px; line-height:32px; padding:0 14px; font-size:12.5px; }
 
@@ -69,10 +76,8 @@
 #viewport table.bk-pf .bk-pf-sub{ display:block; margin-top:2px; font-size:11px; font-weight:400; color:var(--bk-ctl-dim); }
 #viewport table.bk-pf .bk-pf-sub b{ color:var(--bk-ctl-accent); font-weight:700; }
 #viewport table.bk-pf :is(th, td).bk-pf-act{ width:1%; text-align:right; padding-left:6px; }
-#viewport table.bk-pf td.bk-pf-act{ display:table-cell; white-space:nowrap !important; }
 #viewport table.bk-pf td.bk-pf-act .bk-btn{ display:inline-block; vertical-align:middle; }
-#viewport table.bk-pf td.bk-pf-act .bk-btn + .bk-btn{ margin-left:4px; }
-#viewport table.bk-pf td.bk-pf-act .bk-pf-rm{ color:var(--bk-ctl-danger) !important; }
+#viewport table.bk-pf .bk-pf-acts{ display:flex; justify-content:flex-end; gap:4px; }
 #viewport table.bk-pf tr.bk-pf-on > td{ background:var(--ae-head2, #EDF1F6); }
 #viewport table.bk-pf tr.bk-pf-on > td:first-child{ box-shadow:inset 3px 0 0 var(--bk-ctl-accent); }
 
@@ -98,8 +103,7 @@
 #viewport table.bk-ep-kv td .bk-ep-dim{ display:block; font-weight:400; }
 #viewport table.bk-ep-kv td .bk-ep-tag{ margin-left:0; margin-top:2px; }
 #viewport table.bk-ep-sum .bk-ep-ent{ display:block; margin-top:2px; font-size:11px; color:var(--bk-ctl-dim); }
-#viewport .bk-ep-in, html body #viewport input.bk-ep-in{ box-sizing:border-box; width:100% !important; max-width:none !important; text-align:left !important; height:28px; padding:0 8px; font:500 12px var(--bk-ctl-font); color:var(--bk-ctl-ink); background:var(--ae-cell,#fff); border:1px solid var(--bk-ctl-line); border-radius:2px; }
-html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !important; padding:0 8px !important; }
+html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ box-sizing:border-box; width:100%; max-width:none; text-align:left; height:28px; padding:0 8px; font:500 12px var(--bk-ctl-font); color:var(--bk-ctl-ink); background:var(--ae-cell,#fff); border:1px solid var(--bk-ctl-line); border-radius:2px; }
 #viewport .bk-ep-in:focus{ outline:2px solid var(--bk-ctl-accent); outline-offset:-1px; }
 #viewport .bk-ep-tag{ display:inline-block; margin-left:6px; padding:0 6px; font:700 10px/18px var(--bk-ctl-font); letter-spacing:.04em; text-transform:uppercase; border:1px solid currentColor; border-radius:2px; }
 #viewport .bk-ep-tag.ok{ color:#1F7A4C; } #viewport .bk-ep-tag.bad{ color:var(--bk-ctl-danger); }
@@ -107,13 +111,12 @@ html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !import
 /* Import review: each figure can be edited or (an income or expense line) left out; the row shows what you changed and what the OM said */
 #viewport .bk-omr-acts{ display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; }
 #viewport :is(.bk-omr-acts, .bk-omr-edit, td) .bk-btn.bk-omr-b{ height:22px; line-height:20px; padding:0 7px; font-size:11px; }
-#viewport .bk-btn.quiet.bk-omr-x{ color:var(--bk-ctl-danger) !important; }
 #viewport .bk-omr-st{ display:inline-block; padding:0 6px; font:700 10px/18px var(--bk-ctl-font); letter-spacing:.04em; text-transform:uppercase; border:1px solid currentColor; border-radius:2px; color:var(--bk-ctl-accent); }
 #viewport .bk-omr-st.reject{ color:var(--bk-ctl-danger); } #viewport .bk-omr-st.learned{ color:#1F7A4C; margin-left:4px; }
 #viewport .bk-omr-was{ margin-left:8px; font-size:11px; color:var(--bk-ctl-dim); }
 #viewport tr.bk-omr-on > td{ background:var(--ae-head2, #EDF1F6); }
 #viewport .bk-omr-edit{ display:inline-flex; gap:4px; align-items:center; justify-content:flex-end; }
-#viewport .bk-omr-edit input{ width:100% !important; max-width:130px; box-sizing:border-box; height:24px; padding:0 6px; font:600 12px var(--bk-ctl-font); text-align:right; border:1px solid var(--bk-ctl-accent); border-radius:2px; }
+html body #viewport .bk-omr-edit input.bk-nofield{ width:100%; max-width:130px; box-sizing:border-box; height:24px; padding:0 6px; font:600 12px var(--bk-ctl-font); text-align:right; border:1px solid var(--bk-ctl-accent); border-radius:2px; }
 
 /* Portfolio M: the calendar-year switch above the monthly table */
 #viewport .bk-pm-years{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 10px; }

@@ -57,7 +57,7 @@ function plan(scope, here){
 }
 
 /* take the open page as it stands: its title, its key-figure strip, its own panels and tables; no chrome, controls as text */
-var DROP = '.bk-flow,.bk-stepnav,.bk-case,.side-col,.bk-dui,.pf-bar,.rp-bar,.colour-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,.bk-pt-bar,.ae-tabs,.ae-subs,.bk-sg,.bk-views,.bk-pack-cta,script,style,noscript,[hidden]';
+var DROP = '.bk-flow,.bk-stepnav,.bk-case,.side-col,.bk-dui,.pf-bar,.rp-bar,.color-key,.bk-key-wrap,.bk-print-btn,.ae-hint,.bk-notes,.bk-addrow,.bk-guide,.bk-reqbar,.bk-undo,.bk-savebar,.bk-hint,.bk-scrollhint,.bk-scroll-hint,button,.pl-hbtn,.bk-btn,.pl-btn,.bk-pt-bar,.ae-tabs,.ae-subs,.bk-sg,.bk-views,.bk-pack-cta,script,style,noscript,[hidden]';
 function harvest(){
   var fr = document.querySelector('#viewport .sheet-frame'), main = fr && fr.querySelector('.main-col'); if(!main) return null;
   var tb = fr.querySelector('.title-block'), meta = [];

@@ -174,7 +174,7 @@ Year 1
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Setup
 Income & costs
 Exit
@@ -544,7 +544,7 @@ SF
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Rent Roll Summary - live, computed from the rows below
 Units / Suites in Rent Roll	0
@@ -804,7 +804,7 @@ USD
 STATUS
 Live
 Print / Save PDF
-Colour key
+Color key
 EFFECTIVE GROSS INCOME
 $4,780,080
 100.29% of GPR
@@ -1005,7 +1005,7 @@ USD
 STATUS
 Live
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Property Operating Cash Flow - Annual
 Line Item	Total	Year 1	Year 2	Year 3	Year 4
@@ -1228,7 +1228,7 @@ Live
 DEBT
 On
 Print / Save PDF
-Colour key
+Color key
 Construction Facility Sizing - which constraint binds
 Metric	Value	Basis	Test
 All-In Coupon	7.25%	Capped index plus spread	
@@ -1367,7 +1367,7 @@ USD
 STATUS
 Live
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Construction Facility Schedule - monthly, all 48 periods
 Mo	Beginning Balance	Facility Draw	Interest - Capitalized	Interest - Excess of Commitment	Repayment	Ending Balance	Undrawn Availability
@@ -1579,7 +1579,7 @@ Live
 CONVENTIONS
 Development method
 Print / Save PDF
-Colour key
+Color key
 LEVERED IRR
 33.09%
 deal level
@@ -1773,7 +1773,7 @@ Monthly
 STATUS
 Live
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Monthly Hurdle Waterfall - IRR Basis
 Metric	LP	GP	Total / Target
@@ -1938,7 +1938,7 @@ USD
 STATUS
 Live
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Sponsor Economics Summary - Live Engine
 Metric	Web Engine
@@ -2089,7 +2089,7 @@ PARAMETRIC
 STATUS
 Live - itemized ladder
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Development - Cost Basis Summary
 Cost Concept	Total	$/GSF	Lineage
@@ -2267,7 +2267,7 @@ LEASE-UP
 STATUS
 Live
 Print / Save PDF
-Colour key
+Color key
 Development Schedule & Milestone Timeline
 Phase	Start Mo	End Mo	Months
 Pre-Development	1	2	2
@@ -2480,7 +2480,7 @@ COMMITMENT
 CAP. INTEREST
 $3,185,837
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Development Draws - Monthly Engine
 Month	Hard	Soft	Funding Need	Equity	Facility Draw	Cap. Interest	Ending Balance
@@ -2765,7 +2765,7 @@ $7,000,000
 STATUS
 Mapped
 Print / Save PDF
-Colour key
+Color key
 Residual Land Value
 Item	Value	Units	Note
 Use Residual Land Value	
@@ -2873,7 +2873,7 @@ N/A
 STATUS
 N/A
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Live Engine Results - Active Deal
 Metric	Web Engine
@@ -3003,7 +3003,7 @@ AMORT
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Covenant Monitor - DSCR & Debt Yield, tested annually against the acquisition loan
 Line Item	Year 1	Year 2	Year 3	Year 4
@@ -3185,7 +3185,7 @@ USD
 STATUS
 Live
 Print / Save PDF
-Colour key
+Color key
 
 SENSITIVITY EXPLORER
 
@@ -3641,7 +3641,7 @@ TARGET
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Reverse Solve - Purchase Price for a Target Levered IRR
 Target Levered IRR	-
@@ -3783,7 +3783,7 @@ Development
 STATUS
 NOT SUPPORTED - development
 Print / Save PDF
-Colour key
+Color key
 After-Tax Returns - Development Deals
 Item	Status	Reason
 After-tax IRR / MOIC / tax schedule	NOT SUPPORTED	The after-tax engine reads the acquisition path (purchase price as tax basis, annual operating cash flow, acquisition loan). It has no development basis, construction-period, takeout or lease-up logic.
@@ -3873,7 +3873,7 @@ $0
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Portfolio - Saved Deals (0)
 Deal	Type	Property	Purchase Price	Equity	Levered IRR	MOIC	Actions
 No deals saved to the portfolio yet.
@@ -3981,7 +3981,7 @@ MULTIPLE
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Portfolio Dashboard - 0 Deal(s)
 Total Purchase Price	$0
 Total Equity Invested	$0
@@ -4091,7 +4091,7 @@ LP XIRR
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Waterfall (M) - Full Monthly Hurdle-Account Detail, All 48 Months
 Mo	Date	Contribution	Available	Tier 1	Catch-Up	Tier 2	Tier 3	Tier 4	Promote	LP CF	GP CF
 1	2027-01	$8,700,000	$0	$0	$0	$0	$0	$0	$0	($7,830,000)	($870,000)
@@ -4342,7 +4342,7 @@ USD
 STATUS
 Projection
 Print / Save PDF
-Colour key
+Color key
 Per-Unit Rollover Summary
 Unit	SF	Lease End	Rollover Mo.	Renewal Prob.	Downtime	Assumptions
 No rent roll units.
@@ -4448,7 +4448,7 @@ Unavailable
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Portfolio M - Calendar-Year Aggregated Monthly Equity Cash Flow (0 Deal(s))
 Line Item
 Combined NOI
@@ -4550,7 +4550,7 @@ MONTHS
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Deal Vectors (M) - Raw Monthly Engine Output, All 48 Months
 Mo	Date	EGI	NOI	Interest	Principal	Loan Balance	Debt Service	Asset Fee	Net Equity CF
 1	2027-01	$0	$0	$24,806	$3,797	$4,406,203	$0	$0	($8,700,000)
@@ -4695,7 +4695,7 @@ MONTHS
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Ledger (M) - Monthly Transaction Detail, All 48 Months
 Mo	Date	Line Item	Amount
 1	2027-01	Revenue (EGI)	$399,271
@@ -4986,7 +4986,7 @@ DEALS
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Property Database - 0 Saved Deal(s)
 Deal ID	Name	Location	Property Type	Deal Type	Status	Closing	GSF	Units	Purchase Price
 No deals saved yet -- save one from the Portfolio page.
@@ -5083,7 +5083,7 @@ USD
 STATUS
 No saved deals
 Print / Save PDF
-Colour key
+Color key
 Portfolio CF - Combined Annual Cash Flow by Deal-Relative Year (0 Deal(s))
 Line Item
 No saved deals - save an underwritten deal to populate Portfolio CF.
@@ -5181,7 +5181,7 @@ DEALS
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Equity Partners - GP / LP Capital Structure by Deal
 Deal	Total Equity	LP %	LP Equity	GP %	GP Equity	Pref
 No deals saved yet.
@@ -5282,7 +5282,7 @@ USD
 STATUS
 No saved deals
 Print / Save PDF
-Colour key
+Color key
 Investor Summary - Portfolio-Level GP / LP Rollup
 No saved deals - save an underwritten deal to populate the GP/LP rollup.
 ⚠
@@ -5383,7 +5383,7 @@ $0
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Capital Calls - Equity Funding Schedule by Deal Closing
 Deal	Closing / Call Date	Equity Called
 No deals saved yet.
@@ -5487,7 +5487,7 @@ $0
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Capital Allocation - Equity by Deal
 Deal	Equity ($)	% of Portfolio
@@ -5609,7 +5609,7 @@ BLENDED LTV
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Portfolio Rollup - Consolidated Snapshot (0 Deal(s))
 Total Purchase Price (Gross Assets)	$0
 Total Debt	$0
@@ -5713,7 +5713,7 @@ DEALS
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Benchmarks - Actual vs. Each Deal's Own Underwriting Target
 Deal	Going-In Cap Rate	MOIC	Levered IRR	Target IRR	Status
 No deals saved yet.
@@ -5812,7 +5812,7 @@ $44,641,091
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Sources & Uses - Active Deal (Development)
 Uses
@@ -5971,7 +5971,7 @@ CSV
 STATUS
 Live
 Print / Save PDF
-Colour key
+Color key
 Data Export Center - Active Deal
 Dataset	Size	File Name	Export
 Assumptions
@@ -6103,7 +6103,7 @@ DEAL INVESTORS
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 ⓘ
 One investor system. Investors are created once in the Investor Registry; this deal's participation is its commitments and capital calls. Schedules, liquidity, portfolio rollups and exports are all calculated from those - there is no second editable list.
 Global Investor Registry - defined once, available to every deal
@@ -6214,7 +6214,7 @@ DEAL INVESTORS
 CURRENCY
 USD
 Print / Save PDF
-Colour key
+Color key
 ⓘ
 One investor system. Investors are created once in the Investor Registry; this deal's participation is its commitments and capital calls. Schedules, liquidity, portfolio rollups and exports are all calculated from those - there is no second editable list.
 ⓘ
@@ -6316,7 +6316,7 @@ USD
 DEAL PAYBACK
 Month 48 (2030-12)
 Print / Save PDF
-Colour key
+Color key
 ⓘ
 One investor system. Investors are created once in the Investor Registry; this deal's participation is its commitments and capital calls. Schedules, liquidity, portfolio rollups and exports are all calculated from those - there is no second editable list.
 Show as tabs
@@ -6450,7 +6450,7 @@ Reference / Benchmark
 PROPERTY
 Harbor Point Residences
 Print / Save PDF
-Colour key
+Color key
 Reference / Benchmark - Yardi Portfolio Reference - Property Summary (source: Yardi_Portfolio_Master_Source_Benchmark_FULL_DATA_v2_1.xlsx)
 Property	Type	Units	SF	Annual Rent	Rent/SF	T-12 NOI	Exp. Ratio	Cap Rate	Vacancy	Ownership	Implied Value
 ShorePointe	Residential	38	30,482	$1,137,042	$37	$507,780	55.34%	5.00%	0.00%	100.00%	$10,155,600
@@ -6559,7 +6559,7 @@ DEALS
 ENGINE
 V32.2
 Print / Save PDF
-Colour key
+Color key
 Account
 Field	Value	Notes
 Email		Deal data is private to its owner
@@ -6905,7 +6905,7 @@ FINDINGS
 STATUS
 No findings recorded
 Print / Save PDF
-Colour key
+Color key
 Source Reconciliation Findings - Active Deal
 Source	Severity	Finding	Effect on Import
 No source reconciliation findings are recorded for this deal. Findings appear here when a source package is ingested and reviewed on Source Ingestion.
@@ -7000,7 +7000,7 @@ TIE
 METHOD
 Tax-grade MACRS
 Print / Save PDF
-Colour key
+Color key
 Show as tabs
 Tax-Grade Depreciation Settings
 Setting	Value	What it does	Status
@@ -7189,7 +7189,7 @@ SYS_DealDB
 PARITY
 BACKEND-ONLY
 Print / Save PDF
-Colour key
+Color key
 SYS_DealDB - a workbook backend sheet, and where its work is done here
 Question	Answer
 What the workbook sheet does	A field-keyed store of about eighty attributes across ten deal slots, plus a text fingerprint of every stored input, the rent roll and the engine version, used to detect drift between a saved snapshot and the live model.
@@ -7281,7 +7281,7 @@ SYS_CF
 PARITY
 BACKEND-ONLY
 Print / Save PDF
-Colour key
+Color key
 SYS_CF - a workbook backend sheet, and where its work is done here
 Question	Answer
 What the workbook sheet does	The single monthly engine - deal clock, revenue, expenses and NOI, development draws, the sale, unlevered cash flow and the equity waterfall - across 180 periods and roughly eighteen thousand formulas.
@@ -7374,7 +7374,7 @@ SYS_RentRoll
 PARITY
 BACKEND-ONLY
 Print / Save PDF
-Colour key
+Color key
 SYS_RentRoll - a workbook backend sheet, and where its work is done here
 Question	Answer
 What the workbook sheet does	Ten parallel blocks storing unit-level rent-roll snapshots per deal slot, with an ID index and a row count.
@@ -7467,7 +7467,7 @@ SYS_Snapshots
 PARITY
 CONSOLIDATED
 Print / Save PDF
-Colour key
+Color key
 SYS_Snapshots - a workbook backend sheet, and where its work is done here
 Question	Answer
 What the workbook sheet does	One row per deal slot carrying a timestamp, key totals and a CURRENT / STALE / NONE flag, so the portfolio sheets can tell whether a stored snapshot still matches the live model.
@@ -7559,7 +7559,7 @@ SYS_Golden
 PARITY
 CONSOLIDATED
 Print / Save PDF
-Colour key
+Color key
 SYS_Golden - a workbook backend sheet, and where its work is done here
 Question	Answer
 What the workbook sheet does	Seven hand-entered golden metric values for one reference deal, with per-metric tolerances, captured from an earlier verified run.
@@ -7650,7 +7650,7 @@ SYS_PrintState
 PARITY
 BACKEND-ONLY
 Print / Save PDF
-Colour key
+Color key
 SYS_PrintState - a workbook backend sheet, and where its work is done here
 Question	Answer
 What the workbook sheet does	Stored print settings per sheet: zoom, frozen panes, fit-to-page and header sizes.
@@ -7740,7 +7740,7 @@ SYS_Curves
 PARITY
 FULL PARITY
 Print / Save PDF
-Colour key
+Color key
 SYS_Curves - a workbook backend sheet, and where its work is done here
 Question	Answer
 What the workbook sheet does	Normalised S-curve or straight-line monthly disbursement weights for five cost categories across 180 months, with self-tests that each curve sums to one.
@@ -7838,7 +7838,7 @@ CMM v3 house policy defaults
 WEIGHTS
 Sum to 100.00%
 Print / Save PDF
-Colour key
+Color key
 House Underwriting Policy
 Policy	Value	Default	Status
 Target gross levered IRR	%	Default 12.00%	DEFAULT
@@ -8066,7 +8066,7 @@ SCORE
 EXCEPTIONS
 0 hard / 0 soft
 Print / Save PDF
-Colour key
+Color key
 ⚠
 CONDITIONAL - 2 MODEL WARNINGS
 The credit gates pass, but 2 model warnings stand: Interest accrues beyond the loan commitment; Costs exceed what equity plus the commitment can fund. Approval is conditional on resolving or accepting them.
@@ -8222,7 +8222,7 @@ ERRORS
 WARNINGS
 2
 Print / Save PDF
-Colour key
+Color key
 Conflicting Inputs and Their Consequences
 Severity	Finding and why it matters	Fix on	Action
 No conflicting inputs found.

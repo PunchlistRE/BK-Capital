@@ -75,7 +75,7 @@ RENDERERS['Portfolio'] = function(){
     <td class="rowlabel"><span class="bk-pf-nm">${bkEsc(snap.name||key)}</span><span class="bk-pf-sub">${bkEsc([snap.dealType,snap.propertyType].filter(Boolean).join(' · ')||'-')}${key===curKey?' · <b>Active</b>':''}</span></td>
     <td>${m.ok?money(m.purchasePrice):'-'}</td><td>${m.ok?money(m.equity):'-'}</td>
     <td>${m.ok?bkPct(m.irr):'engine error'}</td><td>${m.ok?m.moic.toFixed(2)+'x':'-'}</td>
-    <td class="bk-pf-act">${key===curKey?'':`<button type="button" class="bk-btn" data-portfolio-load="${bkEsc(key)}">Load</button>`}<button type="button" class="bk-btn quiet bk-pf-rm" data-portfolio-remove="${bkEsc(key)}" aria-label="Remove ${bkEsc(snap.name||key)} from the portfolio">Remove</button></td></tr>`).join('');
+    <td class="bk-pf-act"><span class="bk-pf-acts">${key===curKey?'':`<button type="button" class="bk-btn" data-portfolio-load="${bkEsc(key)}">Load</button>`}<button type="button" class="bk-btn quiet danger bk-pf-rm" data-portfolio-remove="${bkEsc(key)}" aria-label="Remove ${bkEsc(snap.name||key)} from the portfolio">Remove</button></span></td></tr>`).join('');
   const ok = computed.filter(r=>r.m.ok);
   const totalEquity = ok.reduce((z,r)=>z+r.m.equity,0), totalPrice = ok.reduce((z,r)=>z+r.m.purchasePrice,0);
   const PC = bkPortfolioConsolidated(saved);

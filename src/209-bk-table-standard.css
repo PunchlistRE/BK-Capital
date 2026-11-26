@@ -5,17 +5,17 @@
    stay exactly as they were until phase 5 moves print onto this standard. Report typesetting (rp-tbl) and the editor's form grids (ae-grid) are separate.
    Screen only. No figure, label or status word is changed here: only where things sit and how they read. */
 :root, body{
-  /* declared on body too, so a token that names a theme colour (var(--ink-700)) takes the theme that is on, not the root default; status tiers and field states use the palette's own colours (src/182, src/162a), so the standard adds no new colour */
+  /* declared on body too, so a token that names a theme color (var(--ink-700)) takes the theme that is on, not the root default; status tiers and field states use the palette's own colors (src/182, src/162a), so the standard adds no new color */
   --bk-tier-pass-bg:var(--bk-ok-bg); --bk-tier-pass-ink:var(--bk-link-ink); --bk-tier-warn-bg:var(--bk-warn-bg); --bk-tier-warn-ink:#8A5A12; --bk-tier-fail-bg:var(--bk-fail-bg); --bk-tier-fail-ink:#A32F24;
-  --bk-tier-na-bg:#ECEFF2; --bk-tier-na-ink:var(--bk-na-ink); --bk-tier-role-line:var(--ae-line); --bk-tier-neutral-bg:#E6EDF3; --bk-tier-neutral-ink:var(--ink-700); --bk-tier-dot:var(--ae-dim);
+  --bk-tier-na-bg:#ECEFF2; --bk-tier-na-ink:#56616C; --bk-tier-role-line:var(--ae-line); --bk-tier-neutral-bg:#E6EDF3; --bk-tier-neutral-ink:var(--ink-700); --bk-tier-dot:var(--ae-dim);
   --bk-field-unset:var(--ae-line); --bk-note-rule:#1F4E8C;
 }
 :root[data-theme="dark"], :root[data-theme="dark"] body{
-  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
+  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-na-ink:#9AA6B2; --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
 }
 /* the same dark values when the computer is set to dark and no theme was chosen in the app (as the palette does, src/162a) */
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]), :root:not([data-theme="light"]) body{
-  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
+  --bk-tier-warn-ink:var(--bk-attn-amber); --bk-tier-fail-ink:var(--bk-attn-red); --bk-tier-na-bg:var(--ae-head); --bk-tier-na-ink:#9AA6B2; --bk-tier-neutral-bg:var(--ae-head); --bk-note-rule:#6FB4F2;
 } }
 @media screen {
 
@@ -119,5 +119,5 @@ html:where(:not(.bk-printing)) body #viewport .tbl-wrap + .note-flag{ margin-top
 html body #viewport .bk-box.bk-box-t{ padding:0 !important; }
 html body #viewport .bk-box.bk-box-t > .bk-box-b{ padding:12px 14px; }
 /* an actions column (Load, Remove, Open): its buttons stay on one line, at the right of the row; the column is sized to them (src/111) */
-html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="actions"]{ text-align:right !important; white-space:nowrap !important; }
+html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="actions"][data-bk-role]{ text-align:right; white-space:nowrap; }
 html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-role="actions"] button + button{ margin-left:4px; }

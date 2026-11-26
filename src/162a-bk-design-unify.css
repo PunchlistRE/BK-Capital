@@ -1,8 +1,8 @@
 /* ONE DESIGN LANGUAGE. Every page takes the Property Editor's look: square panels with a header bar and a letter icon, grids with
-   full cell borders and graded header rows, boxed input cells, tab strips for section jumps, and the editor's colour tokens
+   full cell borders and graded header rows, boxed input cells, tab strips for section jumps, and the editor's color tokens
    (--ae-*), in light and dark. Loaded last so it settles the older layers; the editor itself (.ae) is untouched. */
 /* FILL RULE (engine-wide). Three fills, three jobs, never swapped:
-     HEADER  blue-grey (--bk-fill-head, --bk-fill-head2): names things. Panel title bars, column-heading rows, section-divider rows. A row that carries a value is never this colour.
+     HEADER  blue-grey (--bk-fill-head, --bk-fill-head2): names things. Panel title bars, column-heading rows, section-divider rows. A row that carries a value is never this color.
      KEY     gold (--bk-fill-key, with --bk-key-rule on the left edge): the answer. Grand totals and headline metrics (IRR, multiple, DSCR, NOI, loan, price...). Only on a row that carries values, never on a heading.
      SUB     light neutral tint (--bk-fill-sub): a subtotal inside a table. Quieter than KEY, different from HEADER.
    Everything else is no fill (cells), the editor's read-only tint (calculated), or a boxed field (inputs). audit/fillrule_test.js walks every sheet and fails on a value row filled as a header, or a heading filled as a key metric. */
@@ -54,7 +54,7 @@ html body #viewport .metric-row{ border-bottom:1px solid var(--ae-line); }
 /* the letter icon the decorator puts in each panel header (same square as the editor's) */
 html body #viewport [data-ic]::before{ content:attr(data-ic); display:inline-block; flex:0 0 auto; width:16px; height:16px; border-radius:2px; background:var(--ae-accent); color:#fff; font:700 10px/16px Inter,system-ui,sans-serif; text-align:center; margin-right:8px; vertical-align:-2px; letter-spacing:0; text-transform:none; }
 /* DEAL UNDERWRITE TAB BAR: one horizontal row of seven group tabs, sticky under the pinned header, scrolling sideways on a phone (never wrapping to a second row). The open tab has a
-   coloured underline and a raised fill; a red count marks required inputs still missing in that group; a group that does not apply reads N/A. */
+   colored underline and a raised fill; a red count marks required inputs still missing in that group; a group that does not apply reads N/A. */
 html body #viewport .bk-dui.bk-tabs{ position:sticky; top:var(--bk-stick,0px); z-index:12; display:flex; flex-direction:row; flex-wrap:nowrap; align-items:flex-end; gap:2px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:thin; background:var(--ae-head2); border:1px solid var(--ae-line); border-left:4px solid var(--ae-accent); border-radius:0; padding:8px 8px 0 10px; margin:0 0 12px; box-shadow:none; }   /* the panel tabs of the editor (src/210): one look for every set of sub-tabs */
 html body #viewport .bk-dui.bk-tabs .bk-dt{ flex:0 0 auto; position:relative; display:inline-flex; align-items:center; gap:6px; box-sizing:border-box; height:30px; margin:0 0 -1px; padding:0 14px !important; background:var(--ae-cell-ro, var(--ae-head)) !important; border:1px solid var(--ae-line) !important; border-bottom:0 !important; border-radius:0 !important; box-shadow:none !important; color:var(--ae-dim) !important; font:500 12px/1 Inter,system-ui,sans-serif !important; letter-spacing:0; white-space:nowrap; cursor:pointer; }
 html body #viewport .bk-dui.bk-tabs .bk-dt::before{ content:none; }
@@ -134,7 +134,7 @@ html body .rail .rail-group-label{ cursor:default !important; }
 html body .rail .bk-adv-head{ cursor:pointer; }   /* the Advanced heading folds its groups again (src/124); its arrow shows the state */
 html.bk-rail-collapsed body .rail .rail-group-label{ cursor:pointer !important; }
 
-/* OVERVIEW: a quiet, professional palette. Status is carried by a small marker and a muted tone, not by saturated colour fields. */
+/* OVERVIEW: a quiet, professional palette. Status is carried by a small marker and a muted tone, not by saturated color fields. */
 html body #viewport .pl-home .pl-kpi .v{ font-weight:600; font-size:24px; color:var(--ae-ink,#1f2933); }
 html body #viewport .pl-home .pl-kpi.pass .v{ color:#3F6B52; } html body #viewport .pl-home .pl-kpi.warn .v{ color:#7E6428; } html body #viewport .pl-home .pl-kpi.fail .v{ color:#8C3B34; }
 html body #viewport .pl-home .pl-kpi{ border-radius:0; box-shadow:none; border-color:var(--ae-line,#cfd6dd); }
@@ -334,7 +334,7 @@ html body #viewport .ae > .ae-tabs{ background:var(--ae-head2); border:1px solid
 html body #viewport .ae > .ae-tabs::before{ content:"PROPERTY EDITOR"; flex:0 0 100%; font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--ae-accent); padding:0 2px 7px }
 html body #viewport .ae > .ae-body{ border-left:4px solid var(--ae-accent) }
 
-/* ---- Night mode: the text that was dark on dark or white on light blue. Primary buttons get a mid blue that carries white text; status and negative colours are
+/* ---- Night mode: the text that was dark on dark or white on light blue. Primary buttons get a mid blue that carries white text; status and negative colors are
    lifted; numbers and notes set in the day palette's navy and grey are lightened; buttons with no styling of their own get a dark face; the Deal Underwrite group
    labels are brightened. (The day palette is untouched.) */
 @media (prefers-color-scheme: dark){

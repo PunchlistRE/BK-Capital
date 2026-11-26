@@ -34,7 +34,7 @@ function emptyKinds(root){
     if(k){ if(c.getAttribute('data-bk-v') !== k) c.setAttribute('data-bk-v', k); } else if(c.hasAttribute('data-bk-v')) c.removeAttribute('data-bk-v');
   });
 }
-/* status chips get a kind from their words, so INPUT (light blue), NOT APPLIED / N/A (grey) and the rest can be coloured apart without touching the code that writes them */
+/* status chips get a kind from their words, so INPUT (light blue), NOT APPLIED / N/A (grey) and the rest can be colored apart without touching the code that writes them */
 function chipKinds(root){
   [].forEach.call(root.querySelectorAll('.status-chip'), function(c){
     var t = (c.textContent || '').trim().toUpperCase(), k = '';

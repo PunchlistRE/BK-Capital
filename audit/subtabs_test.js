@@ -11,7 +11,7 @@ const A = require(path.join(__dirname, 'deal.js'));
     await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
     await p.evaluate((d) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d); bkSave(s); }, A);
     await p.evaluate(async (sh) => { showSheet(sh); await new Promise(r => setTimeout(r, 600)); }, sheet); return p; };
-  /* colours as numbers: composite a background over its ancestors, then WCAG luminance and contrast */
+  /* colors as numbers: composite a background over its ancestors, then WCAG luminance and contrast */
   const MEASURE = () => {
     const parse = (c) => { const m = String(c).match(/rgba?\(([^)]+)\)/); if (!m) return [0, 0, 0, 0]; const a = m[1].split(',').map(Number); return [a[0], a[1], a[2], a.length > 3 ? a[3] : 1]; };
     const over = (top, bot) => { const a = top[3] + bot[3] * (1 - top[3]); return a === 0 ? [0, 0, 0, 0] : [(top[0] * top[3] + bot[0] * bot[3] * (1 - top[3])) / a, (top[1] * top[3] + bot[1] * bot[3] * (1 - top[3])) / a, (top[2] * top[3] + bot[2] * bot[3] * (1 - top[3])) / a, a]; };

@@ -1,7 +1,7 @@
-/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.
+/* PALETTE. One defined color scheme, set once as tokens so every sheet, chart and chip reads from it.
    Navy is the brand and the structure (chrome, section bars, the key rule). Slate greys carry the neutral surfaces. One blue is the accent.
-   Four semantic colours, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
-   The cell convention is unchanged: blue text on pale yellow is an input. This part loads after every other style so it settles the tokens; it changes colours only. */
+   Four semantic colors, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
+   The cell convention is unchanged: blue text on pale yellow is an input. This part loads after every other style so it settles the tokens; it changes colors only. */
 :root{
   --bk-navy:#0E2A4A; --bk-navy-2:#1B3F66;
   --ae-bg:#F3F5F8; --ae-head:#E3E9F1; --ae-head2:#EDF1F6; --ae-line:#C4CDD9; --ae-cell:#FFFFFF; --ae-cell-ro:#F7F9FB; --ae-sel:#D6E2F3; --ae-tab:#E6EBF2; --ae-tab-on:#FFFFFF;
@@ -128,7 +128,7 @@ html body #viewport .ae-hint:before{ content:"Note"; font:700 10px/1 Inter,syste
 .bk-ribbon{ overflow:hidden; }
 .bk-ribbon .rb-g:first-child{ flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
 .bk-ribbon .rb-g:not(:first-child){ flex:0 0 auto; }
-/* the ribbon carries Print and Colour key on wide screens, so the copies beside the page title go */
+/* the ribbon carries Print and Color key on wide screens, so the copies beside the page title go */
 @media (min-width:901px){ html body #viewport .title-block .bk-print-btn{ display:none; } }
 
 /* Phones have no side-by-side cells, so an input keeps its box outline there. */

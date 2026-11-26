@@ -7,12 +7,12 @@
      node audit/visual_regression.js index.html --report out/       where the before/after/diff images go (default: audit/visual_report/)
    Matrix: acquisition deck at desktop 1440 and phone 390, Light and Night; the Property Editor sub-tabs at desktop and phone, Light; the development deck at desktop, Light.
    Determinism: the clock is frozen, animations are off, the network is blocked, and every page is captured from the top. Baselines depend on the renderer's fonts; regenerate them
-   (--update) on the machine that will run the check. Known limit: the baseline is small (about a third of the width), so it catches layout, fill, line, colour and clipping changes, not single-letter text edits. */
+   (--update) on the machine that will run the check. Known limit: the baseline is small (about a third of the width), so it catches layout, fill, line, color and clipping changes, not single-letter text edits. */
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const fs = require('fs'), path = require('path');
 const args = process.argv.slice(2), HTML = path.resolve(args[0] || 'index.html'), flag = n => args.indexOf(n) >= 0, val = n => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
 const UPDATE = flag('--update'), ONLY = (val('--only') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const BASE = path.join(__dirname, 'visual_baseline'), REPORT = path.resolve(val('--report') || path.join(__dirname, 'visual_report'));
-const TOL_PCT = Number(val('--tolerance') || 0.5), TOL_BLOCK = 60;   /* a page fails if over 0.5% of its 6x6 blocks changed colour, or any 16x16 area changed over 60% */
+const TOL_PCT = Number(val('--tolerance') || 0.5), TOL_BLOCK = 60;   /* a page fails if over 0.5% of its 6x6 blocks changed color, or any 16x16 area changed over 60% */
 const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirname, 'devdeal.js'));
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const VP = { desktop: { width: 1440, height: 900, cap: 1600, w: 440 }, phone: { width: 390, height: 844, cap: 2000, w: 360 } };
