@@ -121,3 +121,14 @@ html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !import
 #viewport .bk-pm-years .bk-seg{ display:inline-flex; flex-wrap:wrap; }
 /* a check's basis, said under its name in the label column */
 #viewport td .bk-sub.bk-chk-basis{ display:block; margin-top:2px; font-size:11px; font-weight:400; line-height:1.35; color:var(--bk-ctl-dim); white-space:normal; text-transform:none; letter-spacing:0; }
+
+/* Source Data: the two Yardi documents named side by side, then their figures */
+#viewport .bk-src-docs{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin:0 0 16px; }
+@media (max-width:900px){ #viewport .bk-src-docs{ grid-template-columns:minmax(0, 1fr); } }
+#viewport .bk-src-doc{ padding:12px 14px; background:var(--bk-ctl-bg); border:1px solid var(--bk-ctl-line); border-left:4px solid var(--bk-ctl-accent); }
+#viewport .bk-src-k{ font:700 10.5px var(--bk-ctl-font); letter-spacing:.08em; text-transform:uppercase; color:var(--bk-ctl-accent); }
+#viewport .bk-src-f{ margin-top:4px; font:600 13px var(--bk-ctl-font); color:var(--bk-ctl-ink); overflow-wrap:anywhere; }
+#viewport .bk-src-d{ margin-top:6px; font-size:12px; line-height:1.45; color:var(--bk-ctl-dim); }
+#viewport .bk-src-n{ margin-top:8px; font-size:12.5px; color:var(--bk-ctl-ink); }
+#viewport h2.bk-src-h{ margin:20px 0 8px; }
+#viewport table.bk-src-chk{ margin-top:12px; }

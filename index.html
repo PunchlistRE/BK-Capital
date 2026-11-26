@@ -7908,7 +7908,7 @@ var DEAL_SHEETS = ['Home','Deal Underwrite','Rent Roll','Operating Underwrite','
   'Debt Schedule','Covenant Monitor','Returns','Equity Waterfall','After-Tax','Sensitivity',
   'Reverse Solve','Development','Dev Schedule','Dev Draws','Residual Land','Sources & Uses',
   'Investors','Investor Schedules','Liquidity','Waterfall (M)','Sponsor CF','Lease Cohort CF',
-  'Deal Vectors (M)','Ledger (M)','Source Data'];
+  'Deal Vectors (M)','Ledger (M)'];   /* Source Data is reference data from the Yardi files: it shows without a deal (src/213) */
 
 function quarantineNotice(){
   var idx = (typeof window.bkQuarantineIndex === 'function') ? window.bkQuarantineIndex() : [];
@@ -34655,6 +34655,64 @@ window.bkPriceCapRows = function(o, fmt){
   return out; };
 })();
 </script>
+<script id="bk-source-yardi">/* SOURCE DATA FROM THE YARDI FILES. The Source Data page names the two Yardi documents the sponsor supplied and shows what each holds:
+     Yardi_Trailing-12_March_2026.pdf   the group trailing-12 statement, month by month (transcribed below, as printed)
+     Yardi_Portfolio_Master_Source_Benchmark_FULL_DATA_v2 (.xlsm, printed to PDF)   the property summary (BK_SOURCE_DATA, src/035), which matches it line for line
+   The statement's own "Trailing-12 Total" adds thirteen months (Mar 2025 to Mar 2026): it is shown as printed, beside the true twelve months (Apr 2025 to Mar 2026),
+   and nothing is corrected. Every subtotal is checked month by month. The page is reference data, so it shows with or without an active deal. */
+window.BK_YARDI_T12 = {"file":"Yardi_Trailing-12_March_2026.pdf","pages":4,"months":["Mar 2025","Apr 2025","May 2025","Jun 2025","Jul 2025","Aug 2025","Sep 2025","Oct 2025","Nov 2025","Dec 2025","Jan 2026","Feb 2026","Mar 2026"],"rows":[{"k":"comm","label":"Commercial rental income","m":[57187.19,57187.19,57187.19,57310.89,117608.21,58136.84,58044.84,58144.84,58136.84,58177.13,215977.6,160744.3,187474.07],"printed":1201317.13},{"k":"res","label":"Residential rental income","m":[282614.75,287402.67,281007.96,278303.87,285576.58,276733.02,281889.0,289220.13,291947.85,280135.5,291695.78,288205.26,289160.29],"printed":3703892.66},{"k":"oth","label":"Other income","m":[27431.61,8948.84,31800.28,6300.72,12160.92,10910.79,9356.49,10501.64,13663.54,9097.8,6153.46,7482.22,25377.1],"printed":179185.41},{"k":"egi","label":"Effective gross income","m":[367233.55,353538.7,369995.43,341915.48,415345.71,345780.65,349290.33,357866.61,363748.23,347410.43,513826.84,456431.78,502011.46],"printed":5084395.2},{"k":"nonrec","label":"Non-recoverable expenses","m":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,18252.1,20906.51,102235.14,14046.85],"printed":155440.6},{"k":"opex","label":"Operating expenses","m":[69640.39,82511.69,72433.56,81235.83,407547.32,43673.93,88713.37,77767.17,103565.74,511023.13,117997.94,83198.37,76520.42],"printed":1815828.86},{"k":"othx","label":"Other expenses (incl. management fee)","m":[70387.27,44829.26,31555.83,45821.43,31242.57,31243.34,45069.13,31560.59,31471.97,31576.02,39176.69,33421.15,32597.15],"printed":499952.4},{"k":"exp","label":"Total expenses and fees","m":[140027.66,127340.95,103989.39,127057.26,438789.89,74917.27,133782.5,109327.76,135037.71,560851.25,178081.14,218854.66,123164.42],"printed":2471221.86},{"k":"noi","label":"Net operating income","m":[227205.89,226197.75,266006.04,214858.22,-23444.18,270863.38,215507.83,248538.85,228710.52,-213440.82,335745.7,237577.12,378847.04],"printed":2613173.34},{"k":"adj","label":"Cash adjustments (debt service, capital, reserves)","m":[-5131.61,-2289.83,-87812.51,38322.69,-55104.49,17149.47,-15784.03,12547.46,-15470.33,-1987040.84,47198.94,-122601.88,-34620.62],"printed":-2210637.58},{"k":"lcf","label":"Net levered cash flow","m":[222074.28,223907.92,178193.53,253180.91,-78548.67,288012.85,199723.8,261086.31,213240.19,-2200481.66,382944.64,114975.24,344226.42],"printed":402535.76}]};
+(function(){
+'use strict';
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function M(v){ if(v == null || !isFinite(v)) return '—'; var r = Math.round(v); return Math.abs(v) < 0.5 ? '$0' : r < 0 ? '($' + Math.abs(r).toLocaleString('en-US') + ')' : '$' + r.toLocaleString('en-US'); }
+function P(v, d){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(d == null ? 1 : d) + '%'; }
+function sum(a){ return a.reduce(function(t, x){ return t + (Number(x) || 0); }, 0); }
+function chip(ok, t){ return '<span class="status-chip ' + (ok ? 'pass' : 'fail') + '">' + (t || (ok ? 'TIES' : 'DOES NOT TIE')) + '</span>'; }
+function T(){ return window.BK_YARDI_T12; } function SD(){ return window.BK_SOURCE_DATA || { portfolio:[], targets:[] }; }
+function row(k){ return (T().rows || []).filter(function(r){ return r.k === k; })[0]; }
+function sources(){
+  var t = T(), sd = SD(), n12 = sum(row('noi').m.slice(1));
+  return '<div class="bk-src-docs">'
+    + '<div class="bk-src-doc"><div class="bk-src-k">Yardi trailing-12 statement</div><div class="bk-src-f">' + esc(t.file) + '</div><div class="bk-src-d">Group income and expense statement, ' + t.months[0] + ' to ' + t.months[t.months.length - 1] + ' (' + t.months.length + ' monthly columns), ' + t.pages + ' pages. Covers the six residential and six commercial properties. Below: every summary line, month by month.</div><div class="bk-src-n">NOI, 12 months to Mar 2026: <b>' + M(n12) + '</b></div></div>'
+    + '<div class="bk-src-doc"><div class="bk-src-k">Yardi portfolio master</div><div class="bk-src-f">Yardi_Portfolio_Master_Source_Benchmark_FULL_DATA_v2.xlsm</div><div class="bk-src-d">Property summary (units, area, rent, T-12 NOI, expense ratio, cap rate, ownership, implied value) for ' + sd.portfolio.length + ' owned properties and ' + (sd.targets || []).length + ' acquisition targets, with each property\'s monthly Yardi line items behind it. The figures on this page match the file line for line.</div><div class="bk-src-n">T-12 NOI, all properties: <b>' + M(sum(sd.portfolio.map(function(p){ return p.t12noi; }))) + '</b></div></div></div>'; }
+function t12(){
+  var t = T(), mm = t.months, heads = mm.map(function(m){ return '<th>' + m + '</th>'; }).join('') + '<th>Total as printed (13 mo.)</th><th>Total Apr 2025–Mar 2026 (12 mo.)</th>';
+  var cls = { egi:'subtotal', exp:'subtotal', noi:'grandtotal', lcf:'grandtotal' }, sec = { comm:'Income', nonrec:'Expenses', adj:'Below NOI' };
+  var body = t.rows.map(function(r){ return (sec[r.k] ? '<tr class="sec"><td class="rowlabel" colspan="' + (mm.length + 3) + '">' + sec[r.k] + '</td></tr>' : '')
+    + '<tr' + (cls[r.k] ? ' class="' + cls[r.k] + '"' : '') + '><td class="rowlabel">' + esc(r.label) + '</td>' + r.m.map(function(v){ return '<td>' + M(v) + '</td>'; }).join('') + '<td>' + M(r.printed) + '</td><td>' + M(sum(r.m.slice(1))) + '</td></tr>'; }).join('');
+  /* the statement checked against itself, month by month */
+  var n = mm.length, ok = function(f){ for(var i = 0; i < n; i++){ if(Math.abs(f(i)) > 0.05) return false; } return true; }, g = function(k, i){ return row(k).m[i]; };
+  var cE = ok(function(i){ return g('comm', i) + g('res', i) + g('oth', i) - g('egi', i); }), cX = ok(function(i){ return g('nonrec', i) + g('opex', i) + g('othx', i) - g('exp', i); }), cN = ok(function(i){ return g('egi', i) - g('exp', i) - g('noi', i); }), cL = ok(function(i){ return g('noi', i) + g('adj', i) - g('lcf', i); });
+  var cT = t.rows.every(function(r){ return Math.abs(sum(r.m) - r.printed) < 0.05; }), noiP = row('noi').printed, noi12 = sum(row('noi').m.slice(1)), mar25 = row('noi').m[0];
+  var sd = SD(), noiAll = sum(sd.portfolio.map(function(p){ return p.t12noi; })), noiOwn = sum(sd.portfolio.map(function(p){ return p.t12noi * (p.ownership == null ? 1 : p.ownership); }));
+  var checks = '<table class="fin bk-src-chk"><thead><tr><th class="rowlabel-h">Check on the statement</th><th>Result</th></tr></thead><tbody>'
+    + '<tr><td class="rowlabel">Commercial + residential + other income = effective gross income, every month</td><td>' + chip(cE) + '</td></tr>'
+    + '<tr><td class="rowlabel">Non-recoverable + operating + other expenses = total expenses and fees, every month</td><td>' + chip(cX) + '</td></tr>'
+    + '<tr><td class="rowlabel">Effective gross income − total expenses = net operating income, every month</td><td>' + chip(cN) + '</td></tr>'
+    + '<tr><td class="rowlabel">NOI + cash adjustments = net levered cash flow, every month</td><td>' + chip(cL) + '</td></tr>'
+    + '<tr><td class="rowlabel">The printed "Trailing-12 Total" is the sum of the monthly columns<span class="bk-sub">It adds 13 months, Mar 2025 to Mar 2026, so it is not a trailing twelve. Printed NOI ' + M(noiP) + '; the 12 months to Mar 2026 ' + M(noi12) + '; the difference is Mar 2025 (' + M(mar25) + ').</span></td><td>' + (cT ? '<span class="status-chip warn">13 MONTHS</span>' : chip(false)) + '</td></tr>'
+    + '<tr><td class="rowlabel">Against the portfolio master\'s T-12 NOI<span class="bk-sub">Master, all properties at 100%: ' + M(noiAll) + '. At the ownership share (Harvard, 331 Selleck and Lenox at 50%): ' + M(noiOwn) + '. The statement\'s 12 months: ' + M(noi12) + ', ' + P(noi12 / noiOwn - 1, 1) + ' from the ownership share. The two documents do not say which basis the group statement uses.</span></td><td><span class="status-chip ' + (Math.abs(noi12 / noiOwn - 1) <= 0.02 ? 'pass">WITHIN 2%' : 'warn">REVIEW') + '</span></td></tr>'
+    + '</tbody></table>';
+  return '<div class="tbl-wrap"><table class="fin bk-src-t12"><caption>Yardi trailing-12, group statement (' + esc(t.file) + ')</caption><thead><tr><th class="rowlabel-h">Line</th>' + heads + '</tr></thead><tbody>' + body + '</tbody></table></div>' + checks; }
+/* with no deal open, the property summary is shown on its own (the full page, with the active deal's cross-checks, needs a deal) */
+function master(){ var sd = SD();
+  return '<div class="tbl-wrap"><table class="fin"><caption>Yardi portfolio master, property summary</caption><thead><tr><th class="rowlabel-h">Property</th><th>Type</th><th>Units</th><th>SF</th><th>Annual rent</th><th>T-12 NOI</th><th>Expense ratio</th><th>Cap rate</th><th>Vacancy</th><th>Ownership</th><th>Implied value</th></tr></thead><tbody>'
+    + sd.portfolio.map(function(p){ return '<tr><td class="rowlabel">' + esc(p.property) + '</td><td>' + esc(p.type) + '</td><td>' + p.units + '</td><td>' + Number(p.sf).toLocaleString('en-US') + '</td><td>' + M(p.annualRent) + '</td><td>' + M(p.t12noi) + '</td><td>' + P(p.expenseRatio, 2) + '</td><td>' + P(p.capRate, 2) + '</td><td>' + P(p.vacancy, 2) + '</td><td>' + P(p.ownership, 0) + '</td><td>' + M(p.impliedValue) + '</td></tr>'; }).join('')
+    + '<tr class="grandtotal"><td class="rowlabel">Owned properties</td><td></td><td>' + sum(sd.portfolio.map(function(p){ return p.units; })) + '</td><td>' + sum(sd.portfolio.map(function(p){ return p.sf; })).toLocaleString('en-US') + '</td><td>' + M(sum(sd.portfolio.map(function(p){ return p.annualRent; }))) + '</td><td>' + M(sum(sd.portfolio.map(function(p){ return p.t12noi; }))) + '</td><td></td><td></td><td></td><td></td><td>' + M(sum(sd.portfolio.map(function(p){ return p.impliedValue; }))) + '</td></tr></tbody></table></div>'; }
+var orig = RENDERERS['Source Data'];
+function render(){
+  var has = typeof window.bkHasActiveDeal !== 'function' || window.bkHasActiveDeal(), base = null;
+  if(has && typeof orig === 'function'){ try { base = orig(); } catch(e){ base = null; } }
+  var top = sources() + '<h2 class="bk-src-h">The trailing-12 statement</h2>' + t12() + '<h2 class="bk-src-h">The portfolio master</h2>';
+  var o = base || { title:'Source Data', crumbs:'Inputs · Source Data', meta:{ 'Yardi Source':'2 documents', Status:'Reference' }, sidebar:'' };
+  o.main = top + (base ? base.main : master() + '<div class="note-flag"><span>&#8505;</span><div>Open a deal to see its assumptions checked against these sources.</div></div>');
+  o.desc = 'The two Yardi documents behind this model: the group trailing-12 statement, month by month and checked, and the portfolio master\'s property summary.';
+  o.meta = Object.assign({}, o.meta || {}, { 'Yardi Source':'T-12 Mar 2026 + Portfolio Master' });
+  return o; }
+render.__bkOriginal = orig && orig.__bkOriginal || orig;
+if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Source Data', render); else RENDERERS['Source Data'] = render;
+})();
+</script>
 <style id="bk-palette-css">/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.
    Navy is the brand and the structure (chrome, section bars, the key rule). Slate greys carry the neutral surfaces. One blue is the accent.
    Four semantic colours, each with one job: green = passes / linked, amber = needs a look, red = fails / required, grey = not applicable.
@@ -35681,6 +35739,17 @@ html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !import
 #viewport .bk-pm-years .bk-seg{ display:inline-flex; flex-wrap:wrap; }
 /* a check's basis, said under its name in the label column */
 #viewport td .bk-sub.bk-chk-basis{ display:block; margin-top:2px; font-size:11px; font-weight:400; line-height:1.35; color:var(--bk-ctl-dim); white-space:normal; text-transform:none; letter-spacing:0; }
+
+/* Source Data: the two Yardi documents named side by side, then their figures */
+#viewport .bk-src-docs{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin:0 0 16px; }
+@media (max-width:900px){ #viewport .bk-src-docs{ grid-template-columns:minmax(0, 1fr); } }
+#viewport .bk-src-doc{ padding:12px 14px; background:var(--bk-ctl-bg); border:1px solid var(--bk-ctl-line); border-left:4px solid var(--bk-ctl-accent); }
+#viewport .bk-src-k{ font:700 10.5px var(--bk-ctl-font); letter-spacing:.08em; text-transform:uppercase; color:var(--bk-ctl-accent); }
+#viewport .bk-src-f{ margin-top:4px; font:600 13px var(--bk-ctl-font); color:var(--bk-ctl-ink); overflow-wrap:anywhere; }
+#viewport .bk-src-d{ margin-top:6px; font-size:12px; line-height:1.45; color:var(--bk-ctl-dim); }
+#viewport .bk-src-n{ margin-top:8px; font-size:12.5px; color:var(--bk-ctl-ink); }
+#viewport h2.bk-src-h{ margin:20px 0 8px; }
+#viewport table.bk-src-chk{ margin-top:12px; }
 </style>
 </body>
 </html>
