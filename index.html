@@ -24367,15 +24367,29 @@ function build(){
     ['Closing costs', P(Number(s.closingCostsPct) || 0, 1) + ' of price'], Number(s.acqFeePct) ? ['Acquisition fee', P(Number(s.acqFeePct), 2) + ' of price'] : null, ['Interest-only', Number(s.acqIO) ? s.acqIO + ' months' : 'None'], ['Return hurdle', P(hurdle, 1) + ' levered IRR']].filter(Boolean);
   var CH = CHr.map(function(a){ return '<tr><td class="l">' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join('');
   PG.credit.push(page('<h2>Credit and market checks</h2>' + gateTbl
-    + '<h2 style="margin-top:14px">Against the market</h2>' + mTbl
-    + '<div class="g2 mt"><div><h2>Key assumptions</h2><table class="uni"><tbody>' + asm + '</tbody></table></div><div><h2>Input choices</h2><table class="uni"><tbody>' + CH + '</tbody></table></div></div>'
+    + '<h2 style="margin-top:14px">Against the market</h2>' + mTbl, N, N, D));
+  /* the assumptions and the choices behind them: their own page, so the checks are never cut off */
+  PG.credit.push(page('<h2>Assumptions and input choices</h2><div class="g2"><div><h2 style="font-size:11px">Key assumptions</h2><table class="uni"><tbody>' + asm + '</tbody></table></div><div><h2 style="font-size:11px">Input choices</h2><table class="uni"><tbody>' + CH + '</tbody></table></div></div>'
     + '<div class="mt"><h2>About this summary</h2><div class="note">Prepared ' + date + ' from the Punchlist Capital underwriting model (beta). Every figure is read from the live model for the ' + esc(caseName) + ' case; the sensitivity grid reruns the model for each cell. This summary is an analytical aid, not an offer or a fairness opinion, and is only as good as the assumptions behind it. Check it against your own model before relying on it.</div></div>', N, N, D));
   /* impact to portfolio (src/179): near the end, before the credit page's closing notes; footers renumbered over the final list */
   var decision = '<div class="bx dec"><div class="t">Final decision</div><div class="dv"><span class="dot" style="background:' + vcol + '"></span><b>' + esc(gate.verdict || 'Not assessed') + '</b><span>' + esc(gate.status || '') + '</span></div>'
     + '<div class="ins"><div>Levered IRR <b>' + P(D.irr, 1) + '</b> against the ' + P(hurdle, 1) + ' hurdle' + (hurdleGap(D.irr, hurdle) ? ' (' + hurdleGap(D.irr, hurdle) + ')' : '') + '; equity multiple <b>' + X(D.moic) + '</b> on ' + M(D.eq) + ' of equity.</div>' + exc + '</div>'
     + (gate.action ? '<div class="note" style="margin-top:7px"><b>Next step:</b> ' + esc(gate.action) + '</div>' : '') + '</div>';
   var pgi = typeof window.bkPortfolioImpactPage === 'function' ? safe(function(){ return window.bkPortfolioImpactPage(); }, null) : null;
-  PG.port.push(page(pgi && !/First deal in the portfolio/.test(pgi) ? pgi + '<div class="mt">' + decision + '</div>' : '<h2>Final decision</h2>' + decision, 0, 0, D));
+  /* the portfolio impact on its own page, then the final decision on the last page before the photos */
+  if(pgi && !/First deal in the portfolio/.test(pgi)) PG.port.push(page(pgi, 0, 0, D));
+  /* the decision page: the verdict, the four figures it rests on, and each test behind it in one line */
+  var gR = (gate.rows || []).filter(function(r){ return r.applicable !== false; }), gP = gR.filter(function(r){ return r.pass; }), gF = gR.filter(function(r){ return !r.pass; });
+  var mOut = mrows.filter(function(r){ return r.status !== 'IN RANGE'; }), PCx = safe(function(){ return window.bkPriceCaps(s, MR); }, null), PI = safe(function(){ return window.bkPortfolioImpact(); }, null);
+  var dTiles = '<div class="kp mt"><div class="c hl"><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 1) + '</div><div class="d">hurdle ' + P(hurdle, 1) + '</div></div><div class="c"><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(D.tot.profit) + ' profit</div></div>'
+    + '<div class="c"><div class="k">Equity in</div><div class="v">' + M(D.eq) + '</div><div class="d">' + M(d.loan) + ' loan</div></div><div class="c"><div class="k">Hold</div><div class="v">' + D.H + ' years</div><div class="d">exit at ' + P(Number(s.exitCap), 2) + ' cap</div></div></div>';
+  var dRows = [['Credit gates', gP.length + ' of ' + gR.length + ' pass' + (gF.length ? '; not met: ' + gF.map(function(r){ return esc(r.label.replace(/ \(.*\)$/, '')) + (r.severity === 'HARD' ? ' (hard)' : ''); }).join(', ') : '')],
+    ['Against the market', mrows.length ? (mrows.length - mOut.length) + ' of ' + mrows.length + ' assumptions inside the market range' + (mOut.length ? '; outside: ' + mOut.map(function(r){ return esc(r.label.replace(/ \(.*\)/, '')); }).join(', ') : '') : 'No market benchmarks for this deal type'],
+    PCx && PCx.asking ? ['Price', M(PCx.price) + ', ' + (PCx.vsAsk === 0 ? 'at the asking price' : P(Math.abs(PCx.vsAsk), 1) + (PCx.vsAsk < 0 ? ' below' : ' above') + ' the ' + M(PCx.asking) + ' asking price')] : ['Price', M(price) + (units ? ' (' + F(price / units) + ' a unit)' : '')],
+    PCx && PCx.goingIn != null ? ['Cap rates', 'going-in ' + P(PCx.goingIn, 2) + (PCx.t12Cap != null ? ', T-12 ' + P(PCx.t12Cap, 2) : '') + ', exit ' + P(PCx.exitCap, 2) + (PCx.spreadBps != null ? ' (' + (PCx.spreadBps >= 0 ? '+' : '') + PCx.spreadBps + ' bps)' : '')] : null,
+    ['Lender coverage', 'Year 1 ' + X(C[0] && C[0].dscr) + ' against the loan\'s ' + X(bkLenderDscrMin()) + ' minimum'],
+    PI && PI.after && PI.before && !PI.first ? ['Portfolio', 'combined levered IRR ' + P(PI.before.cirr, 2) + ' to ' + P(PI.after.cirr, 2) + '; ' + (D.irr > PI.before.wirr ? 'accretive' : 'dilutive') + ' to the portfolio\'s return; ' + P(PI.after.eq ? PI.me.equity / PI.after.eq : null, 0) + ' of its equity'] : ['Portfolio', 'the first deal in the portfolio: nothing to compare it with']].filter(Boolean);
+  PG.port.push(page('<h2>Final decision</h2>' + decision + dTiles + '<h2 class="mt" style="margin-top:14px">What the decision rests on</h2><table class="uni"><tbody>' + dRows.map(function(r){ return '<tr><td class="l" style="width:28%">' + r[0] + '</td><td class="l" style="text-align:left">' + r[1] + '</td></tr>'; }).join('') + '</tbody></table>', 0, 0, D));
   /* ---- INVESTMENT PLAN: what the property is, what is paid against what is asked, every cap rate side by side, the income in place, going in and at the
      broker's pro forma, and the plan in plain words. The OM's own figures come from the import (s._omFacts); the underwriting from the engine (C, D). */
   var OF = s._omFacts || null, c1 = C[0] || {}, cL = C[H - 1] || {}, ask = OF && OF.askingPrice ? Number(OF.askingPrice) : null;
@@ -31396,8 +31410,10 @@ function portfolioData(){
     return { name:sn.name || sn.dealId || 'Untitled', type:typeOf(sn), kind:kindOf(sn), location:sn.location || '', equity:num(r.contrib), cost:num(mt.purchasePrice), loan:num(mt.loan), irr:mt.irr, moic:num(r.moic), dist:num(r.dist), profit:num(r.dist) - num(r.contrib), cur:isCur,
       flows:rows.map(function(x){ return { dt:x.dt, cf:num(x.cf) }; }), close:r.closeDt, eq0:num(rows[0] && rows[0].eqDraw) };
   };
-  var others = saved.filter(function(sn){ return safe(function(){ return bkPortfolioKey(sn); }, '') !== curKey; }).map(function(sn){ return one(sn, false); }).filter(Boolean), me = one(s, true);
-  var D = { me:me, others:others, first:others.length === 0 };
+  var all = saved.filter(function(sn){ return safe(function(){ return bkPortfolioKey(sn); }, '') !== curKey; }).map(function(sn){ return { sn:sn, x:one(sn, false) }; }), me = one(s, true);
+  /* a saved deal with no price or no equity is a draft, not an asset: it is left out of the portfolio and named in a note, never shown as a $0 line */
+  var others = all.filter(function(o){ return o.x && o.x.equity > 0 && o.x.cost > 0; }).map(function(o){ return o.x; }), skipped = all.filter(function(o){ return !(o.x && o.x.equity > 0 && o.x.cost > 0); }).map(function(o){ return o.sn.name || o.sn.dealId || 'Untitled'; });
+  var D = { me:me, others:others, first:others.length === 0, skipped:skipped };
   var agg = function(list){
     var eq = list.reduce(function(a, x){ return a + x.equity; }, 0), cost = list.reduce(function(a, x){ return a + x.cost; }, 0), loan = list.reduce(function(a, x){ return a + x.loan; }, 0), dist = list.reduce(function(a, x){ return a + x.dist; }, 0), prof = list.reduce(function(a, x){ return a + x.profit; }, 0);
     var wirr = eq > 0 ? list.reduce(function(a, x){ return a + (isFinite(x.irr) ? x.irr * x.equity : 0); }, 0) / eq : null;
@@ -31414,9 +31430,14 @@ function portfolioData(){
 
 function portfolioPage(){
   var D = safe(portfolioData, null); if(!D || !D.me) return '<h2>Impact to portfolio</h2><div class="note">The portfolio comparison could not be calculated for this deal.</div>';
-  var me = D.me, b = D.before, a = D.after, own = '<table><tbody>' + [['This deal on its own', me.kind + ' · ' + esc(me.type)], ['Total contributed equity / total cost', usd(me.equity) + ' / ' + usd(me.cost)], ['Levered profit', usd(me.profit)], ['Levered IRR / multiple', pct(me.irr) + ' / ' + mult(me.moic)]].map(function(r){ return tr(r); }).join('') + '</tbody></table>';
+  var me = D.me, b = D.before, a = D.after;
+  var own = '<div class="kp"><div class="c"><div class="k">This deal</div><div class="v" style="font-size:15px">' + esc(me.kind) + '</div><div class="d">' + esc(me.type) + '</div></div>'
+    + '<div class="c"><div class="k">Contributed equity</div><div class="v">' + usd(me.equity) + '</div><div class="d">total cost ' + usd(me.cost) + '</div></div>'
+    + '<div class="c"><div class="k">Levered profit</div><div class="v">' + usd(me.profit) + '</div><div class="d">over the hold</div></div>'
+    + '<div class="c"><div class="k">Levered IRR</div><div class="v">' + pct(me.irr) + '</div><div class="d">' + mult(me.moic) + ' multiple</div></div></div>';
+  var skip = D.skipped && D.skipped.length ? ' Left out as drafts (no price or no equity yet): ' + D.skipped.map(esc).join(', ') + '.' : '';
   if(D.first){
-    return '<h2>Impact to portfolio</h2><div class="bx" style="padding:10px 12px"><div class="t">First deal in the portfolio: N/A</div><div class="s">No other underwritten assets are saved in BK Capital, so there is no portfolio to compare against. This deal would be the first asset; the figures below are the deal on its own.</div></div><div class="mt">' + own + '</div>'
+    return '<h2>Impact to portfolio</h2><div class="bx" style="padding:10px 12px"><div class="t">First deal in the portfolio: N/A</div><div class="s">No other underwritten assets are saved in BK Capital, so there is no portfolio to compare against. This deal would be the first asset; the figures below are the deal on its own.' + skip + '</div></div><div class="mt">' + own + '</div>'
       + '<div class="note" style="margin-top:8px">Once other deals are saved to the portfolio, this page shows the current assets and what adding this one changes: equity and leverage, the equity-weighted and combined (dated cash flow) IRR, the multiple, concentration in the largest asset, and the mix by property type and by development versus acquisition.</div>';
   }
   var asset = function(x){ return tr([esc(x.name) + '<div style="font-size:7px;opacity:.7">' + esc(x.kind + ' · ' + x.type) + '</div>', usd(x.equity), usd(x.cost), pct(x.irr, 1), mult(x.moic), pct(b.eq ? x.equity / b.eq : null, 0)]); };
@@ -31433,7 +31454,8 @@ function portfolioPage(){
     (a.cirr != null && b.cirr != null ? 'Portfolio levered IRR on combined dated cash flows moves from <b>' + pct(b.cirr, 2) + '</b> to <b>' + pct(a.cirr, 2) + '</b> (' + pts(a.cirr - b.cirr) + '); the equity-weighted figure moves ' + pts(a.wirr - b.wirr) + '. The deal is ' + (me.irr > b.wirr ? 'accretive to' : 'dilutive to') + ' the portfolio\'s return.' : ''),
     'Diversification: ' + (newType ? 'a <b>new property type</b> (' + esc(me.type) + ')' : 'the same property type as existing assets (' + esc(me.type) + ', ' + pct(b.byType[me.type] / b.eq, 0) + ' of current equity)') + '; ' + (newKind ? 'it adds <b>' + me.kind.toLowerCase() + ' exposure</b> the portfolio did not have' : 'it adds more ' + me.kind.toLowerCase() + ' exposure') + '. Development share of equity goes from ' + pct(b.dev, 0) + ' to ' + pct(a.dev, 0) + '.',
     'Concentration: the largest single asset is ' + pct(b.big, 0) + ' of equity before and ' + pct(a.big, 0) + ' with this deal' + (me.equity >= Math.max.apply(null, D.others.map(function(x){ return x.equity; })) ? ' (this deal would be the largest)' : '') + '. Leverage moves from ' + pct(b.lev, 1) + ' to ' + pct(a.lev, 1) + '.'].filter(Boolean);
-  return '<h2>Impact to portfolio</h2><div class="g2" style="grid-template-columns:1.2fr 1fr"><div><h2 style="font-size:11px">Current portfolio on file</h2>' + cur + '<div class="note" style="margin-top:3px">Assets are the underwritten deals saved in BK Capital, each shown on its own saved assumptions. Mix by property type: ' + mix(b.byType, b.eq) + '.</div></div><div>' + own + '</div></div>'
+  return '<h2>Impact to portfolio</h2>' + own
+    + '<h2 style="margin-top:12px">Current portfolio on file</h2>' + cur + '<div class="note" style="margin-top:3px">Assets are the underwritten deals saved in BK Capital, each shown on its own saved assumptions. Mix by property type: ' + mix(b.byType, b.eq) + '.' + skip + '</div>'
     + '<h2 style="margin-top:12px">What adding this asset changes</h2>' + cmp + '<div class="note" style="margin-top:3px">After: ' + mix(a.byType, a.eq) + '. Development ' + pct(a.dev, 0) + ' of equity.</div>'
     + '<div class="ins" style="margin-top:8px">' + lines.map(function(l){ return '<div>' + l + '</div>'; }).join('') + '</div>';
 }
