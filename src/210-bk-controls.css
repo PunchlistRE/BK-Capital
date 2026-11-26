@@ -103,3 +103,14 @@ html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !import
 #viewport .bk-ep-in:focus{ outline:2px solid var(--bk-ctl-accent); outline-offset:-1px; }
 #viewport .bk-ep-tag{ display:inline-block; margin-left:6px; padding:0 6px; font:700 10px/18px var(--bk-ctl-font); letter-spacing:.04em; text-transform:uppercase; border:1px solid currentColor; border-radius:2px; }
 #viewport .bk-ep-tag.ok{ color:#1F7A4C; } #viewport .bk-ep-tag.bad{ color:var(--bk-ctl-danger); }
+
+/* Import review: each figure can be edited or (an income or expense line) left out; the row shows what you changed and what the OM said */
+#viewport .bk-omr-acts{ display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; }
+#viewport :is(.bk-omr-acts, .bk-omr-edit, td) .bk-btn.bk-omr-b{ height:22px; line-height:20px; padding:0 7px; font-size:11px; }
+#viewport .bk-btn.quiet.bk-omr-x{ color:var(--bk-ctl-danger) !important; }
+#viewport .bk-omr-st{ display:inline-block; padding:0 6px; font:700 10px/18px var(--bk-ctl-font); letter-spacing:.04em; text-transform:uppercase; border:1px solid currentColor; border-radius:2px; color:var(--bk-ctl-accent); }
+#viewport .bk-omr-st.reject{ color:var(--bk-ctl-danger); } #viewport .bk-omr-st.learned{ color:#1F7A4C; margin-left:4px; }
+#viewport .bk-omr-was{ margin-left:8px; font-size:11px; color:var(--bk-ctl-dim); }
+#viewport tr.bk-omr-on > td{ background:var(--ae-head2, #EDF1F6); }
+#viewport .bk-omr-edit{ display:inline-flex; gap:4px; align-items:center; justify-content:flex-end; }
+#viewport .bk-omr-edit input{ width:100% !important; max-width:130px; box-sizing:border-box; height:24px; padding:0 6px; font:600 12px var(--bk-ctl-font); text-align:right; border:1px solid var(--bk-ctl-accent); border-radius:2px; }

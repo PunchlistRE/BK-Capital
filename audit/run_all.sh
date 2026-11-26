@@ -41,6 +41,7 @@ echo "== Import OM, price and printed cap rate (asking vs sold vs assessed)"; no
 echo "== Import OM, 32 Ferry / 45-47 Spring Street layouts (price tile, sub-\$1M prices, dash column, unit mix by heading, stated commercial area)"; node audit/om_ferry_test.js index.html | tail -1
 echo "== Import OM, 509-515 Gregory Street layout (key figures in a banner with their labels under them; a unit table and a two-column statement on one page; the OM's own pro forma that does not add up is reported)"; node audit/om_gregory_test.js index.html | tail -1
 echo "== Import OM, 18 Fairfield Avenue layout (letter-spaced headings, four figures a row, a single-spaced unit mix, a unit-by-unit rent roll that goes on the deal, no asking price)"; node audit/om_fairfield_test.js index.html | tail -1
+echo "== Import OM review (edit, leave out, undo; an edited price teaches the reader where the price is printed)"; node audit/om_review_test.js index.html | tail -1
 echo "== Financing Compare (complete dated financing economics, reconciled to the engine)"; node audit/fincompare_test.js index.html | tail -1
 echo "== Pre-Offer Bid (maximum supportable price, verified against the engine)"; node audit/prebid_test.js index.html | tail -1
 echo "== Deal Remedies (resize debt, maximum price, rent and occupancy required, through the credit gate)"; node audit/remedies_test.js index.html | tail -1
