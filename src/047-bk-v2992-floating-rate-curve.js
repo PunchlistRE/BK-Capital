@@ -49,7 +49,7 @@
     const yr=Math.max(1,Math.ceil(m/12));
     if(t==='Fixed prepayment penalty'||t==='Custom') return bal*Math.max(0,Number(s.prepayPct)||0);
     if(t==='Step-down'){ const st=String(s.prepaySteps||'').split(/[^0-9.]+/).filter(Boolean).map(Number); const p=st[yr-1]; return bal*Math.max(0,(p||0)/100); }
-    if(t==='Yield maintenance'||t==='Defeasance'){ const tsy=Number(s.prepayTreasury)>0?Number(s.prepayTreasury):Math.max(0,Number(s.debtIndexRate)||0), diff=Math.max(0,coupon-tsy), i=tsy/12;
+    if(t==='Yield maintenance'||t==='Defeasance'){ const pub=window.bkSofrFor?window.bkSofrFor('Overnight SOFR'):null,tsy=Number(s.prepayTreasury)>0?Number(s.prepayTreasury):Number(s.debtIndexRate)>0?Number(s.debtIndexRate):pub&&pub.rate>0?pub.rate:0.04,   /* no Treasury entered: the index, else the published SOFR, else 4%; never 0, which would charge the whole coupon */ diff=Math.max(0,coupon-tsy), i=tsy/12;
       const pv=diff>0?(i>0?bal*diff/12*(1-Math.pow(1+i,-left))/i:bal*diff/12*left):0;
       return t==='Yield maintenance'?Math.max(pv,bal*Math.max(0,Number(s.prepayPct)>0?Number(s.prepayPct):0.01)):pv+bal*(Number(s.defeaseCostPct)>0?Number(s.defeaseCostPct):0.005); }
     return 0; };

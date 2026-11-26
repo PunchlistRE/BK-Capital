@@ -1125,6 +1125,11 @@
 "close": "</script>"
 },
 {
+"file": "216-bk-optimizer.js",
+"open": "\n<script id=\"bk-optimizer\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"
