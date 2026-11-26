@@ -135,3 +135,27 @@ html body #viewport .bk-omr-edit input.bk-nofield{ width:100%; max-width:130px; 
 #viewport .bk-src-n{ margin-top:8px; font-size:12.5px; color:var(--bk-ctl-ink); }
 #viewport h2.bk-src-h{ margin:20px 0 8px; }
 #viewport table.bk-src-chk{ margin-top:12px; }
+
+/* The step bar fits whatever room it has: when the six steps and their labels no longer fit beside the case switch (about 1150 to 1400 px wide),
+   the steps other than the current one show their status mark only (their name stays in the tooltip and for screen readers), so none is cut off
+   or hidden under the switch. The bar measures itself (a container query), so the rule follows the room, not the window. */
+@media screen{
+  html body .bk-flow .bk-steps{ container-type:inline-size; container-name:bksteps; }
+  @media (min-width:761px){ html body .bk-flow .bk-steps{ min-width:330px; } }
+  @media (max-width:760px){ html body .bk-flow .bk-steps{ flex:1 1 100%; } }   /* a phone: the steps take a line of their own under the Sheets button, so all six fit */   /* below this the case switch moves to its own line, as before; a phone gives the steps their own line already */
+  @container bksteps (max-width:584px){   /* the six steps with their names need about 580 px */
+    html body .bk-steps .bk-step-sep{ width:6px; }
+    html body .bk-steps .bk-step:not(.cur){ font-size:0; gap:0; padding:0 4px; }
+    html body .bk-steps .bk-step:not(.cur) .n{ font-size:10.5px; }
+  }
+  @container bksteps (max-width:320px){   /* a phone: the dashes between the steps go too, so the six marks and the current step's name fit */
+    html body .bk-steps .bk-step-sep{ display:none; }
+    html body .bk-steps .bk-step.cur{ padding:0 8px 0 4px; gap:5px; }
+  }
+}
+
+/* Investment Target: each setting is its label and figure on one line, the slider below at the full width, in the app's accent */
+#viewport .bk-tg-row{ margin:14px 0 18px; }
+#viewport .bk-tg-row .bk-tg-top{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+#viewport .bk-tg-row .bk-tg-top label{ font:600 12.5px var(--bk-ctl-font); color:var(--bk-ctl-ink); }
+#viewport .bk-tg-range{ display:block; width:100%; margin:0; accent-color:var(--bk-ctl-accent); cursor:pointer; }

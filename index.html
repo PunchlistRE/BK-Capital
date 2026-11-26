@@ -89,7 +89,7 @@ html.bk-auth-ok #bk-auth-gate { display:none !important; }
     --ink-900:#10233a;
     --ink-700:#2f4258;
     --ink-500:#566a80;
-    --ink-400:#7C8792;
+    --ink-400:#66717C;   /* small labels: 4.9 to 1 on white (was #7C8792, 3.7 to 1) */
     --input-blue:#1B5FA6;
     --formula-ink:#10233a;
     --linked-green:#2C7A4B;
@@ -5436,7 +5436,7 @@ function sheetSourceDataV27(){
   const hv = BK_SOURCE_DATA.harvard;
 
   const portRows = BK_SOURCE_DATA.portfolio.map(p=>`<tr><td class="rowlabel">${p.property}${p.dealId?` <span style="opacity:.6">(${p.dealId})</span>`:''}</td><td>${p.type}</td><td>${p.units}</td><td>${bkFmt(p.sf)}</td><td>$${bkFmt(p.annualRent)}</td><td>$${p.rentPSF.toFixed(2)}</td><td>$${bkFmt(p.t12noi)}</td><td>${bkPct(p.expenseRatio)}</td><td>${bkPct(p.capRate)}</td><td>${bkPct(p.vacancy)}</td><td>${bkPct(p.ownership)}</td><td>$${bkFmt(p.impliedValue)}</td></tr>`).join('');
-  const targetRows = BK_SOURCE_DATA.targets.map(p=>`<tr><td class="rowlabel">${p.property}</td><td>${p.type}</td><td>-</td><td>${bkFmt(p.sf)}</td><td colspan="8" style="text-align:left;opacity:.7">Target acquisition - no operating history yet.</td></tr>`).join('');
+  const targetRows = BK_SOURCE_DATA.targets.map(p=>`<tr class="bk-src-target"><td class="rowlabel" style="white-space:normal">${p.property}</td><td style="white-space:normal">${p.type}</td><td>-</td><td>${bkFmt(p.sf)}</td><td colspan="8" style="text-align:left;opacity:.7">Target acquisition - no operating history yet.</td></tr>`).join('');
 
   const portfolioTable = `<div class="tbl-wrap"><table class="fin"><caption>Yardi Portfolio Reference - Property Summary (source: ${BK_SOURCE_DATA.asOf})</caption>
     <thead><tr><th class="rowlabel-h">Property</th><th>Type</th><th>Units</th><th>SF</th><th>Annual Rent</th><th>Rent/SF</th><th>T-12 NOI</th><th>Exp. Ratio</th><th>Cap Rate</th><th>Vacancy</th><th>Ownership</th><th>Implied Value</th></tr></thead>
@@ -18769,6 +18769,7 @@ schedule();
 .bk-sx-heat th.rh{ text-align:right; padding-right:8px; white-space:nowrap; }
 .bk-sx-heat td{ text-align:center; padding:8px 4px; border-radius:4px; color:var(--sx-ink); font-variant-numeric:tabular-nums; background:var(--sx-mid); }
 .bk-sx-heat td.dark{ color:#fff; }
+.bk-sx-heat td.ink{ color:#14212F; }   /* a light cell takes the dark ink in either theme */
 .bk-sx-heat td.base{ outline:2px solid var(--sx-ink); outline-offset:-2px; font-weight:700; }
 .bk-sx-heat .corner{ font-size:10px; text-align:right; }
 .bk-sx-scale{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--sx-ink2); margin-top:8px; }
@@ -18979,7 +18980,9 @@ function spider(series, M, nSteps){
 function mix(a, b, t){ // hex mix for heat cells; CSS vars can't be interpolated in JS, so the heat map uses the light-mode poles and a dark-safe text rule
   function h(x){ return [parseInt(x.slice(1,3),16), parseInt(x.slice(3,5),16), parseInt(x.slice(5,7),16)]; }
   var A = h(a), B = h(b), c = A.map(function(v,i){ return Math.round(v + (B[i]-v)*t); });
-  return { css:'rgb('+c.join(',')+')', lum:(0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2])/255 };
+  /* the text on a cell is whichever of white and the dark ink reads better on it (WCAG contrast), not a fixed lightness cut */
+  var L = function(v){ v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }, Y = 0.2126 * L(c[0]) + 0.7152 * L(c[1]) + 0.0722 * L(c[2]), onWhite = 1.05 / (Y + 0.05), onInk = (Y + 0.05) / (0.0153 + 0.05);
+  return { css:'rgb('+c.join(',')+')', lum:(0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2])/255, white:onWhite > onInk };
 }
 
 /* ---------------------------------------------------------------- view */
@@ -19050,9 +19053,9 @@ function explorer(s){
     + ks.map(function(kx){ return '<th>'+esc(gx.show(kx*sx))+'</th>'; }).join('') + '</tr></thead><tbody>'
     + ks.map(function(ky, i){ return '<tr><th class="rh">'+esc(gy.show(ky*sy))+'</th>' + ks.map(function(kx, j){
         var v = cells[i][j], t = maxDev > 0 && isFinite(v) ? Math.min(1, Math.abs(v-base)/maxDev) : 0;
-        var night = document.documentElement.getAttribute('data-theme') === 'dark', c = !isFinite(v) ? null : mix(night ? '#2b3646' : '#eef2f6', v >= base ? (night ? '#3fb27a' : '#2f8f5b') : (night ? '#e0675c' : '#c24a3f'), t*0.88);   /* green above base, red below, deeper the further from base */
+        var night = document.documentElement.getAttribute('data-theme') === 'dark', c = !isFinite(v) ? null : mix(night ? '#2b3646' : '#eef2f6', v >= base ? (night ? '#3fb27a' : '#2f8f5b') : (night ? '#e0675c' : '#c24a3f'), t*(night ? 0.88 : 0.78));   /* light mode stops a little short of the poles, so the strongest cells still carry text at 4.5 to 1 */   /* green above base, red below, deeper the further from base */
         var isBase = kx === 0 && ky === 0;
-        return '<td class="'+(isBase?'base ':'')+(c && c.lum < 0.55 ? 'dark' : '')+'"'+(c?' style="background:'+c.css+'"':'')
+        return '<td class="'+(isBase?'base ':'')+(c ? (c.white ? 'dark' : 'ink') : '')+'"'+(c?' style="background:'+c.css+'"':'')
           + tip('<b>'+esc(gy.label)+' '+esc(gy.show(ky*sy))+' &middot; '+esc(gx.label)+' '+esc(gx.show(kx*sx))+'</b><br>'+esc(M.label)+' '+esc(M.fmt(v))
               + (isFinite(v) && !isBase ? ' ('+(v>=base?'+':'')+esc(M.rate ? ((v-base)*10000).toFixed(0)+' bps' : (v-base).toFixed(2)+'x')+' vs base)' : ''))
           + '>'+esc(M.fmt(v))+'</td>'; }).join('') + '</tr>'; }).join('')
@@ -24675,10 +24678,13 @@ window.bkFinLabData = function(){
   return { B:B, u:u, grid:grid, ltvs:LTVS, rates:RATES, minDSCR:bkLenderDscrMin(), hurdle:Number(pol.targetIRR) || 0.12 };
 };
 
+/* a cell's text is white or the dark ink, whichever reads better on its fill (the strongest reds took dark text at 4 to 1) */
+function inkOn(bg){ var m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(bg) || [0, 238, 241, 244], L = function(v){ v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }, Y = 0.2126 * L(+m[1]) + 0.7152 * L(+m[2]) + 0.0722 * L(+m[3]);
+  return 'color:' + (1.05 / (Y + 0.05) > (Y + 0.05) / (0.0205 + 0.05) ? '#fff' : '#14283d') + ';background:' + bg; }
 function cellColor(metric, v, L){
   if(v == null || !isFinite(v)) return '#eef1f4';
   var t; if(metric === 'irr') t = (v - L.u.irr) / 0.06; else if(metric === 'dscr') t = (v - L.minDSCR) / 0.5; else if(metric === 'coc') t = (v - 0.04) / 0.08; else t = (v - L.u.moic) / 0.5;
-  t = Math.max(-1, Math.min(1, t)); var c0 = [214, 96, 84], c1 = [248, 244, 232], c2 = [70, 160, 110]   /* amber-rust to neutral to teal: the Sensitivity page's scale */, a = t < 0 ? c0 : c1, b = t < 0 ? c1 : c2, u = t < 0 ? 1 + t : t;
+  t = Math.max(-1, Math.min(1, t)); var c0 = [222, 120, 108], c1 = [248, 244, 232], c2 = [70, 160, 110]   /* amber-rust to neutral to teal: the Sensitivity page's scale */, a = t < 0 ? c0 : c1, b = t < 0 ? c1 : c2, u = t < 0 ? 1 + t : t;
   if(t >= 0){ a = c1; b = c2; u = t; } else { a = c0; b = c1; u = 1 + t; }
   return 'rgb(' + [0, 1, 2].map(function(i){ return Math.round(a[i] + (b[i] - a[i]) * u); }).join(',') + ')';
 }
@@ -24694,7 +24700,7 @@ function render(){
   var btn = function(k, t){ return '<button type="button" class="pl-hbtn' + (m === k ? ' primary' : '') + '" onclick="bkFinLabMetric(\'' + k + '\')">' + t + '</button>'; };
   var main = box('<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">' + inp('Purchase cap rate %', 'cap', B.cap) + inp('Exit cap rate %', 'exit', B.exit) + inp('Rent growth %', 'rg', B.rg) + inp('Expense growth %', 'og', B.og) + '<div style="font-size:13px;padding-bottom:6px">Price = Year-1 NOI ' + M(B.noi) + ' ÷ ' + P(B.cap, 2) + ' = <b>' + M(B.noi / B.cap) + '</b>' + (Number(B.s.units) ? ' (' + K.F(B.noi / B.cap / Number(B.s.units)) + ' per unit)' : '') + '</div><button type="button" class="pl-hbtn" onclick="bkFinLabReset()">Reset to the deal</button></div><div style="font-size:12px;opacity:.7;margin-top:8px">The deal itself is priced at ' + P(B.cap0, 2) + ' on its entered price. Unlevered, this purchase returns <b>' + P(L.u.irr, 1) + '</b> (' + X(L.u.moic) + ').</div>');
   var head = '<tr><th style="text-align:left;padding:6px 8px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase">LTV \\ Rate</th>' + RATES.map(function(r){ return '<th style="padding:6px 8px;font-size:11px;text-align:center;border-bottom:2px solid #0e2a4a">' + P(r, 2) + '</th>'; }).join('') + '</tr>';
-  var rows = L.grid.map(function(row, i){ return '<tr><td style="padding:6px 8px;font-weight:700;border-right:2px solid #0e2a4a">' + P(LTVS[i], 0) + '</td>' + row.map(function(c){ var warn = c && c.dscr < L.minDSCR; return '<td style="padding:9px 6px;text-align:center;font-weight:600;color:#14283d;background:' + cellColor(m, c && c[m], L) + ';border:2px solid #fff;border-radius:6px;' + (warn && m !== 'dscr' ? 'outline:1.5px dashed #b23a2c;outline-offset:-4px' : '') + '" title="' + (c ? 'Loan ' + M(c.loan) + ' · equity ' + M(c.eq) + ' · lender DSCR ' + X(c.dscr) + ' · IRR ' + P(c.irr, 1) : '') + '">' + fmt(m, c) + '</td>'; }).join('') + '</tr>'; }).join('');
+  var rows = L.grid.map(function(row, i){ return '<tr><td style="padding:6px 8px;font-weight:700;border-right:2px solid #0e2a4a">' + P(LTVS[i], 0) + '</td>' + row.map(function(c){ var warn = c && c.dscr < L.minDSCR; return '<td style="padding:9px 6px;text-align:center;font-weight:600;' + inkOn(cellColor(m, c && c[m], L)) + ';border:2px solid #fff;border-radius:6px;' + (warn && m !== 'dscr' ? 'outline:1.5px dashed #b23a2c;outline-offset:-4px' : '') + '" title="' + (c ? 'Loan ' + M(c.loan) + ' · equity ' + M(c.eq) + ' · lender DSCR ' + X(c.dscr) + ' · IRR ' + P(c.irr, 1) : '') + '">' + fmt(m, c) + '</td>'; }).join('') + '</tr>'; }).join('');
   main += box('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b style="margin-right:6px">Show</b>' + btn('irr', 'Levered IRR') + btn('dscr', 'Lender DSCR, year 1') + btn('coc', 'Year-1 cash-on-cash') + btn('moic', 'Equity multiple') + '</div><div style="overflow-x:auto"><table style="' + T + ';min-width:520px">' + head + rows + '</table></div><div style="font-size:12px;opacity:.75;margin-top:8px">Rows: loan-to-value on price. Columns: fixed interest rate, 30-year amortization unless the deal says otherwise. Green beats the unlevered return (or the ' + X(L.minDSCR) + ' loan\'s minimum DSCR), red falls short. A dashed red outline marks loans whose year-1 lender DSCR (' + bkDscrBasis('lender') + ') is below the ' + X(L.minDSCR) + ' house minimum. Hover a cell for the loan and equity.</div>');
   /* where does leverage stop helping */
   var lt = st.ltv, be = null, prev = null;
@@ -24794,7 +24800,7 @@ function render(){
   if(listing === null || listing.id !== id){ listing = { id:id, files:null }; window.bkDocsList(id).then(function(a){ listing = { id:id, files:a }; window.bkDocsWarm().then(function(){ if(typeof showSheet === 'function' && document.querySelector('#bk-docs-root')) showSheet('Deal Documents'); }); }); }
   var files = listing.files || [], photo = files.filter(function(f){ return f.slot === 'photo'; })[0], pu = window.bkDealPhotoURL();
   var main = '<div id="bk-docs-root" style="max-width:1000px">' + (window.bkDocsSyncNote ? window.bkDocsSyncNote() : '') + (busy ? '<div class="note-flag" style="margin-bottom:12px"><span>&#9432;</span><div>' + esc(busy) + '</div></div>' : '')
-    + '<div class="card bk-docphoto" style="padding:16px;display:grid;grid-template-columns:minmax(220px,340px) 1fr;gap:18px;align-items:center"><div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#eef2f6;display:flex;align-items:center;justify-content:center;color:#7a8da1;font-size:12px;text-align:center">' + (pu ? '<img alt="Property photo" src="' + pu + '" style="width:100%;height:100%;object-fit:cover">' : 'No photo yet') + '</div><div><div style="font-weight:700;font-size:15px;margin-bottom:4px">Property photo</div><div style="font-size:13px;opacity:.75;margin-bottom:10px">Shown on the Overview and on the cover of the PDF summary. A landscape exterior shot works best.' + (photo ? '<br>' + esc(photo.name) + ' · ' + fmtSize(photo.size) : '') + '</div><label class="pl-hbtn primary" style="display:inline-block;cursor:pointer">' + (photo ? 'Replace photo' : 'Upload photo') + '<input type="file" accept="image/*" style="display:none" onchange="bkDocsUpload(\'photo\',this)"></label>' + (photo ? ' <button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + photo.id + '\')">Remove</button>' : '') + '</div></div>'
+    + '<div class="card bk-docphoto" style="padding:16px;display:grid;grid-template-columns:minmax(220px,340px) 1fr;gap:18px;align-items:center"><div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#eef2f6;display:flex;align-items:center;justify-content:center;color:#566a80;font-size:12px;text-align:center">' + (pu ? '<img alt="Property photo" src="' + pu + '" style="width:100%;height:100%;object-fit:cover">' : 'No photo yet') + '</div><div><div style="font-weight:700;font-size:15px;margin-bottom:4px">Property photo</div><div style="font-size:13px;opacity:.75;margin-bottom:10px">Shown on the Overview and on the cover of the PDF summary. A landscape exterior shot works best.' + (photo ? '<br>' + esc(photo.name) + ' · ' + fmtSize(photo.size) : '') + '</div><label class="pl-hbtn primary" style="display:inline-block;cursor:pointer">' + (photo ? 'Replace photo' : 'Upload photo') + '<input type="file" accept="image/*" style="display:none" onchange="bkDocsUpload(\'photo\',this)"></label>' + (photo ? ' <button type="button" class="pl-hbtn" onclick="bkDocsDelete(\'' + photo.id + '\')">Remove</button>' : '') + '</div></div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px">' + SLOTS.map(function(sl){
       var fs = files.filter(function(f){ return f.slot === sl[0]; });
       var rows = fs.map(function(f){ var ex = (sl[0] === 'om' || sl[0] === 'listing') && /\.pdf$/i.test(f.name) ? '<button type="button" class="pl-hbtn" onclick="bkDocsExtract(\'' + f.id + '\')">Extract into this deal</button>' : sl[0] === 't12' ? '<button type="button" class="pl-hbtn" onclick="bkDocsExtract(\'' + f.id + '\')">Extract into this deal</button>' : '';
@@ -33847,7 +33853,7 @@ window.bkTargetSave = function(){
 };
 window.bkTargetLoad = function(id){ var s = bkLoad(), t = (s._targets || []).filter(function(x){ return x.id === id; })[0]; if(!t) return; ui.capital = t.inputs.capital; ui.target = t.inputs.target; ui.years = t.inputs.years; saveUi(); window.bkTargetPaint(); };
 
-var inp = function(k, label, min, max, step){ return '<div class="ae-form" style="margin:12px 0"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><label for="bk-tg-' + k + '" style="font-weight:600">' + label + '</label><input id="bk-tg-' + k + '" class="ae-in" style="width:150px !important;text-align:right" inputmode="decimal" onchange="bkTargetUpdate(\'' + k + '\')"></div><input id="bk-tg-' + k + '-r" type="range" aria-label="' + label + ' (slider)" min="' + min + '" max="' + max + '" step="' + step + '" style="width:100%" oninput="bkTargetUpdate(\'' + k + '-r\')"></div>'; };
+var inp = function(k, label, min, max, step){ return '<div class="bk-tg-row"><div class="bk-tg-top"><label for="bk-tg-' + k + '" style="font-weight:600">' + label + '</label><input id="bk-tg-' + k + '" class="ae-in bk-nofield" data-bk-w="free" style="width:150px !important;text-align:right" inputmode="decimal" onchange="bkTargetUpdate(\'' + k + '\')"></div><input id="bk-tg-' + k + '-r" type="range" aria-label="' + label + ' (slider)" min="' + min + '" max="' + max + '" step="' + step + '" class="bk-tg-range" oninput="bkTargetUpdate(\'' + k + '-r\')"></div>'; };   /* the label and the figure on one line, the slider under them at full width (not the editor's three-column form grid, which put each piece in the wrong cell) */
 RENDERERS[SHEET] = function(){
   var s = bkLoad() || {}, ref = dealRef(), saved = Array.isArray(s._targets) ? s._targets : [];
   var o = { title:'Investment Target', crumbs:'Debt', desc:'Work backward from a capital target to the annual return it requires.', meta:{ Property:s.name || '' }, sidebar:'' };
@@ -35787,6 +35793,30 @@ html body #viewport .bk-omr-edit input.bk-nofield{ width:100%; max-width:130px; 
 #viewport .bk-src-n{ margin-top:8px; font-size:12.5px; color:var(--bk-ctl-ink); }
 #viewport h2.bk-src-h{ margin:20px 0 8px; }
 #viewport table.bk-src-chk{ margin-top:12px; }
+
+/* The step bar fits whatever room it has: when the six steps and their labels no longer fit beside the case switch (about 1150 to 1400 px wide),
+   the steps other than the current one show their status mark only (their name stays in the tooltip and for screen readers), so none is cut off
+   or hidden under the switch. The bar measures itself (a container query), so the rule follows the room, not the window. */
+@media screen{
+  html body .bk-flow .bk-steps{ container-type:inline-size; container-name:bksteps; }
+  @media (min-width:761px){ html body .bk-flow .bk-steps{ min-width:330px; } }
+  @media (max-width:760px){ html body .bk-flow .bk-steps{ flex:1 1 100%; } }   /* a phone: the steps take a line of their own under the Sheets button, so all six fit */   /* below this the case switch moves to its own line, as before; a phone gives the steps their own line already */
+  @container bksteps (max-width:584px){   /* the six steps with their names need about 580 px */
+    html body .bk-steps .bk-step-sep{ width:6px; }
+    html body .bk-steps .bk-step:not(.cur){ font-size:0; gap:0; padding:0 4px; }
+    html body .bk-steps .bk-step:not(.cur) .n{ font-size:10.5px; }
+  }
+  @container bksteps (max-width:320px){   /* a phone: the dashes between the steps go too, so the six marks and the current step's name fit */
+    html body .bk-steps .bk-step-sep{ display:none; }
+    html body .bk-steps .bk-step.cur{ padding:0 8px 0 4px; gap:5px; }
+  }
+}
+
+/* Investment Target: each setting is its label and figure on one line, the slider below at the full width, in the app's accent */
+#viewport .bk-tg-row{ margin:14px 0 18px; }
+#viewport .bk-tg-row .bk-tg-top{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+#viewport .bk-tg-row .bk-tg-top label{ font:600 12.5px var(--bk-ctl-font); color:var(--bk-ctl-ink); }
+#viewport .bk-tg-range{ display:block; width:100%; margin:0; accent-color:var(--bk-ctl-accent); cursor:pointer; }
 </style>
 </body>
 </html>
