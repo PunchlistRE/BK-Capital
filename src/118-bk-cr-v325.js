@@ -207,7 +207,7 @@ try{
         if(iu<0 || is<0) return o;
         var F = bkFundingSummary();   /* shared funding calculation (src/184) */
         var units = Number(s.units)||0, gsf = Number(s.gsf)||0, uses = F.uses, tu = F.totalUses;
-        var srcs = [['Acquisition Loan',F.loan],['LP Equity (closing)',F.lpEquity],['GP Equity (closing)',F.gpEquity]], ts = F.totalSources;
+        var srcs = [['Acquisition Loan',F.loan]].concat(F.mezz>0?[['Mezzanine Loan',F.mezz]]:[]).concat(F.pref>0?[['Preferred Equity',F.pref]]:[]).concat([['LP Equity (closing)',F.lpEquity],['GP Equity (closing)',F.gpEquity]]), ts = F.totalSources;   /* mezzanine and preferred equity sit between the senior loan and the common equity (src/215) */
         var tU = CR.table('Uses at closing - total, per unit, per SF, and as a share', HEAD5('Use'), uses.map(function(u){ return r5(u[0],u[1],tu,units,gsf); }).join('') + r5('TOTAL USES AT CLOSING',tu,tu,units,gsf,'grandtotal'));
         var tS = CR.table('Sources at closing - total, per unit, per SF, and as a share', HEAD5('Source'), srcs.map(function(u){ return r5(u[0],u[1],tu,units,gsf); }).join('') + r5('TOTAL SOURCES AT CLOSING',ts,tu,units,gsf,'grandtotal'));
         var a = m.lastIndexOf('<div class="tbl-wrap"', iu), b0 = m.indexOf('</table></div>', is) + 14;
