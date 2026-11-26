@@ -322,7 +322,9 @@ function pLease(s){
 /* ---------- INVESTMENT ---------- */
 function pAcq(s){ var p = num(s.purchasePrice), cl = p * num(s.closingCostsPct), af = p * num(s.acqFeePct), pre = isDev(s) ? num(s.predevCarry) : 0;
   return form(isDev(s) ? 'Land and Acquisition' : 'Acquisition', '$', [R(isDev(s) ? 'Land Price' : 'Purchase Price', inp('purchasePrice', 'num', { s:s }), '$'), R('Closing / Diligence Costs', inp('closingCostsPct', 'pct', { s:s }), '% of price'), R('Acquisition Fee to Sponsor', inp('acqFeePct', 'pct', { s:s }), '% of price'), isDev(s) ? R('Predevelopment Carry', inp('predevCarry', 'num', { s:s }), '$ (taxes, insurance, security to start of construction)') : NOTE(''),
-    R('Closing / Diligence', ro(money(cl))), R('Acquisition Fee', ro(money(af))), R('Total Acquisition Basis', ro(money(p + cl + af + pre)), isDev(s) ? 'land + costs + carry, before construction' : 'price + costs + fee')]); }
+    R('Closing / Diligence', ro(money(cl))), R('Acquisition Fee', ro(money(af))), R('Total Acquisition Basis', ro(money(p + cl + af + pre)), isDev(s) ? 'land + costs + carry, before construction' : 'price + costs + fee'),
+    isDev(s) ? null : R('Asking Price', inp('askingPrice', 'num', { s:s, def:(s._omFacts && s._omFacts.askingPrice) || undefined }), '$ (the listing; the OM\'s when imported)'), isDev(s) ? null : R('Listing Cap Rate', inp('listingCap', 'pct', { s:s, def:(s._omFacts && s._omFacts.capPrinted && s._omFacts.capPrinted.cur) || undefined }), '% as the broker prints it')])
+    + (isDev(s) || typeof window.bkPriceCaps !== 'function' ? '' : summaryTable('Price and Cap Rates', window.bkPriceCapRows(window.bkPriceCaps(s), { money:function(v){ return money(v); }, pct:function(v){ return pct(v, 2); } }))); }
 window.bkEdBool = function(path, raw){ var s = bkLoad(); setPath(s, path, raw === 'true'); bkSave(s); showSheet(cur()); };
 function pFin(s){ var d = isDev(s), out = '';
   if(!d){ var db = safe(function(){ return bkDebt(); }, null) || {}, off = s.debtEnabled === false;

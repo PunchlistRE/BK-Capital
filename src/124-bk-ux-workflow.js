@@ -225,6 +225,10 @@ function snapshotCard(){
     + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + (Number(bkLoad().gpShare) > 0 ? pct(h.gpIRR) : 'N/A'))
     + row('Loan', money(h.loan) + (h.binding ? ' <span style="color:var(--ink-500);font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
     + row(capName('totalContributedEquity'), money(h.tce)) + row(dscrTitle(), isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
+    + (function(){ if(isDev(s) || typeof window.bkPriceCaps !== 'function') return ''; var c; try { c = window.bkPriceCaps(s); } catch(e){ return ''; }
+        var P2 = function(v){ return v == null ? '—' : (v * 100).toFixed(2) + '%'; }, dim = function(t){ return ' <span style="color:var(--ink-500);font-weight:400">' + t + '</span>'; };
+        return (c.asking ? row('Price vs asking', (c.vsAsk === 0 ? 'At asking' : (c.vsAsk > 0 ? '+' : '') + (c.vsAsk * 100).toFixed(1) + '%') + dim('of ' + money(c.asking))) : '')
+          + row(c.listing != null ? 'Cap: listing / T-12 / going-in' : 'Cap: T-12 / going-in', (c.listing != null ? P2(c.listing) + ' / ' : '') + P2(c.t12Cap) + ' / ' + P2(c.goingIn)); })()
     + row('Yield on Cost', pct(h.yoc))
     + (tieChip() ? row('Inputs', tieChip()) : '')
     + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '')
