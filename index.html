@@ -11280,7 +11280,7 @@ extend('Operating Underwrite','w1OpQC', function(o){
   var body = ''
     + '<tr>'+lbl('Operating Expense Ratio')+val(pct(c.expenseRatio))+txt('Total expenses &divide; EGI')+'</tr>'
     + '<tr>'+lbl('NOI Margin')+val(pct(c.noiMargin))+txt('NOI after reserves &divide; EGI')+'</tr>'
-    + '<tr>'+lbl('Going-In Cap Rate')+val(pct(c.goingIn))+txt('Source T-12 NOI &divide; purchase price')+'</tr>'
+    + '<tr>'+lbl('T-12 Cap Rate')+val(pct(c.goingIn))+txt('T-12 NOI &divide; purchase price')+'</tr>'
     + '<tr>'+lbl('Implied Stabilized Value at Exit Cap')+val(money(c.value))+txt('Year 1 NOI &divide; exit cap '+pct(Number(s.exitCap)))+'</tr>'
     + '<tr>'+lbl('Source T-12 NOI')+val(money0(t12))+txt('As entered on Deal Underwrite')+'</tr>'
     + '<tr>'+lbl('Underwritten Year 1 NOI vs. T-12')+val(t12?pct((c.noi-t12)/Math.abs(t12)):'-')+txt(t12?'Variance against the source':'No T-12 entered')+'</tr>'
@@ -11672,7 +11672,7 @@ extend('QA','w1QA', function(o){
       + band('Operating Expense Ratio', c.expenseRatio, 0.15, 0.50, function(v){return pct(v);})
       + band('NOI Margin', c.noiMargin, 0.40, 0.90, function(v){return pct(v);})
       + band('Exit Cap Rate', Number(s.exitCap), 0.03, 0.12, function(v){return pct(v);})
-      + band('Going-In Cap Rate', c.goingIn, 0.02, 0.12, function(v){return pct(v);})
+      + band('T-12 Cap Rate', c.goingIn, 0.02, 0.12, function(v){return pct(v);})
       + (units ? band('NOI per Unit', c.noi/units, 2000, 80000, function(v){return money(v);}) : '')
       + (gsf   ? band('Cost per SF', price/gsf, 50, 1500, function(v){return money(v);}) : '')
       + (units ? band('Cost per Unit', price/units, 50000, 2000000, function(v){return money(v);}) : '')
@@ -11883,6 +11883,10 @@ extend('Sponsor CF','w1SponsorFees', function(o){
 function portfolioDeals(){
   try { return (typeof bkPortfolioLoad==='function' ? bkPortfolioLoad() : []) || []; } catch(e){ return []; }
 }
+function dealCaps(d){ var st = d.state || d; try { var mr = typeof bkPortfolioMonthlyFor === 'function' ? bkPortfolioMonthlyFor(st) : null, rows = mr && mr.ok ? mr.r.rows : [], c = window.bkPriceCaps ? window.bkPriceCaps(st, rows) : {};
+    /* Year 1 lender DSCR from the deal's own first twelve months, on the deal's own lender NOI basis (before or after reserves) */
+    var y = rows.slice(0, 12), ds = y.reduce(function(t, x){ return t + (Number(x.ds) || 0); }, 0), after = typeof bkLenderNoiBasis === 'function' && bkLenderNoiBasis(st) === 'after';
+    var noi = y.reduce(function(t, x){ return t + (Number(x.noi) || 0) - (after ? Number(x.reserve) || 0 : 0); }, 0); c.dscr = y.length === 12 && ds > 0 && !c.dev ? noi / ds : NaN; return c; } catch(e){ return {}; } }
 function dealMetrics(d){
   try { return (typeof bkPortfolioMetricsFor==='function') ? bkPortfolioMetricsFor(d) : null; } catch(e){ return null; }
 }
@@ -11900,7 +11904,7 @@ extend('Portfolio Rollup','w1PortfolioRollup', function(o){
       + val(money(Number(m.loan)||0))
       + val(isFinite(m.irr)?pct(m.irr):'-')
       + val(isFinite(m.moic)?mult(m.moic):'-')
-      + val(isFinite(m.dscr)?mult(m.dscr):'-')
+      + (function(){ var v = isFinite(m.dscr) ? m.dscr : dealCaps(d).dscr; return val(isFinite(v)?mult(v):'-'); })()
       + '</tr>';
   }).join('');
   var byType = {}, byStatus = {}, totEq=0, totPrice=0, totDebt=0;
@@ -11949,15 +11953,23 @@ extend('Capital Allocation','w1CapAlloc', function(o){
       + val(money(price))
       + val(money(Number(m.equity)||0))
       + val(money(Number(m.loan)||0))
-      + val(isFinite(m.goingIn)?pct(m.goingIn):'-')
+      + (function(){ var c = dealCaps(d); return val(c.dev ? 'N/A' : c.goingIn != null ? pct(c.goingIn) : '-'); })()
       + val(isFinite(m.irr)?pct(m.irr):'-')
       + val(isFinite(m.moic)?mult(m.moic):'-')
-      + val(isFinite(m.dscr)?mult(m.dscr):'-')
+      + (function(){ var v = isFinite(m.dscr) ? m.dscr : dealCaps(d).dscr; return val(isFinite(v)?mult(v):'-'); })()
       + '</tr>';
   }).join('');
+  var pcRows = deals.map(function(d){ var st = d.state||d, c = dealCaps(d);
+    if(!c || c.price == null) return '';
+    var vs = c.asking ? (c.vsAsk === 0 ? 'At asking' : (c.vsAsk > 0 ? '+' : '') + (c.vsAsk*100).toFixed(1) + '%') + '<span class="bk-sub">asking ' + money(c.asking) + '</span>' : '<span class="bk-sub">not stated</span>';
+    var pc = function(v){ return v == null ? '-' : pct(v); };
+    return '<tr>'+lbl(esc(st.name||st.dealId||'Deal')) + val(money(c.price)) + '<td>' + vs + '</td>' + val(pc(c.listing)) + val(pc(c.t12Cap)) + val(c.dev ? 'N/A' : pc(c.goingIn)) + val(pc(c.exitCap)) + '</tr>'; }).join('');
+  o.main = (o.main||'') + wrapTable('Price and Cap Rates by Deal',
+    '<tr><th class="rowlabel-h">Deal</th><th>Purchase Price</th><th>Vs Asking</th><th title="The broker\'s printed cap rate">Listing Cap</th><th title="T-12 (in-place) NOI / purchase price">T-12 Cap</th><th title="Underwritten Year 1 NOI after reserves / purchase price">Going-In Cap</th><th>Exit Cap</th></tr>', pcRows)
+    + note('&#9432;','Listing cap is the broker\'s printed rate. T-12 cap is trailing-twelve NOI over the price paid. Going-in cap is the underwriting\'s Year 1 NOI after reserves over the price paid. The asking price and listing cap come from the OM when the deal was imported, or from Investment &gt; Acquisition.');
   o.main = (o.main||'') + wrapTable('Per-Property Return Profile',
     '<tr><th class="rowlabel-h">Deal</th><th>Purchase Price</th><th>Equity</th><th>Debt</th>'
-    + '<th>Going-In Cap</th><th>Levered XIRR</th><th>MOIC</th><th title="Each deal\'s going-in lender DSCR, on its own lender NOI">Lender DSCR</th></tr>', rows)
+    + '<th title="Underwritten Year 1 NOI after reserves / purchase price">Going-In Cap</th><th>Levered XIRR</th><th>MOIC</th><th title="Each deal\'s going-in lender DSCR, on its own lender NOI">Lender DSCR</th></tr>', rows)
     + note('&#9888;','The workbook carries a REFI / SELL / KEEP recommendation column. In the workbook that column is <b>static placeholder '
       + 'text</b> against no live threshold logic, so it is deliberately not reproduced here rather than porting a defect.');
 });
@@ -11969,7 +11981,7 @@ extend('Benchmarks','w1Benchmarks', function(o){
     var units = Number(st.units)||0;
     return {
       name: st.name||st.dealId||'Deal',
-      capRate: Number(m.goingIn),
+      capRate: (function(){ var c = dealCaps(d); return c.goingIn != null ? c.goingIn : NaN; })(),
       vacancy: Number(st.vacancy),
       exitCap: Number(st.exitCap),
       rentPerUnit: units ? (Number(st.avgRent)||0) : NaN,
@@ -11990,7 +12002,7 @@ extend('Benchmarks','w1Benchmarks', function(o){
     irr: median(rowsData.map(function(r){return r.irr;}))
   };
   var act = bkLoad();
-  var actM = { capRate: (bkCalc()||{}).goingIn, vacancy: Number(act.vacancy), exitCap: Number(act.exitCap),
+  var actM = { capRate: (function(){ try { var c = window.bkPriceCaps(act); return c.goingIn != null ? c.goingIn : NaN; } catch(e){ return NaN; } })(), vacancy: Number(act.vacancy), exitCap: Number(act.exitCap),
                rentPerUnit: Number(act.avgRent), irr: NaN };
   try { actM.irr = Number(bkMonthlyReturns().irr); } catch(e){}
   function cmp(label, a, m, fmt){
@@ -19493,6 +19505,10 @@ function snapshotCard(){
     + row('Unlevered IRR', pct(h.unlevIRR)) + row('LP / GP IRR', pct(h.lpIRR) + ' / ' + (Number(bkLoad().gpShare) > 0 ? pct(h.gpIRR) : 'N/A'))
     + row('Loan', money(h.loan) + (h.binding ? ' <span style="color:var(--ink-500);font-weight:400">' + esc(bkBindingName(h.binding)) + '</span>' : ''))
     + row(capName('totalContributedEquity'), money(h.tce)) + row(dscrTitle(), isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '—')
+    + (function(){ if(isDev(s) || typeof window.bkPriceCaps !== 'function') return ''; var c; try { c = window.bkPriceCaps(s); } catch(e){ return ''; }
+        var P2 = function(v){ return v == null ? '—' : (v * 100).toFixed(2) + '%'; }, dim = function(t){ return ' <span style="color:var(--ink-500);font-weight:400">' + t + '</span>'; };
+        return (c.asking ? row('Price vs asking', (c.vsAsk === 0 ? 'At asking' : (c.vsAsk > 0 ? '+' : '') + (c.vsAsk * 100).toFixed(1) + '%') + dim('of ' + money(c.asking))) : '')
+          + row(c.listing != null ? 'Cap: listing / T-12 / going-in' : 'Cap: T-12 / going-in', (c.listing != null ? P2(c.listing) + ' / ' : '') + P2(c.t12Cap) + ' / ' + P2(c.goingIn)); })()
     + row('Yield on Cost', pct(h.yoc))
     + (tieChip() ? row('Inputs', tieChip()) : '')
     + (window.bkConventionsLabel ? row('Conventions', window.bkConventionsLabel()) : '')
@@ -25233,7 +25249,9 @@ function pLease(s){
 /* ---------- INVESTMENT ---------- */
 function pAcq(s){ var p = num(s.purchasePrice), cl = p * num(s.closingCostsPct), af = p * num(s.acqFeePct), pre = isDev(s) ? num(s.predevCarry) : 0;
   return form(isDev(s) ? 'Land and Acquisition' : 'Acquisition', '$', [R(isDev(s) ? 'Land Price' : 'Purchase Price', inp('purchasePrice', 'num', { s:s }), '$'), R('Closing / Diligence Costs', inp('closingCostsPct', 'pct', { s:s }), '% of price'), R('Acquisition Fee to Sponsor', inp('acqFeePct', 'pct', { s:s }), '% of price'), isDev(s) ? R('Predevelopment Carry', inp('predevCarry', 'num', { s:s }), '$ (taxes, insurance, security to start of construction)') : NOTE(''),
-    R('Closing / Diligence', ro(money(cl))), R('Acquisition Fee', ro(money(af))), R('Total Acquisition Basis', ro(money(p + cl + af + pre)), isDev(s) ? 'land + costs + carry, before construction' : 'price + costs + fee')]); }
+    R('Closing / Diligence', ro(money(cl))), R('Acquisition Fee', ro(money(af))), R('Total Acquisition Basis', ro(money(p + cl + af + pre)), isDev(s) ? 'land + costs + carry, before construction' : 'price + costs + fee'),
+    isDev(s) ? null : R('Asking Price', inp('askingPrice', 'num', { s:s, def:(s._omFacts && s._omFacts.askingPrice) || undefined }), '$ (the listing; the OM\'s when imported)'), isDev(s) ? null : R('Listing Cap Rate', inp('listingCap', 'pct', { s:s, def:(s._omFacts && s._omFacts.capPrinted && s._omFacts.capPrinted.cur) || undefined }), '% as the broker prints it')])
+    + (isDev(s) || typeof window.bkPriceCaps !== 'function' ? '' : summaryTable('Price and Cap Rates', window.bkPriceCapRows(window.bkPriceCaps(s), { money:function(v){ return money(v); }, pct:function(v){ return pct(v, 2); } }))); }
 window.bkEdBool = function(path, raw){ var s = bkLoad(); setPath(s, path, raw === 'true'); bkSave(s); showSheet(cur()); };
 function pFin(s){ var d = isDev(s), out = '';
   if(!d){ var db = safe(function(){ return bkDebt(); }, null) || {}, off = s.debtEnabled === false;
@@ -34529,6 +34547,43 @@ function render(){
   var sidebar = sidebarShell('<div class="card"><div class="card-head">Partners</div><div class="metric-list"><div class="metric-row"><span class="k">Deals</span><span class="v">' + saved.length + '</span></div><div class="metric-row"><span class="k">' + EQL + ', all deals</span><span class="v">' + M(eqT) + '</span></div><div class="metric-row"><span class="k">Distributions YTD, all deals</span><span class="v">' + M(sum('ytdDist')) + '</span></div><div class="metric-row"><span class="k">Equity value, all deals</span><span class="v">' + M(sum('equityValue')) + '</span></div></div></div>' + modelInfoCard('<div class="metric-row"><span class="k">Tab Group</span><span class="v">Portfolio Database</span></div>') + colorKeyCard());
   return { title:'Equity Partners', crumbs:'Portfolio Database', desc:'Each deal\'s partners, goals, stage, returns, growth, value, NOI and what is coming up.', meta:{ Deals:saved.length, Currency:'USD' }, main:head + note + cards, sidebar:sidebar }; }
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Equity Partners', render); else RENDERERS['Equity Partners'] = render;
+})();
+</script>
+<script id="bk-price-caps">/* PRICE AND CAP RATES, one definition for the whole app. What was asked against what is paid, and every cap rate side by side, each named for what it divides:
+     listing cap     the broker's printed cap rate (the OM, or typed on Investment > Acquisition)
+     T-12 cap        trailing-twelve (in-place) NOI / purchase price
+     going-in cap    the underwriting's Year 1 NOI after replacement reserves / purchase price (the investor report's going-in)
+     pro forma cap   the broker's pro forma NOI / purchase price (OM only)
+     exit cap        the underwriting's sale cap rate
+   The asking price and listing cap are the deal's own entries when typed, otherwise the OM's (s._omFacts, saved by Import). Read only. */
+(function(){
+'use strict';
+function num(v){ v = Number(v); return isFinite(v) ? v : 0; }
+function has(v){ return v != null && v !== '' && isFinite(Number(v)) && Number(v) !== 0; }
+window.bkPriceCaps = function(s, rows){
+  s = s || {}; var OF = s._omFacts || {}, price = num(s.purchasePrice), dev = /develop/i.test(String(s.dealType || ''));
+  var asking = has(s.askingPrice) ? num(s.askingPrice) : has(OF.askingPrice) ? num(OF.askingPrice) : null, askFrom = has(s.askingPrice) ? 'entered' : asking ? 'OM' : null;
+  var listing = has(s.listingCap) ? num(s.listingCap) : OF.capPrinted && has(OF.capPrinted.cur) ? num(OF.capPrinted.cur) : null, listFrom = has(s.listingCap) ? 'entered' : listing ? 'OM' : null;
+  var t12 = has(s.t12noi) ? num(s.t12noi) : OF.noi && has(OF.noi.t12) ? num(OF.noi.t12) : OF.noi && has(OF.noi.cur) ? num(OF.noi.cur) : null;
+  var t12Lbl = has(s.t12noi) || (OF.noi && has(OF.noi.t12)) ? 'T-12' : 'In-place (OM)';
+  var R = rows; if(!R && typeof bkMonthlyReturns === 'function'){ try { R = bkMonthlyReturns().rows; } catch(e){ R = null; } }
+  var y1 = Array.isArray(R) && R.length >= 12 ? R.slice(0, 12).reduce(function(t, x){ return t + num(x.noi) - num(x.reserve); }, 0) : null;
+  var pf = OF.noi && has(OF.noi.pf) ? num(OF.noi.pf) : null, cap = function(n){ return price && n ? n / price : null; };
+  var o = { price:price, asking:asking, askFrom:askFrom, vsAsk:asking && price ? price / asking - 1 : null, askDiff:asking && price ? price - asking : null,
+    listing:listing, listFrom:listFrom, t12Noi:t12, t12Lbl:t12Lbl, t12Cap:cap(t12), y1Noi:y1, goingIn:dev ? null : cap(y1), pfNoi:pf, pfCap:cap(pf), exitCap:has(s.exitCap) ? num(s.exitCap) : null, dev:dev };
+  o.spreadBps = o.exitCap != null && o.goingIn != null ? Math.round((o.exitCap - o.goingIn) * 10000) : null;
+  return o; };
+/* the comparison as label / value / note rows, for any table that shows it */
+window.bkPriceCapRows = function(o, fmt){
+  var M = fmt.money, P = function(v){ return v == null ? '—' : fmt.pct(v); }, out = [];
+  out.push(['Asking price', o.asking ? M(o.asking) : 'Not stated', o.askFrom === 'OM' ? 'from the OM' : o.askFrom === 'entered' ? 'entered' : 'enter it on Investment > Acquisition']);
+  out.push(['Purchase price', M(o.price), o.asking ? (o.vsAsk === 0 ? 'at the asking price' : (o.vsAsk > 0 ? '+' : '') + (o.vsAsk * 100).toFixed(1) + '% against asking (' + (o.askDiff < 0 ? '-' : '+') + M(Math.abs(o.askDiff)) + ')') : '']);
+  out.push(['Listing cap rate', P(o.listing), o.listFrom === 'OM' ? 'as the broker prints it' : o.listFrom === 'entered' ? 'entered' : 'not stated']);
+  out.push([o.t12Lbl + ' cap rate', P(o.t12Cap), o.t12Noi ? M(o.t12Noi) + ' NOI / purchase price' : 'no T-12 NOI on the deal']);
+  out.push(['Going-in cap rate', o.dev ? 'N/A' : P(o.goingIn), o.dev ? 'a development deal is measured on yield on cost' : o.y1Noi != null ? M(o.y1Noi) + ' underwritten Year 1 NOI after reserves / price' : '']);
+  if(o.pfCap != null) out.push(['Pro forma cap rate', P(o.pfCap), M(o.pfNoi) + ' broker pro forma NOI / price']);
+  out.push(['Exit cap rate', P(o.exitCap), o.spreadBps != null ? (o.spreadBps >= 0 ? '+' : '') + o.spreadBps + ' bps from going-in' : '']);
+  return out; };
 })();
 </script>
 <style id="bk-palette-css">/* PALETTE. One defined colour scheme, set once as tokens so every sheet, chart and chip reads from it.

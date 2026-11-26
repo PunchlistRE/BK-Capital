@@ -1105,6 +1105,11 @@
 "close": "</script>"
 },
 {
+"file": "212-bk-price-caps.js",
+"open": "\n<script id=\"bk-price-caps\">",
+"close": "</script>"
+},
+{
 "file": "182-bk-palette.css",
 "open": "\n<style id=\"bk-palette-css\">",
 "close": "</style>"
