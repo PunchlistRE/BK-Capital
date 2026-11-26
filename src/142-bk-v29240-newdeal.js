@@ -43,7 +43,7 @@ window.bkNewDealGo = function(){
   if(typeof bkCreateNewDeal === 'function') bkCreateNewDeal({ name:nm, dealId:id, dealType:a.dealType, analysisType:a.id, blankStructure:true });
   if(guide && typeof window.bkGuideBegin === 'function') window.bkGuideBegin();
 };
-window.bkNewDealFrom = function(sheet){ snapshot(); closeModal(); showSheet(sheet); };
+window.bkNewDealFrom = function(sheet){ window.__bkGuideNext = !!(document.getElementById('pl-guide') || {}).checked; snapshot(); closeModal(); showSheet(sheet); };
 window.bkNewDealImport = function(){ snapshot(); closeModal(); showSheet('Import'); };
 
 window.bkClearInputsDialog = function(){
