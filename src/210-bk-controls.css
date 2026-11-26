@@ -114,3 +114,10 @@ html body #viewport .bk-ep-card input.bk-ep-in.bk-ep-in{ text-align:left !import
 #viewport tr.bk-omr-on > td{ background:var(--ae-head2, #EDF1F6); }
 #viewport .bk-omr-edit{ display:inline-flex; gap:4px; align-items:center; justify-content:flex-end; }
 #viewport .bk-omr-edit input{ width:100% !important; max-width:130px; box-sizing:border-box; height:24px; padding:0 6px; font:600 12px var(--bk-ctl-font); text-align:right; border:1px solid var(--bk-ctl-accent); border-radius:2px; }
+
+/* Portfolio M: the calendar-year switch above the monthly table */
+#viewport .bk-pm-years{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 10px; }
+#viewport .bk-pm-years .bk-pm-l{ font:600 10.5px var(--bk-ctl-font); letter-spacing:.06em; text-transform:uppercase; color:var(--bk-ctl-dim); }
+#viewport .bk-pm-years .bk-seg{ display:inline-flex; flex-wrap:wrap; }
+/* a check's basis, said under its name in the label column */
+#viewport td .bk-sub.bk-chk-basis{ display:block; margin-top:2px; font-size:11px; font-weight:400; line-height:1.35; color:var(--bk-ctl-dim); white-space:normal; text-transform:none; letter-spacing:0; }

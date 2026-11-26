@@ -110,25 +110,38 @@ function bkPortfolioMonthlyFor(snapshot){
   return out;
 }
 
-// ---- Portfolio M: calendar-aligned monthly cash flow combined across every saved deal ----
+// ---- Portfolio M: the portfolio month by month, on the calendar. One calendar year is shown at a time (twelve months and the year's total),
+// chosen with the year switch above the table, so a long portfolio never becomes a table of a hundred columns. Each deal's own monthly rows are
+// placed on their own dates, so deals that close at different times line up on the calendar. ----
+window.bkPMYear = function(y){ try{ localStorage.setItem('bkcapital.pm.year', String(y)); }catch(e){} showSheet('Portfolio M'); };
 RENDERERS['Portfolio M'] = function(){
-  const saved = bkPortfolioLoad(), money = n=>n<0?'('+bkFmt(-n)+')':bkFmt(n);
+  const saved = bkPortfolioLoad(), money = n=>Math.abs(n)<0.5?'–':(n<0?'('+bkFmt(-n)+')':bkFmt(n));
   const perDeal = saved.map(snap=>({snap, res:bkPortfolioMonthlyFor(snap)})).filter(x=>x.res.ok);
-  const byYear = {};
-  perDeal.forEach(({res})=>{ res.r.rows.forEach(row=>{ const yr=row.dt.getFullYear(); if(!byYear[yr]) byYear[yr]={cf:0,noi:0,ds:0}; byYear[yr].cf+=row.cf; byYear[yr].noi+=row.noi; byYear[yr].ds+=row.ds; }); });
-  const years = Object.keys(byYear).map(Number).sort((a,b)=>a-b).slice(0,15);
-  const heads = years.map(y=>`<th>${y}</th>`).join('');
-  const main = `<div class="tbl-wrap"><table class="fin"><caption>Portfolio M - Calendar-Year Aggregated Monthly Equity Cash Flow (${perDeal.length} Deal(s))</caption><thead><tr><th class="rowlabel-h">Line Item</th>${heads}</tr></thead><tbody>
-    <tr><td class="rowlabel">Combined NOI</td>${years.map(y=>`<td>${money(byYear[y].noi)}</td>`).join('')}</tr>
-    <tr><td class="rowlabel">Combined Debt Service</td>${years.map(y=>`<td>${money(-byYear[y].ds)}</td>`).join('')}</tr>
-    <tr class="grandtotal"><td class="rowlabel">Combined Net Equity Cash Flow</td>${years.map(y=>`<td>${money(byYear[y].cf)}</td>`).join('')}</tr>
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // every deal's rows, keyed by calendar month
+  const cell = {}, years = new Set();
+  perDeal.forEach(({snap,res},di)=>{ res.r.rows.forEach(row=>{ const d = row.dt instanceof Date ? row.dt : new Date(row.dt), y = d.getUTCFullYear(), m = d.getUTCMonth(), k = y*12+m; years.add(y);
+    const c = cell[k] || (cell[k] = {noi:0, ds:0, cf:0, deal:{}}); c.noi += Number(row.noi)||0; c.ds += Number(row.ds)||0; c.cf += Number(row.cf)||0; c.deal[di] = (c.deal[di]||0) + (Number(row.cf)||0); }); });
+  const Y = [...years].sort((a,b)=>a-b);
+  let pick = NaN; try{ pick = Number(localStorage.getItem('bkcapital.pm.year')); }catch(e){}
+  if(!Y.includes(pick)){ const now = new Date().getUTCFullYear(); pick = Y.includes(now) ? now : (Y[0]||now); }
+  const ks = MON.map((_,m)=>pick*12+m), get = (k,f)=>cell[k] ? f(cell[k]) : 0, tot = f=>ks.reduce((t,k)=>t+get(k,f),0);
+  const head = `<tr><th class="rowlabel-h">${pick}</th>${MON.map(m=>`<th>${m} ${pick}</th>`).join('')}<th>Total ${pick}</th></tr>`;
+  const line = (label, f, cls)=>`<tr${cls?` class="${cls}"`:''}><td class="rowlabel">${label}</td>${ks.map(k=>`<td>${money(get(k,f))}</td>`).join('')}<td>${money(tot(f))}</td></tr>`;
+  const byDeal = perDeal.map(({snap},di)=>line(bkEsc(snap.name||snap.dealId||'Deal'), c=>c.deal[di]||0)).join('');
+  const seg = Y.length>1 ? `<div class="bk-pm-years"><span class="bk-pm-l">Calendar year</span><span class="bk-seg">${Y.map(y=>`<button type="button" aria-pressed="${y===pick}" class="${y===pick?'on':''}" onclick="bkPMYear(${y})">${y}</button>`).join('')}</span></div>` : '';
+  const main = perDeal.length ? `${seg}<div class="tbl-wrap"><table class="fin bk-pm"><caption>Portfolio cash flow by month, ${pick} (${perDeal.length} deal${perDeal.length===1?'':'s'})</caption><thead>${head}</thead><tbody>
+    ${line('Combined NOI', c=>c.noi)}${line('Combined debt service', c=>-c.ds)}${line('Combined net equity cash flow', c=>c.cf, 'grandtotal')}
+    ${perDeal.length>1?`<tr class="sec"><td class="rowlabel" colspan="14">Net equity cash flow by deal</td></tr>${byDeal}`:''}
     </tbody></table></div>
-    <div class="note-flag"><span>&#10003;</span><div><b>Live -</b> each deal's real monthly return output is bucketed by actual calendar year and summed -- deals with different closing dates line up on the calendar, not on deal-relative month number.</div></div>`;
-  const sidebar = sidebarShell(`<div class="card"><div class="card-head">Portfolio M Summary</div><div class="metric-list">
-    <div class="metric-row"><span class="k">Deals Included</span><span class="v">${perDeal.length}</span></div>
-    <div class="metric-row"><span class="k">Calendar Years Shown</span><span class="v">${years.length}</span></div>
+    <div class="note-flag"><span>&#10003;</span><div><b>Month by month, on the calendar.</b> Each deal's own monthly rows are placed on their own dates and added together, so deals that close at different times line up. A month before a deal closes or after it sells shows a dash. The closing month carries the equity put in at closing. Choose another year above; the Annual view gives the whole hold by deal-relative year.</div></div>`
+    : `<div class="note-flag"><span>&#9432;</span><div>${saved.length ? 'Saved deals exist but none produced a valid cash flow (see Portfolio for per-deal engine errors).' : 'No saved deals yet. Save an underwritten deal from the Portfolio page.'}</div></div>`;
+  const sidebar = sidebarShell(`<div class="card"><div class="card-head">Portfolio by month</div><div class="metric-list">
+    <div class="metric-row"><span class="k">Deals included</span><span class="v">${perDeal.length}</span></div>
+    <div class="metric-row"><span class="k">Calendar years</span><span class="v">${Y.length ? Y[0]+'–'+Y[Y.length-1] : '-'}</span></div>
+    <div class="metric-row"><span class="k">Net equity cash flow, ${pick}</span><span class="v">${money(tot(c=>c.cf))}</span></div>
   </div></div>${modelInfoCard(`<div class="metric-row"><span class="k">Tab Group</span><span class="v">Monthly Engine</span></div><div class="metric-row"><span class="k">Engine</span><span class="v"><span class="status-chip pass">Live</span></span></div>`)}${colorKeyCard()}`);
-  return {title:'Portfolio M', crumbs:'Monthly Engine', desc:'Calendar-aligned monthly cash flow aggregated across every saved portfolio deal.', meta:{Deals:perDeal.length,Years:years.length,'Portfolio IRR':(typeof bkPortfolioIRRText==='function'?bkPortfolioIRRText():'-'),Currency:'USD'}, main:main+(typeof bkPortfolioMBlock==='function'?bkPortfolioMBlock():''), sidebar};
+  return {title:'Portfolio M', crumbs:'Monthly Engine', desc:'The portfolio month by month on the calendar: NOI, debt service and net equity cash flow, in total and by deal.', meta:{Deals:perDeal.length,Year:pick,'Portfolio IRR':(typeof bkPortfolioIRRText==='function'?bkPortfolioIRRText():'-'),Currency:'USD'}, main:main+(typeof bkPortfolioMBlock==='function'?bkPortfolioMBlock():''), sidebar};
 };
 
 // ---- Deal Vectors (M): raw per-month vectors for the active deal -- what every other

@@ -141,7 +141,7 @@
     return 'neutral';
   }
   var FLOOR={amount:96,rate:72,unit:28,status:96,period:84,input:128,choice:128,short:64,actions:48}, CEIL={amount:170,rate:130,unit:90,status:220,period:150,input:180,choice:320,short:360,actions:320};
-  var FIG=/^(?=.*\d)[\s(−$\-]*[\d$(][\d,.$%x()−\- ]*(bps|yrs?|x|%|mo)?\)?$/i, PERIOD=/year|yr\b|month|^20\d\d|^q[1-4]\b|^m\d|total|forecast|^close$|^stab/i;
+  var FIG=/^(?=.*\d)[\s(−$\-]*[\d$(][\d,.$%x()−\- ]*(bps|yrs?|x|%|mo)?\)?$/i, PERIOD=/year|yr\b|month|^20\d\d|^q[1-4]\b|^m\d|total|forecast|^close$|^stab|^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i;   /* a month heading (Jan 2027) is a period too */
   var cv=null; function tw(el,txt){ if(!cv) cv=document.createElement('canvas').getContext('2d'); var cs=getComputedStyle(el); cv.font=cs.fontStyle+' '+cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
     var m=0; String(txt).split('\n').forEach(function(l){ m=Math.max(m,cv.measureText(l.trim()).width); }); return m+(parseFloat(cs.letterSpacing)||0)*String(txt).length; }
   /* a cell's own text, line by line: a block inside it (a description under a name) starts a new line, so two lines never read as one long word */
@@ -231,7 +231,7 @@
         /* a period table or a ledger that does not fit gives back its slack before it ever scrolls: first each figure column comes down to its widest
            value plus padding, then the label column down to its longest word (labels wrap between words); only then does the table scroll inside its card */
         if(o.fam==='period'){ var np=o.roles.filter(function(r){ return r==='period'; }).length, pm=need.period||FLOOR.period;
-          if(lw+np*pm>W){ var pw0=0; o.roles.forEach(function(r,i){ if(r==='period') pw0=Math.max(pw0,figMin(o,i)); }); pm=Math.max(pm-12,(W-lw)/np,pw0); if(lw+np*pm>W) lw=Math.max(labelWord(o),W-np*pm); if(lw+np*pm>W) tmin=Math.ceil(lw+np*pm)+'px'; } }
+          if(lw+np*pm>W){ var pw0=0; o.roles.forEach(function(r,i){ if(r==='period') pw0=Math.max(pw0,figMin(o,i)); }); pm=Math.max(pm-12,(W-lw)/np,pw0); if(lw+np*pm>W) lw=Math.max(labelWord(o),W-np*pm); if(lw+np*pm>W){ lw=Math.max(lw,Math.min(240,labelNat(o))); tmin=Math.ceil(lw+np*pm)+'px'; } } }   /* once it scrolls anyway, the label keeps its own line (up to 240 px): squeezing it saves nothing */
         /* a first column of short codes (a month number, a unit) is not a description: it takes its own width and the table's text column takes the rest */
         if(o.fam==='kv' && labelNat(o)<=90){ var ti=-1; o.roles.forEach(function(r,i){ if(i && (r==='short'||r==='note')) ti=i; }); if(ti>0){ lw=Math.max(labelNat(o),labelWord(o)); w[ti]=null; if(o.roles[ti]==='short'){ fixed-=Math.min(shortMax,W*0.5); } } }
         if(o.fam==='kv'){ var lmin=Math.min(labelNat(o),Math.max(W*0.24,140)); if(fixed+lmin>W) tmin=Math.ceil(fixed+lmin)+'px'; }   /* the label is never squeezed below its minimum: the table scrolls instead */
