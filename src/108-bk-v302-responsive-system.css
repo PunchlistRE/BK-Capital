@@ -37,6 +37,11 @@
        white-space: normal; overflow-wrap: normal; word-break: normal; text-align: left !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td:first-child { flex: 1 0 100%; font-weight: 600; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td.v { flex: 0 0 auto; padding: 2px 6px !important; border-radius: 3px; }
+  /* a label and one value: one line, the value on the right (the label wraps first) */
+  html body #viewport table.fin.bk-m-stack.bk-m-pair tr { flex-wrap: nowrap; justify-content: space-between; }
+  html body #viewport table.fin.bk-m-stack.bk-m-pair td:first-child { flex: 1 1 auto; min-width: 0; }
+  html body #viewport table.fin.bk-m-stack.bk-m-pair td:last-child:not(:first-child) { flex: 0 0 auto; max-width: 62%; text-align: right; overflow-wrap: anywhere; }
+  html body #viewport table.fin.bk-m-stack.bk-m-pair td:last-child .status-chip { white-space: normal; height: auto; text-align: left; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.input td.v { min-width: 46%; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack td select, html body #viewport table.fin.bk-m-stack.bk-m-stack td input { width: auto !important; position: static !important; margin: 0 !important; }
   html body #viewport table.fin.bk-m-stack.bk-m-stack tr.grandtotal, html body #viewport table.fin.bk-m-stack.bk-m-stack tr.total { background: #0e2a4a; color: #eaf0f6; }

@@ -12,14 +12,16 @@
   function run(){
     var vp=document.getElementById('viewport'); if(!vp) return;
     vp.querySelectorAll('table.fin').forEach(function(t){
-      var want = cols(t) >= 5 ? 'bk-m-scroll' : 'bk-m-stack', other = want==='bk-m-scroll' ? 'bk-m-stack' : 'bk-m-scroll';
+      /* a page may ask for cards whatever the width (bk-m-cards: rows of sentences, such as recommendations); a label and one value stay on one line (bk-m-pair) */
+      var nc = cols(t), want = t.classList.contains('bk-m-cards') ? 'bk-m-stack' : nc >= 5 ? 'bk-m-scroll' : 'bk-m-stack', other = want==='bk-m-scroll' ? 'bk-m-stack' : 'bk-m-scroll';
+      if(nc === 2 && want === 'bk-m-stack'){ if(!t.classList.contains('bk-m-pair')) t.classList.add('bk-m-pair'); } else if(t.classList.contains('bk-m-pair')) t.classList.remove('bk-m-pair');
       if(!t.classList.contains(want)) t.classList.add(want);
       if(t.classList.contains(other)) t.classList.remove(other);
       /* stacked rows keep their column meaning: each value carries its column header as a small
          label, except the generic Value / Units / Status style columns whose meaning is obvious */
       if(want==='bk-m-stack'){
         var hs=[].map.call(t.querySelectorAll('thead th'),function(h){ return (h.textContent||'').replace(/\s+/g,' ').trim(); });
-        if(hs.length>1) t.querySelectorAll('tbody tr').forEach(function(r){
+        if(hs.length>2) t.querySelectorAll('tbody tr').forEach(function(r){
           [].forEach.call(r.children,function(c,i){
             if(i===0 || c.hasAttribute('colspan')) return;
             var h=hs[i]||''; var lab=GENERIC.test(h)?'':h;
