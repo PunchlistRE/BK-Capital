@@ -160,3 +160,11 @@ html body #viewport .bk-omr-edit input.bk-nofield{ width:100%; max-width:130px; 
 #viewport .bk-tg-row .bk-tg-top{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
 #viewport .bk-tg-row .bk-tg-top label{ font:600 12.5px var(--bk-ctl-font); color:var(--bk-ctl-ink); }
 #viewport .bk-tg-range{ display:block; width:100%; margin:0; accent-color:var(--bk-ctl-accent); cursor:pointer; }
+/* phone: the save status gives way so Undo and Redo stay together on its line */
+@media (max-width:760px){ html body .bk-flow .bk-flow-right .bk-case{ flex:1 1 100%; } html body .bk-flow .bk-flow-right .bk-save{ flex:1 1 0; min-width:0; } }
+/* the step strip's edge shade shows only when more steps are off-screen: a cover in the bar's own color scrolls with the steps and hides the shade when they all fit */
+html body .bk-flow .bk-steps{ background:linear-gradient(to right, rgba(237,241,246,0), #EDF1F6 60%) 100% 0/16px 100% no-repeat local, linear-gradient(to left,rgba(14,42,74,.14),rgba(14,42,74,0)) 100% 0/10px 100% no-repeat scroll; }
+:root[data-theme="dark"] body .bk-flow .bk-steps{ background:linear-gradient(to right, rgba(32,38,45,0), #20262D 60%) 100% 0/16px 100% no-repeat local, linear-gradient(to left,rgba(0,0,0,.35),rgba(0,0,0,0)) 100% 0/10px 100% no-repeat scroll; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body .bk-flow .bk-steps{ background:linear-gradient(to right, rgba(32,38,45,0), #20262D 60%) 100% 0/16px 100% no-repeat local, linear-gradient(to left,rgba(0,0,0,.35),rgba(0,0,0,0)) 100% 0/10px 100% no-repeat scroll; } }
+/* phone: a long label on a button (the portfolio save, the cloud save) wraps inside the button instead of running past it */
+@media (max-width:760px){ html body #viewport button[data-portfolio-add], html body #viewport button[onclick="bkCloudSaveClick()"]{ white-space:normal; height:auto; max-width:100%; text-align:center; } }

@@ -199,7 +199,7 @@ if(window.RENDERERS && typeof RENDERERS['Deal Underwrite'] === 'function' && !RE
 /* the published SOFR is read once a session, in the background, when a SOFR-based loan is open */
 setTimeout(function(){ try { var s = load(); if(rateType(s) !== 'Fixed' && (s.debtIndexName || 'SOFR') === 'SOFR') window.bkSofrFetch().then(refresh, function(){}); } catch(e){} }, 1500);
 
-var css = '.bk-ds-card,.bk-ds-note{margin:10px 0 4px;padding:12px 14px;border:1px solid var(--ae-line,#d6dde5);border-radius:8px;background:var(--ae-panel,#fff);font-size:13px;line-height:1.5}'
+var css = '.bk-ds-card,.bk-ds-note{margin:10px 0 4px;padding:12px 14px;border:1px solid var(--ae-line,#d6dde5);border-radius:8px;background:var(--surface,#fff);color:inherit;font-size:13px;line-height:1.5}'
   + '.bk-ds-h{font-weight:700;margin-bottom:8px}.bk-ds-sum{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:flex-end}.bk-ds-sum div{display:flex;flex-direction:column}.bk-ds-sum span{font-size:11.5px;color:var(--ae-dim,#56616c)}.bk-ds-sum b{font-size:20px;font-variant-numeric:tabular-nums}'
   + '.bk-ds-sum .t{padding-left:20px;border-left:2px solid var(--ae-line,#d6dde5)}.bk-ds-n,.bk-ds-pub,.bk-ds-typ{margin-top:8px;color:var(--ae-dim,#56616c);font-size:12.5px}.bk-ds-pub .bk-btn,.bk-ds-note .bk-btn{margin-left:6px}.bk-ds-note .bk-btn{margin:8px 0 0}.bk-ds-ok{color:var(--bk-link-ink,#1f6b45);font-weight:600}';
 var st = document.createElement('style'); st.id = 'bk-debt-structure-css'; st.textContent = css; document.head.appendChild(st);

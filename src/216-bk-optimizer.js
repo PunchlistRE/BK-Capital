@@ -137,12 +137,12 @@ function render(){
     var trade = (c.f.risk || []).concat(c.pf < 1 ? ['the seller must accept ' + pct(1 - c.pf, 1) + ' less'] : []).concat(exposure(c.m));
     return '<tr><td class="rowlabel">' + L2 + '</td><td>' + esc((c.pf < 1 ? 'Price ' + pct(c.pf - 1, 1) + ' + ' : '') + c.f.label) + '</td><td>' + chip(true, 'MEETS HURDLES') + '</td><td>' + pct(c.m.irr) + ' IRR · ' + mx(c.m.em) + ' · ' + pct(c.m.coc) + ' CoC · ' + mx(c.m.dscr) + ' DSCR</td><td>' + esc(req) + '</td><td>' + esc(trade.join('; ') || 'none beyond the baseline') + '</td><td><button type="button" class="bk-btn" onclick="bkOptApply(' + i + ')">Apply</button></td></tr>'; }).join('');
   var none = H.length && !W.length ? '<div class="bk-ds-note"><b>No combination tested meets every hurdle.</b> The closest are a ' + pct(0.10, 0) + ' lower price with ' + esc((D.combos.filter(function(c){ return c.pf === 0.9; }).sort(function(a, b2){ return shortOf(s, a.m).length - shortOf(s, b2.m).length || (b2.m.irr - a.m.irr); })[0] || { f:{ label:'-' } }).f.label.toLowerCase()) + '. Revisit the hurdles or the operating plan (rent and expense levers above).</div>' : '';
-  html += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-opt">' + cap('Recommendations: combinations that meet the hurdles') + th(['Scenario', 'Financing strategy', 'Result', 'Returns', 'What it requires', 'Tradeoffs', '']) + '<tbody>' + rows + '</tbody></table></div>' + none
+  html += '<div class="tbl-wrap" style="margin-top:16px"><table class="fin bk-opt bk-m-cards">' + cap('Recommendations: combinations that meet the hurdles') + th(['Scenario', 'Financing strategy', 'Result', 'Returns', 'What it requires', 'Tradeoffs', '']) + '<tbody>' + rows + '</tbody></table></div>' + none
     + '<div class="bk-ds-note">Ranked by the least price concession and the fewest added risks. "Apply" writes that price and financing to the deal (a version is saved first, so it can be undone from Version History). Every figure is a full run of the underwriting engine.</div>';
   o.main = html; return o;
 }
 RENDERERS[SHEET] = render;
 if(typeof window.bkRegisterRenderer === 'function') try { window.bkRegisterRenderer(SHEET, render); } catch(e){}
-var css = '.bk-opt-d{font-size:11px;font-weight:600;margin-left:4px}.bk-opt-d.up{color:var(--bk-link-ink,#1f6b45)}.bk-opt-d.dn{color:#A32F24}.bk-opt-gap{font-size:11.5px;color:var(--ae-dim,#56616c);margin-left:4px}';
+var css = '.bk-opt-d{font-size:11px;font-weight:600;margin-left:4px}.bk-opt-d.up{color:var(--bk-link-ink,#1f6b45)}.bk-opt-d.dn{color:var(--bk-tier-fail-ink,#A32F24)}.bk-opt-gap{font-size:11.5px;color:var(--ae-dim,#56616c);margin-left:4px}';
 var st = document.createElement('style'); st.id = 'bk-optimizer-css'; st.textContent = css; document.head.appendChild(st);
 })();
