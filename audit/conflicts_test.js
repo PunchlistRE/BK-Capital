@@ -78,6 +78,8 @@ const T = [
   ['debt.partial-io-no-period', 'WARN', set({ repayType: 'Partial interest only', acqIO: 0 }), 'A', set({ acqIO: 2 })],
   ['debt.io-covers-term', 'WARN', set({ repayType: 'Interest only then amortizing', acqIO: 12, debtTerm: 10 }), 'A', set({ acqIO: 2 })],
   ['debt.partial-io-basis', 'INFO', set({ repayType: 'Partial interest only', acqIO: 2, ioBasis: '' }), 'A', set({ ioBasis: 'Remaining term' })],
+  ['debt.refi-in-lockout', 'ERROR', set({ prepayLockoutMonths: 48, debtTerm: 10 }) + "bkRefiSet('year',3);", 'A', set({ prepayLockoutMonths: 0 })],
+  ['debt.prepay-terms-incomplete', 'WARN', set({ debtTerm: 10, holdYears: 5, prepayType: 'Yield maintenance', prepayTreasury: 0 }), 'A', set({ prepayTreasury: 0.04 })],
   ['debt.sale-in-lockout', 'ERROR', set({ debtTerm: 10, holdYears: 3, prepayLockoutMonths: 36 }), 'A', set({ prepayLockoutMonths: 0 })]
 ];
 (async () => {
