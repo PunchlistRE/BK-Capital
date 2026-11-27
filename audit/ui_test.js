@@ -18,7 +18,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     const rows = [...document.querySelectorAll('#viewport table')].find(t => /Underwriting Conventions/.test(t.querySelector('caption')?.textContent || ''));
     const panel = [...rows.querySelectorAll('tbody tr')].map(r => ({ label: r.cells[0].textContent.trim(), value: r.querySelector('select') ? r.querySelector('select').value : r.cells[1].textContent.trim(), why: r.cells[2].textContent.trim(), status: r.cells[3].textContent.trim() }));
     const sizing = [...document.querySelectorAll('#viewport table.bk-constraint-grid tbody tr')].map(r => [...r.cells].map(c => c.textContent.trim()));
-    const ltvInput = document.querySelector('#viewport tr.input[data-bk-key="acqLTV"] td')?.textContent.trim();
+    const ltvInput = [...document.querySelectorAll('#viewport tr.input[data-bk-key="acqLTV"] td')].filter(td => !td.querySelector('input,select')).map(td => td.textContent.trim()).join(' ');   /* the basis now sits in the unit beside the box ("% of value"), not in the label */
     const banner = !!document.querySelector('#viewport button[onclick="bkApplyStandardConventions()"]');
     showSheet('Debt'); const debt = document.getElementById('viewport').innerText;
     showSheet('Sources & Uses'); const su = [...document.querySelectorAll('#viewport tr')].find(t => /^Loan to Value/.test(t.cells[0]?.textContent || ''))?.cells[2].textContent.trim();
@@ -141,12 +141,18 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Depreciation'); }, B); await p.waitForTimeout(200);
   const nv = await p.evaluate(() => ({ tabs: [...document.querySelectorAll('.tabnav-primary > .grp-btn')].length, menus: document.querySelectorAll('.tabnav-primary .bk-more-pop, .tabnav-primary .car').length, cur: document.querySelector('.tabnav-primary .grp-btn.on').innerText, sub: (document.querySelector('.bk-ribbon .rb-t.on') || {}).textContent }));
   check('top bar has the section tabs and no dropdown menus', nv.tabs >= 6 && nv.menus === 0, JSON.stringify(nv));
-  check('the active section tab is lit and the current sheet is the lit sub-tab', /Underwrite/.test(nv.cur) && nv.sub === 'Depreciation', JSON.stringify(nv));
-  await p.click('.tabnav-primary .grp-btn:has-text("Business")'); await p.waitForTimeout(300);
-  check('a section tab opens its section', await p.evaluate(() => GROUPS.find(g => g.id === 'biz').sheets.includes(currentSheet)));
-  await p.click('.bk-ribbon .rb-t:has-text("Sell vs Hold")'); await p.waitForTimeout(300);
-  check('a sub-tab opens its sheet', await p.evaluate(() => currentSheet === 'Sell vs Hold'));
-  const reach = await p.evaluate(async () => { const seen = new Set(); for (const tab of [...document.querySelectorAll('.tabnav-primary .grp-btn')].map(b => b.dataset.navTab)) { const b = document.querySelector('.tabnav-primary .grp-btn[data-nav-tab="' + tab + '"]'); showSheet(b.dataset.gotoSheet); [...document.querySelectorAll('.bk-ribbon .rb-t')].forEach(t => seen.add(t.dataset.gotoSheet2)); seen.add(currentSheet); } return GROUPS.filter(g => !g.hidden && g.id !== 'dev').flatMap(g => g.sheets).filter(s => typeof RENDERERS[s] === 'function' && !seen.has(s)); });
+  check('the active section tab is lit (Depreciation lives under the Property tab since the navigation regroup) and the current sheet is the lit sub-tab', /Property/.test(nv.cur) && nv.sub === 'Depreciation', JSON.stringify(nv));
+  /* the Business tab only shows on a business deal; a section tab and its sub-tabs are checked on Credit & IC, which every deal has */
+  await p.click('.tabnav-primary .grp-btn:has-text("Credit")'); await p.waitForTimeout(300);
+  check('a section tab opens its section', await p.evaluate(() => GROUPS.find(g => /^credit/.test(g.id)).sheets.includes(currentSheet)));
+  await p.click('.bk-ribbon .rb-t:has-text("Credit Policy")'); await p.waitForTimeout(300);
+  check('a sub-tab opens its sheet', await p.evaluate(() => currentSheet === 'Credit Policy'));
+  /* from each section tab: its sub-tabs (the ribbon), and from every one of those pages its view tabs (Schedule, Covenants, ...) */
+  const reach = await p.evaluate(async () => { const seen = new Set(), wait = () => new Promise(r => setTimeout(r, 120)); const grab = () => { seen.add(currentSheet); document.querySelectorAll('.bk-ribbon .rb-t, #viewport .bkv-b').forEach(t => { if (t.dataset.gotoSheet2) seen.add(t.dataset.gotoSheet2); }); };
+    for (const tab of [...document.querySelectorAll('.tabnav-primary .grp-btn')].map(b => b.dataset.navTab)) { const b = document.querySelector('.tabnav-primary .grp-btn[data-nav-tab="' + tab + '"]'); showSheet(b.dataset.gotoSheet); await wait(); grab();
+      for (const s of [...document.querySelectorAll('.bk-ribbon .rb-t')].map(x => x.dataset.gotoSheet2).filter(Boolean)) { showSheet(s); await wait(); grab(); for (const v of [...document.querySelectorAll('#viewport .bkv-b')].map(x => x.dataset.gotoSheet2).filter(Boolean)) { showSheet(v); await wait(); grab(); } } }
+    /* a sheet the deal does not use (Hold vs Sell, Portfolio and Business reports) is not offered, by design: bkNavVisible is the list the navigation offers */
+    return GROUPS.filter(g => !g.hidden && g.id !== 'dev' && !/^business/.test(g.id)).flatMap(g => bkNavVisible(g)).filter(s => typeof RENDERERS[s] === 'function' && !seen.has(s)); });
   check('every sheet is reachable from a section tab and its sub-tabs', reach.length === 0, reach.join(', '));
   // 10. Probability-Weighted Returns: scenario weighting on the sheet, repeatable Monte Carlo, run from the sheet, stale detection
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Probability-Weighted'); }, B); await p.waitForTimeout(300);
@@ -194,10 +200,8 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   const fold = await p.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const g = [...document.querySelectorAll('#rail-groups .rail-group')].find(x => x.classList.contains('pl-collapsed') && !x.classList.contains('bk-adv'));
     const lab = g.querySelector('.rail-group-label'), vis = () => [...g.querySelectorAll('.rail-item')].filter(i => getComputedStyle(i).display !== 'none').length;
     const n0 = vis(); lab.click(); await wait(50); const n1 = vis(), open1 = !g.classList.contains('pl-collapsed'); lab.click(); await wait(50); const n2 = vis();
-    const head = document.querySelector('.rail .bk-adv-head'), adv = () => [...document.querySelectorAll('.rail-group.bk-adv')].filter(x => getComputedStyle(x).display !== 'none').length;
-    const a0 = adv(); head.click(); await wait(50); const a1 = adv(); head.click(); await wait(50); const a2 = adv();
-    return { n0, n1, open1, n2, a0, a1, a2, items: g.querySelectorAll('.rail-item').length }; });
-  check('left rail: a click on a folded group\'s +/- opens it and a second click folds it; the Advanced heading folds and reopens its groups', fold.n0 === 0 && fold.open1 && fold.n1 === fold.items && fold.n1 > 0 && fold.n2 === 0 && fold.a0 > 0 && fold.a1 === 0 && fold.a2 === fold.a0, JSON.stringify(fold));
+    return { n0, n1, open1, n2, items: g.querySelectorAll('.rail-item').length }; });   /* the rail is one group per section tab now; the separate Advanced groups are gone */
+  check('left rail: a click on a folded group\'s +/- opens it and a second click folds it (there is no Advanced heading: the rail has one group per section tab)', fold.n0 === 0 && fold.open1 && fold.n1 === fold.items && fold.n1 > 0 && fold.n2 === 0, JSON.stringify(fold));
   await p.keyboard.press('Escape');
   // 13. New deal and Clear inputs on Overview
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(400);
