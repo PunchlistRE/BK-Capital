@@ -17,7 +17,7 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
     check(tag + ': all 33 sub-tabs of the 7 tabs render a panel with no undefined, NaN or object text', r.length === 33 && r.every(x => x.panels > 0 && x.bad === 0 && x.tabs === 7), JSON.stringify(r.filter(x => !x.panels || x.bad)));
   }
   await fresh(A);
-  check('the Property Editor is a navigation group (the seven editor sheets, then Deal Underwrite) right after Overview', await p.evaluate(() => { const g = GROUPS[1]; return g.id === 'editor-inputs' && g.sheets.slice(0, 7).join() === 'Property,Market,Revenues,Expenses,Tenants,Investment,Valuation' && NAV_TABS[1].id === 'editor'; }));
+  check('the Property Editor is a navigation group (the seven editor sheets, then Deal Underwrite) right after the Inputs index', await p.evaluate(() => { const g = GROUPS.find(x => x.id === 'editor-inputs'); return !!g && GROUPS.indexOf(g) === 2 && g.id === 'editor-inputs' && g.sheets.slice(0, 7).join() === 'Property,Market,Revenues,Expenses,Tenants,Investment,Valuation' && NAV_TABS[2].id === 'editor' && NAV_TABS[1].id === 'inputs';   /* the Inputs index tab sits between Overview and the Property editor */ }));
   await p.evaluate(() => showSheet('Property')); await p.waitForTimeout(200);
   await p.click('.bk-ribbon .rb-t:has-text("Expenses")'); await p.waitForTimeout(250);
   check('clicking a tab opens that sheet, and a sub-tab choice is remembered', await p.evaluate(() => currentSheet === 'Expenses') && (await p.click('.ae-sub:has-text("Capital")'), await p.waitForTimeout(250), await p.evaluate(() => { showSheet('Market'); showSheet('Expenses'); return document.querySelector('.ae-sub.on').textContent === 'Capital'; })));

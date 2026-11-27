@@ -1105,6 +1105,16 @@
 "close": "</script>"
 },
 {
+"file": "221-bk-inputs-index.js",
+"open": "\n<script id=\"bk-inputs-index\">",
+"close": "</script>"
+},
+{
+"file": "222-bk-inputs-index.css",
+"open": "\n<style id=\"bk-inputs-index-css\">",
+"close": "</style>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"

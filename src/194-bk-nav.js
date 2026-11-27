@@ -7,6 +7,7 @@
 if(typeof GROUPS === 'undefined' || typeof NAV_TABS === 'undefined' || typeof RENDERERS === 'undefined') return;
 window.BK_NAV = [
   { id:'overview', label:'Overview', q:'Where does the deal stand?', color:'#7a8da1', groups:[ { label:'Overview', sheets:['Home'] } ] },
+  { id:'inputs', label:'Inputs', q:'What do I still need to enter, and where?', color:'#3E9AE6', groups:[ { label:'Inputs', sheets:['Inputs Index'] } ] },
   { id:'editor', label:'Property', q:'What are we buying?', color:'#3E9AE6', cond:'eng:operating', groups:[
       { label:'Inputs', sheets:['Property', 'Market', 'Revenues', 'Expenses', 'Tenants', 'Investment', 'Valuation', 'Deal Underwrite'] },
       { label:'Rent roll', sheets:['Rent Roll'] },

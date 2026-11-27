@@ -149,6 +149,7 @@ add('Bottom band: key figures', ['bottom band', 'footer', 'bottom bar', 'key fig
 
 T.slice(-12).forEach(function(t){ t.boost = 3; });   /* the newer, more specific topics win a tie with an older general one */
 var GEN = null;
+window.bkKindFmt = function(f, v){ return kindFmt(f, v); };   /* the Inputs index shows each value as Ask the guide does */
 function kindFmt(f, v){
   if(v == null || v === '') return null;
   if(f.kind === 'table') return Array.isArray(v) ? v.length + ' row' + (v.length === 1 ? '' : 's') : null;
@@ -219,6 +220,7 @@ function arrive(go, tries){
     else if(tries < 8) done = false;
   }
   if(go.field){ var f = document.getElementById(go.field); if(f) flash(f.closest('label,div,td') || f); else if(tries < 8) done = false; }
+  else if(go.key){ var kr = document.querySelector('#viewport [data-bk-key="' + go.key + '"]'); if(kr) flash(kr); else if(tries < 8) done = false; }   /* an input drawn as a keyed row (Debt, Deal Underwrite) */
   if(!done) setTimeout(function(){ arrive(go, tries + 1); }, 150);
 }
 /* a field lives on one sub-tab of its editor page (Other income is on Revenues > Other income, not the page's first sub-tab): when it is not on the sub-tab that opened, open the sub-tab that has it */
