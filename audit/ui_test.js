@@ -416,7 +416,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('the Overview is the normal page while the guide is off', await p.evaluate(() => !document.documentElement.classList.contains('bk-guide') && !document.querySelector('.gd')));
   await p.evaluate(() => bkGuideOn()); await p.waitForTimeout(500);
   await p.evaluate(() => bkGuideBlank('Acquisition')); await p.waitForTimeout(500);
-  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 8/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
+  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 9/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
   /* Standard asks one question at a time (#269); these checks type two figures on one step, so they run at Full depth, where every figure of the step is on screen */
   await p.evaluate(() => bkGuideDepth('full')); await p.waitForTimeout(400);
   await p.fill('#gdf-name', 'Guide Court'); await p.dispatchEvent('#gdf-name', 'change'); await p.fill('#gdf-units', '14'); await p.dispatchEvent('#gdf-units', 'change');
@@ -461,8 +461,10 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await setv('taxes', '120,000'); await setv('insurance', '40,000'); await setv('rm', '30,000'); await setv('mgmtPct', '3'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
   await setv('conLTC', '65'); await setv('conRate', '7.5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400); /* the guide now has a sources-and-uses review step and a partnership step before the exit step; the partnership is left blank, so the deal stays all-LP */ for (let i = 0; i < 4 && !(await p.$('#gdf-holdYears')); i++) { await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300); }   /* Next through the review and partnership steps, however many the guide has, to the exit step */
   await setv('holdYears', '6'); await setv('exitCap', '5.75'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(600);
+  /* the skippable Tax rates step (the model's default rates, to confirm or change) comes between Hold and exit and the Review: continue past it */
+  if (/Tax rates/.test(await p.evaluate(() => document.querySelector('.gd h1').innerText))) { await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(600); }
   const dv2 = await p.evaluate(() => { const s = bkLoad(), m = bkMonthlyReturns(); return { t: s.dealType, done: Object.keys(s._guide.done).length, price: s.purchasePrice, src: s.sourceConstruction, ltc: s.conLTC, exit: s.exitCap, irrOk: isFinite(m.irr) && m.irr !== 0, h: document.querySelector('.gd h1').innerText }; });
-  check('a development deal can be built through the guide, step by step, and runs in the engine', dv2.t === 'Development' && dv2.done === 7 && dv2.price === 1200000 && dv2.src === 8000000 && dv2.ltc === 0.65 && dv2.exit === 0.0575 && dv2.irrOk && /Review/.test(dv2.h), JSON.stringify(dv2));
+  check('a development deal can be built through the guide, step by step, and runs in the engine', dv2.t === 'Development' && dv2.done === 8 && dv2.price === 1200000 && dv2.src === 8000000 && dv2.ltc === 0.65 && dv2.exit === 0.0575 && dv2.irrOk && /Review/.test(dv2.h), JSON.stringify(dv2));
   await p.evaluate(() => bkGuideOff()); await p.waitForTimeout(300);
   // 21. Header sign-in / sign-out (last: signing out clears the page)
   p.on('dialog', d => d.accept());
