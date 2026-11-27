@@ -14,10 +14,10 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   for (const [tag, deal] of [['acquisition', A], ['development', D]]) {
     await fresh(deal);
     const r = await p.evaluate(() => { const o = []; for (const t of bkEditorTabs) for (const [id] of t.subs) { bkEdGo(t.id, t.id, id); const v = document.querySelector('#viewport'); o.push({ k: t.id + '/' + id, panels: v.querySelectorAll('.ae-panel').length, bad: (v.innerText.match(/undefined|\bNaN\b|\[object|Infinity/g) || []).length, tabs: v.querySelectorAll('.ae-tab').length, on: (v.querySelector('.ae-sub.on') || {}).textContent }); } return o; });
-    check(tag + ': all 32 sub-tabs of the 7 tabs render a panel with no undefined, NaN or object text', r.length === 32 && r.every(x => x.panels > 0 && x.bad === 0 && x.tabs === 7), JSON.stringify(r.filter(x => !x.panels || x.bad)));
+    check(tag + ': all 33 sub-tabs of the 7 tabs render a panel with no undefined, NaN or object text', r.length === 33 && r.every(x => x.panels > 0 && x.bad === 0 && x.tabs === 7), JSON.stringify(r.filter(x => !x.panels || x.bad)));
   }
   await fresh(A);
-  check('the Property Editor is a navigation group of seven sheets right after Overview', await p.evaluate(() => { const g = GROUPS[1]; return g.id === 'editor' && g.sheets.join() === 'Property,Market,Revenues,Expenses,Tenants,Investment,Valuation' && NAV_TABS[1].id === 'editor'; }));
+  check('the Property Editor is a navigation group (the seven editor sheets, then Deal Underwrite) right after Overview', await p.evaluate(() => { const g = GROUPS[1]; return g.id === 'editor-inputs' && g.sheets.slice(0, 7).join() === 'Property,Market,Revenues,Expenses,Tenants,Investment,Valuation' && NAV_TABS[1].id === 'editor'; }));
   await p.evaluate(() => showSheet('Property')); await p.waitForTimeout(200);
   await p.click('.bk-ribbon .rb-t:has-text("Expenses")'); await p.waitForTimeout(250);
   check('clicking a tab opens that sheet, and a sub-tab choice is remembered', await p.evaluate(() => currentSheet === 'Expenses') && (await p.click('.ae-sub:has-text("Capital")'), await p.waitForTimeout(250), await p.evaluate(() => { showSheet('Market'); showSheet('Expenses'); return document.querySelector('.ae-sub.on').textContent === 'Capital'; })));

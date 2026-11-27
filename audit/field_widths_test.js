@@ -18,8 +18,9 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
         out.push({ at: tab + '>' + sub, k: e.getAttribute('data-bk-w') || '', w: Math.round(r.width), h: Math.round(r.height), u, form, grid, tag: e.tagName.toLowerCase(), cls: String(e.className || '').split(/\s+/)[0] }); }); }
     return out; });
   const rows = []; for (const [dk, deal] of [['acq', A], ['dev', V]]) { const p = await open(1440, deal); const r = await SCAN(p); r.forEach(x => rows.push(Object.assign({ deck: dk }, x))); if (dk === 'acq') var pErr = p.errs.slice(); await p.close(); }
-  const kinds = {}; rows.forEach(x => { if (x.k) (kinds[x.k] = kinds[x.k] || new Set()).add(x.w); });
-  check('Property Editor: every box of one kind has one width, on all ' + new Set(rows.map(x => x.at)).size + ' sub-tabs of both decks (' + rows.length + ' boxes)', Object.keys(kinds).length >= 4 && Object.values(kinds).every(s => s.size === 1), JSON.stringify(Object.fromEntries(Object.entries(kinds).map(([k, s]) => [k, [...s]]))));
+  /* owner decision: every box in a form is one width whatever its kind; grid and other boxes keep one width per kind. So kinds are keyed by where the box is. */
+  const kinds = {}; rows.forEach(x => { if (x.k) { const key = (x.form ? 'form:' : 'other:') + (x.form ? '' : x.k); (kinds[key] = kinds[key] || new Set()).add(x.w); } });
+  check('Property Editor: every form box has one width and every other box of one kind has one width, on all ' + new Set(rows.map(x => x.at)).size + ' sub-tabs of both decks (' + rows.length + ' boxes)', Object.keys(kinds).length >= 3 && Object.values(kinds).every(s => s.size === 1), JSON.stringify(Object.fromEntries(Object.entries(kinds).map(([k, s]) => [k, [...s]]))));
   const unk = rows.filter(x => (x.form || x.grid) && !x.k && !(x.tag === 'input' && x.w > 340));
   check('Property Editor: every box in a form or a grid has a kind (none is left at a width of its own)', unk.length === 0, unk.slice(0, 4).map(x => x.at + ' ' + x.tag + '.' + x.cls + ' ' + x.w).join('; '));
   const pc = rows.filter(x => x.form && /^%/.test(x.u)), dl = rows.filter(x => x.form && /^\$/.test(x.u));
