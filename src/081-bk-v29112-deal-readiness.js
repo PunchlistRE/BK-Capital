@@ -41,38 +41,40 @@ function has(v){ return v !== undefined && v !== null && String(v).trim() !== ''
 function requirements(s){
   var isDev = /develop|redevelop/i.test(String(s.dealType||''));
   var core = [
-    {key:'dealId',       label:'Deal ID',                group:'Identity',    ok:has(s.dealId)},
-    {key:'name',         label:'Property / Deal Name',   group:'Identity',    ok:has(s.name)},
-    {key:'propertyType', label:'Property Type',          group:'Identity',    ok:has(s.propertyType)},
-    {key:'closing',      label:'Closing / Start Date',   group:'Identity',
+    /* fields: the deal fields that satisfy each requirement, so the guide, the step bar and the Inputs index read THIS table (bkModelNeeds below) instead of keeping a list of their own.
+       internal: assigned by the app, never typed by a user, so it is not offered as something to enter. */
+    {key:'dealId',       label:'Deal ID (assigned automatically)', group:'Identity', fields:[], internal:true, ok:has(s.dealId)},
+    {key:'name',         label:'Property / Deal Name',   group:'Identity',    fields:['name'], ok:has(s.name)},
+    {key:'propertyType', label:'Property Type',          group:'Identity',    fields:['propertyType'], ok:has(s.propertyType)},
+    {key:'closing',      label:'Closing / Start Date',   group:'Identity',    fields:['closing'],
        ok:(typeof bkParseDealDate==='function') ? !!bkParseDealDate(s.closing,null) : has(s.closing)},
-    {key:'purchasePrice',label:isDev?'Land Basis':'Purchase Price', group:'Basis', ok:num(s.purchasePrice)>0},
-    {key:'size',         label:'Building Size (units, GSF or commercial area)', group:'Basis',
+    {key:'purchasePrice',label:isDev?'Land Basis':'Purchase Price', group:'Basis', fields:['purchasePrice'], ok:num(s.purchasePrice)>0},
+    {key:'size',         label:'Building Size (units, GSF or commercial area)', group:'Basis', fields:['units', 'gsf', 'commercialArea'], any:true,
        ok:(num(s.units)>0 || num(s.gsf)>0 || num(s.commercialArea)>0)},
     /* units are asked for by name on a residential or untyped deal: building area alone does not say how many homes are being underwritten */
-    {key:'units',        label:isDev?'Residential Units':'Units', group:'Basis',
+    {key:'units',        label:isDev?'Residential Units':'Units', group:'Basis', fields:['units'],
        ok:num(s.units)>0 || (has(s.propertyType) && !/multi|resid|apart|mixed|student|senior|condo|town|single/i.test(String(s.propertyType)))},
-    {key:'revenue',      label:'Revenue Basis (rent roll, average rent or commercial rent)', group:'Operations',
+    {key:'revenue',      label:'Revenue Basis (rent roll, average rent or commercial rent)', group:'Operations', fields:['avgRent', 'rentRoll', 'commercialRent'], any:true,
        ok:((s.rentRoll||[]).length>0 || num(s.avgRent)>0 || num(s.commercialRent)>0)},
-    {key:'holdYears',    label:'Hold Period',            group:'Exit',        ok:num(s.holdYears)>0},
-    {key:'exitCap',      label:'Exit Capitalization Rate',group:'Exit',       ok:num(s.exitCap)>0}
+    {key:'holdYears',    label:'Hold Period',            group:'Exit',        fields:['holdYears'], ok:num(s.holdYears)>0},
+    {key:'exitCap',      label:'Exit Capitalization Rate',group:'Exit',       fields:['exitCap'], ok:num(s.exitCap)>0}
   ];
   if(isDev){
-    core.push({key:'constructionMonths', label:'Construction Period', group:'Development',
+    core.push({key:'constructionMonths', label:'Construction Period', group:'Development', fields:['constructionMonths'],
                ok:num(s.constructionMonths)>0});
     core.push({key:'devCost', label:'Development Cost (trade ladder or source construction cost)',
-               group:'Development',
+               group:'Development', fields:['sourceConstruction'],
                ok:(function(){
                  try { var d = bkDevV09(); return (num(d.hard)+num(d.soft))>0; } catch(e){ return false; }
                })()});
   }
   /* Investment-ready adds financing, exit mechanics and promote structure. */
   var invest = [
-    {key:'debt', label:'Debt Assumptions (rate and amortization, or Debt switched off)', group:'Debt',
+    {key:'debt', label:'Debt Assumptions (rate and amortization, or Debt switched off)', group:'Debt', fields:['acqRate', 'acqAmort'],
        ok:(s.debtEnabled === false) || (num(s.acqRate)>0 && num(s.acqAmort)>0)},
-    {key:'saleCostPct', label:'Cost of Sale', group:'Exit', ok:s.saleCostPct !== undefined},
-    {key:'gpShare', label:'GP / LP Equity Split', group:'Equity', ok:s.gpShare !== undefined},
-    {key:'pref',    label:'Preferred Return',     group:'Equity', ok:s.pref !== undefined}
+    {key:'saleCostPct', label:'Cost of Sale', group:'Exit', fields:['saleCostPct'], ok:s.saleCostPct !== undefined},
+    {key:'gpShare', label:'GP / LP Equity Split', group:'Equity', fields:['gpShare'], ok:s.gpShare !== undefined},
+    {key:'pref',    label:'Preferred Return',     group:'Equity', fields:['pref'], ok:s.pref !== undefined}
   ];
   return {isDev:isDev, core:core, invest:invest};
 }
@@ -135,6 +137,19 @@ function readiness(){
            sourceReview: canCalculate && srcEx > 0 };
 }
 window.bkDealReadiness = readiness;
+/* THE one definition of what an input is needed for, for the acquisition and development analyses (an analysis with its own engine states its own in the registry):
+     'results'     the model will not show results without it (the core list above: the deal is DRAFT until it is in)
+     'investment'  needed before the deal is investment-ready (the invest list: results show, the state stays UNDERWRITING READY)
+     'alt'         one of several fields that can satisfy a requirement; not required by itself
+   Anything else the analysis expects is the registry's 'expected' tier (src/139a): flagged while blank, never blocking. The guide's checklists, the step bar and the Inputs index all call
+   this, so a field can be called required in only one place. */
+window.bkModelRequirements = function(s){ return requirements(s || bkLoad()); };
+window.bkModelNeeds = function(key, s){ var q = requirements(s || bkLoad()), t = null;
+  /* a requirement ANY of several fields can satisfy (any:true: building size is units, area or commercial area; revenue is average rent, rent roll or commercial rent) is carried by its first field;
+     the others are 'alt': they satisfy it, but none of them is required by itself */
+  function scan(list, tier){ list.forEach(function(r){ var i = (r.fields || []).indexOf(key); if(i < 0) return; if(!r.any || i === 0) t = t === 'results' ? t : tier; else if(!t) t = 'alt'; }); }
+  scan(q.core, 'results'); if(t !== 'results') scan(q.invest, 'investment');
+  return t; };
 
 /* ---------------------------------------------------------------- one source for "required" and for a field's status
    The REQUIRED marker on a row, the Status chip beside it, the "Required inputs: n of m" bar, the Home count and the guide all read the requirements above, through these two
@@ -162,10 +177,11 @@ window.bkFieldStatus = function(key){
 /* ---------------------------------------------------------------- presentation */
 function esc(v){ return (typeof bkEsc==='function') ? bkEsc(v) : String(v==null?'':v); }
 window.bkReadinessChip = function(){
-  var r = readiness();
+  var r = (typeof window.bkDealReadiness === 'function' ? window.bkDealReadiness() : readiness());
   var cls = {'INVESTMENT READY':'pass','UNDERWRITING READY':'pass','NOT DECISION-GRADE':'fail','DRAFT':'warn',
              'BLOCKED':'fail','NO DEAL':''}[r.state] || '';
-  var label = r.state + (r.sourceReview ? ' · SOURCE REVIEW' : '');
+  if(cls === 'pass' && r.canCalculate && r.expectedMissing && r.expectedMissing.length) cls = 'warn';   /* results show, but the underwriting is not complete */
+  var label = r.state + (r.sourceReview ? ' · SOURCE REVIEW' : '') + (r.canCalculate && r.expectedMissing && r.expectedMissing.length ? ' · EXPECTED INPUTS MISSING' : '');
   return '<span class="status-chip '+cls+'">'+esc(label)+'</span>';
 };
 
@@ -279,6 +295,7 @@ if(typeof RENDERERS !== 'undefined' && typeof RENDERERS['Home'] === 'function'){
               ? '<tr><td class="rowlabel" data-bk-align="text">For Investment Ready</td><td data-bk-align="text">'
                 + r.investMissing.map(function(m){return esc(m.label);}).join(', ') + '</td></tr>'
               : '')
+          + (function(){ var rx = (window.bkDealReadiness && window.bkDealReadiness().expectedMissing) || []; return rx.length ? '<tr><td class="rowlabel" data-bk-align="text">Expected, not entered</td><td data-bk-align="text"><b>' + rx.map(function(m){ return esc(m.label); }).join(', ') + '</b><br>Results show, but a blank line is counted as zero or left to the model\'s fallback, so NOI and returns may be materially overstated.</td></tr>' : ''; })()
           + (r.blockers.length
               ? '<tr><td class="rowlabel" data-bk-align="text">Blocking</td><td data-bk-align="text">'
                 + r.blockers.map(esc).join('<br>') + '</td></tr>'

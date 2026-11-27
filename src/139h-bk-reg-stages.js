@@ -41,17 +41,30 @@ R.tiles = function(id){ return TILES[id] || TILES.acquisition; };
 /* a 'steps' stage's status, from the deal: done when every listed workflow step is complete */
 R.stageFromSteps = function(stage, s){ var wf = R.workflow(R.of(s).id), miss = [];
   stage.steps.forEach(function(sid){ var st = wf.filter(function(x){ return x.id === sid; })[0]; if(st){ var x = R.stepState(st, s); miss = miss.concat(x.missing); } });
-  return miss.length ? { st:'warn', tip:'Missing: ' + miss.map(function(k){ var f = R.field(k); return f ? f.label : k; }).join(', ') } : { st:'done', tip:'Complete' }; };
+  if(miss.length) return { st:'warn', tip:'Missing: ' + miss.map(function(k){ var f = R.field(k); return f ? f.label : k; }).join(', ') };
+  /* nothing required is missing, but an expected input is blank: not 'done' (a blank expense counts as zero, so the figures may be overstated) */
+  var xm = []; stage.steps.forEach(function(sid){ var st = wf.filter(function(x){ return x.id === sid; })[0]; if(st) xm = xm.concat(R.stepState(st, s).expectedMissing || []); });
+  return xm.length ? { st:'warn', tip:'Expected, not entered (results may be overstated): ' + xm.map(function(k){ var f = R.field(k); return f ? String(f.label).replace(/,.*$/, '') : k; }).join(', ') } : { st:'done', tip:'Complete' }; };
 /* the workflow's completion, step by step: the same figures the guide shows */
 R.workflowState = function(s){ var a = R.of(s); return R.workflow(a.id).map(function(st){ var x = R.stepState(st, s); return { id:st.id, title:st.title, complete:x.complete, missing:x.missing, skippable:!!st.skippable }; }); };
 /* readiness carries the analysis and its workflow completion. Whether results are shown is still decided by the readiness rules themselves (the engine's critical inputs); the workflow adds the analysis-specific steps on top, for the guide and the step bar. */
-if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg){ var rd0 = window.bkDealReadiness, rd = function(){ var r = rd0.apply(this, arguments); try { if(r && typeof r === 'object'){ var d = bkLoad(); r.analysis = R.of(d).id; r.workflow = R.workflowState(d); r.workflowMissing = r.workflow.reduce(function(t, x){ return t + (x.skippable ? 0 : x.missing.length); }, 0);
+if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg){ var rd0 = window.bkDealReadiness, rd = function(){ var r = rd0.apply(this, arguments); try { if(r && typeof r === 'object'){ var d = bkLoad(); r.analysis = R.of(d).id; r.workflow = R.workflowState(d); r.workflowMissing = r.workflow.reduce(function(t, x){ return t + (x.skippable ? 0 : x.missing.length); }, 0); r.expectedMissing = R.expectedMissing(d);   /* expected, not required: never changes the state or canCalculate */
       /* an analysis with its own engine (not the acquisition or development engine) is ready when its own workflow is: its required fields decide, not the acquisition's */
       var an = R.analysis(r.analysis); if(an && an.live && an.ownReadiness && r.state !== 'NO DEAL'){ var miss = [], met = [];
         R.workflow(an.id).forEach(function(st){ if(st.skippable) return; (st.fields || []).forEach(function(e){ var f = R.field(e.k); if(!f || f.kind === 'derived') return; if(R.requirement(e, d) !== 'required') return; var row = { key:e.k, label:e.label || f.label, group:st.title, ok:R.present(e.k, d) }; (row.ok ? met : miss).push(row); }); });
         var seen = {}; miss = miss.filter(function(m){ if(seen[m.key]) return false; seen[m.key] = 1; return true; });
         var eng = an.ready ? an.ready(d) : true; r.missing = miss; r.met = met; r.investMissing = []; r.blockers = eng === true ? [] : [String(eng)];
         r.canCalculate = !miss.length && eng === true; r.state = !miss.length ? (eng === true ? 'ANALYSIS READY' : 'BLOCKED') : 'DRAFT'; } } } catch(e){} return r; }; rd.__reg = true; window.bkDealReadiness = rd; }
+/* EXPECTED inputs still blank, most material first. The order is fixed and deterministic (taxes move NOI most, then vacancy, insurance, repairs, management, the loan-to-value, closing costs);
+   the effect is stated as it is: a blank line is counted as zero, never silently assumed, and the results below it may be overstated. */
+var EXPECTED_ORDER = ['taxes', 'vacancy', 'insurance', 'rm', 'mgmtPct', 'acqLTV', 'conLTC', 'closingCostsPct'];
+var EXPECTED_EFFECT = { taxes:'counted as $0, so NOI and returns are overstated', insurance:'counted as $0, so NOI and returns are overstated', rm:'counted as $0, so NOI and returns are overstated', mgmtPct:'counted as 0%, so NOI and returns are overstated',
+  vacancy:'counted as 0% (a full building), so income and returns are overstated', acqLTV:'no loan-to-value limit entered, so the loan size and the returns rest on the model\'s fallback', conLTC:'no loan-to-cost limit entered, so the construction loan and the returns rest on the model\'s fallback',
+  closingCostsPct:'counted as 0%, so the cash needed at closing is understated' };
+R.expectedMissing = function(s){ s = s || (typeof bkLoad === 'function' ? bkLoad() : {}); if(!R.governed(s)) return [];
+  var seen = {}, out = []; R.workflow(R.of(s).id).forEach(function(st){ if(typeof st.when === 'function' && !st.when(s)) return; (st.fields || []).forEach(function(e){ if(seen[e.k]) return; var f = R.field(e.k); if(!f || f.kind === 'derived') return;
+    if(R.requirement(e, s) !== 'expected' || R.present(e.k, s)) return; seen[e.k] = 1; out.push({ key:e.k, label:e.label || f.label, effect:EXPECTED_EFFECT[e.k] || 'left blank: the results use the model\'s fallback, not a figure you chose', rank:EXPECTED_ORDER.indexOf(e.k) < 0 ? 99 : EXPECTED_ORDER.indexOf(e.k), sheet:st.sheet }); }); });
+  return out.sort(function(a, b){ return a.rank - b.rank; }); };
 var lint0 = R.lint;
 R.lint = function(){ var bad = lint0.call(R), JUDGE = ['identity', 'inputs', 'operations', 'debt', 'returns', 'review', 'steps'];
   R.analyses().forEach(function(a){ var wf = R.workflow(a.id).map(function(x){ return x.id; });

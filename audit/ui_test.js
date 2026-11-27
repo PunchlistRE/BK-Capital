@@ -441,7 +441,8 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(a => { bkCreateNewDeal(Object.assign({}, a, { vacancy: 0, reserves: 0, mgmtPct: 0 })); }, A_); await p.waitForTimeout(500);
   await p.evaluate(() => bkGuideOn()); await p.waitForTimeout(700);
   const w1 = await p.evaluate(() => document.querySelector('.gd').innerText);
-  check('turning the guide on mid-deal opens a reading of where the deal stands', /Where this deal stands/i.test(w1) && /Entered, not yet reviewed/i.test(w1) && /120 units/.test(w1) && /Needs: vacancy/i.test(w1), w1.slice(0, 120));
+  /* the step reads Expected, not entered for the management fee (blank, zero is not a fee). Vacancy typed as 0% is an entry (the guide's advice still says 0.00% is unusual), so it is no longer called missing */
+  check('turning the guide on mid-deal opens a reading of where the deal stands', /Where this deal stands/i.test(w1) && /Entered, not yet reviewed/i.test(w1) && /120 units/.test(w1) && /Expected, not entered: management fee/i.test(w1), w1.slice(0, 120));
   check('it offers advice from the current inputs (vacancy, management, reserves)', /Vacancy is 0\.00%/.test(w1) && /no management fee/i.test(w1) && /No replacement reserves/.test(w1));
   await p.evaluate(() => bkGuideProp('vacancy', 0.05)); await p.waitForTimeout(800);
   const w2 = await p.evaluate(() => ({ imp: document.getElementById('gd-imp').innerText, saved: bkLoad().vacancy, val: document.getElementById('gdf-vacancy').value }));

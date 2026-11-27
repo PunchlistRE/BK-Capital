@@ -14,9 +14,12 @@ function deal(){ return safe(function(){ return bkLoad(); }, {}) || {}; }
 function isDev(s){ return /develop/i.test(String((s || deal()).dealType || '')); }
 function pc(v, d){ return v == null || !isFinite(v) ? null : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
 function m0(v){ return v == null || !isFinite(v) ? null : '$' + Math.round(v).toLocaleString('en-US'); }
-function calc(){ return safe(function(){ return bkCalc(); }, {}) || {}; }
-function debt(){ return safe(function(){ return bkDebt(); }, null); }
-function ret(){ return safe(function(){ return bkMonthlyReturns(); }, null); }
+/* An answer never quotes a figure the model is withholding: while the deal is missing what the model needs (the closing date among them), the engine's numbers would rest on a date or an input the model had to invent. */
+var HELD = false;
+function open_(){ var r = safe(function(){ return window.bkDealReadiness(); }, null); if(r && r.state !== 'NO DEAL' && r.canCalculate === false){ HELD = true; return false; } return true; }
+function calc(){ return open_() ? (safe(function(){ return bkCalc(); }, {}) || {}) : {}; }
+function debt(){ return open_() ? safe(function(){ return bkDebt(); }, null) : null; }
+function ret(){ return open_() ? safe(function(){ return bkMonthlyReturns(); }, null) : null; }
 function now(label, v){ return v ? ' ' + label + ' <b>' + v + '</b>.' : ''; }
 
 /* where each editor tab lives: Section name, tab, sub-tab id (matches bkEditorTabs) */
@@ -131,7 +134,7 @@ add('The hidden SYS_ sheets', ['sys', 'sys engine', 'backend', 'engine sheets', 
    A hand-written topic that matches as well always comes first. */
 
 /* valuation and return measures (src/202 to 204): answers read live figures from the valuation engine */
-function vr(){ return safe(function(){ return window.bkValReturns(); }, null); }
+function vr(){ return open_() ? safe(function(){ return window.bkValReturns(); }, null) : null; }
 function vm(){ return safe(function(){ var s = deal(), c = window.bkPvCalc(s, typeof window.bkRpOptGet === 'function' ? window.bkRpOptGet('pvRate') : undefined); return window.bkValuate({ rate:c.base, equityRate:c.base }); }, null); }
 var PVR = P('Present Value Report', null, ['Reports', 'Present Value Report']);
 add('IRR: internal rate of return', ['irr', 'internal rate of return', 'levered irr', 'unlevered irr', 'unleveraged irr', 'xirr', 'what is irr', 'what is the irr'], function(){ var r = vr(); return 'IRR is the rate at which the dated cash flows have an NPV of zero, so it uses <b>when</b> each dollar arrives. The levered IRR is the equity\'s; the unleveraged IRR is the property\'s.' + (r && isFinite(r.levIRR) ? ' Here the levered IRR is <b>' + pc(r.levIRR, 2) + '</b>' + (r.unlevIRR != null && isFinite(r.unlevIRR) ? ' and the unleveraged IRR <b>' + pc(r.unlevIRR, 2) + '</b>' : '') + '. The Present Value Report sets it beside the CAGR.' : ''); }, PVR);
@@ -206,7 +209,8 @@ function ask(question){
   var q = fuzzy(toks(question)); if(!q.length) return [];
   return T.concat(generated()).map(function(t){ return { t:t, s:scoreTopic(t, q) - (t.gen ? 1 : 0) + (t.boost || 0) }; }).filter(function(z){ return z.s >= 8; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 3).map(function(z){ return z.t; });
 }
-function answerOf(t){ var s = deal(), a = typeof t.a === 'function' ? safe(function(){ return t.a(s); }, '') : t.a; var note = ''; if(t.dev && !isDev(s)) note = ' <i>(This is a development-deal page; the open deal is an acquisition.)</i>'; return a + note; }
+function answerOf(t){ var s = deal(); HELD = false; var a = typeof t.a === 'function' ? safe(function(){ return t.a(s); }, '') : t.a; var note = '';
+  if(HELD){ var rd = safe(function(){ return window.bkDealReadiness(); }, null); a += ' <i>The figures are withheld until ' + ((rd && rd.missing || []).map(function(m){ return m.label; }).join(', ') || 'the required inputs') + ' ' + ((rd && rd.missing || []).length === 1 ? 'is' : 'are') + ' entered.</i>'; HELD = false; } if(t.dev && !isDev(s)) note = ' <i>(This is a development-deal page; the open deal is an acquisition.)</i>'; return a + note; }
 
 /* ------------------------------------------------------------ going there */
 function flash(el){ if(!el) return; try { el.scrollIntoView({ block:'center' }); } catch(e){} el.classList.add('bk-ask-flash'); setTimeout(function(){ el.classList.remove('bk-ask-flash'); }, 3200); }
