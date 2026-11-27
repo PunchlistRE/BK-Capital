@@ -28,7 +28,7 @@ window.BK_NAV = [
       { label:'Risk & pricing', sheets:['Deal Optimizer', 'Sensitivity', 'Reverse Solve', 'Probability-Weighted', 'Pre-Offer Bid'] } ] },
   { id:'credit', label:'Credit & IC', q:'Does it meet house policy?', color:'#7A3E4D', cond:'eng:returns', groups:[ { label:'Credit & IC', sheets:['IC Memo', 'Credit Policy', 'Debt Capacity', 'Deal Remedies', 'Deal Review'] } ] },
   { id:'business', label:'Business', q:'Operating-business deals only', color:'#6B4E71', cond:'business', groups:[ { label:'Operating business', sheets:['Business Model', 'Business Valuation', 'Sell vs Hold'] } ] },
-  { id:'reports', label:'Reports', q:'Documents to send out', color:'#B0592A', groups:[ { label:'Reports', sheets:['Cash Flow Report', 'After-Tax Report', 'Sources and Uses Report', 'Waterfall Report', 'Valuation Report', 'Property Valuation Report', 'Present Value Report', 'Tenant Report', 'Rent Roll Report', 'Lease Schedule', 'Lease Audit Report', 'Refinance Report', 'Hold vs Sell Report', 'Portfolio Report', 'Audit Report'] } ] },
+  { id:'reports', label:'Reports', q:'Documents to send out', color:'#B0592A', groups:[ { label:'Reports', sheets:['Cash Flow Report', 'After-Tax Report', 'Sources and Uses Report', 'Waterfall Report', 'Valuation Report', 'Property Valuation Report', 'Present Value Report', 'Tenant Report', 'Rent Roll Report', 'Lease Schedule', 'Lease Audit Report', 'Refinance Report', 'Hold vs Sell Report', 'Portfolio Report', 'Business Report', 'Audit Report'] } ] },
   { id:'portfolio', label:'Portfolio', q:'Across all deals', color:'#5A6B7A', groups:[ { label:'Portfolio', sheets:['Portfolio Analysis', 'Portfolio', 'Portfolio Dashboard', 'Property DB', 'Portfolio CF', 'Portfolio M', 'Portfolio Rollup', 'Capital Allocation', 'Capital Calls', 'Equity Partners', 'Investor Summary', 'Benchmarks'] } ] },
   { id:'model', label:'Model & Data', q:'Can we trust the model? Admin', color:'#A93B2C', groups:[
       { label:'Checks', sheets:['Model Checks', 'QA', 'Version History', 'Source Lineage', 'Storage Lifecycle'] },
@@ -71,7 +71,7 @@ window.BK_NAV_FOLDED = FOLDED;
 function engines(){ try { var R = window.BKReg, a = R && R.of ? R.of(bkLoad() || {}) : null; return a && a.engines ? a.engines : null; } catch(e){ return null; } }
 function engOk(cond){ var e = engines(); if(!e) return true; return String(cond).slice(4).split('|').some(function(k){ return e.indexOf(k) >= 0; }); }
 window.bkNavEngineShown = engOk;
-var REPORT_NEEDS = { 'Tenant Report':'eng:operating', 'Audit Report':'eng:operating', 'Valuation Report':'eng:operating', 'Deal Vectors (M)':'eng:monthly|development', 'Portfolio Report':'eng:portfolio', 'Hold vs Sell':'eng:hold', 'Hold vs Sell Report':'eng:hold', 'Cash Flow Report':'eng:monthly|development', 'After-Tax Report':'eng:monthly|development', 'Sources and Uses Report':'eng:debt|development', 'Waterfall Report':'eng:waterfall', 'Refinance Report':'eng:refinance|debt' };
+var REPORT_NEEDS = { 'Business Report':'eng:business', 'Tenant Report':'eng:operating', 'Audit Report':'eng:operating', 'Valuation Report':'eng:operating', 'Deal Vectors (M)':'eng:monthly|development', 'Portfolio Report':'eng:portfolio', 'Hold vs Sell':'eng:hold', 'Hold vs Sell Report':'eng:hold', 'Cash Flow Report':'eng:monthly|development', 'After-Tax Report':'eng:monthly|development', 'Sources and Uses Report':'eng:debt|development', 'Waterfall Report':'eng:waterfall', 'Refinance Report':'eng:refinance|debt' };
 window.bkNavVisible = function(g){ var noRet = !engOk('eng:returns|development');
   return g.sheets.filter(function(n){ return !FOLDED[n] && (!REPORT_NEEDS[n] || engOk(REPORT_NEEDS[n])); }).map(function(n){ return noRet && n === 'Valuation Report' ? 'Property Valuation Report' : n; }); };
 window.bkNavHostOf = function(n){ return FOLDED[n] || n; };
@@ -87,7 +87,7 @@ function tabOf(sheet){ for(var i = 0; i < NAV_TABS.length; i++){ var t = NAV_TAB
 /* is a conditional group or tab showing right now? (the open sheet always shows, so a page you are on never disappears from its own menu) */
 function groupShown(g, sheet){ if(!g.cond) return true; if(g.sheets.indexOf(sheet) > -1) return true; return g.cond === 'development' ? isDev() : g.cond === 'business' ? hasBiz() : true; }
 window.bkNavTabHidden = function(t, sheet){ var d = window.BK_NAV.filter(function(x){ return x.id === t.id; })[0]; if(!d || !d.cond) return false;
-  var gs = t.groups.map(function(id){ return GROUPS.filter(function(x){ return x.id === id; })[0]; }).filter(Boolean); if(gs.some(function(g){ return g.sheets.indexOf(sheet) > -1; })) return false; return !(d.cond === 'business' ? hasBiz() : /^eng:/.test(d.cond) ? engOk(d.cond) : true); };
+  var gs = t.groups.map(function(id){ return GROUPS.filter(function(x){ return x.id === id; })[0]; }).filter(Boolean); if(gs.some(function(g){ return g.sheets.indexOf(sheet) > -1; })) return false; return !(d.cond === 'business' ? (hasBiz() || ((engines() || []).indexOf('business') >= 0)) : /^eng:/.test(d.cond) ? engOk(d.cond) : true); };   /* a business deal shows its tab before a model is loaded, so the way to load one is in reach */
 window.bkNavGroupShown = groupShown;
 
 /* rebuild GROUPS and NAV_TABS in place from the definition */

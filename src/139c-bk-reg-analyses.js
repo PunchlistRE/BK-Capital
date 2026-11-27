@@ -20,8 +20,8 @@ var R = window.BKReg;
     engines:['operating', 'monthly', 'debt', 'returns', 'waterfall', 'sensitivity', 'tax', 'capital'], about:'Every supported schedule for one property: operations, capital, financing, tax and partners.' },
   { id:'portfolio', name:'Portfolio Analysis', q:'How do our properties add up, and what should we do next?', icon:'grid', dealType:'Acquisition', live:true,
     engines:['portfolio'], ownReadiness:true, home:'Portfolio Analysis', ready:function(){ var r = typeof window.bkPortfolioAnalysis === 'function' ? window.bkPortfolioAnalysis() : null; return !r || r.ok ? true : 'The portfolio has no holdings yet: ' + r.missing.join('; ') + '.'; }, about:'Holdings consolidated on dated cash flows, with debt maturities, concentration and scenarios.' },
-  { id:'business', name:'Business Valuation & Underwriting', q:'What is the operating business worth?', icon:'chart', dealType:'Acquisition', live:false,
-    engines:['business'], about:'Revenue, EBITDA, working capital, free cash flow and valuation for an operating company, kept separate from property underwriting.' }
+  { id:'business', name:'Business Valuation & Underwriting', q:'What is the operating business worth?', icon:'chart', dealType:'Acquisition', live:true,
+    engines:['business'], ownReadiness:true, home:'Business Valuation', ready:function(){ var r = typeof window.bkBusinessAnalysis === 'function' ? window.bkBusinessAnalysis() : null; return !r || r.ok ? true : 'The business cannot be valued yet: ' + r.missing.join('; ') + '.'; }, about:'Revenue, EBITDA, working capital, free cash flow and valuation for an operating company, kept separate from property underwriting.' }
 ].forEach(function(a){ R.addAnalysis(a); });
 
 /* line icons (20px, current text color) */

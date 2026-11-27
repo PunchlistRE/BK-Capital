@@ -38,7 +38,7 @@ var BKReg = {
   /* is a field required, optional, not applicable ... in this step, for this deal. Conditional fields resolve against the deal. */
   requirement:function(entry, s){ var q = entry.req || 'optional'; if(q === 'conditional') return (typeof entry.when === 'function' && entry.when(s || {})) ? 'required' : 'na'; if(typeof entry.when === 'function' && !entry.when(s || {})) return 'na'; return q; },   /* a condition on an optional or required field hides it where it does not apply */
   /* a value is present when it was entered: blank and null are missing; zero is missing for amounts that cannot be zero (a price, a unit count) */
-  present:function(k, s){ var f = R.fields[k] || {}, v = (s || {})[k];
+  present:function(k, s){ var f = R.fields[k] || {}, v = (s || {})[k]; if(typeof f.has === 'function') return !!f.has(s || {});   /* a field kept outside the deal's own keys says how to tell it is there */
     if(f.kind === 'table') return Array.isArray(v) && v.length > 0;
     if(f.kind === 'text' || f.kind === 'date' || f.kind === 'choice') return v != null && String(v).trim() !== '';
     if(f.kind === 'bool') return v === true || v === false;
