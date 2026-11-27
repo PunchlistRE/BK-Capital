@@ -321,7 +321,7 @@ function stepFindingsHtml(s, sec){ return findingsBox(stepFindings(s, sec)); }
 function stillHtml(miss, exp){ return (miss.length ? 'Still needed here: ' + miss.map(function(m){ return esc(m.label.toLowerCase()); }).join(', ') + '.' : '')
   + (function(){ var tx = (exp || []).filter(function(m){ return window.BK_TAX_RATES && window.BK_TAX_RATES[m.k]; }), op = (exp || []).filter(function(m){ return !(window.BK_TAX_RATES && window.BK_TAX_RATES[m.k]); }), o = '';
       if(op.length) o += (miss.length ? ' ' : '') + '<b>Expected, not entered (most material first):</b> ' + op.map(function(m){ return esc(String(m.label).toLowerCase().replace(/,.*$/, '')); }).join(', ') + '. A blank line is counted as zero, so NOI and returns may be overstated.';
-      if(tx.length) o += (miss.length || op.length ? ' ' : '') + '<b>Tax rates not confirmed:</b> ' + tx.map(function(m){ return esc(String(m.label).toLowerCase()); }).join(', ') + '. The after-tax figures use the model\'s defaults (provisional) until you confirm or change them.';
+      if(tx.length) o += (miss.length || op.length ? ' ' : '') + '<b>Tax assumptions not confirmed:</b> ' + tx.map(function(m){ return esc(String(m.label).toLowerCase()); }).join(', ') + '. The after-tax figures use the model\'s defaults (provisional) until you confirm or change them.';
       return o; })(); }
 /* the step's expected inputs still blank, most material first (the same list and order as the Inputs index and the Home page: BKReg.expectedMissing) */
 function expectedBlank(sec, s){ var R = window.BKReg; if(!R || !R.expectedMissing) return []; var order = safe(function(){ return R.expectedMissing(s, true).map(function(x){ return x.key; }); }, []);

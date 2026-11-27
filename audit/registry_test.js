@@ -38,7 +38,7 @@ const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
     want = want.map(([id, f]) => [id, f.map(x => [x[0], REQ.includes(x[0]) ? 1 : 0, x[2]])]);
     if (tag === 'development') want = want.map(([id, f]) => id === 'property' ? [id, [f[0], f[1], ['propertyType', 1, 'What kind of building is it?'], ...f.slice(2)]] : [id, f]);
     /* the three tax rates are Expected inputs in a skippable Tax rates step after Hold and exit (src/226): the model's defaults, flagged unconfirmed; not required */
-    want = want.flatMap(([id, f]) => id === 'exit' ? [[id, f], ['tax', [['taxRate', 0, 'Ordinary income tax rate'], ['depRecaptureRate', 0, 'Depreciation recapture rate'], ['capGainsRate', 0, 'Capital gains rate']]]] : [[id, f]]);
+    want = want.flatMap(([id, f]) => id === 'exit' ? [[id, f], ['tax', [['taxRate', 0, 'Ordinary income tax rate'], ['depRecaptureRate', 0, 'Depreciation recapture rate'], ['capGainsRate', 0, 'Capital gains rate'], ['landValuePct', 0, 'Land allocation, % of the basis']]]] : [[id, f]]);
     await open(deal); const g = await p.evaluate(() => bkGuideSections(bkLoad()).map(s => [s.id, s.fields.map(f => [f.k, f.req ? 1 : 0, f.label])]));
     check('guide (' + tag + '): its steps, fields, labels and required flags are exactly today\'s, now from the registry', JSON.stringify(g) === JSON.stringify(want), JSON.stringify(g).slice(0, 300)); }
 
