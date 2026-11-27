@@ -63,7 +63,7 @@ window.bkDevCovenantSheet = function(s, dv){
   });
   var cell = function(r, ok){ return '<td class="' + (r.tested && !ok ? 'fail-cell' : '') + '">' + (!r.tested ? na : ok ? '<span class="status-chip pass">PASS</span>' : '<span class="status-chip fail">FAIL</span>') + '</td>'; };
   var v = function(r, x){ return '<td>' + (r.tested ? x : '-') + '</td>'; };
-  var main = '<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - Lender DSCR (NOI after reserves) &amp; Debt Yield, tested annually against the permanent loan after takeout</caption>'
+  var main = '<div class="tbl-wrap"><table class="fin"><caption>Covenant Monitor - Lender DSCR (' + (typeof bkDscrBasis === 'function' ? bkDscrBasis('lender') : 'lender NOI') + ') &amp; Debt Yield, tested annually against the permanent loan after takeout</caption>'
     + '<thead><tr><th class="rowlabel-h">Line Item</th>' + rows.map(function(r){ return '<th>Year ' + r.y + '</th>'; }).join('') + '</tr></thead><tbody>'
     + '<tr><td class="rowlabel">Months with Permanent Debt Service</td>' + rows.map(function(r){ return v(r, r.n); }).join('') + '</tr>'
     + '<tr><td class="rowlabel">' + bkNoiBasisLabel('lender', null) + ' (those months)</td>' + rows.map(function(r){ return v(r, money(r.noi)); }).join('') + '</tr>'

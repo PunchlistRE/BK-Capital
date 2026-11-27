@@ -25,6 +25,21 @@
   html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role][style*="--bk-cw"]{ width:var(--bk-cw) !important; min-width:0 !important; max-width:none !important; }
   /* a table wider than its card (a long period schedule, or text that needs its minimum) scrolls inside the card, never over its neighbours */
   html:where(:not(.bk-printing)) body #viewport .tbl-wrap:has(> table.fin[data-bk-fam]){ overflow-x:auto; }
+  /* freeze panes: any table too wide for its card (marked by the layout pass) keeps its row labels in view while the rest scrolls, with an edge to show where the frozen column ends */
+  html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > * > tr > :first-child{ position:sticky; left:0; z-index:1; background-color:var(--ae-cell,#fff);   /* opaque: the scrolled cells pass under it (the older transparent-cell rule in src/110 leaves frozen labels alone) */
+    box-shadow:inset -1px 0 0 var(--ae-line,#d6dde5), 6px 0 8px -6px rgba(14,42,74,.18); }
+  html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > thead > tr > :first-child{ z-index:2; background-color:var(--ae-head,#e7ecf2); }
+  html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > tbody > tr.total > :first-child, html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > tbody > tr.grandtotal > :first-child{ background-color:var(--bk-total-fill); }
+  /* a subtotal row's tint is translucent (an older rule, with !important): on a frozen label the scrolled figures would show through it, so the label paints
+     the same tint as an opaque layer (the row's text color at 6% over the cell color; right in light and dark) */
+  html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > tbody > tr.subtotal > :first-child,
+  html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"] tr.subtotal > [data-bk-role="label"]{ box-shadow:inset -1px 0 0 var(--ae-line,#d6dde5), inset 0 0 0 9999px color-mix(in srgb, currentColor 6%, var(--ae-cell,#fff)); }
+  /* total rows: the same, with their key marker kept on top (the row rules set their own shadow with heavily repeated selectors, so this matches them) */
+  html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze][data-bk-freeze][data-bk-freeze] > tbody > tr:is(.total, .grandtotal, .tot)[class][class] > :first-child,
+  html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"][data-bk-fam="period"][data-bk-fam="period"] tbody > tr:is(.total, .grandtotal, .tot)[class][class] > [data-bk-role="label"][data-bk-role="label"]{ box-shadow:inset 3px 0 0 var(--bk-key-rule, transparent), inset -1px 0 0 var(--ae-line,#d6dde5), inset 0 0 0 9999px var(--bk-total-fill,#eaeff4); }
+  /* a grand-total row is drawn plain (its cells are cleared to the cell color), so its frozen label is plain too: an opaque cell color under the marker */
+  html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze][data-bk-freeze][data-bk-freeze] > tbody > tr.grandtotal[class][class][class] > :first-child,
+  html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"][data-bk-fam="period"][data-bk-fam="period"] tbody > tr.grandtotal[class][class][class] > [data-bk-role="label"][data-bk-role="label"]{ box-shadow:inset 3px 0 0 var(--bk-key-rule, transparent), inset -1px 0 0 var(--ae-line,#d6dde5), inset 0 0 0 9999px var(--ae-cell,#fff); }
   /* a period table keeps its row labels in view while its periods scroll */
   html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"] tr > [data-bk-role="label"]{ position:sticky; left:0; z-index:1; background-color:var(--ae-cell,#fff); }
   html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"] tr.total > [data-bk-role="label"], html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam="period"] tr.grandtotal > [data-bk-role="label"]{ background-color:var(--bk-total-fill); }
@@ -121,3 +136,5 @@ html body #viewport .bk-box.bk-box-t > .bk-box-b{ padding:12px 14px; }
 /* an actions column (Load, Remove, Open): its buttons stay on one line, at the right of the row; the column is sized to them (src/111) */
 html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] tr > [data-bk-role="actions"][data-bk-role]{ text-align:right; white-space:nowrap; }
 html:where(:not(.bk-printing)) body #viewport table.fin[data-bk-fam] td[data-bk-role="actions"] button + button{ margin-left:4px; }
+/* phone: a status label beside its row label (a two-column table on one line) wraps inside its cell */
+@media (max-width:760px){ html body #viewport table.fin.bk-m-stack.bk-m-pair td:last-child .status-chip{ white-space:normal; height:auto; text-align:left; } }

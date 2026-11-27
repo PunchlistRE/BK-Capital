@@ -284,7 +284,7 @@
       /* period tables stacked in one column with the same number of periods share one label width, so their period columns line up */
       var per={}; G.list.forEach(function(o){ if(o.fam==='period' && o.roles){ var k=o.roles.length+'|'+Math.round(o.W); (per[k]=per[k]||[]).push(o); } });
       Object.keys(per).forEach(function(k){ var L=per[k]; if(L.length<2) return; var l=Math.max.apply(null,L.map(function(o){ return o.w[0]; })); L.forEach(function(o){ o.w[0]=l; }); });
-      G.list.forEach(function(o){ if(!o.roles) return; setStyle(o.tb,'--bk-tmin',o.tmin||'0px'); o.hs.forEach(function(h,i){ setStyle(h,'--bk-cw',o.w[i]==null?'auto':Math.round(o.w[i])+'px'); }); });
+      G.list.forEach(function(o){ if(!o.roles) return; setStyle(o.tb,'--bk-tmin',o.tmin||'0px'); if(o.tmin){ set(o.tb,'data-bk-freeze','1'); } else if(o.tb.hasAttribute('data-bk-freeze')) o.tb.removeAttribute('data-bk-freeze');   /* a table that scrolls freezes its labels, like Excel's freeze panes */ o.hs.forEach(function(h,i){ setStyle(h,'--bk-cw',o.w[i]==null?'auto':Math.round(o.w[i])+'px'); }); });
     }
   }
   /* a field with something beside it in its cell (a "$" before it, a note after it) takes the width that is left, so the pair never crosses the cell edge */
