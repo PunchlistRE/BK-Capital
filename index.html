@@ -7141,8 +7141,9 @@ try{implement(document);}catch(e){}
      after scheduled payment and any maturity/refinance event, BEFORE repayment from sale proceeds in the final month.
      Row identity: beg + draw - principal - payoff = balance. */
   /* DEBT STRUCTURE (loan terms beyond rate and size). All optional: a deal that sets none of them is calculated exactly as before.
-     repayType   Fully amortizing (amortizes over the loan term), Interest only (no principal before maturity), Partial interest only and
-                 Interest only then amortizing (acqIO years of interest, then amortizing over acqAmort), Balloon (amortizes over acqAmort, repaid at maturity).
+     repayType   Fully amortizing (amortizes over the loan term), Interest only (no principal before maturity), Interest only then amortizing (acqIO years of interest, then amortizing
+                 over acqAmort, the balance repaid at maturity), Partial interest only (acqIO years of interest, then amortizing over what ioBasis says: the stated acqAmort schedule, or the remaining
+                 term so the loan is paid off at maturity), Balloon (amortizes over acqAmort, repaid at maturity).
      debtDayCount  Actual/360 accrues 365/360 of the quoted rate's interest each year; 30/360 and Actual/365 accrue the quoted rate. Payments are set on the
                  quoted rate, so under Actual/360 more of each payment is interest. Blank is 30/360, as before.
      extensions  debtExtUse = 1 exercises debtExtCount extensions of debtExtMonths each: maturity moves out and debtExtFeePct of the balance is paid at each.
@@ -7151,10 +7152,16 @@ try{implement(document);}catch(e){}
   window.bkLoanShape=function(s){ const t=String(s.repayType||''), term=termMonths(s), hasTerm=Number(s.debtTerm)>0;
     let io=Math.max(0,Math.round(Number(s.acqIO)*12)), am=Math.max(1,Math.round(Number(s.acqAmort)*12));
     if(t==='Interest only') io=99999; else if(t==='Fully amortizing'){ io=0; if(hasTerm) am=term; } else if(t==='Balloon') io=0;
-    return { io:io, amort:am, term:term, interestOnly:t==='Interest only' }; };
+    /* Partial interest only: interest only for the first io months, then amortizing. ioBasis says over what: the stated amortization schedule (the default, and what it has always meant: a balloon is left at maturity)
+       or the remaining term (the payment is set so the loan is paid off at maturity). Nothing else about the loan changes. */
+    const remaining=(t==='Partial interest only'&&String(s.ioBasis||'')==='Remaining term'); if(remaining) am=Math.max(1,term-io);
+    return { io:io, amort:am, term:term, interestOnly:t==='Interest only', basis:remaining?'remaining':'stated' }; };
   window.bkDayCountFactor=function(s){ return String(s.debtDayCount||'')==='Actual/360'?365/360:1; };
   function extMonths(s){ return Number(s.debtExtUse)===1?Math.max(0,Math.round(Number(s.debtExtCount)||0))*Math.max(0,Math.round(Number(s.debtExtMonths)||0)):0; }
-  /* the prepayment premium on a balance repaid at month m of the loan, under the loan's prepayment terms */
+  /* the contractual maturity (the term plus any extensions exercised), which is not the modeled sale: the hold may end before it, and then the loan is prepaid (or assumed) */
+  window.bkLoanMaturityMonths=function(s){ return Math.max(1,termMonths(s)+extMonths(s)); };
+  /* the prepayment premium on a balance repaid at month m of the loan, under the loan's prepayment terms. A LOCKOUT (prepayLockoutMonths: no voluntary prepayment at all) is a separate term, never priced here:
+     a sale inside it is flagged by the debt.sale-in-lockout check; the premium below is what the loan charges once prepayment is allowed. */
   window.bkPrepayPremium=function(s,bal,m,maturity,coupon){ const t=String(s.prepayType||''), left=maturity-m; if(!(bal>0)||left<=0||!t||t==='Open') return 0;
     if(left<=Math.max(0,Math.round(Number(s.prepayOpenMonths)||0))) return 0;   /* the open window before maturity */
     const yr=Math.max(1,Math.ceil(m/12));
@@ -22875,7 +22882,7 @@ function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(
 function F(k, label, kind, o){ return Object.assign({ k:k, label:label, kind:kind }, o || {}); }
 function sug(v, why){ return function(){ return { v:v, why:why }; }; }
 /* the loan type's typical term when one is chosen, otherwise the general default (or nothing) */
-function typ(k, v, why){ return function(s){ var t = window.bkLoanTypeTypical ? window.bkLoanTypeTypical(s, k) : undefined; if(t !== undefined) return { v:t, why:'Typical for ' + (s.loanType === 'Agency' || s.loanType === 'Acquisition' ? 'an ' : 'a ') + s.loanType + ' loan. A starting point, not a quote.' }; return v === null || v === undefined ? null : { v:v, why:why }; }; }
+function typ(k, v, why){ return function(s){ var t = window.bkLoanTypeTypical ? window.bkLoanTypeTypical(s, k) : undefined; if(t !== undefined) return { v:t, why:'Typical for ' + (function(){ var l = (window.bkLoanLabel ? window.bkLoanLabel(s) : '') || (s.loanType ? s.loanType + ' loan' : 'this kind of loan'); return (/^[AEIOU]/i.test(l) ? 'an ' : 'a ') + l; })() + '. A starting point, not a quote.' }; return v === null || v === undefined ? null : { v:v, why:why }; }; }
 function sofr(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; }
 window.BKReg.addFields([
   /* property */
@@ -22915,7 +22922,9 @@ window.BKReg.addFields([
   F('capex', 'Capital items', 'table', { help:'Dated one-off capital spending below NOI (roof, HVAC, renovations).', sheet:'Expenses' }),
   /* financing (acquisition loan) */
   F('debtEnabled', 'Use acquisition debt', 'bool'),
-  F('loanType', 'Loan type', 'choice', { options:['Permanent / Term', 'Acquisition', 'Refinance', 'Cash-Out Refinance', 'Bridge', 'Construction', 'Renovation / Rehabilitation', 'Construction-to-Permanent', 'Agency', 'CMBS', 'Bank / Credit Union', 'Life Company', 'SBA', 'Hard Money'],
+  F('loanPurpose', 'Loan purpose', 'choice', { options:['Acquisition', 'Refinance', 'Cash-Out Refinance', 'Bridge', 'Permanent / Term', 'Construction', 'Construction-to-Permanent', 'Renovation / Rehabilitation'], help:'What the money is for and how it is structured: acquisition, refinance, construction, bridge, permanent. It is a different question from who lends it.' }),
+  F('lenderType', 'Lender type', 'choice', { options:['Bank', 'Credit union', 'Agency (Fannie Mae / Freddie Mac)', 'CMBS conduit', 'Life company', 'Debt fund', 'SBA', 'Private lender / hard money', 'Seller financing'], help:'Who lends it. A bank can lend for an acquisition or for construction; the lender sets the usual rate, prepayment, recourse and limits.' }),
+  F('loanType', 'Loan type (earlier single field)', 'choice', { options:['Permanent / Term', 'Acquisition', 'Refinance', 'Cash-Out Refinance', 'Bridge', 'Construction', 'Renovation / Rehabilitation', 'Construction-to-Permanent', 'Agency', 'CMBS', 'Bank / Credit Union', 'Life Company', 'SBA', 'Hard Money'],
     help:'What kind of loan it is. It suggests typical terms for the questions that follow; it never changes the calculation on its own. Many loans are two of these at once: an acquisition loan can be a bridge loan, an agency loan is permanent financing.' }),
   F('acqLTV', 'Loan-to-value, max', 'pct', { sug:typ('acqLTV', 0.65, 'Most lenders cap multifamily at 65% to 75%; 65% is a safe starting point.') }),
   F('debtRateType', 'Interest rate structure', 'choice', { options:['Fixed', 'Fixed (SOFR-based)', 'Floating'], sug:typ('debtRateType', null, ''),
@@ -22934,6 +22943,8 @@ window.BKReg.addFields([
   F('debtResetMonths', 'Reset frequency, months', 'int', { when:function(s){ return s.debtRateType === 'Floating'; }, sug:typ('debtResetMonths', 1, 'Most SOFR loans reset monthly.') }),
   F('debtIndexDrift', 'Rate outlook, change a year', 'pct', { zeroOk:true, when:function(s){ return s.debtRateType === 'Floating'; }, help:'Later months follow this outlook, not today\'s rate: +0.25% means the index rises a quarter point a year. Blank holds it flat. It is a forecast, not a published rate.' }),
   F('debtDayCount', 'Day-count convention', 'choice', { options:['Actual/360', '30/360', 'Actual/365'], sug:typ('debtDayCount', null, ''), help:'Actual/360, the usual commercial convention, charges 365/360 of the quoted rate over a year.' }),
+  F('prepayLockoutMonths', 'Prepayment lockout, months', 'int', { zeroOk:true, help:'No voluntary prepayment during this many months from closing. It is not a penalty: the loan cannot be repaid at all (without the lender\'s consent) until it ends. A prepayment penalty, yield maintenance or defeasance is what repaying costs after it.' }),
+  F('ioBasis', 'After the interest-only period, amortize over', 'choice', { options:['Stated schedule', 'Remaining term'], help:'The stated amortization schedule (a balloon is left at maturity) or the remaining loan term (paid off at maturity).' }),
   F('repayType', 'Repayment structure', 'choice', { options:['Fully amortizing', 'Interest only', 'Partial interest only', 'Interest only then amortizing', 'Balloon'], sug:typ('repayType', 'Balloon', 'Most commercial loans amortize over 25 to 30 years and are repaid at maturity.') }),
   F('acqAmort', 'Amortization, years', 'int', { when:function(s){ return String(s.repayType || '') !== 'Interest only'; }, sug:typ('acqAmort', 30, '30 years is standard.') }),
   F('acqIO', 'Interest-only years', 'num', { zeroOk:true, help:'0 if none.', when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); }, sug:typ('acqIO', null, '') }),
@@ -23075,7 +23086,7 @@ R.addWorkflow('acquisition', [
   S('valueadd', 'Value-add program', 'A renovation program: how many units a year, the rent lost while a unit is down, the premium afterwards and the capex per unit. Other income by line (laundry, parking, pet, storage, RUBS) is the other usual source of upside.', 'Revenues',
     [q('renoUnitsPerYear'), q('renoDownMonths'), q('renoPremium'), q('renoCapexPerUnit'), q('oiLaundry'), q('oiLateFees'), q('oiPetRent'), q('oiPetFees'), q('oiParking'), q('oiStorage'), q('oiRubsPct')],
     { skippable:true, when:function(s){ return /value-add|opportunistic|redevelopment|lease-up/i.test(String(s.acqStrategy || '')) || Number(s.renoUnitsPerYear) > 0; } }),
-  S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('loanType'), q('acqLTV', 'required', { when:function(s){ return s.debtEnabled !== false; } }), q('debtRateType'), q('acqRate', 'required', { when:function(s){ return s.debtEnabled !== false && (!s.debtRateType || s.debtRateType === 'Fixed'); } }), q('debtIndexName', 'optional', { when:function(s){ return s.debtRateType === 'Floating'; } }), q('debtIndexTenor', 'optional', { when:function(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtIndexRate', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtSpread', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('repayType'), q('acqAmort', 'optional', { when:function(s){ return s.debtEnabled !== false && String(s.repayType || '') !== 'Interest only'; } }), q('acqIO', 'optional', { when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); } }), q('debtTerm'), q('acqOrigFee')], { skippable:true }),
+  S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('loanPurpose'), q('lenderType'), q('acqLTV', 'required', { when:function(s){ return s.debtEnabled !== false; } }), q('debtRateType'), q('acqRate', 'required', { when:function(s){ return s.debtEnabled !== false && (!s.debtRateType || s.debtRateType === 'Fixed'); } }), q('debtIndexName', 'optional', { when:function(s){ return s.debtRateType === 'Floating'; } }), q('debtIndexTenor', 'optional', { when:function(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtIndexRate', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtSpread', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('repayType'), q('acqAmort', 'optional', { when:function(s){ return s.debtEnabled !== false && String(s.repayType || '') !== 'Interest only'; } }), q('acqIO', 'optional', { when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); } }), q('ioBasis', 'optional', { when:function(s){ return String(s.repayType) === 'Partial interest only'; } }), q('prepayLockoutMonths', 'optional', { when:function(s){ return s.debtEnabled !== false; } }), q('debtTerm'), q('acqOrigFee')], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
     [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT,
@@ -27284,12 +27295,13 @@ var DEVS = [
   EXIT ];
 /* the steps come from the analysis registry (src/139d): the deal's own analysis decides them. The lists above are the fallback if the registry is not loaded. */
 /* the two "type" questions, said plainly: what the building is (it decides which benchmarks and which steps apply) and what you plan to do with it (it decides whether the renovation steps appear) */
-var SWITCH = { loanType:1, debtRateType:1, debtIndexName:1, debtIndexTenor:1, repayType:1, debtEnabled:1 };
+var SWITCH = { loanType:1, loanPurpose:1, lenderType:1, debtRateType:1, debtIndexName:1, debtIndexTenor:1, repayType:1, debtEnabled:1 };
 var CHOICE_COPY = {
   debtRateType:{ label:'How is the interest rate set?', help:'This decides which rate questions follow. SOFR is a floating benchmark: a loan priced over it either floats or locks the rate at closing.',
     opts:{ 'Fixed':'One contractual rate for the whole term. Enter the rate.', 'Fixed (SOFR-based)':'SOFR plus a spread on the lock date, then fixed for the term. Later moves in SOFR do not change it.', 'Floating':'An index (usually SOFR) plus a spread, reset through the term. Later months follow your rate outlook, not today\'s rate.' } },
+  ioBasis:{ label:'After the interest-only period, what does it amortize over?', help:'Decides the payment after the interest-only months and whether anything is left to repay at maturity.', opts:{ 'Stated schedule':'The stated amortization schedule (for example 30 years); a balloon is left at maturity.', 'Remaining term':'The rest of the loan term, so the loan is paid off by maturity.' } },
   repayType:{ label:'How is the principal repaid?', help:'Decides the payment and what is still owed at maturity or sale.',
-    opts:{ 'Fully amortizing':'Paid off over the term: nothing left at maturity.', 'Interest only':'Interest only for the whole term: the full loan is repaid at maturity or sale.', 'Partial interest only':'Interest only for some years, then amortizing.', 'Interest only then amortizing':'Interest only for some years, then amortizing (the same as partial).', 'Balloon':'Amortizes over a longer schedule than the term; the rest is repaid at maturity.' } },
+    opts:{ 'Fully amortizing':'Paid off over the term: nothing left at maturity.', 'Interest only':'Interest only for the whole term: the full loan is repaid at maturity or sale.', 'Partial interest only':'Interest only for part of the term, then amortizing. You also choose what it amortizes over: the stated schedule, or the remaining term so the loan is paid off at maturity.', 'Interest only then amortizing':'Interest only for the period you enter, then amortizing on the stated schedule; a balloon is left at maturity if that schedule is longer than the rest of the term.', 'Balloon':'Amortizes over a longer schedule than the term; the rest is repaid at maturity.' } },
   propertyType:{ label:'What kind of building is it?', help:'The use of the building. It decides which market benchmarks apply (they are for multifamily) and whether the commercial-space step is asked.',
     opts:{ 'Multifamily':'Apartments. Market benchmarks apply.', 'Mixed-Use':'Apartments with shops or offices. Adds the commercial-space step.', 'Industrial':'Warehouse or flex. Adds the commercial-space step; no multifamily benchmarks.', 'Retail':'Shops. Adds the commercial-space step; no multifamily benchmarks.', 'Office':'Offices. Adds the commercial-space step; no multifamily benchmarks.', 'Hospitality':'Hotel. Underwritten on the standard steps.', 'Land':'Vacant land.', 'Other':'Anything else.' } },
   acqStrategy:{ label:'What is your plan for it?', help:'Your business plan, not the building. It decides whether the guide asks about renovations and extra income.',
@@ -34284,7 +34296,7 @@ function render(){
     + '<tr class="grandtotal"><td class="rowlabel">Baseline: current financing</td><td class="v">' + money(b.proceeds) + '</td><td class="v">' + money(b.ds1) + '</td><td class="v">' + money(b.y1cf) + '</td><td class="v">' + mx(b.dscr) + '</td><td class="v">' + pct(b.irr) + '</td><td class="v">' + mx(b.em) + '</td><td>' + esc(exposure(b).join('; ') || '-') + '</td></tr>' + fr + '</tbody></table></div>'
     + '<div class="bk-ds-note">Floating structures use the latest SOFR on record (' + pct(sofrNow(s)) + ') held flat: a rising rate outlook lowers their returns. Each loan is sized by the same tests as the deal\'s own (LTV, cost, lender DSCR, debt yield).</div>';
   /* 05 */
-  var W = D.winners.slice(0, 6), rows = '<tr class="grandtotal"><td class="rowlabel">Baseline</td><td>' + esc((s.loanType || 'Current') + ', ' + pct(num(s.acqLTV), 0) + ' LTV, ' + ((window.bkRateType ? bkRateType(s) : 'Fixed')).toLowerCase()) + '</td><td>' + (H.length ? chip(meetsAll(s, b), 'MEETS HURDLES', 'BELOW TARGET') : '-') + '</td><td>' + pct(b.irr) + ' IRR · ' + mx(b.em) + '</td><td>-</td><td>-</td><td></td></tr>';
+  var W = D.winners.slice(0, 6), rows = '<tr class="grandtotal"><td class="rowlabel">Baseline</td><td>' + esc(((window.bkLoanLabel ? window.bkLoanLabel(s) : '') || s.loanType || 'Current') + ', ' + pct(num(s.acqLTV), 0) + ' LTV, ' + ((window.bkRateType ? bkRateType(s) : 'Fixed')).toLowerCase()) + '</td><td>' + (H.length ? chip(meetsAll(s, b), 'MEETS HURDLES', 'BELOW TARGET') : '-') + '</td><td>' + pct(b.irr) + ' IRR · ' + mx(b.em) + '</td><td>-</td><td>-</td><td></td></tr>';
   rows += W.map(function(c, i){ var L2 = String.fromCharCode(65 + i), req = (c.pf < 1 ? 'buy at ' + money(num(s.purchasePrice) * c.pf) + ' (' + pct(c.pf - 1, 1) + ')' : 'no price change') + (c.f.group !== 'Current financing' ? '; ' + c.f.label.charAt(0).toLowerCase() + c.f.label.slice(1) : '');
     var trade = (c.f.risk || []).concat(c.pf < 1 ? ['the seller must accept ' + pct(1 - c.pf, 1) + ' less'] : []).concat(exposure(c.m));
     return '<tr><td class="rowlabel">' + L2 + '</td><td>' + esc((c.pf < 1 ? 'Price ' + pct(c.pf - 1, 1) + ' + ' : '') + c.f.label) + '</td><td>' + chip(true, 'MEETS HURDLES') + '</td><td>' + pct(c.m.irr) + ' IRR · ' + mx(c.m.em) + ' · ' + pct(c.m.coc) + ' CoC · ' + mx(c.m.dscr) + ' lender DSCR</td><td>' + esc(req) + '</td><td>' + esc(trade.join('; ') || 'none beyond the baseline') + '</td><td><button type="button" class="bk-btn" onclick="bkOptApply(' + i + ')">Apply</button></td></tr>'; }).join('');
@@ -35619,7 +35631,30 @@ var LOAN_TYPES = [
 ];
 var LT = {}; LOAN_TYPES.forEach(function(t){ LT[t[0]] = { name:t[0], kind:t[1], what:t[2], often:t[3], typ:t[4] }; });
 window.BK_LOAN_TYPES = LT;
-window.bkLoanTypeTypical = function(s, k){ var t = LT[String((s || {}).loanType || '')]; return t && t.typ && t.typ[k] !== undefined ? t.typ[k] : undefined; };
+/* LOAN PURPOSE and LENDER TYPE are two different questions (a bank can lend to acquire or to build; an acquisition can be financed by a bank, an agency or a debt fund), so they are two fields:
+     loanPurpose   what the money is for and how it is structured: acquisition, refinance, construction, bridge, permanent ...
+     lenderType    who lends it: bank, credit union, agency, CMBS conduit, life company, debt fund, SBA, private lender, seller financing
+   A deal saved with the earlier single "Loan type" is read through LEGACY (loanType never changed a calculation, so reading it as the two new fields changes none). The terms each suggests are starting
+   points only: the purpose supplies the structure (repayment, term, extensions), the lender supplies the lender's usual terms (rate, prepayment, recourse, coverage and leverage limits, fee). */
+var PURPOSES = ['Acquisition', 'Refinance', 'Cash-Out Refinance', 'Bridge', 'Permanent / Term', 'Construction', 'Construction-to-Permanent', 'Renovation / Rehabilitation'];
+var LENDERS = ['Bank', 'Credit union', 'Agency (Fannie Mae / Freddie Mac)', 'CMBS conduit', 'Life company', 'Debt fund', 'SBA', 'Private lender / hard money', 'Seller financing'];
+var LEGACY = { 'Permanent / Term':['Permanent / Term', ''], 'Acquisition':['Acquisition', ''], 'Refinance':['Refinance', ''], 'Cash-Out Refinance':['Cash-Out Refinance', ''], 'Bridge':['Bridge', ''], 'Construction':['Construction', ''],
+  'Renovation / Rehabilitation':['Renovation / Rehabilitation', ''], 'Construction-to-Permanent':['Construction-to-Permanent', ''], 'Agency':['', 'Agency (Fannie Mae / Freddie Mac)'], 'CMBS':['', 'CMBS conduit'], 'Bank / Credit Union':['', 'Bank'],
+  'Life Company':['', 'Life company'], 'SBA':['', 'SBA'], 'Hard Money':['', 'Private lender / hard money'] };
+var LENDER_LEGACY_TYP = { 'Bank':'Bank / Credit Union', 'Credit union':'Bank / Credit Union', 'Agency (Fannie Mae / Freddie Mac)':'Agency', 'CMBS conduit':'CMBS', 'Life company':'Life Company', 'SBA':'SBA', 'Private lender / hard money':'Hard Money' };
+/* only a rate type and the usual shape: no rate, spread or fee is suggested for these two */
+var LENDER_NEW_TYP = { 'Debt fund':{ debtRateType:'Floating', debtIndexName:'SOFR', recourse:'Limited / carve-out guaranty' }, 'Seller financing':{ debtRateType:'Fixed', repayType:'Balloon', prepayType:'Open' } };
+var LENDER_KEYS = { debtRateType:1, debtIndexName:1, debtIndexTenor:1, debtSpread:1, recourse:1, prepayType:1, prepaySteps:1, prepayOpenMonths:1, acqDSCR:1, acqLTV:1, acqOrigFee:1, acqDebtYield:1, debtDayCount:1, debtResetMonths:1, acqRate:1 };
+function legacyOf(s){ return LEGACY[String((s || {}).loanType || '')] || ['', '']; }
+window.bkLoanPurpose = function(s){ s = s || {}; var v = String(s.loanPurpose || ''); return v ? v : (s.lenderType ? '' : legacyOf(s)[0]); };
+window.bkLenderType = function(s){ s = s || {}; var v = String(s.lenderType || ''); return v ? v : (s.loanPurpose ? '' : legacyOf(s)[1]); };
+function typicalSets(s){ var pn = window.bkLoanPurpose(s), ln = window.bkLenderType(s), P = pn && LT[pn] ? LT[pn].typ : null, L = ln ? (LENDER_NEW_TYP[ln] || (LT[LENDER_LEGACY_TYP[ln]] ? LT[LENDER_LEGACY_TYP[ln]].typ : null)) : null; return { purpose:pn, lender:ln, P:P, L:L }; }
+/* the suggested value for one term: the lender's for the lender's own terms, the purpose's for the structure; whichever is chosen supplies what the other does not */
+window.bkLoanTypeTypical = function(s, k){ var x = typicalSets(s), a = x.L && x.L[k] !== undefined ? x.L[k] : undefined, b = x.P && x.P[k] !== undefined ? x.P[k] : undefined; return LENDER_KEYS[k] ? (a !== undefined ? a : b) : (b !== undefined ? b : a); };
+function typicalAll(s){ var x = typicalSets(s), keys = {}; [x.P, x.L].forEach(function(o){ if(o) Object.keys(o).forEach(function(k){ keys[k] = 1; }); }); var out = {}; Object.keys(keys).forEach(function(k){ out[k] = window.bkLoanTypeTypical(s, k); }); return out; }
+window.bkLoanLabel = function(s){ var p = window.bkLoanPurpose(s), l = window.bkLenderType(s); return p && l ? p + ' loan, ' + l : p ? p + ' loan' : l ? l + ' loan' : ''; };
+/* a deal saved with the single Loan type is given the two new fields once, from the same words; no calculation reads either */
+function migrateLoan(s){ if(s && s.loanType && !s.loanPurpose && !s.lenderType && LEGACY[s.loanType]){ var x = LEGACY[s.loanType]; s.loanPurpose = x[0]; s.lenderType = x[1]; try { bkSave(s); } catch(e){} } return s; }
 
 var RATE_TYPES = [['Fixed', 'Fixed rate'], ['Fixed (SOFR-based)', 'Fixed rate (SOFR-based)'], ['Floating', 'Floating: index + spread']];
 var TENORS = ['Overnight SOFR', '30-day SOFR average', '90-day SOFR average', '180-day SOFR average', '1-month Term SOFR', '3-month Term SOFR', '6-month Term SOFR'];
@@ -35715,17 +35750,20 @@ function allInCard(s){ var a = window.bkAllInRate(s); if(a.type === 'Fixed') ret
 function sel(label, key, opts, unit){ return bkSelect(label, key, opts.map(function(o){ return Array.isArray(o) ? o : [o, o]; }), unit || ''); }
 function calcRow(label, val, unit){ return '<tr><td class="rowlabel">' + esc(label) + '</td><td class="v" data-bk-kind="calc">' + val + '</td><td style="text-align:left">' + esc(unit || '') + '</td><td><span class="status-chip">CALC</span></td></tr>'; }
 function table(cap, rows, note){ rows = rows.replace(/>undefined</g, '><').replace(/>null</g, '><'); return '<div class="tbl-wrap" style="margin-top:16px;"><table class="fin bk-input-grid bk-debt-grp"><caption>' + cap + '</caption><thead><tr><th class="rowlabel-h">Field</th><th>Value</th><th style="text-align:left">Units</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (note || ''); }
-function typeNote(s){ var t = LT[String(s.loanType || '')]; if(!t) return '<div class="bk-ds-note">Pick the loan type to see its typical terms. The type is a description: it never changes the calculation on its own.</div>';
-  var keys = Object.keys(t.typ), blank = keys.filter(function(k){ var v = s[k]; return v === undefined || v === null || v === '' || (typeof t.typ[k] === 'number' && !(num(v) > 0) && k !== 'acqIO'); });
+function typeNote(s){ var x = typicalSets(s), all = typicalAll(s), keys = Object.keys(all);
+  if(!x.purpose && !x.lender) return '<div class="bk-ds-note">Choose the loan purpose (what the money is for) and the lender type (who lends it) to see typical terms. They are descriptions: they never change the calculation on their own.</div>';
+  var blank = keys.filter(function(k){ var v = s[k]; return v === undefined || v === null || v === '' || (typeof all[k] === 'number' && !(num(v) > 0) && k !== 'acqIO'); });
   var lab = { debtRateType:'rate', debtIndexName:'index', debtIndexTenor:'benchmark', debtSpread:'spread', repayType:'repayment', acqAmort:'amortization', debtTerm:'term', acqIO:'interest-only', recourse:'recourse', prepayType:'prepayment', prepaySteps:'step-down', prepayOpenMonths:'open window', acqDSCR:'min DSCR', acqLTV:'max LTV', acqOrigFee:'origination fee', debtExtCount:'extensions', debtExtMonths:'extension length', debtExtFeePct:'extension fee', debtExitFeePct:'exit fee', debtDayCount:'day count', debtResetMonths:'reset', acqDebtYield:'debt yield', acqRate:'rate' };
-  function show(k){ var v = t.typ[k]; return /Pct$|LTV|Fee$|Spread|Yield|Rate$/.test(k) && typeof v === 'number' && v < 1 ? pct(v) : String(v) + (k === 'acqAmort' || k === 'debtTerm' || k === 'acqIO' ? ' yrs' : k === 'acqDSCR' ? 'x' : k === 'debtExtMonths' || k === 'prepayOpenMonths' ? ' mo' : k === 'debtResetMonths' ? ' mo' : ''); }
-  return '<div class="bk-ds-note"><b>' + esc(t.name) + '</b>: ' + esc(t.what) + ' It is ' + (t.kind === 'purpose' ? 'what the loan is for; the lender\'s program sets the terms' : 'a lender program') + ', and often also ' + esc(t.often.join(', ')) + '. The same engine calculates it either way.'
-    + '<div class="bk-ds-typ">Typical: ' + keys.map(function(k){ return esc(lab[k] || k) + ' ' + esc(show(k)); }).join(' · ') + '. These are starting points, not a quote.</div>'
+  function show(k){ var v = all[k]; return /Pct$|LTV|Fee$|Spread|Yield|Rate$/.test(k) && typeof v === 'number' && v < 1 ? pct(v) : String(v) + (k === 'acqAmort' || k === 'debtTerm' || k === 'acqIO' ? ' yrs' : k === 'acqDSCR' ? 'x' : k === 'debtExtMonths' || k === 'prepayOpenMonths' ? ' mo' : k === 'debtResetMonths' ? ' mo' : ''); }
+  var who = [x.purpose && LT[x.purpose] ? '<b>' + esc(x.purpose) + '</b>: ' + esc(LT[x.purpose].what) : '', x.lender ? '<b>' + esc(x.lender) + '</b>' + (LT[LENDER_LEGACY_TYP[x.lender]] ? ': ' + esc(LT[LENDER_LEGACY_TYP[x.lender]].what) : '') : ''].filter(Boolean).join(' ');
+  return '<div class="bk-ds-note">' + who + ' The purpose sets the structure and the lender sets its usual terms; the same engine calculates it either way.'
+    + (keys.length ? '<div class="bk-ds-typ">Typical: ' + keys.map(function(k){ return esc(lab[k] || k) + ' ' + esc(show(k)); }).join(' · ') + '. These are starting points, not a quote.</div>' : '')
     + (blank.length ? '<button type="button" class="bk-btn" onclick="bkLoanTypeFill()">Fill the ' + blank.length + ' blank term' + (blank.length > 1 ? 's' : '') + ' with these</button>' : '') + '</div>'; }
-window.bkLoanTypeFill = function(){ var s = load(), t = LT[String(s.loanType || '')]; if(!t) return; Object.keys(t.typ).forEach(function(k){ var v = s[k]; if(v === undefined || v === null || v === '' || (typeof t.typ[k] === 'number' && !(num(v) > 0) && k !== 'acqIO')) s[k] = t.typ[k]; }); if(s.debtIndexName === 'SOFR' && !s.debtIndexTenor) s.debtIndexTenor = 'Overnight SOFR'; bkSave(s); refresh(); };
+window.bkLoanTypeFill = function(){ var s = load(), all = typicalAll(s); if(!Object.keys(all).length) return; Object.keys(all).forEach(function(k){ var v = s[k]; if(v === undefined || v === null || v === '' || (typeof all[k] === 'number' && !(num(v) > 0) && k !== 'acqIO')) s[k] = all[k]; }); if(s.debtIndexName === 'SOFR' && !s.debtIndexTenor) s.debtIndexTenor = 'Overnight SOFR'; bkSave(s); refresh(); };
 
 function groups(s){ var t = rateType(s), floating = t === 'Floating', sofrBased = t !== 'Fixed', idxName = s.debtIndexName || 'SOFR', isSofr = idxName === 'SOFR', rp = String(s.repayType || ''), pp = String(s.prepayType || '');
-  var g1 = table('Loan Type', sel('Loan type', 'loanType', LOAN_TYPES.map(function(x){ return x[0]; })), typeNote(s));
+  s = migrateLoan(s);
+  var g1 = table('Loan Purpose and Lender', sel('Loan purpose', 'loanPurpose', PURPOSES) + sel('Lender type', 'lenderType', LENDERS), typeNote(s));
   var r2 = sel('Interest rate structure', 'debtRateType', RATE_TYPES);
   if(t === 'Fixed') r2 += bkInput('Fixed rate', 'acqRate', '%', 'pct');
   else {
@@ -35742,11 +35780,15 @@ function groups(s){ var t = rateType(s), floating = t === 'Floating', sofrBased 
   var r3 = sel('Repayment structure', 'repayType', REPAY);
   if(rp !== 'Interest only') r3 += bkInput('Amortization', 'acqAmort', 'years' + (rp === 'Fully amortizing' && num(s.debtTerm) > 0 ? ' (the term is used)' : ''), 'num');
   if(rp === 'Partial interest only' || rp === 'Interest only then amortizing' || (!rp && num(s.acqIO) > 0)) r3 += bkInput('Interest-only period', 'acqIO', 'years', 'num');
+  if(rp === 'Partial interest only') r3 += sel('After the interest-only period, amortize over', 'ioBasis', [['Stated schedule', 'The stated amortization schedule (a balloon is left at maturity)'], ['Remaining term', 'The remaining loan term (paid off at maturity)']], s.ioBasis ? '' : 'not chosen: the stated schedule is used, as before');
+  if(/^(Interest only|Interest only then amortizing|Partial interest only)$/.test(rp)) r3 += calcRow('Payment schedule', esc(window.bkRepaySummary(s)), '');
   r3 += bkInput('Loan term (maturity)', 'debtTerm', 'years from closing (blank = the hold)', 'num') + sel('Recourse', 'recourse', RECOURSE) + sel('Prepayment', 'prepayType', PREPAY);
   if(pp === 'Fixed prepayment penalty' || pp === 'Custom') r3 += bkInput('Prepayment penalty', 'prepayPct', '% of the balance repaid', 'pct');
   if(pp === 'Step-down') r3 += bkInput('Step-down schedule', 'prepaySteps', '% by loan year, e.g. 5,4,3,2,1', 'text');
   if(pp === 'Yield maintenance' || pp === 'Defeasance') r3 += bkInput('Treasury yield for the calculation', 'prepayTreasury', '% (blank = the index rate, else SOFR, else 4%)', 'pct') + (pp === 'Yield maintenance' ? bkInput('Minimum premium', 'prepayPct', '% of the balance (blank = 1%)', 'pct') : bkInput('Defeasance transaction cost', 'defeaseCostPct', '% of the balance (blank = 0.5%)', 'pct'));
+  r3 += bkInput('Prepayment lockout', 'prepayLockoutMonths', 'months from closing with no voluntary prepayment (blank = none)', 'num');
   if(pp && pp !== 'Open') r3 += bkInput('Open window before maturity', 'prepayOpenMonths', 'months', 'num');
+  r3 += calcRow('Maturity and the modeled sale', esc(window.bkPrepaySummary(s)), '');
   r3 += bkInput('Origination fee', 'acqOrigFee', '% of the loan', 'pct') + bkInput('Commitment fee', 'debtCommitFeePct', '% of the loan, at closing', 'pct') + bkInput('Exit fee', 'debtExitFeePct', '% of the balance repaid', 'pct')
     + bkInput('Extension options', 'debtExtCount', 'number', 'num');
   if(num(s.debtExtCount) > 0) r3 += bkInput('Extension length', 'debtExtMonths', 'months each', 'num') + bkInput('Extension fee', 'debtExtFeePct', '% of the balance at each', 'pct') + bkYesNo('Model the extensions as exercised', 'debtExtUse', 'moves maturity out');
@@ -35774,6 +35816,34 @@ if(window.RENDERERS && typeof RENDERERS['Deal Underwrite'] === 'function' && !RE
 /* the published SOFR is read once a session, in the background, when a SOFR-based loan is open */
 setTimeout(function(){ try { var s = load(); if(rateType(s) !== 'Fixed' && (s.debtIndexName || 'SOFR') === 'SOFR') window.bkSofrFetch().then(refresh, function(){}); } catch(e){} }, 1500);
 
+/* the payment structure in words: which months are interest only, which amortize, over how long, and what is left at maturity. Read from the same shape the engine uses (bkLoanShape) and its own first payments. */
+window.bkRepaySummary = function(s){ s = s || load(); var t = String(s.repayType || ''), sh = typeof window.bkLoanShape === 'function' ? window.bkLoanShape(s) : null; if(!sh) return '';
+  var term = sh.term, io = Math.min(sh.io, term), yrs = function(m){ return m % 12 === 0 ? (m / 12) + ' year' + (m === 12 ? '' : 's') : m + ' months'; };
+  var d = safe(function(){ return window.bkDebt(); }, null), rows = d && d.months ? d.months : [], pay = function(i){ var r = rows[i]; return r && r.payment > 0 ? ' (' + money(r.payment) + ' a month)' : ''; };
+  function safe(f, x){ try { var v = f(); return v === undefined ? x : v; } catch(e){ return x; } }
+  function money(v){ return '$' + Math.round(v).toLocaleString('en-US'); }
+  if(t === 'Interest only') return 'Interest only for the whole term (months 1 to ' + term + ')' + pay(0) + '; the full loan is repaid at maturity.';
+  if(t !== 'Interest only then amortizing' && t !== 'Partial interest only') return '';
+  if(!(sh.io > 0)) return 'No interest-only period entered: the loan amortizes from month 1.';
+  if(sh.io >= term) return 'Interest only for ' + yrs(io) + ' (months 1 to ' + term + '), which is the whole term: nothing amortizes before maturity.';
+  var amEnd = sh.io + sh.amort, tail = amEnd > term ? 'a balloon is left at maturity (month ' + term + ')' : 'paid off by month ' + amEnd;
+  return 'Interest only for ' + yrs(io) + ' (months 1 to ' + io + ')' + pay(0) + ', then amortizing over ' + yrs(sh.amort) + ' from month ' + (io + 1) + pay(io) + '; ' + tail + '.'; };
+/* contractual maturity, the modeled sale and the lockout, in words. The loan's maturity is its term (and any extensions); the sale is the end of the hold. They are different dates, and a sale before maturity is not free: the
+   loan is prepaid on its prepayment terms, or assumed by the buyer, and during a lockout it cannot be prepaid at all. */
+window.bkPrepaySummary = function(s){ s = s || load(); if(s.debtEnabled === false) return 'Debt is switched off.'; var hold = Math.max(1, Math.round(num(s.holdYears) * 12)), mat = typeof window.bkLoanMaturityMonths === 'function' ? window.bkLoanMaturityMonths(s) : 0, lock = Math.max(0, Math.round(num(s.prepayLockoutMonths))), t = String(s.prepayType || 'Open');
+  if(!mat) return '';
+  var out = 'The loan matures in month ' + mat + '; the modeled sale is in month ' + hold + '.';
+  if(hold >= mat) return out + ' The loan is repaid at maturity, so no prepayment terms apply.';
+  if(lock > 0 && hold <= lock) return out + ' The sale falls inside the lockout (months 1 to ' + lock + '): the loan cannot be prepaid then without the lender\'s consent, and the model does not price that.';
+  return out + ' The loan is repaid early' + (lock > 0 ? ', after the lockout ended in month ' + lock : '') + ': ' + (t === 'Open' ? 'prepayment is open, so there is no premium.' : t === 'Yield maintenance' ? 'yield maintenance applies.' : t === 'Defeasance' ? 'defeasance applies.' : t === 'Step-down' ? 'the step-down penalty for that year applies.' : 'the prepayment penalty applies.'); };
+/* checks that the payment structure is complete and fits the term */
+if(typeof window.bkAddConflictRule === 'function'){
+  window.bkAddConflictRule('debt.partial-io-no-period', 'WARN', 'Debt', 'Debt', function(s){ if(String(s.repayType || '') === 'Partial interest only' && !(num(s.acqIO) > 0) && s.debtEnabled !== false) return { msg:'Partial interest only is chosen but no interest-only period is entered.', why:'The loan amortizes from month 1, as if it were not interest only. Enter how long the interest-only period lasts.' }; });
+  window.bkAddConflictRule('debt.io-covers-term', 'WARN', 'Debt', 'Debt', function(s){ var t = String(s.repayType || ''); if((t === 'Partial interest only' || t === 'Interest only then amortizing') && num(s.acqIO) > 0 && s.debtEnabled !== false){ var sh = typeof window.bkLoanShape === 'function' ? window.bkLoanShape(s) : null; if(sh && sh.io >= sh.term) return { msg:'The interest-only period (' + num(s.acqIO) + ' years) is as long as the loan term (' + sh.term / 12 + ' years).', why:'Nothing amortizes before maturity, so this is an interest-only loan. Shorten the interest-only period or lengthen the term.' }; } });
+  window.bkAddConflictRule('debt.sale-in-lockout', 'ERROR', 'Debt', 'Debt', function(s){ var lock = Math.max(0, Math.round(num(s.prepayLockoutMonths))); if(s.debtEnabled === false || !(lock > 0) || typeof window.bkLoanMaturityMonths !== 'function') return; var hold = Math.max(1, Math.round(num(s.holdYears) * 12)), mat = window.bkLoanMaturityMonths(s);
+    if(hold < mat && hold <= lock) return { msg:'The modeled sale (month ' + hold + ') falls inside the loan\'s prepayment lockout (months 1 to ' + lock + ').', why:'A lockout means no voluntary prepayment, so the loan cannot be repaid at the sale without the lender\'s consent, a buyer assuming it, or a negotiated payoff. The model repays it at the balance and does not price that, so the returns rest on an exit the loan does not permit. Move the sale, shorten the lockout, or model the assumption or payoff.' }; });
+  window.bkAddConflictRule('debt.partial-io-basis', 'INFO', 'Debt', 'Debt', function(s){ if(String(s.repayType || '') === 'Partial interest only' && num(s.acqIO) > 0 && !s.ioBasis && s.debtEnabled !== false) return { msg:'Partial interest only does not say what the loan amortizes over after the interest-only period.', why:'The stated amortization schedule is used (a balloon is left at maturity). Choose the remaining loan term if the payment should pay the loan off by maturity.' }; });
+}
 var css = '.bk-ds-card,.bk-ds-note{margin:10px 0 4px;padding:12px 14px;border:1px solid var(--ae-line,#d6dde5);border-radius:8px;background:var(--surface,#fff);color:inherit;font-size:13px;line-height:1.5}'
   + '.bk-ds-h{font-weight:700;margin-bottom:8px}.bk-ds-sum{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:flex-end}.bk-ds-sum div{display:flex;flex-direction:column}.bk-ds-sum span{font-size:11.5px;color:var(--ae-dim,#56616c)}.bk-ds-sum b{font-size:20px;font-variant-numeric:tabular-nums}'
   + '.bk-ds-sum .t{padding-left:20px;border-left:2px solid var(--ae-line,#d6dde5)}.bk-ds-n,.bk-ds-pub,.bk-ds-typ{margin-top:8px;color:var(--ae-dim,#56616c);font-size:12.5px}.bk-ds-pub .bk-btn,.bk-ds-note .bk-btn{margin-left:6px}.bk-ds-note .bk-btn{margin:8px 0 0}.bk-ds-ok{color:var(--bk-link-ink,#1f6b45);font-weight:600}';

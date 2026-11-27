@@ -30,8 +30,9 @@
      after scheduled payment and any maturity/refinance event, BEFORE repayment from sale proceeds in the final month.
      Row identity: beg + draw - principal - payoff = balance. */
   /* DEBT STRUCTURE (loan terms beyond rate and size). All optional: a deal that sets none of them is calculated exactly as before.
-     repayType   Fully amortizing (amortizes over the loan term), Interest only (no principal before maturity), Partial interest only and
-                 Interest only then amortizing (acqIO years of interest, then amortizing over acqAmort), Balloon (amortizes over acqAmort, repaid at maturity).
+     repayType   Fully amortizing (amortizes over the loan term), Interest only (no principal before maturity), Interest only then amortizing (acqIO years of interest, then amortizing
+                 over acqAmort, the balance repaid at maturity), Partial interest only (acqIO years of interest, then amortizing over what ioBasis says: the stated acqAmort schedule, or the remaining
+                 term so the loan is paid off at maturity), Balloon (amortizes over acqAmort, repaid at maturity).
      debtDayCount  Actual/360 accrues 365/360 of the quoted rate's interest each year; 30/360 and Actual/365 accrue the quoted rate. Payments are set on the
                  quoted rate, so under Actual/360 more of each payment is interest. Blank is 30/360, as before.
      extensions  debtExtUse = 1 exercises debtExtCount extensions of debtExtMonths each: maturity moves out and debtExtFeePct of the balance is paid at each.
@@ -40,10 +41,16 @@
   window.bkLoanShape=function(s){ const t=String(s.repayType||''), term=termMonths(s), hasTerm=Number(s.debtTerm)>0;
     let io=Math.max(0,Math.round(Number(s.acqIO)*12)), am=Math.max(1,Math.round(Number(s.acqAmort)*12));
     if(t==='Interest only') io=99999; else if(t==='Fully amortizing'){ io=0; if(hasTerm) am=term; } else if(t==='Balloon') io=0;
-    return { io:io, amort:am, term:term, interestOnly:t==='Interest only' }; };
+    /* Partial interest only: interest only for the first io months, then amortizing. ioBasis says over what: the stated amortization schedule (the default, and what it has always meant: a balloon is left at maturity)
+       or the remaining term (the payment is set so the loan is paid off at maturity). Nothing else about the loan changes. */
+    const remaining=(t==='Partial interest only'&&String(s.ioBasis||'')==='Remaining term'); if(remaining) am=Math.max(1,term-io);
+    return { io:io, amort:am, term:term, interestOnly:t==='Interest only', basis:remaining?'remaining':'stated' }; };
   window.bkDayCountFactor=function(s){ return String(s.debtDayCount||'')==='Actual/360'?365/360:1; };
   function extMonths(s){ return Number(s.debtExtUse)===1?Math.max(0,Math.round(Number(s.debtExtCount)||0))*Math.max(0,Math.round(Number(s.debtExtMonths)||0)):0; }
-  /* the prepayment premium on a balance repaid at month m of the loan, under the loan's prepayment terms */
+  /* the contractual maturity (the term plus any extensions exercised), which is not the modeled sale: the hold may end before it, and then the loan is prepaid (or assumed) */
+  window.bkLoanMaturityMonths=function(s){ return Math.max(1,termMonths(s)+extMonths(s)); };
+  /* the prepayment premium on a balance repaid at month m of the loan, under the loan's prepayment terms. A LOCKOUT (prepayLockoutMonths: no voluntary prepayment at all) is a separate term, never priced here:
+     a sale inside it is flagged by the debt.sale-in-lockout check; the premium below is what the loan charges once prepayment is allowed. */
   window.bkPrepayPremium=function(s,bal,m,maturity,coupon){ const t=String(s.prepayType||''), left=maturity-m; if(!(bal>0)||left<=0||!t||t==='Open') return 0;
     if(left<=Math.max(0,Math.round(Number(s.prepayOpenMonths)||0))) return 0;   /* the open window before maturity */
     const yr=Math.max(1,Math.ceil(m/12));
