@@ -134,6 +134,6 @@ window.BKReg.addFields([
   F('holdings', 'Portfolio holdings', 'table', { planned:true }), F('portfolioScenarios', 'Portfolio scenarios', 'table', { planned:true }),
   /* planned: operating business */
   F('bizRevenue', 'Revenue and its drivers', 'table', { planned:true }), F('bizCosts', 'Cost of revenue and operating expenses', 'table', { planned:true }),
-  F('bizWorkingCapital', 'Working capital', 'table', { planned:true }), F('bizCapex', 'Business capital expenditures', 'table', { planned:true }), F('bizMultiple', 'Valuation multiples', 'table', { planned:true })
+  F('bizModel', 'Operating business model', 'table', { sheet:'Business Model', help:'Load the Punchlist model or start a blank business on Business Model.', has:function(s){ return !!(s && s._biz && s._biz.enabled); } }), F('bizWorkingCapital', 'Working capital', 'table', { planned:true }), F('bizCapex', 'Business capital expenditures', 'table', { planned:true }), F('bizMultiple', 'Valuation multiples', 'table', { planned:true })
 ]);
 })();

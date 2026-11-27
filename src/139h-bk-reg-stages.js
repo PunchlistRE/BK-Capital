@@ -26,7 +26,7 @@ ST.comprehensive = [G('setup', 'Setup', ['Home', 'Property'], 'steps', ['propert
   G('returns', 'Partners and returns', ['Investors', 'Equity Waterfall', 'Returns'], 'steps', ['refi', 'exit', 'investors', 'waterfall', 'returns']), G('review', 'Review', ['Sensitivity', 'Reports'], 'steps', ['sens', 'review'])];
 ST.portfolio = [G('setup', 'Holdings', ['Home', 'Portfolio'], 'steps', ['overview', 'select', 'assets']), G('perf', 'Analysis', ['Portfolio Analysis', 'Portfolio Dashboard'], 'steps', ['values', 'ops', 'capital', 'debt', 'tax', 'compare', 'risk']), G('consolidate', 'Consolidation', ['Portfolio M', 'Portfolio Rollup'], 'steps', ['consolidate', 'scenarios']), G('review', 'Report', ['Portfolio Report'], 'steps', ['review'])];
 ST.business = [G('setup', 'Company', ['Business Model'], 'steps', ['company']), G('ops', 'Operations', ['Business Model'], 'steps', ['revenue', 'costs', 'ebitda', 'wc', 'capex']),
-  G('value', 'Value', ['Business Valuation'], 'steps', ['fcf', 'valuation', 'financing']), G('review', 'Review', ['Business Valuation', 'Reports'], 'steps', ['sens', 'review'])];
+  G('value', 'Value', ['Business Valuation'], 'steps', ['fcf', 'valuation', 'financing']), G('review', 'Report', ['Business Report'], 'steps', ['sens', 'review'])];
 /* the Overview tiles: the figures each analysis leads with (metric ids from src/139e) */
 TILES.acquisition = ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
 TILES.development = ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];

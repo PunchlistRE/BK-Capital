@@ -117,15 +117,15 @@ R.addWorkflow('portfolio', [
   S('review', 'Review and generate the portfolio report', '', 'Portfolio Report', []) ]);
 
 R.addWorkflow('business', [
-  S('company', 'Company information', '', 'Business Model', [q('name', 'required')]),
-  S('revenue', 'Revenue and growth', '', 'Business Model', [q('bizRevenue', 'required')]),
-  S('costs', 'Cost of revenue and operating expenses', '', 'Business Model', [q('bizCosts', 'required')]),
-  S('ebitda', 'EBITDA', '', 'Business Model', []),
-  S('wc', 'Working capital', '', 'Business Model', [q('bizWorkingCapital')]),
-  S('capex', 'Capital expenditures', '', 'Business Model', [q('bizCapex')]),
-  S('fcf', 'Free cash flow', '', 'Business Valuation', []),
-  S('valuation', 'Valuation and multiples', '', 'Business Valuation', [q('bizMultiple', 'required')]),
+  S('company', 'Company information', 'Load the Punchlist model or start a blank business on Business Model.', 'Business Model', [q('name', 'required'), q('bizModel', 'required')]),
+  S('revenue', 'Revenue and growth', 'Pricing tiers, mix and job volume.', 'Business Model', [q('bizModel', 'required')]),
+  S('costs', 'Cost of revenue and operating expenses', '', 'Business Model', [q('bizModel', 'required')]),
+  S('ebitda', 'EBITDA', 'After a market salary for the owner.', 'Business Model', [q('bizModel', 'required')]),
+  S('wc', 'Working capital', '', 'Business Valuation', [q('bizModel', 'required')]),
+  S('capex', 'Capital expenditures', '', 'Business Valuation', [q('bizModel', 'required')]),
+  S('fcf', 'Free cash flow', '', 'Business Valuation', [q('bizModel', 'required')]),
+  S('valuation', 'Valuation and multiples', 'Discount rate, terminal value and market multiples.', 'Business Valuation', [q('bizModel', 'required')]),
   S('financing', 'Financing and investor returns', '', 'Business Valuation', [], { skippable:true }),
   S('sens', 'Sensitivity analysis', '', 'Business Valuation', []),
-  S('review', 'Review and generate the business report', '', 'Reports', []) ]);
+  S('review', 'Review and generate the business report', '', 'Business Report', []) ]);
 })();

@@ -9,6 +9,7 @@ var R = window.BKReg;
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
 function fin(v){ return typeof v === 'number' && isFinite(v) ? v : null; }
 function pos(v){ v = fin(v); return v !== null && v !== 0 ? v : null; }
+var BZ = function(k){ return function(c){ var r = c.biz; return r && r.ok && r[k] !== null && r[k] !== undefined && isFinite(r[k]) ? r[k] : null; }; };
 var PF = function(k){ return function(c){ var r = c.pf; return r && r.ok && r[k] !== null && r[k] !== undefined && isFinite(r[k]) ? r[k] : null; }; };
 function M(id, label, fmt, get, o){ return Object.assign({ id:id, label:label, fmt:fmt, get:get }, o || {}); }
 function P(id, label, fmt){ return M(id, label, fmt, function(){ return null; }, { planned:true }); }
@@ -16,7 +17,7 @@ function P(id, label, fmt){ return M(id, label, fmt, function(){ return null; },
 function ctx(s){ var c = { s:s }, memo = {};
   var lazy = function(k, f){ Object.defineProperty(c, k, { get:function(){ if(!(k in memo)) memo[k] = safe(f, null); return memo[k]; } }); };
   lazy('calc', function(){ return bkCalc(); }); lazy('debt', function(){ return bkDebt(); }); lazy('ret', function(){ return bkMonthlyReturns(); }); lazy('acf', function(){ return bkAnnualCF(); });
-  lazy('dev', function(){ return bkDevV09(); }); lazy('val', function(){ return typeof window.bkValuation === 'function' ? window.bkValuation(s) : null; }); lazy('hold', function(){ return typeof window.bkHold === 'function' ? window.bkHold(s) : null; }); lazy('pf', function(){ return typeof window.bkPortfolioAnalysis === 'function' ? window.bkPortfolioAnalysis() : null; }); lazy('refi', function(){ return typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
+  lazy('dev', function(){ return bkDevV09(); }); lazy('val', function(){ return typeof window.bkValuation === 'function' ? window.bkValuation(s) : null; }); lazy('hold', function(){ return typeof window.bkHold === 'function' ? window.bkHold(s) : null; }); lazy('biz', function(){ return typeof window.bkBusinessAnalysis === 'function' ? window.bkBusinessAnalysis() : null; }); lazy('pf', function(){ return typeof window.bkPortfolioAnalysis === 'function' ? window.bkPortfolioAnalysis() : null; }); lazy('refi', function(){ return typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
   return c; }
 var price = function(c){ return pos(Number(c.s.purchasePrice)); };
 R.addMetrics([
@@ -66,7 +67,7 @@ R.addMetrics([
   M('capitalRequired', 'Capital spending over the hold', 'money', function(c){ var h = c.hold; if(h && h.ok) return fin(h.capital); var m = Math.round((Number(c.s.holdYears) || 0) * 12); if(!(m > 0)) return null; var a = safe(function(){ return bkCapexByMonth(c.s, m); }, null); return a ? a.reduce(function(t, v){ return t + (v || 0); }, 0) : null; }),
   M('assetCount', 'Properties', 'int', PF('count')), M('gav', 'Gross asset value', 'money', PF('gav'), { note:'each holding\'s NOI / its cap rate, or its price' }), M('portfolioDebt', 'Debt', 'money', PF('debt')), M('portfolioEquity', 'Equity in the value', 'money', PF('equity')), M('portfolioNOI', 'NOI, year 1', 'money', PF('noi')),
   M('portfolioLTV', 'Portfolio LTV', 'pct', PF('ltv')), M('portfolioIRR', 'Portfolio IRR', 'pct', PF('irr'), { note:'one combined dated equity cash flow' }), M('maturityExposure', 'Debt maturing within 24 months', 'money', PF('maturing')),
-  P('bizRevenue', 'Revenue', 'money'), P('bizEBITDA', 'EBITDA', 'money'), P('bizFCF', 'Free cash flow', 'money'), P('bizValue', 'Business value', 'money'), P('bizMultiple', 'EV / EBITDA', 'x')
+  M('bizRevenue', 'Revenue, year 1', 'money', BZ('revenue')), M('bizEBITDA', 'EBITDA, year 1', 'money', BZ('ebitda'), { note:'after a market salary for the owner' }), M('bizFCF', 'Free cash flow, year 1', 'money', BZ('fcf')), M('bizValue', 'Enterprise value', 'money', BZ('ev'), { note:'base case DCF' }), M('bizMultiple', 'EV / EBITDA', 'x', BZ('multiple'))
 ]);
 function sum(id, question, primary, metrics){ R.addSummary(id, { question:question, primary:primary, metrics:metrics }); }
 sum('valuation', 'What is the property worth today on its income?', 'marketValue', ['gpi', 'egi', 'opex', 'noiInPlace', 'noiNormalized', 'noiStabilized', 'capRate', 'valuePerUnit', 'valuePerSF']);
