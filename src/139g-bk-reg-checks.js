@@ -15,7 +15,7 @@ R.addRules([
   X('eqret', 'Equity in returns equals the funding ledger', 'integrity:eqret'), X('contrib', 'LP + GP contributions tie', 'integrity:contrib'), X('unlev_irr', 'Unlevered returns are calculated', 'integrity:unlev_irr'),
   X('irr', 'Levered IRR equals an independent XIRR', 'integrity:irr'), X('moic', 'Multiple = distributions / contributions', 'integrity:moic'), X('waterfall', 'Hurdles replay, tiers in order, every dollar once', 'waterfall'),
   X('noiTies', 'NOI = income less expenses, by line', 'refinance / valuation'), X('valueTies', 'Value = NOI / cap rate for each scenario', 'valuation'), X('noDebt', 'No financing figure reaches a valuation', 'valuation'),
-  X('payoffTies', 'Payoff = balance + accrued interest + prepayment', 'refinance'), X('sizingTies', 'Loan = the lowest of the lender tests', 'refinance'),
+  X('payoffTies', 'Payoff = balance + accrued interest + prepayment', 'refinance'), X('holdTies', 'Hold vs sell: proceeds, exit, cash flow and IRR each recomputed', 'hold'), X('sizingTies', 'Loan = the lowest of the lender tests', 'refinance'),
   X('basisTies', 'Basis, land, depreciation and accumulated depreciation reconcile', 'planned', { planned:true }), X('capitalTies', 'Capital budget, actuals and funding reconcile', 'planned', { planned:true }),
   X('portfolioTies', 'Consolidated flows equal the sum of the holdings; nothing counted twice', 'planned', { planned:true }), X('bizTies', 'EBITDA, free cash flow and value reconcile', 'planned', { planned:true })
 ]);
@@ -24,7 +24,7 @@ R.addChecks('acquisition', ['budget', 'unlev', 'su', 'capint', 'facility'].conca
 R.addChecks('development', ['budget', 'unlev', 'su', 'draws', 'capint', 'facility', 'fixed'].concat(CORE));
 R.addChecks('valuation', ['readiness', 'noiTies', 'valueTies', 'noDebt']);
 R.addChecks('refinance', ['readiness', 'noiTies', 'payoffTies', 'sizingTies']);
-R.addChecks('hold', ['readiness', 'conflicts', 'sale', 'payoff', 'irr', 'moic', 'basisTies']);
+R.addChecks('hold', ['readiness', 'noiTies', 'holdTies']);
 R.addChecks('comprehensive', CORE.concat(['capitalTies', 'basisTies']));
 R.addChecks('portfolio', ['portfolioTies']);
 R.addChecks('business', ['readiness', 'bizTies']);

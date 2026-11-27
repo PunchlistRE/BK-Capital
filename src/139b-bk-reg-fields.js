@@ -127,7 +127,7 @@ window.BKReg.addFields([
   F('newLoanAmort', 'Proposed amortization, years', 'int', {  }), F('newLoanIO', 'Interest-only years', 'num', { zeroOk:true }), F('newLoanCosts', 'Points and closing costs', 'money', { zeroOk:true }),
   F('lenderMaxLTV', 'Lender maximum LTV', 'pct', {  }), F('lenderMinDSCR', 'Lender minimum DSCR', 'num', {  }), F('lenderMinDY', 'Lender minimum debt yield', 'pct', {  }),
   F('refiScenarios', 'Alternative financing structures', 'table', {  }),
-  F('currentValue', 'Current property value', 'money', {  }), F('ownedBasis', 'Original basis and accumulated depreciation', 'table', { planned:true }),
+  F('currentValue', 'Current property value', 'money', {  }), F('holdTaxBasis', 'Cost basis (purchase price plus improvements)', 'money', { help:'For the tax estimate on a sale. Leave blank for a before-tax comparison.' }), F('holdAccumDep', 'Accumulated depreciation to date', 'money', { zeroOk:true }), F('holdAnnualDep', 'Depreciation each further year', 'money', { zeroOk:true }), F('holdRecaptureRate', 'Depreciation recapture rate', 'pct', { zeroOk:true, sug:sug(0.25, 'Unrecaptured section 1250 gain is taxed at up to 25%.') }), F('holdCapGainsRate', 'Capital gains rate', 'pct', { zeroOk:true, sug:sug(0.20, 'The top federal long-term rate is 20%.') }), F('holdDiscRate', 'Discount rate (your required return)', 'pct', { sug:sug(0.08, 'The return you would need elsewhere for the same risk.') }),
   F('capitalProjects', 'Capital improvement program', 'table', { planned:true }), F('taxProfile', 'Tax profile and rule set', 'table', { planned:true }),
   /* planned: portfolio */
   F('holdings', 'Portfolio holdings', 'table', { planned:true }), F('portfolioScenarios', 'Portfolio scenarios', 'table', { planned:true }),

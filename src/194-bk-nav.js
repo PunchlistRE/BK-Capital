@@ -14,7 +14,7 @@ window.BK_NAV = [
       { label:'Tax', sheets:['Depreciation'] },
       { label:'Market', sheets:['Market Benchmarks'] } ] },
   { id:'operations', label:'Operations', q:'What does it earn?', color:'#163a62', groups:[
-      { label:'Operations', sheets:['Operating Underwrite', 'Property CF', 'Property Valuation'] },
+      { label:'Operations', sheets:['Operating Underwrite', 'Property CF', 'Property Valuation', 'Hold vs Sell'] },
       { label:'Asset management', sheets:['Budget vs Actual', 'Actuals'] },
       { id:'dev', label:'Development', cond:'development', sheets:['Development', 'Dev Schedule', 'Dev Lease-Up', 'Dev Draws', 'Residual Land'] } ] },
   { id:'debt', label:'Debt', q:'Can we finance it, and is the loan safe?', color:'#2E6E6E', cond:'eng:debt|refinance|development', groups:[
@@ -28,7 +28,7 @@ window.BK_NAV = [
       { label:'Risk & pricing', sheets:['Deal Optimizer', 'Sensitivity', 'Reverse Solve', 'Probability-Weighted', 'Pre-Offer Bid'] } ] },
   { id:'credit', label:'Credit & IC', q:'Does it meet house policy?', color:'#7A3E4D', cond:'eng:returns', groups:[ { label:'Credit & IC', sheets:['IC Memo', 'Credit Policy', 'Debt Capacity', 'Deal Remedies', 'Deal Review'] } ] },
   { id:'business', label:'Business', q:'Operating-business deals only', color:'#6B4E71', cond:'business', groups:[ { label:'Operating business', sheets:['Business Model', 'Business Valuation', 'Sell vs Hold'] } ] },
-  { id:'reports', label:'Reports', q:'Documents to send out', color:'#B0592A', groups:[ { label:'Reports', sheets:['Cash Flow Report', 'After-Tax Report', 'Sources and Uses Report', 'Waterfall Report', 'Valuation Report', 'Property Valuation Report', 'Present Value Report', 'Tenant Report', 'Rent Roll Report', 'Lease Schedule', 'Lease Audit Report', 'Refinance Report', 'Audit Report'] } ] },
+  { id:'reports', label:'Reports', q:'Documents to send out', color:'#B0592A', groups:[ { label:'Reports', sheets:['Cash Flow Report', 'After-Tax Report', 'Sources and Uses Report', 'Waterfall Report', 'Valuation Report', 'Property Valuation Report', 'Present Value Report', 'Tenant Report', 'Rent Roll Report', 'Lease Schedule', 'Lease Audit Report', 'Refinance Report', 'Hold vs Sell Report', 'Audit Report'] } ] },
   { id:'portfolio', label:'Portfolio', q:'Across all deals', color:'#5A6B7A', groups:[ { label:'Portfolio', sheets:['Portfolio', 'Portfolio Dashboard', 'Property DB', 'Portfolio CF', 'Portfolio M', 'Portfolio Rollup', 'Capital Allocation', 'Capital Calls', 'Equity Partners', 'Investor Summary', 'Benchmarks'] } ] },
   { id:'model', label:'Model & Data', q:'Can we trust the model? Admin', color:'#A93B2C', groups:[
       { label:'Checks', sheets:['Model Checks', 'QA', 'Version History', 'Source Lineage', 'Storage Lifecycle'] },
@@ -71,7 +71,7 @@ window.BK_NAV_FOLDED = FOLDED;
 function engines(){ try { var R = window.BKReg, a = R && R.of ? R.of(bkLoad() || {}) : null; return a && a.engines ? a.engines : null; } catch(e){ return null; } }
 function engOk(cond){ var e = engines(); if(!e) return true; return String(cond).slice(4).split('|').some(function(k){ return e.indexOf(k) >= 0; }); }
 window.bkNavEngineShown = engOk;
-var REPORT_NEEDS = { 'Cash Flow Report':'eng:monthly|development', 'After-Tax Report':'eng:tax', 'Sources and Uses Report':'eng:debt|development', 'Waterfall Report':'eng:waterfall', 'Refinance Report':'eng:refinance|debt' };
+var REPORT_NEEDS = { 'Hold vs Sell':'eng:hold', 'Hold vs Sell Report':'eng:hold', 'Cash Flow Report':'eng:monthly|development', 'After-Tax Report':'eng:monthly|development', 'Sources and Uses Report':'eng:debt|development', 'Waterfall Report':'eng:waterfall', 'Refinance Report':'eng:refinance|debt' };
 window.bkNavVisible = function(g){ var noRet = !engOk('eng:returns|development');
   return g.sheets.filter(function(n){ return !FOLDED[n] && (!REPORT_NEEDS[n] || engOk(REPORT_NEEDS[n])); }).map(function(n){ return noRet && n === 'Valuation Report' ? 'Property Valuation Report' : n; }); };
 window.bkNavHostOf = function(n){ return FOLDED[n] || n; };
