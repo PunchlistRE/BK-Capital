@@ -39,10 +39,19 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   const warn = a.findings.filter(f => f.tier === 4 && f.kind === 'inconsistent'), firstNon = warn.findIndex(f => f.group !== 'Debt' && f.group !== 'Tax'), lastDT = warn.map(f => f.group === 'Debt' || f.group === 'Tax').lastIndexOf(true);
   check('within a tier the debt and tax findings come first (here the debt Model Checks)', warn.length >= 2 && warn.some(f => f.group === 'Debt') && (firstNon < 0 || lastDT < firstNon), warn.map(f => f.group + ':' + f.rule.slice(13)).join(' '));
 
+  /* ---- one underlying issue, one finding ---- */
+  await patch(p, { mgmtPct: 0, reserves: 0 });
+  const dd = await F(p, true), mg = dd.findings.filter(f => /management fee/i.test(f.title)), rs = dd.findings.filter(f => /reserves/i.test(f.title) && f.kind !== 'consequential');
+  check('a zero management fee is one finding, not two: the input finding carries the Model Check as a related note, at the more severe of the two tiers', mg.length === 1 && mg[0].kind === 'missing' && mg[0].related && mg[0].related.length === 1 && /acct\.mgmt-zero/.test(mg[0].rule) && mg[0].tier === 3 && /Management fee is zero/.test(mg[0].related[0].title) && !dd.findings.some(f => f.kind === 'inconsistent' && /Management fee is zero/.test(f.title)), JSON.stringify(mg.map(f => [f.title, f.tier, f.rule])));
+  check('the same holds for the replacement reserves; a check with no matching input finding stays on its own', rs.filter(f => f.kind === 'inconsistent').length + rs.filter(f => f.related).length >= 1 && dd.findings.some(f => f.kind === 'inconsistent' && /debt|house/i.test(f.rule + f.title)), JSON.stringify(rs.map(f => [f.kind, f.title, !!f.related])));
+  await patch(p, { mgmtPct: A.mgmtPct, reserves: A.reserves });
+
   /* ---- it changes nothing and talks to nobody ---- */
+  await p.waitForTimeout(2500);   /* the version history records the edits above a moment after they are made; let it settle so only the review's own effect is compared */
   const before = await p.evaluate(() => JSON.stringify(bkLoad()));
   await p.evaluate(async () => { bkGuideOn(); bkGuideWhere(); await new Promise(r => setTimeout(r, 1500)); bkReviewPaint(); await new Promise(r => setTimeout(r, 300)); });
-  check('opening the review, and measuring, leaves the deal exactly as it was', before === await p.evaluate(() => JSON.stringify(bkLoad())));
+  const afterS = await p.evaluate(() => JSON.stringify(bkLoad()));
+  check('opening the review, and measuring, leaves the deal exactly as it was', before === afterS, (() => { const x = JSON.parse(before), y = JSON.parse(afterS); return Object.keys(Object.assign({}, x, y)).filter(k => JSON.stringify(x[k]) !== JSON.stringify(y[k])).join(); })());
   check('the review makes no network request (no AI, no service): everything is computed in the page', p.reqs.length === 0, p.reqs.join(' '));
 
   /* ---- the guide shows it first ---- */

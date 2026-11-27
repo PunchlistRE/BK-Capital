@@ -68,7 +68,12 @@ window.bkDealFindings = function(s, o){ s = s || bkLoad(); o = o || {}; var key 
     else if(r.status === 'incomplete') add({ kind:'missing', tier:3, group:g, field:r.k, title:lab + ' is incomplete', detail:r.note || '', rule:'Inputs index: incomplete' });
   });
   var cfl = safe(function(){ return window.bkConflicts(); }, []) || [];
-  cfl.forEach(function(c){ var tier = c.acknowledged ? 6 : c.level === 'ERROR' ? 1 : c.level === 'WARN' ? 4 : 6; add({ kind:'inconsistent', tier:tier, group:groupOfArea(c.area), sheet:c.sheet, title:(c.acknowledged ? 'Acknowledged: ' : '') + c.message, detail:c.why || '', rule:'Model Checks: ' + c.id, level:c.level }); });
+  cfl.forEach(function(c){ var tier = c.acknowledged ? 6 : c.level === 'ERROR' ? 1 : c.level === 'WARN' ? 4 : 6; add({ kind:'inconsistent', tier:tier, group:groupOfArea(c.area), sheet:c.sheet, fieldsOf:c.fields || null, title:(c.acknowledged ? 'Acknowledged: ' : '') + c.message, detail:c.why || '', rule:'Model Checks: ' + c.id, level:c.level }); });
+  /* ONE UNDERLYING ISSUE, ONE FINDING. A Model Check that names the input it is about (its rule's `fields`) and an input finding for the same input are one issue seen twice (a blank or zero management fee is
+     "not entered" and "the fee is zero"). The input finding is the primary one (it has the action and the measured effect); the check is folded into it as a related note, and the more severe tier of the two applies. */
+  F = F.filter(function(f){ if(f.kind !== 'inconsistent' || !f.fieldsOf || !f.fieldsOf.length) return true;
+    var p = F.filter(function(x){ return x.kind === 'missing' && f.fieldsOf.indexOf(x.field) > -1; })[0]; if(!p) return true;
+    p.related = (p.related || []).concat([{ rule:f.rule, title:f.title, detail:f.detail }]); p.tier = Math.min(p.tier, f.tier); p.rule += ' + ' + f.rule; p.detail = (p.detail ? p.detail + ' ' : '') + (f.detail || ''); return false; });
   var meas = null; if(o.measure && can){ meas = window.bkMeasureAssumptions(s); meas.rows.forEach(function(m, i){ if(i >= 8) return;
     add({ kind:'consequential', tier:5, group:m.debt ? 'Debt' : (ix.rows.filter(function(r){ return r.k === m.k; })[0] || {}).group || 'Returns', field:m.k, title:m.label + ' matters: ' + m.step + ' ' + m.worstDir + ' moves ' + show(m.worst), detail:'Measured by re-running the deal with ' + m.label.toLowerCase() + ' ' + m.step + ' higher and lower; this is the worse side.', impact:m.effect, rule:'engine re-run (bkRunWith)' }); }); }
   var pri = function(f){ return f.group === 'Debt' || f.group === 'Tax' ? 0 : 1; };

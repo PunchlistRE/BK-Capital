@@ -170,11 +170,11 @@ rule('acct.rentroll-vs-flat', 'WARN', 'Revenue', 'Rent Roll', function(s){
 });
 rule('acct.reserves-zero', 'WARN', 'Operations', 'Deal Underwrite', function(s){
   if(isDev(s) || !(num(s.units) > 0) || /office|retail|industrial|land/i.test(String(s.propertyType || ''))) return;
-  if(!(num(s.reserves) > 0)) return { msg:'Replacement reserves are zero on a residential property.',
+  if(!(num(s.reserves) > 0)) return { fields:['reserves'], msg:'Replacement reserves are zero on a residential property.',
     why:'NOI after reserves is what lenders size on and what buyers capitalise. Typical underwriting uses $250-$350 per unit a year. Zero reserves overstates NOI, the loan, the exit value and every return.' };
 });
 rule('acct.mgmt-zero', 'WARN', 'Operations', 'Deal Underwrite', function(s){
-  if(isDev(s)) return; if(num(s.mgmtPct) === 0 && num(s.units) > 0) return { msg:'Management fee is zero.',
+  if(isDev(s)) return; if(num(s.mgmtPct) === 0 && num(s.units) > 0) return { fields:['mgmtPct'], msg:'Management fee is zero.',
     why:'Even when the sponsor self-manages, lenders and buyers impute a fee (typically 2-4% of EGI). Excluding it overstates NOI and the exit value by roughly the fee divided by the cap rate.' };
 });
 rule('acct.exit-below-going-in', 'WARN', 'Exit', 'Deal Underwrite', function(s){
@@ -334,7 +334,7 @@ function conflicts(){
   var ack = s._ack || {}, out = [];
   RULES.forEach(function(r){
     var res; try { res = r.fn(s); } catch(e){ res = null; }
-    if(res) out.push({ id:r.id, level:res.level || r.level, area:r.area, sheet:r.sheet, message:res.msg, why:res.why, data:res.data || null, acknowledged:!!ack[r.id] });
+    if(res) out.push({ id:r.id, level:res.level || r.level, area:r.area, sheet:r.sheet, message:res.msg, why:res.why, data:res.data || null, fields:res.fields || null, acknowledged:!!ack[r.id] });
   });
   out.sort(function(a, b){ return (LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) || a.area.localeCompare(b.area); });
   return out;
