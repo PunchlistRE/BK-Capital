@@ -14,7 +14,7 @@ let n = 0, fails = 0; const check = (name, ok, detail) => { n++; if (!ok) fails+
   const run = (x) => p.evaluate(x => { const base = bkLoad(); return bkRunWith(x, () => { const d = bkDebt(), L = d.lifecycle, r = bkMonthlyReturns(); return { loan: d.loan, coupon: d.coupon, fee: d.fee, pmt: d.pmt, m1: L.combined[0], rows: L.combined.map(z => [z.annualRate, z.interest, z.principal, z.balance]), sale: d.debtAtSale, maturity: L.maturityMonth, costs: L.costNotes, irr: r.irr, cfLast: r.rows[r.rows.length - 1].cf, loanCost: r.rows.reduce((a, z) => a + (z.loanCost || 0), 0) }; }); }, x);
 
   /* 1. a deal that sets none of the new terms is calculated exactly as before */
-  const base = await run({}), same = await run({ loanType: 'Acquisition', recourse: 'Non-recourse', debtCovenants: 'none', debtLookbackDays: 5 });
+  const base = await run({}), same = await run({ loanType: 'Acquisition', loanPurpose: 'Acquisition', lenderType: 'Bank', recourse: 'Non-recourse', debtCovenants: 'none', debtLookbackDays: 5 });
   check('descriptive terms (loan type, recourse, covenants, lookback) never change the calculation', base.loan === same.loan && base.irr === same.irr && base.pmt === same.pmt, [base.irr, same.irr]);
   const balloon = await run({ repayType: 'Balloon' });
   check('Balloon with no interest-only years is the loan as calculated before', balloon.irr === base.irr && balloon.pmt === base.pmt);
@@ -81,14 +81,14 @@ let n = 0, fails = 0; const check = (name, ok, detail) => { n++; if (!ok) fails+
   await p.evaluate(() => showSheet('Deal Underwrite')); await p.waitForTimeout(800);
   const ui = await p.evaluate(() => { const caps = [...document.querySelectorAll('#viewport table caption')].map(c => c.textContent.trim()); const keys = [...document.querySelectorAll('#viewport [data-bk-key="debtTerm"]')].length;
     const card = (document.querySelector('.bk-ds-card') || {}).innerText || ''; return { caps, keys, card, old: caps.includes('Acquisition Debt'), fee: [...document.querySelectorAll('#viewport [data-bk-key="acqFeePct"]')].length }; });
-  check('Deal Underwrite shows the four groups in place of the single Acquisition Debt table', ['Loan Type', 'Interest Rate Structure', 'Repayment & Loan Terms', 'Underwriting & Covenants'].every(c => ui.caps.includes(c)) && !ui.old, ui.caps.filter(c => /Loan|Rate|Repay|Underwriting/.test(c)));
+  check('Deal Underwrite shows the four groups in place of the single Acquisition Debt table', ['Loan Purpose and Lender', 'Interest Rate Structure', 'Repayment & Loan Terms', 'Underwriting & Covenants'].every(c => ui.caps.includes(c)) && !ui.old, ui.caps.filter(c => /Loan|Rate|Repay|Underwriting/.test(c)));
   check('the loan term appears once, under Repayment & Loan Terms; the sponsor acquisition fee is kept', ui.keys === 1 && ui.fee === 1, [ui.keys, ui.fee]);
   check('the SOFR + spread card shows the index, spread, all-in rate, source and date, and that later months follow the outlook', /4\.10%/.test(ui.card) && /2\.75%/.test(ui.card) && /6\.85%/.test(ui.card) && /Manual override/.test(ui.card) && /3\.94%/.test(ui.card) && /outlook/.test(ui.card), ui.card.slice(0, 300));
 
   /* 7. the guide asks the right questions and sources the benchmark */
   await p.evaluate(A => { bkCreateNewDeal(A); bkGuideOn(); try { bkGuideDepth('standard'); } catch (e) {} bkGuideGo('debt'); }, A); await p.waitForTimeout(400);
   const g0 = await p.evaluate(() => [...document.querySelectorAll('[id^="gdf-"]')].map(e => e.id.slice(4)));
-  await p.evaluate(() => { bkGuideDraft('loanType', 'Bridge'); bkGuideDraft('debtRateType', 'Floating'); }); await p.waitForTimeout(600);
+  await p.evaluate(() => { bkGuideDraft('loanPurpose', 'Bridge'); bkGuideDraft('debtRateType', 'Floating'); }); await p.waitForTimeout(600);
   const g1 = await p.evaluate(() => ({ f: [...document.querySelectorAll('[id^="gdf-"]')].map(e => e.id.slice(4)), sug: [...document.querySelectorAll('.gd-sug[data-k]')].map(e => e.getAttribute('data-k') + '|' + e.textContent.replace(/\s+/g, ' ')) }));
   check('guide, fixed rate: asks the rate, not the index', g0.includes('acqRate') && !g0.includes('debtIndexRate'));
   check('guide, floating: the index, benchmark, rate and spread questions appear at once, and the fixed rate goes', ['debtIndexName', 'debtIndexTenor', 'debtIndexRate', 'debtSpread'].every(k => g1.f.includes(k)) && !g1.f.includes('acqRate'), g1.f);

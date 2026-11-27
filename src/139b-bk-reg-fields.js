@@ -9,7 +9,7 @@ function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(
 function F(k, label, kind, o){ return Object.assign({ k:k, label:label, kind:kind }, o || {}); }
 function sug(v, why){ return function(){ return { v:v, why:why }; }; }
 /* the loan type's typical term when one is chosen, otherwise the general default (or nothing) */
-function typ(k, v, why){ return function(s){ var t = window.bkLoanTypeTypical ? window.bkLoanTypeTypical(s, k) : undefined; if(t !== undefined) return { v:t, why:'Typical for ' + (s.loanType === 'Agency' || s.loanType === 'Acquisition' ? 'an ' : 'a ') + s.loanType + ' loan. A starting point, not a quote.' }; return v === null || v === undefined ? null : { v:v, why:why }; }; }
+function typ(k, v, why){ return function(s){ var t = window.bkLoanTypeTypical ? window.bkLoanTypeTypical(s, k) : undefined; if(t !== undefined) return { v:t, why:'Typical for ' + (function(){ var l = (window.bkLoanLabel ? window.bkLoanLabel(s) : '') || (s.loanType ? s.loanType + ' loan' : 'this kind of loan'); return (/^[AEIOU]/i.test(l) ? 'an ' : 'a ') + l; })() + '. A starting point, not a quote.' }; return v === null || v === undefined ? null : { v:v, why:why }; }; }
 function sofr(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; }
 window.BKReg.addFields([
   /* property */
@@ -49,7 +49,9 @@ window.BKReg.addFields([
   F('capex', 'Capital items', 'table', { help:'Dated one-off capital spending below NOI (roof, HVAC, renovations).', sheet:'Expenses' }),
   /* financing (acquisition loan) */
   F('debtEnabled', 'Use acquisition debt', 'bool'),
-  F('loanType', 'Loan type', 'choice', { options:['Permanent / Term', 'Acquisition', 'Refinance', 'Cash-Out Refinance', 'Bridge', 'Construction', 'Renovation / Rehabilitation', 'Construction-to-Permanent', 'Agency', 'CMBS', 'Bank / Credit Union', 'Life Company', 'SBA', 'Hard Money'],
+  F('loanPurpose', 'Loan purpose', 'choice', { options:['Acquisition', 'Refinance', 'Cash-Out Refinance', 'Bridge', 'Permanent / Term', 'Construction', 'Construction-to-Permanent', 'Renovation / Rehabilitation'], help:'What the money is for and how it is structured: acquisition, refinance, construction, bridge, permanent. It is a different question from who lends it.' }),
+  F('lenderType', 'Lender type', 'choice', { options:['Bank', 'Credit union', 'Agency (Fannie Mae / Freddie Mac)', 'CMBS conduit', 'Life company', 'Debt fund', 'SBA', 'Private lender / hard money', 'Seller financing'], help:'Who lends it. A bank can lend for an acquisition or for construction; the lender sets the usual rate, prepayment, recourse and limits.' }),
+  F('loanType', 'Loan type (earlier single field)', 'choice', { options:['Permanent / Term', 'Acquisition', 'Refinance', 'Cash-Out Refinance', 'Bridge', 'Construction', 'Renovation / Rehabilitation', 'Construction-to-Permanent', 'Agency', 'CMBS', 'Bank / Credit Union', 'Life Company', 'SBA', 'Hard Money'],
     help:'What kind of loan it is. It suggests typical terms for the questions that follow; it never changes the calculation on its own. Many loans are two of these at once: an acquisition loan can be a bridge loan, an agency loan is permanent financing.' }),
   F('acqLTV', 'Loan-to-value, max', 'pct', { sug:typ('acqLTV', 0.65, 'Most lenders cap multifamily at 65% to 75%; 65% is a safe starting point.') }),
   F('debtRateType', 'Interest rate structure', 'choice', { options:['Fixed', 'Fixed (SOFR-based)', 'Floating'], sug:typ('debtRateType', null, ''),
@@ -68,6 +70,8 @@ window.BKReg.addFields([
   F('debtResetMonths', 'Reset frequency, months', 'int', { when:function(s){ return s.debtRateType === 'Floating'; }, sug:typ('debtResetMonths', 1, 'Most SOFR loans reset monthly.') }),
   F('debtIndexDrift', 'Rate outlook, change a year', 'pct', { zeroOk:true, when:function(s){ return s.debtRateType === 'Floating'; }, help:'Later months follow this outlook, not today\'s rate: +0.25% means the index rises a quarter point a year. Blank holds it flat. It is a forecast, not a published rate.' }),
   F('debtDayCount', 'Day-count convention', 'choice', { options:['Actual/360', '30/360', 'Actual/365'], sug:typ('debtDayCount', null, ''), help:'Actual/360, the usual commercial convention, charges 365/360 of the quoted rate over a year.' }),
+  F('prepayLockoutMonths', 'Prepayment lockout, months', 'int', { zeroOk:true, help:'No voluntary prepayment during this many months from closing. It is not a penalty: the loan cannot be repaid at all (without the lender\'s consent) until it ends. A prepayment penalty, yield maintenance or defeasance is what repaying costs after it.' }),
+  F('ioBasis', 'After the interest-only period, amortize over', 'choice', { options:['Stated schedule', 'Remaining term'], help:'The stated amortization schedule (a balloon is left at maturity) or the remaining loan term (paid off at maturity).' }),
   F('repayType', 'Repayment structure', 'choice', { options:['Fully amortizing', 'Interest only', 'Partial interest only', 'Interest only then amortizing', 'Balloon'], sug:typ('repayType', 'Balloon', 'Most commercial loans amortize over 25 to 30 years and are repaid at maturity.') }),
   F('acqAmort', 'Amortization, years', 'int', { when:function(s){ return String(s.repayType || '') !== 'Interest only'; }, sug:typ('acqAmort', 30, '30 years is standard.') }),
   F('acqIO', 'Interest-only years', 'num', { zeroOk:true, help:'0 if none.', when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); }, sug:typ('acqIO', null, '') }),
