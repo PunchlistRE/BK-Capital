@@ -22959,7 +22959,8 @@ window.BKReg.addFields([
   F('newLoanAmort', 'Proposed amortization, years', 'int', {  }), F('newLoanIO', 'Interest-only years', 'num', { zeroOk:true }), F('newLoanCosts', 'Points and closing costs', 'money', { zeroOk:true }),
   F('lenderMaxLTV', 'Lender maximum LTV', 'pct', {  }), F('lenderMinDSCR', 'Lender minimum DSCR', 'num', {  }), F('lenderMinDY', 'Lender minimum debt yield', 'pct', {  }),
   F('refiScenarios', 'Alternative financing structures', 'table', {  }),
-  F('currentValue', 'Current property value', 'money', {  }), F('holdTaxBasis', 'Cost basis (purchase price plus improvements)', 'money', { help:'For the tax estimate on a sale. Leave blank for a before-tax comparison.' }), F('holdAccumDep', 'Accumulated depreciation to date', 'money', { zeroOk:true }), F('holdAnnualDep', 'Depreciation each further year', 'money', { zeroOk:true }), F('holdRecaptureRate', 'Depreciation recapture rate', 'pct', { zeroOk:true, sug:sug(0.25, 'Unrecaptured section 1250 gain is taxed at up to 25%.') }), F('holdCapGainsRate', 'Capital gains rate', 'pct', { zeroOk:true, sug:sug(0.20, 'The top federal long-term rate is 20%.') }), F('holdDiscRate', 'Discount rate (your required return)', 'pct', { sug:sug(0.08, 'The return you would need elsewhere for the same risk.') }),
+  F('currentValue', 'Current property value', 'money', {  }), F('holdTaxBasis', 'Cost basis (purchase price plus improvements)', 'money', { help:'For the tax estimate on a sale. Leave blank for a before-tax comparison.' }), F('holdAccumDep', 'Accumulated depreciation to date', 'money', { zeroOk:true }), F('holdAnnualDep', 'Depreciation each further year', 'money', { zeroOk:true }), F('depRecaptureRate', 'Depreciation recapture rate', 'pct', { zeroOk:true, sug:sug(0.25, 'Unrecaptured section 1250 gain is taxed at up to 25%.') }), F('capGainsRate', 'Capital gains rate', 'pct', { zeroOk:true, sug:sug(0.20, 'The top federal long-term rate is 20%.') }),
+  F('taxRate', 'Ordinary income tax rate', 'pct', { zeroOk:true, sug:sug(0.37, 'The top federal ordinary rate is 37%.') }), F('landValuePct', 'Land value, % of the basis', 'pct', { zeroOk:true, help:'Land is not depreciated.', sug:sug(0.2, 'Land is often 15% to 30% of the price; the assessor\'s split is a good source.') }), F('deprLife', 'Depreciation life, years', 'num', { sug:sug(27.5, 'Residential rental property is 27.5 years; commercial 39.') }), F('holdDiscRate', 'Discount rate (your required return)', 'pct', { sug:sug(0.08, 'The return you would need elsewhere for the same risk.') }),
   F('capitalProjects', 'Capital improvement program', 'table', { planned:true }), F('taxProfile', 'Tax profile and rule set', 'table', { planned:true }),
   /* planned: portfolio */
   F('holdings', 'Portfolio holdings', 'table', { planned:true }), F('portfolioScenarios', 'Portfolio scenarios', 'table', { planned:true }),
@@ -22988,7 +22989,7 @@ var R = window.BKReg;
     engines:['operating', 'valuation', 'refinance'], ownReadiness:true, home:'Refinancing', ready:function(s){ var r = typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; return !r || r.ok ? true : 'The refinance cannot be sized: ' + ((r.main && r.main.missing) || r.missing || []).join(', ') + '.'; }, about:'The existing loan and its payoff against proposed structures, sized by the lender\'s tests.' },
   { id:'hold', name:'Hold & Disposition', q:'Keep the property or sell it?', icon:'scale', dealType:'Acquisition', live:true,
     engines:['operating', 'hold', 'tax'], ownReadiness:true, home:'Hold vs Sell', ready:function(s){ var r = typeof window.bkHold === 'function' ? window.bkHold(s) : null; return !r || r.ok ? true : 'Hold vs sell cannot be compared yet: ' + r.missing.join(', ') + '.'; }, about:'Hold-period cash flow against selling now, with an estimate of the tax on each sale.' },
-  { id:'comprehensive', name:'Comprehensive Underwriting', q:'The full model of one investment, with tax and partners', icon:'stack', dealType:'Acquisition', live:false,
+  { id:'comprehensive', name:'Comprehensive Underwriting', q:'The full model of one investment, with tax and partners', icon:'stack', dealType:'Acquisition', live:true,
     engines:['operating', 'monthly', 'debt', 'returns', 'waterfall', 'sensitivity', 'tax', 'capital'], about:'Every supported schedule for one property: operations, capital, financing, tax and partners.' },
   { id:'portfolio', name:'Portfolio Analysis', q:'How do our properties add up, and what should we do next?', icon:'grid', dealType:'Acquisition', live:false,
     engines:['portfolio'], about:'Holdings consolidated on dated cash flows, with debt maturities, concentration and scenarios.' },
@@ -23090,7 +23091,7 @@ R.addWorkflow('hold', [
   S('debt', 'Existing financing', 'The loan to be repaid at a sale (0 if none).', 'Hold vs Sell', [q('exLoanBalance', 'required'), q('exLoanRate'), q('exLoanAmort'), q('exLoanMaturity'), q('exPrepay')]),
   S('period', 'Hold period assumptions', '', 'Hold vs Sell', [q('holdYears', 'required'), q('holdDiscRate')]),
   S('exit', 'Disposition assumptions', '', 'Hold vs Sell', [q('exitCap', 'required'), q('saleCostPct', 'required')]),
-  S('tax', 'Tax and adjusted basis', 'Optional. Recapture and gain on a sale, an estimate for professional review.', 'Hold vs Sell', [q('holdTaxBasis'), q('holdAccumDep'), q('holdAnnualDep'), q('holdRecaptureRate'), q('holdCapGainsRate')], { skippable:true }),
+  S('tax', 'Tax and adjusted basis', 'Optional. Recapture and gain on a sale, an estimate for professional review.', 'Hold vs Sell', [q('holdTaxBasis'), q('holdAccumDep'), q('holdAnnualDep'), q('depRecaptureRate'), q('capGainsRate')], { skippable:true }),
   S('compare', 'Hold vs. sell comparison', '', 'Hold vs Sell', []),
   S('sens', 'Sensitivity analysis', '', 'Hold vs Sell', []),
   S('review', 'Review and generate the report', '', 'Hold vs Sell Report', []) ]);
@@ -23102,13 +23103,13 @@ R.addWorkflow('comprehensive', [
   S('revenue', 'Revenue projections', '', 'Market', [q('rentGrowth', 'required'), q('otherIncomePerUnit')]),
   S('vacancy', 'Vacancy and credit loss', '', 'Market', [q('vacancy', 'required'), q('badDebtPct', 'required')]),
   EXPENSES,
-  S('capital', 'Capital improvement program', '', 'Expenses', [q('capitalProjects', 'required')]),
+  S('capital', 'Capital improvement program', 'Dated capital items below NOI. Leave empty if there are none.', 'Expenses', [q('capex')]),
   S('financing', 'Financing structure', '', 'Investment', [q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort', 'required'), q('acqDSCR')]),
   S('su', 'Sources and uses', '', 'Sources & Uses', [q('value', 'derived')]),
   S('debtsched', 'Debt schedules', '', 'Debt Schedule', []),
   S('opcf', 'Operating cash flow', '', 'Property CF', []),
   S('reserves', 'Capital expenditure and reserve schedules', '', 'Expenses', [q('reserves', 'required')]),
-  S('depr', 'Depreciation and cost segregation', '', 'Depreciation', [q('taxProfile', 'required')]),
+  S('depr', 'Depreciation and cost segregation', '', 'Depreciation', [q('landValuePct', 'required'), q('deprLife'), q('taxRate', 'required'), q('capGainsRate'), q('depRecaptureRate')]),
   S('aftertax', 'After-tax cash flow', '', 'After-Tax', []),
   S('refi', 'Refinancing scenarios', '', 'Refi / Recap', [q('refiScenarios')], { skippable:true }),
   S('exit', 'Disposition assumptions', '', 'Valuation', [q('holdYears', 'required'), q('exitCap', 'required'), q('saleCostPct', 'required')]),
@@ -23207,7 +23208,8 @@ R.addMetrics([
   M('refiCosts', 'Refinance costs', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.costs) : null; }), M('netProceeds', 'Net proceeds', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.net) : null; }, { note:'new loan less payoff and costs; negative means equity is needed' }), M('cashOut', 'Cash-out proceeds', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.cashOut) : null; }), M('equityRetained', 'Remaining equity', 'money', function(c){ var r = c.refi; return r && r.ok ? fin(r.main.equityAfter) : null; }, { note:'value less the new loan' }),
   M('forwardNOI', 'Forward NOI (year 1)', 'money', function(c){ var h = c.hold; return h && h.ok ? fin(h.forwardNOI) : null; }), M('netSaleNow', 'Net cash if sold today', 'money', function(c){ var h = c.hold; return h && h.ok ? fin(h.now.net) : null; }, { note:'after the cost of sale, the loan payoff and the tax' }),
   M('holdIRR', 'Hold-case IRR', 'pct', function(c){ var h = c.hold; return h && h.ok ? fin(h.hold.irr) : null; }, { note:'on the cash you could take out today' }), M('saleTax', 'Estimated tax if sold today', 'money', function(c){ var h = c.hold; return h && h.ok ? fin(h.now.tax) : null; }),
-  P('afterTaxIRR', 'After-tax IRR', 'pct'), M('capitalRequired', 'Capital spending over the hold', 'money', function(c){ var h = c.hold; return h && h.ok ? fin(h.capital) : null; }),
+  M('afterTaxIRR', 'After-tax IRR', 'pct', function(c){ if(/develop/i.test(String(c.s.dealType || ''))) return null; var x = safe(function(){ return bkAfterTaxV18(); }, null); return x ? fin(x.atIRR) : null; }, { note:'after depreciation, income tax and the tax on the sale' }),
+  M('capitalRequired', 'Capital spending over the hold', 'money', function(c){ var h = c.hold; if(h && h.ok) return fin(h.capital); var m = Math.round((Number(c.s.holdYears) || 0) * 12); if(!(m > 0)) return null; var a = safe(function(){ return bkCapexByMonth(c.s, m); }, null); return a ? a.reduce(function(t, v){ return t + (v || 0); }, 0) : null; }),
   P('assetCount', 'Properties', 'int'), P('gav', 'Gross asset value', 'money'), P('portfolioDebt', 'Outstanding debt', 'money'), P('portfolioEquity', 'Portfolio equity', 'money'), P('portfolioNOI', 'NOI', 'money'),
   P('portfolioLTV', 'Portfolio LTV', 'pct'), P('portfolioIRR', 'Portfolio IRR (combined dated cash flow)', 'pct'), P('maturityExposure', 'Debt maturing within 24 months', 'money'),
   P('bizRevenue', 'Revenue', 'money'), P('bizEBITDA', 'EBITDA', 'money'), P('bizFCF', 'Free cash flow', 'money'), P('bizValue', 'Business value', 'money'), P('bizMultiple', 'EV / EBITDA', 'x')
@@ -23250,10 +23252,10 @@ R.addSections([
   /* planned */
   X('valExec', 'Executive valuation summary', { builder:'valuation.report' }), X('propDesc', 'Property description', { builder:'refinance.report / valuation.report' }), X('rentRollMix', 'Rent roll / unit mix', { builder:'valuation.report' }), X('incomeAnalysis', 'Income analysis', { builder:'valuation.report' }), X('opexAnalysis', 'Operating expense analysis', { builder:'valuation.report' }),
   X('noiRecon', 'NOI reconciliation', { builder:'valuation.report' }), X('capRateAnalysis', 'Capitalization rate analysis', { builder:'valuation.report' }), X('valueConclusion', 'Estimated market value', { builder:'valuation.report' }), X('valSens', 'Valuation sensitivity', { builder:'valuation.report' }),
-  X('capitalBudget', 'Capital improvement budget', { builder:'hold.report' }), P('taxAnalysis', 'Tax analysis', { when:'tax analysis selected' }),
+  X('capitalBudget', 'Capital improvement budget', { builder:'hold.report / report.cashflow' }), X('taxAnalysis', 'Tax analysis', { builder:'report.afterTax', when:'tax inputs entered' }),
   X('refiExec', 'Executive refinance summary', { builder:'refinance.report' }), X('existingDebt', 'Existing debt and payoff', { builder:'refinance.report' }), X('proposedDebt', 'Proposed financing and lender tests', { builder:'refinance.report' }), X('refiProceeds', 'Proceeds and equity', { builder:'refinance.report' }), X('refiCompare', 'Alternative structures', { builder:'refinance.report' }),
   X('holdExec', 'Executive hold / sell summary', { builder:'hold.report' }), X('holdCompare', 'Hold vs. sell', { builder:'hold.report' }), X('saleTax', 'Disposition tax estimate', { builder:'hold.report', when:'a cost basis is entered' }),
-  P('afterTaxCF', 'After-tax cash flow'), P('investorSchedules', 'Investor contributions and distributions'),
+  X('afterTaxCF', 'After-tax cash flow', { builder:'report.afterTax' }), P('investorSchedules', 'Investor contributions and distributions'),
   P('pfExec', 'Executive portfolio summary'), P('pfComposition', 'Portfolio composition'), P('pfValues', 'Asset-level valuations'), P('pfOps', 'Operating performance'), P('pfConsolidation', 'Portfolio consolidation'),
   P('pfDebt', 'Debt and maturity schedule'), P('pfCapital', 'Capital improvement requirements'), P('pfTax', 'Depreciation and tax profiles'), P('pfCompare', 'Asset-level comparisons'), P('pfRisk', 'Portfolio risk'), P('pfScenarios', 'Scenario comparison'),
   P('bizExec', 'Executive business summary'), P('bizOps', 'Revenue, costs and EBITDA'), P('bizCash', 'Working capital and free cash flow'), P('bizValue', 'Valuation and multiples'), P('bizSens', 'Sensitivity')
@@ -23263,7 +23265,7 @@ R.addReport('development', ['cover', 'dashboard', 'devBudget', 'devDraws', 'sche
 R.addReport('valuation', ['valExec', 'propDesc', 'rentRollMix', 'incomeAnalysis', 'opexAnalysis', 'noiRecon', 'capRateAnalysis', 'valueConclusion', 'valSens', 'disclosures']);
 R.addReport('refinance', ['refiExec', 'propDesc', 'existingDebt', 'proposedDebt', 'refiProceeds', 'refiCompare', 'disclosures']);
 R.addReport('hold', ['holdExec', 'propDesc', 'acqCashFlow', 'capitalBudget', 'holdCompare', 'saleTax', 'disclosures']);
-R.addReport('comprehensive', ['cover', 'dashboard', 'acqFinancial', 'capitalBudget', 'acqCashFlow', 'afterTaxCF', 'taxAnalysis', 'investorSchedules', 'waterfall', 'performance', 'credit', 'disclosures']);
+R.addReport('comprehensive', ['cover', 'dashboard', 'acqFinancial', 'capitalBudget', 'acqCashFlow', 'afterTaxCF', 'taxAnalysis', 'waterfall', 'performance', 'credit', 'disclosures']);
 R.addReport('portfolio', ['pfExec', 'pfComposition', 'pfValues', 'pfOps', 'pfConsolidation', 'pfDebt', 'pfCapital', 'pfTax', 'pfCompare', 'pfRisk', 'pfScenarios', 'disclosures']);
 R.addReport('business', ['bizExec', 'bizOps', 'bizCash', 'bizValue', 'bizSens', 'disclosures']);
 })();
@@ -23296,7 +23298,7 @@ R.addChecks('development', ['budget', 'unlev', 'su', 'draws', 'capint', 'facilit
 R.addChecks('valuation', ['readiness', 'noiTies', 'valueTies', 'noDebt']);
 R.addChecks('refinance', ['readiness', 'noiTies', 'payoffTies', 'sizingTies']);
 R.addChecks('hold', ['readiness', 'noiTies', 'holdTies']);
-R.addChecks('comprehensive', CORE.concat(['capitalTies', 'basisTies']));
+R.addChecks('comprehensive', CORE.slice());   /* the acquisition engine's checks; the capital and basis reconciliations are planned and not counted */
 R.addChecks('portfolio', ['portfolioTies']);
 R.addChecks('business', ['readiness', 'bizTies']);
 /* applies(analysisId, integrityCheckId): false means N/A for this analysis */
@@ -23458,6 +23460,7 @@ function build(s, oldMain){
   var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
     yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Lender DSCR, year 1', X(h.dscr), bkDscrBasis('lender', s) + ' · loan min ' + X(mind), dscrOk, 'Debt']; },
     loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ var tce = isFinite(h.tce) ? h.tce : h.equity; return [typeof window.bkCapName === 'function' ? window.bkCapName('totalContributedEquity') : 'Total contributed equity', M(tce), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };   /* the headline equity names its measure, as the bottom band and the Deal Snapshot do */
+  TILE.afterTaxIRR = function(){ var x = safe(function(){ return bkAfterTaxV18(); }, null), v = x ? x.atIRR : NaN; return ['After-tax IRR', P(v), x ? 'depreciation, income tax and the tax on the sale' : 'enter the tax inputs', isFinite(v) ? (v >= hurdle * 0.75 ? 'pass' : 'warn') : '', 'After-Tax']; };   /* Comprehensive leads with it */
   var tileIds = safe(function(){ return window.BKReg.tiles(window.BKReg.of(s).id); }, null) || ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
   var kpis = can && h ? tileIds.filter(function(id){ return TILE[id]; }).map(function(id){ return TILE[id](); }) : [];
   var next;
@@ -34234,7 +34237,7 @@ function monthsTo(txt, start){ var t = String(txt || '').trim(); if(!t) return n
 function saleTax(s, price, costs, years){ var basis = pos(s.holdTaxBasis); if(!basis) return { tax:null, note:'not estimated: enter the cost basis' };
   var acc = Math.max(0, n(s.holdAccumDep) || 0) + Math.max(0, n(s.holdAnnualDep) || 0) * years, adj = basis - acc, gain = price - costs - adj;
   if(gain <= 0) return { tax:0, gain:gain, adj:adj, acc:acc, recapture:0, capital:0, note:'no gain on the sale' };
-  var rr = n(s.holdRecaptureRate) !== null ? n(s.holdRecaptureRate) : 0.25, cg = n(s.holdCapGainsRate) !== null ? n(s.holdCapGainsRate) : 0.20, rec = Math.min(gain, acc), rest = gain - rec;
+  var rr = n(s.depRecaptureRate) !== null ? n(s.depRecaptureRate) : 0.25, cg = n(s.capGainsRate) !== null ? n(s.capGainsRate) : 0.20, rec = Math.min(gain, acc), rest = gain - rec;
   return { tax:rec * rr + rest * cg, gain:gain, adj:adj, acc:acc, recapture:rec * rr, capital:rest * cg, rr:rr, cg:cg, note:'estimate: recapture ' + P(rr, 0) + ', capital gains ' + P(cg, 0) }; }
 
 window.bkHold = function(s, over){
@@ -34290,7 +34293,7 @@ window.bkHold = function(s, over){
 /* ---------- the page ---------- */
 var LABEL = { currentValue:'Current property value', valCapRate:'Or: market cap rate', valDate:'As of (analysis date)', exLoanBalance:'Existing loan balance', exLoanRate:'Existing interest rate', exLoanMaturity:'Existing maturity date', exLoanAmort:'Remaining amortization', exPrepay:'Prepayment penalty if sold now',
   holdYears:'Hold period', rentGrowth:'Rent growth', opexGrowth:'Expense growth', exitCap:'Exit cap rate', saleCostPct:'Cost of sale', holdDiscRate:'Discount rate (your required return)',
-  holdTaxBasis:'Cost basis (purchase price plus improvements)', holdAccumDep:'Accumulated depreciation to date', holdAnnualDep:'Depreciation each further year', holdRecaptureRate:'Depreciation recapture rate', holdCapGainsRate:'Capital gains rate' };
+  holdTaxBasis:'Cost basis (purchase price plus improvements)', holdAccumDep:'Accumulated depreciation to date', holdAnnualDep:'Depreciation each further year', depRecaptureRate:'Depreciation recapture rate', capGainsRate:'Capital gains rate' };
 function fv(v, kind){ if(v === null || v === undefined || v === '') return ''; var x = Number(v); if(!isFinite(x)) return String(v); return kind === 'pct' ? String(+(x * 100).toFixed(4)) : kind === 'text' ? String(v) : x.toLocaleString('en-US', { maximumFractionDigits:4 }); }
 function inp(key, kind, s, unit, ph){ return '<tr><td class="rowlabel">' + esc(LABEL[key] || key) + '</td><td class="v"><input type="text" class="rf-in" id="hd-' + key + '" value="' + esc(fv(s[key], kind)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' autocomplete="off" onchange="bkEdSet(\'' + key + '\',\'' + kind + '\',this.value,\'null\')"></td><td class="u">' + esc(unit || '') + '</td></tr>'; }
 function tbl(cap, rows, id, head){ return '<div class="tbl-wrap" style="margin-top:14px;overflow-x:auto"><table class="fin"' + (id ? ' id="' + id + '"' : '') + '>' + (cap ? '<caption>' + esc(cap) + '</caption>' : '') + (head || '') + '<tbody>' + rows.join('') + '</tbody></table></div>'; }
@@ -34320,7 +34323,7 @@ function sheet(){
   var inputs = tbl('Today', [inp('valDate', 'text', s, 'date', 'e.g. 1/1/2027'), inp('currentValue', 'num', s, '$'), inp('valCapRate', 'pct', s, '% (used when no value is entered)'), inp('saleCostPct', 'pct', s, '% of price')])
     + tbl('Existing loan', [inp('exLoanBalance', 'num', s, '$ (0 if none)'), inp('exLoanRate', 'pct', s, '%'), inp('exLoanAmort', 'num', s, 'years left (blank = interest only)'), inp('exLoanMaturity', 'text', s, 'date (repaid by you if inside the hold)', 'e.g. 6/30/2029'), inp('exPrepay', 'num', s, '$ (0 if none)')])
     + tbl('Hold case', [inp('holdYears', 'num', s, 'years'), inp('rentGrowth', 'pct', s, '% a year'), inp('opexGrowth', 'pct', s, '% a year'), inp('exitCap', 'pct', s, '% on the next year\'s NOI'), inp('holdDiscRate', 'pct', s, '% (blank = the target IRR, else 8%)')])
-    + tbl('Tax (optional, an estimate for professional review)', [inp('holdTaxBasis', 'num', s, '$'), inp('holdAccumDep', 'num', s, '$'), inp('holdAnnualDep', 'num', s, '$ a year'), inp('holdRecaptureRate', 'pct', s, '% (blank = 25%)'), inp('holdCapGainsRate', 'pct', s, '% (blank = 20%)')]);
+    + tbl('Tax (optional, an estimate for professional review)', [inp('holdTaxBasis', 'num', s, '$'), inp('holdAccumDep', 'num', s, '$'), inp('holdAnnualDep', 'num', s, '$ a year'), inp('depRecaptureRate', 'pct', s, '% (blank = 25%; shared with After-Tax)'), inp('capGainsRate', 'pct', s, '% (blank = 20%; shared with After-Tax)')]);
   var res = r.ok ? verdict(r) + tbl('Hold vs sell', compareRows(r), 'hd-compare') + flowTable(r) + byYearTable(r) + sensTable(r) + tbl('Tax on a sale', taxRows(r), 'hd-tax') + checksTable(r)
     : '<div class="note-flag" style="margin-top:14px"><span>&#9888;</span><div><b>Not calculated yet.</b> Still needed: ' + esc(r.missing.join('; ')) + '. Income and expenses are entered on Property &gt; Revenues and Expenses; capital spending on Expenses &gt; Capital.</div></div>';
   return { title:'Hold vs Sell', crumbs:'Operations', desc:'Keep the property or sell it today: the hold case\'s return on the cash you could take out now.', meta:{ Property:esc(s.name || 'Untitled'), 'Hold IRR':r.ok ? P(r.hold.irr) : '-', 'Net if sold today':r.ok ? $(r.now.net) : '-', Call:r.ok && r.call ? r.call : '-' }, main:'<div class="rf hd">' + inputs + res + '</div>', sidebar:'' };
