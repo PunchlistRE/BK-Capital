@@ -21016,12 +21016,20 @@ rule('dep.bonus-on-real-property', 'WARN', 'Depreciation', 'Depreciation', funct
   if(bad.length) return { msg:bad.length + ' component' + (bad.length > 1 ? 's are' : ' is') + ' flagged for bonus depreciation but recover over more than 20 years (27.5 / 39-year real property).',
     why:'Bonus depreciation is only available for property with a recovery period of 20 years or less. The engine ignores the flag, so the figure you expect to deduct up front is not deducted - the schedule will look lower than the flag suggests.' };
 });
+/* LAND AT 0%: land is generally not depreciable, so an allocation of 0% depreciates the whole price. The allocation in effect is what the active depreciation path used (bkLandAllocation, src/227). A treatment that is
+   selected and explained (a leasehold or ground lease, land owned or leased separately, another documented structure) silences the check: it asks for review, it never forces a percentage and sets no minimum. */
 rule('dep.land-zero', 'WARN', 'Depreciation', 'Depreciation', function(s){
-  var d = dep(s), hasDep = comps(s).length > 0 || d.costSeg;
-  if(!hasDep) return;
-  var pp = num(s.purchasePrice), land = d.landMethod === 'percent' ? pp * (num(d.landPct) || 0) : (num(d.landDollar) || 0);
-  if(pp > 0 && !(land > 0)) return { msg:'Depreciation is configured but the land value is zero - the whole purchase price would be depreciated.',
-    why:'Land is never depreciable. Depreciating it overstates every year’s deduction and tax saving, and understates the taxable gain at sale because the adjusted basis falls too far. Typical allocations are 10-40% of price, set by the assessor’s land-to-total ratio or an appraisal.' };
+  if(isDev(s) || /^land$/i.test(String(s.propertyType || '')) || !(num(s.purchasePrice) > 0) || typeof window.bkLandAllocation !== 'function') return;
+  var a = window.bkLandAllocation(s); if(!a) return;
+  /* zero where it matters: in the allocation the returns actually used, or in a depreciation schedule configured on the Depreciation page (cost segregation or components), which its own reports use */
+  var d = dep(s), configured = comps(s).length > 0 || d.costSeg, canonLand = d.landMethod === 'percent' ? num(s.purchasePrice) * (num(d.landPct) || 0) : (num(d.landDollar) || 0), inEffectZero = a.depreciable > 0 && !(a.land > 0), configuredZero = configured && !(canonLand > 0);
+  if(!inEffectZero && !configuredZero) return; if(!inEffectZero) a = Object.assign({}, a, { path:'the Depreciation page settings', depreciable:num(s.purchasePrice) });
+  var r = typeof window.bkLandReview === 'function' ? window.bkLandReview(s) : { selected:false, documented:false }; if(r.documented) return;
+  var ill = safe(function(){ return window.bkLandIllustration(s); }, null);
+  return { msg: r.selected ? 'The land allocation is 0% and the treatment chosen (' + r.treatment + ') has no explanation.' : 'Land is allocated 0% of the purchase price: the whole ' + $(a.depreciable) + ' is depreciable.',
+    why:'Land is generally not depreciable. Allocating the whole price to depreciable property can overstate the depreciation deductions and the tax relief they give, and understate the gain at sale, which distorts taxable income, depreciation recapture, after-tax cash flow, after-tax proceeds and the after-tax IRR and NPV.'
+      + (ill && isFinite(ill.current) && isFinite(ill.withTen) ? ' Illustration only (10% is a step, not a recommended allocation): with 10% of the price as land the after-tax IRR would be ' + pc(ill.withTen, 2) + ' instead of ' + pc(ill.current, 2) + '.' : '')
+      + ' The allocation in effect comes from ' + a.path + '. Confirm or correct it on the Depreciation page; if 0% is right for this structure (a leasehold or ground lease, land owned or leased separately), choose that treatment there and explain it. The model sets no minimum: the allocation needs a defensible valuation and the tax treatment that applies.' };
 });
 rule('dep.land-extreme', 'WARN', 'Depreciation', 'Depreciation', function(s){
   var d = dep(s); if(!(comps(s).length > 0 || d.costSeg) && !(num(d.landPct) > 0 || num(d.landDollar) > 0)) return;
@@ -35062,6 +35070,48 @@ function panel(s){ var rows = KEYS.map(function(k){ var t = window.bkTaxRateStat
 ['After-Tax', 'After-Tax Report'].forEach(function(name){ var orig = typeof RENDERERS !== 'undefined' ? RENDERERS[name] : null; if(typeof orig !== 'function' || orig.__bkTaxProv) return;
   var w = function(){ var o = orig.apply(this, arguments); try { if(o && typeof o.main === 'string'){ var s = bkLoad(); if(!(typeof window.bkDealReadiness === 'function' && window.bkDealReadiness().canCalculate === false)){ o.main = banner(s) + (name === 'After-Tax' ? panel(s) : '') + o.main; } } } catch(e){} return o; };
   w.__bkTaxProv = true; w.__bkOriginal = orig.__bkOriginal || orig; if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(name, w); else RENDERERS[name] = w; });
+})();
+</script>
+<script id="bk-land-allocation">/* LAND ALLOCATION REVIEW. Land is generally not depreciable. When the allocation in effect is 0% of the purchase price, the whole price is depreciated, which can overstate depreciation, taxable-income relief, recapture
+   basis, after-tax cash flow, after-tax proceeds and the after-tax IRR. The Model Check dep.land-zero (src/129) asks for the allocation to be reviewed, using what this part reads.
+
+   This part changes no calculation, sets no minimum percentage (the right allocation comes from a defensible valuation and the applicable tax treatment, not from the model) and does not overwrite an allocation.
+     bkLandAllocation(s)   the allocation IN EFFECT: the land value and total basis the active depreciation path used (the engine's own landValue / totalBasis), and which path that was. Read on a copy of the deal.
+     the review            a treatment the user selects and explains on the Depreciation page. A 0% land allocation is a legitimate treatment in some structures (a leasehold or ground lease, land owned or leased separately,
+                           another documented treatment); those are documented here instead of being forced to a percentage. The check stays quiet once a treatment is selected AND explained. */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function') return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+var TREAT = ['Reviewed: 0% land is correct for this deal', 'Leasehold or ground lease', 'Land owned or leased separately', 'Other treatment'];
+window.BK_LAND_TREATMENTS = TREAT;
+
+/* the allocation the depreciation actually used (read inside bkRunWith: the after-tax engine saves defaults into a deal the first time it runs, and a check must never change the deal) */
+window.bkLandAllocation = function(s){ s = s || bkLoad(); var r = safe(function(){ return window.bkRunWith({}, function(){ var a = window.bkAfterTaxV18(); return { land:num(a.landValue), basis:num(a.totalBasis), dep:num(a.deprBasis), src:String(a.deprSource || ''), at:a.atIRR }; }); }, null);
+  if(!r) return null; var canon = /canonical|macrs-tax-grade/.test(r.src);
+  return { land:r.land, basis:r.basis, depreciable:r.dep, pct:r.basis > 0 ? r.land / r.basis : 0, path:canon ? 'the Depreciation page' : 'the after-tax default schedule', source:r.src, at:r.at, isDefault:!canon && (s.landValuePct === undefined || s.landValuePct === null || s.landValuePct === '') }; };
+/* has the user selected a treatment and explained it */
+window.bkLandReview = function(s){ s = s || bkLoad(); var t = String(s.landReviewTreatment || ''), n = String(s.landReviewNote || '').trim(); return { treatment:t, note:n, selected:TREAT.indexOf(t) > -1, documented:TREAT.indexOf(t) > -1 && n.length > 0 }; };
+/* what the allocation is worth, shown as an illustration only: the after-tax IRR if 10% of the price were land, against the current one. 10% is a step for illustration, never a recommendation. */
+window.bkLandIllustration = function(s){ s = s || bkLoad(); var cur = window.bkLandAllocation(s); if(!cur) return null;
+  /* like for like: change only the path that produced the allocation in effect (the default schedule's land share, or the Depreciation page's land setting), so no other depreciation setting switches */
+  var alt = safe(function(){ var over = { landValuePct:0.1 }; if(/Depreciation page/.test(cur.path)){ var d = Object.assign({}, s._depr || {}); d.settings = Object.assign({}, d.settings || {}, { landMethod:'percent', landPct:0.1 }); over = { _depr:d }; }
+    return window.bkRunWith(over, function(){ return window.bkAfterTaxV18().atIRR; }); }, null);
+  return { current:cur.at, withTen:alt }; };
+
+/* the review on the Depreciation page */
+function panel(s){ var a = window.bkLandAllocation(s), r = window.bkLandReview(s); if(!a) return '';
+  var opts = TREAT.map(function(t){ return '<option value="' + esc(t) + '"' + (t === r.treatment ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
+  return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Land allocation: review</caption><tbody>'
+    + '<tr><td class="rowlabel" data-bk-align="text">Allocation in effect<span class="bk-sub">What the after-tax figures use now, from ' + esc(a.path) + (a.isDefault ? ' (the model\'s default, not an allocation you entered)' : '') + '.</span></td><td class="v" data-bk-align="text">$' + Math.round(a.land).toLocaleString('en-US') + ' of $' + Math.round(a.basis).toLocaleString('en-US') + ' (' + (a.pct * 100).toFixed(1) + '%)</td></tr>'
+    + '<tr><td class="rowlabel" data-bk-align="text">Treatment<span class="bk-sub">Only needed when the allocation is 0%. A leasehold or ground lease, land owned or leased separately, or another structure can be a legitimate reason; say which.</span></td><td class="v"><select onchange="bkSetField(\'landReviewTreatment\',this.value)"><option value="">Select…</option>' + opts + '</select></td></tr>'
+    + '<tr><td class="rowlabel" data-bk-align="text">Explanation<span class="bk-sub">What supports this treatment (the lease, the appraisal or assessor split, the structure). It is kept with the deal.</span></td><td class="v"><input type="text" value="' + esc(r.note) + '" placeholder="e.g. 99-year ground lease; land is leased" onchange="bkSetField(\'landReviewNote\',this.value)" style="width:100%"></td></tr>'
+    + '</tbody></table></div><div class="note-flag"><span>&#9432;</span><div>Land is generally not depreciable. The model does not set a land percentage: it comes from a defensible valuation (an appraisal, the assessor\'s land-to-total ratio or a cost study) and the tax treatment that applies to this property and investor. Enter the allocation above, or document why none applies.</div></div>'; }
+var orig = typeof RENDERERS !== 'undefined' ? RENDERERS['Depreciation'] : null;
+if(typeof orig === 'function' && !orig.__bkLandReview){ var w = function(){ var o = orig.apply(this, arguments); try { if(o && typeof o.main === 'string' && !/develop/i.test(String(bkLoad().dealType || ''))) o.main = panel(bkLoad()) + o.main; } catch(e){} return o; };
+  w.__bkLandReview = true; w.__bkOriginal = orig.__bkOriginal || orig; if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Depreciation', w); else RENDERERS['Depreciation'] = w; }
 })();
 </script>
 <script id="bk-nav">/* NAVIGATION, ONE DEFINITION (2.1, owner's November 2026 regrouping). Tab -> groups -> sheets, defined once here, drives all three: the top tabs (NAV_TABS), the sub-tab row under them and the side menu (the vertical version of the same tabs,
