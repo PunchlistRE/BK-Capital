@@ -69,13 +69,23 @@ window.bkDealFindings = function(s, o){ s = s || bkLoad(); o = o || {}; var key 
   });
   var cfl = safe(function(){ return window.bkConflicts(); }, []) || [];
   cfl.forEach(function(c){ var tier = c.acknowledged ? 6 : c.level === 'ERROR' ? 1 : c.level === 'WARN' ? 4 : 6; add({ kind:'inconsistent', tier:tier, group:groupOfArea(c.area), sheet:c.sheet, fieldsOf:c.fields || null, title:(c.acknowledged ? 'Acknowledged: ' : '') + c.message, detail:c.why || '', rule:'Model Checks: ' + c.id, level:c.level }); });
+  /* THE GUIDE'S OLD "WORTH A LOOK" RULES, now findings. Each rule keeps its own threshold and its proposal (src/158 advice()); a warning-level rule is a recommendation (tier 4), an information-level one an observation (tier 6). A rule about an input that
+     already has a finding is folded into it (one issue, one finding). A proposal is only ever a button into the guide's confirm step: the deal and the Base Case are not touched. */
+  var SECG = { income:'Revenue', expenses:'Expenses', exit:'Returns', price:'Property', debt:'Debt', land:'Property', review:'Returns' };
+  var advR = safe(function(){ return typeof window.bkGuideAdvice === 'function' ? window.bkGuideAdvice(s) : []; }, []) || [];
+  advR.forEach(function(a){ var grp = a.field ? (rows.filter(function(r){ return r.k === a.field; })[0] || {}).group : null, warn = a.lvl === 'warn', eff = o.measure && base && a.fix ? metric(base, run({ [a.fix.k]: a.fix.v })) : null;
+    add({ kind:'advice', advice:true, advSec:a.sec, tier:warn ? 4 : 6, cls:warn ? 'recommendation' : 'observation', group:grp || SECG[a.sec] || 'Returns', field:a.field || null, sheet:a.sec === 'review' ? 'Deal Review' : undefined, title:a.text, detail:'', fix:a.fix || null,
+      impact:eff ? Math.abs(eff.v) : null, impactText:eff ? 'with the proposal (' + String(a.fix.label).replace(/^Propose /, '') + '): ' + show(eff) : '', rule:'Guide advice: ' + a.sec }); });
+  F = F.filter(function(f){ if(f.kind !== 'advice' || !f.field) return true; var p = F.filter(function(x){ return x.kind === 'missing' && x.field === f.field; })[0]; if(!p) return true;
+    p.related = (p.related || []).concat([{ rule:f.rule, title:f.title, detail:'' }]); p.tier = Math.min(p.tier, f.tier); p.rule += ' + ' + f.rule; p.fromAdvice = true; p.advSec = f.advSec; p.fix = p.fix || f.fix; p.detail = (p.detail ? p.detail + ' ' : '') + f.title; return false; });
   /* ONE UNDERLYING ISSUE, ONE FINDING. A Model Check that names the input it is about (its rule's `fields`) and an input finding for the same input are one issue seen twice (a blank or zero management fee is
      "not entered" and "the fee is zero"). The input finding is the primary one (it has the action and the measured effect); the check is folded into it as a related note, and the more severe tier of the two applies. */
   F = F.filter(function(f){ if(f.kind !== 'inconsistent' || !f.fieldsOf || !f.fieldsOf.length) return true;
-    var p = F.filter(function(x){ return x.kind === 'missing' && f.fieldsOf.indexOf(x.field) > -1; })[0]; if(!p) return true;
+    var p = F.filter(function(x){ return (x.kind === 'missing' || x.kind === 'advice') && f.fieldsOf.indexOf(x.field) > -1; })[0]; if(!p) return true;
     p.related = (p.related || []).concat([{ rule:f.rule, title:f.title, detail:f.detail }]); p.tier = Math.min(p.tier, f.tier); p.rule += ' + ' + f.rule; p.detail = (p.detail ? p.detail + ' ' : '') + (f.detail || ''); return false; });
   var meas = null; if(o.measure && can){ meas = window.bkMeasureAssumptions(s); meas.rows.forEach(function(m, i){ if(i >= 8) return;
     add({ kind:'consequential', tier:5, group:m.debt ? 'Debt' : (ix.rows.filter(function(r){ return r.k === m.k; })[0] || {}).group || 'Returns', field:m.k, title:m.label + ' matters: ' + m.step + ' ' + m.worstDir + ' moves ' + show(m.worst), detail:'Measured by re-running the deal with ' + m.label.toLowerCase() + ' ' + m.step + ' higher and lower; this is the worse side.', impact:m.effect, rule:'engine re-run (bkRunWith)' }); }); }
+  F.forEach(function(f){ if(!f.cls) f.cls = f.tier <= 1 || (f.tier === 4 && f.kind === 'inconsistent') ? 'warning' : f.tier === 2 || f.tier === 3 ? 'recommendation' : 'observation'; });
   var pri = function(f){ return f.group === 'Debt' || f.group === 'Tax' ? 0 : 1; };
   F.forEach(function(f, i){ f.id = f.kind + ':' + (f.field || f.rule) + ':' + i; });
   F.sort(function(a, b){ if(a.tier !== b.tier) return a.tier - b.tier; if(pri(a) !== pri(b)) return pri(a) - pri(b); var ia = a.impact == null ? -1 : a.impact, ib = b.impact == null ? -1 : b.impact; if(ia !== ib) return ib - ia;
@@ -89,7 +99,10 @@ window.bkDealFindings = function(s, o){ s = s || bkLoad(); o = o || {}; var key 
 
 /* the review as the guide shows it. The quick part paints at once; the measured part (engine re-runs) fills in a moment later. */
 function openBtn(f){ return f.field ? '<button type="button" class="bk-btn bk-rv-open" onclick="bkGuideField(\'' + esc(f.field) + '\')">Open</button>' : f.sheet && typeof RENDERERS !== 'undefined' && RENDERERS[f.sheet] ? '<button type="button" class="bk-btn bk-rv-open" onclick="bkGuideDetail(\'' + esc(f.sheet) + '\')">Open</button>' : ''; }
-function item(f){ return '<div class="bk-rv-i bk-rv-t' + f.tier + '"><div><b>' + esc(f.title) + '</b><small>' + esc(f.detail || '') + (f.impactText ? ' ' + esc(f.impactText.charAt(0).toUpperCase() + f.impactText.slice(1)) + '.' : '') + '</small><small class="bk-rv-why">' + esc(f.why) + '</small></div>' + openBtn(f) + '</div>'; }
+var CLSL = { warning:'Warning', recommendation:'Recommendation', observation:'Observation' };
+function fixBtn(f){ return f.fix ? '<button type="button" class="bk-btn" onclick="bkGuideProp(\'' + esc(f.fix.k) + '\',' + Number(f.fix.v) + ')">' + esc(f.fix.label) + '</button>' : ''; }
+function item(f, o){ return '<div class="bk-rv-i bk-rv-t' + f.tier + ' bk-rv-c-' + f.cls + '"><div><em class="bk-rv-cls">' + CLSL[f.cls] + '</em><b>' + esc(f.title) + '</b><small>' + esc(f.detail || '') + (f.impactText ? ' ' + esc(f.impactText.charAt(0).toUpperCase() + f.impactText.slice(1)) + '.' : '') + '</small><small class="bk-rv-why">' + esc(f.why) + '</small></div>' + (o && o.noOpen ? '' : openBtn(f)) + fixBtn(f) + '</div>'; }
+window.bkFindingsHtml = function(list, o){ return list.map(function(f){ return item(f, o); }).join(''); };
 window.bkReviewHtml = function(s){ s = s || bkLoad(); var q = window.bkDealFindings(s, { measure:false }); if(!q.findings.length && !q.known.length) return '';
   var by = function(k){ return q.findings.filter(function(f){ return f.kind === k; }); };
   var h = '<div class="bk-rv" id="bk-rv"><div class="bk-rv-h">Review of the deal</div>';
@@ -97,6 +110,7 @@ window.bkReviewHtml = function(s){ s = s || bkLoad(); var q = window.bkDealFindi
   h += (typeof window.bkLensHtml === 'function' ? window.bkLensHtml(s) : '');   /* the debt and tax lenses (src/225) come right after what deserves attention first */
   h += '<div class="bk-rv-sec"><b>What is known</b><div class="bk-rv-known">' + (q.known.length ? q.known.map(function(k){ return '<span><em>' + esc(k.label) + '</em> ' + esc(k.value) + '</span>'; }).join('') : '<small>Nothing entered yet.</small>') + '</div><div class="bk-rv-groups">' + q.groups.filter(function(g){ return g.total; }).map(function(g){ return '<span>' + esc(g.group) + ' ' + g.entered + ' of ' + g.total + '</span>'; }).join('') + '</div></div>';
   var miss = by('missing'); h += '<div class="bk-rv-sec"><b>What is missing</b>' + (miss.length ? miss.map(item).join('') : '<small>Every required and expected input is entered.</small>') + '</div>';
+  var adv = by('advice'); h += '<div class="bk-rv-sec"><b>What to consider</b>' + (adv.length ? adv.map(item).join('') : '<small>No recommendation or observation beyond the items above.</small>') + '</div>';
   var inc = by('inconsistent'); h += '<div class="bk-rv-sec"><b>What is inconsistent</b>' + (inc.length ? inc.map(item).join('') : '<small>No Model Check is flagging this deal.</small>') + '</div>';
   h += '<div class="bk-rv-sec"><b>Assumptions that matter most</b><div id="bk-rv-meas"><small>' + (q.can ? 'Measuring: re-running the deal with each assumption moved by a fixed step.' : 'Shown once the model can calculate this deal: it is withholding results until the required inputs are in.') + '</small></div></div></div>';
   if(q.can) setTimeout(function(){ paintMeasured(); }, 60);
