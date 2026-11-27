@@ -32,6 +32,11 @@ const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
   for (let [tag, deal, want] of [['acquisition', A, GUIDE_ACQ], ['development', V, GUIDE_DEV]]) {
     /* a deal with no commercial space is not asked commercial rent, recoveries or commercial vacancy */
     if (!(deal.commercialArea > 0 || deal.commercialUnits > 0 || deal.commercialRent > 0 || deal.recovery > 0 || (deal.leases || []).length)) want = want.map(([id, f]) => [id, f.filter(x => !/^(commercialRent|recovery|commercialVacancy)$/.test(x[0]))]);
+    /* the required flags follow the model's own list (owner decision, Nov 2026: the model decides what is required, src/081); the steps, fields and labels are today's. Expected inputs (taxes, insurance, repairs, management fee, vacancy, closing costs, loan-to-value) are no longer flagged required; property type and the closing date are. The development guide now asks the property type, which its readiness check has always needed. */
+    const REQ = tag === 'acquisition' ? ['name', 'propertyType', 'units', 'purchasePrice', 'closing', 'avgRent', 'acqRate', 'acqAmort', 'gpShare', 'pref', 'holdYears', 'exitCap', 'saleCostPct']
+      : ['name', 'propertyType', 'units', 'purchasePrice', 'sourceConstruction', 'closing', 'constructionMonths', 'avgRent', 'gpShare', 'pref', 'holdYears', 'exitCap', 'saleCostPct'];
+    want = want.map(([id, f]) => [id, f.map(x => [x[0], REQ.includes(x[0]) ? 1 : 0, x[2]])]);
+    if (tag === 'development') want = want.map(([id, f]) => id === 'property' ? [id, [f[0], f[1], ['propertyType', 1, 'What kind of building is it?'], ...f.slice(2)]] : [id, f]);
     await open(deal); const g = await p.evaluate(() => bkGuideSections(bkLoad()).map(s => [s.id, s.fields.map(f => [f.k, f.req ? 1 : 0, f.label])]));
     check('guide (' + tag + '): its steps, fields, labels and required flags are exactly today\'s, now from the registry', JSON.stringify(g) === JSON.stringify(want), JSON.stringify(g).slice(0, 300)); }
 
@@ -52,9 +57,9 @@ const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
   check('planned metrics are flagged and never show a number', plan);
 
   /* 5 step completion is computed from the deal */
-  const ss = await p.evaluate(() => { const R = BKReg, st = R.workflow('acquisition')[0]; const s = { name: '', units: 0 }; const a = R.stepState(st, s); const b2 = R.stepState(st, { name: 'X', units: 10 });
-    const mix = R.workflow('valuation')[1]; const c1 = R.requirement(mix.fields[1], { commercialArea: 0 }), c2 = R.requirement(mix.fields[1], { commercialArea: 5000 }); return { a, b: b2, c1, c2, zero: R.present('vacancy', { vacancy: 0 }), zeroPrice: R.present('purchasePrice', { purchasePrice: 0 }) }; });
-  check('a step is incomplete while a required field is blank and complete once filled', !ss.a.complete && ss.a.missing.join() === 'name,units' && ss.b.complete, JSON.stringify(ss));
+  const ss = await p.evaluate(() => { const R = BKReg, st = R.workflow('acquisition')[0]; const s = { name: '', units: 0 }; const a = R.stepState(st, s); const b2 = R.stepState(st, { name: 'X', units: 10, propertyType: 'Multifamily' });
+    const mix = R.workflow('valuation')[1]; const c1 = R.requirement(mix.fields[1], { analysisType: 'valuation', commercialArea: 0 }), c2 = R.requirement(mix.fields[1], { analysisType: 'valuation', commercialArea: 5000 }); return { a, b: b2, c1, c2, zero: R.present('vacancy', { vacancy: 0 }), zeroPrice: R.present('purchasePrice', { purchasePrice: 0 }) }; });
+  check('a step is incomplete while a required field is blank and complete once filled', !ss.a.complete && ss.a.missing.join() === 'name,propertyType,units' && ss.b.complete, JSON.stringify(ss));
   check('a conditional field is required only when its condition holds (tenant schedule when there is commercial space)', ss.c1 === 'na' && ss.c2 === 'required');
   check('zero is a valid vacancy but not a valid purchase price', ss.zero === true && ss.zeroPrice === false);
 

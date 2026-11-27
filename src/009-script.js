@@ -316,9 +316,10 @@ function bkParseDealDate(str, fallbackISO){
     const t = String(v).trim();
     if(!t) return null;
     let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);          // ISO
-    if(m) { const d = new Date(+m[1], +m[2]-1, +m[3]); return isNaN(d.getTime())?null:d; }
+    /* a date that does not exist (31/31/2027, 2027-02-30) is not a date: JavaScript would roll it into a different real one, and the cash flows would be dated by a day nobody entered */
+    if(m) { const d = new Date(+m[1], +m[2]-1, +m[3]); return (isNaN(d.getTime()) || d.getMonth() !== +m[2]-1 || d.getDate() !== +m[3])?null:d; }
     m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);            // M/D/YYYY
-    if(m) { const d = new Date(+m[3], +m[1]-1, +m[2]); return isNaN(d.getTime())?null:d; }
+    if(m) { const d = new Date(+m[3], +m[1]-1, +m[2]); return (isNaN(d.getTime()) || d.getMonth() !== +m[1]-1 || d.getDate() !== +m[2])?null:d; }
     return null;                                                // unrecognized - do NOT guess
   };
   return tryParse(str) || tryParse(fallbackISO) || null;

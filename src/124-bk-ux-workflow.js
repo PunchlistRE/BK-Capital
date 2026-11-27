@@ -629,6 +629,9 @@ function kpiBar(sheet){
       + cell('<span title="' + esc(dscrTitle()) + '">Lender DSCR</span>', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '\u2014') + cell('Yield on Cost', pct(h.yoc))
       + cell('Levered IRR', pct(h.levIRR)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Equity Multiple', mult(h.levMOIC))
       + cell('Net Profit', money(h.profit)) + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+  /* expected inputs still blank: the figures show, and the bar says they may be overstated (a blank line is counted as zero, never silently assumed) */
+  if(html && r && r.canCalculate && r.expectedMissing && r.expectedMissing.length){ var en = r.expectedMissing.slice(0, 3).map(function(x){ return String(x.label).replace(/,.*$/, '').toLowerCase(); }).join(', ') + (r.expectedMissing.length > 3 ? ' and ' + (r.expectedMissing.length - 3) + ' more' : '');
+    html += cell('Underwriting', 'INCOMPLETE', esc(en) + ' not entered: results may be overstated'); }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
   /* the inputs-tie chip sits to the right of the last top tab */
   try { var hx = document.getElementById('bk-tie-hdr'), tc = html ? tieChip() : '', tn = document.querySelector('.tabnav-primary'); if(!tc || !tn){ if(hx) hx.remove(); } else { if(hx && hx.parentNode !== tn){ hx.remove(); hx = null; } if(!hx){ hx = document.createElement('span'); hx.id = 'bk-tie-hdr'; tn.appendChild(hx); } if(hx.innerHTML !== tc) hx.innerHTML = tc; } } catch(e){}

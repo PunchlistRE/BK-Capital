@@ -734,9 +734,10 @@ function bkParseDealDate(str, fallbackISO){
     const t = String(v).trim();
     if(!t) return null;
     let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);          // ISO
-    if(m) { const d = new Date(+m[1], +m[2]-1, +m[3]); return isNaN(d.getTime())?null:d; }
+    /* a date that does not exist (31/31/2027, 2027-02-30) is not a date: JavaScript would roll it into a different real one, and the cash flows would be dated by a day nobody entered */
+    if(m) { const d = new Date(+m[1], +m[2]-1, +m[3]); return (isNaN(d.getTime()) || d.getMonth() !== +m[2]-1 || d.getDate() !== +m[3])?null:d; }
     m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);            // M/D/YYYY
-    if(m) { const d = new Date(+m[3], +m[1]-1, +m[2]); return isNaN(d.getTime())?null:d; }
+    if(m) { const d = new Date(+m[3], +m[1]-1, +m[2]); return (isNaN(d.getTime()) || d.getMonth() !== +m[1]-1 || d.getDate() !== +m[2])?null:d; }
     return null;                                                // unrecognized - do NOT guess
   };
   return tryParse(str) || tryParse(fallbackISO) || null;
@@ -10783,38 +10784,40 @@ function has(v){ return v !== undefined && v !== null && String(v).trim() !== ''
 function requirements(s){
   var isDev = /develop|redevelop/i.test(String(s.dealType||''));
   var core = [
-    {key:'dealId',       label:'Deal ID',                group:'Identity',    ok:has(s.dealId)},
-    {key:'name',         label:'Property / Deal Name',   group:'Identity',    ok:has(s.name)},
-    {key:'propertyType', label:'Property Type',          group:'Identity',    ok:has(s.propertyType)},
-    {key:'closing',      label:'Closing / Start Date',   group:'Identity',
+    /* fields: the deal fields that satisfy each requirement, so the guide, the step bar and the Inputs index read THIS table (bkModelNeeds below) instead of keeping a list of their own.
+       internal: assigned by the app, never typed by a user, so it is not offered as something to enter. */
+    {key:'dealId',       label:'Deal ID (assigned automatically)', group:'Identity', fields:[], internal:true, ok:has(s.dealId)},
+    {key:'name',         label:'Property / Deal Name',   group:'Identity',    fields:['name'], ok:has(s.name)},
+    {key:'propertyType', label:'Property Type',          group:'Identity',    fields:['propertyType'], ok:has(s.propertyType)},
+    {key:'closing',      label:'Closing / Start Date',   group:'Identity',    fields:['closing'],
        ok:(typeof bkParseDealDate==='function') ? !!bkParseDealDate(s.closing,null) : has(s.closing)},
-    {key:'purchasePrice',label:isDev?'Land Basis':'Purchase Price', group:'Basis', ok:num(s.purchasePrice)>0},
-    {key:'size',         label:'Building Size (units, GSF or commercial area)', group:'Basis',
+    {key:'purchasePrice',label:isDev?'Land Basis':'Purchase Price', group:'Basis', fields:['purchasePrice'], ok:num(s.purchasePrice)>0},
+    {key:'size',         label:'Building Size (units, GSF or commercial area)', group:'Basis', fields:['units', 'gsf', 'commercialArea'], any:true,
        ok:(num(s.units)>0 || num(s.gsf)>0 || num(s.commercialArea)>0)},
     /* units are asked for by name on a residential or untyped deal: building area alone does not say how many homes are being underwritten */
-    {key:'units',        label:isDev?'Residential Units':'Units', group:'Basis',
+    {key:'units',        label:isDev?'Residential Units':'Units', group:'Basis', fields:['units'],
        ok:num(s.units)>0 || (has(s.propertyType) && !/multi|resid|apart|mixed|student|senior|condo|town|single/i.test(String(s.propertyType)))},
-    {key:'revenue',      label:'Revenue Basis (rent roll, average rent or commercial rent)', group:'Operations',
+    {key:'revenue',      label:'Revenue Basis (rent roll, average rent or commercial rent)', group:'Operations', fields:['avgRent', 'rentRoll', 'commercialRent'], any:true,
        ok:((s.rentRoll||[]).length>0 || num(s.avgRent)>0 || num(s.commercialRent)>0)},
-    {key:'holdYears',    label:'Hold Period',            group:'Exit',        ok:num(s.holdYears)>0},
-    {key:'exitCap',      label:'Exit Capitalization Rate',group:'Exit',       ok:num(s.exitCap)>0}
+    {key:'holdYears',    label:'Hold Period',            group:'Exit',        fields:['holdYears'], ok:num(s.holdYears)>0},
+    {key:'exitCap',      label:'Exit Capitalization Rate',group:'Exit',       fields:['exitCap'], ok:num(s.exitCap)>0}
   ];
   if(isDev){
-    core.push({key:'constructionMonths', label:'Construction Period', group:'Development',
+    core.push({key:'constructionMonths', label:'Construction Period', group:'Development', fields:['constructionMonths'],
                ok:num(s.constructionMonths)>0});
     core.push({key:'devCost', label:'Development Cost (trade ladder or source construction cost)',
-               group:'Development',
+               group:'Development', fields:['sourceConstruction'],
                ok:(function(){
                  try { var d = bkDevV09(); return (num(d.hard)+num(d.soft))>0; } catch(e){ return false; }
                })()});
   }
   /* Investment-ready adds financing, exit mechanics and promote structure. */
   var invest = [
-    {key:'debt', label:'Debt Assumptions (rate and amortization, or Debt switched off)', group:'Debt',
+    {key:'debt', label:'Debt Assumptions (rate and amortization, or Debt switched off)', group:'Debt', fields:['acqRate', 'acqAmort'],
        ok:(s.debtEnabled === false) || (num(s.acqRate)>0 && num(s.acqAmort)>0)},
-    {key:'saleCostPct', label:'Cost of Sale', group:'Exit', ok:s.saleCostPct !== undefined},
-    {key:'gpShare', label:'GP / LP Equity Split', group:'Equity', ok:s.gpShare !== undefined},
-    {key:'pref',    label:'Preferred Return',     group:'Equity', ok:s.pref !== undefined}
+    {key:'saleCostPct', label:'Cost of Sale', group:'Exit', fields:['saleCostPct'], ok:s.saleCostPct !== undefined},
+    {key:'gpShare', label:'GP / LP Equity Split', group:'Equity', fields:['gpShare'], ok:s.gpShare !== undefined},
+    {key:'pref',    label:'Preferred Return',     group:'Equity', fields:['pref'], ok:s.pref !== undefined}
   ];
   return {isDev:isDev, core:core, invest:invest};
 }
@@ -10877,6 +10880,19 @@ function readiness(){
            sourceReview: canCalculate && srcEx > 0 };
 }
 window.bkDealReadiness = readiness;
+/* THE one definition of what an input is needed for, for the acquisition and development analyses (an analysis with its own engine states its own in the registry):
+     'results'     the model will not show results without it (the core list above: the deal is DRAFT until it is in)
+     'investment'  needed before the deal is investment-ready (the invest list: results show, the state stays UNDERWRITING READY)
+     'alt'         one of several fields that can satisfy a requirement; not required by itself
+   Anything else the analysis expects is the registry's 'expected' tier (src/139a): flagged while blank, never blocking. The guide's checklists, the step bar and the Inputs index all call
+   this, so a field can be called required in only one place. */
+window.bkModelRequirements = function(s){ return requirements(s || bkLoad()); };
+window.bkModelNeeds = function(key, s){ var q = requirements(s || bkLoad()), t = null;
+  /* a requirement ANY of several fields can satisfy (any:true: building size is units, area or commercial area; revenue is average rent, rent roll or commercial rent) is carried by its first field;
+     the others are 'alt': they satisfy it, but none of them is required by itself */
+  function scan(list, tier){ list.forEach(function(r){ var i = (r.fields || []).indexOf(key); if(i < 0) return; if(!r.any || i === 0) t = t === 'results' ? t : tier; else if(!t) t = 'alt'; }); }
+  scan(q.core, 'results'); if(t !== 'results') scan(q.invest, 'investment');
+  return t; };
 
 /* ---------------------------------------------------------------- one source for "required" and for a field's status
    The REQUIRED marker on a row, the Status chip beside it, the "Required inputs: n of m" bar, the Home count and the guide all read the requirements above, through these two
@@ -10904,10 +10920,11 @@ window.bkFieldStatus = function(key){
 /* ---------------------------------------------------------------- presentation */
 function esc(v){ return (typeof bkEsc==='function') ? bkEsc(v) : String(v==null?'':v); }
 window.bkReadinessChip = function(){
-  var r = readiness();
+  var r = (typeof window.bkDealReadiness === 'function' ? window.bkDealReadiness() : readiness());
   var cls = {'INVESTMENT READY':'pass','UNDERWRITING READY':'pass','NOT DECISION-GRADE':'fail','DRAFT':'warn',
              'BLOCKED':'fail','NO DEAL':''}[r.state] || '';
-  var label = r.state + (r.sourceReview ? ' · SOURCE REVIEW' : '');
+  if(cls === 'pass' && r.canCalculate && r.expectedMissing && r.expectedMissing.length) cls = 'warn';   /* results show, but the underwriting is not complete */
+  var label = r.state + (r.sourceReview ? ' · SOURCE REVIEW' : '') + (r.canCalculate && r.expectedMissing && r.expectedMissing.length ? ' · EXPECTED INPUTS MISSING' : '');
   return '<span class="status-chip '+cls+'">'+esc(label)+'</span>';
 };
 
@@ -11021,6 +11038,7 @@ if(typeof RENDERERS !== 'undefined' && typeof RENDERERS['Home'] === 'function'){
               ? '<tr><td class="rowlabel" data-bk-align="text">For Investment Ready</td><td data-bk-align="text">'
                 + r.investMissing.map(function(m){return esc(m.label);}).join(', ') + '</td></tr>'
               : '')
+          + (function(){ var rx = (window.bkDealReadiness && window.bkDealReadiness().expectedMissing) || []; return rx.length ? '<tr><td class="rowlabel" data-bk-align="text">Expected, not entered</td><td data-bk-align="text"><b>' + rx.map(function(m){ return esc(m.label); }).join(', ') + '</b><br>Results show, but a blank line is counted as zero or left to the model\'s fallback, so NOI and returns may be materially overstated.</td></tr>' : ''; })()
           + (r.blockers.length
               ? '<tr><td class="rowlabel" data-bk-align="text">Blocking</td><td data-bk-align="text">'
                 + r.blockers.map(esc).join('<br>') + '</td></tr>'
@@ -19969,6 +19987,9 @@ function kpiBar(sheet){
       + cell('<span title="' + esc(dscrTitle()) + '">Lender DSCR</span>', isFinite(h.dscr) && h.dscr ? h.dscr.toFixed(2) + 'x' : '\u2014') + cell('Yield on Cost', pct(h.yoc))
       + cell('Levered IRR', pct(h.levIRR)) + cell('Unlevered IRR', pct(h.unlevIRR)) + cell('Equity Multiple', mult(h.levMOIC))
       + cell('Net Profit', money(h.profit)) + cell('Case', esc(String(h.s.scenarioCase || 'Base')).toUpperCase()) : ''; }
+  /* expected inputs still blank: the figures show, and the bar says they may be overstated (a blank line is counted as zero, never silently assumed) */
+  if(html && r && r.canCalculate && r.expectedMissing && r.expectedMissing.length){ var en = r.expectedMissing.slice(0, 3).map(function(x){ return String(x.label).replace(/,.*$/, '').toLowerCase(); }).join(', ') + (r.expectedMissing.length > 3 ? ' and ' + (r.expectedMissing.length - 3) + ' more' : '');
+    html += cell('Underwriting', 'INCOMPLETE', esc(en) + ' not entered: results may be overstated'); }
   el.innerHTML = html; el.hidden = !html; document.body.classList.toggle('bk-has-kpibar', !!html);
   /* the inputs-tie chip sits to the right of the last top tab */
   try { var hx = document.getElementById('bk-tie-hdr'), tc = html ? tieChip() : '', tn = document.querySelector('.tabnav-primary'); if(!tc || !tn){ if(hx) hx.remove(); } else { if(hx && hx.parentNode !== tn){ hx.remove(); hx = null; } if(!hx){ hx = document.createElement('span'); hx.id = 'bk-tie-hdr'; tn.appendChild(hx); } if(hx.innerHTML !== tc) hx.innerHTML = tc; } } catch(e){}
@@ -22776,6 +22797,12 @@ if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('I
 'use strict';
 var R = { analyses:{}, order:[], fields:{}, workflows:{}, metrics:{}, summaries:{}, sections:{}, reports:{}, rules:{}, checks:{} };
 function put(map, id, v){ if(map[id]) throw new Error('BKReg: ' + id + ' is defined twice'); map[id] = v; return v; }
+/* Four classes decide how an input is treated (the model's own list, bkModelNeeds in src/081, is the only place 'required' is decided):
+     required   the model cannot show the dependent results without it ('needed' is the same, for the investment-ready state: results show, the deal is not yet investment-ready)
+     expected   the model can calculate without it, but leaving it out can materially distort the underwriting (taxes, insurance, repairs, management, vacancy, the loan-to-value): flagged while blank, never blocking
+     optional   not necessary for the analysis
+     na         does not apply to this deal's structure
+   In a workflow, req:'required' means "the analysis expects this"; for the acquisition and development analyses the model decides which of those are truly required. */
 var REQ = ['required', 'optional', 'conditional', 'na', 'derived'];
 var BKReg = {
   REQ:REQ,
@@ -22801,7 +22828,12 @@ var BKReg = {
   rule:function(id){ return R.rules[id] || null; },
   checks:function(id){ return R.checks[id] || []; },
   /* is a field required, optional, not applicable ... in this step, for this deal. Conditional fields resolve against the deal. */
-  requirement:function(entry, s){ var q = entry.req || 'optional'; if(q === 'conditional') return (typeof entry.when === 'function' && entry.when(s || {})) ? 'required' : 'na'; if(typeof entry.when === 'function' && !entry.when(s || {})) return 'na'; return q; },   /* a condition on an optional or required field hides it where it does not apply */
+  requirement:function(entry, s){ var q = entry.req || 'optional'; if(q === 'conditional') q = (typeof entry.when === 'function' && entry.when(s || {})) ? 'required' : 'na'; else if(typeof entry.when === 'function' && !entry.when(s || {})) return 'na';
+    /* the acquisition and development analyses are governed by the model's readiness rules: what the model needs is required, what the analysis only expects is 'expected' */
+    if(q !== 'na' && q !== 'derived' && BKReg.governed(s)){ var n = window.bkModelNeeds(entry.k, s); if(n === 'results') q = 'required'; else if(n === 'investment') q = 'needed'; else if(n === 'alt') { if(q === 'required') q = 'optional'; } else if(q === 'required') q = 'expected'; }
+    return q; },
+  /* is this deal's analysis one whose requirements the model's readiness rules decide (the acquisition and development analyses; an analysis with its own engine states its own) */
+  governed:function(s){ var a = BKReg.of(s); return !!(a && a.live && !a.ownReadiness && typeof window.bkModelNeeds === 'function'); },   /* a condition on an optional or required field hides it where it does not apply */
   /* a value is present when it was entered: blank and null are missing; zero is missing for amounts that cannot be zero (a price, a unit count) */
   present:function(k, s){ var f = R.fields[k] || {}, v = (s || {})[k]; if(typeof f.has === 'function') return !!f.has(s || {});   /* a field kept outside the deal's own keys says how to tell it is there */
     if(f.kind === 'table') return Array.isArray(v) && v.length > 0;
@@ -22810,8 +22842,9 @@ var BKReg = {
     if(v === null || v === undefined || v === '') return false;
     var n = Number(v); if(!isFinite(n)) return false; return f.zeroOk ? true : n !== 0; },
   /* each step's state for a deal, computed from the deal (never stored), so editing anywhere updates it */
-  stepState:function(step, s){ var need = (step.fields || []).filter(function(e){ return BKReg.requirement(e, s) === 'required'; }), miss = need.filter(function(e){ return !BKReg.present(e.k, s); });
-    return { required:need.length, missing:miss.map(function(e){ return e.k; }), complete:miss.length === 0 }; },
+  stepState:function(step, s){ var need = (step.fields || []).filter(function(e){ var q = BKReg.requirement(e, s); return q === 'required' || q === 'needed'; }), miss = need.filter(function(e){ return !BKReg.present(e.k, s); });
+    var exp = (step.fields || []).filter(function(e){ return BKReg.requirement(e, s) === 'expected' && !BKReg.present(e.k, s); });
+    return { required:need.length, missing:miss.map(function(e){ return e.k; }), complete:miss.length === 0, expectedMissing:exp.map(function(e){ return e.k; }) }; },
   /* consistency of the registry itself: every reference resolves, and a live analysis never asks for a field, metric or section that is not built */
   lint:function(){ var bad = [];
     R.order.forEach(function(id){ var a = R.analyses[id];
@@ -23040,14 +23073,14 @@ R.addWorkflow('acquisition', [
   S('valueadd', 'Value-add program', 'A renovation program: how many units a year, the rent lost while a unit is down, the premium afterwards and the capex per unit. Other income by line (laundry, parking, pet, storage, RUBS) is the other usual source of upside.', 'Revenues',
     [q('renoUnitsPerYear'), q('renoDownMonths'), q('renoPremium'), q('renoCapexPerUnit'), q('oiLaundry'), q('oiLateFees'), q('oiPetRent'), q('oiPetFees'), q('oiParking'), q('oiStorage'), q('oiRubsPct')],
     { skippable:true, when:function(s){ return /value-add|opportunistic|redevelopment|lease-up/i.test(String(s.acqStrategy || '')) || Number(s.renoUnitsPerYear) > 0; } }),
-  S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('loanType'), q('acqLTV', 'required'), q('debtRateType'), q('acqRate', 'required', { when:function(s){ return !s.debtRateType || s.debtRateType === 'Fixed'; } }), q('debtIndexName', 'optional', { when:function(s){ return s.debtRateType === 'Floating'; } }), q('debtIndexTenor', 'optional', { when:function(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtIndexRate', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtSpread', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('repayType'), q('acqAmort', 'optional', { when:function(s){ return String(s.repayType || '') !== 'Interest only'; } }), q('acqIO', 'optional', { when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); } }), q('debtTerm'), q('acqOrigFee')], { skippable:true }),
+  S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('loanType'), q('acqLTV', 'required', { when:function(s){ return s.debtEnabled !== false; } }), q('debtRateType'), q('acqRate', 'required', { when:function(s){ return s.debtEnabled !== false && (!s.debtRateType || s.debtRateType === 'Fixed'); } }), q('debtIndexName', 'optional', { when:function(s){ return s.debtRateType === 'Floating'; } }), q('debtIndexTenor', 'optional', { when:function(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtIndexRate', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtSpread', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('repayType'), q('acqAmort', 'optional', { when:function(s){ return s.debtEnabled !== false && String(s.repayType || '') !== 'Interest only'; } }), q('acqIO', 'optional', { when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); } }), q('debtTerm'), q('acqOrigFee')], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
     [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
   EXIT,
   S('decision', 'Decision thresholds', 'The lines the hold, refinance or sell tests are measured against. Without them the decision test has nothing to compare to. Skip to keep the standard ones.', 'Capital Allocation', [q('capRefiHeadroom'), q('capRefiDebtYield'), q('capSellCoE'), q('capSellNOIGrowth'), q('capKeepCoE')], { skippable:true }) ]);
 
 R.addWorkflow('development', [
-  S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' }), q('gla')]),
+  S('property', 'The project', 'What is being built.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('propertyType', 'required'), q('units', 'required', { label:'Residential units' }), q('gsf', 'optional', { label:'Gross building area, SF' }), q('gla')]),
   S('land', 'Land and budget', 'The two big costs. Land is the price; the construction budget is hard and soft costs together.', 'Deal Underwrite',
     [q('purchasePrice', 'required', { label:'Land price' }), q('sourceConstruction', 'required'), q('closing'), q('predevMonths'), q('constructionMonths', 'required'), q('leaseupMonths')]),
   INCOME, EXPENSES,
@@ -23103,7 +23136,7 @@ R.addWorkflow('comprehensive', [
   S('vacancy', 'Vacancy and credit loss', '', 'Market', [q('vacancy', 'required'), q('badDebtPct', 'required')]),
   EXPENSES,
   S('capital', 'Capital improvement program', 'Dated capital items below NOI. Leave empty if there are none.', 'Expenses', [q('capex')]),
-  S('financing', 'Financing structure', '', 'Investment', [q('acqLTV', 'required'), q('acqRate', 'required'), q('acqAmort', 'required'), q('acqDSCR')]),
+  S('financing', 'Financing structure', '', 'Investment', [q('acqLTV', 'required', { when:function(s){ return s.debtEnabled !== false; } }), q('acqRate', 'required'), q('acqAmort', 'required'), q('acqDSCR')]),
   S('su', 'Sources and uses', '', 'Sources & Uses', [q('value', 'derived')]),
   S('debtsched', 'Debt schedules', '', 'Debt Schedule', []),
   S('opcf', 'Operating cash flow', '', 'Property CF', []),
@@ -23356,13 +23389,23 @@ R.stageFromSteps = function(stage, s){ var wf = R.workflow(R.of(s).id), miss = [
 /* the workflow's completion, step by step: the same figures the guide shows */
 R.workflowState = function(s){ var a = R.of(s); return R.workflow(a.id).map(function(st){ var x = R.stepState(st, s); return { id:st.id, title:st.title, complete:x.complete, missing:x.missing, skippable:!!st.skippable }; }); };
 /* readiness carries the analysis and its workflow completion. Whether results are shown is still decided by the readiness rules themselves (the engine's critical inputs); the workflow adds the analysis-specific steps on top, for the guide and the step bar. */
-if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg){ var rd0 = window.bkDealReadiness, rd = function(){ var r = rd0.apply(this, arguments); try { if(r && typeof r === 'object'){ var d = bkLoad(); r.analysis = R.of(d).id; r.workflow = R.workflowState(d); r.workflowMissing = r.workflow.reduce(function(t, x){ return t + (x.skippable ? 0 : x.missing.length); }, 0);
+if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg){ var rd0 = window.bkDealReadiness, rd = function(){ var r = rd0.apply(this, arguments); try { if(r && typeof r === 'object'){ var d = bkLoad(); r.analysis = R.of(d).id; r.workflow = R.workflowState(d); r.workflowMissing = r.workflow.reduce(function(t, x){ return t + (x.skippable ? 0 : x.missing.length); }, 0); r.expectedMissing = R.expectedMissing(d);   /* expected, not required: never changes the state or canCalculate */
       /* an analysis with its own engine (not the acquisition or development engine) is ready when its own workflow is: its required fields decide, not the acquisition's */
       var an = R.analysis(r.analysis); if(an && an.live && an.ownReadiness && r.state !== 'NO DEAL'){ var miss = [], met = [];
         R.workflow(an.id).forEach(function(st){ if(st.skippable) return; (st.fields || []).forEach(function(e){ var f = R.field(e.k); if(!f || f.kind === 'derived') return; if(R.requirement(e, d) !== 'required') return; var row = { key:e.k, label:e.label || f.label, group:st.title, ok:R.present(e.k, d) }; (row.ok ? met : miss).push(row); }); });
         var seen = {}; miss = miss.filter(function(m){ if(seen[m.key]) return false; seen[m.key] = 1; return true; });
         var eng = an.ready ? an.ready(d) : true; r.missing = miss; r.met = met; r.investMissing = []; r.blockers = eng === true ? [] : [String(eng)];
         r.canCalculate = !miss.length && eng === true; r.state = !miss.length ? (eng === true ? 'ANALYSIS READY' : 'BLOCKED') : 'DRAFT'; } } } catch(e){} return r; }; rd.__reg = true; window.bkDealReadiness = rd; }
+/* EXPECTED inputs still blank, most material first. The order is fixed and deterministic (taxes move NOI most, then vacancy, insurance, repairs, management, the loan-to-value, closing costs);
+   the effect is stated as it is: a blank line is counted as zero, never silently assumed, and the results below it may be overstated. */
+var EXPECTED_ORDER = ['taxes', 'vacancy', 'insurance', 'rm', 'mgmtPct', 'acqLTV', 'conLTC', 'closingCostsPct'];
+var EXPECTED_EFFECT = { taxes:'counted as $0, so NOI and returns are overstated', insurance:'counted as $0, so NOI and returns are overstated', rm:'counted as $0, so NOI and returns are overstated', mgmtPct:'counted as 0%, so NOI and returns are overstated',
+  vacancy:'counted as 0% (a full building), so income and returns are overstated', acqLTV:'no loan-to-value limit entered, so the loan size and the returns rest on the model\'s fallback', conLTC:'no loan-to-cost limit entered, so the construction loan and the returns rest on the model\'s fallback',
+  closingCostsPct:'counted as 0%, so the cash needed at closing is understated' };
+R.expectedMissing = function(s){ s = s || (typeof bkLoad === 'function' ? bkLoad() : {}); if(!R.governed(s)) return [];
+  var seen = {}, out = []; R.workflow(R.of(s).id).forEach(function(st){ if(typeof st.when === 'function' && !st.when(s)) return; (st.fields || []).forEach(function(e){ if(seen[e.k]) return; var f = R.field(e.k); if(!f || f.kind === 'derived') return;
+    if(R.requirement(e, s) !== 'expected' || R.present(e.k, s)) return; seen[e.k] = 1; out.push({ key:e.k, label:e.label || f.label, effect:EXPECTED_EFFECT[e.k] || 'left blank: the results use the model\'s fallback, not a figure you chose', rank:EXPECTED_ORDER.indexOf(e.k) < 0 ? 99 : EXPECTED_ORDER.indexOf(e.k), sheet:st.sheet }); }); });
+  return out.sort(function(a, b){ return a.rank - b.rank; }); };
 var lint0 = R.lint;
 R.lint = function(){ var bad = lint0.call(R), JUDGE = ['identity', 'inputs', 'operations', 'debt', 'returns', 'review', 'steps'];
   R.analyses().forEach(function(a){ var wf = R.workflow(a.id).map(function(x){ return x.id; });
@@ -23492,6 +23535,7 @@ function build(s, oldMain){
   var rd = ready ? String(ready.state || '') : '';
   return '<div class="pl-home"><div class="pl-hero"><h2>' + esc(s.name || 'Untitled deal') + '</h2><p class="pl-sub">' + esc([s.dealType, s.propertyType, s.location, s.units ? s.units + (dev ? ' units planned' : ' units') : '', s.closing ? (dev ? 'start ' : 'closing ') + s.closing : ''].filter(Boolean).join(' · ')) + '</p>'
     + '<div class="pl-chips">' + tag(esc(rd || 'DRAFT'), /READY/.test(rd) ? 'pass' : 'warn') + tag(esc(String(s.scenarioCase || 'Base')) + ' CASE', '') + (price ? tag('Price ' + M(price), '') : '') + '</div></div>'
+    + (function(){ var xm = safe(function(){ return window.bkDealReadiness().expectedMissing; }, []) || []; return kpis.length && xm.length ? '<div class="note-flag"><span>&#9888;</span><div><b>Underwriting is incomplete.</b> Not entered: ' + xm.slice(0, 5).map(function(m){ return esc(String(m.label).replace(/,.*$/, '')); }).join(', ') + '. The figures below count a blank line as zero (or use the model\'s fallback), so NOI and returns may be materially overstated. <a href="#" onclick="showSheet(\'Inputs Index\');return false">See what to enter</a></div></div>' : ''; })()
     + (kpis.length ? '<div class="pl-kpis">' + kpis.map(function(k){ return '<button type="button" class="pl-kpi ' + k[3] + '" ' + go(k[4]) + '><div class="k">' + k[0] + '</div><div class="v">' + k[1] + '</div><div class="s">' + esc(k[2]) + '</div></button>'; }).join('') + '</div>' : '')
     + '<div class="pl-next"><div><div class="t">Next step</div><div class="m">' + next[0] + '</div><div class="d">' + next[1] + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">' + ((gate && gate.capacity && gate.capacity.overage > 0) ? '<button type="button" class="pl-btn ghost" onclick="bkSizeLoanDialog()">Size loan to policy</button>' : '') + '<button type="button" class="pl-btn" ' + go(next[2]) + '>' + esc(next[3]) + ' &rarr;</button></div></div>'
     + '<div class="pl-h">Review checklist</div><div class="pl-check">' + rows.map(function(r){ return '<div class="pl-row ' + r[0] + '" role="button" tabindex="0" ' + go(r[3]) + '><span class="dot"></span><span class="l">' + r[1] + '</span><span class="r">' + r[2] + '</span><span class="go">Open &rarr;</span></div>'; }).join('') + '</div>'
@@ -24256,7 +24300,7 @@ function buildDev(){
       loanDraws = (fund.months || []).reduce(function(t, z){ return t + (Number(z.loanDraw) || 0); }, 0), loanDrawn = loanDraws + (fund.actualCapInt || 0), ltc = allIn ? loanDrawn / allIn : null;
   pages.push(page('<div class="in"><div class="lockup">' + LOCKUP + '</div>'
     + '<div class="kick">Punchlist Capital · Development summary</div><h1>' + esc(s.name || 'Property') + '</h1><div class="loc">' + esc([s.location, s.propertyType, D.units ? D.units + ' units' : '', s.gsf ? Math.round(Number(s.gsf)).toLocaleString('en-US') + ' SF' : ''].filter(Boolean).join('  ·  ')) + '</div>'
-    + '<div class="chips"><span class="chip">Development</span><span class="chip">' + fund.conMo + '-month construction</span><span class="chip">Stabilized month ' + stabMonth + '</span><span class="chip">' + esc(caseName) + ' case</span>' + (s.closing ? '<span class="chip">Closing ' + esc(s.closing) + '</span>' : '') + '</div>'
+    + '<div class="chips"><span class="chip">Development</span><span class="chip">' + fund.conMo + '-month construction</span><span class="chip">Stabilized month ' + stabMonth + '</span><span class="chip">' + esc(caseName) + ' case</span>' + (s.closing ? '<span class="chip">Closing ' + esc(s.closing) + '</span>' : '') + '</div>' + expectedNote(s)
     + '<div class="verdict"><span class="dot" style="background:' + vcol + '"></span><div><div class="t">Credit gate</div><div class="v">' + esc(gate.verdict || 'Not assessed') + '</div>' + (gateWhy(gate) ? '<div class="w">Fails: ' + gateWhy(gate) + '</div>' : '') + '</div></div>'
     + '<div class="ck"><div><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 1) + '</div><div class="d">hurdle ' + P(hurdle, 1) + (hurdleGap(D.irr, hurdle) ? ' · ' + hurdleGap(D.irr, hurdle) : '') + '</div></div><div><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(tot.profit) + ' profit</div></div><div><div class="k">Total project cost</div><div class="v">' + M(allIn) + '</div><div class="d">' + (D.units ? F(allIn / D.units) + ' per unit' : '') + '</div></div><div><div class="k">' + bkCapName('closingEquity', true) + '</div><div class="v">' + M(fund.equityTotal) + '</div><div class="d">' + M(fund.commit) + ' construction loan · ' + M(m.contrib) + ' contributed in total</div></div></div>'
     + '<div class="ft"><span>Prepared ' + date + '</span><span>Punchlist Capital · Beta · ' + esc(s.dealId || '') + '</span></div></div>', 0, N, D, true));
@@ -24334,7 +24378,7 @@ function build(){
   /* 1 cover */
   PG.cover.push(page('<div class="in"><div class="lockup">' + LOCKUP + '</div>'
     + '<div class="kick">Punchlist Capital · Investment summary</div><h1>' + esc(s.name || 'Property') + '</h1><div class="loc">' + esc([s.location, s.propertyType, units ? units + ' units' : '', s.gsf ? Math.round(Number(s.gsf)).toLocaleString('en-US') + ' SF' : ''].filter(Boolean).join('  ·  ')) + '</div>'
-    + '<div class="chips"><span class="chip">' + esc(s.dealType || 'Acquisition') + '</span><span class="chip">' + (D.H) + '-year hold</span><span class="chip">' + esc(caseName) + ' case</span>' + (s.closing ? '<span class="chip">Closing ' + esc(s.closing) + '</span>' : '') + '</div>'
+    + '<div class="chips"><span class="chip">' + esc(s.dealType || 'Acquisition') + '</span><span class="chip">' + (D.H) + '-year hold</span><span class="chip">' + esc(caseName) + ' case</span>' + (s.closing ? '<span class="chip">Closing ' + esc(s.closing) + '</span>' : '') + '</div>' + expectedNote(s)
     + '<div class="verdict"><span class="dot" style="background:' + vcol + '"></span><div><div class="t">Credit gate</div><div class="v">' + esc(gate.verdict || 'Not assessed') + '</div>' + (gateWhy(gate) ? '<div class="w">Fails: ' + gateWhy(gate) + '</div>' : '') + '</div></div>'
     + '<div class="ck"><div><div class="k">Levered IRR</div><div class="v">' + P(D.irr, 1) + '</div><div class="d">hurdle ' + P(hurdle, 1) + (hurdleGap(D.irr, hurdle) ? ' · ' + hurdleGap(D.irr, hurdle) : '') + '</div></div><div><div class="k">Equity multiple</div><div class="v">' + X(D.moic) + '</div><div class="d">' + M(D.tot.profit) + ' profit</div></div><div><div class="k">Purchase price</div><div class="v">' + M(price) + '</div><div class="d">' + (units ? F(price / units) + ' per unit' : '') + '</div></div><div><div class="k">Closing equity</div><div class="v">' + M(D.eq) + '</div><div class="d">' + M(d.loan) + ' senior loan</div></div></div>'
     + '<div class="ft"><span>Prepared ' + date + '</span><span>Punchlist Capital · Beta · ' + esc(s.dealId || '') + '</span></div></div>', 0, N, D, true));
@@ -24599,9 +24643,14 @@ window.bkReportPhotoRemove = function(){
   if(typeof window.bkDocsClearPhoto !== 'function') return;
   window.bkDocsClearPhoto().then(function(){ redrawSummary(); }, function(){ redrawSummary(); });
 };
+/* the summary carries the expected inputs the deal has not entered: a blank line is counted as zero, so the figures may be overstated, and the reader of the PDF is told */
+function expectedNote(s){ var e = safe(function(){ return window.BKReg && window.BKReg.expectedMissing ? window.BKReg.expectedMissing(s) : []; }, []); if(!e.length) return '';
+  return '<div class="note" style="margin:8px 0;border-left:3px solid #b3392c;padding-left:8px"><b>Incomplete underwriting.</b> Not entered: ' + e.map(function(x){ return esc(x.label); }).join(', ') + '. A blank line is counted as zero or left to the model\'s fallback, so NOI and returns may be materially overstated.</div>'; }
 function bkReportOpenNow(){
   var s = safe(function(){ return bkLoad(); }, null), msg = null;
   if(!s || (typeof window.bkHasActiveDeal === 'function' && !window.bkHasActiveDeal())) msg = 'Open or create a deal first.';
+  else { var rd = safe(function(){ return window.bkDealReadiness(); }, null);   /* no investor summary for a deal the model is withholding results on: its dates and returns would rest on inputs it had to invent */
+    if(rd && rd.state !== 'NO DEAL' && rd.canCalculate === false) msg = 'The summary cannot be created yet. The model is withholding results until ' + (rd.missing || []).map(function(m){ return esc(m.label); }).join(', ') + ' ' + ((rd.missing || []).length === 1 ? 'is' : 'are') + ' entered.'; }
   if(msg){ if(typeof window.bkModal === 'function') window.bkModal('<h3 style="margin:0 0 8px">Create PDF summary</h3><p>' + msg + '</p>'); else alert(msg); return; }
   var html = safe(window.bkReportHTML, null); if(!html){ alert('The summary could not be built for this deal.'); return; }
   safe(function(){ if(typeof window.bkHistorySaveVersion === 'function') window.bkHistorySaveVersion('PDF summary created', true); });
@@ -27242,7 +27291,7 @@ var CHOICE_COPY = {
     opts:{ 'Stabilized':'Buy it as it is and hold. No renovation step.', 'Value-add':'Renovate or reposition to raise rents. Adds the value-add step.', 'Opportunistic':'Heavy change or turnaround. Adds the value-add step.', 'Lease-up':'Fill vacant space. Adds the value-add step.', 'Redevelopment':'Rebuild or convert. Adds the value-add step.', 'Portfolio acquisition':'One deal in a larger purchase. No renovation step.' } } };
 function fromRegistry(s){ var R = window.BKReg; if(!R) return null; var a = R.of(s), wf = a && a.live ? R.workflow(a.id) : null; if(!wf || !wf.length) return null;
   return wf.filter(function(st){ return typeof st.when !== 'function' || safe(function(){ return st.when(s); }, true); }).map(function(st){ return { id:st.id, title:st.title, why:st.why, sheet:st.sheet, skippable:!!st.skippable, fields:(st.fields || []).filter(function(e){ var d = R.field(e.k); return d && d.kind !== 'derived' && d.kind !== 'table' && R.requirement(e, s) !== 'na'; }).map(function(e){ var d = R.field(e.k), o = { k:e.k, label:e.label || d.label, t:d.kind === 'choice' ? 'text' : d.kind };
-      if(d.kind === 'choice' && d.options) o.opts = d.options.slice(); var cp = CHOICE_COPY[e.k]; if(cp){ o.label = cp.label; o.help = cp.help; o.optHelp = cp.opts; } if(R.requirement(e, s) === 'required') o.req = 1; var h = e.help || d.help; if(h) o.help = h; var sg = e.sug || d.sug; if(sg) o.sug = sg; if(cp) o.help = cp.help; return o; }) }; }); }
+      if(d.kind === 'choice' && d.options) o.opts = d.options.slice(); var cp = CHOICE_COPY[e.k]; if(cp){ o.label = cp.label; o.help = cp.help; o.optHelp = cp.opts; } var rq = R.requirement(e, s); if(rq === 'required' || rq === 'needed') o.req = 1; else if(rq === 'expected') o.expected = 1;   /* required / needed: the model's own (src/081); expected: flagged while blank, never blocking */ var h = e.help || d.help; if(h) o.help = h; var sg = e.sug || d.sug; if(sg) o.sug = sg; if(cp) o.help = cp.help; return o; }) }; }); }
 var FULL_EXTRA_DEV = { property:['gla', 'commercialArea', 'commercialUnits'], income:['badDebtPct', 'concessionPct'], expenses:['reserves'], debt:['conFixedAmt', 'permRate', 'permAmort'], exit:['saleCostPct', 'rentGrowth', 'opexGrowth'] };   /* a development has no renovation program or acquisition loan: its Full detail is its own */
 function fullExtras(list, s){ var R = window.BKReg; if(!R || depth() !== 'full') return list; var EX = /develop/i.test(String((s || {}).dealType || '')) ? FULL_EXTRA_DEV : FULL_EXTRA; return list.map(function(sec){ var have = {}; sec.fields.forEach(function(fl){ have[fl.k] = 1; }); var add = (EX[sec.id] || []).filter(function(k){ var d = R.field(k); return d && !have[k] && d.kind !== 'derived' && d.kind !== 'table' && !d.planned && !(typeof d.when === 'function' && !safe(function(){ return d.when(s || {}); }, true)); }).map(function(k){ var d = R.field(k), o = { k:k, label:d.label, t:d.kind === 'choice' ? 'text' : d.kind }; if(d.help) o.help = d.help; if(d.sug) o.sug = d.sug; return o; });
   return add.length ? Object.assign({}, sec, { fields:sec.fields.concat(add) }) : sec; }); }
@@ -27487,18 +27536,22 @@ function stepScreen(secs, sec, s, g){
   body += fromNote + advBox + '<div id="gd-imp"></div>' + (inner || strip ? '<div class="gd-card">' + inner + '<div id="gd-resw">' + strip + '</div></div>' : '') + (sec.id === 'debt' && !/develop/i.test(String(s.dealType || '')) ? '<div id="gd-dbt"></div>' : '');
   body += (sec.id === 'sources' ? '<div id="gd-su">' + suInner(s) + '</div>' : '') + '<div id="gd-chg"></div>';
   body += '<div class="gd-act"><button type="button" class="gd-btn" id="gd-confirm" onclick="bkGuideConfirm()">Confirm this step and continue</button><button type="button" class="gd-btn ghost" id="gd-next" onclick="bkGuideNext()">Continue without confirming</button><button type="button" class="gd-btn ghost" onclick="bkGuideSkip()">Skip for now</button>' + (i > 0 ? '<button type="button" class="gd-btn link" onclick="bkGuideBack()">Back</button>' : '') + '<button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideDetail(\'' + sec.sheet + '\')">Add more detail on the full sheet</button></div><div style="margin-top:6px"><button type="button" class="gd-btn link" onclick="bkGuideNew()">Start a different deal</button></div>';
-  body += '<p class="sub" id="gd-still" style="margin-top:10px">' + stillHtml(miss) + '</p></div>';
+  body += '<p class="sub" id="gd-still" style="margin-top:10px">' + stillHtml(miss, expectedBlank(sec, s)) + '</p></div>';
   return body;
 }
 function advHtml(adv){ return adv.length ? '<div class="gd-adv"><b>Worth a look, from what is entered now</b>' + adv.map(function(a){ return '<div class="it"><span>' + esc(a.text) + '</span>' + (a.fix ? '<button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideProp(\'' + a.fix.k + '\',' + a.fix.v + ')">' + esc(a.fix.label) + '</button>' : '') + '</div>'; }).join('') + '</div>' : ''; }
-function stillHtml(miss){ return miss.length ? 'Still needed here: ' + miss.map(function(m){ return esc(m.label.toLowerCase()); }).join(', ') + '.' : ''; }
+function stillHtml(miss, exp){ return (miss.length ? 'Still needed here: ' + miss.map(function(m){ return esc(m.label.toLowerCase()); }).join(', ') + '.' : '')
+  + (exp && exp.length ? (miss.length ? ' ' : '') + '<b>Expected, not entered (most material first):</b> ' + exp.map(function(m){ return esc(String(m.label).toLowerCase().replace(/,.*$/, '')); }).join(', ') + '. A blank line is counted as zero, so NOI and returns may be overstated.' : ''); }
+/* the step's expected inputs still blank, most material first (the same list and order as the Inputs index and the Home page: BKReg.expectedMissing) */
+function expectedBlank(sec, s){ var R = window.BKReg; if(!R || !R.expectedMissing) return []; var order = safe(function(){ return R.expectedMissing(s).map(function(x){ return x.key; }); }, []);
+  return sec.fields.filter(function(fl){ return fl.expected && order.indexOf(fl.k) > -1; }).sort(function(a, b){ return order.indexOf(a.k) - order.indexOf(b.k); }); }
 /* what the step says about the deal reads the figures as typed, before they are confirmed: the same advice, result strip and "still needed" line, evaluated with the draft through the engine's own
    override runner (bkRunWith, as the IRR line and the Sources and Uses panel already are). Nothing is saved. */
 function withDraft(fn){ var keys = Object.keys(st.draft); if(!keys.length) return safe(function(){ return fn(bkLoad()); }, null); return safe(function(){ return window.bkRunWith(Object.assign({}, st.draft), function(){ return fn(bkLoad()); }); }, null); }
 function paintLive(sec){
   var a = document.getElementById('gd-advw'); if(a){ var adv = withDraft(function(x){ return advice(x); }) || []; a.innerHTML = advHtml(adv.filter(function(q){ return q.sec === sec.id; }).slice(0, 3)); }
   var r = document.getElementById('gd-resw'); if(r){ var t = withDraft(function(x){ return resultStrip(x, sec); }); r.innerHTML = t || ''; }
-  var m = document.getElementById('gd-still'); if(m){ var miss = withDraft(function(x){ return missing(sec, x); }); if(miss) m.innerHTML = stillHtml(miss.filter(function(fl){ var d = st.draft[fl.k]; return !(Object.prototype.hasOwnProperty.call(st.draft, fl.k) && (fl.t === 'text' ? String(d || '').trim() : Number(d) > 0)); })); }
+  var m = document.getElementById('gd-still'); if(m){ var miss = withDraft(function(x){ return missing(sec, x); }); var xb = withDraft(function(x){ return expectedBlank(sec, x); }) || []; if(miss) m.innerHTML = stillHtml(miss.filter(function(fl){ var d = st.draft[fl.k]; return !(Object.prototype.hasOwnProperty.call(st.draft, fl.k) && (fl.t === 'text' ? String(d || '').trim() : Number(d) > 0)); }), xb.filter(function(fl){ var d = st.draft[fl.k]; return !(Object.prototype.hasOwnProperty.call(st.draft, fl.k) && (fl.t === 'text' ? String(d || '').trim() : Number(d) >= 0 && String(d).trim() !== '')); })); }
   [].forEach.call(document.querySelectorAll('.gd-sug[data-k]'), function(e){ var k = e.getAttribute('data-k'), v = Number(e.getAttribute('data-v')), d = Object.prototype.hasOwnProperty.call(st.draft, k) ? Number(st.draft[k]) : null; e.style.display = d != null && isFinite(v) && Math.abs(d - v) < 1e-9 ? 'none' : ''; });
 }
 function canCalc(draft){ return !!safe(function(){ return draft && Object.keys(draft).length ? window.bkRunWith(Object.assign({}, draft), function(){ return bkDealReadiness().canCalculate; }) : bkDealReadiness().canCalculate; }, false); }
@@ -27568,6 +27621,8 @@ function whereScreen(secs, s, g){
   var adv = advice(s), top = adv.slice(0, 4), first = secs.filter(function(sec){ var sv = status(sec, s, g); return sv === 'todo' || sv === 'skipped' || sv === 'partial'; })[0];
   var h = '<div class="gd"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Where this deal stands</div><h1>' + esc(s.name || 'This deal') + '</h1><p class="sub">I read what is entered now. Nothing here changes it. Pick a section, or let me walk you through from the start.</p>';
   h += '<div class="gd-where">' + secs.map(function(sec, i){ var sv = status(sec, s, g), mark = sv === 'done' ? '✓' : sv === 'skipped' ? '⚑' : sv === 'partial' ? '!' : sv === 'filled' ? '●' : (i + 1), note = sv === 'todo' ? 'Needs: ' + missing(sec, s).map(function(m){ return m.label.toLowerCase(); }).join(', ') : sv === 'skipped' ? 'You skipped this' : sv === 'filled' ? 'Entered, not yet reviewed here' : sv === 'partial' ? 'Reviewed, but missing ' + missing(sec, s).map(function(m){ return m.label.toLowerCase(); }).join(', ') : 'Reviewed';
+    var xb = (sv === 'filled' || sv === 'done') ? expectedBlank(sec, s) : [];   /* an expected input still blank is flagged on the step, not hidden behind 'entered' */
+    if(xb.length){ mark = '!'; note = 'Expected, not entered: ' + xb.map(function(m){ return String(m.label).toLowerCase().replace(/,.*$/, ''); }).join(', '); }
     return '<button type="button" class="gd-w ' + sv + '" onclick="bkGuideGo(\'' + sec.id + '\')"><i>' + mark + '</i><span><b>' + esc(sec.title) + '</b><small>' + esc(readLine(sec.id, s)) + '</small></span><small style="text-align:right">' + esc(note) + '</small></button>'; }).join('') + '</div>';
   if(top.length) h += '<div class="gd-adv" style="margin-top:16px"><b>Worth a look</b>' + top.map(function(a){ var sec = secOf(secs, a.sec); return '<div class="it"><span>' + esc(a.text) + '</span>' + (a.fix ? '<button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideProp(\'' + a.fix.k + '\',' + a.fix.v + ')">' + esc(a.fix.label) + '</button>' : sec ? '<button type="button" class="gd-btn link" onclick="bkGuideGo(\'' + sec.id + '\')">Open</button>' : '') + '</div>'; }).join('') + '</div>';
   h += '<div class="gd-act"><button type="button" class="gd-btn" onclick="bkGuideGo(\'' + (first ? first.id : 'review') + '\')">' + (first ? 'Take me to ' + esc(first.title.toLowerCase()) : 'Go to the review') + '</button><button type="button" class="gd-btn ghost" onclick="bkGuideGo(\'' + secs[0].id + '\')">Walk me through from the start</button><button type="button" class="gd-btn link" onclick="bkGuideGo(\'review\')">Skip to the review</button><button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideNew()">Start a different deal</button></div></div>';
@@ -30635,9 +30690,12 @@ function deal(){ return safe(function(){ return bkLoad(); }, {}) || {}; }
 function isDev(s){ return /develop/i.test(String((s || deal()).dealType || '')); }
 function pc(v, d){ return v == null || !isFinite(v) ? null : (v * 100).toFixed(d == null ? 2 : d) + '%'; }
 function m0(v){ return v == null || !isFinite(v) ? null : '$' + Math.round(v).toLocaleString('en-US'); }
-function calc(){ return safe(function(){ return bkCalc(); }, {}) || {}; }
-function debt(){ return safe(function(){ return bkDebt(); }, null); }
-function ret(){ return safe(function(){ return bkMonthlyReturns(); }, null); }
+/* An answer never quotes a figure the model is withholding: while the deal is missing what the model needs (the closing date among them), the engine's numbers would rest on a date or an input the model had to invent. */
+var HELD = false;
+function open_(){ var r = safe(function(){ return window.bkDealReadiness(); }, null); if(r && r.state !== 'NO DEAL' && r.canCalculate === false){ HELD = true; return false; } return true; }
+function calc(){ return open_() ? (safe(function(){ return bkCalc(); }, {}) || {}) : {}; }
+function debt(){ return open_() ? safe(function(){ return bkDebt(); }, null) : null; }
+function ret(){ return open_() ? safe(function(){ return bkMonthlyReturns(); }, null) : null; }
 function now(label, v){ return v ? ' ' + label + ' <b>' + v + '</b>.' : ''; }
 
 /* where each editor tab lives: Section name, tab, sub-tab id (matches bkEditorTabs) */
@@ -30752,7 +30810,7 @@ add('The hidden SYS_ sheets', ['sys', 'sys engine', 'backend', 'engine sheets', 
    A hand-written topic that matches as well always comes first. */
 
 /* valuation and return measures (src/202 to 204): answers read live figures from the valuation engine */
-function vr(){ return safe(function(){ return window.bkValReturns(); }, null); }
+function vr(){ return open_() ? safe(function(){ return window.bkValReturns(); }, null) : null; }
 function vm(){ return safe(function(){ var s = deal(), c = window.bkPvCalc(s, typeof window.bkRpOptGet === 'function' ? window.bkRpOptGet('pvRate') : undefined); return window.bkValuate({ rate:c.base, equityRate:c.base }); }, null); }
 var PVR = P('Present Value Report', null, ['Reports', 'Present Value Report']);
 add('IRR: internal rate of return', ['irr', 'internal rate of return', 'levered irr', 'unlevered irr', 'unleveraged irr', 'xirr', 'what is irr', 'what is the irr'], function(){ var r = vr(); return 'IRR is the rate at which the dated cash flows have an NPV of zero, so it uses <b>when</b> each dollar arrives. The levered IRR is the equity\'s; the unleveraged IRR is the property\'s.' + (r && isFinite(r.levIRR) ? ' Here the levered IRR is <b>' + pc(r.levIRR, 2) + '</b>' + (r.unlevIRR != null && isFinite(r.unlevIRR) ? ' and the unleveraged IRR <b>' + pc(r.unlevIRR, 2) + '</b>' : '') + '. The Present Value Report sets it beside the CAGR.' : ''); }, PVR);
@@ -30827,7 +30885,8 @@ function ask(question){
   var q = fuzzy(toks(question)); if(!q.length) return [];
   return T.concat(generated()).map(function(t){ return { t:t, s:scoreTopic(t, q) - (t.gen ? 1 : 0) + (t.boost || 0) }; }).filter(function(z){ return z.s >= 8; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 3).map(function(z){ return z.t; });
 }
-function answerOf(t){ var s = deal(), a = typeof t.a === 'function' ? safe(function(){ return t.a(s); }, '') : t.a; var note = ''; if(t.dev && !isDev(s)) note = ' <i>(This is a development-deal page; the open deal is an acquisition.)</i>'; return a + note; }
+function answerOf(t){ var s = deal(); HELD = false; var a = typeof t.a === 'function' ? safe(function(){ return t.a(s); }, '') : t.a; var note = '';
+  if(HELD){ var rd = safe(function(){ return window.bkDealReadiness(); }, null); a += ' <i>The figures are withheld until ' + ((rd && rd.missing || []).map(function(m){ return m.label; }).join(', ') || 'the required inputs') + ' ' + ((rd && rd.missing || []).length === 1 ? 'is' : 'are') + ' entered.</i>'; HELD = false; } if(t.dev && !isDev(s)) note = ' <i>(This is a development-deal page; the open deal is an acquisition.)</i>'; return a + note; }
 
 /* ------------------------------------------------------------ going there */
 function flash(el){ if(!el) return; try { el.scrollIntoView({ block:'center' }); } catch(e){} el.classList.add('bk-ask-flash'); setTimeout(function(){ el.classList.remove('bk-ask-flash'); }, 3200); }
@@ -31604,16 +31663,24 @@ window.bkDevReportPages = function(){ var D = build(), r = riskPage(D); return {
 (function(){
 'use strict';
 if(typeof RENDERERS === 'undefined' || typeof window.bkDealReadiness !== 'function' || typeof window.bkNotReadyPanel !== 'function') return;
-['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns'].forEach(function(name){
+/* the returns-derived and dated pages: with the closing date (or any other required input) missing there is nothing to show, because a date the model invented would date the cash flows and the returns wrongly.
+   The second row is every other report and analysis page that printed returns-type figures on a deal that was still DRAFT (found by opening each page with the closing date blank). */
+var FIRST = ['Sensitivity', 'Property CF', 'Probability-Weighted', 'Valuation Report', 'Financing Compare', 'IC Memo', 'Returns'];
+var LATER = ['Hold vs Sell', 'Financing Lab', 'Investment Target', 'Deal Optimizer', 'Pre-Offer Bid', 'Cash Flow Report', 'After-Tax Report', 'Sources and Uses Report', 'Waterfall Report', 'Property Valuation Report', 'Present Value Report', 'Hold vs Sell Report'];
+function gate(name){
   var orig = RENDERERS[name]; if(typeof orig !== 'function' || orig.__bkResultGate) return;
   var gated = function(){
-    try { if((name === 'Financing Compare' || name === 'Probability-Weighted') && /develop/i.test(String((typeof bkLoad === 'function' && bkLoad() || {}).dealType || ''))) return orig.apply(this, arguments); } catch(e){}
+    try { if((name === 'Financing Compare' || name === 'Probability-Weighted' || name === 'Pre-Offer Bid') && /develop/i.test(String((typeof bkLoad === 'function' && bkLoad() || {}).dealType || ''))) return orig.apply(this, arguments); } catch(e){}
     try { var r = window.bkDealReadiness(); if(r && r.state !== 'NO DEAL' && !r.canCalculate) return window.bkNotReadyPanel(name); } catch(e){}
     return orig.apply(this, arguments);
   };
   gated.__bkResultGate = true; gated.__bkOriginal = orig.__bkOriginal || orig;
   if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(name, gated); else RENDERERS[name] = gated;
-});
+}
+FIRST.forEach(gate);
+/* LATER: every other report and analysis page that printed returns-type figures on a deal that was still DRAFT (found by opening each page with the closing date blank). With the closing date or any other required
+   input missing there is nothing to show: a date the model invented would date the cash flows and the returns wrongly. These register after this part loads, so they are wrapped once the page has finished loading. */
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ LATER.forEach(gate); }); else LATER.forEach(gate);
 })();
 </script>
 <script id="bk-import-hub">/* IMPORT: one tab for every document that starts a deal (offering memorandum, listing, T-12, pro forma, rent roll, source package), Excel, CSV or PDF.
@@ -34553,7 +34620,7 @@ var STEP_GROUP = {
   exit:'Returns', returns:'Returns', period:'Returns', decision:'Returns', sens:'Returns', compare:'Returns', scenarios:'Returns', risk:'Returns', review:'Returns'
 };
 function groupOf(step, analysisId){ if(step.id === 'costs') return analysisId === 'business' ? 'Expenses' : 'Debt'; return STEP_GROUP[step.id] || 'Property'; }
-var RANK = { required:3, optional:2, na:1 };
+var RANK = { required:5, needed:4, expected:3, optional:2, na:1 };
 
 /* every input the open deal's analysis asks for, once each, with its state for this deal */
 function collect(s){
@@ -34572,7 +34639,7 @@ function collect(s){
   });
   list.forEach(function(r){
     r.present = window.BKReg.present(r.k, s); r.value = window.bkKindFmt ? window.bkKindFmt(r.f, s[r.k]) : null;
-    r.status = r.req === 'na' ? 'na' : r.present ? 'entered' : r.req === 'required' ? 'missing' : 'optional';   /* a value saved for something this deal does not use is listed as not needed, with its value */
+    r.status = r.req === 'na' ? 'na' : r.present ? 'entered' : r.req === 'required' ? 'missing' : r.req === 'needed' ? 'needed' : r.req === 'expected' ? 'expected' : 'optional';   /* a value saved for something this deal does not use is listed as not needed, with its value */
     /* a unit-by-unit rent roll with fewer residential rows than units is entered but not finished */
     if(r.k === 'rentRoll' && r.present){ var u = Number(s.units) || 0, n = (s.rentRoll || []).filter(function(x){ return x && x.tenantType !== 'Commercial'; }).length;
       if(u > 0 && n > 0 && n < u){ r.status = 'incomplete'; r.note = n + ' of ' + u + ' units listed'; } }
@@ -34605,11 +34672,11 @@ window.bkInputsGo = function(k){
 window.bkInputsJump = function(g){ var d = document.querySelector('#viewport details[data-ix-g="' + g + '"]'); if(!d) return; d.open = true; try { d.scrollIntoView({ block:'start', behavior:'smooth' }); } catch(e){} };
 
 function chip(status){
-  var m = { entered:['pass', 'Entered'], missing:['fail', 'Needed'], incomplete:['warn', 'Incomplete'], optional:['', 'Optional'], na:['', 'Not needed'] }[status];
+  var m = { entered:['pass', 'Entered'], missing:['fail', 'Required'], needed:['warn', 'Needed for investment-ready'], expected:['warn', 'Expected'], incomplete:['warn', 'Incomplete'], optional:['', 'Optional'], na:['', 'Not needed'] }[status];
   return '<span class="status-chip ' + m[0] + '">' + m[1] + '</span>';
 }
 function rowHtml(r){
-  var val = r.present && r.status !== 'optional' && r.status !== 'missing' ? esc(r.value || 'Entered') : '<span class="bk-ix-none">Not entered</span>';
+  var val = r.present ? esc(r.value || 'Entered') : '<span class="bk-ix-none">Not entered</span>';
   var sub = [r.note, r.help ? String(r.help).split(/(?<=[.!?])\s/)[0] : ''].filter(Boolean).join(' · ');
   if(sub.length > 120) sub = sub.slice(0, 117) + '…';
   return '<tr class="bk-ix-r bk-ix-' + r.status + '" data-ix-k="' + esc(r.k) + '"><td class="rowlabel" data-bk-align="text">' + esc(r.label) + (sub ? '<span class="bk-sub">' + esc(sub) + '</span>' : '') + '</td>'
@@ -34630,23 +34697,29 @@ function page(){
   var c = collect(s), rows = c.rows, byG = {}; GROUPS_ORDER.forEach(function(g){ byG[g] = []; }); rows.forEach(function(r){ byG[r.group].push(r); });
   TARGET = {}; rows.forEach(function(r){ TARGET[r.k] = targetOf(r); });
   var need = rows.filter(function(r){ return r.req === 'required'; }), done = need.filter(function(r){ return r.present; });
+  var needInv = rows.filter(function(r){ return r.status === 'needed'; }), expMiss = rows.filter(function(r){ return r.status === 'expected'; });
   var pctDone = need.length ? Math.round(done.length / need.length * 100) : 100;
   var firstMiss = null; GROUPS_ORDER.forEach(function(g){ if(!firstMiss) firstMiss = byG[g].filter(function(r){ return r.status === 'missing'; })[0] || null; });
-  var openG = firstMiss ? firstMiss.group : null;
+  var firstAny = firstMiss; if(!firstAny) GROUPS_ORDER.forEach(function(g){ if(!firstAny) firstAny = byG[g].filter(function(r){ return r.status === 'needed' || r.status === 'expected'; })[0] || null; });
+  var openG = firstAny ? firstAny.group : null;
   /* the model's own gate: what it needs before it will show results (the readiness check, src/081). It is a shorter list than the analysis asks for, so it is shown on its own rather than folded into the counts. */
   var rd = safe(function(){ return window.bkDealReadiness(); }, null), ALIAS = { dealId:'name', revenue:'avgRent' };
   var gate = rd && rd.canCalculate === false && rd.missing && rd.missing.length ? rd.missing.map(function(m){ var k = ALIAS[m.key] || m.key; return { label:m.label, k:TARGET[k] ? k : null }; }) : [];
-  var top = '<div class="bk-ix-top"><div class="bk-ix-sum"><b>' + done.length + ' of ' + need.length + '</b> required inputs are entered.'+ (firstMiss ? ' Next: <b>' + esc(firstMiss.label) + '</b> <button type="button" class="bk-btn" onclick="bkInputsGo(\'' + esc(firstMiss.k) + '\')">Enter it</button>' : ' Everything required is in.') + '</div>'
+  var top = '<div class="bk-ix-top"><div class="bk-ix-sum"><b>' + done.length + ' of ' + need.length + '</b> required inputs are entered' + (needInv.length ? ', ' + needInv.length + ' more needed to be investment-ready' : '') + (expMiss.length ? ', ' + expMiss.length + ' expected input' + (expMiss.length === 1 ? '' : 's') + ' not entered' : '') + '.'+ (firstMiss ? ' Next: <b>' + esc(firstMiss.label) + '</b> <button type="button" class="bk-btn" onclick="bkInputsGo(\'' + esc(firstMiss.k) + '\')">Enter it</button>' : firstAny ? ' Next: <b>' + esc(firstAny.label) + '</b> <button type="button" class="bk-btn" onclick="bkInputsGo(\'' + esc(firstAny.k) + '\')">Enter it</button>' : ' Everything the model asks for is in.') + '</div>'
     + '<div class="bk-ix-bar" role="img" aria-label="' + pctDone + ' percent of the required inputs are entered"><i style="width:' + pctDone + '%"></i></div><div class="bk-ix-chips">'
-    + GROUPS_ORDER.filter(function(g){ return byG[g].length; }).map(function(g){ var miss = byG[g].filter(function(r){ return r.status === 'missing'; }).length;
-        return '<button type="button" class="bk-ix-chip' + (miss ? ' has' : '') + '" onclick="bkInputsJump(\'' + g + '\')">' + g + (miss ? ' <em>' + miss + ' needed</em>' : '') + '</button>'; }).join('') + '</div></div>';
+    + GROUPS_ORDER.filter(function(g){ return byG[g].length; }).map(function(g){ var miss = byG[g].filter(function(r){ return r.status === 'missing'; }).length, soft = byG[g].filter(function(r){ return r.status === 'needed' || r.status === 'expected'; }).length;
+        return '<button type="button" class="bk-ix-chip' + (miss ? ' has' : '') + '" onclick="bkInputsJump(\'' + g + '\')">' + g + (miss ? ' <em>' + miss + ' required</em>' : soft ? ' <em class="soft">' + soft + ' to add</em>' : '') + '</button>'; }).join('') + '</div></div>';
   var gateHtml = gate.length ? '<div class="note-flag bk-ix-gate"><span>&#9888;</span><div><b>Results are withheld until ' + gate.length + (gate.length === 1 ? ' input is' : ' inputs are') + ' entered:</b> '
     + gate.map(function(g){ return g.k ? '<button type="button" class="bk-ix-link" onclick="bkInputsGo(\'' + esc(g.k) + '\')">' + esc(g.label) + '</button>' : esc(g.label); }).join(', ') + '.</div></div>' : '';
+  /* expected inputs not entered, most material first (BKReg.expectedMissing): the model shows results without them, but states what a blank line does to the numbers */
+  var xm = safe(function(){ return window.BKReg.expectedMissing(s); }, []) || [];
+  var expHtml = xm.length ? '<div class="note-flag bk-ix-gate"><span>&#9888;</span><div><b>Expected inputs not entered, most material first.</b> The model shows results without them, but ' + xm.map(function(m){ return '<div class="bk-ix-xrow"><button type="button" class="bk-ix-link" onclick="bkInputsGo(\'' + esc(m.key) + '\')">' + esc(String(m.label).replace(/,.*$/, '')) + '</button>: ' + esc(m.effect) + '.</div>'; }).join('').replace(/^/, '') + '</div></div>' : '';
   var body = GROUPS_ORDER.filter(function(g){ return byG[g].length; }).map(function(g){
     var gr = byG[g], req = gr.filter(function(r){ return r.req === 'required'; }), miss = gr.filter(function(r){ return r.status === 'missing'; }), inc = gr.filter(function(r){ return r.status === 'incomplete'; });
-    var main = gr.filter(function(r){ return r.req === 'required' || (r.present && r.req !== 'na'); }).sort(function(a, b){ var o = { missing:0, incomplete:1, entered:2, optional:3, na:4 }; return o[a.status] - o[b.status]; });
+    var main = gr.filter(function(r){ return r.req === 'required' || r.req === 'needed' || r.req === 'expected' || (r.present && r.req !== 'na'); }).sort(function(a, b){ var o = { missing:0, needed:1, expected:2, incomplete:3, entered:4, optional:5, na:6 }; return o[a.status] - o[b.status]; });
     var opt = gr.filter(function(r){ return r.req === 'optional' && !r.present; }), na = gr.filter(function(r){ return r.req === 'na'; });
-    var state = miss.length ? '<span class="status-chip fail">' + miss.length + ' needed</span>' : inc.length ? '<span class="status-chip warn">Incomplete</span>' : req.length ? '<span class="status-chip pass">Complete</span>' : '<span class="status-chip">Nothing required</span>';
+    var softN = gr.filter(function(r){ return r.status === 'needed'; }).length, expN = gr.filter(function(r){ return r.status === 'expected'; }).length;
+    var state = miss.length ? '<span class="status-chip fail">' + miss.length + ' required</span>' : softN ? '<span class="status-chip warn">' + softN + ' needed for investment-ready</span>' : expN ? '<span class="status-chip warn">' + expN + ' expected</span>' : inc.length ? '<span class="status-chip warn">Incomplete</span>' : req.length ? '<span class="status-chip pass">Complete</span>' : '<span class="status-chip">Nothing required</span>';
     var enteredN = gr.filter(function(r){ return r.present; }).length;
     return '<details class="bk-ix-g" data-ix-g="' + g + '"' + (g === openG ? ' open' : '') + '><summary><span class="bk-ix-gn">' + g + '</span>' + state + '<span class="bk-ix-gc">' + enteredN + ' of ' + gr.length + ' entered</span></summary>'
       + (main.length ? tableHtml(main, g + ': required and entered inputs') : '')
@@ -34655,7 +34728,7 @@ function page(){
   var note = '<div class="note-flag bk-ix-note"><span>&#9432;</span><div>This page lists inputs; it does not take them. <b>Enter</b> and <b>Change</b> open the box on its own page, with the box highlighted. '
     + 'An input marked <i>depends on your choices</i> appears or disappears with the deal structure (the strategy, the loan type, whether there is commercial space). The values here are the deal as it is saved.</div></div>';
   return { title:'Inputs', crumbs:'Inputs', desc:'Every input this analysis uses, grouped, with what is entered, what is still needed and where to enter it.',
-    meta:{ Analysis:String(c.analysis.name || c.analysis.id), Required:done.length + ' of ' + need.length }, sidebar:'', main:top + gateHtml + body + note };
+    meta:{ Analysis:String(c.analysis.name || c.analysis.id), Required:done.length + ' of ' + need.length }, sidebar:'', main:top + gateHtml + expHtml + body + note };
 }
 window.bkInputsIndex = function(){ var s = bkLoad(); return collect(s); };   /* the data behind the page, for the tests and for search */
 if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Inputs Index', page); else RENDERERS['Inputs Index'] = page;
@@ -34681,6 +34754,8 @@ if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('I
 #viewport .bk-ix-note{ margin-top:var(--ds-s4); }
 #viewport .bk-ix-gate{ margin-bottom:var(--ds-s4); }
 #viewport .bk-ix-link{ font:inherit; background:none; border:0; padding:0; color:var(--ds-accent); text-decoration:underline; cursor:pointer; }
+#viewport .bk-ix-chip em.soft{ color:var(--ds-warn); }
+#viewport .bk-ix-xrow{ margin-top:var(--ds-s2); }
 </style>
 <script id="bk-nav">/* NAVIGATION, ONE DEFINITION (2.1, owner's November 2026 regrouping). Tab -> groups -> sheets, defined once here, drives all three: the top tabs (NAV_TABS), the sub-tab row under them and the side menu (the vertical version of the same tabs,
    with the same groups and sheets in the same order and the same names). Presentation only: no sheet, renderer or calculation changes. A sheet is in exactly one place; a sheet that exists but is not listed lands in Model & Data > Other so none vanishes.
