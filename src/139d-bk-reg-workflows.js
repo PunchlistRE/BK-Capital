@@ -71,16 +71,16 @@ R.addWorkflow('refinance', [
 R.addWorkflow('hold', [
   S('property', 'Property information', '', 'Property', [q('name', 'required'), q('location'), q('units', 'required'), q('gsf')]),
   S('ops', 'Current operating performance', 'Where the property stands today.', 'Deal Underwrite', [q('avgRent', 'required'), q('vacancy', 'required'), q('taxes', 'required'), q('insurance', 'required'), q('rm', 'required'), q('mgmtPct', 'required')]),
-  S('value', 'Current property valuation', 'What it would sell for today.', 'Valuation', [q('currentValue', 'required')]),
+  S('value', 'Current property valuation', 'What it would sell for today: a value, or a market cap rate to value the NOI.', 'Hold vs Sell', [q('currentValue', 'conditional', { when:function(s){ return !(Number(s.valCapRate) > 0); } }), q('valCapRate')]),
   S('forward', 'Forward operating assumptions', 'Growth that drives the hold case.', 'Market', [q('rentGrowth', 'required'), q('opexGrowth', 'required')]),
-  S('capex', 'Capital expenditure requirements', 'What holding will cost in capital.', 'Expenses', [q('capitalProjects'), q('reserves')]),
-  S('debt', 'Existing financing', 'The loan to be repaid at a sale.', 'Debt', [q('exLoanBalance', 'required'), q('exLoanRate', 'required'), q('exLoanMaturity', 'required')]),
-  S('period', 'Hold period assumptions', '', 'Deal Underwrite', [q('holdYears', 'required')]),
-  S('exit', 'Disposition assumptions', '', 'Deal Underwrite', [q('exitCap', 'required'), q('saleCostPct', 'required')]),
-  S('tax', 'Tax and adjusted basis', 'Optional. Recapture and gain on a sale, flagged for professional review.', 'Depreciation', [q('ownedBasis'), q('taxProfile')], { skippable:true }),
-  S('compare', 'Hold vs. sell comparison', '', 'Returns', [q('value', 'derived')]),
-  S('sens', 'Sensitivity analysis', '', 'Sensitivity', []),
-  S('review', 'Review and generate the report', '', 'Reports', []) ]);
+  S('capex', 'Capital expenditure requirements', 'What holding will cost in capital.', 'Expenses', [q('capex'), q('reserves')]),
+  S('debt', 'Existing financing', 'The loan to be repaid at a sale (0 if none).', 'Hold vs Sell', [q('exLoanBalance', 'required'), q('exLoanRate'), q('exLoanAmort'), q('exLoanMaturity'), q('exPrepay')]),
+  S('period', 'Hold period assumptions', '', 'Hold vs Sell', [q('holdYears', 'required'), q('holdDiscRate')]),
+  S('exit', 'Disposition assumptions', '', 'Hold vs Sell', [q('exitCap', 'required'), q('saleCostPct', 'required')]),
+  S('tax', 'Tax and adjusted basis', 'Optional. Recapture and gain on a sale, an estimate for professional review.', 'Hold vs Sell', [q('holdTaxBasis'), q('holdAccumDep'), q('holdAnnualDep'), q('holdRecaptureRate'), q('holdCapGainsRate')], { skippable:true }),
+  S('compare', 'Hold vs. sell comparison', '', 'Hold vs Sell', []),
+  S('sens', 'Sensitivity analysis', '', 'Hold vs Sell', []),
+  S('review', 'Review and generate the report', '', 'Hold vs Sell Report', []) ]);
 
 R.addWorkflow('comprehensive', [
   S('property', 'Property and ownership information', '', 'Property', [q('name', 'required'), q('location', 'required'), q('propertyType', 'required'), q('units', 'required'), q('gsf', 'required')]),
