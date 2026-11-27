@@ -69,7 +69,7 @@ function locate(k){ var v = document.getElementById('viewport'); if(!v) return n
 var SEARCH = ['Deal Underwrite', 'Debt', 'Capital Allocation', 'Rent Roll', 'Tenants'];
 function flashEl(el){ var box = el.closest('tr, label, div') || el; try { box.scrollIntoView({ block:'center' }); } catch(e){} box.classList.add('bk-ask-flash'); setTimeout(function(){ box.classList.remove('bk-ask-flash'); }, 3200); }
 window.bkInputsGo = function(k){
-  var go = TARGET[k]; if(!go) return;
+  var go = TARGET[k]; if(!go){ var row = collect(bkLoad()).rows.filter(function(r){ return r.k === k; })[0]; if(row) go = TARGET[k] = targetOf(row); } if(!go) return;
   if(go.field){ if(typeof window.bkAskGo === 'function') window.bkAskGo(go); return; }
   var list = [go.sheet].concat(SEARCH).filter(function(x, i, a){ return RENDERERS[x] && a.indexOf(x) === i; }), i = 0;
   (function next(){

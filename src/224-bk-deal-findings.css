@@ -1,0 +1,14 @@
+/* DEAL REVIEW (src/223). Presentation only, on the design-system tokens. */
+.bk-rv{ border:1px solid var(--ds-band); border-radius:var(--ds-r2); padding:var(--ds-s4); margin:var(--ds-s4) 0; background:var(--ds-band); }
+.bk-rv-h{ font-weight:700; font-size:var(--ds-t-l); margin-bottom:var(--ds-s3); }
+.bk-rv-sec{ margin-top:var(--ds-s4); }
+.bk-rv-sec > b{ display:block; margin-bottom:var(--ds-s2); }
+.bk-rv-i{ display:flex; justify-content:space-between; align-items:flex-start; gap:var(--ds-s3); padding:var(--ds-s2) 0; border-top:1px solid var(--ds-bar); }
+.bk-rv-i > div{ flex:1; min-width:0; }
+.bk-rv-i small, .bk-rv-sec small{ display:block; font-size:var(--ds-t-s); opacity:.85; margin-top:var(--ds-s1); }
+.bk-rv-i small.bk-rv-why, small.bk-rv-why{ font-size:var(--ds-t-xs); opacity:.65; }
+.bk-rv-t0 > div > b, .bk-rv-t1 > div > b{ color:var(--ds-neg); }
+.bk-rv-t2 > div > b, .bk-rv-t3 > div > b, .bk-rv-t4 > div > b{ color:var(--ds-warn); }
+.bk-rv-known, .bk-rv-groups{ display:flex; flex-wrap:wrap; gap:var(--ds-s2) var(--ds-s4); font-size:var(--ds-t-m); }
+.bk-rv-known em{ font-style:normal; opacity:.7; margin-right:var(--ds-s1); }
+.bk-rv-groups{ margin-top:var(--ds-s2); font-size:var(--ds-t-s); opacity:.8; }

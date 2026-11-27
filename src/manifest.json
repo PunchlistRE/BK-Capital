@@ -1115,6 +1115,16 @@
 "close": "</style>"
 },
 {
+"file": "223-bk-deal-findings.js",
+"open": "\n<script id=\"bk-deal-findings\">",
+"close": "</script>"
+},
+{
+"file": "224-bk-deal-findings.css",
+"open": "\n<style id=\"bk-deal-findings-css\">",
+"close": "</style>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
