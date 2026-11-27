@@ -1,0 +1,20 @@
+/* INPUTS INDEX (src/221). Presentation only, on the design-system tokens: no color, size or radius of its own. */
+#viewport .bk-ix-top{ border:1px solid var(--ds-band); background:var(--ds-band); border-radius:var(--ds-r2); padding:var(--ds-s4); margin-bottom:var(--ds-s4); }
+#viewport .bk-ix-sum{ font-size:var(--ds-t-m); display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s3); }
+#viewport .bk-ix-bar{ height:var(--ds-s2); margin:var(--ds-s3) 0; border-radius:var(--ds-r1); background:var(--ds-bar); overflow:hidden; }
+#viewport .bk-ix-bar > i{ display:block; height:100%; background:var(--ds-accent); }
+#viewport .bk-ix-chips{ display:flex; flex-wrap:wrap; gap:var(--ds-s2); }
+#viewport .bk-ix-chip{ font:inherit; font-size:var(--ds-t-s); padding:var(--ds-s1) var(--ds-s3); border:1px solid currentColor; border-radius:var(--ds-r3); background:transparent; color:inherit; cursor:pointer; }
+#viewport .bk-ix-chip em{ font-style:normal; font-weight:700; color:var(--ds-neg); }
+#viewport details.bk-ix-g{ margin-bottom:var(--ds-s3); border:1px solid var(--ds-band); border-radius:var(--ds-r2); padding:var(--ds-s3) var(--ds-s4); }
+#viewport details.bk-ix-g > summary{ gap:var(--ds-s3); font-weight:700; }
+#viewport .bk-ix-gn{ min-width:110px; }
+#viewport .bk-ix-gc{ margin-left:auto; font-size:var(--ds-t-s); font-weight:400; opacity:.75; }
+#viewport details.bk-ix-fold{ margin-top:var(--ds-s3); }
+#viewport details.bk-ix-fold > summary{ font-size:var(--ds-t-s); }
+#viewport .bk-ix-none{ opacity:.6; }
+#viewport .bk-ix-dep{ display:block; font-size:var(--ds-t-xs); opacity:.7; margin-top:var(--ds-s1); }
+#viewport .bk-ix-na td{ opacity:.75; }
+#viewport .bk-ix-note{ margin-top:var(--ds-s4); }
+#viewport .bk-ix-gate{ margin-bottom:var(--ds-s4); }
+#viewport .bk-ix-link{ font:inherit; background:none; border:0; padding:0; color:var(--ds-accent); text-decoration:underline; cursor:pointer; }
