@@ -38,9 +38,9 @@
  "ACQ-1:refi": {
   "baseIrr": 0.041997229,
   "binding": "DSCR",
-  "irr": 0.034758308,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034404259,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -83,9 +83,9 @@
  "ACQ-2:refi": {
   "baseIrr": 0.261396381,
   "binding": "DSCR",
-  "irr": 0.264981132,
-  "netCashOut": 4276170.85,
-  "newLoan": 16933384.46,
+  "irr": 0.265677299,
+  "netCashOut": 4686936.66,
+  "newLoan": 17348299.42,
   "peak": 4,
   "year": 4
  },
@@ -128,9 +128,9 @@
  "ACQ-3:refi": {
   "baseIrr": 0.034025001,
   "binding": "DSCR",
-  "irr": 0.028869659,
-  "netCashOut": 3005930.77,
-  "newLoan": 14686261.65,
+  "irr": 0.02851144,
+  "netCashOut": 3416696.59,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -173,9 +173,9 @@
  "ACQ-4:refi": {
   "baseIrr": 0.064415111,
   "binding": "DSCR",
-  "irr": 0.060287296,
-  "netCashOut": 404523.34,
-  "newLoan": 2746408.56,
+  "irr": 0.060121556,
+  "netCashOut": 489141.1,
+  "newLoan": 2831881.04,
   "peak": 6,
   "year": 5
  },
@@ -218,9 +218,9 @@
  "ACQ-5:refi": {
   "baseIrr": 0.126760664,
   "binding": "DSCR",
-  "irr": 0.12835977,
-  "netCashOut": 3838624.27,
-  "newLoan": 38738474.87,
+  "irr": 0.129235207,
+  "netCashOut": 4896346.24,
+  "newLoan": 39806880.9,
   "peak": 9,
   "year": 5
  },
@@ -263,9 +263,9 @@
  "ACQ-6:refi": {
   "baseIrr": -0.268648099,
   "binding": "LTV",
-  "irr": -0.23862658,
-  "netCashOut": -2617208.53,
-  "newLoan": 10215686.77,
+  "irr": -0.24530522,
+  "netCashOut": -2230052.2,
+  "newLoan": 10606753.77,
   "peak": 2,
   "year": 5
  },
@@ -308,9 +308,9 @@
  "ACQ-7:refi": {
   "baseIrr": 0.056274997,
   "binding": "DSCR",
-  "irr": 0.049505219,
-  "netCashOut": 2049094.9,
-  "newLoan": 15108556.72,
+  "irr": 0.049256041,
+  "netCashOut": 2466505.51,
+  "newLoan": 15530183.6,
   "peak": 4,
   "year": 4
  },
@@ -363,9 +363,9 @@
  "BIZ-1:refi": {
   "baseIrr": 0.041997229,
   "binding": "DSCR",
-  "irr": 0.034758308,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034404259,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -418,9 +418,9 @@
  "BIZ-2:refi": {
   "baseIrr": 0.041997229,
   "binding": "DSCR",
-  "irr": 0.034758308,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034404259,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -463,9 +463,9 @@
  "CRD-1:refi": {
   "baseIrr": 0.041997229,
   "binding": "DSCR",
-  "irr": 0.034758308,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034404259,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -888,9 +888,9 @@
  "REF-1:refi": {
   "baseIrr": 0.135170409,
   "binding": "LTV",
-  "irr": 0.143648384,
-  "netCashOut": 3509417.2,
-  "newLoan": 16724505.35,
+  "irr": 0.144590774,
+  "netCashOut": 3934269.46,
+  "newLoan": 17153649.05,
   "peak": 9,
   "year": 4
  },
@@ -933,9 +933,9 @@
  "TAX-1:refi": {
   "baseIrr": 0.041997229,
   "binding": "DSCR",
-  "irr": 0.034758308,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034404259,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -987,9 +987,9 @@
  "TAX-2:refi": {
   "baseIrr": 0.041997229,
   "binding": "DSCR",
-  "irr": 0.034758308,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034404259,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -1041,9 +1041,9 @@
  "TAX-3:refi": {
   "baseIrr": 0.042320364,
   "binding": "DSCR",
-  "irr": 0.035034702,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034680317,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -1095,9 +1095,9 @@
  "TAX-4:refi": {
   "baseIrr": 0.042446782,
   "binding": "DSCR",
-  "irr": 0.035141844,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034787074,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -1149,9 +1149,9 @@
  "TAX-5:refi": {
   "baseIrr": 0.041997229,
   "binding": "DSCR",
-  "irr": 0.034758308,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034404259,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },
@@ -1194,9 +1194,9 @@
  "TAX-6:refi": {
   "baseIrr": 0.041997229,
   "binding": "DSCR",
-  "irr": 0.034758308,
-  "netCashOut": 1619475.96,
-  "newLoan": 14686261.65,
+  "irr": 0.034404259,
+  "netCashOut": 2030241.78,
+  "newLoan": 15101176.61,
   "peak": 4,
   "year": 4
  },

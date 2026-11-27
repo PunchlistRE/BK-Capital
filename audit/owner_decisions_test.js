@@ -34,9 +34,10 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('once a source document is staged, the suite runs its checks again (it is not switched off)', qa.stagedNa === false && qa.stagedTotal > 2, JSON.stringify(qa));
 
   /* 3a. desktop charts unchanged */
-  const desk = await p.evaluate(async (d) => { bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d); bkSave(s); const out = {}; for (const sh of ['Property CF', 'Returns', 'Operating Underwrite']) { showSheet(sh); await new Promise(r => setTimeout(r, 500)); out[sh] = [...document.querySelectorAll('#viewport .pf-card svg')].map(x => x.viewBox.baseVal.width); }
+  const desk = await p.evaluate(async (d) => { bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, d); bkSave(s); const out = {}; for (const sh of ['Property CF', 'Returns', 'Operating Underwrite']) { showSheet(sh); await new Promise(r => setTimeout(r, 500)); out[sh] = [...document.querySelectorAll('#viewport .pf-card svg')].map(x => x.viewBox.baseVal.width); const mc = document.querySelector('#viewport .main-col'); (out.exp = out.exp || {})[sh] = mc && mc.clientWidth > 500 ? Math.max(600, Math.min(1800, Math.round(mc.clientWidth - (document.querySelector('#viewport .side-col') ? 70 : 370)))) : 760; }
     out.pdf = (bkReportHTML().match(/viewBox="0 0 (\d+)/g) || []).filter(x => /760/.test(x)).length; return out; }, A);
-  check('desktop and the investor PDF draw the charts at 760 units, as before', Object.keys(desk).filter(k => k !== 'pdf').every(k => desk[k].length > 0 && desk[k].every(w => w === 760)) && desk.pdf >= 2, JSON.stringify(desk));
+  /* desktop charts fill the page column (a later, deliberate change): each is drawn at EXACTLY the width the app computes from its column (column width less the side column, between 600 and 1800); the investor PDF still draws at 760 */
+  check('desktop charts are drawn at exactly their column width and the investor PDF still draws them at 760 units', ['Property CF', 'Returns', 'Operating Underwrite'].every(k => desk[k].length > 0 && desk[k].every(w => w === desk.exp[k])) && desk.pdf >= 2, JSON.stringify(desk));
   check('no page errors (desktop)', p.errs.length === 0, p.errs.slice(0, 2).join(' | ')); await p.context().close();
 
   /* 3b. phone charts and header */

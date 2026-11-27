@@ -44,8 +44,8 @@ def refi_at(m, noi_by_year, y, inp):
 def check(s, inp):
     m = model(s); n_years = m['holdMonths'] // 12
     base = metrics(list(m['levCF']), m['levDates'], m['equityAtClose']); base['cashBeforeExit'] = sum(m['levCF'][:m['holdMonths'] - 1]); base['payoffAtExit'] = m['exitBalance']
-    sel = refi_at(m, m['noiYear'], inp['year'], inp) if 1 <= inp['year'] <= n_years - 1 else None
-    timing = [refi_at(m, m['noiYear'], y, inp) for y in range(2, n_years)]
+    sel = refi_at(m, m['lenderNoiYear'], inp['year'], inp) if 1 <= inp['year'] <= n_years - 1 else None
+    timing = [refi_at(m, m['lenderNoiYear'], y, inp) for y in range(2, n_years)]
     verdict = None
     if sel:
         d_irr, d_profit, d_moic = sel['irr'] - base['irr'], sel['profit'] - base['profit'], sel['moic'] - base['moic']

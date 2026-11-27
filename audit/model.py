@@ -66,7 +66,7 @@ def model(s, acq_fee=0.01):
         e = res - (gross if c['cvBadDebtBasis'] == 'gross' else res) * N('badDebtPct') - gross * N('lossToLeasePct') - gross * N('concessionPct') + other / 12 * g('otherGrowth')
         ctrl = ctrl_y1 / 12 * g('opexGrowth') * ((1 - v) + v * occ)
         nb = e - ctrl - N('insurance') / 12 * g('opexGrowth') - N('taxes') / 12 * (1 + N('taxGrowth')) ** (math.ceil(m / 12) - 1) - e * N('mgmtPct')
-        return e, nb - N('reserves') / 12 * g('opexGrowth')
+        return e, nb - N('reserves') / 12 * g('opexGrowth'), nb   # third: NOI before replacement reserves (the lender basis, owner-approved 1.2 B)
 
     ms = [month(m) for m in range(1, H + 1)]
     gross_sale = sum(month(m)[1] for m in range(H + 1, H + 13)) / N('exitCap')
@@ -131,10 +131,11 @@ def model(s, acq_fee=0.01):
         rows.append(dict(dist=dist, lp=lpd, gp=gpd, t2=t2, t3=t3, t4=t4))
     levv = [-equity] + lev
     noi_year = [sum(x[1] for x in ms[12 * i:12 * i + 12]) for i in range(hy)]
+    lender_noi_year = [sum(x[2] for x in ms[12 * i:12 * i + 12]) for i in range(hy)]
     return dict(
         levCF=lev, levDates=dts, equityAtClose=equity, monthlyPmt=P, monthlyRate=r, amortMonths=n, holdMonths=H, exitBalance=bal,
         stmtNOI=noi1 - N('reserves'),
-        basis=basis, annualDS=P * 12, coupon=N('acqRate'), amortYears=N('acqAmort'), noiYear=noi_year, lpContrib=lp_con, gpContrib=gp_con,
+        basis=basis, annualDS=P * 12, coupon=N('acqRate'), amortYears=N('acqAmort'), noiYear=noi_year, lenderNoiYear=lender_noi_year, lpContrib=lp_con, gpContrib=gp_con,
         loan=loan, equity=equity, ltvValue=ltv_value, y1NOI=sum(x[1] for x in ms[:12]), grossSale=gross_sale,
         unlevIRR=xirr(u, dts), unlevMOIC=sum(x for x in u if x > 0) / basis,
         levIRR=xirr(levv, dts), levMOIC=sum(x for x in levv if x > 0) / -sum(x for x in levv if x < 0),   # shortfall calls count as contributions

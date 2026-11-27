@@ -28,7 +28,7 @@
   /* freeze panes: any table too wide for its card (marked by the layout pass) keeps its row labels in view while the rest scrolls, with an edge to show where the frozen column ends */
   html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > * > tr > :first-child{ position:sticky; left:0; z-index:1; background-color:var(--ae-cell,#fff);   /* opaque: the scrolled cells pass under it (the older transparent-cell rule in src/110 leaves frozen labels alone) */
     box-shadow:inset -1px 0 0 var(--ae-line,#d6dde5), 6px 0 8px -6px rgba(14,42,74,.18); }
-  html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > thead > tr > :first-child{ z-index:2; background-color:var(--ae-head,#e7ecf2); }
+  html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > thead > tr > :first-child{ z-index:2; background-color:var(--ae-head,#eaf0f6); }
   html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > tbody > tr.total > :first-child, html:where(:not(.bk-printing)) body #viewport .tbl-wrap > table.fin[data-bk-freeze][data-bk-freeze] > tbody > tr.grandtotal > :first-child{ background-color:var(--bk-total-fill); }
   /* a subtotal row's tint is translucent (an older rule, with !important): on a frozen label the scrolled figures would show through it, so the label paints
      the same tint as an opaque layer (the row's text color at 6% over the cell color; right in light and dark) */

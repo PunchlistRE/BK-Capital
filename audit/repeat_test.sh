@@ -15,7 +15,12 @@ T = sys.argv[1]; names = ['base', 'base2', 'rev_tokyo_2031', 'la_leapday']; docs
 for n in names:
     d = json.load(open(f'{T}/{n}.json'))
     if d['pageErrors']: sys.exit(f'{n}: page errors {d["pageErrors"]}')
-    for x in d['deals']: x.pop('roundTripIdentical', None)
+    for x in d['deals']:
+        x.pop('roundTripIdentical', None)
+        # debtIndexDate is the SOFR "as of" stamp: the app writes today's date by design (an input record, not a result);
+        # the run above that changes the system date shows it moves and nothing else does. Compared everywhere else.
+        try: x['res']['s'].pop('debtIndexDate', None)
+        except (KeyError, TypeError, AttributeError): pass
     docs[n] = json.dumps(d['deals'], sort_keys=True)
 rt = json.load(open(f'{T}/base.json'))
 bad = [x['id'] for x in rt['deals'] if not x.get('roundTripIdentical')]
