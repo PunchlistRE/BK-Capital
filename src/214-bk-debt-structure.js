@@ -120,6 +120,11 @@ window.bkAllInRate = function(s){ s = s || load(); var t = rateType(s), out = { 
   var idx = out.index; if(out.idxFloor > 0) idx = Math.max(idx, out.idxFloor); if(t === 'Floating' && out.strike > 0) idx = Math.min(idx, out.strike);
   out.rate = Math.max(idx + out.spread, out.floor); out.source = s.debtIndexSource || ''; out.date = s.debtIndexDate || ''; out.override = !!Number(s.debtIndexOverride); out.published = s._idxPublished;
   out.tenor = s.debtIndexTenor || 'Overnight SOFR'; out.indexName = s.debtIndexName || 'SOFR'; return out; };
+/* The benchmark is one rate on one date. When the loan closes on a different date, say so (no number changes): a fixed coupon is set at the lock, a floating loan starts from this index. */
+function staleNote(s, a, lock){ var c = Date.parse(String(s.closing || '').slice(0, 10)), e = Date.parse(String(a.date || '').slice(0, 10));
+  if(!isFinite(c) || !isFinite(e)) return ''; var d = Math.round((c - e) / 86400000); if(Math.abs(d) <= 30) return '';
+  return '<div class="bk-ds-n bk-ds-warn">The ' + esc(a.indexName === 'SOFR' ? a.tenor : a.indexName) + ' shown is effective ' + esc(a.date) + ', ' + Math.abs(d) + ' days ' + (d > 0 ? 'before' : 'after') + ' the closing on ' + esc(String(s.closing).slice(0, 10)) + '. The loan is priced from this rate'
+    + (lock ? ' as the benchmark at the lock' : ' at the start, then moved by the rate outlook') + '. Enter the rate expected on the closing or lock date, or the lender\'s quote.</div>'; }
 function allInCard(s){ var a = window.bkAllInRate(s); if(a.type === 'Fixed') return '';
   var name = a.indexName === 'SOFR' ? a.tenor : a.indexName, p = a.indexName === 'SOFR' ? window.bkSofrFor(a.tenor) : null;
   var prov = a.override ? 'Manual override, entered ' + esc(s.debtIndexOverrideOn || '') + (a.published != null ? ' (the published figure was ' + pct(a.published) + ')' : '') + '.'
@@ -132,6 +137,7 @@ function allInCard(s){ var a = window.bkAllInRate(s); if(a.type === 'Fixed') ret
     + '<div class="bk-ds-sum"><div><span>' + esc(lock ? name + ' at the lock' : 'Current ' + name) + '</span><b>' + pct(a.index) + '</b></div><div><span>Lender spread</span><b>+ ' + pct(a.spread) + '</b></div><div class="t"><span>' + (lock ? 'Fixed coupon' : 'All-in rate today') + '</span><b>' + pct(a.rate) + '</b></div></div>'
     + (a.idxFloor > 0 && a.index < a.idxFloor ? '<div class="bk-ds-n">The ' + esc(a.indexName) + ' floor of ' + pct(a.idxFloor) + ' applies.</div>' : '') + (a.floor > 0 && a.index + a.spread < a.floor ? '<div class="bk-ds-n">The coupon floor of ' + pct(a.floor) + ' applies.</div>' : '')
     + '<div class="bk-ds-n">Source: ' + prov + '</div>' + live
+    + staleNote(s, a, lock)
     + (lock ? '<div class="bk-ds-n">The coupon is fixed for the term at the benchmark on the lock date plus the spread: later moves in SOFR do not change it.</div>'
       : '<div class="bk-ds-n">Later months do not use today\'s rate: each reset (every ' + (Math.max(1, Math.round(num(s.debtResetMonths)) || 1)) + ' month' + ((Math.round(num(s.debtResetMonths)) || 1) > 1 ? 's' : '') + ') takes the index from the rate outlook' + (num(s.debtIndexDrift) ? ' (' + (num(s.debtIndexDrift) > 0 ? '+' : '') + Math.round(num(s.debtIndexDrift) * 10000) + ' bps a year)' : ' (flat unless you set one)') + ' or the annual index curve on the Debt page, which are forecasts, not published rates.</div>')
     + '</div>'; }
