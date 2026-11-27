@@ -20,8 +20,8 @@ var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume 
   [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
 
 /* the three tax rates are Expected inputs (src/226): the model runs on its defaults, flagged provisional until the user confirms them */
-var TAXSTEP = S('tax', 'Tax rates', 'These set the after-tax return. They depend on your circumstances, the jurisdiction, how the property is owned and the transaction, so the model\'s defaults are a starting point, not tax advice. Confirm or change them.', 'After-Tax',
-  [q('taxRate', 'required'), q('depRecaptureRate', 'required'), q('capGainsRate', 'required')], { skippable:true });
+var TAXSTEP = S('tax', 'Tax assumptions', 'These set the after-tax return: the three tax rates and the share of the price treated as land (which is not depreciated). They depend on your circumstances, the jurisdiction, how the property is owned and the transaction, so the model\'s defaults are a starting point, not tax advice. Confirm or change them.', 'After-Tax',
+  [q('taxRate', 'required'), q('depRecaptureRate', 'required'), q('capGainsRate', 'required'), q('landValuePct', 'required', { when:function(s){ return typeof window.bkLandDefaultInEffect === 'function' && window.bkLandDefaultInEffect(s); } })], { skippable:true });
 R.addWorkflow('acquisition', [
   S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('propertyType'), q('acqStrategy'), q('units', 'required'), q('gsf'), q('gla')]),
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),

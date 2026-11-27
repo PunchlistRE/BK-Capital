@@ -16,10 +16,11 @@ function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(
 var RATES = {
   taxRate:{ label:'Ordinary income tax rate', def:0.37, affects:'Applied each year to taxable operating income (rent less operating costs, interest and depreciation), and to the ordinary-income part of the gain on sale. It moves the after-tax cash flow every year.' },
   depRecaptureRate:{ label:'Depreciation recapture rate', def:0.25, affects:'Applied at the sale to the gain that comes from depreciation already taken (unrecaptured Section 1250 gain), never above the ordinary rate. It moves the tax at the sale and the after-tax proceeds.' },
+  landValuePct:{ label:'Land allocation', def:0.20, land:true, affects:'Land is generally not depreciable. The share of the basis allocated to land is left out of depreciation, so it sets the depreciable basis, every year\'s depreciation deduction and tax saving, and through the adjusted basis the gain and the recapture at the sale: it moves the after-tax cash flow and the after-tax IRR. The right share needs support (an appraisal, the assessor\'s land-to-total ratio or a cost study).' },
   capGainsRate:{ label:'Capital gains rate', def:0.20, affects:'Applied at the sale to the remaining long-term gain after recapture. It moves the tax at the sale and the after-tax IRR and multiple.' }
 };
 var KEYS = Object.keys(RATES);
-var CAUTION = 'Tax rates depend on the investor\'s circumstances, the jurisdiction, the ownership structure and the transaction. The model\'s defaults are a starting point for a first look, not tax advice and not a rate that applies to every investor.';
+var CAUTION = 'Tax rates and the land allocation depend on the investor\'s circumstances, the jurisdiction, the ownership structure and the transaction. The model\'s defaults are a starting point for a first look, not tax advice and not a figure that applies to every investor.';
 window.BK_TAX_RATES = RATES; window.BK_TAX_RATES_CAUTION = CAUTION;
 
 /* where a rate stands: { state:'confirmed'|'provisional', value, source, def } */
@@ -27,7 +28,10 @@ window.bkTaxRateStatus = function(k, s){ s = s || bkLoad(); var R = RATES[k]; if
   var state = conf ? 'confirmed' : (has && Math.abs(Number(v) - R.def) > 1e-12 ? 'confirmed' : 'provisional');
   return { key:k, label:R.label, state:state, value:has ? Number(v) : R.def, entered:has, def:R.def, affects:R.affects,
     source:conf ? 'Confirmed by you' : state === 'confirmed' ? 'Entered by you' : has ? 'Model default (saved earlier), not yet confirmed by you' : 'Model default, not entered' }; };
-window.bkTaxRatesProvisional = function(s){ s = s || bkLoad(); return KEYS.filter(function(k){ return window.bkTaxRateStatus(k, s).state === 'provisional'; }); };
+/* the land default only matters while it is what the after-tax figures use: the default after-tax schedule (the Depreciation page's own land setting, once a schedule is configured there, is the land check's business). Memoised on the deal. */
+var LAND_MEMO = { key:'', v:false };
+window.bkLandDefaultInEffect = function(s){ s = s || bkLoad(); var key = JSON.stringify(s); if(LAND_MEMO.key === key) return LAND_MEMO.v; var a = typeof window.bkLandAllocation === 'function' ? window.bkLandAllocation(s) : null; LAND_MEMO = { key:key, v:!!(a && /after-tax default schedule/.test(a.path)) }; return LAND_MEMO.v; };
+window.bkTaxRatesProvisional = function(s){ s = s || bkLoad(); return KEYS.filter(function(k){ return window.bkTaxRateStatus(k, s).state === 'provisional' && (!RATES[k].land || window.bkLandDefaultInEffect(s)); }); };
 /* the user confirms the rates as their own (the model's default value is saved as theirs only when they say so) */
 window.bkTaxRateConfirm = function(k){ var s = bkLoad(); s._taxConfirmed = Object.assign({}, s._taxConfirmed || {}); (k ? [k] : KEYS).forEach(function(x){ if(!RATES[x]) return; if(s[x] === undefined || s[x] === null || s[x] === '') s[x] = RATES[x].def; s._taxConfirmed[x] = true; }); bkSave(s);
   if(typeof showSheet === 'function' && typeof currentSheet !== 'undefined') showSheet(currentSheet); };
@@ -38,13 +42,13 @@ KEYS.forEach(function(k){ var f = window.BKReg.field(k); if(f) f.has = function(
 /* the banner and the panel on the after-tax pages */
 function banner(s){ var p = window.bkTaxRatesProvisional(s); if(!p.length) return '';
   return '<div class="note-flag bk-tx-prov"><span>&#9888;</span><div><b>After-tax figures are provisional.</b> They use the model\'s default for the ' + p.map(function(k){ return esc(RATES[k].label.toLowerCase()); }).join(', ')
-    + ' (' + p.map(function(k){ return (RATES[k].def * 100).toFixed(0) + '%'; }).join(', ') + '). ' + esc(CAUTION) + ' <button type="button" class="bk-btn" onclick="bkTaxRateConfirm()">Confirm these rates as mine</button></div></div>'; }
+    + ' (' + p.map(function(k){ return (RATES[k].def * 100).toFixed(0) + '%'; }).join(', ') + '). ' + esc(CAUTION) + ' <button type="button" class="bk-btn" onclick="bkTaxRateConfirm()">Confirm these as mine</button></div></div>'; }
 window.bkTaxProvisionalBanner = banner;
-function panel(s){ var rows = KEYS.map(function(k){ var t = window.bkTaxRateStatus(k, s); return '<tr><td class="rowlabel" data-bk-align="text">' + esc(t.label) + '<span class="bk-sub">' + esc(t.affects) + '</span></td><td data-bk-align="text">' + (t.value * 100).toFixed(2) + '%</td>'
+function panel(s){ var rows = KEYS.filter(function(k){ return !RATES[k].land || window.bkLandDefaultInEffect(s); }).map(function(k){ var t = window.bkTaxRateStatus(k, s); return '<tr><td class="rowlabel" data-bk-align="text">' + esc(t.label) + '<span class="bk-sub">' + esc(t.affects) + '</span></td><td data-bk-align="text">' + (t.value * 100).toFixed(2) + '%</td>'
     + '<td data-bk-align="text"><span class="status-chip ' + (t.state === 'confirmed' ? 'pass' : 'warn') + '">' + (t.state === 'confirmed' ? 'Confirmed' : 'Provisional') + '</span><span class="bk-sub">' + esc(t.source) + '</span></td>'
     + '<td data-bk-align="text">' + (t.state === 'provisional' ? '<button type="button" class="bk-btn" onclick="bkTaxRateConfirm(\'' + k + '\')">Confirm</button>' : '') + '</td></tr>'; }).join('');
-  return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Tax rates: where they come from</caption><thead><tr><th class="rowlabel-h">Rate</th><th>Used</th><th>Source</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
-    + '<div class="note-flag"><span>&#9432;</span><div>' + esc(CAUTION) + ' Change a rate in the After-Tax Assumptions below; a rate that is not the model\'s default is treated as yours.</div></div>'; }
+  return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Tax assumptions: where they come from</caption><thead><tr><th class="rowlabel-h">Rate</th><th>Used</th><th>Source</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div class="note-flag"><span>&#9432;</span><div>' + esc(CAUTION) + ' Change a figure in the After-Tax Assumptions below (the land allocation is on the Depreciation page); a figure that is not the model\'s default is treated as yours.</div></div>'; }
 ['After-Tax', 'After-Tax Report'].forEach(function(name){ var orig = typeof RENDERERS !== 'undefined' ? RENDERERS[name] : null; if(typeof orig !== 'function' || orig.__bkTaxProv) return;
   var w = function(){ var o = orig.apply(this, arguments); try { if(o && typeof o.main === 'string'){ var s = bkLoad(); if(!(typeof window.bkDealReadiness === 'function' && window.bkDealReadiness().canCalculate === false)){ o.main = banner(s) + (name === 'After-Tax' ? panel(s) : '') + o.main; } } } catch(e){} return o; };
   w.__bkTaxProv = true; w.__bkOriginal = orig.__bkOriginal || orig; if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(name, w); else RENDERERS[name] = w; });
