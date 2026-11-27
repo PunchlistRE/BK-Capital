@@ -37,6 +37,6 @@ wrap('Covenant Monitor', function(){
   var rows = window.bkInterestCoverage(); if(!rows) return '';
   return card('Interest Coverage by Year - beside the Lender DSCR', '<th class="rowlabel-h">Year</th><th>' + bkDscrShort('lender') + ' NOI</th><th>Interest</th><th>Interest coverage</th><th>' + bkDscrShort('lender') + '</th>',
     rows.map(function(r){ return '<tr><td class="rowlabel">Year ' + r.y + '</td><td>' + M(r.noi) + '</td><td>' + M(r.interest) + '</td><td>' + X(r.icr) + '</td><td>' + X(r.dscr) + '</td></tr>'; }).join(''))
-    + '<div class="note-flag"><span>&#9432;</span><div>Interest coverage is the lender NOI (' + bkDscrBasis('lender') + ') over the year\'s interest; the DSCR is the same NOI over interest plus principal.</div></div>';
+    + '<div class="note-flag"><span>&#9432;</span><div>Interest coverage is the lender NOI (' + bkDscrBasis('lender') + ') over the year\'s interest; the Lender DSCR is the same NOI over interest plus principal.</div></div>';
 });
 })();
