@@ -40,16 +40,17 @@ const A = require(path.join(__dirname, 'deal.js'));
     ['where is the waterfall', 'Equity waterfall'], ['where do I put the vacancy assumption', 'Vacancy'], ['how do I change the preferred return', 'Preferred return and hurdles'],
     ['what is the interest rate on the loan', 'Interest rate'], ['where can I import a rent roll', 'Import a rent roll'], ['show me the gantt chart', 'Development schedule (Gantt)'],
     ['what is the residual land value', 'Residual land value'], ['what price can I pay to hit a 15% IRR', 'Solve for a price or a rent'], ['which constraint limits the loan', 'Which loan constraint binds'],
-    ['where are the sources and uses', 'Sources and uses'], ['hold period', 'Hold period'], ['what is the IRR', 'IRR and equity multiple'], ['S-curve for construction draws', 'Construction draws and curves'],
-    ['how do I set the management fee', 'Operating expenses'], ['sell or hold', 'Sell versus hold']];
+    ['where are the sources and uses', 'Sources and uses'], ['hold period', 'Hold period'], ['what is the IRR', 'IRR: internal rate of return'], ['S-curve for construction draws', 'Construction draws and curves'],
+    ['how do I set the management fee', 'Management fee, % of income'], ['sell or hold', 'Sell versus hold']];
   for (const [q, want] of expect) { const t = await top(q); check('"' + q + '" finds ' + want, t[0] === want, t.join(' / ')); }
   const none = await p.evaluate(() => bkAsk('banana smoothie recipe'));
   check('a question it does not know gets no invented answer', none.length === 0);
 
   /* ---- answers quote the engine ---- */
-  const live = await p.evaluate(() => { const s = bkLoad(), d = bkDebt(), r = bkMonthlyReturns(), c = bkCalc(); return { ex: bkAsk('what is the exit cap')[0].answer, irr: bkAsk('what is my irr')[0].answer, dscr: bkAsk('what is my dscr')[0].answer, price: bkAsk('purchase price')[0].answer, exitCap: s.exitCap, irrV: r.irr, moic: r.moic, dscrV: d && d.dscr, priceV: s.purchasePrice, cap: bkAsk('going in cap rate')[0].answer, noi: c.noi }; });
+  const live = await p.evaluate(() => { const s = bkLoad(), d = bkDebt(), r = bkMonthlyReturns(), c = bkCalc(); return { ex: bkAsk('what is the exit cap')[0].answer, irr: bkAsk('what is my irr')[0].answer, dscr: bkAsk('what is my dscr')[0].answer, price: bkAsk('purchase price')[0].answer, exitCap: s.exitCap, irrV: r.irr, moic: r.moic, dscrV: d && d.dscr, priceV: s.purchasePrice, cap: bkAsk('going in cap rate')[0].answer, noi: c.noi, mult: bkAsk('what is my equity multiple')[0].answer }; });
   check('exit cap answer quotes the deal\'s exit cap', live.ex.includes((live.exitCap * 100).toFixed(2) + '%'), live.ex);
-  check('IRR answer quotes the engine\'s IRR and multiple', live.irr.includes((live.irrV * 100).toFixed(1) + '%') && live.irr.includes(live.moic.toFixed(2) + 'x'), live.irr);
+  /* "what is the IRR" is now answered by the explainer (IRR: internal rate of return), which quotes the levered IRR to two decimals; the multiple is answered by IRR and equity multiple, on its own question. The field topic for the management fee is the field itself, which is where the question is going. */
+  check('IRR answer quotes the engine\'s IRR, and the equity multiple answer quotes the multiple', live.irr.includes((live.irrV * 100).toFixed(2) + '%') && live.mult.includes(live.moic.toFixed(2) + 'x'), live.irr + ' || ' + live.mult);
   check('DSCR answer quotes the debt engine\'s DSCR', live.dscrV ? live.dscr.includes(live.dscrV.toFixed(2) + 'x') : /DSCR/.test(live.dscr), live.dscr);
   check('price answer quotes the deal\'s price', live.priceV ? live.price.includes('$' + Math.round(live.priceV).toLocaleString('en-US')) : true, live.price);
   check('going-in cap answer says it is calculated, never the broker\'s', /calculated/i.test(live.cap) && /broker/i.test(live.cap), live.cap);
