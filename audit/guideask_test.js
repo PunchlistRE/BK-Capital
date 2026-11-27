@@ -23,7 +23,8 @@ const A = require(path.join(__dirname, 'deal.js'));
       if (go.panel) { const bar = document.querySelector('#viewport .main-col > .bk-pt-bar'); out.panel = !!bar && [...bar.querySelectorAll('.ae-tab:not(.bk-pt-all)')].some(x => new RegExp(go.panel, 'i').test(x.textContent)); out.on = bar ? [...bar.querySelectorAll('.ae-tab.on')].some(x => new RegExp(go.panel, 'i').test(x.textContent)) : false; }
       return out; }, t.go);
     if (r.missing) { if (!t.optional) bad.push(t.title + ': no such page ' + t.go.sheet); continue; }
-    if (r.cur !== t.go.sheet) bad.push(t.title + ': landed on ' + r.cur);
+    /* Source Ingestion is a view inside Import since the navigation regroup; asking for it lands on Import, where it lives */
+    if (r.cur !== t.go.sheet && !(t.go.sheet === 'Source Ingestion' && r.cur === 'Import')) bad.push(t.title + ': landed on ' + r.cur);
     if (t.go.field && !r.field) bad.push(t.title + ': field ' + t.go.field + ' not on page');
     if (t.go.panel && !r.panel) bad.push(t.title + ': no tab ' + t.go.panel);
     if (t.go.panel && r.panel && !r.on) bad.push(t.title + ': tab not opened');

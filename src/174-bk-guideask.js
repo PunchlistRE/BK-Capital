@@ -166,9 +166,13 @@ function generated(){
   if(GEN) return GEN; GEN = []; var R = window.BKReg && window.BKReg._raw, homes = fieldHomes();
   if(R){
     Object.keys(R.fields).forEach(function(k){ var f = R.fields[k]; if(f.planned || f.kind === 'derived') return; var h = homes[k] || (f.sheet ? { sheet:f.sheet } : null); if(!h || !h.sheet) return;
-      var go = ED[h.sheet] ? { sheet:h.sheet, tab:h.sheet, sub:null, field:'ae-' + k, path:['Property', h.sheet] } : { sheet:h.sheet, panel:null, field:null, path:[h.sheet] };
-      GEN.push({ gen:true, title:f.label, k:[f.label, plain(f.label), k.replace(/([A-Z])/g, ' $1')], go:go,
-        a:function(s){ var v = kindFmt(f, (s || {})[k]); return '<b>' + esc(f.label) + '</b> ' + (v == null ? 'is not entered on this deal yet.' : 'is <b>' + esc(v) + '</b> on this deal.') + (f.help ? ' ' + esc(f.help) : '') + ' You change it on ' + esc(go.path.join(' › ')) + '.'; } }); });
+      var fallback = ED[h.sheet] ? { sheet:h.sheet, tab:h.sheet, sub:null, field:null, path:['Property', h.sheet] } : { sheet:h.sheet, panel:null, field:null, path:[h.sheet] };
+      /* where the field is drawn is read from the editor itself, so the card names the real page and sub-tab and Take me there opens it; a table (capital items, reserves) or a field with no box takes you to its page */
+      var homeGo = function(){ var ix = window.bkEdFieldIndex ? safe(function(){ return window.bkEdFieldIndex(); }, null) : null, e = ix && ix['ae-' + k];
+        return e ? { sheet:e.tab, tab:e.tab, sub:e.sub, field:'ae-' + k, path:['Property', e.tab, e.subLabel] } : fallback; };
+      var ent = { gen:true, title:f.label, k:[f.label, plain(f.label), k.replace(/([A-Z])/g, ' $1')],
+        a:function(s){ var v = kindFmt(f, (s || {})[k]); return '<b>' + esc(f.label) + '</b> ' + (v == null ? 'is not entered on this deal yet.' : 'is <b>' + esc(v) + '</b> on this deal.') + (f.help ? ' ' + esc(f.help) : '') + ' You change it on ' + esc(homeGo().path.join(' › ')) + '.'; } };
+      Object.defineProperty(ent, 'go', { enumerable:true, get:homeGo }); GEN.push(ent); });
     Object.keys(R.metrics).forEach(function(id){ var m = R.metrics[id]; if(m.planned || !m.label) return;
       GEN.push({ gen:true, title:m.label, k:[m.label, plain(m.label)], go:P('Returns', null, ['Returns']),
         a:function(){ var sm = safe(function(){ return window.BKReg.summarize(deal()); }, null), row = sm && [sm.primary].concat(sm.metrics || []).filter(function(x){ return x && x.id === id; })[0], v = row && row.value != null && isFinite(row.value) ? (m.fmt === 'pct' ? pc(row.value) : m.fmt === 'x' ? row.value.toFixed(2) + 'x' : m0(row.value)) : null;
@@ -220,8 +224,10 @@ function arrive(go, tries){
 /* a field lives on one sub-tab of its editor page (Other income is on Revenues > Other income, not the page's first sub-tab): when it is not on the sub-tab that opened, open the sub-tab that has it */
 function openFieldSub(go){
   if(!go.field || !go.tab || document.getElementById(go.field) || typeof window.bkEdGo !== 'function' || !window.bkEditorTabs) return;
-  var t = window.bkEditorTabs.filter(function(x){ return x.id === go.tab; })[0]; if(!t || !t.subs) return;
-  for(var i = 0; i < t.subs.length; i++){ window.bkEdGo(go.sheet, go.tab, t.subs[i][0]); if(document.getElementById(go.field)) return; }
+  /* this page's own sub-tabs first, then the other editor pages: a field is found where the editor really keeps it, whatever page the registry's workflow step lists it under */
+  var tabs = window.bkEditorTabs.slice().sort(function(a, b){ return (a.id === go.tab ? 0 : 1) - (b.id === go.tab ? 0 : 1); });
+  for(var k = 0; k < tabs.length; k++){ var t = tabs[k]; if(!t.subs) continue;
+    for(var i = 0; i < t.subs.length; i++){ window.bkEdGo(t.id, t.id, t.subs[i][0]); if(document.getElementById(go.field)){ go.sheet = t.id; go.tab = t.id; return; } } }
   window.bkEdGo(go.sheet, go.tab, go.sub);
 }
 function take(i){
