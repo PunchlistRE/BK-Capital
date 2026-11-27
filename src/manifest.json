@@ -1095,6 +1095,11 @@
 "close": "</script>"
 },
 {
+"file": "219-bk-portfolio-analysis.js",
+"open": "\n<script id=\"bk-portfolio-analysis\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"

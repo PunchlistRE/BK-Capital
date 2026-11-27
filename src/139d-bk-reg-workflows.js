@@ -106,15 +106,15 @@ R.addWorkflow('comprehensive', [
   S('review', 'Review and generate the comprehensive report', '', 'Reports', []) ]);
 
 R.addWorkflow('portfolio', [
-  S('overview', 'Portfolio overview', '', 'Portfolio', [q('name', 'required')]),
-  S('select', 'Property selection / import', 'Link saved models or enter owned properties.', 'Portfolio', [q('holdings', 'required')]),
-  S('assets', 'Asset-level information', '', 'Portfolio', [q('holdings', 'required')]),
-  S('values', 'Property valuations', '', 'Portfolio', []), S('ops', 'Operating performance', '', 'Portfolio', []),
-  S('capital', 'Capital improvement requirements', '', 'Portfolio', [q('capitalProjects')]), S('debt', 'Debt and maturity schedule', '', 'Portfolio', []),
-  S('tax', 'Depreciation and tax profiles', '', 'Portfolio', [q('taxProfile')], { skippable:true }), S('consolidate', 'Portfolio consolidation', 'Dated cash flows added together; nothing counted twice.', 'Portfolio M', []),
-  S('compare', 'Asset-level comparisons', '', 'Portfolio', []), S('risk', 'Portfolio risk analysis', '', 'Portfolio', []),
-  S('scenarios', 'Portfolio scenarios', 'Sell, refinance, change operations, invest capital, and compare the results side by side.', 'Portfolio', [q('portfolioScenarios')]),
-  S('review', 'Review and generate the portfolio report', '', 'Reports', []) ]);
+  S('overview', 'Portfolio overview', 'Name the portfolio. Its holdings are the deals saved to it.', 'Portfolio Analysis', [q('name', 'required')]),
+  S('select', 'Property selection', 'Save each property to the portfolio from its own deal (Portfolio page, Save Active Deal).', 'Portfolio', []),
+  S('assets', 'Asset-level information', 'Each holding is its saved deal, run by the same engines as on its own pages.', 'Portfolio Analysis', []),
+  S('values', 'Property valuations', '', 'Portfolio Analysis', []), S('ops', 'Operating performance', '', 'Portfolio Analysis', []),
+  S('capital', 'Capital improvement requirements', 'In each holding\'s own cash flow.', 'Portfolio Analysis', []), S('debt', 'Debt and maturity schedule', '', 'Portfolio Analysis', []),
+  S('tax', 'Depreciation and tax profiles', 'Deal by deal, on each holding\'s After-Tax page.', 'Portfolio Analysis', [], { skippable:true }), S('consolidate', 'Portfolio consolidation', 'Dated cash flows added together; nothing counted twice.', 'Portfolio M', []),
+  S('compare', 'Asset-level comparisons', '', 'Portfolio Analysis', []), S('risk', 'Portfolio risk analysis', '', 'Portfolio Analysis', []),
+  S('scenarios', 'Portfolio scenarios', 'The portfolio without each holding: what each one adds.', 'Portfolio Analysis', []),
+  S('review', 'Review and generate the portfolio report', '', 'Portfolio Report', []) ]);
 
 R.addWorkflow('business', [
   S('company', 'Company information', '', 'Business Model', [q('name', 'required')]),

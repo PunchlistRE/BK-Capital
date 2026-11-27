@@ -18,8 +18,8 @@ var R = window.BKReg;
     engines:['operating', 'hold', 'tax'], ownReadiness:true, home:'Hold vs Sell', ready:function(s){ var r = typeof window.bkHold === 'function' ? window.bkHold(s) : null; return !r || r.ok ? true : 'Hold vs sell cannot be compared yet: ' + r.missing.join(', ') + '.'; }, about:'Hold-period cash flow against selling now, with an estimate of the tax on each sale.' },
   { id:'comprehensive', name:'Comprehensive Underwriting', q:'The full model of one investment, with tax and partners', icon:'stack', dealType:'Acquisition', live:true,
     engines:['operating', 'monthly', 'debt', 'returns', 'waterfall', 'sensitivity', 'tax', 'capital'], about:'Every supported schedule for one property: operations, capital, financing, tax and partners.' },
-  { id:'portfolio', name:'Portfolio Analysis', q:'How do our properties add up, and what should we do next?', icon:'grid', dealType:'Acquisition', live:false,
-    engines:['portfolio'], about:'Holdings consolidated on dated cash flows, with debt maturities, concentration and scenarios.' },
+  { id:'portfolio', name:'Portfolio Analysis', q:'How do our properties add up, and what should we do next?', icon:'grid', dealType:'Acquisition', live:true,
+    engines:['portfolio'], ownReadiness:true, home:'Portfolio Analysis', ready:function(){ var r = typeof window.bkPortfolioAnalysis === 'function' ? window.bkPortfolioAnalysis() : null; return !r || r.ok ? true : 'The portfolio has no holdings yet: ' + r.missing.join('; ') + '.'; }, about:'Holdings consolidated on dated cash flows, with debt maturities, concentration and scenarios.' },
   { id:'business', name:'Business Valuation & Underwriting', q:'What is the operating business worth?', icon:'chart', dealType:'Acquisition', live:false,
     engines:['business'], about:'Revenue, EBITDA, working capital, free cash flow and valuation for an operating company, kept separate from property underwriting.' }
 ].forEach(function(a){ R.addAnalysis(a); });

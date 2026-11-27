@@ -9,13 +9,14 @@ var R = window.BKReg;
 function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
 function fin(v){ return typeof v === 'number' && isFinite(v) ? v : null; }
 function pos(v){ v = fin(v); return v !== null && v !== 0 ? v : null; }
+var PF = function(k){ return function(c){ var r = c.pf; return r && r.ok && r[k] !== null && r[k] !== undefined && isFinite(r[k]) ? r[k] : null; }; };
 function M(id, label, fmt, get, o){ return Object.assign({ id:id, label:label, fmt:fmt, get:get }, o || {}); }
 function P(id, label, fmt){ return M(id, label, fmt, function(){ return null; }, { planned:true }); }
 /* the engines, each run at most once for a summary */
 function ctx(s){ var c = { s:s }, memo = {};
   var lazy = function(k, f){ Object.defineProperty(c, k, { get:function(){ if(!(k in memo)) memo[k] = safe(f, null); return memo[k]; } }); };
   lazy('calc', function(){ return bkCalc(); }); lazy('debt', function(){ return bkDebt(); }); lazy('ret', function(){ return bkMonthlyReturns(); }); lazy('acf', function(){ return bkAnnualCF(); });
-  lazy('dev', function(){ return bkDevV09(); }); lazy('val', function(){ return typeof window.bkValuation === 'function' ? window.bkValuation(s) : null; }); lazy('hold', function(){ return typeof window.bkHold === 'function' ? window.bkHold(s) : null; }); lazy('refi', function(){ return typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
+  lazy('dev', function(){ return bkDevV09(); }); lazy('val', function(){ return typeof window.bkValuation === 'function' ? window.bkValuation(s) : null; }); lazy('hold', function(){ return typeof window.bkHold === 'function' ? window.bkHold(s) : null; }); lazy('pf', function(){ return typeof window.bkPortfolioAnalysis === 'function' ? window.bkPortfolioAnalysis() : null; }); lazy('refi', function(){ return typeof window.bkRefinance === 'function' ? window.bkRefinance(s) : null; }); lazy('head', function(){ return typeof window.bkHeadline === 'function' ? window.bkHeadline() : null; }); lazy('fund', function(){ return bkDevFundingV10(); }); lazy('take', function(){ return bkDevTakeoutV11(); });
   return c; }
 var price = function(c){ return pos(Number(c.s.purchasePrice)); };
 R.addMetrics([
@@ -63,8 +64,8 @@ R.addMetrics([
   M('holdIRR', 'Hold-case IRR', 'pct', function(c){ var h = c.hold; return h && h.ok ? fin(h.hold.irr) : null; }, { note:'on the cash you could take out today' }), M('saleTax', 'Estimated tax if sold today', 'money', function(c){ var h = c.hold; return h && h.ok ? fin(h.now.tax) : null; }),
   M('afterTaxIRR', 'After-tax IRR', 'pct', function(c){ if(/develop/i.test(String(c.s.dealType || ''))) return null; var x = safe(function(){ return bkAfterTaxV18(); }, null); return x ? fin(x.atIRR) : null; }, { note:'after depreciation, income tax and the tax on the sale' }),
   M('capitalRequired', 'Capital spending over the hold', 'money', function(c){ var h = c.hold; if(h && h.ok) return fin(h.capital); var m = Math.round((Number(c.s.holdYears) || 0) * 12); if(!(m > 0)) return null; var a = safe(function(){ return bkCapexByMonth(c.s, m); }, null); return a ? a.reduce(function(t, v){ return t + (v || 0); }, 0) : null; }),
-  P('assetCount', 'Properties', 'int'), P('gav', 'Gross asset value', 'money'), P('portfolioDebt', 'Outstanding debt', 'money'), P('portfolioEquity', 'Portfolio equity', 'money'), P('portfolioNOI', 'NOI', 'money'),
-  P('portfolioLTV', 'Portfolio LTV', 'pct'), P('portfolioIRR', 'Portfolio IRR (combined dated cash flow)', 'pct'), P('maturityExposure', 'Debt maturing within 24 months', 'money'),
+  M('assetCount', 'Properties', 'int', PF('count')), M('gav', 'Gross asset value', 'money', PF('gav'), { note:'each holding\'s NOI / its cap rate, or its price' }), M('portfolioDebt', 'Debt', 'money', PF('debt')), M('portfolioEquity', 'Equity in the value', 'money', PF('equity')), M('portfolioNOI', 'NOI, year 1', 'money', PF('noi')),
+  M('portfolioLTV', 'Portfolio LTV', 'pct', PF('ltv')), M('portfolioIRR', 'Portfolio IRR', 'pct', PF('irr'), { note:'one combined dated equity cash flow' }), M('maturityExposure', 'Debt maturing within 24 months', 'money', PF('maturing')),
   P('bizRevenue', 'Revenue', 'money'), P('bizEBITDA', 'EBITDA', 'money'), P('bizFCF', 'Free cash flow', 'money'), P('bizValue', 'Business value', 'money'), P('bizMultiple', 'EV / EBITDA', 'x')
 ]);
 function sum(id, question, primary, metrics){ R.addSummary(id, { question:question, primary:primary, metrics:metrics }); }
