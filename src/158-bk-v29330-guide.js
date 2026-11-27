@@ -315,9 +315,12 @@ function stepScreen(secs, sec, s, g){
 }
 function advHtml(adv){ return adv.length ? '<div class="gd-adv"><b>Worth a look, from what is entered now</b>' + adv.map(function(a){ return '<div class="it"><span>' + esc(a.text) + '</span>' + (a.fix ? '<button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideProp(\'' + a.fix.k + '\',' + a.fix.v + ')">' + esc(a.fix.label) + '</button>' : '') + '</div>'; }).join('') + '</div>' : ''; }
 function stillHtml(miss, exp){ return (miss.length ? 'Still needed here: ' + miss.map(function(m){ return esc(m.label.toLowerCase()); }).join(', ') + '.' : '')
-  + (exp && exp.length ? (miss.length ? ' ' : '') + '<b>Expected, not entered (most material first):</b> ' + exp.map(function(m){ return esc(String(m.label).toLowerCase().replace(/,.*$/, '')); }).join(', ') + '. A blank line is counted as zero, so NOI and returns may be overstated.' : ''); }
+  + (function(){ var tx = (exp || []).filter(function(m){ return window.BK_TAX_RATES && window.BK_TAX_RATES[m.k]; }), op = (exp || []).filter(function(m){ return !(window.BK_TAX_RATES && window.BK_TAX_RATES[m.k]); }), o = '';
+      if(op.length) o += (miss.length ? ' ' : '') + '<b>Expected, not entered (most material first):</b> ' + op.map(function(m){ return esc(String(m.label).toLowerCase().replace(/,.*$/, '')); }).join(', ') + '. A blank line is counted as zero, so NOI and returns may be overstated.';
+      if(tx.length) o += (miss.length || op.length ? ' ' : '') + '<b>Tax rates not confirmed:</b> ' + tx.map(function(m){ return esc(String(m.label).toLowerCase()); }).join(', ') + '. The after-tax figures use the model\'s defaults (provisional) until you confirm or change them.';
+      return o; })(); }
 /* the step's expected inputs still blank, most material first (the same list and order as the Inputs index and the Home page: BKReg.expectedMissing) */
-function expectedBlank(sec, s){ var R = window.BKReg; if(!R || !R.expectedMissing) return []; var order = safe(function(){ return R.expectedMissing(s).map(function(x){ return x.key; }); }, []);
+function expectedBlank(sec, s){ var R = window.BKReg; if(!R || !R.expectedMissing) return []; var order = safe(function(){ return R.expectedMissing(s, true).map(function(x){ return x.key; }); }, []);
   return sec.fields.filter(function(fl){ return fl.expected && order.indexOf(fl.k) > -1; }).sort(function(a, b){ return order.indexOf(a.k) - order.indexOf(b.k); }); }
 /* what the step says about the deal reads the figures as typed, before they are confirmed: the same advice, result strip and "still needed" line, evaluated with the draft through the engine's own
    override runner (bkRunWith, as the IRR line and the Sources and Uses panel already are). Nothing is saved. */

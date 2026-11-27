@@ -55,9 +55,9 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   await patch(p, { taxRate: 0.37, depRecaptureRate: 0.4 });
   const ro = row(await lens(p, 'tax'), 'Tax rates');
   check('a recapture rate above the ordinary rate is flagged by tax.rate-order', ro.status === 'look' && ro.rules.includes('tax.rate-order'), JSON.stringify([ro.status, ro.rules]));
-  await patch(p, { taxRate: 0.30, depRecaptureRate: 0.25, capGainsRate: 0.2 });
+  await patch(p, { taxRate: 0.30, depRecaptureRate: 0.22, capGainsRate: 0.15 });
   const rn = row(await lens(p, 'tax'), 'Tax rates');
-  check('rates that are not the model\'s defaults carry no default note', rn.status === 'ok' && !/default rates/.test(rn.value), rn.value);
+  check('rates that are not the model\'s defaults are the user\'s own: nothing is flagged on the row', rn.status === 'ok' && !rn.messages.length, JSON.stringify([rn.status, rn.messages]));
   await p.context().close();
 
   /* ---- it changes nothing (the after-tax engine writes default rates into a deal the first time it runs; the lens must not) ---- */
@@ -68,7 +68,7 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   check('reading the lenses writes nothing to the deal, even though the after-tax engine would fill in default rates (the rates stay unset)', pre.has === undefined && post.has === undefined && pre.snap === post.snap);
   check('the lenses are the same every time, and make no network request', d1 === d2 && p2.reqs.length === 0, p2.reqs.join(' '));
   const tr = row(JSON.parse(d1)[1].rows, 'Tax rates');
-  check('on a deal with no tax rates entered the tax lens says the rates shown are the model\'s defaults (37%, 25%, 20%) and to confirm them', /model's default rates \(37%, 25%, 20%\)/.test(tr.value) && /confirm they are yours/.test(tr.value), tr.value);
+  check('on a deal with no tax rates entered the tax lens says the rates are the model\'s defaults, not confirmed, so the after-tax figures are provisional, and that they depend on the investor\'s circumstances', tr.status === 'look' && /model's defaults, not confirmed by you/.test(tr.messages.join(' ')) && /depend on the investor/.test(tr.why), JSON.stringify([tr.status, tr.messages]));
 
   /* ---- the review shows them, after attention and before what is known ---- */
   const g = await p2.evaluate(async () => { bkGuideOn(); bkGuideWhere(); await new Promise(r => setTimeout(r, 900)); const t = document.querySelector('.gd').innerText, a = t.indexOf('What deserves attention first'), l = t.indexOf('Debt and tax'), k = t.indexOf('What is known'); return { order: a > -1 && l > a && k > l, lenses: [...document.querySelectorAll('details.bk-rv-lens')].map(d => d.dataset.lens), btn: [...document.querySelectorAll('details.bk-rv-lens .bk-btn')].length }; });

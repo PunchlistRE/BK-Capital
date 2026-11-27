@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   # the quick set: deal book and independent models, conventions, persistence, registry, the NOI/DSCR naming, owner decisions, editor, reports, print, blank start, guide
-  QUICK: 'deal book|conventions vs|persistence|Analysis registry|NOI basis|DSCR names|Owner decisions|property editor|^reports|Print / Save PDF|Blank start|Ask the guide|Inputs index|Required inputs|Debt refinements|Deal review|Deal lenses|Guide walkthrough|Layout guards|Panel tabs|Fill rule'
+  QUICK: 'deal book|conventions vs|persistence|Analysis registry|NOI basis|DSCR names|Owner decisions|property editor|^reports|Print / Save PDF|Blank start|Ask the guide|Inputs index|Required inputs|Debt refinements|Deal review|Deal lenses|Tax defaults|Guide walkthrough|Layout guards|Panel tabs|Fill rule'
 jobs:
   audit:
     runs-on: ubuntu-latest
