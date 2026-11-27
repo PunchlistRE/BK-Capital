@@ -25,7 +25,7 @@ R.addChecks('development', ['budget', 'unlev', 'su', 'draws', 'capint', 'facilit
 R.addChecks('valuation', ['readiness', 'noiTies', 'valueTies', 'noDebt']);
 R.addChecks('refinance', ['readiness', 'noiTies', 'payoffTies', 'sizingTies']);
 R.addChecks('hold', ['readiness', 'noiTies', 'holdTies']);
-R.addChecks('comprehensive', CORE.concat(['capitalTies', 'basisTies']));
+R.addChecks('comprehensive', CORE.slice());   /* the acquisition engine's checks; the capital and basis reconciliations are planned and not counted */
 R.addChecks('portfolio', ['portfolioTies']);
 R.addChecks('business', ['readiness', 'bizTies']);
 /* applies(analysisId, integrityCheckId): false means N/A for this analysis */

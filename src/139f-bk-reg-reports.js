@@ -20,10 +20,10 @@ R.addSections([
   /* planned */
   X('valExec', 'Executive valuation summary', { builder:'valuation.report' }), X('propDesc', 'Property description', { builder:'refinance.report / valuation.report' }), X('rentRollMix', 'Rent roll / unit mix', { builder:'valuation.report' }), X('incomeAnalysis', 'Income analysis', { builder:'valuation.report' }), X('opexAnalysis', 'Operating expense analysis', { builder:'valuation.report' }),
   X('noiRecon', 'NOI reconciliation', { builder:'valuation.report' }), X('capRateAnalysis', 'Capitalization rate analysis', { builder:'valuation.report' }), X('valueConclusion', 'Estimated market value', { builder:'valuation.report' }), X('valSens', 'Valuation sensitivity', { builder:'valuation.report' }),
-  X('capitalBudget', 'Capital improvement budget', { builder:'hold.report' }), P('taxAnalysis', 'Tax analysis', { when:'tax analysis selected' }),
+  X('capitalBudget', 'Capital improvement budget', { builder:'hold.report / report.cashflow' }), X('taxAnalysis', 'Tax analysis', { builder:'report.afterTax', when:'tax inputs entered' }),
   X('refiExec', 'Executive refinance summary', { builder:'refinance.report' }), X('existingDebt', 'Existing debt and payoff', { builder:'refinance.report' }), X('proposedDebt', 'Proposed financing and lender tests', { builder:'refinance.report' }), X('refiProceeds', 'Proceeds and equity', { builder:'refinance.report' }), X('refiCompare', 'Alternative structures', { builder:'refinance.report' }),
   X('holdExec', 'Executive hold / sell summary', { builder:'hold.report' }), X('holdCompare', 'Hold vs. sell', { builder:'hold.report' }), X('saleTax', 'Disposition tax estimate', { builder:'hold.report', when:'a cost basis is entered' }),
-  P('afterTaxCF', 'After-tax cash flow'), P('investorSchedules', 'Investor contributions and distributions'),
+  X('afterTaxCF', 'After-tax cash flow', { builder:'report.afterTax' }), P('investorSchedules', 'Investor contributions and distributions'),
   P('pfExec', 'Executive portfolio summary'), P('pfComposition', 'Portfolio composition'), P('pfValues', 'Asset-level valuations'), P('pfOps', 'Operating performance'), P('pfConsolidation', 'Portfolio consolidation'),
   P('pfDebt', 'Debt and maturity schedule'), P('pfCapital', 'Capital improvement requirements'), P('pfTax', 'Depreciation and tax profiles'), P('pfCompare', 'Asset-level comparisons'), P('pfRisk', 'Portfolio risk'), P('pfScenarios', 'Scenario comparison'),
   P('bizExec', 'Executive business summary'), P('bizOps', 'Revenue, costs and EBITDA'), P('bizCash', 'Working capital and free cash flow'), P('bizValue', 'Valuation and multiples'), P('bizSens', 'Sensitivity')
@@ -33,7 +33,7 @@ R.addReport('development', ['cover', 'dashboard', 'devBudget', 'devDraws', 'sche
 R.addReport('valuation', ['valExec', 'propDesc', 'rentRollMix', 'incomeAnalysis', 'opexAnalysis', 'noiRecon', 'capRateAnalysis', 'valueConclusion', 'valSens', 'disclosures']);
 R.addReport('refinance', ['refiExec', 'propDesc', 'existingDebt', 'proposedDebt', 'refiProceeds', 'refiCompare', 'disclosures']);
 R.addReport('hold', ['holdExec', 'propDesc', 'acqCashFlow', 'capitalBudget', 'holdCompare', 'saleTax', 'disclosures']);
-R.addReport('comprehensive', ['cover', 'dashboard', 'acqFinancial', 'capitalBudget', 'acqCashFlow', 'afterTaxCF', 'taxAnalysis', 'investorSchedules', 'waterfall', 'performance', 'credit', 'disclosures']);
+R.addReport('comprehensive', ['cover', 'dashboard', 'acqFinancial', 'capitalBudget', 'acqCashFlow', 'afterTaxCF', 'taxAnalysis', 'waterfall', 'performance', 'credit', 'disclosures']);
 R.addReport('portfolio', ['pfExec', 'pfComposition', 'pfValues', 'pfOps', 'pfConsolidation', 'pfDebt', 'pfCapital', 'pfTax', 'pfCompare', 'pfRisk', 'pfScenarios', 'disclosures']);
 R.addReport('business', ['bizExec', 'bizOps', 'bizCash', 'bizValue', 'bizSens', 'disclosures']);
 })();
