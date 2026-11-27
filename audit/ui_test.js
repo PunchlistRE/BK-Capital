@@ -18,7 +18,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
     const rows = [...document.querySelectorAll('#viewport table')].find(t => /Underwriting Conventions/.test(t.querySelector('caption')?.textContent || ''));
     const panel = [...rows.querySelectorAll('tbody tr')].map(r => ({ label: r.cells[0].textContent.trim(), value: r.querySelector('select') ? r.querySelector('select').value : r.cells[1].textContent.trim(), why: r.cells[2].textContent.trim(), status: r.cells[3].textContent.trim() }));
     const sizing = [...document.querySelectorAll('#viewport table.bk-constraint-grid tbody tr')].map(r => [...r.cells].map(c => c.textContent.trim()));
-    const ltvInput = document.querySelector('#viewport tr.input[data-bk-key="acqLTV"] td')?.textContent.trim();
+    const ltvInput = [...document.querySelectorAll('#viewport tr.input[data-bk-key="acqLTV"] td')].filter(td => !td.querySelector('input,select')).map(td => td.textContent.trim()).join(' ');   /* the basis now sits in the unit beside the box ("% of value"), not in the label */
     const banner = !!document.querySelector('#viewport button[onclick="bkApplyStandardConventions()"]');
     showSheet('Debt'); const debt = document.getElementById('viewport').innerText;
     showSheet('Sources & Uses'); const su = [...document.querySelectorAll('#viewport tr')].find(t => /^Loan to Value/.test(t.cells[0]?.textContent || ''))?.cells[2].textContent.trim();
@@ -141,12 +141,18 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Depreciation'); }, B); await p.waitForTimeout(200);
   const nv = await p.evaluate(() => ({ tabs: [...document.querySelectorAll('.tabnav-primary > .grp-btn')].length, menus: document.querySelectorAll('.tabnav-primary .bk-more-pop, .tabnav-primary .car').length, cur: document.querySelector('.tabnav-primary .grp-btn.on').innerText, sub: (document.querySelector('.bk-ribbon .rb-t.on') || {}).textContent }));
   check('top bar has the section tabs and no dropdown menus', nv.tabs >= 6 && nv.menus === 0, JSON.stringify(nv));
-  check('the active section tab is lit and the current sheet is the lit sub-tab', /Underwrite/.test(nv.cur) && nv.sub === 'Depreciation', JSON.stringify(nv));
-  await p.click('.tabnav-primary .grp-btn:has-text("Business")'); await p.waitForTimeout(300);
-  check('a section tab opens its section', await p.evaluate(() => GROUPS.find(g => g.id === 'biz').sheets.includes(currentSheet)));
-  await p.click('.bk-ribbon .rb-t:has-text("Sell vs Hold")'); await p.waitForTimeout(300);
-  check('a sub-tab opens its sheet', await p.evaluate(() => currentSheet === 'Sell vs Hold'));
-  const reach = await p.evaluate(async () => { const seen = new Set(); for (const tab of [...document.querySelectorAll('.tabnav-primary .grp-btn')].map(b => b.dataset.navTab)) { const b = document.querySelector('.tabnav-primary .grp-btn[data-nav-tab="' + tab + '"]'); showSheet(b.dataset.gotoSheet); [...document.querySelectorAll('.bk-ribbon .rb-t')].forEach(t => seen.add(t.dataset.gotoSheet2)); seen.add(currentSheet); } return GROUPS.filter(g => !g.hidden && g.id !== 'dev').flatMap(g => g.sheets).filter(s => typeof RENDERERS[s] === 'function' && !seen.has(s)); });
+  check('the active section tab is lit (Depreciation lives under the Property tab since the navigation regroup) and the current sheet is the lit sub-tab', /Property/.test(nv.cur) && nv.sub === 'Depreciation', JSON.stringify(nv));
+  /* the Business tab only shows on a business deal; a section tab and its sub-tabs are checked on Credit & IC, which every deal has */
+  await p.click('.tabnav-primary .grp-btn:has-text("Credit")'); await p.waitForTimeout(300);
+  check('a section tab opens its section', await p.evaluate(() => GROUPS.find(g => /^credit/.test(g.id)).sheets.includes(currentSheet)));
+  await p.click('.bk-ribbon .rb-t:has-text("Credit Policy")'); await p.waitForTimeout(300);
+  check('a sub-tab opens its sheet', await p.evaluate(() => currentSheet === 'Credit Policy'));
+  /* from each section tab: its sub-tabs (the ribbon), and from every one of those pages its view tabs (Schedule, Covenants, ...) */
+  const reach = await p.evaluate(async () => { const seen = new Set(), wait = () => new Promise(r => setTimeout(r, 120)); const grab = () => { seen.add(currentSheet); document.querySelectorAll('.bk-ribbon .rb-t, #viewport .bkv-b').forEach(t => { if (t.dataset.gotoSheet2) seen.add(t.dataset.gotoSheet2); }); };
+    for (const tab of [...document.querySelectorAll('.tabnav-primary .grp-btn')].map(b => b.dataset.navTab)) { const b = document.querySelector('.tabnav-primary .grp-btn[data-nav-tab="' + tab + '"]'); showSheet(b.dataset.gotoSheet); await wait(); grab();
+      for (const s of [...document.querySelectorAll('.bk-ribbon .rb-t')].map(x => x.dataset.gotoSheet2).filter(Boolean)) { showSheet(s); await wait(); grab(); for (const v of [...document.querySelectorAll('#viewport .bkv-b')].map(x => x.dataset.gotoSheet2).filter(Boolean)) { showSheet(v); await wait(); grab(); } } }
+    /* a sheet the deal does not use (Hold vs Sell, Portfolio and Business reports) is not offered, by design: bkNavVisible is the list the navigation offers */
+    return GROUPS.filter(g => !g.hidden && g.id !== 'dev' && !/^business/.test(g.id)).flatMap(g => bkNavVisible(g)).filter(s => typeof RENDERERS[s] === 'function' && !seen.has(s)); });
   check('every sheet is reachable from a section tab and its sub-tabs', reach.length === 0, reach.join(', '));
   // 10. Probability-Weighted Returns: scenario weighting on the sheet, repeatable Monte Carlo, run from the sheet, stale detection
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Probability-Weighted'); }, B); await p.waitForTimeout(300);
@@ -194,14 +200,16 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   const fold = await p.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const g = [...document.querySelectorAll('#rail-groups .rail-group')].find(x => x.classList.contains('pl-collapsed') && !x.classList.contains('bk-adv'));
     const lab = g.querySelector('.rail-group-label'), vis = () => [...g.querySelectorAll('.rail-item')].filter(i => getComputedStyle(i).display !== 'none').length;
     const n0 = vis(); lab.click(); await wait(50); const n1 = vis(), open1 = !g.classList.contains('pl-collapsed'); lab.click(); await wait(50); const n2 = vis();
-    const head = document.querySelector('.rail .bk-adv-head'), adv = () => [...document.querySelectorAll('.rail-group.bk-adv')].filter(x => getComputedStyle(x).display !== 'none').length;
-    const a0 = adv(); head.click(); await wait(50); const a1 = adv(); head.click(); await wait(50); const a2 = adv();
-    return { n0, n1, open1, n2, a0, a1, a2, items: g.querySelectorAll('.rail-item').length }; });
-  check('left rail: a click on a folded group\'s +/- opens it and a second click folds it; the Advanced heading folds and reopens its groups', fold.n0 === 0 && fold.open1 && fold.n1 === fold.items && fold.n1 > 0 && fold.n2 === 0 && fold.a0 > 0 && fold.a1 === 0 && fold.a2 === fold.a0, JSON.stringify(fold));
+    return { n0, n1, open1, n2, items: g.querySelectorAll('.rail-item').length }; });   /* the rail is one group per section tab now; the separate Advanced groups are gone */
+  check('left rail: a click on a folded group\'s +/- opens it and a second click folds it (there is no Advanced heading: the rail has one group per section tab)', fold.n0 === 0 && fold.open1 && fold.n1 === fold.items && fold.n1 > 0 && fold.n2 === 0, JSON.stringify(fold));
   await p.keyboard.press('Escape');
   // 13. New deal and Clear inputs on Overview
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(400);
   check('Overview: the page offers the PDF summary and Clear inputs; New analysis and Import are on the bar above (no duplicates)', await p.evaluate(() => [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|') === 'Create PDF summary|Clear inputs' && ['New analysis', 'Import'].every(t => [...document.querySelectorAll('.bk-ribbon .rb-c')].some(b => b.textContent.trim() === t))));
+  /* one figure, one number: the Home tiles and the key-figure bar at the foot read the same headline, to the same two decimals (a tile once rounded to one decimal and was padded, so it read 6.80% beside the bar's 6.81%) */
+  check('the Home Levered IRR and Lender DSCR tiles show the same figures as the key-figure bar', await p.evaluate(() => { const tile = l => { const k = [...document.querySelectorAll('.pl-kpi')].find(e => e.querySelector('.k') && e.querySelector('.k').textContent.trim().toLowerCase().indexOf(l) === 0); return k ? k.querySelector('.v').textContent.trim() : null; };
+    const bar = l => { const el = [...document.querySelectorAll('#bk-kpibar .kb-k')].find(e => e.textContent.trim().toLowerCase().indexOf(l) === 0); const v = el && el.nextElementSibling; return v ? v.textContent.trim() : null; };
+    const irrT = tile('levered irr'), irrB = bar('levered irr'), dT = tile('lender dscr'), dB = bar('lender dscr'); window.__tb = [irrT, irrB, dT, dB].join(' / '); return !!irrT && irrT === irrB && !!dT && dT === dB; }), await p.evaluate(() => window.__tb));
   await p.click('.bk-ribbon .rb-c:has-text("New analysis")'); await p.waitForTimeout(250);
   check('New analysis asks for the analysis and a name and offers to save the current deal', await p.evaluate(() => { const m = document.getElementById('pl-modal'); return m.classList.contains('open') && !!m.querySelector('#pl-nm') && !!m.querySelector('select#pl-an') && !!m.querySelector('#pl-save1'); }));
   await p.fill('#pl-nm', 'Test Heights'); await p.selectOption('#pl-an', 'development');
@@ -211,7 +219,8 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('Create opens an empty deal with that name and type, and saved the previous one', nd.n === 'Test Heights' && nd.t === 'Development' && nd.a === 'development' && !(nd.price > 0) && nd.port === portBefore + 1 && !nd.open, JSON.stringify(nd));
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(300);
   await p.click('.pl-toolbar button:has-text("Clear inputs")'); await p.waitForTimeout(250);
-  check('Clear inputs says what it will do before it does it', await p.evaluate(() => /Clear all inputs/.test(document.getElementById('pl-modal').innerText) && /Nothing is lost/.test(document.getElementById('pl-modal').innerText) && /Version History/.test(document.getElementById('pl-modal').innerText)));
+  /* since #270 the dialog says the photo and documents are removed for good, so "Nothing is lost" is replaced by what it now says: the inputs go to Version History first, the photo and documents do not */
+  check('Clear inputs says what it will do before it does it', await p.evaluate(() => /Clear all inputs/.test(document.getElementById('pl-modal').innerText) && /saved to Version History first/.test(document.getElementById('pl-modal').innerText) && /removed for good/.test(document.getElementById('pl-modal').innerText) && /Version History/.test(document.getElementById('pl-modal').innerText)));
   await p.click('#pl-modal button:has-text("Cancel")'); await p.waitForTimeout(150);
   check('Cancel leaves the deal untouched', await p.evaluate(() => bkLoad().purchasePrice > 0 && !document.getElementById('pl-modal').classList.contains('open')));
   const nm0 = await p.evaluate(() => bkLoad().name);
@@ -249,7 +258,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(a => { bkCreateNewDeal(a); showSheet('Home'); }, A_); await p.waitForTimeout(600);
   await p.evaluate(() => bkReportOpen()); await p.waitForTimeout(2500);
   const rp = await p.evaluate(() => { const f = document.getElementById('pl-report-frame'); const d = f && f.contentDocument; if (!d) return null; const D = bkProFormaData(); return { pages: d.querySelectorAll('.page').length, svgs: d.querySelectorAll('svg').length, txt: d.body.innerText, irr: (D.irr * 100).toFixed(2) + '%', moic: D.moic.toFixed(2) + 'x', eq: D.eq, nan: /NaN|undefined|\[object/.test(d.body.innerText), save: !!document.querySelector('#pl-report button') }; });
-  check('the summary opens with eight pages (with Impact to portfolio), charts and a save button', rp && rp.pages === 8 && rp.svgs >= 8 && rp.save && !rp.nan, JSON.stringify(rp && { p: rp.pages, s: rp.svgs, nan: rp.nan }));
+  check('the summary opens with fourteen pages (the thirteen of the investor PDF, with Impact to portfolio), charts and a save button', rp && rp.pages === 14 && rp.svgs >= 8 && rp.save && !rp.nan, JSON.stringify(rp && { p: rp.pages, s: rp.svgs, nan: rp.nan }));
   check('the summary shows the model\'s levered IRR and multiple', rp && rp.txt.indexOf(rp.irr) >= 0 && rp.txt.indexOf(rp.moic) >= 0, rp && (rp.irr + ' ' + rp.moic));
   check('sources equal uses on the summary', await p.evaluate(() => { const d = document.getElementById('pl-report-frame').contentDocument; const t = [...d.querySelectorAll('tr.tot')].filter(r => /Total (sources|uses)/.test(r.innerText)).map(r => r.cells[1].innerText); return t.length === 2 && t[0] === t[1]; }));
   await p.evaluate(() => bkReportClose());
@@ -258,7 +267,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, require(path.join(__dirname, 'devdeal.js'))); await p.waitForTimeout(600);
   await p.evaluate(() => bkReportOpen()); await p.waitForTimeout(3000);
   const rdv = await p.evaluate(() => { const f = document.getElementById('pl-report-frame'); const d = f && f.contentDocument; if (!d) return null; const m = bkMonthlyReturns(); const t = d.body.innerText; const tots = [...d.querySelectorAll('tr.tot')].filter(r => /Total (sources|uses|project)/.test(r.innerText)).map(r => r.cells[1].innerText); return { pages: d.querySelectorAll('.page').length, irr: (m.irr * 100).toFixed(2) + '%', moic: m.moic.toFixed(2) + 'x', t, tots, nan: /NaN|undefined|\[object/.test(t) }; });
-  check('a development deal (6-year hold) gets a fifteen-page summary plus one waterfall page for the sixth year (5 years a page)', rdv && rdv.pages === 16 && !rdv.nan, JSON.stringify(rdv && { p: rdv.pages, nan: rdv.nan }));
+  check('a development deal (6-year hold) gets a fifteen-page summary (the statement runs to ten years on one page, so a sixth year adds no page)', rdv && rdv.pages === 15 && !rdv.nan, JSON.stringify(rdv && { p: rdv.pages, nan: rdv.nan }));
   check('the development summary shows the model\'s IRR and multiple', rdv && rdv.t.indexOf(rdv.irr) >= 0 && rdv.t.indexOf(rdv.moic) >= 0, rdv && (rdv.irr + ' ' + rdv.moic));
   check('development sources equal uses', rdv && rdv.tots.length === 2 && rdv.tots[0] === rdv.tots[1], rdv && JSON.stringify(rdv.tots));
   await p.evaluate(() => bkReportClose());
@@ -407,7 +416,9 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('the Overview is the normal page while the guide is off', await p.evaluate(() => !document.documentElement.classList.contains('bk-guide') && !document.querySelector('.gd')));
   await p.evaluate(() => bkGuideOn()); await p.waitForTimeout(500);
   await p.evaluate(() => bkGuideBlank('Acquisition')); await p.waitForTimeout(500);
-  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 9/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
+  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 8/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
+  /* Standard asks one question at a time (#269); these checks type two figures on one step, so they run at Full depth, where every figure of the step is on screen */
+  await p.evaluate(() => bkGuideDepth('full')); await p.waitForTimeout(400);
   await p.fill('#gdf-name', 'Guide Court'); await p.dispatchEvent('#gdf-name', 'change'); await p.fill('#gdf-units', '14'); await p.dispatchEvent('#gdf-units', 'change');
   const g1 = await p.evaluate(() => ({ name: bkLoad().name, units: bkLoad().units, panel: document.getElementById('gd-chg').innerText, btn: document.getElementById('gd-next').innerText }));
   check('typed values are only proposed: nothing is saved until the change is confirmed', g1.units !== 14 && g1.name !== 'Guide Court' && /Guide Court/.test(g1.panel) && /2 change/i.test(g1.btn), JSON.stringify(g1));
@@ -447,17 +458,18 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await setv('purchasePrice', '1,200,000'); await setv('sourceConstruction', '8,000,000'); await setv('constructionMonths', '18'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
   await setv('avgRent', '1,900'); await setv('vacancy', '5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
   await setv('taxes', '120,000'); await setv('insurance', '40,000'); await setv('rm', '30,000'); await setv('mgmtPct', '3'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
-  await setv('conLTC', '65'); await setv('conRate', '7.5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400); /* the guide now has a sources-and-uses review step and a partnership step before the exit step; the partnership is left blank, so the deal stays all-LP */ await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300);
+  await setv('conLTC', '65'); await setv('conRate', '7.5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400); /* the guide now has a sources-and-uses review step and a partnership step before the exit step; the partnership is left blank, so the deal stays all-LP */ for (let i = 0; i < 4 && !(await p.$('#gdf-holdYears')); i++) { await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300); }   /* Next through the review and partnership steps, however many the guide has, to the exit step */
   await setv('holdYears', '6'); await setv('exitCap', '5.75'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(600);
   const dv2 = await p.evaluate(() => { const s = bkLoad(), m = bkMonthlyReturns(); return { t: s.dealType, done: Object.keys(s._guide.done).length, price: s.purchasePrice, src: s.sourceConstruction, ltc: s.conLTC, exit: s.exitCap, irrOk: isFinite(m.irr) && m.irr !== 0, h: document.querySelector('.gd h1').innerText }; });
-  check('a development deal can be built through the guide, step by step, and runs in the engine', dv2.t === 'Development' && dv2.done === 8 && dv2.price === 1200000 && dv2.src === 8000000 && dv2.ltc === 0.65 && dv2.exit === 0.0575 && dv2.irrOk && /Review/.test(dv2.h), JSON.stringify(dv2));
+  check('a development deal can be built through the guide, step by step, and runs in the engine', dv2.t === 'Development' && dv2.done === 7 && dv2.price === 1200000 && dv2.src === 8000000 && dv2.ltc === 0.65 && dv2.exit === 0.0575 && dv2.irrOk && /Review/.test(dv2.h), JSON.stringify(dv2));
   await p.evaluate(() => bkGuideOff()); await p.waitForTimeout(300);
   // 21. Header sign-in / sign-out (last: signing out clears the page)
   p.on('dialog', d => d.accept());
   await p.evaluate(() => showSheet('Home')); await p.waitForTimeout(400);
   check('the header offers Sign in when there is no session', await p.evaluate(() => /sign in/i.test((document.getElementById('pl-user') || {}).innerText || '')));
   await p.evaluate(() => { localStorage.setItem('bkcapital.supabase.auth.v01', JSON.stringify({ access_token: 'x', user: { id: '1', email: 'tester@example.com' }, expires_at: Date.now() + 3.6e6 })); bkHeaderUserPaint(); });
-  check('with a session the header shows the account and Sign out', await p.evaluate(() => { const t = (document.getElementById('pl-user') || {}).innerText || ''; return /tester@example\.com/.test(t) && /sign out/i.test(t); }));
+  /* the header no longer prints the account's email (src/149 builds the control without the .who name); a session shows Sign out in place of Sign in, and the account is named on the control (tooltip, accessible name) and in the sign-out confirmation */
+  check('with a session the header shows Sign out (account named on it) in place of Sign in', await p.evaluate(() => { const t = (document.getElementById('pl-user') || {}).innerText || ''; const b = document.querySelector('#pl-user button'); return /sign out/i.test(t) && !/sign in/i.test(t) && /tester@example\.com/.test(b.title + ' ' + b.getAttribute('aria-label')); }));
   await p.evaluate(() => bkHeaderSignOut()); await p.waitForTimeout(1500);
   check('signing out clears the session and returns to the sign-in screen', await p.evaluate(() => !document.documentElement.classList.contains('bk-auth-ok') && !localStorage.getItem('bkcapital.supabase.auth.v01') && getComputedStyle(document.getElementById('bk-auth-gate')).display !== 'none'));
   check('no page errors', errs.length === 0, errs.join(' | '));

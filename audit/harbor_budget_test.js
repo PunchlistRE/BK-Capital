@@ -47,6 +47,6 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), B = require(path.j
     check(tag + ': no page errors', p.errs.length === 0, p.errs.join('|')); await q.close(); await p.close(); }
 
   /* an acquisition deal is untouched */
-  { const p = await open(A); const q = await doc(p); const r = await pageInfo(q); check('acquisition deal: no Development budget page, 7 pages (no empty portfolio page)', r.idx < 0 && r.n === 7, r.n); await q.close(); await p.close(); }
+  { const p = await open(A); const q = await doc(p); const r = await pageInfo(q); check('acquisition deal: no Development budget page, 13 pages (the investor PDF; no empty portfolio page)', r.idx < 0 && r.n === 13, r.n); await q.close(); await p.close(); }
   console.log(checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();

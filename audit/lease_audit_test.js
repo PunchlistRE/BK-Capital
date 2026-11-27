@@ -59,7 +59,7 @@ const A = require(path.join(__dirname, 'deal.js')), V = require(path.join(__dirn
 
   /* A. the page, the group and the supplemental tables on the four-tenant deck */
   let p = await open(A, deckA); const R = await READ(p), E = R.eng;
-  check('the report sits in the Reports group, right after the Lease Schedule', await p.evaluate(() => { const g = GROUPS.find(x => x.id === 'reports'); const t = g ? g.sheets : []; const i = t.indexOf('Lease Schedule'); return i >= 0 && t[i + 1] === 'Lease Audit Report'; }));
+  check('the report sits in the Reports group, right after the Lease Schedule', await p.evaluate(() => { const g = GROUPS.find(x => /^reports/.test(x.id)); const t = g ? g.sheets : []; const i = t.indexOf('Lease Schedule'); return i >= 0 && t[i + 1] === 'Lease Audit Report'; }));
   check('the page heads itself like the other reports: the amounts are in USD, the period covered, the period-ending row', /Lease Audit and Supplemental/.test(R.text) && /\(Amounts in USD\)/.test(R.text) && /through Dec, 20\d\d/.test(R.text) && R.peRow[0] === 'For the years ending' && /^[A-Z][a-z]{2}-20\d\d$/.test(R.peRow[1]));
   check('one row in Tenants in Place for every tenant the engine runs, in the engine\'s order, with the area and share of the schedule', R.terms.length === E.tenants.length + 1 && E.tenants.every((t, i) => R.terms[i].c[0].indexOf(t.name) === 0 && near(parseFloat(R.terms[i].c[1].replace(/,/g, '')), t.sf, 0.5)) && E.tenants.every((t, i) => near(parseFloat(R.terms[i].c[2]), 100 * t.sf / E.tenants.reduce((a, x) => a + x.sf, 0), 0.006)),
     JSON.stringify(R.terms.map(r => r.c.slice(0, 3))));

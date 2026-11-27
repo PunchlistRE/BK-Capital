@@ -472,4 +472,11 @@ if(!GROUPS.some(function(g){ return g.id === 'editor'; })){ var at = Math.max(0,
   var ni = NAV_TABS.findIndex(function(t){ return t.id === 'overview'; }) + 1; NAV_TABS.splice(ni, 0, { id:'editor', label:'Property', groups:['editor'] }); }
 if(typeof bkBuildRail === 'function') bkBuildRail();
 window.bkEditorTabs = TABS;
+/* where each input is drawn: input id -> { tab, sub, subLabel }, read from the panels' own markup for the open deal (no page is shown, nothing is changed). Search and Ask the guide use it to open the sub-tab that really holds a field. Kept until the deal's kind changes. */
+var FIELD_IX = null, FIELD_IX_KEY = '';
+window.bkEdFieldIndex = function(){ var s = bkLoad(), key = String(s.dealType || '') + '|' + String(s.propertyType || '') + '|' + (Number(s.commercialArea) > 0 ? 'c' : '');
+  if(FIELD_IX && key === FIELD_IX_KEY) return FIELD_IX; var ix = {};
+  TABS.forEach(function(tb){ (tb.subs || []).forEach(function(sb){ var f = PANELS[tb.id] && PANELS[tb.id][sb[0]]; if(typeof f !== 'function') return; var h = ''; try { h = String(f(s)); } catch(e){ return; }
+    var re = /\bid="(ae-[A-Za-z0-9_]+)"/g, m; while((m = re.exec(h))){ if(!ix[m[1]]) ix[m[1]] = { tab:tb.id, sub:sb[0], subLabel:sb[1] }; } }); });
+  FIELD_IX = ix; FIELD_IX_KEY = key; return ix; };
 })();

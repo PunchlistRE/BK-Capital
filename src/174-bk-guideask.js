@@ -34,7 +34,7 @@ add('Guide depth: Quick, Standard, Full', ['guide depth', 'quick start', 'full d
 add('Start from documents', ['start from documents', 'upload documents', 'drop documents', 'import package', 'documents first'], 'Start from your documents on the Guide\'s first screen: drop an OM, listing, T-12 or rent roll on the Import page and the Guide walks you through confirming what each figure came from.', P('Import', null, ['Property', 'Import']));
 add('Actuals and budget vs actual', ['actuals', 'budget vs actual', 'variance', 'reforecast', 't-12 actuals', 'asset management', 'monthly actuals'], 'Operations > Budget vs Actual. Paste monthly revenue, expenses, capex and debt service on the Enter actuals view; the page shows the variance by month, the reforecast of each year and the loan covenant tested on the actuals.', P('Budget vs Actual', null, ['Operations', 'Budget vs Actual']));
 add('After-tax report', ['after tax report', 'after-tax report', 'depreciation recovery', 'recovery period', 'tax report'], 'Reports > After-Tax Report: after-tax cash flow, sale-year tax and pre- versus after-tax returns, with the depreciation recovery period and why it was chosen.', P('After-Tax Report', null, ['Reports', 'After-Tax Report']));
-add('Full property report and PDF summaries', ['full report', 'compile report', 'pdf summary', 'property report', 'print everything', 'tab summary'], 'The ribbon\'s PDF summary prints the open page; Full report compiles a cover, contents, executive summary and every tab and page in menu order. The Reports pages carry a Compile full property report button.', P('Reports', null, ['Reports', 'Compile full property report']));
+add('Full property report and PDF summaries', ['full report', 'compile report', 'pdf summary', 'property report', 'print everything', 'tab summary'], 'The ribbon\'s PDF summary prints the open page; Full report compiles a cover, contents, executive summary and every tab and page in menu order. The Reports pages carry a Compile full property report button.', P('Cash Flow Report', null, ['Reports', 'Cash Flow Report', 'Compile full property report']));   /* there is no Reports hub page: the button is on every report page, and Cash Flow Report is the first */
 
 /* ---- the deal */
 add('Purchase price', ['purchase price', 'price', 'what we pay', 'acquisition price', 'land price'], function(s){ return 'The purchase price is set on Investment > Acquisition.' + now('It is now', m0(Number(s.purchasePrice))); }, E('Investment', 'acq', 'ae-purchasePrice'));
@@ -144,7 +144,7 @@ add('Maximum purchase price', ['maximum price', 'max price', 'maximum supportabl
 add('Save a valuation scenario', ['valuation scenario', 'save scenario', 'saved scenario', 'scenarios', 'compare scenarios', 'reopen scenario'], 'Name and save a scenario at the bottom of the valuation workspace. It keeps its rates, price, cash flows and the deal\'s assumptions, so it can be reopened and rebuilt exactly later; scenarios are never overwritten.', PVR);
 add('Investment Target calculator', ['investment target', 'target calculator', 'reverse investment lab', 'grow to', 'turn into', 'how much return do i need', 'required return to reach'], 'Enter a starting amount, a target and a period; it gives the compound annual return needed and a growth path. It is on Debt > Compare.', P('Investment Target', null, ['Debt', 'Compare', 'Investment Target']));
 add('Waterfall summary (one page)', ['waterfall summary', 'one page waterfall', 'waterfall pdf', 'print waterfall', 'promote summary', 'lp gp split'], 'Open Equity Waterfall and use <b>Waterfall summary (1 page PDF)</b>: the structure, what each tier paid each partner, and the partners\' cash flow by year on one Letter page.', P('Equity Waterfall', null, ['Returns', 'Equity Waterfall']));
-add('Print or save as PDF', ['print', 'pdf', 'save as pdf', 'export pdf', 'full report', 'compile report', 'summary pdf', 'download report'], 'Every page has Print / PDF (always light, US Letter). <b>Create PDF summary</b> on Home builds the investor summary; <b>Compile full property report</b> on Reports builds every page in order.', P('Reports', null, ['Reports']));
+add('Print or save as PDF', ['print', 'pdf', 'save as pdf', 'export pdf', 'full report', 'compile report', 'summary pdf', 'download report'], 'Every page has Print / PDF (always light, US Letter). <b>Create PDF summary</b> on Home builds the investor summary; <b>Compile full property report</b> on any Reports page builds every page in order.', P('Cash Flow Report', null, ['Reports', 'Cash Flow Report']));
 add('Bottom band: key figures', ['bottom band', 'footer', 'bottom bar', 'key figures', 'total equity', 'loan amount'], 'The bar at the bottom shows Total Equity, Loan Amount, Lender DSCR, Yield on Cost, Levered and Unlevered IRR, Equity Multiple, Net Profit and the Case, for the deal and case in view.', P('Home', null, ['Overview', 'Home']));
 
 T.slice(-12).forEach(function(t){ t.boost = 3; });   /* the newer, more specific topics win a tie with an older general one */
@@ -166,9 +166,13 @@ function generated(){
   if(GEN) return GEN; GEN = []; var R = window.BKReg && window.BKReg._raw, homes = fieldHomes();
   if(R){
     Object.keys(R.fields).forEach(function(k){ var f = R.fields[k]; if(f.planned || f.kind === 'derived') return; var h = homes[k] || (f.sheet ? { sheet:f.sheet } : null); if(!h || !h.sheet) return;
-      var go = ED[h.sheet] ? { sheet:h.sheet, tab:h.sheet, sub:null, field:'ae-' + k, path:['Property', h.sheet] } : { sheet:h.sheet, panel:null, field:null, path:[h.sheet] };
-      GEN.push({ gen:true, title:f.label, k:[f.label, plain(f.label), k.replace(/([A-Z])/g, ' $1')], go:go,
-        a:function(s){ var v = kindFmt(f, (s || {})[k]); return '<b>' + esc(f.label) + '</b> ' + (v == null ? 'is not entered on this deal yet.' : 'is <b>' + esc(v) + '</b> on this deal.') + (f.help ? ' ' + esc(f.help) : '') + ' You change it on ' + esc(go.path.join(' › ')) + '.'; } }); });
+      var fallback = ED[h.sheet] ? { sheet:h.sheet, tab:h.sheet, sub:null, field:null, path:['Property', h.sheet] } : { sheet:h.sheet, panel:null, field:null, path:[h.sheet] };
+      /* where the field is drawn is read from the editor itself, so the card names the real page and sub-tab and Take me there opens it; a table (capital items, reserves) or a field with no box takes you to its page */
+      var homeGo = function(){ var ix = window.bkEdFieldIndex ? safe(function(){ return window.bkEdFieldIndex(); }, null) : null, e = ix && ix['ae-' + k];
+        return e ? { sheet:e.tab, tab:e.tab, sub:e.sub, field:'ae-' + k, path:['Property', e.tab, e.subLabel] } : fallback; };
+      var ent = { gen:true, title:f.label, k:[f.label, plain(f.label), k.replace(/([A-Z])/g, ' $1')],
+        a:function(s){ var v = kindFmt(f, (s || {})[k]); return '<b>' + esc(f.label) + '</b> ' + (v == null ? 'is not entered on this deal yet.' : 'is <b>' + esc(v) + '</b> on this deal.') + (f.help ? ' ' + esc(f.help) : '') + ' You change it on ' + esc(homeGo().path.join(' › ')) + '.'; } };
+      Object.defineProperty(ent, 'go', { enumerable:true, get:homeGo }); GEN.push(ent); });
     Object.keys(R.metrics).forEach(function(id){ var m = R.metrics[id]; if(m.planned || !m.label) return;
       GEN.push({ gen:true, title:m.label, k:[m.label, plain(m.label)], go:P('Returns', null, ['Returns']),
         a:function(){ var sm = safe(function(){ return window.BKReg.summarize(deal()); }, null), row = sm && [sm.primary].concat(sm.metrics || []).filter(function(x){ return x && x.id === id; })[0], v = row && row.value != null && isFinite(row.value) ? (m.fmt === 'pct' ? pc(row.value) : m.fmt === 'x' ? row.value.toFixed(2) + 'x' : m0(row.value)) : null;
@@ -217,10 +221,20 @@ function arrive(go, tries){
   if(go.field){ var f = document.getElementById(go.field); if(f) flash(f.closest('label,div,td') || f); else if(tries < 8) done = false; }
   if(!done) setTimeout(function(){ arrive(go, tries + 1); }, 150);
 }
+/* a field lives on one sub-tab of its editor page (Other income is on Revenues > Other income, not the page's first sub-tab): when it is not on the sub-tab that opened, open the sub-tab that has it */
+function openFieldSub(go){
+  if(!go.field || !go.tab || document.getElementById(go.field) || typeof window.bkEdGo !== 'function' || !window.bkEditorTabs) return;
+  /* this page's own sub-tabs first, then the other editor pages: a field is found where the editor really keeps it, whatever page the registry's workflow step lists it under */
+  var tabs = window.bkEditorTabs.slice().sort(function(a, b){ return (a.id === go.tab ? 0 : 1) - (b.id === go.tab ? 0 : 1); });
+  for(var k = 0; k < tabs.length; k++){ var t = tabs[k]; if(!t.subs) continue;
+    for(var i = 0; i < t.subs.length; i++){ window.bkEdGo(t.id, t.id, t.subs[i][0]); if(document.getElementById(go.field)){ go.sheet = t.id; go.tab = t.id; return; } } }
+  window.bkEdGo(go.sheet, go.tab, go.sub);
+}
 function take(i){
   var t = window.__bkAskLast && window.__bkAskLast[i]; if(!t) return; var go = t.go, o = document.getElementById('bk-ask-pop'); if(o) o.classList.remove('open');
   if(typeof RENDERERS !== 'undefined' && !RENDERERS[go.sheet]){ return; }
   if(go.tab && typeof window.bkEdGo === 'function') window.bkEdGo(go.sheet, go.tab, go.sub); else if(typeof showSheet === 'function') showSheet(go.sheet);
+  openFieldSub(go);
   setTimeout(function(){ arrive(go, 0); }, 200);
 }
 

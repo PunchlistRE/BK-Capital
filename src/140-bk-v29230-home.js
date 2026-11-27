@@ -82,10 +82,10 @@ function build(s, oldMain){
   var dscrOk = h && isFinite(h.dscr) && h.dscr ? (h.dscr >= mind ? 'pass' : 'fail') : '';
   var price = Number(s.purchasePrice) || 0, loan = h ? Number(h.loan) || 0 : 0;
   /* the tiles: which figures lead, and in what order, come from the analysis registry (src/139h); each is read from the same headline as the Deal Snapshot */
-  var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR), 'target ' + P(hurdle), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
-    yieldOnCost:function(){ return ['Yield on cost', P(h.yoc), 'exit cap ' + P(Number(s.exitCap)), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Lender DSCR, year 1', X(h.dscr), bkDscrBasis('lender', s) + ' · loan min ' + X(mind), dscrOk, 'Debt']; },
+  var TILE = { leveredIRR:function(){ return ['Levered IRR', P(h.levIRR, 2), 'target ' + P(hurdle, 2), irrOk, 'Returns']; }, moic:function(){ return ['Equity multiple', X(h.levMOIC), 'target ' + X(em), isFinite(h.levMOIC) ? (h.levMOIC >= em ? 'pass' : 'warn') : '', 'Returns']; },
+    yieldOnCost:function(){ return ['Yield on cost', P(h.yoc, 2), 'exit cap ' + P(Number(s.exitCap), 2), '', dev ? 'Development' : 'Operating Underwrite']; }, dscr:function(){ return ['Lender DSCR, year 1', loan > 0 ? X(h.dscr) : '—', bkDscrBasis('lender', s) + ' · loan min ' + X(mind), dscrOk, 'Debt']; },
     loan:function(){ return ['Loan', M(loan), price ? P(loan / price, 0) + ' of price' : '', '', 'Debt']; }, equity:function(){ var tce = isFinite(h.tce) ? h.tce : h.equity; return [typeof window.bkCapName === 'function' ? window.bkCapName('totalContributedEquity') : 'Total contributed equity', M(tce), price ? 'price ' + M(price) : '', '', 'Sources & Uses']; } };   /* the headline equity names its measure, as the bottom band and the Deal Snapshot do */
-  TILE.afterTaxIRR = function(){ var x = safe(function(){ return bkAfterTaxV18(); }, null), v = x ? x.atIRR : NaN; return ['After-tax IRR', P(v), x ? 'depreciation, income tax and the tax on the sale' : 'enter the tax inputs', isFinite(v) ? (v >= hurdle * 0.75 ? 'pass' : 'warn') : '', 'After-Tax']; };   /* Comprehensive leads with it */
+  TILE.afterTaxIRR = function(){ var x = safe(function(){ return bkAfterTaxV18(); }, null), v = x ? x.atIRR : NaN; return ['After-tax IRR', P(v, 2), x ? 'depreciation, income tax and the tax on the sale' : 'enter the tax inputs', isFinite(v) ? (v >= hurdle * 0.75 ? 'pass' : 'warn') : '', 'After-Tax']; };   /* Comprehensive leads with it */
   var tileIds = safe(function(){ return window.BKReg.tiles(window.BKReg.of(s).id); }, null) || ['leveredIRR', 'moic', 'yieldOnCost', 'dscr', 'loan', 'equity'];
   var kpis = can && h ? tileIds.filter(function(id){ return TILE[id]; }).map(function(id){ return TILE[id](); }) : [];
   var next;
@@ -98,7 +98,7 @@ function build(s, oldMain){
   rows.push([can ? 'pass' : 'fail', 'Required inputs', can ? 'All ' + (Array.isArray(ready.met) ? ready.met.length + ' ' : '') + 'required inputs entered' : (ready ? ready.missing.length : '?') + ' missing', 'Deal Underwrite']);
   if(can){ var tt = safe(function(){ return window.bkAllInputsTie(); }, null); if(tt && !tt.withheld) rows.push([tt.ok ? 'pass' : 'fail', 'All inputs tie', tt.ok ? tt.checks + ' checks agree across Sources & Uses, Debt, Funding and Returns' : tt.failed.length + ' do not tie: ' + tt.failed[0].label, 'Sources & Uses']); }
   if(can && h){
-    rows.push([irrOk || '', 'Returns vs hurdle', 'Levered IRR ' + P(h.levIRR) + ' against a ' + P(hurdle) + ' target; ' + X(h.levMOIC) + ' multiple', 'Returns']);
+    rows.push([irrOk || '', 'Returns vs hurdle', 'Levered IRR ' + P(h.levIRR, 2) + ' against a ' + P(hurdle, 2) + ' target; ' + X(h.levMOIC) + ' multiple', 'Returns']);
     /* price against value: what the cash flows are worth today at the hurdle, less what is paid (the valuation engine, src/202) */
     var pv = safe(function(){ return window.bkValuate({ rate:hurdle, equityRate:hurdle }); }, null);
     if(pv && isFinite(pv.equityNPV)){ var gap = pv.equityNPV, eqTxt = (gap >= 0 ? 'The equity is worth ' + M(gap) + ' more than it costs' : 'The equity is worth ' + M(-gap) + ' less than it costs') + ' at the ' + P(hurdle) + ' hurdle (equity NPV)';

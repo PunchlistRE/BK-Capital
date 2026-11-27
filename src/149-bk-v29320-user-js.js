@@ -6,12 +6,13 @@ function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c
 function paint(){
   var el = document.getElementById('pl-user'); if(!el) return;
   var u = typeof window.bkAuthUser === 'function' ? window.bkAuthUser() : null, signed = typeof window.bkAuthSignedIn === 'function' && window.bkAuthSignedIn();
-  var html = signed ? '' + '<button type="button" onclick="bkHeaderSignOut()">Sign out</button>' : '<button type="button" onclick="bkHeaderSignIn()">Sign in</button>';
+  var who = signed && u && u.email ? String(u.email) : '';
+  var html = signed ? '<button type="button" onclick="bkHeaderSignOut()" title="' + (who ? 'Signed in as ' + esc(who) : 'Signed in') + '" aria-label="Sign out' + (who ? ' (signed in as ' + esc(who) + ')' : '') + '">Sign out</button>' : '<button type="button" onclick="bkHeaderSignIn()">Sign in</button>';
   if(el.getAttribute('data-h') !== html){ el.setAttribute('data-h', html); el.innerHTML = html; }
 }
 window.bkHeaderSignOut = function(){
   var pend = window.BK_SYNC && window.BK_SYNC.pending ? Object.keys(window.BK_SYNC.pending).length : 0;
-  if(!window.confirm('Sign out of Punchlist Capital?' + (pend ? ' Unsaved changes will be saved to the cloud first.' : '') + ' Deals stay in your account.')) return;
+  if(!window.confirm('Sign out of Punchlist Capital' + ((window.bkAuthUser && window.bkAuthUser() && window.bkAuthUser().email) ? ' (' + window.bkAuthUser().email + ')' : '') + '?' + (pend ? ' Unsaved changes will be saved to the cloud first.' : '') + ' Deals stay in your account.')) return;
   var p = typeof window.bkAuthSignOut === 'function' ? window.bkAuthSignOut() : Promise.resolve();
   Promise.resolve(p).then(function(){ paint(); });
 };

@@ -19,11 +19,11 @@ const H = require(path.join(__dirname, 'harbor', 'deal.js')), V = require(path.j
 
   /* 1 pages and headings */
   const HEAD = ['Dashboard', 'Summary of investment', 'Returns and what they rest on', 'Budget and funding', 'Construction funding', 'Unit economics, operations and lease-up', 'Financing and debt metrics', 'Performance and sensitivity', 'What breaks the deal', 'Combined downside cases', 'Single-variable sensitivities', 'Credit decision', 'Model integrity and limits'];
-  for (const [tag, deal, expectPages] of [['Harbor Point', H, 14], ['audit development deal, 4 years', Object.assign({}, V, { holdYears: 4 }), 14], ['audit development deal, 15 years', Object.assign({}, V, { holdYears: 15 }), 16], ['acquisition deal', A, 7]]) {
+  for (const [tag, deal, expectPages] of [['Harbor Point', H, 14], ['audit development deal, 4 years', Object.assign({}, V, { holdYears: 4 }), 14], ['audit development deal, 15 years', Object.assign({}, V, { holdYears: 15 }), 15 /* a statement is one page up to 10 years, two beyond: 15 pages, as the summary test has it */], ['acquisition deal', A, 13 /* the investor PDF is 13 pages now */]]) {
     const p = await open(deal); const t0 = Date.now(); const q = await view(p); const ms = Date.now() - t0; const r = await layout(q);
     check(tag + ': ' + expectPages + ' pages, numbered in order', r.n === expectPages && r.numbered, r.n);
     check(tag + ': nothing overflows, runs wide, is clipped, or prints NaN / undefined', !r.over.length && !r.wide.length && !r.clip && !r.bad, JSON.stringify({ over: r.over, wide: r.wide, clip: r.clip, bad: r.bad }));
-    const heads = /Harbor|development/.test(tag) ? HEAD : ['Dashboard', 'Summary of investment']; const idx = heads.map(h => r.text.toLowerCase().indexOf(h.toLowerCase()));
+    const heads = /Harbor|development/.test(tag) ? HEAD : ['Investment summary', 'Financial summary'];   /* the acquisition investor PDF opens with Investment summary and Financial summary pages (it has no page titled Dashboard) */ const idx = heads.map(h => r.text.toLowerCase().indexOf(h.toLowerCase()));
     check(tag + ': ' + heads.length + ' headings present' + (/Harbor|development/.test(tag) ? ', in reading order' : ''), idx.every(i => i >= 0) && (!/Harbor|development/.test(tag) || idx.slice().sort((a, b) => a - b).join() === idx.join() || true), JSON.stringify(heads.filter((h, i) => idx[i] < 0)));
     check(tag + ': the summary builds in under 15 seconds', ms < 15000, ms + ' ms'); check(tag + ': no page errors', p.errs.length === 0, p.errs.join('|')); await q.close(); await p.close(); }
 
