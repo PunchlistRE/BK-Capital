@@ -46,6 +46,8 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   check('the numbers show the distortion that justifies the flag (blank taxes: the IRR is higher than with taxes entered)', ex.irr > base.irr + 0.01, base.irr + ' -> ' + ex.irr);
   const ix = await p.evaluate(() => { showSheet('Inputs Index'); return new Promise(r => setTimeout(() => r({ txt: document.querySelector('#viewport').innerText, rows: [...document.querySelectorAll('tr[data-ix-k="taxes"], tr[data-ix-k="insurance"]')].map(t => t.querySelector('.status-chip').textContent.trim()) }), 600)); });
   check('the Inputs index lists them as Expected, in a strip that ranks them and says what a blank does', ix.rows.join() === 'Expected,Expected' && /Expected inputs not entered, most material first/.test(ix.txt) && /counted as \$0, so NOI and returns are overstated/.test(ix.txt), ix.rows.join());
+  const stg = await p.evaluate(() => { const o = bkStepStatus(); return { inputs: o.inputs, ops: o.ops }; });
+  check('the Home stage strip is not "done" for Inputs or Operations while expected inputs are blank: it warns and names them', stg.inputs.st === 'warn' && /Expected, not entered/.test(stg.inputs.tip) && /real estate taxes/.test(stg.inputs.tip) && stg.ops.st === 'warn' && /may be overstated/.test(stg.ops.tip), JSON.stringify(stg));
   const pdf = await p.evaluate(() => { const h = bkReportHTML(); return /Incomplete underwriting/.test(h) && /Real estate taxes/.test(h) && /materially overstated/.test(h); });
   check('the investor PDF carries the same warning on its cover', pdf);
   await patch(p, { taxes: A.taxes, insurance: A.insurance });

@@ -41,7 +41,10 @@ R.tiles = function(id){ return TILES[id] || TILES.acquisition; };
 /* a 'steps' stage's status, from the deal: done when every listed workflow step is complete */
 R.stageFromSteps = function(stage, s){ var wf = R.workflow(R.of(s).id), miss = [];
   stage.steps.forEach(function(sid){ var st = wf.filter(function(x){ return x.id === sid; })[0]; if(st){ var x = R.stepState(st, s); miss = miss.concat(x.missing); } });
-  return miss.length ? { st:'warn', tip:'Missing: ' + miss.map(function(k){ var f = R.field(k); return f ? f.label : k; }).join(', ') } : { st:'done', tip:'Complete' }; };
+  if(miss.length) return { st:'warn', tip:'Missing: ' + miss.map(function(k){ var f = R.field(k); return f ? f.label : k; }).join(', ') };
+  /* nothing required is missing, but an expected input is blank: not 'done' (a blank expense counts as zero, so the figures may be overstated) */
+  var xm = []; stage.steps.forEach(function(sid){ var st = wf.filter(function(x){ return x.id === sid; })[0]; if(st) xm = xm.concat(R.stepState(st, s).expectedMissing || []); });
+  return xm.length ? { st:'warn', tip:'Expected, not entered (results may be overstated): ' + xm.map(function(k){ var f = R.field(k); return f ? String(f.label).replace(/,.*$/, '') : k; }).join(', ') } : { st:'done', tip:'Complete' }; };
 /* the workflow's completion, step by step: the same figures the guide shows */
 R.workflowState = function(s){ var a = R.of(s); return R.workflow(a.id).map(function(st){ var x = R.stepState(st, s); return { id:st.id, title:st.title, complete:x.complete, missing:x.missing, skippable:!!st.skippable }; }); };
 /* readiness carries the analysis and its workflow completion. Whether results are shown is still decided by the readiness rules themselves (the engine's critical inputs); the workflow adds the analysis-specific steps on top, for the guide and the step bar. */

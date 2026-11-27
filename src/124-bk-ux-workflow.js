@@ -77,6 +77,7 @@ var STEPS0 = [
 function stagesNow(){ var R = window.BKReg; try { if(R && typeof R.stages === 'function'){ var d = hasDeal() ? bkLoad() : {}; return R.stages(R.of(d).id); } } catch(e){} return STEPS0.map(function(x){ return Object.assign({ judge:{ setup:'identity', inputs:'inputs', ops:'operations', debt:'debt', returns:'returns', review:'review' }[x.id] }, x); }); }
 function stepOf(sheet){ var S = stagesNow(); for(var i = 0; i < S.length; i++) if(S[i].sheets.indexOf(sheet) > -1) return i; return -1; }
 /* each stage's status, by its rule: the six rules below (as they have always been), or 'steps' (the registry's workflow steps are complete) */
+window.bkStepStatus = function(){ return stepStatus(); };
 function stepStatus(){
   var S = stagesNow(), J = judges(), out = {}, R = window.BKReg, d = hasDeal() ? bkLoad() : null;
   S.forEach(function(g){ out[g.id] = g.judge === 'steps' ? (J.none ? J.none : (R ? R.stageFromSteps(g, d) : { st:'', tip:'' })) : (J[g.judge] || { st:'', tip:'' }); });
@@ -88,9 +89,10 @@ function judges(){
   var s = bkLoad();
   var idMiss = r.missing.filter(function(m){ return m.group === 'Identity'; });
   out.identity = idMiss.length ? { st:'warn', tip:'Missing: ' + idMiss.map(function(m){ return m.label; }).join(', ') } : { st:'done', tip:'Deal identity complete' };
-  out.inputs = r.missing.length ? { st:'warn', tip:r.missing.length + ' required input' + (r.missing.length > 1 ? 's' : '') + ' missing' } : { st:'done', tip:'All required inputs entered' };
+  var xm = (r.expectedMissing || []).map(function(m){ return String(m.label).replace(/,.*$/, '').toLowerCase(); });   /* expected inputs still blank: not 'done' (a blank line counts as zero, so the figures may be overstated) */
+  out.inputs = r.missing.length ? { st:'warn', tip:r.missing.length + ' required input' + (r.missing.length > 1 ? 's' : '') + ' missing' } : xm.length ? { st:'warn', tip:'Required inputs entered. Expected, not entered (results may be overstated): ' + xm.join(', ') } : { st:'done', tip:'All required inputs entered' };
   var noi = NaN; try { noi = bkCalc().noi; } catch(e){}
-  out.operations = (r.canCalculate && isFinite(noi)) ? (noi > 0 ? { st:'done', tip:'Year-1 NOI ' + money(noi) } : { st:'warn', tip:'Year-1 NOI is not positive' }) : { st:'', tip:'Needs complete inputs' };
+  out.operations = (r.canCalculate && isFinite(noi)) ? (noi > 0 ? (xm.length ? { st:'warn', tip:'Year-1 NOI ' + money(noi) + ', but ' + xm.join(', ') + ' not entered: NOI may be overstated' } : { st:'done', tip:'Year-1 NOI ' + money(noi) }) : { st:'warn', tip:'Year-1 NOI is not positive' }) : { st:'', tip:'Needs complete inputs' };
   var debtMiss = r.investMissing.some(function(m){ return m.key === 'debt'; });
   var gate = null, pol = {}, ctls = [];
   if(r.canCalculate){
