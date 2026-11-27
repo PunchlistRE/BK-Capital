@@ -6,6 +6,7 @@
 (function(){
 'use strict';
 var OWN = { valuation:{ sheet:'Property Valuation Report', label:'Property value report', what:'What the property is worth today on its income: executive summary, income and expenses, NOI in place, normalized and stabilized, the cap rate, the value conclusion and its sensitivity. No financing or investor returns.' },
+  portfolio:{ sheet:'Portfolio Report', label:'Portfolio report', what:'How the saved properties add up: value, debt, the combined IRR, maturities, concentration, each holding compared and what each one adds.' },
   hold:{ sheet:'Hold vs Sell Report', label:'Hold vs sell report', what:'Whether to keep the property or sell it today: the net cash from selling now, the hold case year by year, its IRR and NPV, when to sell, and the tax on each sale.' },
   refinance:{ sheet:'Refinance Report', label:'Refinance report', what:'The existing loan and its payoff, the proposed structures sized by the lender\'s tests, cash out and the new debt service.' } };
 function analysis(){ try { var R = window.BKReg; return R && R.of ? R.of(bkLoad() || {}) : null; } catch(e){ return null; } }

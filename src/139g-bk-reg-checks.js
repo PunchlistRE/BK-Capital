@@ -17,7 +17,7 @@ R.addRules([
   X('noiTies', 'NOI = income less expenses, by line', 'refinance / valuation'), X('valueTies', 'Value = NOI / cap rate for each scenario', 'valuation'), X('noDebt', 'No financing figure reaches a valuation', 'valuation'),
   X('payoffTies', 'Payoff = balance + accrued interest + prepayment', 'refinance'), X('holdTies', 'Hold vs sell: proceeds, exit, cash flow and IRR each recomputed', 'hold'), X('sizingTies', 'Loan = the lowest of the lender tests', 'refinance'),
   X('basisTies', 'Basis, land, depreciation and accumulated depreciation reconcile', 'planned', { planned:true }), X('capitalTies', 'Capital budget, actuals and funding reconcile', 'planned', { planned:true }),
-  X('portfolioTies', 'Consolidated flows equal the sum of the holdings; nothing counted twice', 'planned', { planned:true }), X('bizTies', 'EBITDA, free cash flow and value reconcile', 'planned', { planned:true })
+  X('portfolioTies', 'Consolidated flows equal the sum of the holdings; nothing counted twice', 'portfolio'), X('bizTies', 'EBITDA, free cash flow and value reconcile', 'planned', { planned:true })
 ]);
 var CORE = ['readiness', 'conflicts', 'sale', 'payoff', 'eqret', 'contrib', 'unlev_irr', 'irr', 'moic', 'waterfall', 'credit'];
 R.addChecks('acquisition', ['budget', 'unlev', 'su', 'capint', 'facility'].concat(CORE));   /* the acquisition engine reports sources and uses, interest and the loan balance too */
