@@ -57,13 +57,17 @@ if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg
         r.canCalculate = !miss.length && eng === true; r.state = !miss.length ? (eng === true ? 'ANALYSIS READY' : 'BLOCKED') : 'DRAFT'; } } } catch(e){} return r; }; rd.__reg = true; window.bkDealReadiness = rd; }
 /* EXPECTED inputs still blank, most material first. The order is fixed and deterministic (taxes move NOI most, then vacancy, insurance, repairs, management, the loan-to-value, closing costs);
    the effect is stated as it is: a blank line is counted as zero, never silently assumed, and the results below it may be overstated. */
-var EXPECTED_ORDER = ['taxes', 'vacancy', 'insurance', 'rm', 'mgmtPct', 'acqLTV', 'conLTC', 'closingCostsPct'];
+var EXPECTED_ORDER = ['taxes', 'vacancy', 'insurance', 'rm', 'mgmtPct', 'acqLTV', 'conLTC', 'closingCostsPct', 'taxRate', 'capGainsRate', 'depRecaptureRate'];
+var AFTER_TAX = { taxRate:1, capGainsRate:1, depRecaptureRate:1 };   /* these affect the after-tax figures only, never NOI or the pre-tax returns */
 var EXPECTED_EFFECT = { taxes:'counted as $0, so NOI and returns are overstated', insurance:'counted as $0, so NOI and returns are overstated', rm:'counted as $0, so NOI and returns are overstated', mgmtPct:'counted as 0%, so NOI and returns are overstated',
   vacancy:'counted as 0% (a full building), so income and returns are overstated', acqLTV:'no loan-to-value limit entered, so the loan size and the returns rest on the model\'s fallback', conLTC:'no loan-to-cost limit entered, so the construction loan and the returns rest on the model\'s fallback',
-  closingCostsPct:'counted as 0%, so the cash needed at closing is understated' };
-R.expectedMissing = function(s){ s = s || (typeof bkLoad === 'function' ? bkLoad() : {}); if(!R.governed(s)) return [];
+  closingCostsPct:'counted as 0%, so the cash needed at closing is understated',
+  taxRate:'the model\'s default (37%) is used and has not been confirmed, so the after-tax figures are provisional', depRecaptureRate:'the model\'s default (25%) is used and has not been confirmed, so the tax at the sale is provisional', capGainsRate:'the model\'s default (20%) is used and has not been confirmed, so the tax at the sale is provisional' };
+/* all:true includes the after-tax rates (provisional, not a distortion of NOI); the default list is the inputs whose blank overstates NOI and the pre-tax returns */
+R.expectedMissing = function(s, all){ s = s || (typeof bkLoad === 'function' ? bkLoad() : {}); if(!R.governed(s)) return [];
   var seen = {}, out = []; R.workflow(R.of(s).id).forEach(function(st){ if(typeof st.when === 'function' && !st.when(s)) return; (st.fields || []).forEach(function(e){ if(seen[e.k]) return; var f = R.field(e.k); if(!f || f.kind === 'derived') return;
-    if(R.requirement(e, s) !== 'expected' || R.present(e.k, s)) return; seen[e.k] = 1; out.push({ key:e.k, label:e.label || f.label, effect:EXPECTED_EFFECT[e.k] || 'left blank: the results use the model\'s fallback, not a figure you chose', rank:EXPECTED_ORDER.indexOf(e.k) < 0 ? 99 : EXPECTED_ORDER.indexOf(e.k), sheet:st.sheet }); }); });
+    if(R.requirement(e, s) !== 'expected' || R.present(e.k, s)) return; seen[e.k] = 1; out.push({ key:e.k, label:e.label || f.label, effect:EXPECTED_EFFECT[e.k] || 'left blank: the results use the model\'s fallback, not a figure you chose', rank:EXPECTED_ORDER.indexOf(e.k) < 0 ? 99 : EXPECTED_ORDER.indexOf(e.k), sheet:st.sheet, scope:AFTER_TAX[e.k] ? 'aftertax' : 'noi' }); }); });
+  if(!all) out = out.filter(function(x){ return x.scope !== 'aftertax'; });
   return out.sort(function(a, b){ return a.rank - b.rank; }); };
 var lint0 = R.lint;
 R.lint = function(){ var bad = lint0.call(R), JUDGE = ['identity', 'inputs', 'operations', 'debt', 'returns', 'review', 'steps'];

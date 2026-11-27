@@ -121,7 +121,7 @@ function page(){
   var gateHtml = gate.length ? '<div class="note-flag bk-ix-gate"><span>&#9888;</span><div><b>Results are withheld until ' + gate.length + (gate.length === 1 ? ' input is' : ' inputs are') + ' entered:</b> '
     + gate.map(function(g){ return g.k ? '<button type="button" class="bk-ix-link" onclick="bkInputsGo(\'' + esc(g.k) + '\')">' + esc(g.label) + '</button>' : esc(g.label); }).join(', ') + '.</div></div>' : '';
   /* expected inputs not entered, most material first (BKReg.expectedMissing): the model shows results without them, but states what a blank line does to the numbers */
-  var xm = safe(function(){ return window.BKReg.expectedMissing(s); }, []) || [];
+  var xm = safe(function(){ return window.BKReg.expectedMissing(s, true); }, []) || [];
   var expHtml = xm.length ? '<div class="note-flag bk-ix-gate"><span>&#9888;</span><div><b>Expected inputs not entered, most material first.</b> The model shows results without them, but ' + xm.map(function(m){ return '<div class="bk-ix-xrow"><button type="button" class="bk-ix-link" onclick="bkInputsGo(\'' + esc(m.key) + '\')">' + esc(String(m.label).replace(/,.*$/, '')) + '</button>: ' + esc(m.effect) + '.</div>'; }).join('').replace(/^/, '') + '</div></div>' : '';
   var body = GROUPS_ORDER.filter(function(g){ return byG[g].length; }).map(function(g){
     var gr = byG[g], req = gr.filter(function(r){ return r.req === 'required'; }), miss = gr.filter(function(r){ return r.status === 'missing'; }), inc = gr.filter(function(r){ return r.status === 'incomplete'; });

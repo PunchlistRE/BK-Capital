@@ -19,6 +19,9 @@ var EXPENSES = S('expenses', 'Operating expenses', 'Use the last twelve months w
 var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume it sells for. The exit cap rate moves the answer more than anything else here.', 'Deal Underwrite',
   [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
 
+/* the three tax rates are Expected inputs (src/226): the model runs on its defaults, flagged provisional until the user confirms them */
+var TAXSTEP = S('tax', 'Tax rates', 'These set the after-tax return. They depend on your circumstances, the jurisdiction, how the property is owned and the transaction, so the model\'s defaults are a starting point, not tax advice. Confirm or change them.', 'After-Tax',
+  [q('taxRate', 'required'), q('depRecaptureRate', 'required'), q('capGainsRate', 'required')], { skippable:true });
 R.addWorkflow('acquisition', [
   S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('propertyType'), q('acqStrategy'), q('units', 'required'), q('gsf'), q('gla')]),
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
@@ -30,7 +33,7 @@ R.addWorkflow('acquisition', [
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('loanPurpose'), q('lenderType'), q('acqLTV', 'required', { when:function(s){ return s.debtEnabled !== false; } }), q('debtRateType'), q('acqRate', 'required', { when:function(s){ return s.debtEnabled !== false && (!s.debtRateType || s.debtRateType === 'Fixed'); } }), q('debtIndexName', 'optional', { when:function(s){ return s.debtRateType === 'Floating'; } }), q('debtIndexTenor', 'optional', { when:function(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtIndexRate', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtSpread', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('repayType'), q('acqAmort', 'optional', { when:function(s){ return s.debtEnabled !== false && String(s.repayType || '') !== 'Interest only'; } }), q('acqIO', 'optional', { when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); } }), q('ioBasis', 'optional', { when:function(s){ return String(s.repayType) === 'Partial interest only'; } }), q('prepayLockoutMonths', 'optional', { when:function(s){ return s.debtEnabled !== false; } }), q('debtTerm'), q('acqOrigFee')], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
     [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
-  EXIT,
+  EXIT, TAXSTEP,
   S('decision', 'Decision thresholds', 'The lines the hold, refinance or sell tests are measured against. Without them the decision test has nothing to compare to. Skip to keep the standard ones.', 'Capital Allocation', [q('capRefiHeadroom'), q('capRefiDebtYield'), q('capSellCoE'), q('capSellNOIGrowth'), q('capKeepCoE')], { skippable:true }) ]);
 
 R.addWorkflow('development', [
@@ -41,7 +44,7 @@ R.addWorkflow('development', [
   S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilized.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
     [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
-  EXIT ]);
+  EXIT, TAXSTEP ]);
 
 R.addWorkflow('valuation', [
   S('property', 'Property information', 'Identifies the property and sizes the per-unit and per-SF value.', 'Property', [q('name', 'required'), q('location'), q('propertyType'), q('units', 'required'), q('gsf')]),
