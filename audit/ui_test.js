@@ -180,7 +180,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   // 12. Home: front door with no deal, dashboard with one, next step, checklist, command palette, folding rail
   await p.evaluate(() => { localStorage.removeItem('bkcapital.cre.v02'); }); await p.reload(); await p.waitForTimeout(900);
   await p.evaluate(() => { document.documentElement.classList.add('bk-auth-ok'); showSheet('Home'); }); await p.waitForTimeout(400);
-  check('Home with no deal is a front door: the eight analyses from the registry and one line of document imports, with no duplicate toolbar', await p.evaluate(() => { const t = document.querySelector('#viewport').innerText; return /Start an analysis/.test(t) && document.querySelectorAll('.pl-an').length === BKReg.analyses().length && BKReg.analyses().length === 8 && /Or start from a document/.test(t) && /T-12/.test(t) && /Rent roll/.test(t) && !document.querySelector('.pl-toolbar') && !/How it works/.test(t); }));
+  check('Home with no deal is a front door: the eight analyses from the registry and one line of document imports, with no duplicate toolbar', await p.evaluate(() => { const t = document.querySelector('#viewport').innerText; return /Start an analysis/.test(t) && document.querySelectorAll('.pl-an').length === BKReg.analyses().length && BKReg.analyses().length === 8 && /Or start from a document/.test(t) && /T-12/.test(t) && /Rent roll/.test(t) && [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|') === '+ Start new deal' && !/How it works/.test(t); }));   /* the empty Home offers one primary action, + Start new deal */
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(500);
   const hm = await p.evaluate(() => ({ kpis: document.querySelectorAll('.pl-kpi').length, next: (document.querySelector('.pl-next .m') || {}).textContent, rows: document.querySelectorAll('.pl-row').length, name: (document.querySelector('.pl-hero h2') || {}).textContent, detail: !!document.querySelector('details.pl-detail'), obj: /\[object Object\]/.test(document.querySelector('#viewport').innerText) }));
   check('Home with a deal shows the name, six KPI tiles, a next step and the review checklist', hm.kpis === 6 && !!hm.next && hm.rows >= 6 && !!hm.name && hm.detail && !hm.obj, JSON.stringify(hm));
@@ -205,7 +205,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.keyboard.press('Escape');
   // 13. New deal and Clear inputs on Overview
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(400);
-  check('Overview: the page offers the PDF summary and Clear inputs; New analysis and Import are on the bar above (no duplicates)', await p.evaluate(() => [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|') === 'Create PDF summary|Clear inputs' && ['New analysis', 'Import'].every(t => [...document.querySelectorAll('.bk-ribbon .rb-c')].some(b => b.textContent.trim() === t))));
+  check('Overview: the page offers the PDF summary and Clear inputs; New analysis and Import are on the bar above (no duplicates)', await p.evaluate(() => [...document.querySelectorAll('.pl-toolbar button')].map(b => b.textContent.trim()).join('|') === '+ Start new deal|Create PDF summary|Clear inputs' && ['New analysis', 'Import'].every(t => [...document.querySelectorAll('.bk-ribbon .rb-c')].some(b => b.textContent.trim() === t))));
   await p.click('.bk-ribbon .rb-c:has-text("New analysis")'); await p.waitForTimeout(250);
   check('New analysis asks for the analysis and a name and offers to save the current deal', await p.evaluate(() => { const m = document.getElementById('pl-modal'); return m.classList.contains('open') && !!m.querySelector('#pl-nm') && !!m.querySelector('select#pl-an') && !!m.querySelector('#pl-save1'); }));
   await p.fill('#pl-nm', 'Test Heights'); await p.selectOption('#pl-an', 'development');
@@ -215,7 +215,8 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('Create opens an empty deal with that name and type, and saved the previous one', nd.n === 'Test Heights' && nd.t === 'Development' && nd.a === 'development' && !(nd.price > 0) && nd.port === portBefore + 1 && !nd.open, JSON.stringify(nd));
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, B); await p.waitForTimeout(300);
   await p.click('.pl-toolbar button:has-text("Clear inputs")'); await p.waitForTimeout(250);
-  check('Clear inputs says what it will do before it does it', await p.evaluate(() => /Clear all inputs/.test(document.getElementById('pl-modal').innerText) && /Nothing is lost/.test(document.getElementById('pl-modal').innerText) && /Version History/.test(document.getElementById('pl-modal').innerText)));
+  /* since #270 the dialog says the photo and documents are removed for good, so "Nothing is lost" is replaced by what it now says: the inputs go to Version History first, the photo and documents do not */
+  check('Clear inputs says what it will do before it does it', await p.evaluate(() => /Clear all inputs/.test(document.getElementById('pl-modal').innerText) && /saved to Version History first/.test(document.getElementById('pl-modal').innerText) && /removed for good/.test(document.getElementById('pl-modal').innerText) && /Version History/.test(document.getElementById('pl-modal').innerText)));
   await p.click('#pl-modal button:has-text("Cancel")'); await p.waitForTimeout(150);
   check('Cancel leaves the deal untouched', await p.evaluate(() => bkLoad().purchasePrice > 0 && !document.getElementById('pl-modal').classList.contains('open')));
   const nm0 = await p.evaluate(() => bkLoad().name);
@@ -253,7 +254,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(a => { bkCreateNewDeal(a); showSheet('Home'); }, A_); await p.waitForTimeout(600);
   await p.evaluate(() => bkReportOpen()); await p.waitForTimeout(2500);
   const rp = await p.evaluate(() => { const f = document.getElementById('pl-report-frame'); const d = f && f.contentDocument; if (!d) return null; const D = bkProFormaData(); return { pages: d.querySelectorAll('.page').length, svgs: d.querySelectorAll('svg').length, txt: d.body.innerText, irr: (D.irr * 100).toFixed(2) + '%', moic: D.moic.toFixed(2) + 'x', eq: D.eq, nan: /NaN|undefined|\[object/.test(d.body.innerText), save: !!document.querySelector('#pl-report button') }; });
-  check('the summary opens with eight pages (with Impact to portfolio), charts and a save button', rp && rp.pages === 8 && rp.svgs >= 8 && rp.save && !rp.nan, JSON.stringify(rp && { p: rp.pages, s: rp.svgs, nan: rp.nan }));
+  check('the summary opens with fourteen pages (the thirteen of the investor PDF, with Impact to portfolio), charts and a save button', rp && rp.pages === 14 && rp.svgs >= 8 && rp.save && !rp.nan, JSON.stringify(rp && { p: rp.pages, s: rp.svgs, nan: rp.nan }));
   check('the summary shows the model\'s levered IRR and multiple', rp && rp.txt.indexOf(rp.irr) >= 0 && rp.txt.indexOf(rp.moic) >= 0, rp && (rp.irr + ' ' + rp.moic));
   check('sources equal uses on the summary', await p.evaluate(() => { const d = document.getElementById('pl-report-frame').contentDocument; const t = [...d.querySelectorAll('tr.tot')].filter(r => /Total (sources|uses)/.test(r.innerText)).map(r => r.cells[1].innerText); return t.length === 2 && t[0] === t[1]; }));
   await p.evaluate(() => bkReportClose());
@@ -262,7 +263,7 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await p.evaluate(d => { bkCreateNewDeal(d); showSheet('Home'); }, require(path.join(__dirname, 'devdeal.js'))); await p.waitForTimeout(600);
   await p.evaluate(() => bkReportOpen()); await p.waitForTimeout(3000);
   const rdv = await p.evaluate(() => { const f = document.getElementById('pl-report-frame'); const d = f && f.contentDocument; if (!d) return null; const m = bkMonthlyReturns(); const t = d.body.innerText; const tots = [...d.querySelectorAll('tr.tot')].filter(r => /Total (sources|uses|project)/.test(r.innerText)).map(r => r.cells[1].innerText); return { pages: d.querySelectorAll('.page').length, irr: (m.irr * 100).toFixed(2) + '%', moic: m.moic.toFixed(2) + 'x', t, tots, nan: /NaN|undefined|\[object/.test(t) }; });
-  check('a development deal (6-year hold) gets a fifteen-page summary plus one waterfall page for the sixth year (5 years a page)', rdv && rdv.pages === 16 && !rdv.nan, JSON.stringify(rdv && { p: rdv.pages, nan: rdv.nan }));
+  check('a development deal (6-year hold) gets a fifteen-page summary (the statement runs to ten years on one page, so a sixth year adds no page)', rdv && rdv.pages === 15 && !rdv.nan, JSON.stringify(rdv && { p: rdv.pages, nan: rdv.nan }));
   check('the development summary shows the model\'s IRR and multiple', rdv && rdv.t.indexOf(rdv.irr) >= 0 && rdv.t.indexOf(rdv.moic) >= 0, rdv && (rdv.irr + ' ' + rdv.moic));
   check('development sources equal uses', rdv && rdv.tots.length === 2 && rdv.tots[0] === rdv.tots[1], rdv && JSON.stringify(rdv.tots));
   await p.evaluate(() => bkReportClose());
@@ -411,7 +412,9 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   check('the Overview is the normal page while the guide is off', await p.evaluate(() => !document.documentElement.classList.contains('bk-guide') && !document.querySelector('.gd')));
   await p.evaluate(() => bkGuideOn()); await p.waitForTimeout(500);
   await p.evaluate(() => bkGuideBlank('Acquisition')); await p.waitForTimeout(500);
-  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 9/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
+  check('guide on shows one section at a time and hides the rest of the app', await p.evaluate(() => document.documentElement.classList.contains('bk-guide') && /Step 1 of 8/i.test(document.querySelector('.gd').innerText) && getComputedStyle(document.querySelector('.rail')).display === 'none'));
+  /* Standard asks one question at a time (#269); these checks type two figures on one step, so they run at Full depth, where every figure of the step is on screen */
+  await p.evaluate(() => bkGuideDepth('full')); await p.waitForTimeout(400);
   await p.fill('#gdf-name', 'Guide Court'); await p.dispatchEvent('#gdf-name', 'change'); await p.fill('#gdf-units', '14'); await p.dispatchEvent('#gdf-units', 'change');
   const g1 = await p.evaluate(() => ({ name: bkLoad().name, units: bkLoad().units, panel: document.getElementById('gd-chg').innerText, btn: document.getElementById('gd-next').innerText }));
   check('typed values are only proposed: nothing is saved until the change is confirmed', g1.units !== 14 && g1.name !== 'Guide Court' && /Guide Court/.test(g1.panel) && /2 change/i.test(g1.btn), JSON.stringify(g1));
@@ -451,17 +454,18 @@ const A_ = require(path.join(__dirname, 'deal.js'));
   await setv('purchasePrice', '1,200,000'); await setv('sourceConstruction', '8,000,000'); await setv('constructionMonths', '18'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
   await setv('avgRent', '1,900'); await setv('vacancy', '5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
   await setv('taxes', '120,000'); await setv('insurance', '40,000'); await setv('rm', '30,000'); await setv('mgmtPct', '3'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400);
-  await setv('conLTC', '65'); await setv('conRate', '7.5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400); /* the guide now has a sources-and-uses review step and a partnership step before the exit step; the partnership is left blank, so the deal stays all-LP */ await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300);
+  await setv('conLTC', '65'); await setv('conRate', '7.5'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(400); /* the guide now has a sources-and-uses review step and a partnership step before the exit step; the partnership is left blank, so the deal stays all-LP */ for (let i = 0; i < 4 && !(await p.$('#gdf-holdYears')); i++) { await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(300); }   /* Next through the review and partnership steps, however many the guide has, to the exit step */
   await setv('holdYears', '6'); await setv('exitCap', '5.75'); await p.evaluate(() => bkGuideNext()); await p.waitForTimeout(600);
   const dv2 = await p.evaluate(() => { const s = bkLoad(), m = bkMonthlyReturns(); return { t: s.dealType, done: Object.keys(s._guide.done).length, price: s.purchasePrice, src: s.sourceConstruction, ltc: s.conLTC, exit: s.exitCap, irrOk: isFinite(m.irr) && m.irr !== 0, h: document.querySelector('.gd h1').innerText }; });
-  check('a development deal can be built through the guide, step by step, and runs in the engine', dv2.t === 'Development' && dv2.done === 8 && dv2.price === 1200000 && dv2.src === 8000000 && dv2.ltc === 0.65 && dv2.exit === 0.0575 && dv2.irrOk && /Review/.test(dv2.h), JSON.stringify(dv2));
+  check('a development deal can be built through the guide, step by step, and runs in the engine', dv2.t === 'Development' && dv2.done === 7 && dv2.price === 1200000 && dv2.src === 8000000 && dv2.ltc === 0.65 && dv2.exit === 0.0575 && dv2.irrOk && /Review/.test(dv2.h), JSON.stringify(dv2));
   await p.evaluate(() => bkGuideOff()); await p.waitForTimeout(300);
   // 21. Header sign-in / sign-out (last: signing out clears the page)
   p.on('dialog', d => d.accept());
   await p.evaluate(() => showSheet('Home')); await p.waitForTimeout(400);
   check('the header offers Sign in when there is no session', await p.evaluate(() => /sign in/i.test((document.getElementById('pl-user') || {}).innerText || '')));
   await p.evaluate(() => { localStorage.setItem('bkcapital.supabase.auth.v01', JSON.stringify({ access_token: 'x', user: { id: '1', email: 'tester@example.com' }, expires_at: Date.now() + 3.6e6 })); bkHeaderUserPaint(); });
-  check('with a session the header shows the account and Sign out', await p.evaluate(() => { const t = (document.getElementById('pl-user') || {}).innerText || ''; return /tester@example\.com/.test(t) && /sign out/i.test(t); }));
+  /* the header no longer prints the account's email (src/149 builds the control without the .who name); a session shows Sign out in place of Sign in */
+  check('with a session the header shows Sign out in place of Sign in', await p.evaluate(() => { const t = (document.getElementById('pl-user') || {}).innerText || ''; return /sign out/i.test(t) && !/sign in/i.test(t); }));
   await p.evaluate(() => bkHeaderSignOut()); await p.waitForTimeout(1500);
   check('signing out clears the session and returns to the sign-in screen', await p.evaluate(() => !document.documentElement.classList.contains('bk-auth-ok') && !localStorage.getItem('bkcapital.supabase.auth.v01') && getComputedStyle(document.getElementById('bk-auth-gate')).display !== 'none'));
   check('no page errors', errs.length === 0, errs.join(' | '));
