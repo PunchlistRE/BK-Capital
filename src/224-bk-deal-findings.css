@@ -12,3 +12,8 @@
 .bk-rv-known, .bk-rv-groups{ display:flex; flex-wrap:wrap; gap:var(--ds-s2) var(--ds-s4); font-size:var(--ds-t-m); }
 .bk-rv-known em{ font-style:normal; opacity:.7; margin-right:var(--ds-s1); }
 .bk-rv-groups{ margin-top:var(--ds-s2); font-size:var(--ds-t-s); opacity:.8; }
+details.bk-rv-lens{ margin-top:var(--ds-s3); border-top:1px solid var(--ds-bar); padding-top:var(--ds-s2); }
+details.bk-rv-lens > summary{ font-size:var(--ds-t-m); }
+.bk-rv-act{ display:flex; flex-direction:column; align-items:flex-end; gap:var(--ds-s2); flex:0 0 auto; }
+.bk-rv-flag{ color:var(--ds-warn); opacity:1; }
+.bk-rv-llook > div > b, .bk-rv-lmissing > div > b{ color:var(--ds-warn); }

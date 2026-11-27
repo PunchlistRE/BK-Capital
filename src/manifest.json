@@ -1125,6 +1125,11 @@
 "close": "</style>"
 },
 {
+"file": "225-bk-deal-lenses.js",
+"open": "\n<script id=\"bk-deal-lenses\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"

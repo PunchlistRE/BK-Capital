@@ -94,6 +94,7 @@ window.bkReviewHtml = function(s){ s = s || bkLoad(); var q = window.bkDealFindi
   var by = function(k){ return q.findings.filter(function(f){ return f.kind === k; }); };
   var h = '<div class="bk-rv" id="bk-rv"><div class="bk-rv-h">Review of the deal</div>';
   h += '<div class="bk-rv-sec"><b>What deserves attention first</b><div id="bk-rv-att">' + (q.attention.length ? q.attention.map(item).join('') : '<small>Nothing is missing and no Model Check is failing.</small>') + '</div></div>';
+  h += (typeof window.bkLensHtml === 'function' ? window.bkLensHtml(s) : '');   /* the debt and tax lenses (src/225) come right after what deserves attention first */
   h += '<div class="bk-rv-sec"><b>What is known</b><div class="bk-rv-known">' + (q.known.length ? q.known.map(function(k){ return '<span><em>' + esc(k.label) + '</em> ' + esc(k.value) + '</span>'; }).join('') : '<small>Nothing entered yet.</small>') + '</div><div class="bk-rv-groups">' + q.groups.filter(function(g){ return g.total; }).map(function(g){ return '<span>' + esc(g.group) + ' ' + g.entered + ' of ' + g.total + '</span>'; }).join('') + '</div></div>';
   var miss = by('missing'); h += '<div class="bk-rv-sec"><b>What is missing</b>' + (miss.length ? miss.map(item).join('') : '<small>Every required and expected input is entered.</small>') + '</div>';
   var inc = by('inconsistent'); h += '<div class="bk-rv-sec"><b>What is inconsistent</b>' + (inc.length ? inc.map(item).join('') : '<small>No Model Check is flagging this deal.</small>') + '</div>';

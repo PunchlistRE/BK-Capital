@@ -144,8 +144,10 @@ window.bkAllInRate = function(s){ s = s || load(); var t = rateType(s), out = { 
   out.rate = Math.max(idx + out.spread, out.floor); out.source = s.debtIndexSource || ''; out.date = s.debtIndexDate || ''; out.override = !!Number(s.debtIndexOverride); out.published = s._idxPublished;
   out.tenor = s.debtIndexTenor || 'Overnight SOFR'; out.indexName = s.debtIndexName || 'SOFR'; return out; };
 /* The benchmark is one rate on one date. When the loan closes on a different date, say so (no number changes): a fixed coupon is set at the lock, a floating loan starts from this index. */
-function staleNote(s, a, lock){ var c = Date.parse(String(s.closing || '').slice(0, 10)), e = Date.parse(String(a.date || '').slice(0, 10));
-  if(!isFinite(c) || !isFinite(e)) return ''; var d = Math.round((c - e) / 86400000); if(Math.abs(d) <= 30) return '';
+/* how far the benchmark's effective date is from the closing (days; positive = the benchmark is older). One definition: the rate card and the deal review's debt lens both read it. */
+window.bkIndexDateGap = function(s){ s = s || load(); var a = window.bkAllInRate(s); if(!a || a.type === 'Fixed') return null; var c = Date.parse(String(s.closing || '').slice(0, 10)), e = Date.parse(String(a.date || '').slice(0, 10)); if(!isFinite(c) || !isFinite(e)) return null;
+  var d = Math.round((c - e) / 86400000); return { days:d, stale:Math.abs(d) > 30, date:a.date, closing:String(s.closing).slice(0, 10), index:a.indexName === 'SOFR' ? a.tenor : a.indexName }; };
+function staleNote(s, a, lock){ var g = window.bkIndexDateGap(s); if(!g || !g.stale) return ''; var d = g.days;
   return '<div class="bk-ds-n bk-ds-warn">The ' + esc(a.indexName === 'SOFR' ? a.tenor : a.indexName) + ' shown is effective ' + esc(a.date) + ', ' + Math.abs(d) + ' days ' + (d > 0 ? 'before' : 'after') + ' the closing on ' + esc(String(s.closing).slice(0, 10)) + '. The loan is priced from this rate'
     + (lock ? ' as the benchmark at the lock' : ' at the start, then moved by the rate outlook') + '. Enter the rate expected on the closing or lock date, or the lender\'s quote.</div>'; }
 function allInCard(s){ var a = window.bkAllInRate(s); if(a.type === 'Fixed') return '';
