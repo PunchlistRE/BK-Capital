@@ -53,12 +53,20 @@ rule('dep.bonus-on-real-property', 'WARN', 'Depreciation', 'Depreciation', funct
   if(bad.length) return { msg:bad.length + ' component' + (bad.length > 1 ? 's are' : ' is') + ' flagged for bonus depreciation but recover over more than 20 years (27.5 / 39-year real property).',
     why:'Bonus depreciation is only available for property with a recovery period of 20 years or less. The engine ignores the flag, so the figure you expect to deduct up front is not deducted - the schedule will look lower than the flag suggests.' };
 });
+/* LAND AT 0%: land is generally not depreciable, so an allocation of 0% depreciates the whole price. The allocation in effect is what the active depreciation path used (bkLandAllocation, src/227). A treatment that is
+   selected and explained (a leasehold or ground lease, land owned or leased separately, another documented structure) silences the check: it asks for review, it never forces a percentage and sets no minimum. */
 rule('dep.land-zero', 'WARN', 'Depreciation', 'Depreciation', function(s){
-  var d = dep(s), hasDep = comps(s).length > 0 || d.costSeg;
-  if(!hasDep) return;
-  var pp = num(s.purchasePrice), land = d.landMethod === 'percent' ? pp * (num(d.landPct) || 0) : (num(d.landDollar) || 0);
-  if(pp > 0 && !(land > 0)) return { msg:'Depreciation is configured but the land value is zero - the whole purchase price would be depreciated.',
-    why:'Land is never depreciable. Depreciating it overstates every year’s deduction and tax saving, and understates the taxable gain at sale because the adjusted basis falls too far. Typical allocations are 10-40% of price, set by the assessor’s land-to-total ratio or an appraisal.' };
+  if(isDev(s) || /^land$/i.test(String(s.propertyType || '')) || !(num(s.purchasePrice) > 0) || typeof window.bkLandAllocation !== 'function') return;
+  var a = window.bkLandAllocation(s); if(!a) return;
+  /* zero where it matters: in the allocation the returns actually used, or in a depreciation schedule configured on the Depreciation page (cost segregation or components), which its own reports use */
+  var d = dep(s), configured = comps(s).length > 0 || d.costSeg, canonLand = d.landMethod === 'percent' ? num(s.purchasePrice) * (num(d.landPct) || 0) : (num(d.landDollar) || 0), inEffectZero = a.depreciable > 0 && !(a.land > 0), configuredZero = configured && !(canonLand > 0);
+  if(!inEffectZero && !configuredZero) return; if(!inEffectZero) a = Object.assign({}, a, { path:'the Depreciation page settings', depreciable:num(s.purchasePrice) });
+  var r = typeof window.bkLandReview === 'function' ? window.bkLandReview(s) : { selected:false, documented:false }; if(r.documented) return;
+  var ill = safe(function(){ return window.bkLandIllustration(s); }, null);
+  return { msg: r.selected ? 'The land allocation is 0% and the treatment chosen (' + r.treatment + ') has no explanation.' : 'Land is allocated 0% of the purchase price: the whole ' + $(a.depreciable) + ' is depreciable.',
+    why:'Land is generally not depreciable. Allocating the whole price to depreciable property can overstate the depreciation deductions and the tax relief they give, and understate the gain at sale, which distorts taxable income, depreciation recapture, after-tax cash flow, after-tax proceeds and the after-tax IRR and NPV.'
+      + (ill && isFinite(ill.current) && isFinite(ill.withTen) ? ' Illustration only (10% is a step, not a recommended allocation): with 10% of the price as land the after-tax IRR would be ' + pc(ill.withTen, 2) + ' instead of ' + pc(ill.current, 2) + '.' : '')
+      + ' The allocation in effect comes from ' + a.path + '. Confirm or correct it on the Depreciation page; if 0% is right for this structure (a leasehold or ground lease, land owned or leased separately), choose that treatment there and explain it. The model sets no minimum: the allocation needs a defensible valuation and the tax treatment that applies.' };
 });
 rule('dep.land-extreme', 'WARN', 'Depreciation', 'Depreciation', function(s){
   var d = dep(s); if(!(comps(s).length > 0 || d.costSeg) && !(num(d.landPct) > 0 || num(d.landDollar) > 0)) return;
