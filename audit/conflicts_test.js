@@ -74,7 +74,11 @@ const T = [
   ['pol.dscr-below-one', 'ERROR', "bkPolicySet('minDSCR',0.9);", 'A', "bkPolicyReset()"],
   ['pol.weights', 'WARN', "bkPolicyGate('lpIRR','weight',0.5);", 'A', "bkPolicyReset()"],
   ['pol.override-incomplete', 'WARN', "bkICSet('override.on','YES'); bkICSet('override.reason','x');", 'A', "bkICSet('override.approvedBy','CCO')"],
-  ['pol.override-unneeded', 'INFO', "bkPolicySet('minDSCR',0.9); bkPolicySet('stressBps',0); bkICSet('override.on','YES'); bkICSet('override.reason','x'); bkICSet('override.approvedBy','CCO');", 'A', null]
+  ['pol.override-unneeded', 'INFO', "bkPolicySet('minDSCR',0.9); bkPolicySet('stressBps',0); bkICSet('override.on','YES'); bkICSet('override.reason','x'); bkICSet('override.approvedBy','CCO');", 'A', null],
+  ['debt.partial-io-no-period', 'WARN', set({ repayType: 'Partial interest only', acqIO: 0 }), 'A', set({ acqIO: 2 })],
+  ['debt.io-covers-term', 'WARN', set({ repayType: 'Interest only then amortizing', acqIO: 12, debtTerm: 10 }), 'A', set({ acqIO: 2 })],
+  ['debt.partial-io-basis', 'INFO', set({ repayType: 'Partial interest only', acqIO: 2, ioBasis: '' }), 'A', set({ ioBasis: 'Remaining term' })],
+  ['debt.sale-in-lockout', 'ERROR', set({ debtTerm: 10, holdYears: 3, prepayLockoutMonths: 36 }), 'A', set({ prepayLockoutMonths: 0 })]
 ];
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
