@@ -523,9 +523,9 @@ function build(){
   if(c1.noiAfter && cL.noiAfter && H > 1) plan.push('Grow NOI after reserves from <b>' + M(c1.noiAfter) + '</b> in Year 1 to <b>' + M(cL.noiAfter) + '</b> in Year ' + H + ' (' + P(Math.pow(cL.noiAfter / c1.noiAfter, 1 / (H - 1)) - 1, 1) + ' a year).');
   if(lastC.sale) plan.push('Sell at the end of Year ' + H + ' at a ' + P(Number(s.exitCap), 2) + ' cap rate for <b>' + M(lastC.sale) + '</b>' + (price ? ', ' + (lastC.sale >= price ? M(lastC.sale - price) + ' above' : M(price - lastC.sale) + ' below') + ' the purchase price' : '') + '; the exit cap is ' + Math.round((Number(s.exitCap) - goingIn) * 10000) + ' bps from the going-in cap.');
   if(Number(d.loan) > 0) plan.push('Finance with a <b>' + M(d.loan) + '</b> loan (' + P(d.ltv, 1) + ' of value) at ' + P(d.coupon, 2) + '; Year 1 lender coverage <b>' + X(c1.dscr) + '</b>.');
-  PG.plan.push(page('<h2>Investment plan</h2><div class="g2" style="grid-template-columns:1fr 1.25fr"><div class="bx"><div class="t">The property</div>' + facts + '</div><div><div class="bx"><div class="t">The plan</div><div class="ins">' + plan.map(function(x){ return '<div>' + x + '</div>'; }).join('') + '</div></div></div></div>'
-    + '<h2 class="mt" style="margin-top:14px">Price and cap rates</h2>' + pr + '<div style="height:8px"></div>' + caps
-    + '<h2 class="mt" style="margin-top:14px">Income: in place, going in and pro forma</h2>' + inc
+  PG.plan.push(page('<h2>Investment plan</h2><div class="g2" style="grid-template-columns:1fr 1.6fr"><div class="bx"><div class="t">The property</div>' + facts + '</div><div><div class="bx"><div class="t">The plan</div><div class="ins">' + plan.map(function(x){ return '<div>' + x + '</div>'; }).join('') + '</div></div></div></div>'
+    + '<h2 class="mt" style="margin-top:9px">Price and cap rates</h2>' + pr + '<div style="height:8px"></div>' + caps
+    + '<h2 class="mt" style="margin-top:9px">Income: in place, going in and pro forma</h2>' + inc
     + '<div class="note" style="margin-top:6px">' + (OF ? 'OM figures are as the broker printed them, imported ' + esc(OF.at || '') + '. ' : '') + 'The underwritten columns are the model\'s own, after the assumptions on the Assumptions and input choices page. Going-in cap is Year 1 NOI after replacement reserves over the purchase price.</div>', 0, N, D));
 
   /* ---- RENT ROLL: by unit type, then unit by unit (40 units a page) */

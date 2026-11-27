@@ -37,7 +37,9 @@ const A = require(path.join(__dirname, 'deal.js'));
     const totCol = {}; Object.keys(pg.rows).forEach(key => { if (pg.rows[key].length > r.H + 1) totCol[key] = pg.rows[key][r.H + 1]; pg.rows[key] = pg.rows[key].slice(0, r.H + 1); });
     Object.keys(pg.mrows).forEach(key => { pg.mrows[key] = pg.mrows[key].slice(0, r.H); });
     const k = 1, tol = 1.01, near = (a, b) => Math.abs(a * k - b) <= tol * k;
-    check(tag + ': ' + (7 + 2 * ((r.H > 10 ? 2 : 1) - 1)) + ' pages (one statement page up to 10 years, figures still whole dollars)', pg.pages === 7 + 2 * ((r.H > 10 ? 2 : 1) - 1), pg.pages);   /* owner request 11 Nov: a statement is one page for holds up to 10 years, two near-equal pieces beyond (was 5 years a page) */
+    /* the investor PDF is 13 pages (the summary, financial summary, investment plan, annual and after-tax cash flow, sources and uses, waterfall, returns by exit year, performance and sensitivity, credit and market checks, assumptions, final decision, plus the cover and dashboard); a rent roll page is added when the deal has a unit-by-unit rent roll; the statement pages are one for holds up to 10 years, two beyond */
+    const want = 13 + (/rent roll/.test(tag) ? 1 : 0) + 2 * ((r.H > 10 ? 2 : 1) - 1);
+    check(tag + ': ' + want + ' pages (one statement page up to 10 years, figures still whole dollars)', pg.pages === want, pg.pages);   /* owner request 11 Nov: a statement is one page for holds up to 10 years, two near-equal pieces beyond (was 5 years a page) */
     check(tag + ': figures are whole dollars with a $ sign, never thousands; at most 10 year columns a page', !pg.thousands && pg.dollars && pg.perPage.every(n => n <= 11), JSON.stringify(pg.perPage));
     check(tag + ': every year\'s net cash flow to equity equals the engine\'s', pg.rows['Net cash flow to equity'].slice(1).every((v, i) => near(v, r.cf[i])), pg.rows['Net cash flow to equity'].slice(1).join(' '));
     check(tag + ': Close shows the equity contributed at closing', near(pg.rows['Net cash flow to equity'][0], -r.close0) && near(pg.rows['Equity contributions'][0], -r.close0));
@@ -92,7 +94,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   const dover = await doc.evaluate(() => [...document.querySelectorAll('.page')].map((s, i) => { const ft = s.querySelector('.ft2'), bd = s.querySelector('.bd'); if (!ft || !bd) return null; const top = ft.getBoundingClientRect().top; return Math.max(...[...bd.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) > top - 2 ? i + 1 : null; }).filter(Boolean));
   check('development summary: nothing runs into a page footer', dover.length === 0, dover.join(','));
   /* short and long holds: the right number of pages, and nothing clipped, overflowing or running into a footer */
-  for (const [nm, d, pages] of [['2-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 2 }), 7], ['15-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 15 }), 11],
+  for (const [nm, d, pages] of [['2-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 2 }), 13], ['15-year hold', Object.assign({}, require(path.join(__dirname, 'dealB.js')), { holdYears: 15 }), 15],
     ['development, 15-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 15 }), 15 /* two statement pieces at 15 years, was three */], ['development, 4-year hold', Object.assign({}, require(path.join(__dirname, 'devdeal.js')), { holdYears: 4 }), 14]]) {
     const html = await p.evaluate(d => { bkCreateNewDeal(d); return bkReportHTML(); }, d); await doc.setContent(html); await doc.waitForTimeout(300);
     const r = await doc.evaluate(() => { const P = [...document.querySelectorAll('.page')];
