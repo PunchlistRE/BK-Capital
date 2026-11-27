@@ -62,7 +62,7 @@ window.bkDealFindings = function(s, o){ s = s || bkLoad(); o = o || {}; var key 
     var g = r.group, lab = r.label;
     if(r.status === 'missing') add({ kind:'missing', tier:0, group:g, field:r.k, title:lab + ' is not entered', detail:'The model withholds results until it is in.', rule:'bkModelNeeds: required' });
     else if(r.status === 'needed') add({ kind:'missing', tier:2, group:g, field:r.k, title:lab + ' is needed for the deal to be investment-ready', detail:'Results show without it, but the deal is not investment-ready.', rule:'bkModelNeeds: investment' });
-    else if(r.status === 'expected'){ var eff = o.measure ? blankEffect(r.k, s, base) : null, ex = window.BKReg.expectedMissing ? (window.BKReg.expectedMissing(s).filter(function(x){ return x.key === r.k; })[0] || {}) : {};
+    else if(r.status === 'expected'){ var eff = o.measure ? blankEffect(r.k, s, base) : null, ex = window.BKReg.expectedMissing ? (window.BKReg.expectedMissing(s, true).filter(function(x){ return x.key === r.k; })[0] || {}) : {};
       add({ kind:'missing', tier:3, group:g, field:r.k, title:String(lab).replace(/,.*$/, '') + ' is not entered', detail:ex.effect ? ex.effect.charAt(0).toUpperCase() + ex.effect.slice(1) + '.' : 'Counted as zero or left to the model\'s fallback.', measured:eff, impact:eff ? Math.abs(eff.m.v) : null,
         impactText:eff ? 'with the guide\'s suggestion (' + (eff.sug < 1 ? pct(eff.sug) : '$' + Math.round(eff.sug).toLocaleString('en-US')) + '): ' + show(eff.m) : 'no benchmark to measure it against', rule:'BKReg.requirement: expected' }); }
     else if(r.status === 'incomplete') add({ kind:'missing', tier:3, group:g, field:r.k, title:lab + ' is incomplete', detail:r.note || '', rule:'Inputs index: incomplete' });

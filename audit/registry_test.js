@@ -37,6 +37,8 @@ const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
       : ['name', 'propertyType', 'units', 'purchasePrice', 'sourceConstruction', 'closing', 'constructionMonths', 'avgRent', 'gpShare', 'pref', 'holdYears', 'exitCap', 'saleCostPct'];
     want = want.map(([id, f]) => [id, f.map(x => [x[0], REQ.includes(x[0]) ? 1 : 0, x[2]])]);
     if (tag === 'development') want = want.map(([id, f]) => id === 'property' ? [id, [f[0], f[1], ['propertyType', 1, 'What kind of building is it?'], ...f.slice(2)]] : [id, f]);
+    /* the three tax rates are Expected inputs in a skippable Tax rates step after Hold and exit (src/226): the model's defaults, flagged unconfirmed; not required */
+    want = want.flatMap(([id, f]) => id === 'exit' ? [[id, f], ['tax', [['taxRate', 0, 'Ordinary income tax rate'], ['depRecaptureRate', 0, 'Depreciation recapture rate'], ['capGainsRate', 0, 'Capital gains rate']]]] : [[id, f]]);
     await open(deal); const g = await p.evaluate(() => bkGuideSections(bkLoad()).map(s => [s.id, s.fields.map(f => [f.k, f.req ? 1 : 0, f.label])]));
     check('guide (' + tag + '): its steps, fields, labels and required flags are exactly today\'s, now from the registry', JSON.stringify(g) === JSON.stringify(want), JSON.stringify(g).slice(0, 300)); }
 
@@ -81,7 +83,7 @@ const GUIDE_DEV = [['property', [['name', 1, 'Name'], ['location', 0, 'City, sta
   await p.evaluate(() => { document.documentElement.classList.add('bk-auth-ok'); showSheet('Home'); }); await p.waitForTimeout(400);
   await p.click('.pl-an[data-analysis="development"]'); await p.waitForTimeout(250); await p.check('#pl-guide'); await p.click('#pl-modal button:has-text("Create")'); await p.waitForTimeout(600);
   const gd = await p.evaluate(() => ({ sheet: currentSheet, a: bkLoad().analysisType, t: bkLoad().dealType, id: bkLoad().dealId, steps: bkGuideSections(bkLoad()).map(s => s.id).join(), txt: document.querySelector('#viewport').innerText.slice(0, 400) }));
-  check('"Guide me step by step" opens the guide on the new deal (no second deal), with the development steps', gd.sheet === 'Guide' && gd.a === 'development' && gd.t === 'Development' && /^NEW-/.test(gd.id) && gd.steps === 'property,land,income,expenses,debt,partners,exit', JSON.stringify(gd));
+  check('"Guide me step by step" opens the guide on the new deal (no second deal), with the development steps', gd.sheet === 'Guide' && gd.a === 'development' && gd.t === 'Development' && /^NEW-/.test(gd.id) && gd.steps === 'property,land,income,expenses,debt,partners,exit,tax', JSON.stringify(gd));
   /* 7 theme and phone */
   for (const [w, theme] of [[390, 'dark'], [1360, 'dark'], [390, 'light']]) {
     await p.setViewportSize({ width: w, height: 900 }); await p.evaluate((t) => { localStorage.removeItem('bkcapital.cre.v02'); try { localStorage.setItem('bk-theme', t); } catch (e) {} }, theme); await p.reload(); await p.waitForTimeout(900);

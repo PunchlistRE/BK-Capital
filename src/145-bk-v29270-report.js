@@ -440,7 +440,7 @@ function build(){
   waterfallPages(D, 4 + ranges.length, N).forEach(function(pg){ PG.wf.push(pg); });
   /* exit-year returns and after-tax returns (src/196): read from the engines, one page each */
   var exH = safe(function(){ return window.bkExitYearPdfHtml(); }, null), atH = safe(function(){ return window.bkAfterTaxPdfHtml(); }, null);
-  if(exH) PG.exit.push(page(exH, 0, N, D)); if(atH) PG.at.push(page(atH.replace('<h2>After-tax returns</h2>', '<h2>After-tax cash flow</h2>'), 0, N, D));
+  if(exH) PG.exit.push(page(exH, 0, N, D)); if(atH) PG.at.push(page(atH.replace('<h2>After-tax returns</h2>', '<h2>After-tax cash flow</h2>' + taxProvisionalNote(s)), 0, N, D));
   /* 4 credit and risk */
   var rows = (gate.rows || []).filter(function(r){ return r.applicable !== false; }).slice(0, 12);
   var gateTbl = '<table class="uni"><thead><tr><th>Credit gate</th><th>Deal</th><th>Policy</th><th>Result</th></tr></thead><tbody>' + rows.map(function(r){ var f = fmtGate(r); return '<tr><td class="l">' + esc(r.label) + (r.severity === 'HARD' ? ' <span class="note">(hard)</span>' : '') + '</td><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td><td><span class="pill ' + (r.pass ? 'pass' : 'fail') + '">' + (r.pass ? 'PASS' : 'FAIL') + '</span></td></tr>'; }).join('') + '</tbody></table>';
@@ -609,6 +609,9 @@ window.bkReportPhotoRemove = function(){
   window.bkDocsClearPhoto().then(function(){ redrawSummary(); }, function(){ redrawSummary(); });
 };
 /* the summary carries the expected inputs the deal has not entered: a blank line is counted as zero, so the figures may be overstated, and the reader of the PDF is told */
+/* the after-tax page says so when it rests on the model's default tax rates (they depend on the investor's circumstances, jurisdiction and structure, and have not been confirmed) */
+function taxProvisionalNote(s){ var p = safe(function(){ return window.bkTaxRatesProvisional ? window.bkTaxRatesProvisional(s) : []; }, []); if(!p.length) return '';
+  return '<div class="note" style="margin:6px 0;border-left:3px solid #b3392c;padding-left:8px"><b>Provisional tax rates.</b> These after-tax figures use the model\'s default ' + p.map(function(k){ return esc(window.BK_TAX_RATES[k].label.toLowerCase()) + ' (' + (window.BK_TAX_RATES[k].def * 100).toFixed(0) + '%)'; }).join(', ') + ', not rates confirmed for this investor. Tax rates depend on the investor\'s circumstances, the jurisdiction, the ownership structure and the transaction.</div>'; }
 function expectedNote(s){ var e = safe(function(){ return window.BKReg && window.BKReg.expectedMissing ? window.BKReg.expectedMissing(s) : []; }, []); if(!e.length) return '';
   return '<div class="note" style="margin:8px 0;border-left:3px solid #b3392c;padding-left:8px"><b>Incomplete underwriting.</b> Not entered: ' + e.map(function(x){ return esc(x.label); }).join(', ') + '. A blank line is counted as zero or left to the model\'s fallback, so NOI and returns may be materially overstated.</div>'; }
 function bkReportOpenNow(){

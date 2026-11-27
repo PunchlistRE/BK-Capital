@@ -23086,6 +23086,9 @@ var EXPENSES = S('expenses', 'Operating expenses', 'Use the last twelve months w
 var EXIT = S('exit', 'Hold and exit', 'How long you keep it and what you assume it sells for. The exit cap rate moves the answer more than anything else here.', 'Deal Underwrite',
   [q('holdYears', 'required'), q('exitCap', 'required'), q('rentGrowth'), q('opexGrowth'), q('saleCostPct')]);
 
+/* the three tax rates are Expected inputs (src/226): the model runs on its defaults, flagged provisional until the user confirms them */
+var TAXSTEP = S('tax', 'Tax rates', 'These set the after-tax return. They depend on your circumstances, the jurisdiction, how the property is owned and the transaction, so the model\'s defaults are a starting point, not tax advice. Confirm or change them.', 'After-Tax',
+  [q('taxRate', 'required'), q('depRecaptureRate', 'required'), q('capGainsRate', 'required')], { skippable:true });
 R.addWorkflow('acquisition', [
   S('property', 'The property', 'The basics that size everything else.', 'Deal Underwrite', [q('name', 'required'), q('location'), q('propertyType'), q('acqStrategy'), q('units', 'required'), q('gsf'), q('gla')]),
   S('price', 'Price and closing', 'What you pay and what it costs to close.', 'Deal Underwrite', [q('purchasePrice', 'required'), q('closingCostsPct', 'required'), q('closing', 'optional', { help:'For example 3/1/2027.' })]),
@@ -23097,7 +23100,7 @@ R.addWorkflow('acquisition', [
   S('debt', 'Financing', 'The loan changes the return and the risk. Skip it and the returns shown are all-cash.', 'Debt', [q('debtEnabled'), q('loanPurpose'), q('lenderType'), q('acqLTV', 'required', { when:function(s){ return s.debtEnabled !== false; } }), q('debtRateType'), q('acqRate', 'required', { when:function(s){ return s.debtEnabled !== false && (!s.debtRateType || s.debtRateType === 'Fixed'); } }), q('debtIndexName', 'optional', { when:function(s){ return s.debtRateType === 'Floating'; } }), q('debtIndexTenor', 'optional', { when:function(s){ return (s.debtRateType === 'Floating' && (s.debtIndexName || 'SOFR') === 'SOFR') || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtIndexRate', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('debtSpread', 'conditional', { when:function(s){ return s.debtRateType === 'Floating' || s.debtRateType === 'Fixed (SOFR-based)'; } }), q('repayType'), q('acqAmort', 'optional', { when:function(s){ return s.debtEnabled !== false && String(s.repayType || '') !== 'Interest only'; } }), q('acqIO', 'optional', { when:function(s){ return !s.repayType || /Partial|then amortizing/.test(String(s.repayType)); } }), q('ioBasis', 'optional', { when:function(s){ return String(s.repayType) === 'Partial interest only'; } }), q('prepayLockoutMonths', 'optional', { when:function(s){ return s.debtEnabled !== false; } }), q('debtTerm'), q('acqOrigFee')], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
     [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
-  EXIT,
+  EXIT, TAXSTEP,
   S('decision', 'Decision thresholds', 'The lines the hold, refinance or sell tests are measured against. Without them the decision test has nothing to compare to. Skip to keep the standard ones.', 'Capital Allocation', [q('capRefiHeadroom'), q('capRefiDebtYield'), q('capSellCoE'), q('capSellNOIGrowth'), q('capKeepCoE')], { skippable:true }) ]);
 
 R.addWorkflow('development', [
@@ -23108,7 +23111,7 @@ R.addWorkflow('development', [
   S('debt', 'Financing', 'A construction loan, then a permanent loan once the building is stabilized.', 'Debt', [q('conLTC', 'required'), q('conRate', 'required'), q('permRate'), q('permAmort')], { skippable:true }),
   S('partners', 'Investors and LP / GP economics', 'How profit is shared once the equity is in: the preferred return LPs get first, then the hurdles where the split changes. Skip it to keep one investor who owns all of it.', 'Deal Underwrite',
     [q('gpShare', 'optional'), q('pref'), q('hurdle2'), q('hurdle3'), q('t2LP'), q('t3LP'), q('t4LP')], { skippable:true }),
-  EXIT ]);
+  EXIT, TAXSTEP ]);
 
 R.addWorkflow('valuation', [
   S('property', 'Property information', 'Identifies the property and sizes the per-unit and per-SF value.', 'Property', [q('name', 'required'), q('location'), q('propertyType'), q('units', 'required'), q('gsf')]),
@@ -23422,13 +23425,17 @@ if(typeof window.bkDealReadiness === 'function' && !window.bkDealReadiness.__reg
         r.canCalculate = !miss.length && eng === true; r.state = !miss.length ? (eng === true ? 'ANALYSIS READY' : 'BLOCKED') : 'DRAFT'; } } } catch(e){} return r; }; rd.__reg = true; window.bkDealReadiness = rd; }
 /* EXPECTED inputs still blank, most material first. The order is fixed and deterministic (taxes move NOI most, then vacancy, insurance, repairs, management, the loan-to-value, closing costs);
    the effect is stated as it is: a blank line is counted as zero, never silently assumed, and the results below it may be overstated. */
-var EXPECTED_ORDER = ['taxes', 'vacancy', 'insurance', 'rm', 'mgmtPct', 'acqLTV', 'conLTC', 'closingCostsPct'];
+var EXPECTED_ORDER = ['taxes', 'vacancy', 'insurance', 'rm', 'mgmtPct', 'acqLTV', 'conLTC', 'closingCostsPct', 'taxRate', 'capGainsRate', 'depRecaptureRate'];
+var AFTER_TAX = { taxRate:1, capGainsRate:1, depRecaptureRate:1 };   /* these affect the after-tax figures only, never NOI or the pre-tax returns */
 var EXPECTED_EFFECT = { taxes:'counted as $0, so NOI and returns are overstated', insurance:'counted as $0, so NOI and returns are overstated', rm:'counted as $0, so NOI and returns are overstated', mgmtPct:'counted as 0%, so NOI and returns are overstated',
   vacancy:'counted as 0% (a full building), so income and returns are overstated', acqLTV:'no loan-to-value limit entered, so the loan size and the returns rest on the model\'s fallback', conLTC:'no loan-to-cost limit entered, so the construction loan and the returns rest on the model\'s fallback',
-  closingCostsPct:'counted as 0%, so the cash needed at closing is understated' };
-R.expectedMissing = function(s){ s = s || (typeof bkLoad === 'function' ? bkLoad() : {}); if(!R.governed(s)) return [];
+  closingCostsPct:'counted as 0%, so the cash needed at closing is understated',
+  taxRate:'the model\'s default (37%) is used and has not been confirmed, so the after-tax figures are provisional', depRecaptureRate:'the model\'s default (25%) is used and has not been confirmed, so the tax at the sale is provisional', capGainsRate:'the model\'s default (20%) is used and has not been confirmed, so the tax at the sale is provisional' };
+/* all:true includes the after-tax rates (provisional, not a distortion of NOI); the default list is the inputs whose blank overstates NOI and the pre-tax returns */
+R.expectedMissing = function(s, all){ s = s || (typeof bkLoad === 'function' ? bkLoad() : {}); if(!R.governed(s)) return [];
   var seen = {}, out = []; R.workflow(R.of(s).id).forEach(function(st){ if(typeof st.when === 'function' && !st.when(s)) return; (st.fields || []).forEach(function(e){ if(seen[e.k]) return; var f = R.field(e.k); if(!f || f.kind === 'derived') return;
-    if(R.requirement(e, s) !== 'expected' || R.present(e.k, s)) return; seen[e.k] = 1; out.push({ key:e.k, label:e.label || f.label, effect:EXPECTED_EFFECT[e.k] || 'left blank: the results use the model\'s fallback, not a figure you chose', rank:EXPECTED_ORDER.indexOf(e.k) < 0 ? 99 : EXPECTED_ORDER.indexOf(e.k), sheet:st.sheet }); }); });
+    if(R.requirement(e, s) !== 'expected' || R.present(e.k, s)) return; seen[e.k] = 1; out.push({ key:e.k, label:e.label || f.label, effect:EXPECTED_EFFECT[e.k] || 'left blank: the results use the model\'s fallback, not a figure you chose', rank:EXPECTED_ORDER.indexOf(e.k) < 0 ? 99 : EXPECTED_ORDER.indexOf(e.k), sheet:st.sheet, scope:AFTER_TAX[e.k] ? 'aftertax' : 'noi' }); }); });
+  if(!all) out = out.filter(function(x){ return x.scope !== 'aftertax'; });
   return out.sort(function(a, b){ return a.rank - b.rank; }); };
 var lint0 = R.lint;
 R.lint = function(){ var bad = lint0.call(R), JUDGE = ['identity', 'inputs', 'operations', 'debt', 'returns', 'review', 'steps'];
@@ -24499,7 +24506,7 @@ function build(){
   waterfallPages(D, 4 + ranges.length, N).forEach(function(pg){ PG.wf.push(pg); });
   /* exit-year returns and after-tax returns (src/196): read from the engines, one page each */
   var exH = safe(function(){ return window.bkExitYearPdfHtml(); }, null), atH = safe(function(){ return window.bkAfterTaxPdfHtml(); }, null);
-  if(exH) PG.exit.push(page(exH, 0, N, D)); if(atH) PG.at.push(page(atH.replace('<h2>After-tax returns</h2>', '<h2>After-tax cash flow</h2>'), 0, N, D));
+  if(exH) PG.exit.push(page(exH, 0, N, D)); if(atH) PG.at.push(page(atH.replace('<h2>After-tax returns</h2>', '<h2>After-tax cash flow</h2>' + taxProvisionalNote(s)), 0, N, D));
   /* 4 credit and risk */
   var rows = (gate.rows || []).filter(function(r){ return r.applicable !== false; }).slice(0, 12);
   var gateTbl = '<table class="uni"><thead><tr><th>Credit gate</th><th>Deal</th><th>Policy</th><th>Result</th></tr></thead><tbody>' + rows.map(function(r){ var f = fmtGate(r); return '<tr><td class="l">' + esc(r.label) + (r.severity === 'HARD' ? ' <span class="note">(hard)</span>' : '') + '</td><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td><td><span class="pill ' + (r.pass ? 'pass' : 'fail') + '">' + (r.pass ? 'PASS' : 'FAIL') + '</span></td></tr>'; }).join('') + '</tbody></table>';
@@ -24668,6 +24675,9 @@ window.bkReportPhotoRemove = function(){
   window.bkDocsClearPhoto().then(function(){ redrawSummary(); }, function(){ redrawSummary(); });
 };
 /* the summary carries the expected inputs the deal has not entered: a blank line is counted as zero, so the figures may be overstated, and the reader of the PDF is told */
+/* the after-tax page says so when it rests on the model's default tax rates (they depend on the investor's circumstances, jurisdiction and structure, and have not been confirmed) */
+function taxProvisionalNote(s){ var p = safe(function(){ return window.bkTaxRatesProvisional ? window.bkTaxRatesProvisional(s) : []; }, []); if(!p.length) return '';
+  return '<div class="note" style="margin:6px 0;border-left:3px solid #b3392c;padding-left:8px"><b>Provisional tax rates.</b> These after-tax figures use the model\'s default ' + p.map(function(k){ return esc(window.BK_TAX_RATES[k].label.toLowerCase()) + ' (' + (window.BK_TAX_RATES[k].def * 100).toFixed(0) + '%)'; }).join(', ') + ', not rates confirmed for this investor. Tax rates depend on the investor\'s circumstances, the jurisdiction, the ownership structure and the transaction.</div>'; }
 function expectedNote(s){ var e = safe(function(){ return window.BKReg && window.BKReg.expectedMissing ? window.BKReg.expectedMissing(s) : []; }, []); if(!e.length) return '';
   return '<div class="note" style="margin:8px 0;border-left:3px solid #b3392c;padding-left:8px"><b>Incomplete underwriting.</b> Not entered: ' + e.map(function(x){ return esc(x.label); }).join(', ') + '. A blank line is counted as zero or left to the model\'s fallback, so NOI and returns may be materially overstated.</div>'; }
 function bkReportOpenNow(){
@@ -27566,9 +27576,12 @@ function stepScreen(secs, sec, s, g){
 }
 function advHtml(adv){ return adv.length ? '<div class="gd-adv"><b>Worth a look, from what is entered now</b>' + adv.map(function(a){ return '<div class="it"><span>' + esc(a.text) + '</span>' + (a.fix ? '<button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideProp(\'' + a.fix.k + '\',' + a.fix.v + ')">' + esc(a.fix.label) + '</button>' : '') + '</div>'; }).join('') + '</div>' : ''; }
 function stillHtml(miss, exp){ return (miss.length ? 'Still needed here: ' + miss.map(function(m){ return esc(m.label.toLowerCase()); }).join(', ') + '.' : '')
-  + (exp && exp.length ? (miss.length ? ' ' : '') + '<b>Expected, not entered (most material first):</b> ' + exp.map(function(m){ return esc(String(m.label).toLowerCase().replace(/,.*$/, '')); }).join(', ') + '. A blank line is counted as zero, so NOI and returns may be overstated.' : ''); }
+  + (function(){ var tx = (exp || []).filter(function(m){ return window.BK_TAX_RATES && window.BK_TAX_RATES[m.k]; }), op = (exp || []).filter(function(m){ return !(window.BK_TAX_RATES && window.BK_TAX_RATES[m.k]); }), o = '';
+      if(op.length) o += (miss.length ? ' ' : '') + '<b>Expected, not entered (most material first):</b> ' + op.map(function(m){ return esc(String(m.label).toLowerCase().replace(/,.*$/, '')); }).join(', ') + '. A blank line is counted as zero, so NOI and returns may be overstated.';
+      if(tx.length) o += (miss.length || op.length ? ' ' : '') + '<b>Tax rates not confirmed:</b> ' + tx.map(function(m){ return esc(String(m.label).toLowerCase()); }).join(', ') + '. The after-tax figures use the model\'s defaults (provisional) until you confirm or change them.';
+      return o; })(); }
 /* the step's expected inputs still blank, most material first (the same list and order as the Inputs index and the Home page: BKReg.expectedMissing) */
-function expectedBlank(sec, s){ var R = window.BKReg; if(!R || !R.expectedMissing) return []; var order = safe(function(){ return R.expectedMissing(s).map(function(x){ return x.key; }); }, []);
+function expectedBlank(sec, s){ var R = window.BKReg; if(!R || !R.expectedMissing) return []; var order = safe(function(){ return R.expectedMissing(s, true).map(function(x){ return x.key; }); }, []);
   return sec.fields.filter(function(fl){ return fl.expected && order.indexOf(fl.k) > -1; }).sort(function(a, b){ return order.indexOf(a.k) - order.indexOf(b.k); }); }
 /* what the step says about the deal reads the figures as typed, before they are confirmed: the same advice, result strip and "still needed" line, evaluated with the draft through the engine's own
    override runner (bkRunWith, as the IRR line and the Sources and Uses panel already are). Nothing is saved. */
@@ -34739,7 +34752,7 @@ function page(){
   var gateHtml = gate.length ? '<div class="note-flag bk-ix-gate"><span>&#9888;</span><div><b>Results are withheld until ' + gate.length + (gate.length === 1 ? ' input is' : ' inputs are') + ' entered:</b> '
     + gate.map(function(g){ return g.k ? '<button type="button" class="bk-ix-link" onclick="bkInputsGo(\'' + esc(g.k) + '\')">' + esc(g.label) + '</button>' : esc(g.label); }).join(', ') + '.</div></div>' : '';
   /* expected inputs not entered, most material first (BKReg.expectedMissing): the model shows results without them, but states what a blank line does to the numbers */
-  var xm = safe(function(){ return window.BKReg.expectedMissing(s); }, []) || [];
+  var xm = safe(function(){ return window.BKReg.expectedMissing(s, true); }, []) || [];
   var expHtml = xm.length ? '<div class="note-flag bk-ix-gate"><span>&#9888;</span><div><b>Expected inputs not entered, most material first.</b> The model shows results without them, but ' + xm.map(function(m){ return '<div class="bk-ix-xrow"><button type="button" class="bk-ix-link" onclick="bkInputsGo(\'' + esc(m.key) + '\')">' + esc(String(m.label).replace(/,.*$/, '')) + '</button>: ' + esc(m.effect) + '.</div>'; }).join('').replace(/^/, '') + '</div></div>' : '';
   var body = GROUPS_ORDER.filter(function(g){ return byG[g].length; }).map(function(g){
     var gr = byG[g], req = gr.filter(function(r){ return r.req === 'required'; }), miss = gr.filter(function(r){ return r.status === 'missing'; }), inc = gr.filter(function(r){ return r.status === 'incomplete'; });
@@ -34848,7 +34861,7 @@ window.bkDealFindings = function(s, o){ s = s || bkLoad(); o = o || {}; var key 
     var g = r.group, lab = r.label;
     if(r.status === 'missing') add({ kind:'missing', tier:0, group:g, field:r.k, title:lab + ' is not entered', detail:'The model withholds results until it is in.', rule:'bkModelNeeds: required' });
     else if(r.status === 'needed') add({ kind:'missing', tier:2, group:g, field:r.k, title:lab + ' is needed for the deal to be investment-ready', detail:'Results show without it, but the deal is not investment-ready.', rule:'bkModelNeeds: investment' });
-    else if(r.status === 'expected'){ var eff = o.measure ? blankEffect(r.k, s, base) : null, ex = window.BKReg.expectedMissing ? (window.BKReg.expectedMissing(s).filter(function(x){ return x.key === r.k; })[0] || {}) : {};
+    else if(r.status === 'expected'){ var eff = o.measure ? blankEffect(r.k, s, base) : null, ex = window.BKReg.expectedMissing ? (window.BKReg.expectedMissing(s, true).filter(function(x){ return x.key === r.k; })[0] || {}) : {};
       add({ kind:'missing', tier:3, group:g, field:r.k, title:String(lab).replace(/,.*$/, '') + ' is not entered', detail:ex.effect ? ex.effect.charAt(0).toUpperCase() + ex.effect.slice(1) + '.' : 'Counted as zero or left to the model\'s fallback.', measured:eff, impact:eff ? Math.abs(eff.m.v) : null,
         impactText:eff ? 'with the guide\'s suggestion (' + (eff.sug < 1 ? pct(eff.sug) : '$' + Math.round(eff.sug).toLocaleString('en-US')) + '): ' + show(eff.m) : 'no benchmark to measure it against', rule:'BKReg.requirement: expected' }); }
     else if(r.status === 'incomplete') add({ kind:'missing', tier:3, group:g, field:r.k, title:lab + ' is incomplete', detail:r.note || '', rule:'Inputs index: incomplete' });
@@ -34982,10 +34995,11 @@ function taxRows(s, F){
   R.push(row(F, 'Recovery period', num(at.life || dep.baseLife) + ' years, ' + String((dep.settings && dep.settings.depMethod) || 'straight-line').toUpperCase() + (at.deprSource ? ' (' + at.deprSource + ')' : ''), ['dep.mid-month-on-short-life', 'dep.explicit-hy-with-q4', 'dep.placed-vs-closing', 'dep.placed-after-sale'], [], 'Depreciation'));
   var st = dep.settings || {};
   R.push(row(F, 'Cost segregation and bonus', (st.costSeg ? 'Cost segregation on' : 'Cost segregation off') + '; bonus depreciation ' + pct(dep.bonusPct || 0, 0) + (dep.bonusDeduction ? ' (' + money(dep.bonusDeduction) + ' in year 1)' : ''), ['dep.bonus-on-real-property', 'dep.bonus-elect-above-statutory', 'dep.simplified-costseg', 'tax.costseg-payback'], [], 'Depreciation', 'fact'));
-  var rates = [['taxRate', 'ordinary ' + pct(s.taxRate, 1)], ['depRecaptureRate', 'recapture ' + pct(s.depRecaptureRate, 1)], ['capGainsRate', 'capital gains ' + pct(s.capGainsRate, 1)]], blankRates = rates.filter(function(r){ return !(num(s[r[0]]) > 0); });
+  var rates = [['taxRate', 'ordinary ' + pct(s.taxRate, 1)], ['depRecaptureRate', 'recapture ' + pct(s.depRecaptureRate, 1)], ['capGainsRate', 'capital gains ' + pct(s.capGainsRate, 1)]], blankRates = [];
   var tr = row(F, 'Tax rates', rates.map(function(r){ return r[1]; }).join(', '), ['tax.rate-order', 'tax.rate-percent-typo'], [], 'taxRate');
   if(blankRates.length && tr.status === 'ok'){ tr.status = 'missing'; tr.blank = blankRates.map(function(r){ return r[0]; }); tr.value += '. Not entered: ' + blankRates.map(function(r){ return r[0] === 'taxRate' ? 'ordinary rate' : r[0] === 'depRecaptureRate' ? 'recapture rate' : 'capital gains rate'; }).join(', ') + '.'; }
-  if(!blankRates.length && num(s.taxRate) === 0.37 && num(s.depRecaptureRate) === 0.25 && num(s.capGainsRate) === 0.2) tr.value += '. These are the model\'s default rates (37%, 25%, 20%): the after-tax engine fills them in when none are entered, so confirm they are yours.';
+  var prov = safe(function(){ return window.bkTaxRatesProvisional(s); }, []);
+  if(prov.length){ tr.status = 'look'; tr.blank = []; tr.rules.push('Expected input: unconfirmed'); tr.messages.push('The ' + prov.map(function(k){ return window.BK_TAX_RATES[k].label.toLowerCase(); }).join(', ') + ' ' + (prov.length === 1 ? 'is' : 'are') + ' the model\'s default' + (prov.length === 1 ? '' : 's') + ', not confirmed by you, so the after-tax figures are provisional.'); tr.why = window.BK_TAX_RATES_CAUTION; }
   R.push(tr);
   R.push(row(F, 'What tax does to the return', 'Levered IRR ' + pct(at.preTaxIRR) + ' before tax, ' + pct(at.atIRR) + ' after tax. Tax at the sale ' + money(at.saleTax) + ' (recapture ' + money(at.recaptureTax) + ', capital gains ' + money(at.capGainTax) + '); accumulated depreciation ' + money(at.accumDepr), [], [], 'After-Tax', 'fact'));
   R.push(row(F, 'Losses', at.lossCFAtSale > 0 ? money(at.lossUsedAtSale) + ' of ' + money(at.lossCFAtSale) + ' of losses carried to the sale are used' : 'No losses carried to the sale.', ['tax.losses-usable'], [], 'After-Tax', 'fact'));
@@ -35004,6 +35018,58 @@ window.bkLensHtml = function(s){ s = s || bkLoad(); var h = ''; ['debt', 'tax'].
       + (r.messages.length ? '<small class="bk-rv-flag">' + r.messages.map(esc).join(' ') + (r.why ? ' ' + esc(r.why) : '') + '</small>' : '') + (r.blank.length ? '<small class="bk-rv-flag">Not entered: ' + r.blank.map(function(k){ var f = window.BKReg.field(k); return esc(f ? String(f.label).replace(/,.*$/, '') : k); }).join(', ') + '.</small>' : '')
       + (r.rules.length ? '<small class="bk-rv-why">From: ' + r.rules.map(esc).join(', ') + '</small>' : '') + '</div><div class="bk-rv-act"><span class="status-chip ' + c[0] + '">' + c[1] + '</span>' + openBtn(r) + '</div></div>'; }).join('') + '</details>'; });
   return '<div class="bk-rv-sec"><b>Debt and tax</b><small>Each row is a figure the model already calculates and the Model Checks that speak to it. Nothing here is a rule of the guide\'s own.</small>' + h + '</div>'; };
+})();
+</script>
+<script id="bk-tax-assumptions">/* TAX-RATE ASSUMPTIONS. The after-tax engine (src/027) supplies a rate when none is entered: 37% ordinary income, 25% depreciation recapture, 20% capital gains, and saves it into the deal. Left alone that reads
+   as if the investor had chosen those rates. They are the model's suggested starting assumptions, and they depend on the investor's circumstances, jurisdiction, ownership structure and the transaction, so they
+   are never presented as universally applicable tax treatment, and never as confirmed until the user confirms them.
+
+   What this part does, and does not do:
+     does     classify the three rates as EXPECTED inputs (the model can run on them, so nothing is blocked, but they are flagged while unconfirmed); say where each came from (model default or the user);
+              explain what each one affects; label the after-tax figures PROVISIONAL while any of them is unconfirmed; let the user confirm them explicitly.
+     does not change a tax calculation, overwrite a rate the user entered, stop the engine running on its defaults, or touch the depreciation methodology. The engine's numbers are exactly what they were.
+   Status of a rate (bkTaxRateStatus): CONFIRMED when the user confirmed it, or when it is not the model's default value (a figure the model could not have supplied); PROVISIONAL when it is blank or equals the
+   model's default and has not been confirmed (it may be the engine's own, saved earlier, and cannot be told apart from a typed one: so it asks for confirmation). */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function' || !window.BKReg) return;
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+var RATES = {
+  taxRate:{ label:'Ordinary income tax rate', def:0.37, affects:'Applied each year to taxable operating income (rent less operating costs, interest and depreciation), and to the ordinary-income part of the gain on sale. It moves the after-tax cash flow every year.' },
+  depRecaptureRate:{ label:'Depreciation recapture rate', def:0.25, affects:'Applied at the sale to the gain that comes from depreciation already taken (unrecaptured Section 1250 gain), never above the ordinary rate. It moves the tax at the sale and the after-tax proceeds.' },
+  capGainsRate:{ label:'Capital gains rate', def:0.20, affects:'Applied at the sale to the remaining long-term gain after recapture. It moves the tax at the sale and the after-tax IRR and multiple.' }
+};
+var KEYS = Object.keys(RATES);
+var CAUTION = 'Tax rates depend on the investor\'s circumstances, the jurisdiction, the ownership structure and the transaction. The model\'s defaults are a starting point for a first look, not tax advice and not a rate that applies to every investor.';
+window.BK_TAX_RATES = RATES; window.BK_TAX_RATES_CAUTION = CAUTION;
+
+/* where a rate stands: { state:'confirmed'|'provisional', value, source, def } */
+window.bkTaxRateStatus = function(k, s){ s = s || bkLoad(); var R = RATES[k]; if(!R) return null; var v = s[k], has = v !== undefined && v !== null && v !== '' && isFinite(Number(v)), conf = !!(s._taxConfirmed && s._taxConfirmed[k]);
+  var state = conf ? 'confirmed' : (has && Math.abs(Number(v) - R.def) > 1e-12 ? 'confirmed' : 'provisional');
+  return { key:k, label:R.label, state:state, value:has ? Number(v) : R.def, entered:has, def:R.def, affects:R.affects,
+    source:conf ? 'Confirmed by you' : state === 'confirmed' ? 'Entered by you' : has ? 'Model default (saved earlier), not yet confirmed by you' : 'Model default, not entered' }; };
+window.bkTaxRatesProvisional = function(s){ s = s || bkLoad(); return KEYS.filter(function(k){ return window.bkTaxRateStatus(k, s).state === 'provisional'; }); };
+/* the user confirms the rates as their own (the model's default value is saved as theirs only when they say so) */
+window.bkTaxRateConfirm = function(k){ var s = bkLoad(); s._taxConfirmed = Object.assign({}, s._taxConfirmed || {}); (k ? [k] : KEYS).forEach(function(x){ if(!RATES[x]) return; if(s[x] === undefined || s[x] === null || s[x] === '') s[x] = RATES[x].def; s._taxConfirmed[x] = true; }); bkSave(s);
+  if(typeof showSheet === 'function' && typeof currentSheet !== 'undefined') showSheet(currentSheet); };
+
+/* the registry: the rates are present only when confirmed, so they are Expected (flagged, never blocking) until then */
+KEYS.forEach(function(k){ var f = window.BKReg.field(k); if(f) f.has = function(s){ return window.bkTaxRateStatus(k, s).state === 'confirmed'; }; });
+
+/* the banner and the panel on the after-tax pages */
+function banner(s){ var p = window.bkTaxRatesProvisional(s); if(!p.length) return '';
+  return '<div class="note-flag bk-tx-prov"><span>&#9888;</span><div><b>After-tax figures are provisional.</b> They use the model\'s default for the ' + p.map(function(k){ return esc(RATES[k].label.toLowerCase()); }).join(', ')
+    + ' (' + p.map(function(k){ return (RATES[k].def * 100).toFixed(0) + '%'; }).join(', ') + '). ' + esc(CAUTION) + ' <button type="button" class="bk-btn" onclick="bkTaxRateConfirm()">Confirm these rates as mine</button></div></div>'; }
+window.bkTaxProvisionalBanner = banner;
+function panel(s){ var rows = KEYS.map(function(k){ var t = window.bkTaxRateStatus(k, s); return '<tr><td class="rowlabel" data-bk-align="text">' + esc(t.label) + '<span class="bk-sub">' + esc(t.affects) + '</span></td><td data-bk-align="text">' + (t.value * 100).toFixed(2) + '%</td>'
+    + '<td data-bk-align="text"><span class="status-chip ' + (t.state === 'confirmed' ? 'pass' : 'warn') + '">' + (t.state === 'confirmed' ? 'Confirmed' : 'Provisional') + '</span><span class="bk-sub">' + esc(t.source) + '</span></td>'
+    + '<td data-bk-align="text">' + (t.state === 'provisional' ? '<button type="button" class="bk-btn" onclick="bkTaxRateConfirm(\'' + k + '\')">Confirm</button>' : '') + '</td></tr>'; }).join('');
+  return '<div class="tbl-wrap" style="margin-top:16px"><table class="fin"><caption>Tax rates: where they come from</caption><thead><tr><th class="rowlabel-h">Rate</th><th>Used</th><th>Source</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div class="note-flag"><span>&#9432;</span><div>' + esc(CAUTION) + ' Change a rate in the After-Tax Assumptions below; a rate that is not the model\'s default is treated as yours.</div></div>'; }
+['After-Tax', 'After-Tax Report'].forEach(function(name){ var orig = typeof RENDERERS !== 'undefined' ? RENDERERS[name] : null; if(typeof orig !== 'function' || orig.__bkTaxProv) return;
+  var w = function(){ var o = orig.apply(this, arguments); try { if(o && typeof o.main === 'string'){ var s = bkLoad(); if(!(typeof window.bkDealReadiness === 'function' && window.bkDealReadiness().canCalculate === false)){ o.main = banner(s) + (name === 'After-Tax' ? panel(s) : '') + o.main; } } } catch(e){} return o; };
+  w.__bkTaxProv = true; w.__bkOriginal = orig.__bkOriginal || orig; if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer(name, w); else RENDERERS[name] = w; });
 })();
 </script>
 <script id="bk-land-allocation">/* LAND ALLOCATION REVIEW. Land is generally not depreciable. When the allocation in effect is 0% of the purchase price, the whole price is depreciated, which can overstate depreciation, taxable-income relief, recapture
