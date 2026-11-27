@@ -10,8 +10,8 @@
 :root, body{ --bk-ctl-bg:var(--ae-cell,#fff); --bk-ctl-bg-hover:var(--ae-head2,#F1F4F8); --bk-ctl-line:var(--ae-line,#C4CDD9); --bk-ctl-ink:var(--ae-ink,#14212F); --bk-ctl-dim:var(--ae-dim,#566A80);
   --bk-ctl-accent:var(--ae-accent,#1F4E8C); --bk-ctl-on:var(--ae-ink,#14212F); --bk-ctl-on-ink:var(--ae-cell,#fff); --bk-ctl-danger:#A32F24; --bk-ctl-font:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; --bk-ctl-on-accent:#fff; }
 /* night: the accent is a light blue, so a filled button takes dark text on it (white on it would be 2.2:1) */
-:root[data-theme="dark"], :root[data-theme="dark"] body{ --bk-ctl-on-accent:#0B1A2B; --bk-ctl-danger:#F08C80; }
-@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]), :root:not([data-theme="light"]) body{ --bk-ctl-on-accent:#0B1A2B; --bk-ctl-danger:#F08C80; } }
+:root[data-theme="dark"], :root[data-theme="dark"] body{ --bk-ctl-on-accent:#0b1622; --bk-ctl-danger:#ff9a8a; }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]), :root:not([data-theme="light"]) body{ --bk-ctl-on-accent:#0b1622; --bk-ctl-danger:#ff9a8a; } }
 @media screen{
   /* 1 · buttons */
   :is(#viewport, #pl-modal) :is(.bk-btn, .ae-btn, .pl-hbtn, .pf-print, button.status-chip, .status-chip[onclick], .status-chip[role=button]){
