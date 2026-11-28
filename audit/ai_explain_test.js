@@ -6,12 +6,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); con
 const A = require(path.join(__dirname, 'deal.js'));
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-  let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 500) + ']' : '')); };
+  let checks = 0, fails = 0; const failed = []; const check = (n, ok, d) => { checks++; if (!ok){ fails++; failed.push(n.slice(0, 90) + (d !== undefined ? ' [' + String(d).slice(0, 160) + ']' : '')); } console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 500) + ']' : '')); };
   const open = async () => { const ctx = await b.newContext({ viewport: { width: 1300, height: 1100 } }), p = await ctx.newPage(); p.errs = []; p.reqs = []; p.on('pageerror', e => p.errs.push(e.message)); p.on('request', r => { if (!/^(file|data|blob|about):/.test(r.url())) p.reqs.push(r.url()); });
     await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr|newyorkfed/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
     await p.evaluate((d) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); const s = bkLoad(); Object.assign(s, { vacancy: 0.01, insurance: 0, closingCostsPct: 0, rentGrowth: 0.06, sponsor: 'Meridian Sponsor Group', lenderName: 'First Harbor Bank' }); bkSave(s); }, A); return p; };
   const snap = (p) => p.evaluate(() => JSON.stringify(bkLoad(), (k, v) => (k === '_hist') ? undefined : v) + '|' + Object.keys(localStorage).filter(k => /^bk/.test(k) && !/ai_explain/.test(k)).sort().map(k => k + '=' + localStorage.getItem(k).length).join(','));
-  const review = async (p) => { await p.evaluate(() => { bkGuideOn(); }); await p.waitForTimeout(1200); };
+  /* wait for the page to settle rather than a fixed pause (a slow runner can still be drawing the measured part of the review): the measured table has replaced "Measuring", and, when the layer is on, every explanation slot is painted */
+  const settle = async (p, ai) => { await p.waitForTimeout(150); await p.waitForFunction(() => { const m = document.getElementById('bk-rv-meas'); return !m || !/Measuring/.test(m.innerText); }, null, { timeout: 30000 }).catch(() => {});
+    if (ai) await p.waitForFunction(() => document.querySelectorAll('.bk-ai-x').length > 0, null, { timeout: 15000 }).catch(() => {}); await p.waitForTimeout(150); };
+  const review = async (p) => { await p.evaluate(() => { bkGuideOn(); }); await settle(p); };
   const p = await open();
 
   /* ---- 1. off by default: no provider, nothing on the page, nothing asked ---- */
@@ -30,7 +33,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   check('(1) with a provider registered but the switch off, the provider is never called and the bar says Off', off.calls === 0 && !off.on && /AI explanations: Off/.test(off.bar) && off.x === 0, JSON.stringify(off));
 
   /* ---- 2. findings identical on or off ---- */
-  await p.evaluate(() => bkAiSet(true)); await p.waitForTimeout(600);
+  await p.evaluate(() => bkAiSet(true)); await settle(p, true);
   const on = await p.evaluate(() => JSON.stringify(bkDealFindings(bkLoad(), { measure: false }).findings.map(f => [f.id, f.kind, f.cls, f.tier, f.title, f.detail, f.rule])));
   check('(2) the deterministic findings are identical with the layer on and off (id, kind, class, tier, wording, rule)', on === base);
   const strip = (h) => h.replace(/<div class="bk-ai-bar"[\s\S]*?<\/pre><\/div>/, '').replace(/<div class="bk-ai-x[\s\S]*?<\/div>/g, '').replace(/ data-fid="[^"]*"/g, '');
@@ -53,7 +56,7 @@ const A = require(path.join(__dirname, 'deal.js'));
   const ids = await p.evaluate(() => bkAiPayload(bkLoad()).findings.map(f => ({ id: f.id, finding: f.finding, detail: f.detail, measured: f.measured, rule: f.rule })));
   const script = `function(pl){ const f = pl.findings; return { explanations: [ { id: f[0].id, text: 'In plain words: ' + ${JSON.stringify('')} + 'this is the model flagging the item above, nothing more.' }, { id: f[1].id, text: 'This adds a made-up 987654321 figure.' } ] }; }`;
   await fake(script);
-  await p.evaluate(() => bkAiSet(true)); await p.waitForTimeout(900);
+  await p.evaluate(() => bkAiSet(true)); await settle(p, true);
   const sh = await p.evaluate(() => ({ x: [...document.querySelectorAll('.bk-ai-x')].map(e => ({ cls: e.className, t: e.innerText })), calls: window.__fake.calls.length, audit: bkAiAudit().map(a => [a.status, a.why]) }));
   check('(7) the scripted fake is asked once, for the findings, and its answers are shown or withheld by the rules', sh.calls === 1 && sh.x.some(e => /bk-ai-shown/.test(e.cls)) && sh.x.some(e => /bk-ai-withheld/.test(e.cls)) && sh.x.some(e => /bk-ai-none/.test(e.cls)), JSON.stringify(sh.x.map(e => e.cls)));
   check('(8) no invented conclusions: an explanation carrying a figure that is not in its finding is withheld, and the page says why', sh.audit.some(a => a[0] === 'withheld' && /figure that is not in the finding \(987654321\)/.test(a[1])) && sh.x.some(e => /not in the finding|stands on its own/.test(e.t)), JSON.stringify(sh.audit.slice(0, 3)));
@@ -80,7 +83,7 @@ const A = require(path.join(__dirname, 'deal.js'));
     ['a thrown error', `function(pl){ throw new Error('boom'); }`],
     ['no answer at all (times out)', `function(pl){ return new Promise(() => {}); }`]];
   let all = true, detail = [];
-  for (const [name, s] of evil) { await p.evaluate(() => { bkAiSet(false); window.BK_AI_TIMEOUT_MS = 600; }); await fake(s); await p.evaluate(() => { bkAiSet(true); }); await p.waitForTimeout(/times out/.test(name) ? 1300 : 500);
+  for (const [name, s] of evil) { await p.evaluate(() => { bkAiSet(false); window.BK_AI_TIMEOUT_MS = 600; }); await fake(s); await p.evaluate(() => { bkAiSet(true); }); await settle(p, true);
     const r = await p.evaluate(() => ({ pwn: window.__pwn, pol: ({}).polluted, pol2: Object.prototype.polluted, imgs: document.querySelectorAll('#bk-rv img, #bk-rv script').length, shown: document.querySelectorAll('.bk-ai-shown').length, html: [...document.querySelectorAll('.bk-ai-x')].some(e => /<img|<script/i.test(e.innerHTML.replace(/&lt;/g, '')) && e.querySelector('img,script')) }));
     const same = (await snap(p)) === before; const ok = same && r.pwn === undefined && r.pol === undefined && r.pol2 === undefined && r.imgs === 0 && !r.html && r.shown === 0; detail.push(name + ':' + (ok ? 'ok' : JSON.stringify(r))); if (!ok) all = false; }
   check('(5) malicious or malformed replies (markup, a script, links, a new figure, unknown ids, a wrong shape, prototype pollution, an instruction to save, a huge text, a thrown error, no answer) change nothing: the deal and every stored record are byte-identical, nothing is injected, nothing is shown', all, detail.join(' | '));
@@ -89,12 +92,12 @@ const A = require(path.join(__dirname, 'deal.js'));
 
   /* ---- an honest reply is shown, and the explanation tracks the finding it was written for ---- */
   const honest = `function(pl){ return { explanations: pl.findings.map(f => ({ id: f.id, text: 'This restates the finding above in plain words and does not add anything to it.' })) }; }`;
-  await p.evaluate(() => { bkAiSet(false); }); await fake(honest); await p.evaluate(() => bkAiSet(true)); await p.waitForTimeout(700);
+  await p.evaluate(() => { bkAiSet(false); }); await fake(honest); await p.evaluate(() => bkAiSet(true)); await settle(p, true);
   const shown = await p.evaluate(() => ({ n: document.querySelectorAll('.bk-ai-shown').length, f: document.querySelectorAll('.bk-rv-i[data-fid]').length }));
   check('an honest, grounded explanation is shown for the findings it answers', shown.n > 0, JSON.stringify(shown));
   const before2 = await snap(p);
   await p.evaluate(() => { const s = bkLoad(); s.vacancy = 0.08; bkSave(s); }); await p.waitForTimeout(100);
-  const stale = await p.evaluate(() => { bkGuideOn(); return true; }); await p.waitForTimeout(900);
+  const stale = await p.evaluate(() => { bkGuideOn(); return true; }); await settle(p); await p.waitForFunction(() => window.__fake.calls.length >= 2, null, { timeout: 15000 }).catch(() => {});
   check('when the deal changes, the old explanations are not carried over to different findings (they are asked for again)', await p.evaluate(() => window.__fake.calls.length) >= 2);
 
   /* ---- 10. every depth ---- */
@@ -103,5 +106,5 @@ const A = require(path.join(__dirname, 'deal.js'));
   const net = p.reqs.filter(u => !/^(file|data|blob|about):/.test(u));
   check('(3) no network request was made at any point, on or off (the browser saw none)', net.length === 0, net.join(' '));
   check('no page errors', p.errs.length === 0, p.errs.join('|'));
-  console.log('ai explain: ' + checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
+  console.log('ai explain: ' + checks + ' checks, ' + fails + ' failures' + (fails ? ' -- failed: ' + failed.join(' || ') : ''));   /* the runner prints only the last line: name what failed there */ await b.close(); process.exit(fails ? 1 : 0);
 })();
