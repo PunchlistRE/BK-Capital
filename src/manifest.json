@@ -1140,6 +1140,16 @@
 "close": "</script>"
 },
 {
+"file": "228-bk-ai-explain.js",
+"open": "\n<script id=\"bk-ai-explain\">",
+"close": "</script>"
+},
+{
+"file": "229-bk-ai-explain.css",
+"open": "\n<style id=\"bk-ai-explain-css\">",
+"close": "</style>"
+},
+{
 "file": "230-bk-field-search.js",
 "open": "\n<script id=\"bk-field-search\">",
 "close": "</script>"
