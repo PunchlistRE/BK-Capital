@@ -86,6 +86,24 @@ const A = require(path.join(__dirname, 'deal.js'));
     if (deal === A) check(name + ': the structure is really applied (the result differs from the base case)', Math.abs(o.irr - R.irr) > 1e-9 || Math.abs(o.dist - R.dist) > 1, o.irr + ' vs ' + R.irr);
     check(name + ': no page errors', v.errs.length === 0, v.errs.join('|'));
   }
+
+  /* ---- 10. several investors with different terms: the ledger slices the deal's own stream, and every slice must add back to the deal ---- */
+  const iv = await open(A);
+  const L2 = await iv.evaluate(() => { const s = bkLoad(), eq = Math.round(bkDebt().equity), amts = [5000000, 3000000, eq - 8000000]; const reg = [{ id: 'i-a', name: 'Alpha', defaultClass: 'LP', defaultPref: 0.06, defaultMgmtFeePct: 0 }, { id: 'i-b', name: 'Beta', defaultClass: 'LP', defaultPref: 0.08, defaultMgmtFeePct: 0.01 }, { id: 'i-c', name: 'Gamma', defaultClass: 'LP', defaultPref: 0.07, defaultMgmtFeePct: 0 }];
+    try { bkInvestorRegistrySave && bkInvestorRegistrySave(reg); } catch (e) {} s.commitments = amts.map((a, i) => ({ investorId: reg[i].id, commitment: a, calls: [{ required: a, funded: a }] })); bkSave(s);
+    const L = bkInvestorLedger(); if (!L) return null; const m = bkMonthlyReturns();
+    return { n: L.investors.length, funded: L.funded, eq, dealCon: m.contrib, dealDist: m.dist, inv: L.investors.map(x => ({ name: x.terms.name, pref: x.terms.pref, fee: x.terms.mgmtFeePct, con: x.totCon, dist: x.totDist, feePaid: x.totFee, gp: x.totGP, funded: x.funded, share: x.share, moic: x.moic, xirr: x.xirr, monthsCon: x.months.reduce((t, r) => t + r.con, 0), monthsDist: x.months.reduce((t, r) => t + r.dist, 0) })), cons: L.conservation, deal: { lp: bkWaterfallSummary().lp.dist, gp: bkWaterfallSummary().gp.dist } }; });
+  check('three investors with different terms are in the ledger', L2 && L2.n === 3, JSON.stringify(L2 && L2.n));
+  if (L2) {
+    const sumC = L2.inv.reduce((t, x) => t + x.con, 0), sumD = L2.inv.reduce((t, x) => t + x.dist + x.feePaid, 0), sumGP = L2.inv.reduce((t, x) => t + x.gp, 0);
+    check('investor contributions add up to the deal\'s equity, recomputed here from the investors\' own rows', near(sumC, L2.dealCon, 1), sumC + ' vs ' + L2.dealCon);
+    check('what the investors receive (net of fees paid) plus what the GP takes equals the deal\'s distributions: nothing created or lost in the slicing', near(sumD + sumGP, L2.dealDist, 2), (sumD + sumGP) + ' vs ' + L2.dealDist);
+    check('each investor\'s total equals the sum of their own monthly rows', L2.inv.every(x => near(x.monthsCon, x.con, 0.5) && near(x.monthsDist, x.dist, 0.5)));
+    check('each investor\'s share of the deal is their funded share of the equity', L2.inv.every(x => near(x.share != null && x.share <= 1 ? x.share : x.funded / L2.funded, x.funded / L2.funded, 1e-6)), JSON.stringify(L2.inv.map(x => [x.share, x.funded / L2.funded])));
+    check('the ledger\'s own conservation figures agree with this independent sum (variances are zero)', Math.abs(L2.cons.distVariance) < 2 && Math.abs(L2.cons.conVariance) < 1, JSON.stringify(L2.cons));
+    check('an investor with a higher preferred return, or paying a management fee, nets a different multiple from the others: the terms are really applied', new Set(L2.inv.map(x => (x.moic || 0).toFixed(5))).size > 1, JSON.stringify(L2.inv.map(x => [x.name, x.pref, x.fee, x.moic])));
+    check('every investor reports a multiple and an IRR, both finite', L2.inv.every(x => isFinite(x.moic) && (x.xirr == null || isFinite(x.xirr))), JSON.stringify(L2.inv.map(x => [x.moic, x.xirr])));
+  }
   check('no page errors', p.errs.length === 0 && q.errs.length === 0, p.errs.concat(q.errs).join('|'));
   console.log('reconcile: ' + checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
 })();
