@@ -5,7 +5,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); con
 const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirname, 'devdeal.js'));
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-  let checks = 0, fails = 0; const check = (n, ok, d) => { checks++; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 500) + ']' : '')); };
+  let checks = 0, fails = 0; const failed = []; const check = (n, ok, d) => { checks++; if (!ok){ fails++; failed.push(n.slice(0, 90) + (d !== undefined ? ' [' + String(d).slice(0, 200) + ']' : '')); } console.log((ok ? 'PASS ' : 'FAIL ') + n + (d !== undefined ? '  [' + String(d).slice(0, 500) + ']' : '')); };
   const open = async (deal, x) => { const ctx = await b.newContext({ viewport: { width: 1300, height: 1000 } }), p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
     await p.route(/supabase\.co|vercel\.app|fonts\.g|cdn\.jsdelivr|newyorkfed/, r => r.abort()); await p.goto('file://' + path.resolve(process.argv[2])); await p.waitForTimeout(700);
     await p.evaluate(([d, x]) => { document.documentElement.classList.add('bk-auth-ok'); bkCreateNewDeal(d); if (x) { const s = bkLoad(); Object.assign(s, x); bkSave(s); } }, [deal, x || null]); return p; };
@@ -67,5 +67,5 @@ const A = require(path.join(__dirname, 'deal.js')), D = require(path.join(__dirn
   const d = await open(D); const dv = (await search(d, 'construction')).filter(x => /^INPUTS$/i.test(x.sec)).map(x => x.t);
   check('on a development deal its own inputs are found (construction)', dv.length > 0, dv.slice(0, 4).join(' || '));
   check('no page errors', p.errs.length === 0 && q.errs.length === 0 && d.errs.length === 0, p.errs.concat(q.errs, d.errs).join('|'));
-  console.log('field search: ' + checks + ' checks, ' + fails + ' failures'); await b.close(); process.exit(fails ? 1 : 0);
+  console.log('field search: ' + checks + ' checks, ' + fails + ' failures' + (fails ? ' -- failed: ' + failed.join(' || ') : ''));   /* the runner prints only the last line: name what failed there */ await b.close(); process.exit(fails ? 1 : 0);
 })();
