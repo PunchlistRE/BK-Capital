@@ -101,11 +101,11 @@ window.bkDealFindings = function(s, o){ s = s || bkLoad(); o = o || {}; var key 
 function openBtn(f){ return f.field ? '<button type="button" class="bk-btn bk-rv-open" onclick="bkGuideField(\'' + esc(f.field) + '\')">Open</button>' : f.sheet && typeof RENDERERS !== 'undefined' && RENDERERS[f.sheet] ? '<button type="button" class="bk-btn bk-rv-open" onclick="bkGuideDetail(\'' + esc(f.sheet) + '\')">Open</button>' : ''; }
 var CLSL = { warning:'Warning', recommendation:'Recommendation', observation:'Observation' };
 function fixBtn(f){ return f.fix ? '<button type="button" class="bk-btn" onclick="bkGuideProp(\'' + esc(f.fix.k) + '\',' + Number(f.fix.v) + ')">' + esc(f.fix.label) + '</button>' : ''; }
-function item(f, o){ return '<div class="bk-rv-i bk-rv-t' + f.tier + ' bk-rv-c-' + f.cls + '"><div><em class="bk-rv-cls">' + CLSL[f.cls] + '</em><b>' + esc(f.title) + '</b><small>' + esc(f.detail || '') + (f.impactText ? ' ' + esc(f.impactText.charAt(0).toUpperCase() + f.impactText.slice(1)) + '.' : '') + '</small><small class="bk-rv-why">' + esc(f.why) + '</small></div>' + (o && o.noOpen ? '' : openBtn(f)) + fixBtn(f) + '</div>'; }
+function item(f, o){ return '<div class="bk-rv-i bk-rv-t' + f.tier + ' bk-rv-c-' + f.cls + '"' + (typeof window.bkAiFindingId === 'function' ? ' data-fid="' + window.bkAiFindingId(f) + '"' : '') + '><div><em class="bk-rv-cls">' + CLSL[f.cls] + '</em><b>' + esc(f.title) + '</b><small>' + esc(f.detail || '') + (f.impactText ? ' ' + esc(f.impactText.charAt(0).toUpperCase() + f.impactText.slice(1)) + '.' : '') + '</small><small class="bk-rv-why">' + esc(f.why) + '</small></div>' + (o && o.noOpen ? '' : openBtn(f)) + fixBtn(f) + '</div>'; }
 window.bkFindingsHtml = function(list, o){ return list.map(function(f){ return item(f, o); }).join(''); };
 window.bkReviewHtml = function(s){ s = s || bkLoad(); var q = window.bkDealFindings(s, { measure:false }); if(!q.findings.length && !q.known.length) return '';
   var by = function(k){ return q.findings.filter(function(f){ return f.kind === k; }); };
-  var h = '<div class="bk-rv" id="bk-rv"><div class="bk-rv-h">Review of the deal</div>';
+  var h = '<div class="bk-rv" id="bk-rv"><div class="bk-rv-h">Review of the deal</div>' + (typeof window.bkAiBarHtml === 'function' ? window.bkAiBarHtml() : '');
   h += '<div class="bk-rv-sec"><b>What deserves attention first</b><div id="bk-rv-att">' + (q.attention.length ? q.attention.map(item).join('') : '<small>Nothing is missing and no Model Check is failing.</small>') + '</div></div>';
   h += (typeof window.bkLensHtml === 'function' ? window.bkLensHtml(s) : '');   /* the debt and tax lenses (src/225) come right after what deserves attention first */
   h += '<div class="bk-rv-sec"><b>What is known</b><div class="bk-rv-known">' + (q.known.length ? q.known.map(function(k){ return '<span><em>' + esc(k.label) + '</em> ' + esc(k.value) + '</span>'; }).join('') : '<small>Nothing entered yet.</small>') + '</div><div class="bk-rv-groups">' + q.groups.filter(function(g){ return g.total; }).map(function(g){ return '<span>' + esc(g.group) + ' ' + g.entered + ' of ' + g.total + '</span>'; }).join('') + '</div></div>';
@@ -114,11 +114,12 @@ window.bkReviewHtml = function(s){ s = s || bkLoad(); var q = window.bkDealFindi
   var inc = by('inconsistent'); h += '<div class="bk-rv-sec"><b>What is inconsistent</b>' + (inc.length ? inc.map(item).join('') : '<small>No Model Check is flagging this deal.</small>') + '</div>';
   h += '<div class="bk-rv-sec"><b>Assumptions that matter most</b><div id="bk-rv-meas"><small>' + (q.can ? 'Measuring: re-running the deal with each assumption moved by a fixed step.' : 'Shown once the model can calculate this deal: it is withholding results until the required inputs are in.') + '</small></div></div></div>';
   if(q.can) setTimeout(function(){ paintMeasured(); }, 60);
+  setTimeout(function(){ if(typeof window.bkAiRun === 'function'){ window.bkAiRun(); window.bkAiPaint(); } }, 90);
   return h; };
 function paintMeasured(){ var el = document.getElementById('bk-rv-meas'); if(!el) return; var s = bkLoad(), q = window.bkDealFindings(s, { measure:true }), m = q.measured;
   var att = document.getElementById('bk-rv-att'); if(att && q.attention.length) att.innerHTML = q.attention.map(item).join('');
   if(!m || !m.rows.length){ el.innerHTML = '<small>No entered assumption moves the result.</small>'; return; }
   el.innerHTML = '<table class="fin bk-rv-t"><thead><tr><th class="rowlabel-h">Assumption</th><th>Moved by</th><th>Worse side</th><th></th></tr></thead><tbody>' + m.rows.slice(0, 8).map(function(r){ return '<tr><td class="rowlabel" data-bk-align="text">' + esc(r.label) + '</td><td data-bk-align="text">' + esc(r.step) + '</td><td data-bk-align="text">' + esc(r.worstDir + ': ' + show(r.worst)) + '</td><td data-bk-align="text"><button type="button" class="bk-btn" onclick="bkGuideField(\'' + esc(r.k) + '\')">Open</button></td></tr>'; }).join('') + '</tbody></table>'
     + '<small class="bk-rv-why">Each assumption is moved by the fixed step shown, one at a time, and the deal is re-run on a copy. Nothing is changed in the deal.</small>'; }
-window.bkReviewPaint = paintMeasured;
+window.bkReviewPaint = function(){ paintMeasured(); if(typeof window.bkAiPaint === 'function') window.bkAiPaint(); };
 })();

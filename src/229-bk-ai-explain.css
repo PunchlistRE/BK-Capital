@@ -1,0 +1,7 @@
+/* AI EXPLANATION LAYER (src/228). Presentation only, on the design-system tokens. The explanation is visibly a different thing from the finding it sits under. */
+.bk-ai-bar{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:var(--ds-s3); padding:var(--ds-s3); margin:0 0 var(--ds-s3); border:1px dashed var(--ds-bar); border-radius:var(--ds-r2); }
+.bk-ai-bar small{ display:block; }
+.bk-ai-sent{ flex-basis:100%; max-height:240px; overflow:auto; margin:0; padding:var(--ds-s2); font-size:var(--ds-t-s); white-space:pre-wrap; background:var(--ds-band); }
+.bk-ai-x{ margin-top:var(--ds-s2); padding:var(--ds-s2) var(--ds-s3); border-left:3px dashed var(--ds-bar); background:var(--ds-band); font-style:italic; }
+.bk-ai-x > span, .bk-ai-x > small{ display:block; }
+.bk-ai-tag{ display:inline-block; font-style:normal; font-weight:700; font-size:var(--ds-t-s); text-transform:uppercase; letter-spacing:.06em; margin-right:var(--ds-s2); }
