@@ -95,7 +95,8 @@ function pc(v, d){ return v == null || !isFinite(v) ? '—' : (v * 100).toFixed(
 function irrWith(ov){ return safe(function(){ return window.bkRunWith(ov || {}, function(){ var m = bkMonthlyReturns(); return { irr:m.irr, moic:m.moic }; }); }, null); }
 function advice(s){
   var out = [], dev = /develop/i.test(String(s.dealType || '')), units = Number(s.units) || 0, price = Number(s.purchasePrice) || 0, c = safe(function(){ return bkCalc(); }, {}) || {}, noi = Number(c.noi) || 0, egi = Number(c.egi) || 0;
-  function add(sec, lvl, text, fix){ out.push({ sec:sec, lvl:lvl, text:text, fix:fix || null }); }
+  var FIELD_OF = [[/^Vacancy/, 'vacancy'], [/management fee/, 'mgmtPct'], [/replacement reserves/, 'reserves'], [/^Insurance/, 'insurance'], [/^Taxes are/, 'taxes'], [/^You sell at/, 'exitCap'], [/^A hold of/, 'holdYears'], [/^Rent growth/, 'rentGrowth'], [/^Expenses grow/, 'opexGrowth'], [/^Closing costs/, 'closingCostsPct'], [/^The loan will be/, 'acqLTV'], [/^Loan-to-value is/i, 'acqLTV'], [/^(Interest rate|Rate) is/i, 'acqRate'], [/^A construction period/, 'constructionMonths']];
+  function add(sec, lvl, text, fix){ var f = fix ? fix.k : null; if(!f) FIELD_OF.some(function(r){ if(r[0].test(text)){ f = r[1]; return true; } return false; }); out.push({ sec:sec, lvl:lvl, text:text, fix:fix || null, field:f }); }
   if(Number(s.vacancy) < 0.03) add('income', 'warn', 'Vacancy is ' + pc(Number(s.vacancy), 1) + '. Even full buildings turn over; underwriting at 5% is the usual cushion.', { k:'vacancy', v:0.05, label:'Propose 5%' });
   if(!(Number(s.mgmtPct) > 0) && egi) add('expenses', 'warn', 'There is no management fee. A buyer or lender will add 3% to 5% of income, even if you self-manage.', { k:'mgmtPct', v:0.03, label:'Propose 3%' });
   if(!(Number(s.reserves) > 0) && units) add('expenses', 'warn', 'No replacement reserves. They are usually $250 to $300 a unit a year (' + money0(units * 300) + ' for ' + units + ' units).', { k:'reserves', v:units * 300, label:'Propose ' + money0(units * 300) });
@@ -302,8 +303,7 @@ function stepScreen(secs, sec, s, g){
   var i = secs.indexOf(sec), miss = missing(sec, s);
   var body = '<div class="gd">' + depthPicker(true) + '<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Step ' + (i + 1) + ' of ' + secs.length + '</div><button type="button" class="gd-btn link" style="padding:0" onclick="bkGuideWhere()">Where this deal stands</button></div><h1>' + esc(sec.title) + '</h1><p class="sub">' + esc(sec.why) + '</p>' + progress(secs, s, g);
   var fromNote = g.from && sec.fields.some(function(fl){ return g.from.keys.indexOf(fl.k) >= 0; }) ? '<div class="gd-card" style="background:#f4faf6;border-color:#cfe8d8;font-size:13px">Filled in from the ' + esc(g.from.label) + '. Check each figure against the source before you confirm.</div>' : '';
-  var adv = advice(s).filter(function(a){ return a.sec === sec.id; }).slice(0, 3);
-  var advBox = '<div id="gd-advw">' + advHtml(adv) + '</div>';
+  var advBox = '<div id="gd-advw">' + stepFindingsHtml(s, sec) + '</div>';
   var rr = sec.id === 'income' ? rentRollNote(s) : '';
   st.msgs = checks(sec, s);
   var strip = resultStrip(s, sec), inner = sec.fields.map(function(fl){ return fieldRow(fl, s, g); }).join('') + rr;
@@ -313,11 +313,15 @@ function stepScreen(secs, sec, s, g){
   body += '<p class="sub" id="gd-still" style="margin-top:10px">' + stillHtml(miss, expectedBlank(sec, s)) + '</p></div>';
   return body;
 }
-function advHtml(adv){ return adv.length ? '<div class="gd-adv"><b>Worth a look, from what is entered now</b>' + adv.map(function(a){ return '<div class="it"><span>' + esc(a.text) + '</span>' + (a.fix ? '<button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideProp(\'' + a.fix.k + '\',' + a.fix.v + ')">' + esc(a.fix.label) + '</button>' : '') + '</div>'; }).join('') + '</div>' : ''; }
+/* the review's findings for this step: the same engine as the review (src/223), limited to the step's own inputs; each has its class (warning, recommendation, observation) and, where there is one, a proposal that goes through the confirm step */
+function stepFindings(s, sec){ var keys = sec.fields.map(function(fl){ return fl.k; }), q = safe(function(){ return window.bkDealFindings(s, { measure:false }); }, null); if(!q) return [];
+  return q.findings.filter(function(f){ if(f.kind === 'consequential') return false; return (f.field && keys.indexOf(f.field) > -1) || (f.fieldsOf && f.fieldsOf.some(function(k){ return keys.indexOf(k) > -1; })) || (f.advSec === sec.id && !f.field); }).slice(0, 5); }
+function findingsBox(list){ return list.length && typeof window.bkFindingsHtml === 'function' ? '<div class="gd-adv"><b>From the review of this deal, for this step</b>' + window.bkFindingsHtml(list, { noOpen:true }) + '</div>' : ''; }
+function stepFindingsHtml(s, sec){ return findingsBox(stepFindings(s, sec)); }
 function stillHtml(miss, exp){ return (miss.length ? 'Still needed here: ' + miss.map(function(m){ return esc(m.label.toLowerCase()); }).join(', ') + '.' : '')
   + (function(){ var tx = (exp || []).filter(function(m){ return window.BK_TAX_RATES && window.BK_TAX_RATES[m.k]; }), op = (exp || []).filter(function(m){ return !(window.BK_TAX_RATES && window.BK_TAX_RATES[m.k]); }), o = '';
       if(op.length) o += (miss.length ? ' ' : '') + '<b>Expected, not entered (most material first):</b> ' + op.map(function(m){ return esc(String(m.label).toLowerCase().replace(/,.*$/, '')); }).join(', ') + '. A blank line is counted as zero, so NOI and returns may be overstated.';
-      if(tx.length) o += (miss.length || op.length ? ' ' : '') + '<b>Tax rates not confirmed:</b> ' + tx.map(function(m){ return esc(String(m.label).toLowerCase()); }).join(', ') + '. The after-tax figures use the model\'s defaults (provisional) until you confirm or change them.';
+      if(tx.length) o += (miss.length || op.length ? ' ' : '') + '<b>Tax assumptions not confirmed:</b> ' + tx.map(function(m){ return esc(String(m.label).toLowerCase()); }).join(', ') + '. The after-tax figures use the model\'s defaults (provisional) until you confirm or change them.';
       return o; })(); }
 /* the step's expected inputs still blank, most material first (the same list and order as the Inputs index and the Home page: BKReg.expectedMissing) */
 function expectedBlank(sec, s){ var R = window.BKReg; if(!R || !R.expectedMissing) return []; var order = safe(function(){ return R.expectedMissing(s, true).map(function(x){ return x.key; }); }, []);
@@ -326,13 +330,14 @@ function expectedBlank(sec, s){ var R = window.BKReg; if(!R || !R.expectedMissin
    override runner (bkRunWith, as the IRR line and the Sources and Uses panel already are). Nothing is saved. */
 function withDraft(fn){ var keys = Object.keys(st.draft); if(!keys.length) return safe(function(){ return fn(bkLoad()); }, null); return safe(function(){ return window.bkRunWith(Object.assign({}, st.draft), function(){ return fn(bkLoad()); }); }, null); }
 function paintLive(sec){
-  var a = document.getElementById('gd-advw'); if(a){ var adv = withDraft(function(x){ return advice(x); }) || []; a.innerHTML = advHtml(adv.filter(function(q){ return q.sec === sec.id; }).slice(0, 3)); }
+  var a = document.getElementById('gd-advw'); if(a){ a.innerHTML = withDraft(function(x){ return stepFindingsHtml(x, sec); }) || ''; }
   var r = document.getElementById('gd-resw'); if(r){ var t = withDraft(function(x){ return resultStrip(x, sec); }); r.innerHTML = t || ''; }
   var m = document.getElementById('gd-still'); if(m){ var miss = withDraft(function(x){ return missing(sec, x); }); var xb = withDraft(function(x){ return expectedBlank(sec, x); }) || []; if(miss) m.innerHTML = stillHtml(miss.filter(function(fl){ var d = st.draft[fl.k]; return !(Object.prototype.hasOwnProperty.call(st.draft, fl.k) && (fl.t === 'text' ? String(d || '').trim() : Number(d) > 0)); }), xb.filter(function(fl){ var d = st.draft[fl.k]; return !(Object.prototype.hasOwnProperty.call(st.draft, fl.k) && (fl.t === 'text' ? String(d || '').trim() : Number(d) >= 0 && String(d).trim() !== '')); })); }
   [].forEach.call(document.querySelectorAll('.gd-sug[data-k]'), function(e){ var k = e.getAttribute('data-k'), v = Number(e.getAttribute('data-v')), d = Object.prototype.hasOwnProperty.call(st.draft, k) ? Number(st.draft[k]) : null; e.style.display = d != null && isFinite(v) && Math.abs(d - v) < 1e-9 ? 'none' : ''; });
 }
 function canCalc(draft){ return !!safe(function(){ return draft && Object.keys(draft).length ? window.bkRunWith(Object.assign({}, draft), function(){ return bkDealReadiness().canCalculate; }) : bkDealReadiness().canCalculate; }, false); }
-function adviceAll(s){ return advice(s).filter(function(a){ return a.lvl === 'warn'; }).slice(0, 4); }
+window.bkGuideAdvice = function(s){ return advice(s || bkLoad()); };
+function adviceAll(s){ var q = safe(function(){ return window.bkDealFindings(s, { measure:false }); }, null); return q ? q.findings.filter(function(f){ return (f.advice || f.fromAdvice) && f.tier <= 4; }).slice(0, 4) : []; }
 /* THE DECISION (1.9): the review reads like an IC summary. The verdict against house policy, the three drivers of the result and what would fix it are the existing engines' own answers: the credit gate (bkDealGate), the sensitivity drivers (bkSensDrivers, run through bkRunWith) and Deal Remedies (bkRemRun); nothing is recalculated here. */
 var REM = null, DRV = null;
 function dealKeyG(){ try { return JSON.stringify(bkLoad()); } catch(e){ return ''; } }
@@ -375,7 +380,7 @@ function reviewScreen(secs, s, g){
   partial.forEach(function(sec){ open.push('<li><b>' + esc(sec.title) + '</b> is missing ' + missing(sec, s).map(function(m){ return esc(m.label.toLowerCase()); }).join(', ') + '. <a href="#" onclick="bkGuideGo(\'' + sec.id + '\');return false">Fix</a></li>'); });
   if(unconf.length){ var labs = unconf.map(function(k){ var fl = null; secs.forEach(function(sc){ sc.fields.forEach(function(x){ if(x.k === k) fl = { l:x.label, sec:sc.id }; }); }); return fl ? '<a href="#" onclick="bkGuideGo(\'' + fl.sec + '\');return false">' + esc(fl.l.toLowerCase()) + '</a>' : esc(k); }); open.push('<li>' + unconf.length + ' assumption' + (unconf.length === 1 ? '' : 's') + ' I made for you ' + (unconf.length === 1 ? 'has' : 'have') + ' not been checked: ' + labs.join(', ') + '.</li>'); }
   var unrev = secs.filter(function(sec){ return status(sec, s, g) === 'filled'; }); if(unrev.length) open.push('<li>' + unrev.length + ' section' + (unrev.length === 1 ? ' is' : 's are') + ' filled in but not reviewed here: ' + unrev.map(function(x){ return esc(x.title.toLowerCase()); }).join(', ') + '.</li>');
-  adviceAll(s).forEach(function(a){ open.push('<li>' + esc(a.text) + '</li>'); });
+  adviceAll(s).forEach(function(a){ open.push('<li>' + esc(a.title) + '</li>'); });
   if(conf.length) open.push('<li>' + conf.length + ' model check' + (conf.length === 1 ? '' : 's') + ' to look at. <a href="#" onclick="bkGuideDetail(\'Model Checks\');return false">Open Model Checks</a></li>');
   h += '<div class="gd-card"><b>' + (open.length ? 'Still open' : 'Nothing is open') + '</b>' + (open.length ? '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.7">' + open.join('') + '</ul>' : '<p class="sub" style="margin:6px 0 0">Every step is done and every assumption has been checked.</p>') + '</div>';
   /* the package: what to send, each piece one click, with a plain line on what it is; the deal goes to the committee from Deal Review */
@@ -395,14 +400,13 @@ function reviewScreen(secs, s, g){
 /* ------------------------------------------------------------ flow */
 function firstOpen(secs, s, g){ var o = secs.filter(function(sec){ return !g.done[sec.id] && !g.skipped[sec.id]; })[0]; return o ? o.id : 'review'; }
 function whereScreen(secs, s, g){
-  var adv = advice(s), top = adv.slice(0, 4), first = secs.filter(function(sec){ var sv = status(sec, s, g); return sv === 'todo' || sv === 'skipped' || sv === 'partial'; })[0];
+  var q0 = safe(function(){ return window.bkDealFindings(s, { measure:false }); }, null), walkTo = findingQueue(secs, s)[0], first = secs.filter(function(sec){ var sv = status(sec, s, g); return sv === 'todo' || sv === 'skipped' || sv === 'partial'; })[0];
   var h = '<div class="gd"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#12609f;font-weight:700">Where this deal stands</div><h1>' + esc(s.name || 'This deal') + '</h1><p class="sub">I read what is entered now. Nothing here changes it. Pick a section, or let me walk you through from the start.</p>' + (typeof window.bkReviewHtml === 'function' ? window.bkReviewHtml(s) : '');
   h += '<div class="gd-where">' + secs.map(function(sec, i){ var sv = status(sec, s, g), mark = sv === 'done' ? '✓' : sv === 'skipped' ? '⚑' : sv === 'partial' ? '!' : sv === 'filled' ? '●' : (i + 1), note = sv === 'todo' ? 'Needs: ' + missing(sec, s).map(function(m){ return m.label.toLowerCase(); }).join(', ') : sv === 'skipped' ? 'You skipped this' : sv === 'filled' ? 'Entered, not yet reviewed here' : sv === 'partial' ? 'Reviewed, but missing ' + missing(sec, s).map(function(m){ return m.label.toLowerCase(); }).join(', ') : 'Reviewed';
     var xb = (sv === 'filled' || sv === 'done') ? expectedBlank(sec, s) : [];   /* an expected input still blank is flagged on the step, not hidden behind 'entered' */
     if(xb.length){ mark = '!'; note = 'Expected, not entered: ' + xb.map(function(m){ return String(m.label).toLowerCase().replace(/,.*$/, ''); }).join(', '); }
     return '<button type="button" class="gd-w ' + sv + '" onclick="bkGuideGo(\'' + sec.id + '\')"><i>' + mark + '</i><span><b>' + esc(sec.title) + '</b><small>' + esc(readLine(sec.id, s)) + '</small></span><small style="text-align:right">' + esc(note) + '</small></button>'; }).join('') + '</div>';
-  if(top.length) h += '<div class="gd-adv" style="margin-top:16px"><b>Worth a look</b>' + top.map(function(a){ var sec = secOf(secs, a.sec); return '<div class="it"><span>' + esc(a.text) + '</span>' + (a.fix ? '<button type="button" class="gd-btn ghost" style="padding:6px 14px" onclick="bkGuideProp(\'' + a.fix.k + '\',' + a.fix.v + ')">' + esc(a.fix.label) + '</button>' : sec ? '<button type="button" class="gd-btn link" onclick="bkGuideGo(\'' + sec.id + '\')">Open</button>' : '') + '</div>'; }).join('') + '</div>';
-  h += '<div class="gd-act"><button type="button" class="gd-btn" onclick="bkGuideGo(\'' + (first ? first.id : 'review') + '\')">' + (first ? 'Take me to ' + esc(first.title.toLowerCase()) : 'Go to the review') + '</button><button type="button" class="gd-btn ghost" onclick="bkGuideGo(\'' + secs[0].id + '\')">Walk me through from the start</button><button type="button" class="gd-btn link" onclick="bkGuideGo(\'review\')">Skip to the review</button><button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideNew()">Start a different deal</button></div></div>';
+  h += '<div class="gd-act">' + (walkTo ? '<button type="button" class="gd-btn" onclick="bkGuideFindings()">Walk me through what the review found</button>' : '') + '<button type="button" class="gd-btn' + (walkTo ? ' ghost' : '') + '" onclick="bkGuideGo(\'' + (first ? first.id : 'review') + '\')">' + (first ? 'Take me to ' + esc(first.title.toLowerCase()) : 'Go to the review') + '</button><button type="button" class="gd-btn ghost" onclick="bkGuideGo(\'' + secs[0].id + '\')">Walk me through from the start</button><button type="button" class="gd-btn link" onclick="bkGuideGo(\'review\')">Skip to the review</button><button type="button" class="gd-btn link" style="margin-left:auto" onclick="bkGuideNew()">Start a different deal</button></div></div>';
   return h;
 }
 /* QUICK DEPTH (1.9): one page, the figures that decide a first answer. The expenses are the deal's own per-unit lines (taxes, insurance, and the other operating lines as one scaled total); nothing is written until "Use these"; the result is the engine run on a copy (bkRunWith). */
@@ -448,11 +452,11 @@ function render(){
 }
 function show(){ if((st.screen || '') + '|' + (st.step || '') !== lastKey) window.__bkFreshView = true; if(typeof showSheet === 'function') showSheet('Guide'); }   /* a new step or screen: the shared re-render keeps no old scroll position (src/161) */
 window.bkGuideActive = function(){ return prefOn(); };
-window.bkGuideOn = function(){ setPref(true); st.step = null; st.draft = {}; st.checked = {}; var has = active() && safe(function(){ var s = bkLoad(); return !!String(s.dealId || '').trim() && (Number(s.purchasePrice) > 0 || Number(s.units) > 0 || String(s.name || '').trim()); }, false); st.screen = has ? 'where' : 'start'; show(); paintToggle(); };
+window.bkGuideOn = function(){ st.walk = false; setPref(true); st.step = null; st.draft = {}; st.checked = {}; var has = active() && safe(function(){ var s = bkLoad(); return !!String(s.dealId || '').trim() && (Number(s.purchasePrice) > 0 || Number(s.units) > 0 || String(s.name || '').trim()); }, false); st.screen = has ? 'where' : 'start'; show(); paintToggle(); };
 window.bkGuideNew = function(){ st.screen = 'start'; st.draft = {}; show(); };
 window.bkGuideOff = function(){ setPref(false); st.draft = {}; document.documentElement.classList.remove('bk-guide'); backPill(); paintToggle(); if(typeof showSheet === 'function') showSheet('Home'); };
 window.bkGuideToggle = function(){ if(prefOn()) bkGuideOff(); else bkGuideOn(); };
-window.bkGuideGo = function(id){ st.draft = {}; st.checked = {}; st.step = id; st.screen = ''; show(); };
+window.bkGuideGo = function(id){ st.walk = false; st.draft = {}; st.checked = {}; st.step = id; st.screen = ''; show(); };
 window.bkGuideRefresh = function(){ if(document.querySelector('#viewport .gd')) show(); };   /* re-draw the open step, keeping the answers in progress (a suggestion that arrived late) */
 window.bkGuideDraft = function(k, raw){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0]; if(!sec) return; var fl = sec.fields.filter(function(x){ return x.k === k; })[0], v = fl.t === 'bool' ? !!raw : parse(fl, raw);
   if(v == null || (fl.t !== 'text' && fl.t !== 'bool' && !isFinite(v))) { delete st.draft[k]; } else if(String(v) === String(s[k])) { delete st.draft[k]; } else st.draft[k] = v;
@@ -477,7 +481,7 @@ function refreshChanges(sec){ var s = bkLoad(), rows = changeList(s, sec), el = 
 var refreshChanges0 = refreshChanges; refreshChanges = function(sec){ refreshChanges0(sec); paintMsgs(sec); paintLive(sec); };
 window.bkGuideCheck = function(k, on){ if(on) st.checked[k] = 1; else delete st.checked[k]; };
 window.bkGuideProp = function(k, v){ var s = bkLoad(), secs = sections(s), sec = secs.filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0]; if(!sec) return; st.step = sec.id; st.screen = ''; st.draft = {}; st.draft[k] = v; show(); setTimeout(function(){ refreshChanges(sec); }, 0); };
-window.bkGuideWhere = function(){ st.screen = 'where'; st.draft = {}; show(); };
+window.bkGuideWhere = function(){ st.walk = false; st.screen = 'where'; st.draft = {}; show(); };
 window.bkGuideViewSource = function(page){ window.bkDocsList().then(function(a){ var o = a.filter(function(f){ return f.slot === 'om'; })[0]; if(!o) return; var u = URL.createObjectURL(o.blob) + '#page=' + page; window.open(u, '_blank'); }); };
 window.bkGuideUse = function(k){ var s = bkLoad(), sec = sections(s).filter(function(x){ return x.fields.some(function(fl){ return fl.k === k; }); })[0]; if(!sec) return; var fl = sec.fields.filter(function(x){ return x.k === k; })[0], sug = sugOf(fl, s); if(!sug) return; st.draft[k] = sug.v; show(); setTimeout(function(){ refreshChanges(sec); }, 0); };
 function apply(sec){ var s = bkLoad(), g = gstate(s), ch = st.draft, keys = Object.keys(ch); keys.forEach(function(k){ var im = s._imp && s._imp.fields && s._imp.fields[k]; if(im && window.bkLearn) window.bkLearn.log({ kind:'fix', field:k, was:s[k], now:ch[k], why:im.why, source:s._imp.source }); s[k] = ch[k]; });
@@ -486,7 +490,11 @@ function apply(sec){ var s = bkLoad(), g = gstate(s), ch = st.draft, keys = Obje
   sec.fields.forEach(function(fl){ if((st.kept || {})[fl.k]) g.confirmed[fl.k] = 1; }); st.kept = {};
   if(s._imp && s._imp.fields) sec.fields.forEach(function(fl){ if(st.checked[fl.k] || fl.k in ch) delete s._imp.fields[fl.k]; });
   g.done[sec.id] = 1; delete g.skipped[sec.id]; s._guide = { done:g.done, skipped:g.skipped, from:g.from, assumed:g.assumed, confirmed:g.confirmed }; bkSave(s); st.draft = {}; st.checked = {}; }
-function nextId(secs, cur){ var i = secs.findIndex(function(x){ return x.id === cur; }); return i + 1 < secs.length ? secs[i + 1].id : 'review'; }
+/* THE REVIEW DRIVES THE WALK: the steps that hold the deal's findings, in the review's own order (severity, then materiality), each step once. Only the order of the steps changes; every step asks the same questions in every depth. */
+function findingQueue(secs, s){ var q = safe(function(){ return window.bkDealFindings(s, { measure:false }); }, null), out = []; if(!q) return out;
+  q.findings.forEach(function(f){ if(f.tier > 6 || f.kind === 'consequential') return; var sec = secs.filter(function(x){ return (f.field && x.fields.some(function(fl){ return fl.k === f.field; })) || (f.fieldsOf && f.fieldsOf.some(function(k){ return x.fields.some(function(fl){ return fl.k === k; }); })) || (f.advSec === x.id && !f.field); })[0]; if(sec && out.indexOf(sec.id) < 0) out.push(sec.id); }); return out; }
+window.bkGuideFindings = function(){ var s = bkLoad(), secs = sections(s), q = findingQueue(secs, s); st.walk = true; st.seen = {}; st.draft = {}; st.checked = {}; st.screen = ''; st.step = q[0] || 'review'; show(); };
+function nextId(secs, cur){ if(st.walk){ st.seen = st.seen || {}; st.seen[cur] = 1; var q = findingQueue(secs, bkLoad()).filter(function(id){ return !st.seen[id]; }); return q[0] || 'review'; } var i = secs.findIndex(function(x){ return x.id === cur; }); return i + 1 < secs.length ? secs[i + 1].id : 'review'; }
 /* what this input does: the same engine run on a copy with this figure nudged (up 10%, or 1 point for a rate); read-only */
 window.bkGuideWhat = function(k){
   var el = document.getElementById('gdw-' + k); if(!el) return; var s = bkLoad(), fl = null; sections(s).forEach(function(sc){ sc.fields.forEach(function(x){ if(x.k === k) fl = x; }); });
