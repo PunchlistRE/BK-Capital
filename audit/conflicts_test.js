@@ -80,6 +80,7 @@ const T = [
   ['debt.partial-io-basis', 'INFO', set({ repayType: 'Partial interest only', acqIO: 2, ioBasis: '' }), 'A', set({ ioBasis: 'Remaining term' })],
   ['debt.refi-in-lockout', 'ERROR', set({ prepayLockoutMonths: 48, debtTerm: 10 }) + "bkRefiSet('year',3);", 'A', set({ prepayLockoutMonths: 0 })],
   ['debt.prepay-terms-incomplete', 'WARN', set({ debtTerm: 10, holdYears: 5, prepayType: 'Yield maintenance', prepayTreasury: 0 }), 'A', set({ prepayTreasury: 0.04 })],
+  ['lease.rollover-provisional', 'WARN', "var s = bkLoad(); delete s.rolloverAssumptions; delete s._rolloverConfirmed; s.commLeaseModel = true; s.commercialArea = 5000; s.leases = [{ tenant: 'Clinic', suite: 'G2', sf: 5000, status: 'Occupied', start: '2026-06-01', end: '2029-05-31', rent: 36, bump: 0.03, mkt: 40, recType: 'NNN', recFixed: 0 }]; bkSave(s);", 'A', "bkRolloverConfirm()"],
   ['debt.sale-in-lockout', 'ERROR', set({ debtTerm: 10, holdYears: 3, prepayLockoutMonths: 36 }), 'A', set({ prepayLockoutMonths: 0 })]
 ];
 (async () => {
