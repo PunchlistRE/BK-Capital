@@ -48,9 +48,9 @@ function debtRows(s, F){
   if(g && g.stale){ rr.status = 'look'; rr.messages.push('The benchmark rate is dated ' + g.date + ', ' + Math.abs(g.days) + ' days from the closing (' + g.closing + ').'); rr.rules.push('bkIndexDateGap'); rr.why = (rr.why ? rr.why + ' ' : '') + 'The loan is priced from that rate. Enter the rate expected on the closing or lock date, or the lender\'s quote.'; }
   R.push(rr);
   R.push(row(F, 'How it is repaid', (function(){ var x = safe(function(){ return window.bkRepaySummary(s); }, '') || String(s.repayType || 'Amortizing on the stated schedule'); return /[.]$/.test(x) ? x : x + '.'; })() + ' Balance repaid at the sale: ' + money(d.debtAtSale) + ' (' + pct(d.loan > 0 ? d.debtAtSale / d.loan : 0, 0) + ' of the loan).', ['debt.io-longer-than-term', 'debt.io-covers-term', 'debt.partial-io-no-period', 'debt.partial-io-basis'], ['acqAmort', 'repayType'], 'repayType'));
-  R.push(row(F, 'Maturity and the modeled sale', safe(function(){ return window.bkPrepaySummary(s); }, ''), ['debt.term-before-hold', 'debt.sale-in-lockout'], ['debtTerm'], 'debtTerm'));
+  R.push(row(F, 'Maturity and the modeled sale', safe(function(){ return window.bkPrepaySummary(s); }, ''), ['debt.term-before-hold', 'debt.sale-in-lockout', 'debt.refi-in-lockout'], ['debtTerm'], 'debtTerm'));
   var notes = (L.costNotes || []).map(function(n){ return typeof n === 'string' ? n : (n && n.text) || ''; }).filter(Boolean);
-  R.push(row(F, 'Prepayment and exit costs', (String(s.prepayType || 'Open') + (num(s.prepayLockoutMonths) > 0 ? ', lockout ' + num(s.prepayLockoutMonths) + ' months' : '') + (notes.length ? '. ' + notes.join(' ') : '. No prepayment cost at the modeled sale.')), ['debt.sale-in-lockout'], [], 'prepayType', 'fact'));
+  R.push(row(F, 'Prepayment and exit costs', (String(s.prepayType || 'Open') + (num(s.prepayLockoutMonths) > 0 ? ', lockout ' + num(s.prepayLockoutMonths) + ' months' : '') + (notes.length ? '. ' + notes.join(' ') : '. No prepayment cost at the modeled sale.')), ['debt.sale-in-lockout', 'debt.refi-in-lockout', 'debt.prepay-terms-incomplete'], [], 'prepayType', 'fact'));
   return R;
 }
 
