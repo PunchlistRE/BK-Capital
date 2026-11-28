@@ -38,11 +38,11 @@ function actions(){
   return A;
 }
 function setCase(c){ try { var s = bkLoad(); if(s && String(s.scenarioCase || 'Base') !== c){ s.scenarioCase = c; bkSave(s); } showSheet(currentSheet); } catch(e){} }
-function score(it, q){ var l = it.label.toLowerCase(), g = (it.group || '').toLowerCase(); if(!q) return 1; var toks = q.toLowerCase().split(/\s+/).filter(Boolean), sc = 0;
-  for(var i = 0; i < toks.length; i++){ var t = toks[i]; if(l.indexOf(t) === 0) sc += 6; else if(l.indexOf(' ' + t) >= 0) sc += 4; else if(l.indexOf(t) >= 0) sc += 3; else if(g.indexOf(t) >= 0) sc += 1; else return 0; } return sc; }
+function score(it, q){ var l = it.label.toLowerCase(), g = (it.group || '').toLowerCase(), al = ' ' + String(it.alias || '').toLowerCase(); if(!q) return 1; var toks = q.toLowerCase().split(/\s+/).filter(Boolean), sc = 0;
+  for(var i = 0; i < toks.length; i++){ var t = toks[i]; if(l.indexOf(t) === 0) sc += 6; else if(l.indexOf(' ' + t) >= 0) sc += 4; else if(l.indexOf(t) >= 0) sc += 3; else if(al.indexOf(' ' + t) >= 0) sc += 4; else if(g.indexOf(t) >= 0) sc += 1; else return 0; } if(it.kind === 'input' && toks.length > 1 && (l + al).indexOf(q.toLowerCase().trim()) >= 0) sc += 8; return sc; }   /* an input's aliases (src/230) count as its words, and a whole phrase it matches scores higher; sheets and actions score as before */
 var P = { items:[], sel:0 };
-function el(){ var e = document.getElementById('pl-palette'); if(e) return e; e = document.createElement('div'); e.id = 'pl-palette'; e.setAttribute('role', 'dialog'); e.setAttribute('aria-label', 'Search sheets and actions');
-  e.innerHTML = '<div class="box"><input type="text" id="pl-pq" placeholder="Search sheets and actions…" autocomplete="off" spellcheck="false"><div class="list" id="pl-pl" role="listbox"></div><div class="hint"><span>↑↓ move</span><span>Enter open</span><span>Esc close</span></div></div>';
+function el(){ var e = document.getElementById('pl-palette'); if(e) return e; e = document.createElement('div'); e.id = 'pl-palette'; e.setAttribute('role', 'dialog'); e.setAttribute('aria-label', 'Search sheets, inputs and actions');
+  e.innerHTML = '<div class="box"><input type="text" id="pl-pq" placeholder="Search sheets, inputs and actions…" autocomplete="off" spellcheck="false"><div class="list" id="pl-pl" role="listbox"></div><div class="hint"><span>↑↓ move</span><span>Enter open</span><span>Esc close</span></div></div>';
   document.body.appendChild(e); e.addEventListener('mousedown', function(ev){ if(ev.target === e) close(); });
   e.querySelector('#pl-pq').addEventListener('input', function(){ P.sel = 0; draw(); });
   e.querySelector('#pl-pl').addEventListener('click', function(ev){ var it = ev.target.closest('.it'); if(it) choose(+it.dataset.i); });
@@ -53,7 +53,9 @@ function draw(){
   var q = (document.getElementById('pl-pq').value || '').trim(), all = sheets().concat(actions()), rec = store(RKEY) || [], items;
   if(!q){ var byName = {}; all.forEach(function(x){ if(x.kind === 'sheet') byName[x.label] = x; }); var r = rec.map(function(n){ return byName[n]; }).filter(Boolean).slice(0, 6); r.forEach(function(x){ x.sec = 'Recent'; });
     var acts = actions().slice(0, 4); acts.forEach(function(x){ x.sec = 'Actions'; }); items = r.concat(acts); if(!r.length){ items = sheets().slice(0, 8).map(function(x){ x.sec = 'Sheets'; return x; }).concat(acts); } }
-  else { items = all.map(function(x){ return { x:x, s:score(x, q) }; }).filter(function(z){ return z.s > 0; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 40).map(function(z){ var it = z.x; it.sec = it.kind === 'sheet' ? 'Sheets' : (it.kind === 'term' ? 'Glossary' : 'Actions'); return it; }); }
+  else { all = all.concat(typeof window.bkFieldSearchItems === 'function' ? window.bkFieldSearchItems() : []);   /* the deal's own inputs (src/230), only once something is typed */
+    items = all.map(function(x){ return { x:x, s:score(x, q) }; }).filter(function(z){ return z.s > 0; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 40).map(function(z){ var it = z.x; it.sec = it.kind === 'sheet' ? 'Sheets' : it.kind === 'input' ? 'Inputs' : (it.kind === 'term' ? 'Glossary' : 'Actions'); return it; });
+    var secs = []; items.forEach(function(it){ if(secs.indexOf(it.sec) < 0) secs.push(it.sec); }); items = [].concat.apply([], secs.map(function(sc){ return items.filter(function(it){ return it.sec === sc; }); })); }   /* one heading per kind, in the order of the best match */
   P.items = items; var html = '', last = null;
   items.forEach(function(it, i){ if(it.sec !== last){ html += '<div class="sec">' + it.sec + '</div>'; last = it.sec; }
     html += '<div class="it" role="option" data-i="' + i + '">' + (it.color ? '<span class="sw" style="background:' + it.color + '"></span>' : '') + '<span>' + esc(it.label) + '</span><span class="g">' + esc(it.group || '') + '</span></div>'; });

@@ -23626,11 +23626,11 @@ function actions(){
   return A;
 }
 function setCase(c){ try { var s = bkLoad(); if(s && String(s.scenarioCase || 'Base') !== c){ s.scenarioCase = c; bkSave(s); } showSheet(currentSheet); } catch(e){} }
-function score(it, q){ var l = it.label.toLowerCase(), g = (it.group || '').toLowerCase(); if(!q) return 1; var toks = q.toLowerCase().split(/\s+/).filter(Boolean), sc = 0;
-  for(var i = 0; i < toks.length; i++){ var t = toks[i]; if(l.indexOf(t) === 0) sc += 6; else if(l.indexOf(' ' + t) >= 0) sc += 4; else if(l.indexOf(t) >= 0) sc += 3; else if(g.indexOf(t) >= 0) sc += 1; else return 0; } return sc; }
+function score(it, q){ var l = it.label.toLowerCase(), g = (it.group || '').toLowerCase(), al = ' ' + String(it.alias || '').toLowerCase(); if(!q) return 1; var toks = q.toLowerCase().split(/\s+/).filter(Boolean), sc = 0;
+  for(var i = 0; i < toks.length; i++){ var t = toks[i]; if(l.indexOf(t) === 0) sc += 6; else if(l.indexOf(' ' + t) >= 0) sc += 4; else if(l.indexOf(t) >= 0) sc += 3; else if(al.indexOf(' ' + t) >= 0) sc += 4; else if(g.indexOf(t) >= 0) sc += 1; else return 0; } if(it.kind === 'input' && toks.length > 1 && (l + al).indexOf(q.toLowerCase().trim()) >= 0) sc += 8; return sc; }   /* an input's aliases (src/230) count as its words, and a whole phrase it matches scores higher; sheets and actions score as before */
 var P = { items:[], sel:0 };
-function el(){ var e = document.getElementById('pl-palette'); if(e) return e; e = document.createElement('div'); e.id = 'pl-palette'; e.setAttribute('role', 'dialog'); e.setAttribute('aria-label', 'Search sheets and actions');
-  e.innerHTML = '<div class="box"><input type="text" id="pl-pq" placeholder="Search sheets and actions…" autocomplete="off" spellcheck="false"><div class="list" id="pl-pl" role="listbox"></div><div class="hint"><span>↑↓ move</span><span>Enter open</span><span>Esc close</span></div></div>';
+function el(){ var e = document.getElementById('pl-palette'); if(e) return e; e = document.createElement('div'); e.id = 'pl-palette'; e.setAttribute('role', 'dialog'); e.setAttribute('aria-label', 'Search sheets, inputs and actions');
+  e.innerHTML = '<div class="box"><input type="text" id="pl-pq" placeholder="Search sheets, inputs and actions…" autocomplete="off" spellcheck="false"><div class="list" id="pl-pl" role="listbox"></div><div class="hint"><span>↑↓ move</span><span>Enter open</span><span>Esc close</span></div></div>';
   document.body.appendChild(e); e.addEventListener('mousedown', function(ev){ if(ev.target === e) close(); });
   e.querySelector('#pl-pq').addEventListener('input', function(){ P.sel = 0; draw(); });
   e.querySelector('#pl-pl').addEventListener('click', function(ev){ var it = ev.target.closest('.it'); if(it) choose(+it.dataset.i); });
@@ -23641,7 +23641,9 @@ function draw(){
   var q = (document.getElementById('pl-pq').value || '').trim(), all = sheets().concat(actions()), rec = store(RKEY) || [], items;
   if(!q){ var byName = {}; all.forEach(function(x){ if(x.kind === 'sheet') byName[x.label] = x; }); var r = rec.map(function(n){ return byName[n]; }).filter(Boolean).slice(0, 6); r.forEach(function(x){ x.sec = 'Recent'; });
     var acts = actions().slice(0, 4); acts.forEach(function(x){ x.sec = 'Actions'; }); items = r.concat(acts); if(!r.length){ items = sheets().slice(0, 8).map(function(x){ x.sec = 'Sheets'; return x; }).concat(acts); } }
-  else { items = all.map(function(x){ return { x:x, s:score(x, q) }; }).filter(function(z){ return z.s > 0; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 40).map(function(z){ var it = z.x; it.sec = it.kind === 'sheet' ? 'Sheets' : (it.kind === 'term' ? 'Glossary' : 'Actions'); return it; }); }
+  else { all = all.concat(typeof window.bkFieldSearchItems === 'function' ? window.bkFieldSearchItems() : []);   /* the deal's own inputs (src/230), only once something is typed */
+    items = all.map(function(x){ return { x:x, s:score(x, q) }; }).filter(function(z){ return z.s > 0; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 40).map(function(z){ var it = z.x; it.sec = it.kind === 'sheet' ? 'Sheets' : it.kind === 'input' ? 'Inputs' : (it.kind === 'term' ? 'Glossary' : 'Actions'); return it; });
+    var secs = []; items.forEach(function(it){ if(secs.indexOf(it.sec) < 0) secs.push(it.sec); }); items = [].concat.apply([], secs.map(function(sc){ return items.filter(function(it){ return it.sec === sc; }); })); }   /* one heading per kind, in the order of the best match */
   P.items = items; var html = '', last = null;
   items.forEach(function(it, i){ if(it.sec !== last){ html += '<div class="sec">' + it.sec + '</div>'; last = it.sec; }
     html += '<div class="it" role="option" data-i="' + i + '">' + (it.color ? '<span class="sw" style="background:' + it.color + '"></span>' : '') + '<span>' + esc(it.label) + '</span><span class="g">' + esc(it.group || '') + '</span></div>'; });
@@ -35143,6 +35145,34 @@ function panel(s){ var a = window.bkLandAllocation(s), r = window.bkLandReview(s
 var orig = typeof RENDERERS !== 'undefined' ? RENDERERS['Depreciation'] : null;
 if(typeof orig === 'function' && !orig.__bkLandReview){ var w = function(){ var o = orig.apply(this, arguments); try { if(o && typeof o.main === 'string' && !/develop/i.test(String(bkLoad().dealType || ''))) o.main = panel(bkLoad()) + o.main; } catch(e){} return o; };
   w.__bkLandReview = true; w.__bkOriginal = orig.__bkOriginal || orig; if(typeof window.bkRegisterRenderer === 'function') window.bkRegisterRenderer('Depreciation', w); else RENDERERS['Depreciation'] = w; }
+})();
+</script>
+<script id="bk-field-search">/* FIELD SEARCH. The search box (Ctrl/Cmd+K, or "/") finds individual inputs as well as pages and actions. It is the Inputs index (src/221) made searchable, not another list:
+   the same inputs, filtered to what the open deal uses, with the same status (entered / missing / needed / expected / incomplete / optional) and value. Choosing one opens the real box on its own page
+   through the same jump the Inputs index and the review use (bkInputsGo). Nothing is written. Inputs that do not apply to this deal are not offered. */
+(function(){
+'use strict';
+if(typeof bkLoad !== 'function') return;
+/* the words people use for an input that its label does not contain */
+var ALIAS = {
+  acqLTV:'ltv leverage loan to value', acqLTC:'ltc loan to cost', conLTC:'ltc loan to cost construction', exitCap:'cap rate exit cap terminal cap reversion cap', acqRate:'coupon interest rate fixed rate',
+  debtIndexName:'sofr index floating benchmark', debtIndexTenor:'sofr term sofr tenor', debtIndexRate:'sofr index rate benchmark', debtSpread:'spread margin sofr plus', debtRateType:'floating fixed sofr rate type',
+  acqIO:'io interest only', acqAmort:'amortization amortisation', debtTerm:'maturity term', acqOrigFee:'points origination lender fee', prepayLockoutMonths:'lockout prepayment penalty defeasance yield maintenance',
+  rm:'r&m r and m repairs maintenance', mgmtPct:'management fee mgmt', vacancy:'vacancy occupancy credit loss economic vacancy', taxes:'property tax real estate tax re taxes', insurance:'insurance premium',
+  closingCostsPct:'closing costs acquisition costs transaction costs', avgRent:'rent average rent monthly rent', purchasePrice:'price acquisition price purchase', holdYears:'hold period exit year sale year',
+  gsf:'gba gross square feet sf building size', gla:'nra gla rentable square feet leasable', saleCostPct:'disposition broker commission sale costs', rentGrowth:'rent growth escalation', opexGrowth:'expense growth opex growth inflation',
+  reserves:'capex reserves replacement reserves', pref:'preferred return pref hurdle', gpShare:'gp co-invest sponsor equity', t2LP:'promote split waterfall', t3LP:'promote split waterfall', t4LP:'promote split waterfall',
+  taxRate:'income tax ordinary tax', depRecaptureRate:'recapture section 1250', capGainsRate:'capital gains ltcg', landValuePct:'land allocation land value depreciable basis', closing:'closing date acquisition date', dealId:'deal id',
+  units:'unit count doors', otherIncomePerUnit:'other income', utilities:'utilities water electric gas', payroll:'payroll staff salaries', ga:'g&a general administrative', contract:'contract services landscaping'
+};
+var STATUS = { entered:'Entered', missing:'Missing, required', needed:'Needed', expected:'Expected, not entered', incomplete:'Incomplete', optional:'Optional, blank' };
+function safe(f, d){ try { var v = f(); return v === undefined ? d : v; } catch(e){ return d; } }
+/* the inputs the search offers: every input the open deal uses, as the Inputs index lists it */
+window.bkFieldSearchItems = function(){ var ix = safe(function(){ return window.bkInputsIndex(); }, null); if(!ix || !ix.rows) return [];
+  return ix.rows.filter(function(r){ return r.status !== 'na'; }).map(function(r){ var st = STATUS[r.status] || r.status, val = r.present && r.value != null && r.value !== '' ? String(r.value) : '';
+    return { kind:'input', key:r.k, label:String(r.label), alias:ALIAS[r.k] || '', status:r.status, value:val, group:r.group + ' · ' + (r.status === 'entered' && val ? val : st) + (r.note ? ' (' + r.note + ')' : ''),
+      run:function(){ if(typeof window.bkInputsGo === 'function') window.bkInputsGo(r.k); } }; }); };
+window.BK_FIELD_ALIASES = ALIAS;
 })();
 </script>
 <script id="bk-nav">/* NAVIGATION, ONE DEFINITION (2.1, owner's November 2026 regrouping). Tab -> groups -> sheets, defined once here, drives all three: the top tabs (NAV_TABS), the sub-tab row under them and the side menu (the vertical version of the same tabs,

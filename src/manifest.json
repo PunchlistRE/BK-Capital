@@ -1140,6 +1140,11 @@
 "close": "</script>"
 },
 {
+"file": "230-bk-field-search.js",
+"open": "\n<script id=\"bk-field-search\">",
+"close": "</script>"
+},
+{
 "file": "194-bk-nav.js",
 "open": "\n<script id=\"bk-nav\">",
 "close": "</script>"
